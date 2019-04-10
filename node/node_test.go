@@ -160,6 +160,7 @@ func TestNodeStartMining(t *testing.T) {
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
+	// https://github.com/filecoin-project/go-filecoin/issues/2352
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
 		Actr:         actr.NewActr(minerNode.ChainReader, minerNode.CborStore()),
 		Chain:        chn.NewChain(minerNode.ChainReader, minerNode.CborStore()),

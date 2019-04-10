@@ -224,7 +224,7 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 }
 
 // GetTipSetAndState returns the tipset and state of the tipset whose block
-// cids correspond to the input string.
+// cids correspond to the input sorted cid set.
 func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*TipSetAndState, error) {
 	return store.tipIndex.Get(tsKey.String())
 }
@@ -358,7 +358,7 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 	return store.ds.Put(key, val)
 }
 
-// GetHead returns the current head.
+// GetHead returns the current head tipset cids.
 func (store *DefaultStore) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()

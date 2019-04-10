@@ -110,7 +110,7 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 	return api.actr.GetSignature(ctx, actorAddr, method)
 }
 
-// ActorLs returns a slice of actors from the latest state on the chain
+// ActorLs returns a channel with actors from the latest state on the chain
 func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	return api.actr.Ls(ctx)
 }
@@ -131,6 +131,11 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
 }
 
+// ChainGetBlock gets a block by CID
+func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
+	return api.chain.GetBlock(ctx, id)
+}
+
 // ChainHead returns the head tipset
 func (api *API) ChainHead(ctx context.Context) types.TipSet {
 	return api.chain.Head(ctx)
@@ -139,11 +144,6 @@ func (api *API) ChainHead(ctx context.Context) types.TipSet {
 // ChainLs returns a channel of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) <-chan *chn.ChainLsResult {
 	return api.chain.Ls(ctx)
-}
-
-// ChainGetBlock gets a block by CID
-func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return api.chain.GetBlock(ctx, id)
 }
 
 // GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the

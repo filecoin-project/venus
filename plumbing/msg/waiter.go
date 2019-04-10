@@ -90,9 +90,8 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 }
 
 // findMessage looks for a message CID in the chain and returns the message,
-// block and receipt, when it is found. Reads until the channel is closed or the
-// context done. Returns the found message/block (or nil if the channel closed
-// without finding it), whether it was found, or an error.
+// block and receipt, when it is found. Returns the found message/block or nil
+// if now block with the given CID exists in the chain.
 func (w *Waiter) findMessage(ctx context.Context, ts *types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
 	for iterator := chain.IterAncestors(ctx, w.chainReader, *ts); !iterator.Complete(); err = iterator.Next() {

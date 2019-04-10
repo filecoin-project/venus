@@ -70,10 +70,6 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	// Get a fresh channel starting at the first tipset in extraRandomnessAncestors.
-	// This is needed because CollectTipSetsOfHeightAtLeast necessarily reads out
-	// the first tipset of extraRandomnessAncestors from the channel so historyCh can't
-	// be reused.
 	tsas, err := chainReader.GetTipSetAndState(ctx, firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
@@ -86,8 +82,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 }
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
-// than or equal to minHeight from the input channel.  Precondition, the input
-// channel contains interfaces which may be tipsets or errors.
+// than or equal to minHeight from the input tipset.
 func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, ts *types.TipSet, minHeight *types.BlockHeight) ([]types.TipSet, error) {
 	var ret []types.TipSet
 	var err error

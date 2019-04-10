@@ -43,7 +43,7 @@ func (actr *Actr) Get(ctx context.Context, addr address.Address) (*actor.Actor, 
 	return st.GetActor(ctx, addr)
 }
 
-// Ls returns a slice of actors from the latest state on the chain
+// Ls returns a channel with actors from the latest state on the chain
 func (actr *Actr) Ls(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	st, err := actr.getLatestState(ctx)
 	if err != nil {
