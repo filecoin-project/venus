@@ -806,7 +806,9 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed proofs.PoStChall
 		commRs[i] = input.commR
 	}
 
-	proofs, faults, err := sm.generatePoSt(commRs, seed)
+	sortedCommRSlice := types.NewSortedCommRSlice(commRs...)
+
+	proofs, faults, err := sm.generatePoSt(sortedCommRSlice.Values(), seed)
 	if err != nil {
 		log.Errorf("failed to generate PoSts: %s", err)
 		return
