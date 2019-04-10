@@ -13,6 +13,7 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -33,6 +34,8 @@ var testConfig = &GenesisCfg{
 }
 
 func TestGenGenLoading(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(err)
@@ -52,6 +55,8 @@ func TestGenGenLoading(t *testing.T) {
 }
 
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	var info *RenderedGenInfo
