@@ -86,17 +86,6 @@ func TestTipSet(t *testing.T) {
 	assert.Equal(ts2, ts)
 }
 
-type testBlockGetter struct {
-	block       *Block
-	expectedCid cid.Cid
-	require     *require.Assertions
-}
-
-func (t *testBlockGetter) GetBlock(ctx context.Context, id cid.Cid) (*Block, error) {
-	t.require.Equal(t.expectedCid, id)
-	return t.block, nil
-}
-
 // Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
 func RequireTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	require := require.New(t)
