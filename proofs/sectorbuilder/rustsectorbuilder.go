@@ -61,6 +61,10 @@ type RustSectorBuilder struct {
 	// sealStatusPoller polls for sealing status for the sectors whose ids it
 	// knows about.
 	sealStatusPoller *sealStatusPoller
+
+	// sectorStoreType configures behavior of libfilecoin_proofs, including
+	// sector packing, sector sizes, sealing and PoSt generation performance.
+	sectorStoreType proofs.SectorStoreType
 }
 
 var _ SectorBuilder = &RustSectorBuilder{}
@@ -119,6 +123,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		blockService:      cfg.BlockService,
 		ptr:               unsafe.Pointer(resPtr.sector_builder),
 		sectorSealResults: make(chan SectorSealResult),
+		sectorStoreType:   cfg.SectorStoreType,
 	}
 
 	// load staged sector metadata and use it to initialize the poller
@@ -146,14 +151,12 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 func (sb *RustSectorBuilder) GetMaxUserBytesPerStagedSector() (numBytes uint64, err error) {
 	defer elapsed("GetMaxUserBytesPerStagedSector")()
 
-	resPtr := (*C.GetMaxStagedBytesPerSector)(unsafe.Pointer(C.get_max_user_bytes_per_staged_sector((*C.SectorBuilder)(sb.ptr))))
-	defer C.destroy_get_max_user_bytes_per_staged_sector_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return 0, errors.New(C.GoString(resPtr.error_msg))
+	scfg, err := proofs.CSectorStoreType(sb.sectorStoreType)
+	if err != nil {
+		return 0, errors.Wrap(err, "CSectorStoreType failed")
 	}
 
-	return uint64(resPtr.max_staged_bytes_per_sector), nil
+	return uint64(C.get_max_user_bytes_per_staged_sector((*C.ConfiguredStore)(unsafe.Pointer(scfg)))), nil
 }
 
 // AddPiece writes the given piece into an unsealed sector and returns the id
