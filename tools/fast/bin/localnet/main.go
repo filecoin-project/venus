@@ -228,6 +228,11 @@ func main() {
 		return
 	}
 
+	if err := genesis.MiningStart(ctx); err != nil {
+		exitcode = handleError(err, "failed to start mining on genesis node;")
+		return
+	}
+
 	// Create the processes that we will use to become miners
 	var miners []*fast.Filecoin
 	for i := 0; i < minerCount; i++ {

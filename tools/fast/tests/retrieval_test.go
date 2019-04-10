@@ -87,6 +87,9 @@ func TestRetrieval(t *testing.T) {
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
 	require.NoError(err)
 
+	err = genesis.MiningStart(ctx)
+	require.NoError(err)
+
 	// Start Miner
 	err = series.InitAndStart(ctx, miner)
 	require.NoError(err)
