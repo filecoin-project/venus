@@ -88,7 +88,6 @@ type minerPorcelain interface {
 // are moving off of node and into the porcelain api (see porcelainAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the porcelain api.
 type node interface {
-	BlockHeight() (*types.BlockHeight, error)
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
@@ -828,7 +827,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed proofs.PoStChall
 		// TODO: proper fault handling
 	}
 
-	height, err := sm.node.BlockHeight()
+	height, err := sm.porcelainAPI.ChainBlockHeight()
 	if err != nil {
 		log.Errorf("failed to submit PoSt, as the current block height can not be determined: %s", err)
 		// TODO: what should happen in this case?

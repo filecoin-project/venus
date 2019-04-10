@@ -986,15 +986,6 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 	return ownerAddr, nil
 }
 
-// BlockHeight returns the current block height of the chain.
-func (node *Node) BlockHeight() (*types.BlockHeight, error) {
-	height, err := node.PorcelainAPI.ChainHead().Height()
-	if err != nil {
-		return nil, err
-	}
-	return types.NewBlockHeight(height), nil
-}
-
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
