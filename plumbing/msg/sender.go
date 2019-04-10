@@ -29,8 +29,8 @@ type chainState interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 }
 
-// BlockTimer defines a interface to a struct that can give the current block height.
-type BlockTimer interface {
+// BlockClock defines a interface to a struct that can give the current block height.
+type BlockClock interface {
 	BlockHeight() (uint64, error)
 }
 
@@ -44,7 +44,7 @@ type Sender struct {
 	// Provides actor state
 	chainState chainState
 	// Provides the current block height
-	blockTimer BlockTimer
+	blockTimer BlockClock
 	// Tracks inbound messages for mining
 	inbox *core.MessagePool
 	// Tracks outbound messages
@@ -59,7 +59,7 @@ type Sender struct {
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer BlockTimer,
+func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer BlockClock,
 	msgQueue *core.MessageQueue, msgPool *core.MessagePool,
 	validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
 	return &Sender{

@@ -3,6 +3,9 @@ package consensus_test
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -109,6 +112,41 @@ func TestOutboundMessageValidator(t *testing.T) {
 	})
 }
 
+func TestIngestionValidator(t *testing.T) {
+	t.Parallel()
+
+	alice := addresses[0]
+	bob := addresses[1]
+	act := newActor(t, 1000, 53)
+	api := NewMockIngestionValidatorAPI()
+	api.ActorAddr = alice
+	api.Actor = act
+
+	validator := consensus.NewIngestionValidator(api)
+	ctx := context.Background()
+
+	t.Run("Validates extreme nonce gaps", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+
+		msg := newMessage(t, alice, bob, 100, 5, 0, 0)
+		assert.NoError(validator.Validate(ctx, msg))
+
+		highNonce := uint64(act.Nonce + consensus.MaxNonceGap + 10)
+		msg = newMessage(t, alice, bob, highNonce, 5, 0, 0)
+		err := validator.Validate(ctx, msg)
+		require.Error(err)
+		assert.Contains(err.Error(), "too much greater than actor nonce")
+	})
+
+	t.Run("Actor not found is not an error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		msg := newMessage(t, bob, alice, 0, 0, 0, 0)
+		assert.NoError(validator.Validate(ctx, msg))
+	})
+}
+
 func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 	actor, err := account.NewActor(attoFil(balanceAF))
 	require.NoError(t, err)
@@ -136,4 +174,26 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 func attoFil(v int) *types.AttoFIL {
 	val, _ := types.NewAttoFILFromString(fmt.Sprintf("%d", v), 10)
 	return val
+}
+
+// MockIngestionValidatorAPI provides a latest state
+type MockIngestionValidatorAPI struct {
+	ActorAddr address.Address
+	Actor     *actor.Actor
+}
+
+// NewMockIngestionValidatorAPI creates a new MockIngestionValidatorAPI.
+func NewMockIngestionValidatorAPI() *MockIngestionValidatorAPI {
+	return &MockIngestionValidatorAPI{Actor: &actor.Actor{}}
+}
+
+// LatestState will be a state tree that only contains the test actor
+func (api *MockIngestionValidatorAPI) LatestState(ctx context.Context) (state.Tree, error) {
+	cst := hamt.NewCborStore()
+	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	err := st.SetActor(ctx, api.ActorAddr, api.Actor)
+	if err != nil {
+		return nil, err
+	}
+	return st, nil
 }

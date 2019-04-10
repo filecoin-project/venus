@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -90,30 +91,32 @@ func RequireRandomPeerID(require *require.Assertions) peer.ID {
 
 // TestMessagePoolAPI provides a simple BlockTimer interface implementation.
 type TestMessagePoolAPI struct {
-	Height    uint64
-	ActorAddr address.Address
-	Actor     *actor.Actor
+	Height uint64
 }
 
 // NewTestMessagePoolAPI creates a new TestMessagePoolAPI.
 func NewTestMessagePoolAPI(h uint64) *TestMessagePoolAPI {
-	return &TestMessagePoolAPI{Height: h, Actor: &actor.Actor{}}
+	return &TestMessagePoolAPI{Height: h}
+}
+
+type MockMessagePoolValidator struct {
+	Valid bool
+}
+
+func NewMockMessagePoolValidator() *MockMessagePoolValidator {
+	return &MockMessagePoolValidator{Valid: true}
+}
+
+func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+	if v.Valid {
+		return nil
+	}
+	return errors.New("mock validation error")
 }
 
 // BlockHeight represents the height of the highest tipset.
 func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
 	return tbt.Height, nil
-}
-
-// LatestState will be a state tree that only contains the test actor
-func (tbt *TestMessagePoolAPI) LatestState(ctx context.Context) (state.Tree, error) {
-	cst := hamt.NewCborStore()
-	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
-	err := st.SetActor(ctx, tbt.ActorAddr, tbt.Actor)
-	if err != nil {
-		return nil, err
-	}
-	return st, nil
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore

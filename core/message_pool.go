@@ -7,12 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -21,27 +18,22 @@ var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message
 // MaxMessagePoolSize is the maximum number of pending messages will will allow in the message pool at any time
 const MaxMessagePoolSize = 10000
 
-// MaxNonceGap is the maximum nonce of a message past the last received on chain
-const MaxNonceGap = 100
-
 // MessageTimeOut is the number of tipsets we should receive before timing out messages
 const MessageTimeOut = 6
-
-var (
-	ErrMessagePoolFull  = errors.New("message pool is full")
-	ErrNonceGapExceeded = errors.New("message nonce is too much greater than highest nonce on chain")
-	ErrDuplicateNonce   = errors.New("different message with same from address and nonce is already in pool")
-)
 
 type timedmessage struct {
 	message *types.SignedMessage
 	addedAt uint64
 }
 
-// MessagePoolAPI defines a interface api resources the message pool needs.
+// MessagePoolAPI defines an interface to api resources the message pool needs.
 type MessagePoolAPI interface {
 	BlockHeight() (uint64, error)
-	LatestState(ctx context.Context) (state.Tree, error)
+}
+
+// MessagePoolValidator defines a validator that ensures a message can go through the pool.
+type MessagePoolValidator interface {
+	Validate(ctx context.Context, msg *types.SignedMessage) error
 }
 
 type addressNonce struct {
@@ -64,6 +56,7 @@ type MessagePool struct {
 	lk sync.RWMutex
 
 	api           MessagePoolAPI
+	validator     MessagePoolValidator
 	pending       map[cid.Cid]*timedmessage // all pending messages
 	addressNonces map[addressNonce]bool
 }
@@ -78,6 +71,8 @@ func (pool *MessagePool) Add(ctx context.Context, msg *types.SignedMessage) (cid
 	return pool.addTimedMessage(ctx, &timedmessage{message: msg, addedAt: blockTime})
 }
 
+// An error coming out of addTimedMessage probably means the message failed to validate,
+// but it could indicate a more serious problem with the system.
 func (pool *MessagePool) addTimedMessage(ctx context.Context, msg *timedmessage) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
@@ -117,8 +112,8 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 
 // Get retrieves a message from the pool by CID.
 func (pool *MessagePool) Get(c cid.Cid) (*types.SignedMessage, bool) {
-	pool.lk.Lock()
-	defer pool.lk.Unlock()
+	pool.lk.RLock()
+	defer pool.lk.RUnlock()
 	value, ok := pool.pending[c]
 	if !ok {
 		return nil, ok
@@ -142,9 +137,10 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 }
 
 // NewMessagePool constructs a new MessagePool.
-func NewMessagePool(api MessagePoolAPI) *MessagePool {
+func NewMessagePool(api MessagePoolAPI, validator MessagePoolValidator) *MessagePool {
 	return &MessagePool{
 		api:           api,
+		validator:     validator,
 		pending:       make(map[cid.Cid]*timedmessage),
 		addressNonces: make(map[addressNonce]bool),
 	}
@@ -223,13 +219,25 @@ func (pool *MessagePool) timeoutMessages(ctx context.Context, store chain.BlockP
 	}
 
 	// remove all messages added before minimumHeight
-	for cid, msg := range pool.pending {
-		if msg.addedAt < minimumHeight {
-			pool.Remove(cid)
-		}
+	for _, cid := range pool.messagesToTimeOut(minimumHeight) {
+		pool.Remove(cid)
 	}
 
 	return nil
+}
+
+// identify all messages that need to be within a read lock
+func (pool *MessagePool) messagesToTimeOut(minimumHeight uint64) []cid.Cid {
+	pool.lk.RLock()
+	defer pool.lk.RUnlock()
+
+	cids := []cid.Cid{}
+	for cid, msg := range pool.pending {
+		if msg.addedAt < minimumHeight {
+			cids = append(cids, cid)
+		}
+	}
+	return cids
 }
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
@@ -250,33 +258,15 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 // As such, it will often fail silently.
 func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
 	if len(pool.pending) >= MaxMessagePoolSize {
-		return ErrMessagePoolFull
+		return errors.Errorf("message pool is full (%d messages)", MaxMessagePoolSize)
 	}
 
 	// check that message with this nonce does not already exist
 	_, found := pool.addressNonces[newAddressNonce(message)]
 	if found {
-		return ErrDuplicateNonce
+		return errors.Errorf("message pool contains message with same actor and nonce but different cid")
 	}
 
-	st, err := pool.api.LatestState(ctx)
-	if err != nil {
-		return err
-	}
-
-	fromActor, err := st.GetActor(ctx, message.From)
-	if err != nil {
-		if state.IsActorNotFoundError(err) {
-			fromActor = &actor.Actor{}
-		} else {
-			return err
-		}
-	}
-
-	// check that message nonce is not too high
-	if message.Nonce > fromActor.Nonce && message.Nonce-fromActor.Nonce > MaxNonceGap {
-		return ErrNonceGapExceeded
-	}
-
-	return consensus.NewOutboundMessageValidator().Validate(ctx, message, fromActor)
+	// check that the message is likely to succeed in processing
+	return pool.validator.Validate(ctx, message)
 }

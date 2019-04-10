@@ -33,7 +33,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{rejectMessages: true}, nopPublish)
@@ -50,7 +50,7 @@ func TestSend(t *testing.T) {
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -80,7 +80,7 @@ func TestSend(t *testing.T) {
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{}, nopPublish)
