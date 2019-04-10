@@ -44,8 +44,8 @@ func New(plumbing *plumbing.API) *API {
 }
 
 // ChainBlockHeight determines the current block height
-func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
-	return ChainBlockHeight(ctx, a)
+func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
+	return ChainBlockHeight(a)
 }
 
 // CreatePayments establishes a payment channel and create multiple payments against it

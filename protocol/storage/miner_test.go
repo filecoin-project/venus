@@ -432,7 +432,7 @@ func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error)
 	return mtp.config.Get(dottedPath)
 }
 
-func (mtp *minerTestPorcelain) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
+func (mtp *minerTestPorcelain) ChainBlockHeight() (*types.BlockHeight, error) {
 	return mtp.blockHeight, nil
 }
 

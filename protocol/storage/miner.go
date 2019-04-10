@@ -71,7 +71,7 @@ type Miner struct {
 type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
-	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
+	ChainBlockHeight() (*types.BlockHeight, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
@@ -209,7 +209,7 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	}
 
 	// start with current block height
-	blockHeight, err := sm.porcelainAPI.ChainBlockHeight(ctx)
+	blockHeight, err := sm.porcelainAPI.ChainBlockHeight()
 	if err != nil {
 		return fmt.Errorf("could not get current block height")
 	}

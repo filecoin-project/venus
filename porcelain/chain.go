@@ -5,13 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type chBlockHeightPlumbing interface {
-	ChainLs(ctx context.Context) <-chan *chn.ChainLsResult
+	ChainHead() types.TipSet
 }
 
 type chSampleRandomnessPlumbing interface {
@@ -19,17 +18,8 @@ type chSampleRandomnessPlumbing interface {
 }
 
 // ChainBlockHeight determines the current block height
-func ChainBlockHeight(ctx context.Context, plumbing chBlockHeightPlumbing) (*types.BlockHeight, error) {
-	lsCtx, cancelLs := context.WithCancel(ctx)
-	tipSetCh := plumbing.ChainLs(lsCtx)
-	head := <-tipSetCh
-	cancelLs()
-
-	if head == nil {
-		return nil, errors.New("could not retrieve block height")
-	}
-
-	currentHeight, err := head.TipSet.Height()
+func ChainBlockHeight(plumbing chBlockHeightPlumbing) (*types.BlockHeight, error) {
+	currentHeight, err := plumbing.ChainHead().Height()
 	if err != nil {
 		return nil, err
 	}
