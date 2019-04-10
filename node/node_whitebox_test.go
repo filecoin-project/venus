@@ -4,10 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestMakePrivateKey(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	// should fail if less than 1024

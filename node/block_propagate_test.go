@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,7 +30,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	require := require.New(t)
 
@@ -93,6 +94,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	assert := assert.New(t)
 

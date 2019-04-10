@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -18,7 +19,8 @@ import (
 // TestMessagePropagation is a high level check that messages are propagated between message
 // pools of connected ndoes.
 func TestMessagePropagation(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	require := require.New(t)
