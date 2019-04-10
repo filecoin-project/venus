@@ -36,7 +36,7 @@ func GetParentTipSet(ctx context.Context, store BlockProvider, ts types.TipSet) 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
 // then its parent tipsets until (and including) the genesis tipset.
 func IterAncestors(ctx context.Context, store BlockProvider, start types.TipSet) *TipsetIterator {
-	return &TipsetIterator{ctx, store, start, nil}
+	return &TipsetIterator{ctx, store, start}
 }
 
 // TipsetIterator is an iterator over tipsets.
@@ -44,7 +44,6 @@ type TipsetIterator struct {
 	ctx   context.Context
 	store BlockProvider
 	value types.TipSet
-	err   error
 }
 
 // Value returns the iterator's current value, if not Complete().
@@ -59,6 +58,12 @@ func (it *TipsetIterator) Complete() bool {
 
 // Next advances the iterator to the next value.
 func (it *TipsetIterator) Next() error {
-	it.value, it.err = GetParentTipSet(it.ctx, it.store, it.value)
-	return it.err
+	var err error
+	select {
+	case <-it.ctx.Done():
+		return it.ctx.Err()
+	default:
+		it.value, err = GetParentTipSet(it.ctx, it.store, it.value)
+	}
+	return err
 }
