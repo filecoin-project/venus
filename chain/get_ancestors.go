@@ -56,7 +56,8 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 
 	// Step 1 -- gather all tipsets with a height greater than the earliest
 	// possible proving period start still in scope for the given head.
-	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, chainReader, &base, earliestAncestorHeight)
+	iterator := IterAncestors(ctx, chainReader, base)
+	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, iterator, earliestAncestorHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,8 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if err != nil {
 		return nil, err
 	}
-	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, chainReader, &tsas.TipSet, lookback)
+	iterator = IterAncestors(ctx, chainReader, tsas.TipSet)
+	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +85,11 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input tipset.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, ts *types.TipSet, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
 	var ret []types.TipSet
 	var err error
 	var h uint64
-	for iterator := IterAncestors(ctx, chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
+	for ; !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return nil, err
 		}
@@ -105,10 +107,9 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, t
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, chainReader ReadStore, ts *types.TipSet, n uint) ([]types.TipSet, error) {
+func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]types.TipSet, error) {
 	var ret []types.TipSet
 	var err error
-	iterator := IterAncestors(ctx, chainReader, *ts)
 	for i := uint(0); i < n && !iterator.Complete(); i++ {
 		ret = append(ret, iterator.Value())
 		if err = iterator.Next(); err != nil {
