@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"bytes"
@@ -10,12 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDagDaemon(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	t.Run("dag get <cid> returning the genesis block", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)

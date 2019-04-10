@@ -6,10 +6,12 @@ import (
 	ast "github.com/stretchr/testify/assert"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestDhtFindPeer(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := ast.New(t)
 
 	d1 := th.NewDaemon(t).Start()

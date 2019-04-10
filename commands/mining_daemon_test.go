@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +18,8 @@ func parseInt(assert *assert.Assertions, s string) *big.Int {
 }
 
 func TestMiningGenBlock(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()

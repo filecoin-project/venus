@@ -4,12 +4,14 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBootstrapList(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()

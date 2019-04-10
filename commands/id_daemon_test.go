@@ -1,16 +1,18 @@
-package commands
+package commands_test
 
 import (
 	"io/ioutil"
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestId(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
@@ -25,7 +27,8 @@ func TestId(t *testing.T) {
 }
 
 func TestIdFormat(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
@@ -42,7 +45,8 @@ func TestIdFormat(t *testing.T) {
 }
 
 func TestPersistId(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	// we need to control this

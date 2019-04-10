@@ -18,11 +18,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestPaymentChannelCreateSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := makeTestDaemonWithMinerAndStart(t)
@@ -57,12 +59,12 @@ func TestPaymentChannelCreateSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelLs(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
 	t.Run("Works with default payer", func(t *testing.T) {
-		t.Parallel()
 
 		payer, err := address.NewFromString(fixtures.TestAddresses[2])
 		require.NoError(err)
@@ -80,7 +82,6 @@ func TestPaymentChannelLs(t *testing.T) {
 	})
 
 	t.Run("Works with specified payer", func(t *testing.T) {
-		t.Parallel()
 
 		payer, err := address.NewFromString(fixtures.TestAddresses[2])
 		require.NoError(err)
@@ -102,7 +103,6 @@ func TestPaymentChannelLs(t *testing.T) {
 	})
 
 	t.Run("Notifies when channels not found", func(t *testing.T) {
-		t.Parallel()
 
 		payer, err := address.NewFromString(fixtures.TestAddresses[2])
 		require.NoError(err)
@@ -121,7 +121,8 @@ func TestPaymentChannelLs(t *testing.T) {
 }
 
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	payer, err := address.NewFromString(fixtures.TestAddresses[2])
@@ -142,7 +143,8 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	payer, err := address.NewFromString(fixtures.TestAddresses[2])
@@ -177,7 +179,8 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	payer, err := address.NewFromString(fixtures.TestAddresses[2])
@@ -213,7 +216,8 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 }
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	// Initial Balance 10,000
@@ -267,6 +271,8 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	// Initial Balance 10,000,000
@@ -317,7 +323,8 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 }
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	require := require.New(t)
 
 	payer, err := address.NewFromString(fixtures.TestAddresses[2])

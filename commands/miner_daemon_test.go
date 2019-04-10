@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/libp2p/go-libp2p-peer"
@@ -27,11 +28,11 @@ import (
 )
 
 func TestMinerHelp(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	t.Run("--help shows general miner help", func(t *testing.T) {
-		t.Parallel()
 
 		expected := []string{
 			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
@@ -49,25 +50,21 @@ func TestMinerHelp(t *testing.T) {
 	})
 
 	t.Run("pledge --help shows pledge help", func(t *testing.T) {
-		t.Parallel()
 		result := runHelpSuccess(t, "miner", "pledge", "--help")
 		assert.Contains(result, "Shows the number of pledged sectors for the given miner address")
 	})
 
 	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
-		t.Parallel()
 		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
 		assert.Contains(result, "Issues a new message to the network to update the miner's libp2p identity.")
 	})
 
 	t.Run("owner --help shows owner help", func(t *testing.T) {
-		t.Parallel()
 		result := runHelpSuccess(t, "miner", "owner", "--help")
 		assert.Contains(result, "Given <miner> miner address, output the address of the actor that owns the miner.")
 	})
 
 	t.Run("power --help shows power help", func(t *testing.T) {
-		t.Parallel()
 		result := runHelpSuccess(t, "miner", "power", "--help")
 		expected := []string{
 			"Check the current power of a given miner and total power of the storage market.",
@@ -79,7 +76,6 @@ func TestMinerHelp(t *testing.T) {
 	})
 
 	t.Run("create --help shows create help", func(t *testing.T) {
-		t.Parallel()
 
 		expected := []string{
 			"Issues a new message to the network to create the miner, then waits for the",
@@ -114,7 +110,8 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 }
 
 func TestMinerPledge(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
@@ -129,7 +126,6 @@ func TestMinerPledge(t *testing.T) {
 	_ = fi.Close()
 
 	t.Run("shows error with no miner address", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 		defer d.ShutdownSuccess()
 
@@ -137,7 +133,6 @@ func TestMinerPledge(t *testing.T) {
 	})
 
 	t.Run("shows pledge amount for miner", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 		defer d.ShutdownSuccess()
 
@@ -161,7 +156,8 @@ func TestMinerPledge(t *testing.T) {
 }
 
 func TestMinerCreate(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -169,7 +165,6 @@ func TestMinerCreate(t *testing.T) {
 	require.NoError(err)
 
 	t.Run("create --help includes pledge text", func(t *testing.T) {
-		t.Parallel()
 		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
@@ -179,7 +174,6 @@ func TestMinerCreate(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		var err error
 		var addr address.Address
 
@@ -227,7 +221,6 @@ func TestMinerCreate(t *testing.T) {
 	})
 
 	t.Run("validation failure", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -256,7 +249,6 @@ func TestMinerCreate(t *testing.T) {
 	})
 
 	t.Run("insufficient pledge", func(t *testing.T) {
-		t.Parallel()
 		d1 := makeTestDaemonWithMinerAndStart(t)
 		defer d1.ShutdownSuccess()
 
@@ -283,7 +275,8 @@ func TestMinerCreate(t *testing.T) {
 }
 
 func TestMinerSetPrice(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d1 := th.NewDaemon(t,
@@ -303,7 +296,8 @@ func TestMinerSetPrice(t *testing.T) {
 }
 
 func TestMinerCreateSuccess(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d1 := makeTestDaemonWithMinerAndStart(t)
@@ -326,7 +320,8 @@ func TestMinerCreateSuccess(t *testing.T) {
 }
 
 func TestMinerCreateChargesGas(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -379,7 +374,8 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 }
 
 func TestMinerOwner(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
@@ -418,7 +414,8 @@ func TestMinerOwner(t *testing.T) {
 }
 
 func TestMinerPower(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")

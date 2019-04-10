@@ -1,4 +1,4 @@
-package commands
+package commands_test
 
 import (
 	"fmt"
@@ -11,13 +11,15 @@ import (
 	manet "github.com/multiformats/go-multiaddr-net"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDaemonStartupMessage(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	daemon := th.NewDaemon(t).Start()
 	daemon.ShutdownSuccess()
@@ -28,7 +30,8 @@ func TestDaemonStartupMessage(t *testing.T) {
 }
 
 func TestDaemonApiFile(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	daemon := th.NewDaemon(t).Start()
 
@@ -43,9 +46,9 @@ func TestDaemonApiFile(t *testing.T) {
 }
 
 func TestDaemonCORS(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	t.Run("default allowed origins work", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		td := th.NewDaemon(t).Start()
@@ -88,7 +91,6 @@ func TestDaemonCORS(t *testing.T) {
 	})
 
 	t.Run("non-configured origin fails", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 		td := th.NewDaemon(t).Start()
 		defer td.ShutdownSuccess()
@@ -110,6 +112,8 @@ func TestDaemonCORS(t *testing.T) {
 }
 
 func TestDaemonOverHttp(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	td := th.NewDaemon(t).Start()
 	defer td.ShutdownSuccess()
 	require := require.New(t)

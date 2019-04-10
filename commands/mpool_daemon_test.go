@@ -10,10 +10,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestMpoolLs(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
@@ -25,7 +27,6 @@ func TestMpoolLs(t *testing.T) {
 	}
 
 	t.Run("return all messages", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
@@ -50,7 +51,6 @@ func TestMpoolLs(t *testing.T) {
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
@@ -79,11 +79,11 @@ func TestMpoolLs(t *testing.T) {
 }
 
 func TestMpoolShow(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	t.Run("shows message", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
@@ -101,7 +101,6 @@ func TestMpoolShow(t *testing.T) {
 	})
 
 	t.Run("fails missing message", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 
@@ -113,11 +112,11 @@ func TestMpoolShow(t *testing.T) {
 }
 
 func TestMpoolRm(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	t.Run("remove a message", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0])).Start()
 		defer d.ShutdownSuccess()
 

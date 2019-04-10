@@ -7,16 +7,17 @@ import (
 	"path"
 	"testing"
 
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/testhelpers"
-
-	"github.com/ipfs/go-ipfs-cmds"
-
-	"github.com/stretchr/testify/assert"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestRequiresDaemon(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	reqWithDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"chain"}, nil, chainCmd)
@@ -30,11 +31,13 @@ func TestRequiresDaemon(t *testing.T) {
 }
 
 func TestNoDaemonNoHang(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
 	// Start the daemon to initialize a new repo
-	d := testhelpers.NewDaemon(t).Start()
+	d := th.NewDaemon(t).Start()
 
 	// rename the lock files to a safe place
 	repoDir := d.RepoDir()
@@ -49,7 +52,7 @@ func TestNoDaemonNoHang(t *testing.T) {
 	require.NoError(os.Rename(path.Join(repoDir, "repo.lock.backup"), path.Join(repoDir, "repo.lock")))
 
 	// run actor ls with the old repo that still has the lock file, but no running daemon
-	out, _ := exec.Command(testhelpers.MustGetFilecoinBinary(), "--repodir", repoDir, "actor", "ls").CombinedOutput()
+	out, _ := exec.Command(th.MustGetFilecoinBinary(), "--repodir", repoDir, "actor", "ls").CombinedOutput()
 
 	assert.Contains(string(out), "Is the daemon running?")
 }

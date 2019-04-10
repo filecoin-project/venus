@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBitswapStats(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()

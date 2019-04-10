@@ -4,10 +4,13 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPing2Nodes(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
