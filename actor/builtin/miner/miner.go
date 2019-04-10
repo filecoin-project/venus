@@ -460,12 +460,12 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		// the PoRep verification operation needs to know some things (e.g. size)
 		// about the sector for which the proof was generated in order to verify.
 		//
-		// It is undefined behavior for a miner in "Live" mode to verify a proof
-		// created by a miner in "ProofsTest" mode (and vice-versa).
+		// It is undefined behavior for a miner using "LiveMode" to verify a
+		// proof created by a miner using "TestMode" (and vice-versa).
 		//
-		sectorStoreType := proofs.Live
+		proofsMode := proofs.LiveMode
 		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-			sectorStoreType = proofs.Test
+			proofsMode = proofs.TestMode
 		}
 
 		req := proofs.VerifySealRequest{}
@@ -475,7 +475,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(req.Proof[:], proof)
 		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
 		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
-		req.StoreType = sectorStoreType
+		req.ProofsMode = proofsMode
 
 		res, err := (&proofs.RustVerifier{}).VerifySeal(req)
 		if err != nil {
@@ -672,12 +672,12 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 		if !ma.Bootstrap {
 			// See comment above, in CommitSector.
 			//
-			// It is undefined behavior for a miner in "Live" mode to verify a proof
-			// created by a miner in "ProofsTest" mode (and vice-versa).
+			// It is undefined behavior for a miner using "LiveMode" to verify a
+			// proof created by a miner using "TestMode" (and vice-versa).
 			//
-			sectorStoreType := proofs.Live
+			proofsMode := proofs.LiveMode
 			if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-				sectorStoreType = proofs.Test
+				proofsMode = proofs.TestMode
 			}
 
 			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
@@ -695,7 +695,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 				CommRs:        commRs,
 				Faults:        []uint64{},
 				Proofs:        postProofs,
-				StoreType:     sectorStoreType,
+				ProofsMode:    proofsMode,
 			}
 
 			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)

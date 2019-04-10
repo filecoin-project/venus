@@ -74,9 +74,7 @@ func (b *Builder) Build() Harness {
 		panic(err)
 	}
 
-	// TODO: Replace this with proofs.Live plus a sector size (in this case,
-	// "small" or 127 (bytes).
-	sectorStoreType := proofs.Test
+	proofsMode := proofs.TestMode
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
@@ -84,7 +82,7 @@ func (b *Builder) Build() Harness {
 		MetadataDir:      memRepo.StagingDir(),
 		MinerAddr:        minerAddr,
 		SealedSectorDir:  memRepo.SealedDir(),
-		SectorStoreType:  sectorStoreType,
+		ProofsMode:       proofsMode,
 		StagedSectorDir:  memRepo.StagingDir(),
 	})
 	require.NoError(b.t, err)
@@ -99,6 +97,6 @@ func (b *Builder) Build() Harness {
 		SectorBuilder:     sb,
 		MinerAddr:         minerAddr,
 		MaxBytesPerSector: n,
-		SectorConfig:      sectorStoreType,
+		ProofsMode:        proofsMode,
 	}
 }

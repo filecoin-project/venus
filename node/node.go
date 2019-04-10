@@ -586,13 +586,13 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 
 func (node *Node) setupMining(ctx context.Context) error {
 	// configure the underlying sector store, defaulting to the non-test version
-	sectorStoreType := proofs.Live
+	proofsMode := proofs.LiveMode
 	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		sectorStoreType = proofs.Test
+		proofsMode = proofs.TestMode
 	}
 
 	// initialize a sector builder
-	sectorBuilder, err := initSectorBuilderForNode(ctx, node, sectorStoreType)
+	sectorBuilder, err := initSectorBuilderForNode(ctx, node, proofsMode)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize sector builder")
 	}
@@ -898,7 +898,7 @@ func (node *Node) getLastUsedSectorID(ctx context.Context, minerAddr address.Add
 	return lastUsedSectorID, nil
 }
 
-func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType proofs.SectorStoreType) (sectorbuilder.SectorBuilder, error) {
+func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode proofs.Mode) (sectorbuilder.SectorBuilder, error) {
 	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
@@ -919,7 +919,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, sectorStoreType p
 		MetadataDir:      node.Repo.StagingDir(),
 		MinerAddr:        minerAddr,
 		SealedSectorDir:  node.Repo.SealedDir(),
-		SectorStoreType:  sectorStoreType,
+		ProofsMode:       proofsMode,
 		StagedSectorDir:  node.Repo.StagingDir(),
 	}
 

@@ -399,12 +399,11 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 	blockstore := bstore.NewBlockstore(rp.Datastore())
 	blockservice := bserv.New(blockstore, offline.Exchange(blockstore))
 
-	var sectorStoreType proofs.SectorStoreType
-
+	var proofsMode proofs.Mode
 	if smallSectors {
-		sectorStoreType = proofs.Test
+		proofsMode = proofs.TestMode
 	} else {
-		sectorStoreType = proofs.Live
+		proofsMode = proofs.LiveMode
 	}
 
 	// Not a typo
@@ -415,8 +414,8 @@ func getSectorSize(smallSectors bool) (uint64, error) {
 		LastUsedSectorID: 0,
 		MetadataDir:      "",
 		MinerAddr:        addr,
+		ProofsMode:       proofsMode,
 		SealedSectorDir:  "",
-		SectorStoreType:  sectorStoreType,
 		StagedSectorDir:  "",
 	}
 

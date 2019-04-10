@@ -27,7 +27,7 @@ type Harness struct {
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder
-	SectorConfig      proofs.SectorStoreType
+	ProofsMode        proofs.Mode
 	t                 *testing.T
 }
 

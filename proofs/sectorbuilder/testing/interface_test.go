@@ -203,13 +203,13 @@ func TestSectorBuilder(t *testing.T) {
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
 			res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
-				CommD:     val.SealingResult.CommD,
-				CommR:     val.SealingResult.CommR,
-				CommRStar: val.SealingResult.CommRStar,
-				Proof:     val.SealingResult.Proof,
-				ProverID:  sectorbuilder.AddressToProverID(h.MinerAddr),
-				SectorID:  sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
-				StoreType: h.SectorConfig,
+				CommD:      val.SealingResult.CommD,
+				CommR:      val.SealingResult.CommR,
+				CommRStar:  val.SealingResult.CommRStar,
+				Proof:      val.SealingResult.Proof,
+				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
+				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				ProofsMode: h.ProofsMode,
 			})
 			require.NoError(t, err)
 			require.True(t, res.IsValid)
@@ -327,7 +327,7 @@ func TestSectorBuilder(t *testing.T) {
 				CommRs:        []proofs.CommR{val.SealingResult.CommR},
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
-				StoreType:     proofs.Test,
+				ProofsMode:    proofs.TestMode,
 			})
 
 			require.NoError(t, verr)
