@@ -8,6 +8,7 @@ import (
 // Commit is the current git commit, injected through ldflags.
 var Commit string
 
+var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
 var integrationTest = flag.Bool("integration", false, "Run the integration go tests")
 var unitTest = flag.Bool("unit", false, "Run the unit go tests")
 
@@ -28,6 +29,17 @@ func IntegrationTest(t *testing.T) {
 // is not passed to the testing call.
 func UnitTest(t *testing.T) {
 	if !*unitTest {
+		t.SkipNow()
+	}
+	if *concurrent {
+		t.Parallel()
+	}
+}
+
+// FunctionalTest will skip the test its called from if the -functional flag
+// is not passed to the testing call.
+func FunctionalTest(t *testing.T) {
+	if !*functionalTest {
 		t.SkipNow()
 	}
 	if *concurrent {
