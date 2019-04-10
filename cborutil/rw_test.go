@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func init() {
@@ -19,6 +20,8 @@ type fooTestMessage struct {
 }
 
 func TestMessageSending(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	buf := new(bytes.Buffer)
