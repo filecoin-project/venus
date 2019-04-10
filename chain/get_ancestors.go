@@ -88,35 +88,37 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input channel.  Precondition, the input
 // channel contains interfaces which may be tipsets or errors.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, ts *types.TipSet, minHeight *types.BlockHeight) (ret []types.TipSet, err error) {
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, chainReader ReadStore, ts *types.TipSet, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+	var ret []types.TipSet
+	var err error
 	var h uint64
-	for {
-		ret = append(ret, *ts)
-		ts, err = ts.GetNext(ctx, chainReader)
-		if ts == nil || err != nil {
-			return
-		}
-		// Add tipset to ancestors.
-		h, err = ts.Height()
+	for iterator := IterAncestors(ctx, chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
-			return
+			return nil, err
 		}
-		// Check for termination.
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
 		if types.NewBlockHeight(h).LessThan(minHeight) {
-			return
+			return ret, nil
 		}
+		ret = append(ret, iterator.Value())
 	}
+	return ret, nil
 }
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, chainReader ReadStore, ts *types.TipSet, n uint) (ret []types.TipSet, err error) {
-	for i := uint(0); i < n; i++ {
-		ret = append(ret, *ts)
-		ts, err = ts.GetNext(ctx, chainReader)
-		if ts == nil || err != nil {
-			return
+func CollectAtMostNTipSets(ctx context.Context, chainReader ReadStore, ts *types.TipSet, n uint) ([]types.TipSet, error) {
+	var ret []types.TipSet
+	var err error
+	iterator := IterAncestors(ctx, chainReader, *ts)
+	for i := uint(0); i < n && !iterator.Complete(); i++ {
+		ret = append(ret, iterator.Value())
+		if err = iterator.Next(); err != nil {
+			return nil, err
 		}
 	}
-	return
+	return ret, nil
 }

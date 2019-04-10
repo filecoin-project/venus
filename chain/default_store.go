@@ -117,30 +117,27 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
-	ts := &headTs
-	for ts != nil {
-		height, err := ts.Height()
+	for iterator := IterAncestors(ctx, store, headTs); !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return err
+		}
+		genesii = iterator.Value()
+
+		height, err := genesii.Height()
 		if err != nil {
 			return err
 		}
 		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", ts.String(), height)
+			logStore.Infof("load tipset: %s, height: %v", genesii.String(), height)
 		}
-		stateRoot, err := store.loadStateRoot(*ts)
+		stateRoot, err := store.loadStateRoot(genesii)
 		if err != nil {
 			return err
 		}
 		err = store.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          *ts,
+			TipSet:          genesii,
 			TipSetStateRoot: stateRoot,
 		})
-		if err != nil {
-			return err
-		}
-		// TODO: we should probably warm up the block cache with the
-		// most recent tipsets traversed here.
-		genesii = *ts
-		ts, err = ts.GetNext(ctx, store)
 		if err != nil {
 			return err
 		}

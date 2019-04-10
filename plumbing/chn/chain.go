@@ -38,7 +38,7 @@ func (chn *Chain) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descend
 }
 
 type ChainLsResult struct {
-	TipSet *types.TipSet
+	TipSet types.TipSet
 	Error  error
 }
 
@@ -48,8 +48,13 @@ func (chn *Chain) Ls(ctx context.Context) <-chan *ChainLsResult {
 	go func() {
 		defer close(out)
 		tsas, err := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
-		ts := &tsas.TipSet
-		for ts != nil {
+		if err != nil {
+			out <- &ChainLsResult{
+				Error: err,
+			}
+			return
+		}
+		for iterator := chain.IterAncestors(ctx, chn.reader, tsas.TipSet); !iterator.Complete(); err = iterator.Next() {
 			if err != nil {
 				out <- &ChainLsResult{
 					Error: err,
@@ -57,9 +62,8 @@ func (chn *Chain) Ls(ctx context.Context) <-chan *ChainLsResult {
 				return
 			}
 			out <- &ChainLsResult{
-				TipSet: ts,
+				TipSet: iterator.Value(),
 			}
-			ts, err = ts.GetNext(ctx, chn.reader)
 		}
 	}()
 	return out

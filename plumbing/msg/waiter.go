@@ -95,26 +95,25 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // without finding it), whether it was found, or an error.
 func (w *Waiter) findMessage(ctx context.Context, ts *types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
-	for ts != nil {
-		for _, blk := range *ts {
+	for iterator := chain.IterAncestors(ctx, w.chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			log.Errorf("Waiter.Wait: %s", err)
+			return nil, false, err
+		}
+		for _, blk := range iterator.Value() {
 			for _, msg := range blk.Messages {
 				c, err := msg.Cid()
 				if err != nil {
 					return nil, false, err
 				}
 				if c.Equals(msgCid) {
-					recpt, err := w.receiptFromTipSet(ctx, msgCid, *ts)
+					recpt, err := w.receiptFromTipSet(ctx, msgCid, iterator.Value())
 					if err != nil {
 						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 					}
 					return &ChainMessage{msg, blk, recpt}, true, nil
 				}
 			}
-		}
-		ts, err = ts.GetNext(ctx, w.chainReader)
-		if err != nil {
-			log.Errorf("Waiter.Wait: %s", err)
-			return nil, false, err
 		}
 	}
 	return nil, false, nil

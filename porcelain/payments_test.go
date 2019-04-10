@@ -25,7 +25,7 @@ const (
 )
 
 type paymentsTestPlumbing struct {
-	tipSets []*types.TipSet
+	tipSets []types.TipSet
 	msgCid  cid.Cid
 
 	messageSend  func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
@@ -48,7 +48,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	}
 	return &paymentsTestPlumbing{
 		msgCid:  msgCid,
-		tipSets: []*types.TipSet{&tipSet},
+		tipSets: []types.TipSet{tipSet},
 		messageSend: func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
@@ -223,7 +223,7 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.tipSets = []*types.TipSet{}
+		plumbing.tipSets = []types.TipSet{}
 
 		config := validPaymentsConfig()
 		_, err := CreatePayments(context.Background(), plumbing, config)
@@ -232,7 +232,7 @@ func TestCreatePayments(t *testing.T) {
 
 		plumbing = newTestCreatePaymentsPlumbing()
 		ts := types.TipSet{}
-		plumbing.tipSets = []*types.TipSet{&ts}
+		plumbing.tipSets = []types.TipSet{ts}
 
 		config = validPaymentsConfig()
 		_, err = CreatePayments(context.Background(), plumbing, config)

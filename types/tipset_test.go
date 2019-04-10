@@ -97,29 +97,6 @@ func (t *testBlockGetter) GetBlock(ctx context.Context, id cid.Cid) (*Block, err
 	return t.block, nil
 }
 
-func TestGetNext(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	ctx := context.Background()
-	b1, b2, b3 := RequireTestBlocks(t)
-	ts := RequireNewTipSet(require, b1, b2)
-
-	fakeBlockStore := &testBlockGetter{
-		block:       b3,
-		expectedCid: cid1,
-		require:     require,
-	}
-
-	expectedResult := &TipSet{}
-	err := expectedResult.AddBlock(b3)
-	require.NoError(err)
-
-	result, err := ts.GetNext(ctx, fakeBlockStore)
-	require.NoError(err)
-	assert.Equal(expectedResult, result)
-}
-
 // Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
 func RequireTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	require := require.New(t)
