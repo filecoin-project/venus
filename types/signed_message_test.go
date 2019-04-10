@@ -8,11 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, GenerateKeyInfoSeed()))
 
 func TestSignedMessageString(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -25,6 +28,8 @@ func TestSignedMessageString(t *testing.T) {
 }
 
 func TestSignedMessageRecover(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	smsg := makeMessage(t, mockSigner, 42)
@@ -37,6 +42,8 @@ func TestSignedMessageRecover(t *testing.T) {
 }
 
 func TestSignedMessageMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	smsg := makeMessage(t, mockSigner, 42)
@@ -62,6 +69,8 @@ func TestSignedMessageMarshal(t *testing.T) {
 }
 
 func TestSignedMessageCid(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	smsg1 := makeMessage(t, mockSigner, 41)

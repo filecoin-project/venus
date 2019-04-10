@@ -7,11 +7,14 @@ import (
 	"time"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestBlockHeightCreation(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	a := NewBlockHeight(123)
@@ -32,6 +35,8 @@ func TestBlockHeightCreation(t *testing.T) {
 }
 
 func TestBlockHeightCborMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("CBOR decode(encode(BlockHeight)) == identity(BlockHeight)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -66,6 +71,8 @@ func TestBlockHeightCborMarshaling(t *testing.T) {
 }
 
 func TestBlockHeightJsonMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("JSON unmarshal(marshal(BlockHeight)) == identity(BlockHeight)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -100,6 +107,8 @@ func TestBlockHeightJsonMarshaling(t *testing.T) {
 }
 
 func TestBlockHeightComparison(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewBlockHeight(123)
 	b := NewBlockHeight(123)
 	c := NewBlockHeight(456)

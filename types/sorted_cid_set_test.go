@@ -2,14 +2,18 @@ package types
 
 import (
 	"encoding/json"
-	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
 
+	cid "github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestSortedCidSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	s := SortedCidSet{}
@@ -69,6 +73,8 @@ func TestSortedCidSet(t *testing.T) {
 }
 
 func TestSortedCidSetCborRoundtrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	exp := SortedCidSet{}
@@ -89,6 +95,8 @@ func TestSortedCidSetCborRoundtrip(t *testing.T) {
 }
 
 func TestSortedCidSetJSONRoundtrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	exp := SortedCidSet{}

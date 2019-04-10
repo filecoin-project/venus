@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,6 +52,8 @@ func block(require *require.Assertions, height int, parentCid cid.Cid, parentWei
 }
 
 func TestTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -107,6 +110,8 @@ func RequireTestTipSet(t *testing.T) TipSet {
 }
 
 func TestTipSetAddBlock(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	b1, b2, b3 := RequireTestBlocks(t)
@@ -146,6 +151,8 @@ func TestTipSetAddBlock(t *testing.T) {
 }
 
 func TestNewTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	b1, b2, b3 := RequireTestBlocks(t)
 
@@ -182,6 +189,8 @@ func TestNewTipSet(t *testing.T) {
 }
 
 func TestTipSetMinTicket(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ts := RequireTestTipSet(t)
 	mt, err := ts.MinTicket()
@@ -190,6 +199,8 @@ func TestTipSetMinTicket(t *testing.T) {
 }
 
 func TestTipSetHeight(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ts := RequireTestTipSet(t)
 	h, err := ts.Height()
@@ -198,6 +209,8 @@ func TestTipSetHeight(t *testing.T) {
 }
 
 func TestTipSetParents(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	b1, _, _ := RequireTestBlocks(t)
 	ts := RequireTestTipSet(t)
@@ -207,6 +220,8 @@ func TestTipSetParents(t *testing.T) {
 }
 
 func TestTipSetParentWeight(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ts := RequireTestTipSet(t)
 	w, err := ts.ParentWeight()
@@ -215,6 +230,8 @@ func TestTipSetParentWeight(t *testing.T) {
 }
 
 func TestTipSetToSortedCidSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	ts := RequireTestTipSet(t)
 	b1, b2, b3 := RequireTestBlocks(t)
 	assert := assert.New(t)
@@ -224,6 +241,8 @@ func TestTipSetToSortedCidSet(t *testing.T) {
 }
 
 func TestTipSetString(t *testing.T) {
+	tf.UnitTest(t)
+
 	ts := RequireTestTipSet(t)
 	b1, b2, b3 := RequireTestBlocks(t)
 	assert := assert.New(t)
@@ -234,6 +253,8 @@ func TestTipSetString(t *testing.T) {
 }
 
 func TestTipSetToSlice(t *testing.T) {
+	tf.UnitTest(t)
+
 	ts := RequireTestTipSet(t)
 	b1, b2, b3 := RequireTestBlocks(t)
 	tips := []*Block{b1, b2, b3}
@@ -256,6 +277,8 @@ func TestTipSetToSlice(t *testing.T) {
 }
 
 func TestTipSetEquals(t *testing.T) {
+	tf.UnitTest(t)
+
 	ts := RequireTestTipSet(t)
 	b1, b2, b3 := RequireTestBlocks(t)
 	assert := assert.New(t)

@@ -5,11 +5,14 @@ import (
 	"testing"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestUint64CBor(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	v := Uint64(64)
@@ -22,6 +25,8 @@ func TestUint64CBor(t *testing.T) {
 }
 
 func TestUint64Json(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	v := Uint64(64)

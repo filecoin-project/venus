@@ -7,11 +7,14 @@ import (
 	"time"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestBytesAmountCreation(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	a := NewBytesAmount(123)
@@ -32,6 +35,8 @@ func TestBytesAmountCreation(t *testing.T) {
 }
 
 func TestZeroBytes(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	z := NewBytesAmount(0)
@@ -43,6 +48,8 @@ func TestZeroBytes(t *testing.T) {
 }
 
 func TestBytesAmountComparison(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewBytesAmount(123)
 	b := NewBytesAmount(123)
 	c := NewBytesAmount(456)
@@ -79,6 +86,8 @@ func TestBytesAmountComparison(t *testing.T) {
 }
 
 func TestBytesAmountAddition(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewBytesAmount(123)
 	b := NewBytesAmount(456)
 
@@ -114,6 +123,8 @@ func TestBytesAmountAddition(t *testing.T) {
 }
 
 func TestBytesAmountSubtraction(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewBytesAmount(456)
 	b := NewBytesAmount(123)
 
@@ -148,6 +159,8 @@ func TestBytesAmountSubtraction(t *testing.T) {
 }
 
 func TestBytesAmountCborMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("CBOR decode(encode(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -183,6 +196,8 @@ func TestBytesAmountCborMarshaling(t *testing.T) {
 }
 
 func TestBytesAmountJsonMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("JSON unmarshal(marshal(BytesAmount)) == identity(BytesAmount)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -218,6 +233,8 @@ func TestBytesAmountJsonMarshaling(t *testing.T) {
 }
 
 func TestBytesAmountIsPositive(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewBytesAmount(100)      // positive
 	z := NewBytesAmount(0)        // zero
 	n := NewBytesAmount(0).Sub(p) // negative
@@ -241,6 +258,8 @@ func TestBytesAmountIsPositive(t *testing.T) {
 }
 
 func TestBytesAmountIsNegative(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewBytesAmount(100)      // positive
 	z := NewBytesAmount(0)        // zero
 	n := NewBytesAmount(0).Sub(p) // negative
@@ -264,6 +283,8 @@ func TestBytesAmountIsNegative(t *testing.T) {
 }
 
 func TestBytesAmountIsZero(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewBytesAmount(100)      // positive
 	z := NewBytesAmount(0)        // zero
 	n := NewBytesAmount(0).Sub(p) // negative
@@ -287,6 +308,8 @@ func TestBytesAmountIsZero(t *testing.T) {
 }
 
 func TestBytesAmountMul(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewBytesAmount(8)
 	b := NewBytesAmount(9)
 
