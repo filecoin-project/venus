@@ -9,10 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestSamplingChainRandomness(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
