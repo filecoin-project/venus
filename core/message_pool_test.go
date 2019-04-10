@@ -27,7 +27,7 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	api := th.NewTestMessagePoolAPI(0)
 	pool := NewMessagePool(api, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
-	msg2 := setNonce(mockSigner, newSignedMessage(), 1)
+	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
 
 	c1, err := msg1.Cid()
 	assert.NoError(err)
@@ -95,7 +95,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		_, err := pool.Add(ctx, smsg1)
 		require.NoError(err)
 
-		smsg2 := setNonce(mockSigner, newSignedMessage(), smsg1.Nonce)
+		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Nonce)
 		_, err = pool.Add(ctx, smsg2)
 		require.Error(err)
 		assert.Contains(err.Error(), "message with same actor and nonce")
@@ -111,7 +111,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		validator.Valid = false
 		pool := NewMessagePool(api, validator)
 
-		smsg1 := setNonce(mockSigner, newSignedMessage(), 0)
+		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
 		_, err := pool.Add(ctx, smsg1)
 		require.Error(err)
 		assert.Contains(err.Error(), "mock validation error")
@@ -618,13 +618,13 @@ func (p *storeBlockProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.
 	return &blk, nil
 }
 
-func setNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
-	return resignMessage(signer, message, func(m *types.Message) {
+func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
+	return mustResignMessage(signer, message, func(m *types.Message) {
 		m.Nonce = nonce
 	})
 }
 
-func resignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.Message)) *types.SignedMessage {
+func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.Message)) *types.SignedMessage {
 	var msg types.Message
 	msg = message.Message
 	f(&msg)
