@@ -11,11 +11,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 func TestWalletSimple(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create a backend")
@@ -67,6 +70,8 @@ func TestWalletSimple(t *testing.T) {
 }
 
 func TestSimpleSignAndVerify(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create a backend")
@@ -129,6 +134,8 @@ func TestSimpleSignAndVerify(t *testing.T) {
 }
 
 func TestSignErrorCases(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create 2 backends")
@@ -177,6 +184,8 @@ func TestSignErrorCases(t *testing.T) {
 }
 
 func TestGetAddressForPubKeyy(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -200,6 +209,8 @@ func TestGetAddressForPubKeyy(t *testing.T) {
 }
 
 func TestWallet_CreateTicket(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

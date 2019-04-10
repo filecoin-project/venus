@@ -5,11 +5,14 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
-
 	"github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestDSBackendSimple(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -36,6 +39,8 @@ func TestDSBackendSimple(t *testing.T) {
 }
 
 func TestDSBackendKeyPairMatchAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -63,6 +68,8 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 }
 
 func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	// create 2 backends
@@ -98,6 +105,8 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 }
 
 func TestDSBackendParallel(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
