@@ -370,6 +370,9 @@ func (store *DefaultStore) GetHead() types.SortedCidSet {
 // Strictly speaking, the block height is the number of tip sets that appear on chain plus
 // the number of "null blocks" that occur when a mining round fails to produce a block.
 func (store *DefaultStore) BlockHeight() (uint64, error) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+
 	return store.head.Height()
 }
 
