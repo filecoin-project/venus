@@ -270,12 +270,12 @@ func requireTsAdded(require *require.Assertions, chain chain.Store, ts types.Tip
 	h, err := ts.Height()
 	require.NoError(err)
 	// Tip Index correctly updated
-	gotTsas, err := chain.GetTipSetAndState(ctx, ts.ToSortedCidSet())
+	gotTsas, err := chain.GetTipSetAndState(ts.ToSortedCidSet())
 	require.NoError(err)
 	require.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
 	require.NoError(err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(ctx, parent.String(), h)
+	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
 	require.NoError(err)
 	require.True(containsTipSet(childTsasSlice, ts))
 
@@ -290,12 +290,12 @@ func assertTsAdded(assert *assert.Assertions, chainStore chain.Store, ts types.T
 	h, err := ts.Height()
 	assert.NoError(err)
 	// Tip Index correctly updated
-	gotTsas, err := chainStore.GetTipSetAndState(ctx, ts.ToSortedCidSet())
+	gotTsas, err := chainStore.GetTipSetAndState(ts.ToSortedCidSet())
 	assert.NoError(err)
 	assert.Equal(ts, gotTsas.TipSet)
 	parent, err := ts.Parents()
 	assert.NoError(err)
-	childTsasSlice, err := chainStore.GetTipSetAndStatesByParentsAndHeight(ctx, parent.String(), h)
+	childTsasSlice, err := chainStore.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
 	assert.NoError(err)
 	assert.True(containsTipSet(childTsasSlice, ts))
 
@@ -308,7 +308,7 @@ func assertTsAdded(assert *assert.Assertions, chainStore chain.Store, ts types.T
 func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
-	_, err := chainStore.GetTipSetAndState(ctx, cids)
+	_, err := chainStore.GetTipSetAndState(cids)
 	assert.Error(err)
 	// Blocks exist in store
 	for _, c := range cids.ToSlice() {
@@ -317,15 +317,13 @@ func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids types.S
 }
 
 func requireHead(require *require.Assertions, chain chain.Store, head types.TipSet) {
-	ctx := context.Background()
-	headTipSetAndState, err := chain.GetTipSetAndState(ctx, chain.GetHead())
+	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
 	require.NoError(err)
 	require.Equal(head, headTipSetAndState.TipSet)
 }
 
 func assertHead(assert *assert.Assertions, chain chain.Store, head types.TipSet) {
-	ctx := context.Background()
-	headTipSetAndState, err := chain.GetTipSetAndState(ctx, chain.GetHead())
+	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
 	assert.NoError(err)
 	assert.Equal(head, headTipSetAndState.TipSet)
 }
@@ -956,7 +954,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource)
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, chainStore.GetHead())
+	headTipSetAndState, err := chainStore.GetTipSetAndState(chainStore.GetHead())
 	require.NoError(err)
 	baseTS := headTipSetAndState.TipSet // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))
@@ -1012,7 +1010,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, sharedCids)
 	require.NoError(err)
 	assertHead(assert, chainStore, tsShared)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(ctx, chainStore.GetHead())
+	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
 	require.NoError(err)
 	measuredWeight, err := wFun(headTipSetAndState.TipSet)
 	require.NoError(err)
@@ -1044,7 +1042,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, f1Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f1)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(ctx, chainStore.GetHead())
+	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
 	require.NoError(err)
 	measuredWeight, err = wFun(headTipSetAndState.TipSet)
 	require.NoError(err)
@@ -1070,7 +1068,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f2)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(ctx, chainStore.GetHead())
+	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
 	require.NoError(err)
 	measuredWeight, err = wFun(headTipSetAndState.TipSet)
 	require.NoError(err)
@@ -1079,7 +1077,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 }
 
 func requireGetTsas(ctx context.Context, require *require.Assertions, chain chain.Store, key types.SortedCidSet) *chain.TipSetAndState {
-	tsas, err := chain.GetTipSetAndState(ctx, key)
+	tsas, err := chain.GetTipSetAndState(key)
 	require.NoError(err)
 	return tsas
 }

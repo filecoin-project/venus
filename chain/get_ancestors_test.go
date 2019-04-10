@@ -22,7 +22,7 @@ func setupGetAncestorTests(require *require.Assertions) (context.Context, *th.Te
 // its head.
 func requireGrowChain(ctx context.Context, require *require.Assertions, blockSource *th.TestFetcher, chainStore chain.Store, numBlocks int) {
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	link := headTipSetAndState.TipSet
 
@@ -58,7 +58,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	chainLen := 15
 	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, chainStore, headTipSetAndState.TipSet)
@@ -81,7 +81,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	chainLen := 25
 	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, chainStore, headTipSetAndState.TipSet)
@@ -113,7 +113,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	nullBlocks := uint64(10)
 
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	fakeChildParams := th.FakeChildParams{
 		Parent:         headTipSetAndState.TipSet,
@@ -140,7 +140,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	requireGrowChain(ctx, require, blockSource, chainStore, len2)
 
 	head = chainStore.GetHead()
-	headTipSetAndState, err = chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err = chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	stopHeight := types.NewBlockHeight(uint64(35))
 	iterator := chain.IterAncestors(ctx, chainStore, headTipSetAndState.TipSet)
@@ -163,7 +163,7 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	t.Run("happy path", func(t *testing.T) {
 		head := chainStore.GetHead()
-		headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+		headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 		require.NoError(err)
 		number := uint(10)
 		iterator := chain.IterAncestors(ctx, chainStore, headTipSetAndState.TipSet)
@@ -173,7 +173,7 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	})
 	t.Run("hit genesis", func(t *testing.T) {
 		head := chainStore.GetHead()
-		headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+		headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 		require.NoError(err)
 		number := uint(400)
 		iterator := chain.IterAncestors(ctx, chainStore, headTipSetAndState.TipSet)
@@ -194,7 +194,7 @@ func TestGetRecentAncestors(t *testing.T) {
 	chainLen := 200
 	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	h, err := headTipSetAndState.TipSet.Height()
 	require.NoError(err)
@@ -219,7 +219,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	chainLen := 100
 	requireGrowChain(ctx, require, blockSource, chainStore, chainLen-1)
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	h, err := headTipSetAndState.TipSet.Height()
 	require.NoError(err)
@@ -257,7 +257,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	nullBlocks := uint64(10)
 
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	fakeChildParams := th.FakeChildParams{
 		Parent:         headTipSetAndState.TipSet,
@@ -285,7 +285,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	epochs := uint64(28)
 	lookback := uint(6)
 	head = chainStore.GetHead()
-	headTipSetAndState, err = chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err = chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	h, err := headTipSetAndState.TipSet.Height()
 	require.NoError(err)

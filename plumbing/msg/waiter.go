@@ -46,7 +46,7 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 
 // Find searches the blockchain history for a message (but doesn't wait).
 func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool, error) {
-	headTipSetAndState, err := w.chainReader.GetTipSetAndState(ctx, w.chainReader.GetHead())
+	headTipSetAndState, err := w.chainReader.GetTipSetAndState(w.chainReader.GetHead())
 	if err != nil {
 		return nil, false, err
 	}
@@ -187,7 +187,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids)
+	tsas, err := w.chainReader.GetTipSetAndState(ids)
 	if err != nil {
 		return nil, err
 	}

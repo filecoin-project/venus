@@ -67,7 +67,7 @@ func TestWait(t *testing.T) {
 func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
@@ -88,7 +88,7 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, require *requir
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
 	m3, m4 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m3, m4}})
 
@@ -121,7 +121,7 @@ func TestWaitError(t *testing.T) {
 func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	chain := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
@@ -160,7 +160,7 @@ func TestWaitConflicting(t *testing.T) {
 	require.NoError(err)
 
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
 	require.NoError(err)
 	baseTS := headTipSetAndState.TipSet
 	require.Equal(1, len(baseTS))

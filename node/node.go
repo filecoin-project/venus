@@ -540,7 +540,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	head := node.PorcelainAPI.ChainHead(ctx)
+	head := node.PorcelainAPI.ChainHead()
 	go node.handleNewHeaviestTipSet(cctx, head, outboxPolicy)
 
 	if !node.OfflineMode {
@@ -988,8 +988,7 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 
 // BlockHeight returns the current block height of the chain.
 func (node *Node) BlockHeight() (*types.BlockHeight, error) {
-	ctx := context.Background()
-	height, err := node.PorcelainAPI.ChainHead(ctx).Height()
+	height, err := node.PorcelainAPI.ChainHead().Height()
 	if err != nil {
 		return nil, err
 	}
@@ -1065,7 +1064,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
 func (node *Node) getStateFromKey(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
-	tsas, err := node.ChainReader.GetTipSetAndState(ctx, tsKey)
+	tsas, err := node.ChainReader.GetTipSetAndState(tsKey)
 	if err != nil {
 		return nil, err
 	}

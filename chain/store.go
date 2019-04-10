@@ -31,7 +31,7 @@ type ReadStore interface {
 	// GetTipSet retrieves the tipindex value (tipset, state) at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
-	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*TipSetAndState, error)
+	GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error)
 	// GetBlock gets a block by cid.
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
@@ -61,9 +61,9 @@ type Store interface {
 	// HasTipSet indicates whether the tipset is in the store.
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
 	// GetTipSetsByParentsAndHeight returns all tipsets with the given parent set and the given height
-	GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error)
 	// HasTipSetsWithParentsAndHeight indicates whether tipsets with these parents and this height are in the store.
-	HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool
 
 	// GetBlocks gets several blocks by cid. In the future there is caching here
 	GetBlocks(ctx context.Context, cids types.SortedCidSet) ([]*types.Block, error)

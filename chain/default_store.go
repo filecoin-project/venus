@@ -225,7 +225,7 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 
 // GetTipSetAndState returns the tipset and state of the tipset whose block
 // cids correspond to the input sorted cid set.
-func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*TipSetAndState, error) {
+func (store *DefaultStore) GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error) {
 	return store.tipIndex.Get(tsKey.String())
 }
 
@@ -238,13 +238,13 @@ func (store *DefaultStore) HasTipSetAndState(ctx context.Context, tsKey string) 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have the parent set corresponding to the
 // input key.
-func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error) {
+func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error) {
 	return store.tipIndex.GetByParentsAndHeight(pTsKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset indexed by the provided parent ID.
-func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool {
+func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool {
 	return store.tipIndex.HasByParentsAndHeight(pTsKey, h)
 }
 

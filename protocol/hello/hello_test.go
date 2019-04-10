@@ -29,7 +29,7 @@ type mockHeaviestGetter struct {
 	heaviest types.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet(_ context.Context) types.TipSet {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() types.TipSet {
 	return mhg.heaviest
 }
 

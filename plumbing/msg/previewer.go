@@ -42,7 +42,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	headTs := p.chainReader.GetHead()
-	tsas, err := p.chainReader.GetTipSetAndState(ctx, headTs)
+	tsas, err := p.chainReader.GetTipSetAndState(headTs)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get latest state root")
 	}

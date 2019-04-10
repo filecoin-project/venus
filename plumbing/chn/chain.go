@@ -26,8 +26,8 @@ func NewChain(chainReader chain.ReadStore, cst *hamt.CborIpldStore) *Chain {
 }
 
 // Head returns the head tipset
-func (chn *Chain) Head(ctx context.Context) types.TipSet {
-	ts, _ := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
+func (chn *Chain) Head() types.TipSet {
+	ts, _ := chn.reader.GetTipSetAndState(chn.reader.GetHead())
 	return ts.TipSet
 }
 
@@ -47,7 +47,7 @@ func (chn *Chain) Ls(ctx context.Context) <-chan *ChainLsResult {
 	out := make(chan *ChainLsResult)
 	go func() {
 		defer close(out)
-		tsas, err := chn.reader.GetTipSetAndState(ctx, chn.reader.GetHead())
+		tsas, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
 		if err != nil {
 			out <- &ChainLsResult{
 				Error: err,

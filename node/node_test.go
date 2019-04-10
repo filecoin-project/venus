@@ -218,7 +218,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
 	assert.NoError(chainForTest.Load(ctx)) // load up head to get genesis block
 	head := chainForTest.GetHead()
-	headTipSetAndState, err := chainForTest.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainForTest.GetTipSetAndState(head)
 	require.NoError(err)
 	genTS := headTipSetAndState.TipSet
 	m := types.NewSignedMsgs(4, mockSigner)

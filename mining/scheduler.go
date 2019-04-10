@@ -65,7 +65,7 @@ type timingScheduler struct {
 	mineDelay time.Duration
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
-	pollHeadFunc func(context.Context) types.TipSet
+	pollHeadFunc func() types.TipSet
 
 	isStarted bool
 }
@@ -109,7 +109,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 			// This is the sleep during which we collect. TODO: maybe this should vary?
 			time.Sleep(s.mineDelay)
 			// Ask for the heaviest tipset.
-			base := s.pollHeadFunc(miningCtx)
+			base := s.pollHeadFunc()
 			if base == nil { // Don't try to mine on an unset head.
 				outCh <- NewOutput(nil, errors.New("cannot mine on unset (nil) head"))
 				return
@@ -164,7 +164,7 @@ func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, md time.Duration, f func(context.Context) types.TipSet) Scheduler {
+func NewScheduler(w Worker, md time.Duration, f func() types.TipSet) Scheduler {
 	return &timingScheduler{worker: w, mineDelay: md, pollHeadFunc: f}
 }
 
@@ -175,7 +175,7 @@ func NewScheduler(w Worker, md time.Duration, f func(context.Context) types.TipS
 // Then the scheduler takes this polling function, and the worker and the
 // mining duration
 func MineOnce(ctx context.Context, w Worker, md time.Duration, ts types.TipSet) (Output, error) {
-	pollHeadFunc := func(_ context.Context) types.TipSet {
+	pollHeadFunc := func() types.TipSet {
 		return ts
 	}
 	s := NewScheduler(w, md, pollHeadFunc)

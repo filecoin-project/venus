@@ -83,7 +83,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func(_ context.Context) types.TipSet {
+		func() types.TipSet {
 			return types.TipSet{
 				testCid: nil,
 			}
@@ -111,7 +111,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func(_ context.Context) types.TipSet {
+		func() types.TipSet {
 			return types.TipSet{
 				testCid: nil,
 			}
@@ -162,7 +162,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func(_ context.Context) types.TipSet {
+		func() types.TipSet {
 			return expTs
 		},
 		WithMinerAddressGetter(func() address.Address {

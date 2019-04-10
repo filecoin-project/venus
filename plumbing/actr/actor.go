@@ -19,7 +19,7 @@ import (
 // Abstracts over a store of blockchain state.
 type chainReader interface {
 	GetHead() types.SortedCidSet
-	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
+	GetTipSetAndState(tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
 }
 
 type Actr struct {
@@ -92,7 +92,7 @@ func (actr *Actr) getExecutable(ctx context.Context, code cid.Cid) (exec.Executa
 // getExecutable returns the builtin actor code from the latest state on the chain
 func (actr *Actr) getLatestState(ctx context.Context) (state.Tree, error) {
 	head := actr.chain.GetHead()
-	tsas, err := actr.chain.GetTipSetAndState(ctx, head)
+	tsas, err := actr.chain.GetTipSetAndState(head)
 	if err != nil {
 		return nil, err
 	}

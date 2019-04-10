@@ -159,7 +159,7 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.Sorted
 	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
-	tsas, err := syncer.chainStore.GetTipSetAndState(ctx, tsKey)
+	tsas, err := syncer.chainStore.GetTipSetAndState(tsKey)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if err != nil {
 		return err
 	}
-	headTipSetAndState, err := syncer.chainStore.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := syncer.chainStore.GetTipSetAndState(head)
 	if err != nil {
 		return err
 	}
@@ -285,10 +285,10 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	if err != nil {
 		return nil, err
 	}
-	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(ctx, parentSet.String(), height) {
+	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
 		return nil, nil
 	}
-	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(ctx, parentSet.String(), height)
+	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	if err != nil {
 		return err
 	}
-	parentTsas, err := syncer.chainStore.GetTipSetAndState(ctx, parentCids)
+	parentTsas, err := syncer.chainStore.GetTipSetAndState(parentCids)
 	if err != nil {
 		return err
 	}

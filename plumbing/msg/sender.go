@@ -28,7 +28,7 @@ const Topic = "/fil/msgs"
 // Abstracts over a store of blockchain state.
 type chainState interface {
 	GetHead() types.SortedCidSet
-	GetTipSetAndState(ctx context.Context, tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
+	GetTipSetAndState(tsKey types.SortedCidSet) (*chain.TipSetAndState, error)
 }
 
 // BlockClock defines a interface to a struct that can give the current block height.
@@ -96,7 +96,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	defer s.l.Unlock()
 
 	headTs := s.chainState.GetHead()
-	tsas, err := s.chainState.GetTipSetAndState(ctx, headTs)
+	tsas, err := s.chainState.GetTipSetAndState(headTs)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "couldnt get latest state root")
 	}

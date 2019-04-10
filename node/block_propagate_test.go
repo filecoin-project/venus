@@ -54,7 +54,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	connect(t, nodes[2], nodes[3])
 
 	head := minerNode.ChainReader.GetHead()
-	headTipSetAndState, err := minerNode.ChainReader.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := minerNode.ChainReader.GetTipSetAndState(head)
 	require.NoError(err)
 	baseTS := headTipSetAndState.TipSet
 	require.NotNil(t, baseTS)
@@ -105,7 +105,7 @@ func TestChainSync(t *testing.T) {
 	defer StopNodes(nodes)
 
 	head := nodes[0].ChainReader.GetHead()
-	headTipSetAndState, err := nodes[0].ChainReader.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := nodes[0].ChainReader.GetTipSetAndState(head)
 	require.NoError(err)
 	baseTS := headTipSetAndState.TipSet
 

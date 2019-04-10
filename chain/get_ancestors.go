@@ -14,7 +14,7 @@ import (
 // height `descendantBlockHeight` in the heaviest chain.
 func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 	head := chainReader.GetHead()
-	headTipSetAndState, err := chainReader.GetTipSetAndState(ctx, head)
+	headTipSetAndState, err := chainReader.GetTipSetAndState(head)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	tsas, err := chainReader.GetTipSetAndState(ctx, firstExtraRandomnessAncestorsCids)
+	tsas, err := chainReader.GetTipSetAndState(firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,7 @@ type Message struct {
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
-type getTipSetFunc func(context.Context) types.TipSet
+type getTipSetFunc func() types.TipSet
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -50,7 +50,7 @@ type Handler struct {
 	// chainSyncCB is called when new peers tell us about their chain
 	chainSyncCB syncCallback
 
-	// getHeaviestTipSet is used to retrieve the current heaviest tipset
+	//  is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
@@ -121,8 +121,8 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	return nil
 }
 
-func (h *Handler) getOurHelloMessage(ctx context.Context) *Message {
-	heaviest := h.getHeaviestTipSet(ctx)
+func (h *Handler) getOurHelloMessage() *Message {
+	heaviest := h.getHeaviestTipSet()
 	height, err := heaviest.Height()
 	if err != nil {
 		panic("somehow heaviest tipset is empty")
@@ -143,7 +143,7 @@ func (h *Handler) sayHello(ctx context.Context, p peer.ID) error {
 	}
 	defer s.Close() // nolint: errcheck
 
-	msg := h.getOurHelloMessage(ctx)
+	msg := h.getOurHelloMessage()
 
 	return cbu.NewMsgWriter(s).WriteMsg(&msg)
 }

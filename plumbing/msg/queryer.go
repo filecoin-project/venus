@@ -45,7 +45,7 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	}
 
 	headTs := q.chainReader.GetHead()
-	tsas, err := q.chainReader.GetTipSetAndState(ctx, headTs)
+	tsas, err := q.chainReader.GetTipSetAndState(headTs)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get latest state root")
 	}
