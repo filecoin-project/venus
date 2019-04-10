@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	ds "github.com/ipfs/go-datastore"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 const (
@@ -68,7 +68,8 @@ const (
 )
 
 func TestFSRepoInit(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -112,7 +113,8 @@ func getSnapshotFilenames(t *testing.T, dir string) []string {
 }
 
 func TestFSRepoOpen(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	t.Run("[fail] wrong version", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -131,7 +133,8 @@ func TestFSRepoOpen(t *testing.T) {
 }
 
 func TestFSRepoRoundtrip(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -160,7 +163,8 @@ func TestFSRepoRoundtrip(t *testing.T) {
 }
 
 func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -201,7 +205,8 @@ func TestFSRepoReplaceAndSnapshotConfig(t *testing.T) {
 }
 
 func TestRepoLock(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -227,7 +232,8 @@ func TestRepoLock(t *testing.T) {
 }
 
 func TestRepoLockFail(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "")
@@ -250,9 +256,9 @@ func TestRepoLockFail(t *testing.T) {
 }
 
 func TestRepoAPIFile(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	t.Run("APIAddr returns last value written to API file", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -269,7 +275,6 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("SetAPIAddr is idempotent", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -289,7 +294,6 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("APIAddr fails if called before SetAPIAddr", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -300,7 +304,6 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("Close deletes API file", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -318,7 +321,6 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("Close will succeed in spite of missing API file", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -332,7 +334,6 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
-		t.Parallel()
 		assert := assert.New(t)
 
 		withFSRepo(t, func(r *FSRepo) {
@@ -348,10 +349,11 @@ func TestRepoAPIFile(t *testing.T) {
 }
 
 func TestCreateRepo(t *testing.T) {
+	tf.UnitTest(t)
+
 	cfg := config.NewDefaultConfig()
 
 	t.Run("successfully creates when directory exists", func(t *testing.T) {
-		t.Parallel()
 
 		assert := assert.New(t)
 		dir, err := ioutil.TempDir("", "init")
@@ -365,7 +367,6 @@ func TestCreateRepo(t *testing.T) {
 	})
 
 	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
-		t.Parallel()
 
 		assert := assert.New(t)
 
@@ -382,7 +383,6 @@ func TestCreateRepo(t *testing.T) {
 	})
 
 	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
-		t.Parallel()
 
 		assert := assert.New(t)
 		parentDir, err := ioutil.TempDir("", "init")
@@ -400,7 +400,6 @@ func TestCreateRepo(t *testing.T) {
 	})
 
 	t.Run("fails with error if config file already exists", func(t *testing.T) {
-		t.Parallel()
 
 		assert := assert.New(t)
 
