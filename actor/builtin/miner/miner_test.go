@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -49,6 +50,8 @@ func createTestMinerWith(pledge int64,
 }
 
 func TestAskFunctions(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Parallel()
 	assert := assert.New(t)
 	require := require.New(t)

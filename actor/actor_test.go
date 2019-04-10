@@ -10,6 +10,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -19,6 +20,8 @@ import (
 )
 
 func TestActorCid(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	actor1 := NewActor(types.AccountActorCodeCid, nil)
@@ -35,6 +38,8 @@ func TestActorCid(t *testing.T) {
 }
 
 func TestActorFormat(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
 
@@ -118,6 +123,8 @@ func makeCtx(method string) exec.VMContext {
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("no return", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -190,6 +197,8 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 }
 
 func TestMakeTypedExportFail(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		Name   string
 		Actor  *MockActor

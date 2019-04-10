@@ -6,12 +6,15 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAccountActorCborMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("CBOR decode(encode(Actor)) == identity(Actor)", func(t *testing.T) {
 		require := require.New(t)
 

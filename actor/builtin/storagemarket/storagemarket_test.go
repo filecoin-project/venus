@@ -14,12 +14,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStorageMarketCreateMiner(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -55,6 +58,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 }
 
 func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,6 +77,8 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 }
 
 func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,6 +95,8 @@ func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
 }
 
 func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,6 +132,8 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 }
 
 func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -140,6 +151,8 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 }
 
 func TestMinimumCollateral(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	numSectors := big.NewInt(25000)
 	expected := types.NewAttoFILFromFIL(25)

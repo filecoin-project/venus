@@ -12,6 +12,7 @@ import (
 
 	. "github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -20,6 +21,8 @@ import (
 )
 
 func TestActorMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
 	actor.Head = requireCid(t, "Actor Storage")
@@ -44,6 +47,8 @@ func TestActorMarshal(t *testing.T) {
 }
 
 func TestMarshalValue(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -73,6 +78,8 @@ func TestMarshalValue(t *testing.T) {
 }
 
 func TestLoadLookup(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -128,6 +135,8 @@ func TestLoadLookup(t *testing.T) {
 }
 
 func TestLoadLookupWithInvalidCid(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -145,6 +154,8 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 }
 
 func TestSetKeyValue(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
