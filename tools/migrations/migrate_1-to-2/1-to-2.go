@@ -1,4 +1,4 @@
-package migrations
+package migrate_1_to_2
 
 import (
 	"fmt"
