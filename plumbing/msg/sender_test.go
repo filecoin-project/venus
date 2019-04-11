@@ -33,7 +33,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(10), testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{rejectMessages: true}, nopPublish)
@@ -50,7 +50,7 @@ func TestSend(t *testing.T) {
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(10), testhelpers.NewMockMessagePoolValidator())
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -75,12 +75,18 @@ func TestSend(t *testing.T) {
 		require := require.New(t)
 		ctx := context.Background()
 
+		// number of messages to send
+		msgCount := 20
+		// number of of concurrent message sends
+		sendConcurrent := 3
+		// total messages sent == msgCount * sendConcurrent
+
 		w, chainStore := setupSendTest(require)
 		addr := w.Addresses()[0]
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(msgCount*sendConcurrent), testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{}, nopPublish)
@@ -88,14 +94,14 @@ func TestSend(t *testing.T) {
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
-			for i := 0; i < 20; i++ {
+			for i := 0; i < msgCount; i++ {
 				_, err := s.Send(ctx, addr, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
 				require.NoError(err)
 			}
 		}
 
 		// Add messages concurrently.
-		for i := 0; i < 3; i++ {
+		for i := 0; i < sendConcurrent; i++ {
 			wg.Add(1)
 			go addTwentyMessages(i)
 		}

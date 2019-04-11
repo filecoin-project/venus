@@ -98,7 +98,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
+	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid

@@ -17,15 +17,16 @@ import (
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig       `json:"api"`
-	Bootstrap *BootstrapConfig `json:"bootstrap"`
-	Datastore *DatastoreConfig `json:"datastore"`
-	Swarm     *SwarmConfig     `json:"swarm"`
-	Mining    *MiningConfig    `json:"mining"`
-	Wallet    *WalletConfig    `json:"wallet"`
-	Heartbeat *HeartbeatConfig `json:"heartbeat"`
-	Net       string           `json:"net"`
-	Metrics   *MetricsConfig   `json:"metrics"`
+	API       *APIConfig         `json:"api"`
+	Bootstrap *BootstrapConfig   `json:"bootstrap"`
+	Datastore *DatastoreConfig   `json:"datastore"`
+	Swarm     *SwarmConfig       `json:"swarm"`
+	Mining    *MiningConfig      `json:"mining"`
+	Wallet    *WalletConfig      `json:"wallet"`
+	Heartbeat *HeartbeatConfig   `json:"heartbeat"`
+	Net       string             `json:"net"`
+	Metrics   *MetricsConfig     `json:"metrics"`
+	Mpool     *MessagePoolConfig `json:"mpool"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -167,6 +168,18 @@ func newDefaultMetricsConfig() *MetricsConfig {
 	}
 }
 
+// MetricsConfig holds all configuration options related to nodes message pool (mpool).
+type MessagePoolConfig struct {
+	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
+	MaxPoolSize int `json:"maxPoolSize"`
+}
+
+func newDefaultMessagePoolConfig() *MessagePoolConfig {
+	return &MessagePoolConfig{
+		MaxPoolSize: 10000,
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -180,6 +193,7 @@ func NewDefaultConfig() *Config {
 		Heartbeat: newDefaultHeartbeatConfig(),
 		Net:       "",
 		Metrics:   newDefaultMetricsConfig(),
+		Mpool:     newDefaultMessagePoolConfig(),
 	}
 }
 
