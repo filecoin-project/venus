@@ -2,7 +2,6 @@ package migrations
 
 import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"os"
 )
 
 // runner
@@ -28,5 +27,15 @@ func Run(req *cmds.Request) {
 	// make new repodir read-write
 	// instantiate migrator with new repo, old repo, verbose
 	// switch on command & call appropriate  dir
+	var mig Migrator
+
+	switch req.Arguments[0] {
+	case "Describe":
+		mig.Describe()
+	case "BuildOnly":
+		mig.BuildOnly()
+	case "Run":
+		mig.Migrate()
+	}
 	// runner controls the installation, not migrator
 }
