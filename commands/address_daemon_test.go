@@ -6,17 +6,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestAddrsNewAndList(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
@@ -34,7 +36,8 @@ func TestAddrsNewAndList(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
@@ -56,6 +59,8 @@ func TestWalletBalance(t *testing.T) {
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := makeTestDaemonWithMinerAndStart(t)
@@ -102,6 +107,8 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
@@ -124,6 +131,8 @@ func TestWalletLoadFromFile(t *testing.T) {
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -147,6 +156,8 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 }
 
 func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()

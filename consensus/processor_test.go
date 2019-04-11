@@ -19,6 +19,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -40,6 +41,8 @@ func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 }
 
 func TestProcessBlockSuccess(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -96,6 +99,8 @@ func TestProcessBlockSuccess(t *testing.T) {
 }
 
 func TestProcessTipSetSuccess(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -170,6 +175,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 }
 
 func TestProcessTipsConflicts(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -237,6 +244,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 }
 
 func TestProcessBlockBadMsgSig(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -279,6 +288,8 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 
 // ProcessBlock should not fail with an unsigned block reward message.
 func TestProcessBlockReward(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -320,6 +331,8 @@ func TestProcessBlockReward(t *testing.T) {
 }
 
 func TestProcessBlockVMErrors(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -391,6 +404,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 }
 
 func TestProcessBlockParamsLengthError(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
@@ -418,6 +433,8 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
@@ -442,6 +459,8 @@ func TestProcessBlockParamsError(t *testing.T) {
 }
 
 func TestApplyMessagesValidation(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	t.Run("Errors when nonce too high", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -620,6 +639,8 @@ func TestApplyMessagesValidation(t *testing.T) {
 // in ApplyMessage's comments.
 
 func TestNestedSendBalance(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
@@ -672,6 +693,8 @@ func TestNestedSendBalance(t *testing.T) {
 }
 
 func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
@@ -716,6 +739,8 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 }
 
 func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -760,6 +785,8 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 }
 
 func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	newAddress := address.NewForTestGetter()
@@ -804,6 +831,8 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 }
 
 func TestApplyMessageChargesGas(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -961,6 +990,8 @@ func TestApplyMessageChargesGas(t *testing.T) {
 }
 
 func TestBlockGasLimitBehavior(t *testing.T) {
+	tf.UnitTestWithSideEffectsThatIsBad(t)
+
 	fakeActorCodeCid := types.NewCidForTestGetter()()
 	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
 	defer delete(builtin.Actors, fakeActorCodeCid)
