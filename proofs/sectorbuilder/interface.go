@@ -87,7 +87,7 @@ type SealedSectorMetadata struct {
 
 // GeneratePoStRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoStRequest struct {
-	CommRs        []proofs.CommR
+	SortedCommRs  proofs.SortedCommRs
 	ChallengeSeed proofs.PoStChallengeSeed
 }
 
