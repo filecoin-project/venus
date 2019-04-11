@@ -37,36 +37,13 @@ func (chn *Chain) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descend
 	return chain.GetRecentAncestorsOfHeaviestChain(ctx, chn.reader, descendantBlockHeight)
 }
 
-type ChainLsResult struct {
-	TipSet types.TipSet
-	Error  error
-}
-
 // Ls returns a channel of tipsets from head to genesis
-func (chn *Chain) Ls(ctx context.Context) <-chan *ChainLsResult {
-	out := make(chan *ChainLsResult)
-	go func() {
-		defer close(out)
-		tsas, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
-		if err != nil {
-			out <- &ChainLsResult{
-				Error: err,
-			}
-			return
-		}
-		for iterator := chain.IterAncestors(ctx, chn.reader, tsas.TipSet); !iterator.Complete(); err = iterator.Next() {
-			if err != nil {
-				out <- &ChainLsResult{
-					Error: err,
-				}
-				return
-			}
-			out <- &ChainLsResult{
-				TipSet: iterator.Value(),
-			}
-		}
-	}()
-	return out
+func (chn *Chain) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
+	tsas, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
+	if err != nil {
+		return nil, err
+	}
+	return chain.IterAncestors(ctx, chn.reader, tsas.TipSet), nil
 }
 
 // GetBlock gets a block by CID

@@ -54,14 +54,18 @@ var chainLsCmd = &cmds.Command{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
-			if raw.Error != nil {
-				return raw.Error
+		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
+		if err != nil {
+			return err
+		}
+		for ; !iter.Complete(); err = iter.Next() {
+			if err != nil {
+				return err
 			}
-			if len(raw.TipSet) == 0 {
+			if len(iter.Value()) == 0 {
 				panic("tipsets from this channel should have at least one member")
 			}
-			if err := re.Emit(raw.TipSet.ToSlice()); err != nil {
+			if err := re.Emit(iter.Value().ToSlice()); err != nil {
 				return err
 			}
 		}
