@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/bls-signatures"
 	"github.com/filecoin-project/go-filecoin/crypto"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func init() {
@@ -22,6 +23,8 @@ func init() {
 }
 
 func TestRandomIDAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	addr, err := NewIDAddress(uint64(rand.Int()))
@@ -38,6 +41,8 @@ func TestRandomIDAddress(t *testing.T) {
 }
 
 func TestVectorsIDAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    uint64
 		expected string
@@ -86,6 +91,8 @@ func TestVectorsIDAddress(t *testing.T) {
 }
 
 func TestSecp256k1Address(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	sk, err := crypto.GenerateKey()
@@ -105,6 +112,8 @@ func TestSecp256k1Address(t *testing.T) {
 }
 
 func TestVectorSecp256k1Address(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -180,6 +189,8 @@ func TestVectorSecp256k1Address(t *testing.T) {
 }
 
 func TestRandomActorAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	actorMsg := make([]byte, 20)
@@ -199,6 +210,8 @@ func TestRandomActorAddress(t *testing.T) {
 }
 
 func TestVectorActorAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -252,6 +265,8 @@ func TestVectorActorAddress(t *testing.T) {
 }
 
 func TestRandomBLSAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	pk := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
@@ -270,6 +285,8 @@ func TestRandomBLSAddress(t *testing.T) {
 }
 
 func TestVectorBLSAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -333,6 +350,8 @@ func TestVectorBLSAddress(t *testing.T) {
 }
 
 func TestInvalidStringAddresses(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    string
 		expetErr error
@@ -359,6 +378,8 @@ func TestInvalidStringAddresses(t *testing.T) {
 }
 
 func TestInvalidByteAddresses(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expetErr error
@@ -393,6 +414,8 @@ func TestInvalidByteAddresses(t *testing.T) {
 }
 
 func TestChecksum(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	data := []byte("helloworld")
@@ -407,6 +430,8 @@ func TestChecksum(t *testing.T) {
 }
 
 func TestAddressFormat(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
