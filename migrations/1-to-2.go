@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/pkg/errors"
 	logging "github.com/ipfs/go-log"
 )
 
@@ -17,28 +18,31 @@ const (
 )
 
 var (
-	ErrMigrationFailed = error.New("migrator failed")
+	ErrMigrationFailed = errors.New("migrator failed")
 )
 
 //  Migration runner defines an interface which migrator code must satisfy.
 //  Migrations are a pure function, given access to the input (read-only) and
 //  output repos, or a read-write repo to be migrated in place.
 
-
 type migrator struct {
-	log          logging.EventLogger
-	oldRepo		 os.File // read only
-	newRepo		 os.File // read-write
-	verbose      bool
+	log     logging.EventLogger
+	oldRepo os.File // read only
+	newRepo os.File // read-write
+	verbose bool
 }
 
 // 	GetNewRepoVersion() string
 
 // fs access and we should know the location since we know the previous version.
-func getOldFSRepo(req *cmds.Request) (repo.FSRepo, error) {}
+func getOldFSRepo(req *cmds.Request) (repo.FSRepo, error) {
+	return repo.FSRepo{}, nil
+}
 
 // fs access in the old repo
-func getCurrentRepoVersion(req *cmds.Request) string {}
+func getCurrentRepoVersion(req *cmds.Request) string {
+	return ""
+}
 
 // also just fs access
 func getOldConfig() *config.Config {}
@@ -48,8 +52,6 @@ func NewMigrator(oldRepo, newRepo os.File, verbose bool) *migrator {
 	logstr := fmt.Sprintf("Migration from %s to %s", PreviousVersion, MigrationVersion)
 	return &migrator{
 		log:          logging.Logger(logstr),
-		migrationAPI: api,
-		req:          req,
 		verbose:      verbose,
 	}
 }
