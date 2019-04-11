@@ -45,7 +45,9 @@ func getCurrentRepoVersion(req *cmds.Request) string {
 }
 
 // also just fs access
-func getOldConfig() *config.Config {}
+func getOldConfig() *config.Config {
+	return &config.Config{}
+}
 
 // NewMigrator instantiates a new migrator
 func NewMigrator(oldRepo, newRepo os.File, verbose bool) *migrator {
@@ -53,18 +55,6 @@ func NewMigrator(oldRepo, newRepo os.File, verbose bool) *migrator {
 	return &migrator{
 		log:          logging.Logger(logstr),
 		verbose:      verbose,
-	}
-}
-
-func (mig *migrator) Update() error {
-	switch mig.req.Arguments[0] {
-	case "Describe":
-		mig.Describe()
-		return nil
-	case "DryRun":
-		return mig.DryRun()
-	case "Run":
-		return mig.Migrate()
 	}
 }
 
@@ -81,6 +71,7 @@ func (mig *migrator) Migrate() error {
 		return err
 	}
 	// return linkNewRepo()
+	return nil
 }
 
 // DryRun runs the migrator steps on a copy of the repo and stops there
@@ -90,6 +81,7 @@ func (mig *migrator) DryRun() error {
 	// migrateStep1
 	// migrateStep2
 	// migrateStep3
+	return nil
 }
 
 // Validate returns error if migration tests failed, describing why
