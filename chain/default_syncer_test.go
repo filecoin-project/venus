@@ -317,9 +317,7 @@ func assertNoAdd(assert *assert.Assertions, chainStore chain.Store, cids types.S
 }
 
 func requireHead(require *require.Assertions, chain chain.Store, head types.TipSet) {
-	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
-	require.NoError(err)
-	require.Equal(head, headTipSetAndState.TipSet)
+	require.Equal(head, requireHeadTipset(require, chain))
 }
 
 func assertHead(assert *assert.Assertions, chain chain.Store, head types.TipSet) {
@@ -954,9 +952,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource)
-	headTipSetAndState, err := chainStore.GetTipSetAndState(chainStore.GetHead())
-	require.NoError(err)
-	baseTS := headTipSetAndState.TipSet // this is the last block of the bootstrapping chain creating miners
+	baseTS := requireHeadTipset(require, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
@@ -1010,9 +1006,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, sharedCids)
 	require.NoError(err)
 	assertHead(assert, chainStore, tsShared)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
-	require.NoError(err)
-	measuredWeight, err := wFun(headTipSetAndState.TipSet)
+	measuredWeight, err := wFun(requireHeadTipset(require, chainStore))
 	require.NoError(err)
 	expectedWeight := startingWeight + uint64(22000)
 	assert.Equal(expectedWeight, measuredWeight)
@@ -1042,9 +1036,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, f1Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f1)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
-	require.NoError(err)
-	measuredWeight, err = wFun(headTipSetAndState.TipSet)
+	measuredWeight, err = wFun(requireHeadTipset(require, chainStore))
 	require.NoError(err)
 	expectedWeight = startingWeight + uint64(33000)
 	assert.Equal(expectedWeight, measuredWeight)
@@ -1068,9 +1060,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	err = syncer.HandleNewTipset(ctx, f2Cids)
 	require.NoError(err)
 	assertHead(assert, chainStore, f2)
-	headTipSetAndState, err = chainStore.GetTipSetAndState(chainStore.GetHead())
-	require.NoError(err)
-	measuredWeight, err = wFun(headTipSetAndState.TipSet)
+	measuredWeight, err = wFun(requireHeadTipset(require, chainStore))
 	require.NoError(err)
 	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(expectedWeight, measuredWeight)

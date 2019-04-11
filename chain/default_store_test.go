@@ -73,6 +73,12 @@ func requireGetTsasByParentAndHeight(require *require.Assertions, chain chain.St
 	return tsasSlice
 }
 
+func requireHeadTipset(require *require.Assertions, chain chain.Store) types.TipSet {
+	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	require.NoError(err)
+	return headTipSetAndState.TipSet
+}
+
 /* Putting and getting tipsets into and from the store. */
 
 // Adding tipsets to the store doesn't error.
