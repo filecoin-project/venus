@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/tools"
 	"os"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -62,7 +63,7 @@ func Run(req *cmds.Request) {
 	// or do we figure out what migration + runner to build and build it, and then run?
 	// or does this line get updated to the latest migrator?
 	// or ?
-	mig = NewMigrator_1_2(oldRepo, newRepo, true)
+	mig = tools.NewMigrator_1_2(oldRepo, newRepo, true)
 
 	// TODO: do these calls with reflections?
 	switch req.Arguments[0] {
