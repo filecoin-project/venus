@@ -58,7 +58,7 @@ type MessagePool struct {
 	api           MessagePoolAPI
 	validator     MessagePoolValidator
 	pending       map[cid.Cid]*timedmessage // all pending messages
-	addressNonces map[addressNonce]bool
+	addressNonces map[addressNonce]bool     // set of address nonce pairs used to efficiently validate duplicate nonces
 }
 
 // Add adds a message to the pool.
@@ -94,7 +94,7 @@ func (pool *MessagePool) addTimedMessage(ctx context.Context, msg *timedmessage)
 
 	pool.pending[c] = msg
 	pool.addressNonces[newAddressNonce(msg.message)] = true
-	mpSize.Set(context.TODO(), int64(len(pool.pending)))
+	mpSize.Set(ctx, int64(len(pool.pending)))
 	return c, nil
 }
 
@@ -131,8 +131,8 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 	msg, ok := pool.pending[c]
 	if ok {
 		delete(pool.addressNonces, newAddressNonce(msg.message))
+		delete(pool.pending, c)
 	}
-	delete(pool.pending, c)
 	mpSize.Set(context.TODO(), int64(len(pool.pending)))
 }
 
@@ -152,10 +152,6 @@ func NewMessagePool(api MessagePoolAPI, validator MessagePoolValidator) *Message
 // chain (if any) that do not appear in the new chain. We think
 // that the right model for keeping the message pool up to date is
 // to think about it like a garbage collector.
-//
-// TODO there is considerable functionality missing here: don't add
-//      messages that have expired, respect nonce, do this efficiently,
-//      etc.
 func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, oldHead, newHead types.TipSet) error {
 	oldBlocks, newBlocks, err := CollectBlocksToCommonAncestor(ctx, store, oldHead, newHead)
 	if err != nil {
@@ -226,7 +222,7 @@ func (pool *MessagePool) timeoutMessages(ctx context.Context, store chain.BlockP
 	return nil
 }
 
-// identify all messages that need to be within a read lock
+// identify all messages that need to be timed out
 func (pool *MessagePool) messagesToTimeOut(minimumHeight uint64) []cid.Cid {
 	pool.lk.RLock()
 	defer pool.lk.RUnlock()
@@ -254,8 +250,8 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 	return
 }
 
-// validateMessage in message pool is a mechanism for preventing memory based DoS attacks.
-// As such, it will often fail silently.
+// validateMessage validates that too many messages aren't added to the pool and the ones that are
+// have a high probability of making it through processing.
 func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
 	if len(pool.pending) >= MaxMessagePoolSize {
 		return errors.Errorf("message pool is full (%d messages)", MaxMessagePoolSize)

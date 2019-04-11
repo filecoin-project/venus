@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/address"
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -95,7 +96,7 @@ func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 
 // IngestionValidatorAPI allows the validator to access latest state
 type ingestionValidatorAPI interface {
-	LatestState(ctx context.Context) (state.Tree, error)
+	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -116,12 +117,7 @@ func NewIngestionValidator(api ingestionValidatorAPI) *IngestionValidator {
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
 	// retrieve from actor
-	st, err := v.api.LatestState(ctx)
-	if err != nil {
-		return err
-	}
-
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromActor, err := v.api.ActorFromLatestState(ctx, msg.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			fromActor = &actor.Actor{}

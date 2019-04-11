@@ -3,11 +3,6 @@ package consensus_test
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -15,6 +10,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var seed = types.GenerateKeyInfoSeed()
@@ -176,24 +174,21 @@ func attoFil(v int) *types.AttoFIL {
 	return val
 }
 
-// MockIngestionValidatorAPI provides a latest state
-type MockIngestionValidatorAPI struct {
+// FakeIngestionValidatorAPI provides a latest state
+type FakeIngestionValidatorAPI struct {
 	ActorAddr address.Address
 	Actor     *actor.Actor
 }
 
-// NewMockIngestionValidatorAPI creates a new MockIngestionValidatorAPI.
-func NewMockIngestionValidatorAPI() *MockIngestionValidatorAPI {
-	return &MockIngestionValidatorAPI{Actor: &actor.Actor{}}
+// NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
+func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
+	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
 }
 
 // LatestState will be a state tree that only contains the test actor
-func (api *MockIngestionValidatorAPI) LatestState(ctx context.Context) (state.Tree, error) {
-	cst := hamt.NewCborStore()
-	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
-	err := st.SetActor(ctx, api.ActorAddr, api.Actor)
-	if err != nil {
-		return nil, err
+func (api *FakeIngestionValidatorAPI) ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error) {
+	if address == api.ActorAddr {
+		return api.Actor, nil
 	}
-	return st, nil
+	return &actor.Actor{}, nil
 }

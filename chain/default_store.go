@@ -14,7 +14,9 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -385,6 +387,16 @@ func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) 
 		return nil, err
 	}
 	return state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
+}
+
+// ActorFromLatestState gets the latest state and retrieves an actor from it.
+func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	st, err := store.LatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return st.GetActor(ctx, addr)
 }
 
 // BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
