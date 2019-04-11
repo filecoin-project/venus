@@ -7,10 +7,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestOutbox(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
@@ -22,7 +24,7 @@ func TestOutbox(t *testing.T) {
 	}
 
 	t.Run("list queued messages", func(t *testing.T) {
-		t.Parallel()
+
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0]), th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
 		defer d.ShutdownSuccess()
 
@@ -47,7 +49,7 @@ func TestOutbox(t *testing.T) {
 	})
 
 	t.Run("clear queue", func(t *testing.T) {
-		t.Parallel()
+
 		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[0]), th.KeyFile(fixtures.KeyFilePaths()[1])).Start()
 		defer d.ShutdownSuccess()
 

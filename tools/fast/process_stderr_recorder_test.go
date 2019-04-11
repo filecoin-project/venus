@@ -9,10 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
 )
 
 func TestStartLogCapture(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()

@@ -1,20 +1,23 @@
-package commands
+package commands_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/config"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/config"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestConfigDaemon(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	t.Run("config <key> prints config value", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -35,7 +38,7 @@ func TestConfigDaemon(t *testing.T) {
 	})
 
 	t.Run("config <key> simple_value updates config", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		d := th.NewDaemon(t).Start()
@@ -57,7 +60,7 @@ func TestConfigDaemon(t *testing.T) {
 	})
 
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
