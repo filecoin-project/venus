@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
 	hamt "github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 )
@@ -67,7 +66,12 @@ func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, m
 		return nil, errors.New("no actor implementation")
 	}
 
-	executable, err := actr.getExecutable(ctx, actor.Code)
+	st, err := actr.getLatestState(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	executable, err := st.GetBuiltinActorCode(actor.Code)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
@@ -78,15 +82,6 @@ func (actr *Actr) GetSignature(ctx context.Context, actorAddr address.Address, m
 	}
 
 	return export, nil
-}
-
-// getExecutable returns the builtin actor code from the latest state on the chain
-func (actr *Actr) getExecutable(ctx context.Context, code cid.Cid) (exec.ExecutableActor, error) {
-	st, err := actr.getLatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return st.GetBuiltinActorCode(code)
 }
 
 // getExecutable returns the builtin actor code from the latest state on the chain
