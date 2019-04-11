@@ -70,7 +70,9 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	defer log.Finish(ctx)
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 
-	// Check old blocks
+	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
+
 	chainMsg, found, err := w.Find(ctx, msgCid)
 	if err != nil {
 		return err
@@ -79,9 +81,6 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
 	}
 
-	// Check new blocks
-	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 	chainMsg, found, err = w.waitForMessage(ctx, ch, msgCid)
 	if found {
 		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
