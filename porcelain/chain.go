@@ -5,14 +5,18 @@ import (
 )
 
 type chBlockHeightPlumbing interface {
-	ChainHead() types.TipSet
+	ChainHead() (*types.TipSet, error)
 }
 
 // ChainBlockHeight determines the current block height
 func ChainBlockHeight(plumbing chBlockHeightPlumbing) (*types.BlockHeight, error) {
-	currentHeight, err := plumbing.ChainHead().Height()
+	head, err := plumbing.ChainHead()
 	if err != nil {
 		return nil, err
 	}
-	return types.NewBlockHeight(currentHeight), nil
+	height, err := head.Height()
+	if err != nil {
+		return nil, err
+	}
+	return types.NewBlockHeight(height), nil
 }

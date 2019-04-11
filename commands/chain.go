@@ -29,7 +29,11 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return re.Emit(GetPorcelainAPI(env).ChainHead().ToSortedCidSet())
+		head, err := GetPorcelainAPI(env).ChainHead()
+		if err != nil {
+			return err
+		}
+		return re.Emit(head.ToSortedCidSet())
 	},
 	Type: []cid.Cid{},
 	Encoders: cmds.EncoderMap{

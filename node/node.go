@@ -540,8 +540,11 @@ func (node *Node) Start(ctx context.Context) error {
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	head := node.PorcelainAPI.ChainHead()
-	go node.handleNewHeaviestTipSet(cctx, head, outboxPolicy)
+	head, err := node.PorcelainAPI.ChainHead()
+	if err != nil {
+		return errors.Wrap(err, "failed to get chain head")
+	}
+	go node.handleNewHeaviestTipSet(cctx, *head, outboxPolicy)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())

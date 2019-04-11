@@ -28,9 +28,12 @@ func NewChain(chainReader chain.ReadStore, cst *hamt.CborIpldStore) *Chain {
 }
 
 // Head returns the head tipset
-func (chn *Chain) Head() types.TipSet {
-	ts, _ := chn.reader.GetTipSetAndState(chn.reader.GetHead())
-	return ts.TipSet
+func (chn *Chain) Head() (*types.TipSet, error) {
+	ts, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
+	if err != nil {
+		return nil, err
+	}
+	return &ts.TipSet, nil
 }
 
 // Ls returns a channel of tipsets from head to genesis

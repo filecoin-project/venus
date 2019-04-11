@@ -138,7 +138,7 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, er
 }
 
 // ChainHead returns the head tipset
-func (api *API) ChainHead() types.TipSet {
+func (api *API) ChainHead() (*types.TipSet, error) {
 	return api.chain.Head()
 }
 

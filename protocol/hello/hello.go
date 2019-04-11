@@ -36,7 +36,7 @@ type Message struct {
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
-type getTipSetFunc func() types.TipSet
+type getTipSetFunc func() (*types.TipSet, error)
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -122,7 +122,10 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 }
 
 func (h *Handler) getOurHelloMessage() *Message {
-	heaviest := h.getHeaviestTipSet()
+	heaviest, err := h.getHeaviestTipSet()
+	if err != nil {
+		panic("cannot fetch chain head")
+	}
 	height, err := heaviest.Height()
 	if err != nil {
 		panic("somehow heaviest tipset is empty")
