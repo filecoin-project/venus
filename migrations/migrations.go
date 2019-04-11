@@ -1,9 +1,9 @@
 package migrations
 
 import (
-	"os"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	)
+	"os"
+)
 
 // runner
 
@@ -17,9 +17,9 @@ type Migrator interface {
 
 func Run(req *cmds.Request) {
 	// 1. do version checking
-		// look at this version
-		// look at repo version
-		// if this version is too high, exit with error
+	// look at this version
+	// look at repo version
+	// if this version is too high, exit with error
 
 	// look at the options
 	// repodir is:
