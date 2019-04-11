@@ -5,14 +5,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/stretchr/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestListAsks(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	minerDaemon := makeTestDaemonWithMinerAndStart(t)
@@ -26,6 +29,8 @@ func TestListAsks(t *testing.T) {
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	minerDaemon := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
@@ -67,7 +72,8 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 }
 
 func TestDuplicateDeals(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	miner := th.NewDaemon(t,
@@ -103,7 +109,8 @@ func TestDuplicateDeals(t *testing.T) {
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	miner1Addr := fixtures.TestMiners[0]
@@ -148,7 +155,8 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 }
 
 func TestVoucherPersistenceAndPayments(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 
 	// DefaultAddress required here

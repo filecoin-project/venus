@@ -4,11 +4,10 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-ipfs-cmdkit"
-
-	"github.com/filecoin-project/go-filecoin/address"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 func TestOptionalAddr(t *testing.T) {

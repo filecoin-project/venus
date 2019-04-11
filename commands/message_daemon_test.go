@@ -13,11 +13,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestMessageSend(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
 
 	d := th.NewDaemon(
 		t,
@@ -61,7 +62,8 @@ func TestMessageSend(t *testing.T) {
 }
 
 func TestMessageWait(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 
@@ -100,7 +102,7 @@ func TestMessageWait(t *testing.T) {
 }
 
 func TestMessageSendBlockGasLimit(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
 
 	d := th.NewDaemon(
 		t,
@@ -140,7 +142,8 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 }
 
 func TestMessageStatus(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 

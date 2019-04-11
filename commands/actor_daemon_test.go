@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/commands"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/commands"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestActorDaemon(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
 		require := require.New(t)
 		assert := assert.New(t)
