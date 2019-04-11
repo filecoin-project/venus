@@ -364,6 +364,10 @@ func (store *DefaultStore) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
+	if store.head == nil {
+		return types.SortedCidSet{}
+	}
+
 	return store.head.ToSortedCidSet()
 }
 
