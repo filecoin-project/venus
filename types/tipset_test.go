@@ -1,7 +1,6 @@
 package types
 
 import (
-	"context"
 	"sort"
 	"testing"
 

@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -378,7 +379,11 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 
 // ActorFromLatestState gets the latest state and retrieves an actor from it.
 func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	st, err := store.LatestState(ctx)
+	tsas, err := store.GetTipSetAndState(store.GetHead())
+	if err != nil {
+		return nil, err
+	}
+	st, err := state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
