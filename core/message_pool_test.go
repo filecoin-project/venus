@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -22,10 +22,12 @@ var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
 func TestMessagePoolAddRemove(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
-	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+	api := th.NewTestMessagePoolAPI(0)
+	pool := NewMessagePool(api, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
-	msg2 := newSignedMessage()
+	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
 
 	c1, err := msg1.Cid()
 	assert.NoError(err)
@@ -37,10 +39,11 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert.Nil(m)
 	assert.False(ok)
 
-	_, err = pool.Add(msg1)
+	_, err = pool.Add(ctx, msg1)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
-	_, err = pool.Add(msg2)
+
+	_, err = pool.Add(ctx, msg2)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 2)
 
@@ -57,53 +60,96 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert.Len(pool.Pending(), 0)
 }
 
-func TestMessagePoolAddBadSignature(t *testing.T) {
-	assert := assert.New(t)
+func TestMessagePoolValidate(t *testing.T) {
+	t.Run("message pool rejects messages after it reaches its limit", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
 
-	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
-	smsg := newSignedMessage()
-	smsg.Message.Nonce = types.Uint64(uint64(smsg.Message.Nonce) + uint64(1)) // invalidate message
+		ctx := context.Background()
+		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
-	c, err := pool.Add(smsg)
-	assert.False(c.Defined())
-	assert.Error(err)
+		smsgs := types.NewSignedMsgs(MaxMessagePoolSize+1, mockSigner)
+		for _, smsg := range smsgs[:MaxMessagePoolSize] {
+			_, err := pool.Add(ctx, smsg)
+			require.NoError(err)
+		}
 
-	c, _ = smsg.Cid()
-	m, ok := pool.Get(c)
-	assert.Nil(m)
-	assert.False(ok)
+		assert.Len(pool.Pending(), MaxMessagePoolSize)
+
+		// attempt to add one more
+		_, err := pool.Add(ctx, smsgs[MaxMessagePoolSize])
+		require.Error(err)
+		assert.Contains(err.Error(), "message pool is full")
+
+		assert.Len(pool.Pending(), MaxMessagePoolSize)
+	})
+
+	t.Run("validates no two messages are added with same nonce", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		ctx := context.Background()
+		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
+
+		smsg1 := newSignedMessage()
+		_, err := pool.Add(ctx, smsg1)
+		require.NoError(err)
+
+		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Nonce)
+		_, err = pool.Add(ctx, smsg2)
+		require.Error(err)
+		assert.Contains(err.Error(), "message with same actor and nonce")
+	})
+
+	t.Run("validates using supplied validator", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		ctx := context.Background()
+		api := th.NewTestMessagePoolAPI(0)
+		validator := th.NewMockMessagePoolValidator()
+		validator.Valid = false
+		pool := NewMessagePool(api, validator)
+
+		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
+		_, err := pool.Add(ctx, smsg1)
+		require.Error(err)
+		assert.Contains(err.Error(), "mock validation error")
+	})
 }
 
 func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
-	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 
 	assert.Len(pool.Pending(), 0)
-	_, err := pool.Add(msg1)
+	_, err := pool.Add(ctx, msg1)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
 
-	_, err = pool.Add(msg1)
+	_, err = pool.Add(ctx, msg1)
 	assert.NoError(err)
 	assert.Len(pool.Pending(), 1)
 }
 
 func TestMessagePoolAsync(t *testing.T) {
 	assert := assert.New(t)
+	ctx := context.Background()
 
 	count := 400
 	msgs := types.NewSignedMsgs(count, mockSigner)
 
-	pool := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 	var wg sync.WaitGroup
 
 	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		go func(i int) {
 			for j := 0; j < count/4; j++ {
-				_, err := pool.Add(msgs[j+(count/4)*i])
+				_, err := pool.Add(ctx, msgs[j+(count/4)*i])
 				assert.NoError(err)
 			}
 			wg.Done()
@@ -166,7 +212,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -190,7 +236,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0, m1], Chain: b[m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -207,7 +253,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -233,7 +279,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -257,7 +303,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1, m2],     Chain: b[m0] -> b[m3] -> b[m4, m5]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -277,7 +323,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: b[m0] -> b[m3] -> b[m4] -> b[m5] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -306,7 +352,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -333,7 +379,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -359,7 +405,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m2, m3],         Chain: b[m0] -> b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 		m := types.NewSignedMsgs(4, mockSigner)
 
 		oldChain := NewChainWithMessages(store, types.TipSet{},
@@ -380,7 +426,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -400,7 +446,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -424,8 +470,8 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		var err error
 		store := hamt.NewCborStore()
-		blockTimer := testhelpers.NewTestBlockTimer(0)
-		p := NewMessagePool(blockTimer)
+		api := th.NewTestMessagePoolAPI(0)
+		p := NewMessagePool(api, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
 
@@ -433,8 +479,8 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		// Add a message at each block height until MessageTimeOut is reached
 		for i := 0; i < MessageTimeOut; i++ {
-			// blockTimer.Height determines block time at which message is added
-			blockTimer.Height, err = head.Height()
+			// api.Height determines block time at which message is added
+			api.Height, err = head.Height()
 			require.NoError(err)
 
 			MustAdd(p, m[i])
@@ -467,8 +513,8 @@ func TestUpdateMessagePool(t *testing.T) {
 
 		var err error
 		store := hamt.NewCborStore()
-		blockTimer := testhelpers.NewTestBlockTimer(0)
-		p := NewMessagePool(blockTimer)
+		blockTimer := th.NewTestMessagePoolAPI(0)
+		p := NewMessagePool(blockTimer, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
 
@@ -516,7 +562,7 @@ func TestLargestNonce(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("No matches", func(t *testing.T) {
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -526,7 +572,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
@@ -542,7 +588,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match", func(t *testing.T) {
-		p := NewMessagePool(testhelpers.NewTestBlockTimer(0))
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1
@@ -570,4 +616,25 @@ func (p *storeBlockProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.
 		return nil, errors.Wrapf(err, "failed to get block %s", cid)
 	}
 	return &blk, nil
+}
+
+func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
+	return mustResignMessage(signer, message, func(m *types.Message) {
+		m.Nonce = nonce
+	})
+}
+
+func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.Message)) *types.SignedMessage {
+	var msg types.Message
+	msg = message.Message
+	f(&msg)
+	smg, err := signMessage(signer, msg)
+	if err != nil {
+		panic("Error signing message")
+	}
+	return smg
+}
+
+func signMessage(signer types.Signer, message types.Message) (*types.SignedMessage, error) {
+	return types.NewSignedMessage(message, signer, types.NewGasPrice(0), types.NewGasUnits(0))
 }

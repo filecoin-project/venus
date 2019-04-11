@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"fmt"
-
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
@@ -230,6 +229,7 @@ func NewMsgs(n int) []*Message {
 	msgs := make([]*Message, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = newMsg()
+		msgs[i].Nonce = Uint64(i)
 	}
 	return msgs
 }
@@ -238,10 +238,17 @@ func NewMsgs(n int) []*Message {
 // but are not unique globally (ie, a second call to NewSignedMsgs will return the same
 // set of messages).
 func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
-	newSmsg := NewSignedMessageForTestGetter(ms)
+	var err error
+	newMsg := NewMessageForTestGetter()
 	smsgs := make([]*SignedMessage, n)
 	for i := 0; i < n; i++ {
-		smsgs[i] = newSmsg()
+		msg := newMsg()
+		msg.From = ms.Addresses[0]
+		msg.Nonce = Uint64(i)
+		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(0), NewGasUnits(0))
+		if err != nil {
+			panic(err)
+		}
 	}
 	return smsgs
 }

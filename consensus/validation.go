@@ -2,12 +2,18 @@ package consensus
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/address"
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+// MaxNonceGap is the maximum nonce of a message past the last received on chain
+const MaxNonceGap = 100
 
 // SignedMessageValidator validates incoming signed messages.
 type SignedMessageValidator interface {
@@ -86,4 +92,44 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
 	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
+}
+
+// IngestionValidatorAPI allows the validator to access latest state
+type ingestionValidatorAPI interface {
+	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
+}
+
+// IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
+type IngestionValidator struct {
+	api       ingestionValidatorAPI
+	validator defaultMessageValidator
+}
+
+// NewIngestionValidator creates a new validator with an api
+func NewIngestionValidator(api ingestionValidatorAPI) *IngestionValidator {
+	return &IngestionValidator{
+		api:       api,
+		validator: defaultMessageValidator{allowHighNonce: true},
+	}
+}
+
+// Validate validates the signed message.
+// Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
+func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+	// retrieve from actor
+	fromActor, err := v.api.ActorFromLatestState(ctx, msg.From)
+	if err != nil {
+		if state.IsActorNotFoundError(err) {
+			fromActor = &actor.Actor{}
+		} else {
+			return err
+		}
+	}
+
+	// check that message nonce is not too high
+	if msg.Nonce > fromActor.Nonce && msg.Nonce-fromActor.Nonce > MaxNonceGap {
+		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.Nonce, fromActor.Nonce)
+	}
+
+	return v.validator.Validate(ctx, msg, fromActor)
 }

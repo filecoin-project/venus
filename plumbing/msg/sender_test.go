@@ -31,9 +31,9 @@ func TestSend(t *testing.T) {
 
 		w, chainStore := setupSendTest(require)
 		addr := w.Addresses()[0]
-		timer := testhelpers.NewTestBlockTimer(1000)
+		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{rejectMessages: true}, nopPublish)
@@ -47,9 +47,10 @@ func TestSend(t *testing.T) {
 
 		w, chainStore := setupSendTest(require)
 		addr := w.Addresses()[0]
-		timer := testhelpers.NewTestBlockTimer(1000)
+		toAddr := address.NewForTestGetter()()
+		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -62,7 +63,7 @@ func TestSend(t *testing.T) {
 		require.Empty(queue.List(addr))
 		require.Empty(pool.Pending())
 
-		_, err := s.Send(context.Background(), addr, addr, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := s.Send(context.Background(), addr, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), "")
 		require.NoError(err)
 		assert.Equal(uint64(1000), queue.List(addr)[0].Stamp)
 		assert.Equal(1, len(pool.Pending()))
@@ -76,9 +77,10 @@ func TestSend(t *testing.T) {
 
 		w, chainStore := setupSendTest(require)
 		addr := w.Addresses()[0]
-		timer := testhelpers.NewTestBlockTimer(1000)
+		toAddr := address.NewForTestGetter()()
+		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer)
+		pool := core.NewMessagePool(timer, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{}, nopPublish)
@@ -87,7 +89,7 @@ func TestSend(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < 20; i++ {
-				_, err := s.Send(ctx, addr, addr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				_, err := s.Send(ctx, addr, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
 				require.NoError(err)
 			}
 		}

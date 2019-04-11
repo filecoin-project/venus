@@ -29,6 +29,11 @@ type chainState interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 }
 
+// BlockClock defines a interface to a struct that can give the current block height.
+type BlockClock interface {
+	BlockHeight() (uint64, error)
+}
+
 // PublishFunc is a function the Sender calls to publish a message to the network.
 type PublishFunc func(topic string, data []byte) error
 
@@ -39,7 +44,7 @@ type Sender struct {
 	// Provides actor state
 	chainState chainState
 	// Provides the current block height
-	blockTimer core.BlockTimer
+	blockTimer BlockClock
 	// Tracks inbound messages for mining
 	inbox *core.MessagePool
 	// Tracks outbound messages
@@ -54,7 +59,7 @@ type Sender struct {
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer core.BlockTimer,
+func NewSender(signer types.Signer, chainReader chain.ReadStore, blockTimer BlockClock,
 	msgQueue *core.MessageQueue, msgPool *core.MessagePool,
 	validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
 	return &Sender{
@@ -125,7 +130,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	if err := s.outbox.Enqueue(smsg, height); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
 	}
-	if _, err := s.inbox.Add(smsg); err != nil {
+	if _, err := s.inbox.Add(ctx, smsg); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to message pool")
 	}
 

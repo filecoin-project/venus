@@ -2,6 +2,8 @@ package chain
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
@@ -39,6 +41,8 @@ type ReadStore interface {
 	Head() types.TipSet
 	// LatestState returns the latest state of the head
 	LatestState(ctx context.Context) (state.Tree, error)
+	// ActorFromLatestState tries to get an actor from the latest state
+	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 
 	BlockHistory(ctx context.Context, tips types.TipSet) <-chan interface{}
 

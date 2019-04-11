@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -88,18 +89,33 @@ func RequireRandomPeerID(require *require.Assertions) peer.ID {
 	return pid
 }
 
-// TestBlockTimer provides a simple BlockTimer interface implementation.
-type TestBlockTimer struct {
+// TestMessagePoolAPI provides a simple BlockTimer interface implementation.
+type TestMessagePoolAPI struct {
 	Height uint64
 }
 
-// NewTestBlockTimer creates a new TestBlockTimer.
-func NewTestBlockTimer(h uint64) *TestBlockTimer {
-	return &TestBlockTimer{Height: h}
+// NewTestMessagePoolAPI creates a new TestMessagePoolAPI.
+func NewTestMessagePoolAPI(h uint64) *TestMessagePoolAPI {
+	return &TestMessagePoolAPI{Height: h}
+}
+
+type MockMessagePoolValidator struct {
+	Valid bool
+}
+
+func NewMockMessagePoolValidator() *MockMessagePoolValidator {
+	return &MockMessagePoolValidator{Valid: true}
+}
+
+func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+	if v.Valid {
+		return nil
+	}
+	return errors.New("mock validation error")
 }
 
 // BlockHeight represents the height of the highest tipset.
-func (tbt *TestBlockTimer) BlockHeight() (uint64, error) {
+func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
 	return tbt.Height, nil
 }
 
