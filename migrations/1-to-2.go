@@ -50,7 +50,7 @@ func getOldConfig() *config.Config {
 }
 
 // NewMigrator instantiates a new migrator
-func NewMigrator(oldRepo, newRepo os.File, verbose bool) *migrator {
+func NewMigrator_1_2(oldRepo, newRepo *os.File, verbose bool) *migrator {
 	logstr := fmt.Sprintf("Migration from %s to %s", PreviousVersion, MigrationVersion)
 	return &migrator{
 		log:          logging.Logger(logstr),
@@ -75,12 +75,16 @@ func (mig *migrator) Migrate() error {
 }
 
 // DryRun runs the migrator steps on a copy of the repo and stops there
-func (mig *migrator) DryRun() error {
+func (mig *migrator) BuildOnly() error {
 	// makeNewFSRepo()
 	// copyData()
 	// migrateStep1
 	// migrateStep2
 	// migrateStep3
+	return nil
+}
+
+func (mig *migrator) Install() error {
 	return nil
 }
 
