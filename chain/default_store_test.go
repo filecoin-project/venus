@@ -278,7 +278,7 @@ func TestHead(t *testing.T) {
 	chain := newChainStore()
 	requirePutTestChain(require, chain)
 
-	// Head starts as nil
+	// Head starts as an empty cid set
 	assert.Equal(types.SortedCidSet{}, chain.GetHead())
 
 	// Set Head
