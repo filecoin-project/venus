@@ -172,11 +172,14 @@ func newDefaultMetricsConfig() *MetricsConfig {
 type MessagePoolConfig struct {
 	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
 	MaxPoolSize int `json:"maxPoolSize"`
+	// MaxNonceGap is the maximum nonce of a message past the last received on chain
+	MaxNonceGap types.Uint64 `json:"maxNonceGap"`
 }
 
 func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	return &MessagePoolConfig{
 		MaxPoolSize: 10000,
+		MaxNonceGap: 100,
 	}
 }
 

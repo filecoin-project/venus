@@ -25,7 +25,7 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
 
@@ -66,9 +66,10 @@ func TestMessagePoolValidate(t *testing.T) {
 		assert := assert.New(t)
 
 		// pull the default size from the default config value
-		maxMessagePoolSize := config.NewDefaultConfig().Mpool.MaxPoolSize
+		mpoolCfg := config.NewDefaultConfig().Mpool
+		maxMessagePoolSize := mpoolCfg.MaxPoolSize
 		ctx := context.Background()
-		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(maxMessagePoolSize), th.NewMockMessagePoolValidator())
+		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), mpoolCfg, th.NewMockMessagePoolValidator())
 
 		smsgs := types.NewSignedMsgs(maxMessagePoolSize+1, mockSigner)
 		for _, smsg := range smsgs[:maxMessagePoolSize] {
@@ -91,7 +92,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		assert := assert.New(t)
 
 		ctx := context.Background()
-		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		smsg1 := newSignedMessage()
 		_, err := pool.Add(ctx, smsg1)
@@ -111,7 +112,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		api := th.NewTestMessagePoolAPI(0)
 		validator := th.NewMockMessagePoolValidator()
 		validator.Valid = false
-		pool := NewMessagePool(api, th.NewTestMessagePoolConfig(10), validator)
+		pool := NewMessagePool(api, config.NewDefaultConfig().Mpool, validator)
 
 		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
 		_, err := pool.Add(ctx, smsg1)
@@ -124,7 +125,7 @@ func TestMessagePoolDedup(t *testing.T) {
 	assert := assert.New(t)
 	ctx := context.Background()
 
-	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 
 	assert.Len(pool.Pending(), 0)
@@ -142,9 +143,11 @@ func TestMessagePoolAsync(t *testing.T) {
 	ctx := context.Background()
 
 	count := 400
+	mpoolCfg := config.NewDefaultConfig().Mpool
+	mpoolCfg.MaxPoolSize = count
 	msgs := types.NewSignedMsgs(count, mockSigner)
 
-	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(count), th.NewMockMessagePoolValidator())
+	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), mpoolCfg, th.NewMockMessagePoolValidator())
 	var wg sync.WaitGroup
 
 	for i := 0; i < 4; i++ {
@@ -214,7 +217,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -238,7 +241,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0, m1], Chain: b[m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -255,7 +258,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -281,7 +284,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -305,7 +308,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m1, m2],     Chain: b[m0] -> b[m3] -> b[m4, m5]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -325,7 +328,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: b[m0] -> b[m3] -> b[m4] -> b[m5] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -354,7 +357,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[6])
@@ -381,7 +384,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
@@ -407,7 +410,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m2, m3],         Chain: b[m0] -> b[m1]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		m := types.NewSignedMsgs(4, mockSigner)
 
 		oldChain := NewChainWithMessages(store, types.TipSet{},
@@ -428,7 +431,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [m0],     Chain: b[] -> b[m1, m2]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -448,7 +451,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// to
 		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
 		store := hamt.NewCborStore()
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
@@ -473,7 +476,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		var err error
 		store := hamt.NewCborStore()
 		api := th.NewTestMessagePoolAPI(0)
-		p := NewMessagePool(api, th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(api, config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
 
@@ -516,7 +519,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		var err error
 		store := hamt.NewCborStore()
 		blockTimer := th.NewTestMessagePoolAPI(0)
-		p := NewMessagePool(blockTimer, th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(blockTimer, config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(MessageTimeOut, mockSigner)
 
@@ -564,7 +567,7 @@ func TestLargestNonce(t *testing.T) {
 	require := require.New(t)
 
 	t.Run("No matches", func(t *testing.T) {
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		MustAdd(p, m[0], m[1])
@@ -574,7 +577,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
@@ -590,7 +593,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match", func(t *testing.T) {
-		p := NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1

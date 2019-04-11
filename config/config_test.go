@@ -86,7 +86,8 @@ func TestWriteFile(t *testing.T) {
 		"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
 	},
 	"mpool": {
-		"maxPoolSize": 10000
+		"maxPoolSize": 10000,
+		"maxNonceGap": "100"
 	}
 }`,
 		string(content),

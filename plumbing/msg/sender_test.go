@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
@@ -33,7 +34,7 @@ func TestSend(t *testing.T) {
 		addr := w.Addresses()[0]
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(10), testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, config.NewDefaultConfig().Mpool, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{rejectMessages: true}, nopPublish)
@@ -50,7 +51,7 @@ func TestSend(t *testing.T) {
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(10), testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, config.NewDefaultConfig().Mpool, testhelpers.NewMockMessagePoolValidator())
 
 		publishCalled := false
 		publish := func(topic string, data []byte) error {
@@ -80,13 +81,15 @@ func TestSend(t *testing.T) {
 		// number of of concurrent message sends
 		sendConcurrent := 3
 		// total messages sent == msgCount * sendConcurrent
+		mpoolCfg := config.NewDefaultConfig().Mpool
+		mpoolCfg.MaxPoolSize = msgCount * sendConcurrent
 
 		w, chainStore := setupSendTest(require)
 		addr := w.Addresses()[0]
 		toAddr := address.NewForTestGetter()()
 		timer := testhelpers.NewTestMessagePoolAPI(1000)
 		queue := core.NewMessageQueue()
-		pool := core.NewMessagePool(timer, testhelpers.NewTestMessagePoolConfig(msgCount*sendConcurrent), testhelpers.NewMockMessagePoolValidator())
+		pool := core.NewMessagePool(timer, mpoolCfg, testhelpers.NewMockMessagePoolValidator())
 		nopPublish := func(string, []byte) error { return nil }
 
 		s := NewSender(w, chainStore, timer, queue, pool, nullValidator{}, nopPublish)

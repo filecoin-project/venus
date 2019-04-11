@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -98,7 +99,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewTestMessagePoolConfig(10), th.NewMockMessagePoolValidator())
+	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid

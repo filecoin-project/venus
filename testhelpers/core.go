@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -118,12 +117,6 @@ func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.Sign
 // BlockHeight represents the height of the highest tipset.
 func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
 	return tbt.Height, nil
-}
-
-func NewTestMessagePoolConfig(size int) *config.MessagePoolConfig {
-	return &config.MessagePoolConfig{
-		MaxPoolSize: size,
-	}
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore
