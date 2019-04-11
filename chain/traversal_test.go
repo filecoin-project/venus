@@ -46,33 +46,65 @@ func TestGetParentTipSet(t *testing.T) {
 
 func TestIterAncestors(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
-	ctx := context.Background()
-	store := th.NewFakeBlockProvider()
 
-	root := store.NewBlock(0)
-	b11 := store.NewBlock(1, root)
-	b12 := store.NewBlock(2, root)
-	b21 := store.NewBlock(3, b11, b12)
+	t.Run("iterates", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		ctx := context.Background()
+		store := th.NewFakeBlockProvider()
 
-	t0 := requireTipset(t, root)
-	t1 := requireTipset(t, b11, b12)
-	t2 := requireTipset(t, b21)
+		root := store.NewBlock(0)
+		b11 := store.NewBlock(1, root)
+		b12 := store.NewBlock(2, root)
+		b21 := store.NewBlock(3, b11, b12)
 
-	it := chain.IterAncestors(ctx, store, t2)
-	assert.False(it.Complete())
-	assert.True(t2.Equals(it.Value()))
+		t0 := requireTipset(t, root)
+		t1 := requireTipset(t, b11, b12)
+		t2 := requireTipset(t, b21)
 
-	assert.NoError(it.Next())
-	assert.False(it.Complete())
-	assert.True(t1.Equals(it.Value()))
+		it := chain.IterAncestors(ctx, store, t2)
+		assert.False(it.Complete())
+		assert.True(t2.Equals(it.Value()))
 
-	assert.NoError(it.Next())
-	assert.False(it.Complete())
-	assert.True(t0.Equals(it.Value()))
+		assert.NoError(it.Next())
+		assert.False(it.Complete())
+		assert.True(t1.Equals(it.Value()))
 
-	assert.NoError(it.Next())
-	assert.True(it.Complete())
+		assert.NoError(it.Next())
+		assert.False(it.Complete())
+		assert.True(t0.Equals(it.Value()))
+
+		assert.NoError(it.Next())
+		assert.True(it.Complete())
+	})
+
+	t.Run("respects context", func(t *testing.T) {
+		t.Parallel()
+		assert := assert.New(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		store := th.NewFakeBlockProvider()
+
+		root := store.NewBlock(0)
+		b11 := store.NewBlock(1, root)
+		b12 := store.NewBlock(2, root)
+		b21 := store.NewBlock(3, b11, b12)
+
+		requireTipset(t, root)
+		t1 := requireTipset(t, b11, b12)
+		t2 := requireTipset(t, b21)
+
+		it := chain.IterAncestors(ctx, store, t2)
+		assert.False(it.Complete())
+		assert.True(t2.Equals(it.Value()))
+
+		assert.NoError(it.Next())
+		assert.False(it.Complete())
+		assert.True(t1.Equals(it.Value()))
+
+		cancel()
+
+		assert.Error(it.Next())
+	})
 }
 
 func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {
