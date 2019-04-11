@@ -53,13 +53,6 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
-// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height, useful for things like PoSt challenge seed
-// generation.
-func (a *API) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	return SampleChainRandomness(ctx, a, sampleHeight)
-}
-
 // DealGet returns a single deal matching a given cid or an error
 func (a *API) DealGet(proposalCid cid.Cid) *storagedeal.Deal {
 	return DealGet(a, proposalCid)

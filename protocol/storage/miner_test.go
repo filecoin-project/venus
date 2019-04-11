@@ -363,7 +363,7 @@ type minerTestPorcelain struct {
 	require *require.Assertions
 }
 
-func (mtp *minerTestPorcelain) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 	bytes := make([]byte, 42)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(err)

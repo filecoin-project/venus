@@ -147,10 +147,11 @@ func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 	return api.chain.Ls(ctx)
 }
 
-// GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
-// `TipSet` with height `descendantBlockHeight` in the heaviest chain.
-func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return api.chain.GetRecentAncestorsOfHeaviestChain(ctx, descendantBlockHeight)
+// ChainSampleRandomness produces a slice of random bytes sampled from a TipSet
+// in the blockchain at a given height, useful for things like PoSt challenge seed
+// generation.
+func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 
 // DealsLs a slice of all storagedeals in the local datastore and possibly an error

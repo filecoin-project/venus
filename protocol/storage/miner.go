@@ -72,8 +72,8 @@ type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
 	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
-	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
 	DealsLs() ([]*storagedeal.Deal, error)
 	DealGet(cid.Cid) *storagedeal.Deal
@@ -621,7 +621,7 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
 	}
 
-	bytes, err := sm.porcelainAPI.SampleChainRandomness(ctx, currentProvingPeriodStart)
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
 		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
 	}
