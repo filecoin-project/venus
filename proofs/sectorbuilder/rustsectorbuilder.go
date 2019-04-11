@@ -64,7 +64,7 @@ type RustSectorBuilder struct {
 
 	// sectorStoreType configures behavior of libfilecoin_proofs, including
 	// sector packing, sector sizes, sealing and PoSt generation performance.
-	sectorStoreType proofs.SectorStoreType
+	sectorStoreType proofs.Mode
 }
 
 var _ SectorBuilder = &RustSectorBuilder{}
@@ -123,7 +123,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		blockService:      cfg.BlockService,
 		ptr:               unsafe.Pointer(resPtr.sector_builder),
 		sectorSealResults: make(chan SectorSealResult),
-		sectorStoreType:   cfg.SectorStoreType,
+		sectorStoreType:   cfg.ProofsMode,
 	}
 
 	// load staged sector metadata and use it to initialize the poller
@@ -151,7 +151,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 func (sb *RustSectorBuilder) GetMaxUserBytesPerStagedSector() (numBytes uint64, err error) {
 	defer elapsed("GetMaxUserBytesPerStagedSector")()
 
-	scfg, err := proofs.CSectorStoreType(sb.sectorStoreType)
+	scfg, err := proofs.CProofsMode(sb.sectorStoreType)
 	if err != nil {
 		return 0, errors.Wrap(err, "CSectorStoreType failed")
 	}
