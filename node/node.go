@@ -49,9 +49,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/plumbing/actr"
+	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -419,9 +418,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Actr:         actr.NewActr(chainStore, &cstOffline),
 		Bitswap:      bswap,
-		Chain:        chn.NewChain(chainStore, &cstOffline),
+		Chain:        bcf.NewBlockChainFacade(chainStore, &cstOffline),
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),

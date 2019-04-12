@@ -15,9 +15,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/plumbing/actr"
+	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -162,8 +161,7 @@ func TestNodeStartMining(t *testing.T) {
 	// tests. It should enable selective replacement of dependencies.
 	// https://github.com/filecoin-project/go-filecoin/issues/2352
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		Actr:         actr.NewActr(minerNode.ChainReader, minerNode.CborStore()),
-		Chain:        chn.NewChain(minerNode.ChainReader, minerNode.CborStore()),
+		Chain:        bcf.NewBlockChainFacade(minerNode.ChainReader, minerNode.CborStore()),
 		Config:       pbConfig.NewConfig(minerNode.Repo),
 		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),

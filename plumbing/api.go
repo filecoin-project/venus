@@ -23,9 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/plumbing/actr"
+	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
-	"github.com/filecoin-project/go-filecoin/plumbing/chn"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -43,9 +42,8 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	actr         *actr.Actr
 	bitswap      exchange.Interface
-	chain        *chn.Chain
+	chain        *bcf.BlockChainFacade
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
@@ -61,9 +59,8 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Actr         *actr.Actr
 	Bitswap      exchange.Interface
-	Chain        *chn.Chain
+	Chain        *bcf.BlockChainFacade
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
@@ -82,7 +79,6 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		actr:         deps.Actr,
 		bitswap:      deps.Bitswap,
 		chain:        deps.Chain,
 		config:       deps.Config,
@@ -101,19 +97,19 @@ func New(deps *APIDeps) *API {
 
 // ActorGet returns an actor from the latest state on the chain
 func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	return api.actr.Get(ctx, addr)
+	return api.chain.GetActor(ctx, addr)
 }
 
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
 func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return api.actr.GetSignature(ctx, actorAddr, method)
+	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 
 // ActorLs returns a channel with actors from the latest state on the chain
 func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	return api.actr.Ls(ctx)
+	return api.chain.LsActors(ctx)
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.
