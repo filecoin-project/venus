@@ -1,0 +1,5 @@
+package migration
+
+func main() {
+
+}
