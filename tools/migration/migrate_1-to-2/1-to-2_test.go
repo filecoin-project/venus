@@ -46,9 +46,9 @@ func TestMigrator_Validate(t *testing.T) {
 }
 
 func requireMakeMigl(require *req.Assertions) *migration.Migl {
-	logfile, err := os.OpenFile("/tmp/foo.txt", os.O_WRONLY, os.ModeExclusive)
+	logfile, err := os.Create("/tmp/foo.txt") // truncates
 	require.NoError(err)
-	migl := migration.NewMigl(logfile)
+	migl := migration.NewMigl(logfile, true)
 	return &migl
 
 }
@@ -56,7 +56,6 @@ func requireMakeMigl(require *req.Assertions) *migration.Migl {
 func captureOutput(f func()) string {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
-	f()
 	log.SetOutput(os.Stderr)
 	return buf.String()
 }

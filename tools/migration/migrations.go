@@ -132,10 +132,10 @@ func install(oldRepo, newRepo *os.File) error {
 }
 
 func makeMigl() (*Migl, error) {
-	logfile, err := os.OpenFile("/tmp/foo.txt", os.O_WRONLY, os.ModeExclusive)
+	logfile, err := os.OpenFile("/tmp/foo.txt", os.O_CREATE|os.O_WRONLY, os.ModeExclusive)
 	if err != nil {
 		return nil, err
 	}
-	migl := NewMigl(logfile)
+	migl := NewMigl(logfile, true)
 	return &migl, nil
 }
