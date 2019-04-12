@@ -6,10 +6,13 @@ import (
 	"io"
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLinePuller(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("pull on empty source", func(t *testing.T) {
 		var source bytes.Buffer
 		var sink bytes.Buffer

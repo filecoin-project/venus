@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -31,6 +32,8 @@ import (
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 func TestPaymentBrokerGenesis(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -43,6 +46,8 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 }
 
 func TestPaymentBrokerCreateChannel(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -75,6 +80,8 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdate(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -100,6 +107,8 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -119,6 +128,8 @@ func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -134,6 +145,8 @@ func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -145,6 +158,8 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testin
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -164,6 +179,8 @@ func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T
 }
 
 func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -178,6 +195,8 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -190,6 +209,8 @@ func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
 }
 
 func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -230,6 +251,8 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 }
 
 func TestPaymentBrokerClose(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	sys := setup(t)
@@ -257,6 +280,8 @@ func TestPaymentBrokerClose(t *testing.T) {
 }
 
 func TestPaymentBrokerCloseErrorsBeforeValidAt(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -269,6 +294,8 @@ func TestPaymentBrokerCloseErrorsBeforeValidAt(t *testing.T) {
 }
 
 func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -287,6 +314,8 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 }
 
 func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	sys := setup(t)
 
@@ -305,6 +334,8 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 }
 
 func TestPaymentBrokerReclaim(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	sys := setup(t)
@@ -330,6 +361,8 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 }
 
 func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	sys := setup(t)
@@ -347,6 +380,8 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 }
 
 func TestPaymentBrokerExtend(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -381,6 +416,8 @@ func TestPaymentBrokerExtend(t *testing.T) {
 }
 
 func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -396,6 +433,8 @@ func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 }
 
 func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	sys := setup(t)
@@ -412,6 +451,8 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 }
 
 func TestPaymentBrokerLs(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -483,6 +524,8 @@ func TestPaymentBrokerLs(t *testing.T) {
 }
 
 func TestNewPaymentBrokerVoucher(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 

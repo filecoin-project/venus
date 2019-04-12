@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,8 @@ func init() {
 }
 
 func TestMessageValidator(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	alice := addresses[0]
@@ -93,7 +95,8 @@ func TestMessageValidator(t *testing.T) {
 }
 
 func TestOutboundMessageValidator(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	alice := addresses[0]
@@ -112,7 +115,7 @@ func TestOutboundMessageValidator(t *testing.T) {
 }
 
 func TestIngestionValidator(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	alice := addresses[0]
 	bob := addresses[1]

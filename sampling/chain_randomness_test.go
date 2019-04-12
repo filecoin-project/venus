@@ -9,10 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestSamplingChainRandomness(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -20,7 +23,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	require.Equal(sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
 
 	t.Run("happy path", func(t *testing.T) {
-		t.Parallel()
+
 		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(20)), chain)
@@ -37,7 +40,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	})
 
 	t.Run("faults with height out of range", func(t *testing.T) {
-		t.Parallel()
+
 		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		// edit chain to include null blocks at heights 21 through 24
@@ -57,7 +60,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	})
 
 	t.Run("faults with lookback out of range", func(t *testing.T) {
-		t.Parallel()
+
 		chain := testhelpers.RequireTipSetChain(t, 20)[:5]
 
 		// ancestor block heights:
@@ -71,7 +74,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	})
 
 	t.Run("falls back to genesis block", func(t *testing.T) {
-		t.Parallel()
+
 		chain := testhelpers.RequireTipSetChain(t, 5)
 
 		// ancestor block heights:

@@ -10,11 +10,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
 func TestDealStoreRoundTrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	addressMaker := address.NewForTestGetter()
 
 	store := strgdls.New(repo.NewInMemoryRepo().DealsDs)

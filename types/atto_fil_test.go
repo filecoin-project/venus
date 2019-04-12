@@ -9,6 +9,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +19,8 @@ func BigIntFromString(s string) *big.Int {
 }
 
 func TestFILToAttoFIL(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	x := NewAttoFILFromFIL(2)
@@ -28,6 +31,8 @@ func TestFILToAttoFIL(t *testing.T) {
 }
 
 func TestAttoFILCreation(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	a := NewAttoFILFromFIL(123)
@@ -51,6 +56,8 @@ func TestAttoFILCreation(t *testing.T) {
 }
 
 func TestZeroAttoFIL(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	z := NewAttoFILFromFIL(0)
@@ -61,6 +68,8 @@ func TestZeroAttoFIL(t *testing.T) {
 }
 
 func TestAttoFILComparison(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(123)
 	b := NewAttoFILFromFIL(123)
 	c := NewAttoFILFromFIL(456)
@@ -97,6 +106,8 @@ func TestAttoFILComparison(t *testing.T) {
 }
 
 func TestAttoFILAddition(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(123)
 	b := NewAttoFILFromFIL(456)
 
@@ -131,6 +142,8 @@ func TestAttoFILAddition(t *testing.T) {
 }
 
 func TestAttoFILSubtraction(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(456)
 	b := NewAttoFILFromFIL(123)
 
@@ -164,6 +177,8 @@ func TestAttoFILSubtraction(t *testing.T) {
 }
 
 func TestMulInt(t *testing.T) {
+	tf.UnitTest(t)
+
 	multiplier := big.NewInt(25)
 	attoFIL := AttoFIL{val: big.NewInt(1000)}
 
@@ -175,6 +190,8 @@ func TestMulInt(t *testing.T) {
 }
 
 func TestDivCeil(t *testing.T) {
+	tf.UnitTest(t)
+
 	x := AttoFIL{val: big.NewInt(200)}
 
 	t.Run("returns exactly the dividend when y divides x", func(t *testing.T) {
@@ -191,6 +208,8 @@ func TestDivCeil(t *testing.T) {
 }
 
 func TestPriceCalculation(t *testing.T) {
+	tf.UnitTest(t)
+
 	price := NewAttoFILFromFIL(123)
 	numBytes := NewBytesAmount(10)
 
@@ -224,6 +243,8 @@ func TestPriceCalculation(t *testing.T) {
 }
 
 func TestAttoFILCborMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("CBOR decode(encode(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -258,6 +279,8 @@ func TestAttoFILCborMarshaling(t *testing.T) {
 }
 
 func TestAttoFILJsonMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("JSON unmarshal(marshal(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -308,6 +331,8 @@ func TestAttoFILJsonMarshaling(t *testing.T) {
 }
 
 func TestAttoFILIsPositive(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
@@ -331,6 +356,8 @@ func TestAttoFILIsPositive(t *testing.T) {
 }
 
 func TestAttoFILIsNegative(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
@@ -354,6 +381,8 @@ func TestAttoFILIsNegative(t *testing.T) {
 }
 
 func TestAttoFILIsZero(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
@@ -377,6 +406,8 @@ func TestAttoFILIsZero(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	// A very large number of attoFIL
@@ -401,6 +432,8 @@ func TestString(t *testing.T) {
 }
 
 func TestNewAttoFILFromFILString(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("parses legitimate values correctly", func(t *testing.T) {
 		assert := assert.New(t)
 

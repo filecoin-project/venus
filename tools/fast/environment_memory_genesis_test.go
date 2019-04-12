@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
 )
 
@@ -29,6 +30,8 @@ func init() {
 }
 
 func TestEnvironmentMemoryGenesis(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("SetupTeardown", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)

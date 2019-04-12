@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -49,7 +50,8 @@ func createTestMinerWith(pledge int64,
 }
 
 func TestAskFunctions(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -121,6 +123,8 @@ func TestAskFunctions(t *testing.T) {
 }
 
 func TestGetKey(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -137,6 +141,8 @@ func TestGetKey(t *testing.T) {
 }
 
 func TestCBOREncodeState(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(require), types.NewZeroAttoFIL())
@@ -153,6 +159,8 @@ func TestCBOREncodeState(t *testing.T) {
 }
 
 func TestPeerIdGetterAndSetter(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	t.Run("successfully retrieves and updates peer ID", func(t *testing.T) {
 
@@ -209,7 +217,8 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 }
 
 func TestMinerGetPledge(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	require := require.New(t)
 
 	t.Run("GetPledge returns pledged sectors, 0, nil when successful", func(t *testing.T) {
@@ -229,7 +238,8 @@ func TestMinerGetPledge(t *testing.T) {
 }
 
 func TestMinerGetPower(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	require := require.New(t)
 
 	t.Run("GetPower returns proven sectors, 0, nil when successful", func(t *testing.T) {
@@ -277,6 +287,8 @@ func callQueryMethodSuccess(method string,
 }
 
 func TestMinerCommitSector(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	ctx := context.Background()
 	st, vms := core.CreateStorages(ctx, t)
@@ -308,6 +320,8 @@ func TestMinerCommitSector(t *testing.T) {
 }
 
 func TestMinerSubmitPoSt(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	ctx := context.Background()
 	st, vms := core.CreateStorages(ctx, t)

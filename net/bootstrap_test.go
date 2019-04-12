@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func panicConnect(_ context.Context, _ pstore.PeerInfo) error { panic("shouldn't be called") }
@@ -26,6 +27,8 @@ func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
 func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
 
 func TestBootstrapperStartAndStop(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := ast.New(t)
 	fakeHost := th.NewFakeHost()
 	fakeDialer := &th.FakeDialer{PeersImpl: nopPeers}
@@ -64,6 +67,8 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 }
 
 func TestBootstrapperBootstrap(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := req.New(t)
 	assert := ast.New(t)
 	t.Run("Doesn't connect if already have enough peers", func(t *testing.T) {

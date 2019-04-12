@@ -13,14 +13,15 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/stretchr/testify/assert"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestDAGGet(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("invalid ref", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		ctx := context.Background()
 
@@ -36,7 +37,7 @@ func TestDAGGet(t *testing.T) {
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*200)
 		defer cancel()
@@ -55,7 +56,7 @@ func TestDAGGet(t *testing.T) {
 	})
 
 	t.Run("matching IPLD node is emitted", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		ctx := context.Background()
 

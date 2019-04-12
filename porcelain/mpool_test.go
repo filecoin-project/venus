@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -40,14 +41,15 @@ func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Sub
 }
 
 func TestMessagePoolWait(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	signer := types.NewMockSigner(ki)
 
 	t.Run("empty", func(t *testing.T) {
-		t.Parallel()
+
 		plumbing := newFakeMpoolWaitPlumbing(nil)
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, 0)
 		require.NoError(e)
@@ -55,7 +57,7 @@ func TestMessagePoolWait(t *testing.T) {
 	})
 
 	t.Run("returns immediates", func(t *testing.T) {
-		t.Parallel()
+
 		plumbing := newFakeMpoolWaitPlumbing(nil)
 		plumbing.pending = types.NewSignedMsgs(3, signer)
 
@@ -65,7 +67,6 @@ func TestMessagePoolWait(t *testing.T) {
 	})
 
 	t.Run("waits", func(t *testing.T) {
-		t.Parallel()
 
 		var plumbing *fakeMpoolWaitPlumbing
 		callCount := 0
@@ -96,7 +97,6 @@ func TestMessagePoolWait(t *testing.T) {
 	})
 
 	t.Run("message races pubsub", func(t *testing.T) {
-		t.Parallel()
 
 		var plumbing *fakeMpoolWaitPlumbing
 

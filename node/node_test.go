@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,8 @@ import (
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 func TestNodeConstruct(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	nd := node.MakeNodesUnstarted(t, 1, false)[0]
@@ -45,7 +47,8 @@ func TestNodeConstruct(t *testing.T) {
 }
 
 func TestNodeNetworking(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	assert := assert.New(t)
 
@@ -65,7 +68,7 @@ func TestNodeNetworking(t *testing.T) {
 }
 
 func TestConnectsToBootstrapNodes(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("no bootstrap nodes no problem", func(t *testing.T) {
 		assert := assert.New(t)
@@ -134,7 +137,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 }
 
 func TestNodeInit(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -147,7 +151,8 @@ func TestNodeInit(t *testing.T) {
 }
 
 func TestNodeStartMining(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -201,7 +206,8 @@ func TestNodeStartMining(t *testing.T) {
 }
 
 func TestUpdateMessagePool(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	// Note: majority of tests are in message_pool_test. This test
 	// just makes sure it looks like it is hooked up correctly.
 	assert := assert.New(t)
@@ -253,7 +259,8 @@ func TestUpdateMessagePool(t *testing.T) {
 }
 
 func TestOptionWithError(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	assert := assert.New(t)
 	r := repo.NewInMemoryRepo()
@@ -275,7 +282,8 @@ func TestOptionWithError(t *testing.T) {
 }
 
 func TestNodeConfig(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	defaultCfg := config.NewDefaultConfig()

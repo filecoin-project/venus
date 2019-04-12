@@ -9,11 +9,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestGetParentTipSet(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -45,10 +47,10 @@ func TestGetParentTipSet(t *testing.T) {
 }
 
 func TestIterAncestors(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("iterates", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		ctx := context.Background()
 		store := th.NewFakeBlockProvider()
@@ -79,7 +81,7 @@ func TestIterAncestors(t *testing.T) {
 	})
 
 	t.Run("respects context", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		store := th.NewFakeBlockProvider()

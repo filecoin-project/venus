@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -31,7 +32,7 @@ func (p *testPaymentChannelLsPlumbing) WalletDefaultAddress() (address.Address, 
 }
 
 func TestPaymentChannelLs(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)
@@ -71,7 +72,7 @@ func (p *testPaymentChannelVoucherPlumbing) WalletDefaultAddress() (address.Addr
 }
 
 func TestPaymentChannelVoucher(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)

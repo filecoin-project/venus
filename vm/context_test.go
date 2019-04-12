@@ -22,11 +22,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func TestVMContextStorage(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 	ctx := context.Background()
@@ -74,6 +77,8 @@ func TestVMContextStorage(t *testing.T) {
 }
 
 func TestVMContextSendFailures(t *testing.T) {
+	tf.UnitTest(t)
+
 	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
@@ -273,6 +278,8 @@ func TestVMContextSendFailures(t *testing.T) {
 }
 
 func TestVMContextIsAccountActor(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -297,6 +304,8 @@ func TestVMContextIsAccountActor(t *testing.T) {
 }
 
 func TestVMContextRand(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	var tipSetsDescBlockHeight []types.TipSet

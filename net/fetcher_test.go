@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/net"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -23,6 +24,8 @@ func requireBlockStorePut(require *require.Assertions, bs bstore.Blockstore, dat
 }
 
 func TestFetchHappyPath(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)))
@@ -48,6 +51,8 @@ func TestFetchHappyPath(t *testing.T) {
 }
 
 func TestFetchNoBlockFails(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)))
@@ -64,6 +69,8 @@ func TestFetchNoBlockFails(t *testing.T) {
 }
 
 func TestFetchNotBlockFormat(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)))

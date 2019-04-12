@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -49,6 +50,8 @@ func requireGrowChain(ctx context.Context, require *require.Assertions, blockSou
 
 // Happy path
 func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -69,6 +72,8 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 
 // Height at least 0.
 func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -89,6 +94,8 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 
 // The starting epoch is a null block.
 func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -141,6 +148,8 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 }
 
 func TestCollectAtMostNTipSets(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -167,6 +176,8 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 // DependentAncestor epochs = 100
 // Lookback = 20
 func TestGetRecentAncestors(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -190,6 +201,8 @@ func TestGetRecentAncestors(t *testing.T) {
 
 // Test case where parameters specify a chain past genesis.
 func TestGetRecentAncestorsTruncates(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)
@@ -217,6 +230,8 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 
 // Test case where no block has the start height in the chain due to null blocks.
 func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx, blockSource, chainStore := setupGetAncestorTests(require)

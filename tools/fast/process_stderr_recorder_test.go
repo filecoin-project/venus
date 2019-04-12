@@ -14,7 +14,7 @@ import (
 )
 
 func TestStartLogCapture(t *testing.T) {
-	tf.IntegrationTest(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)

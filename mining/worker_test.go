@@ -22,10 +22,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func Test_Mine(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -138,6 +141,8 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 
 // TODO this test belongs in core, it calls ApplyMessages
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	vms := th.VMStorage()
@@ -195,6 +200,8 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 }
 
 func TestGenerateMultiBlockTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -242,6 +249,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	CreatePoSTFunc := func() {}
@@ -321,6 +330,8 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -367,6 +378,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -403,6 +416,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 // If something goes wrong while generating a new block, even as late as when flushing it,
 // no block should be returned, and the message pool should not be pruned.
 func TestGenerateError(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

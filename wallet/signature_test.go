@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +36,8 @@ func requireSignerAddr(require *require.Assertions) (*DSBackend, address.Address
 // Signature is over the data being verified and was signed by the verifying
 // address.  Everything should work out ok.
 func TestSignatureOk(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -49,6 +52,8 @@ func TestSignatureOk(t *testing.T) {
 
 // Signature is nil.
 func TestNilSignature(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	require := require.New(t)
@@ -60,6 +65,8 @@ func TestNilSignature(t *testing.T) {
 
 // Signature is over different data.
 func TestDataCorrupted(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -76,6 +83,8 @@ func TestDataCorrupted(t *testing.T) {
 
 // Signature is valid for data but was signed by a different address.
 func TestInvalidAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -93,6 +102,8 @@ func TestInvalidAddress(t *testing.T) {
 
 // Signature is corrupted.
 func TestSignatureCorrupted(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -110,6 +121,8 @@ func TestSignatureCorrupted(t *testing.T) {
 
 // Valid SignedMessage verifies correctly.
 func TestSignMessageOk(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -124,6 +137,8 @@ func TestSignMessageOk(t *testing.T) {
 
 // Signature is valid but signer does not match From Address.
 func TestBadFrom(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -148,6 +163,8 @@ func TestBadFrom(t *testing.T) {
 
 // Signature corrupted.
 func TestSignedMessageBadSignature(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -162,6 +179,8 @@ func TestSignedMessageBadSignature(t *testing.T) {
 
 // Message corrupted.
 func TestSignedMessageCorrupted(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

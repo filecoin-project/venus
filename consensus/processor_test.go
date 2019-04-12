@@ -41,7 +41,7 @@ func requireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, 
 }
 
 func TestProcessBlockSuccess(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -99,7 +99,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 }
 
 func TestProcessTipSetSuccess(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -175,7 +175,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 }
 
 func TestProcessTipsConflicts(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -244,7 +244,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 }
 
 func TestProcessBlockBadMsgSig(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -288,7 +288,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 
 // ProcessBlock should not fail with an unsigned block reward message.
 func TestProcessBlockReward(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -404,7 +404,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 }
 
 func TestProcessBlockParamsLengthError(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -433,7 +433,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 }
 
 func TestProcessBlockParamsError(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -459,7 +459,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 }
 
 func TestApplyMessagesValidation(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	t.Run("Errors when nonce too high", func(t *testing.T) {
 		assert := assert.New(t)
@@ -639,7 +639,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 // in ApplyMessage's comments.
 
 func TestNestedSendBalance(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -739,7 +739,7 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 }
 
 func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)

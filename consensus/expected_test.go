@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 
@@ -27,6 +28,8 @@ import (
 )
 
 func TestNewExpected(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore, verifier := setupCborBlockstoreProofs()
@@ -38,6 +41,8 @@ func TestNewExpected(t *testing.T) {
 
 // TestExpected_NewValidTipSet also tests validateBlockStructure.
 func TestExpected_NewValidTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -134,6 +139,8 @@ func requireMakeBlocks(ctx context.Context, require *require.Assertions, pTipSet
 // completely set up a valid state tree with a valid matching TipSet.  RunStateTransition is tested
 // with integration tests (see chain_daemon_test.go for example)
 func TestExpected_RunStateTransition_validateMining(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -190,6 +197,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 }
 
 func TestIsWinningTicket(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	minerAddress := address.NewForTestGetter()()
@@ -255,6 +264,8 @@ func TestIsWinningTicket(t *testing.T) {
 }
 
 func TestCompareTicketPower(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	cases := []struct {
 		ticket     byte
@@ -284,6 +295,8 @@ func TestCompareTicketPower(t *testing.T) {
 }
 
 func TestCreateChallenge(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	cases := []struct {
