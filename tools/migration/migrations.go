@@ -2,6 +2,9 @@ package migration
 
 import (
 	"fmt"
+
+	"github.com/filecoin-project/go-filecoin/config"
+
 	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 	"os"
 
@@ -134,5 +137,5 @@ func makeMigl() (*Migl, error) {
 		return nil, err
 	}
 	migl := NewMigl(logfile)
-	return 	&migl, nil
+	return &migl, nil
 }
