@@ -3,10 +3,14 @@ module github.com/filecoin-project/go-filecoin/tools/migration
 go 1.12
 
 require (
-	github.com/filecoin-project/go-filecoin v0.1.4
-	github.com/filecoin-project/go-leb128 v0.0.0-8d79a54895432c34a67d29f701fdf7180ded9047 // indirect
+	github.com/filecoin-project/go-filecoin v0.0.0-20190325235425-966fe7591975
+	github.com/ipfs/go-ipfs-cmds v0.0.5
+	github.com/ipfs/go-log v0.0.1
+	github.com/pkg/errors v0.8.1
+	github.com/prometheus/common v0.3.0
+	github.com/stretchr/testify v1.3.0
 )
 
-// uncomment this for testing ? see
+// uncomment below for testing ? see
 // https://github.com/golang/go/wiki/Modules#is-it-possible-to-add-a-module-to-a-multi-module-repository
-// replace github.com/filecoin-project/go-filecoin v0.1.4 => ../../
+replace github.com/filecoin-project/go-filecoin v0.0.0-20190325235425-966fe7591975 => ../../
