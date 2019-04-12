@@ -3,10 +3,13 @@ package net
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPeerAddrsToPeerInfosSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	addrs := []string{
@@ -20,6 +23,8 @@ func TestPeerAddrsToPeerInfosSuccess(t *testing.T) {
 }
 
 func TestPeerAddrsToPeerInfosFailure(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	addrs := []string{

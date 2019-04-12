@@ -8,9 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestMessageMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 
@@ -48,6 +51,8 @@ func TestMessageMarshal(t *testing.T) {
 }
 
 func TestMessageCid(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 
@@ -78,6 +83,8 @@ func TestMessageCid(t *testing.T) {
 }
 
 func TestMessageString(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	addrGetter := address.NewForTestGetter()

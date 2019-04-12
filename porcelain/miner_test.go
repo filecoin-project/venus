@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,6 +81,8 @@ func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte,
 }
 
 func TestMinerCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -160,6 +163,8 @@ func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backe
 }
 
 func TestMinerPreviewCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("returns the price given by message preview", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -247,6 +252,8 @@ func (mtp *minerSetPricePlumbing) ConfigGet(dottedPath string) (interface{}, err
 }
 
 func TestMinerSetPrice(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("reports error when get miner address fails", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -437,6 +444,8 @@ func (mtp *minerPreviewSetPricePlumbing) ConfigGet(dottedPath string) (interface
 }
 
 func TestMinerPreviewSetPrice(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("returns the gas cost given by preview query", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -459,6 +468,8 @@ func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to
 }
 
 func TestMinerGetOwnerAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
@@ -475,6 +486,8 @@ func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, t
 }
 
 func TestMinerGetPeerID(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -501,6 +514,8 @@ func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 }
 
 func TestMinerGetAsk(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

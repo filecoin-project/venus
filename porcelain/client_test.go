@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +74,7 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 }
 
 func TestClientListAsks(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)

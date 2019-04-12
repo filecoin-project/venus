@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,6 +14,8 @@ import (
 // things.
 
 func TestBasicEncodingRoundTrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	addrGetter := address.NewForTestGetter()
 
 	cases := map[string][]interface{}{
@@ -56,6 +59,8 @@ type fooTestStruct struct {
 }
 
 func TestToValuesFailures(t *testing.T) {
+	tf.UnitTest(t)
+
 	cases := []struct {
 		name   string
 		vals   []interface{}

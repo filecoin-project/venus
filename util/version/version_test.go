@@ -4,10 +4,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/util/version"
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCheck(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	// Filecoin currently requires go >= 1.12.1

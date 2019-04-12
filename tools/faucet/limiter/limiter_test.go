@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,6 +17,8 @@ func (mt *MockTime) Until(t time.Time) time.Duration {
 }
 
 func TestReady(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Not ready before time elapses", func(t *testing.T) {
@@ -86,6 +89,8 @@ func TestReady(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Ready after clear", func(t *testing.T) {
@@ -109,6 +114,8 @@ func TestClear(t *testing.T) {
 }
 
 func TestClean(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Removes expired values", func(t *testing.T) {

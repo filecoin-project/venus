@@ -3,10 +3,13 @@ package bls
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBLSSigningAndVerification(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	// generate private keys

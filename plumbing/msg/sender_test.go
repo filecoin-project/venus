@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -24,7 +25,7 @@ import (
 )
 
 func TestSend(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("invalid message rejected", func(t *testing.T) {
 		assert := assert.New(t)
@@ -124,10 +125,10 @@ func TestSend(t *testing.T) {
 }
 
 func TestNextNonce(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("account exists but wrong type", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		address := address.NewForTestGetter()()
@@ -140,7 +141,7 @@ func TestNextNonce(t *testing.T) {
 	})
 
 	t.Run("account exists, gets correct value", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		address := address.NewForTestGetter()()
 		actor, err := account.NewActor(types.NewAttoFILFromFIL(0))
@@ -153,7 +154,7 @@ func TestNextNonce(t *testing.T) {
 	})
 
 	t.Run("gets nonce from highest message queue value", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		outbox := core.NewMessageQueue()
 		addr := mockSigner.Addresses[0]

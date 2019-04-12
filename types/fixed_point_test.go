@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,6 +22,8 @@ func MustFixedToBig(f uint64, a *assert.Assertions) *big.Float {
 }
 
 func TestBigToFixed(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	t.Run("truncate decimal", func(t *testing.T) {
 		x := 30004828.209239083240324
@@ -50,6 +53,8 @@ func TestBigToFixed(t *testing.T) {
 }
 
 func TestFixedToBig(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	t.Run("whole number", func(t *testing.T) {
 		x := uint64(81053000)
@@ -68,6 +73,8 @@ func TestFixedToBig(t *testing.T) {
 }
 
 func TestFixedRoundTrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	w := 4000001.530
 	bigW := big.NewFloat(w)
@@ -76,6 +83,8 @@ func TestFixedRoundTrip(t *testing.T) {
 }
 
 func TestOversized(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Run("Oversized *big.Float", func(t *testing.T) {

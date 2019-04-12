@@ -20,6 +20,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -340,6 +341,8 @@ func requirePutBlocks(require *require.Assertions, f *th.TestFetcher, blocks ...
 
 // Syncer syncs a single block
 func TestSyncOneBlock(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -356,6 +359,8 @@ func TestSyncOneBlock(t *testing.T) {
 
 // Syncer syncs a single tipset.
 func TestSyncOneTipSet(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -371,6 +376,8 @@ func TestSyncOneTipSet(t *testing.T) {
 
 // Syncer syncs one tipset, block by block.
 func TestSyncTipSetBlockByBlock(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	pt := th.NewTestPowerTableView(1, 1)
 	assert := assert.New(t)
 	require := require.New(t)
@@ -394,6 +401,8 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 
 // Syncer syncs a chain, tipset by tipset.
 func TestSyncChainTipSetByTipSet(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -427,6 +436,8 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 
 // Syncer syncs a whole chain given only the head cids.
 func TestSyncChainHead(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -448,6 +459,8 @@ func TestSyncChainHead(t *testing.T) {
 
 // Syncer determines the heavier fork.
 func TestSyncIgnoreLightFork(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -489,6 +502,8 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 
 // Correctly sync a heavier fork
 func TestHeavierFork(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -561,6 +576,8 @@ func TestHeavierFork(t *testing.T) {
 
 // Syncer errors if blocks don't form a tipset
 func TestBlocksNotATipSet(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -578,6 +595,8 @@ func TestBlocksNotATipSet(t *testing.T) {
 
 // Syncer is capable of recovering from a fork reorg after Load.
 func TestLoadFork(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, r, blockSource := initSyncTestDefault(require)
@@ -676,6 +695,8 @@ func TestLoadFork(t *testing.T) {
 // The last operation will fail if the state of subset {B1, B2} is not
 // kept in the store because syncing C1 requires retrieving parent state.
 func TestSubsetParent(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, _, _, blockSource := initSyncTestDefault(require)
@@ -728,6 +749,8 @@ func TestSubsetParent(t *testing.T) {
 
 // Check that the syncer correctly adds widened chain ancestors to the store.
 func TestWidenChainAncestor(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	syncer, chainStore, _, blockSource := initSyncTestDefault(require)
@@ -811,6 +834,8 @@ func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, b
 //
 // Therefore the syncer should set the head of the store to the union of the links..
 func TestHeaviestIsWidenedAncestor(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	pt := &powerTableForWidenTest{}
 	assert := assert.New(t)
 	require := require.New(t)
@@ -891,6 +916,8 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 // and I can't figure out why because we pass in the correct blockstore to createminerwithpower.
 
 func TestTipSetWeightDeep(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	r := repo.NewInMemoryRepo()

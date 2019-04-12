@@ -11,11 +11,14 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestStatePutGet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
@@ -57,6 +60,8 @@ func TestStatePutGet(t *testing.T) {
 }
 
 func TestStateErrors(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
@@ -76,6 +81,8 @@ func TestStateErrors(t *testing.T) {
 }
 
 func TestStateGetOrCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
@@ -118,6 +125,8 @@ func TestStateGetOrCreate(t *testing.T) {
 }
 
 func TestGetAllActors(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()

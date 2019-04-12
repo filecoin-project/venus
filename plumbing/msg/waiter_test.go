@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -54,7 +55,8 @@ func setupTestWithGif(require *require.Assertions, gif consensus.GenesisInitFunc
 }
 
 func TestWait(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -109,7 +111,8 @@ func testWaitNew(ctx context.Context, assert *assert.Assertions, require *requir
 }
 
 func TestWaitError(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -132,7 +135,8 @@ func testWaitError(ctx context.Context, assert *assert.Assertions, require *requ
 }
 
 func TestWaitConflicting(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -216,7 +220,8 @@ func TestWaitConflicting(t *testing.T) {
 }
 
 func TestWaitRespectsContextCancel(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())

@@ -10,12 +10,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetAndPutWithEmptyStorage(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -98,6 +101,8 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 }
 
 func TestGetAndPutWithDataInStorage(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -143,6 +148,8 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 }
 
 func TestStorageHeadAndCommit(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -202,6 +209,8 @@ func TestStorageHeadAndCommit(t *testing.T) {
 }
 
 func TestDatastoreBacking(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -312,6 +321,8 @@ func TestDatastoreBacking(t *testing.T) {
 }
 
 func TestValidationAndPruning(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

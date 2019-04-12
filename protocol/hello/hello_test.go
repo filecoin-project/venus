@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -34,7 +35,8 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*types.TipSet, error) {
 }
 
 func TestHelloHandshake(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,7 +90,7 @@ func TestHelloHandshake(t *testing.T) {
 }
 
 func TestHelloBadGenesis(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -125,7 +127,7 @@ func TestHelloBadGenesis(t *testing.T) {
 }
 
 func TestHelloWrongVersion(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -159,7 +161,7 @@ func TestHelloWrongVersion(t *testing.T) {
 }
 
 func TestHelloWrongVersionTestDevnet(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -193,7 +195,7 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 }
 
 func TestHelloMultiBlock(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -8,10 +8,13 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChannelIDCreation(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	a := NewChannelID(123)
@@ -35,6 +38,8 @@ func TestChannelIDCreation(t *testing.T) {
 }
 
 func TestChannelIDCborMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("CBOR decode(encode(ChannelID)) == identity(ChannelID)", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -69,6 +74,8 @@ func TestChannelIDCborMarshaling(t *testing.T) {
 }
 
 func TestChannelIDJsonMarshaling(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("JSON unmarshal(marshal(ChannelID)) == identity(ChannelID)", func(t *testing.T) {
 		assert := assert.New(t)
 

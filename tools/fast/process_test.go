@@ -41,7 +41,7 @@ type testJSONOutParam struct {
 
 // A sanity test to ensure returning strings, json, and ldjson works as expected.
 func TestRunCmds(t *testing.T) {
-	tf.IntegrationTest(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -88,7 +88,7 @@ func TestRunCmds(t *testing.T) {
 }
 
 func TestInitDaemon(t *testing.T) {
-	tf.IntegrationTest(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -120,7 +120,7 @@ func TestInitDaemon(t *testing.T) {
 }
 
 func TestStartDaemon(t *testing.T) {
-	tf.IntegrationTest(t)
+	tf.UnitTest(t)
 
 	assert := assert.New(t)
 	require := require.New(t)

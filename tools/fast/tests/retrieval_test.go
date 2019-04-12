@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -30,6 +31,8 @@ func init() {
 
 // TestRetrieval exercises storing and retrieving with the filecoin protocols
 func TestRetrieval(t *testing.T) {
+	tf.FunctionalTest(t)
+
 	blocktime := time.Second * 5
 	sectorSize := int64(1016)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,6 +109,8 @@ func validPaymentsConfig() CreatePaymentsParams {
 }
 
 func TestCreatePayments(t *testing.T) {
+	tf.UnitTest(t)
+
 	successPlumbing := newTestCreatePaymentsPlumbing()
 
 	t.Run("Creates channel and creates payments", func(t *testing.T) {
