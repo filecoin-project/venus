@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -120,7 +121,8 @@ func TestIngestionValidator(t *testing.T) {
 	api.ActorAddr = alice
 	api.Actor = act
 
-	validator := consensus.NewIngestionValidator(api)
+	mpoolCfg := config.NewDefaultConfig().Mpool
+	validator := consensus.NewIngestionValidator(api, mpoolCfg)
 	ctx := context.Background()
 
 	t.Run("Validates extreme nonce gaps", func(t *testing.T) {
@@ -130,7 +132,7 @@ func TestIngestionValidator(t *testing.T) {
 		msg := newMessage(t, alice, bob, 100, 5, 0, 0)
 		assert.NoError(validator.Validate(ctx, msg))
 
-		highNonce := uint64(act.Nonce + consensus.MaxNonceGap + 10)
+		highNonce := uint64(act.Nonce + mpoolCfg.MaxNonceGap + 10)
 		msg = newMessage(t, alice, bob, highNonce, 5, 0, 0)
 		err := validator.Validate(ctx, msg)
 		require.Error(err)
