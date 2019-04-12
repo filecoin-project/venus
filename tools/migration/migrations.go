@@ -1,22 +1,22 @@
-package migrations
+package migration
 
 import (
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/tools"
+	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 	"os"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/go-filecoin/repo"
 )
 
 // runner
 
 type Migrator interface {
-	Migrate() error
+	Migrate(oldRepo, newRepo *os.File) error
 	Describe()
-	BuildOnly() error
-	Install() error
-	Validate() error
+	Validate(oldRepo, newRepo *os.File) error
 }
 
 func Run(req *cmds.Request) {
@@ -63,23 +63,39 @@ func Run(req *cmds.Request) {
 	// or do we figure out what migration + runner to build and build it, and then run?
 	// or does this line get updated to the latest migrator?
 	// or ?
-	mig = tools.NewMigrator_1_2(oldRepo, newRepo, true)
+	mgl, err := makeMigl()
+	if err != nil {
+		log.Fatalf("could not make Migl logger, %v", err)
+	}
+	mig = migrate_1_to_2.NewMigrator_1_2(mgl)
 
-	// TODO: do these calls with reflections?
 	switch req.Arguments[0] {
 	case "Describe":
 		mig.Describe()
 		err = nil
 	case "BuildOnly":
-		err = mig.BuildOnly()
+		err = mig.Migrate(oldRepo, newRepo)
 	case "Install":
-		// runner controls the installation, not migrator:
-		err = mig.Install()
-	case "Run":
-		if err = mig.Migrate(); err != nil {
+		// runner controls the installation, not migrator
+		// check that the migration completed successfully
+		if err = install(oldRepo, newRepo); err != nil {
 			log.Error(err)
-		} else {
-			err = mig.Install()
+			return
+		}
+	case "Run":
+		if err = mig.Migrate(oldRepo, newRepo); err != nil {
+			log.Error(err) // replace these with a call to a logging/output func that respects verbose
+			return
+		}
+
+		if err = mig.Validate(oldRepo, newRepo); err != nil {
+			log.Error(err)
+			return
+		}
+		// run install
+		if err = install(oldRepo, newRepo); err != nil {
+			log.Error(err)
+			return
 		}
 	}
 	if err != nil {
@@ -89,4 +105,34 @@ func Run(req *cmds.Request) {
 	log.Info("============================================================================================")
 	log.Infof("Done.  Please see log for more detail: %s", logpath)
 	log.Info("============================================================================================")
+}
+
+// fs access and we should know the location since we know the previous version.
+func getOldFSRepo(req *cmds.Request) (repo.FSRepo, error) {
+	return repo.FSRepo{}, nil
+}
+
+// fs access in the old repo
+func getCurrentRepoVersion(req *cmds.Request) string {
+	return ""
+}
+
+// 	getNewRepoVersion() string
+// also just fs access
+func getOldConfig() *config.Config {
+	return &config.Config{}
+}
+
+// swap old repo for new
+func install(oldRepo, newRepo *os.File) error {
+	return nil
+}
+
+func makeMigl() (*Migl, error) {
+	logfile, err := os.OpenFile("/tmp/foo.txt", os.O_WRONLY, os.ModeExclusive)
+	if err != nil {
+		return nil, err
+	}
+	migl := NewMigl(logfile)
+	return 	&migl, nil
 }
