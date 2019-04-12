@@ -26,12 +26,11 @@ func TestMigrator_Describe(t *testing.T) {
 	require := req.New(t)
 	migl := requireMakeMigl(require)
 	t.Run("describe outputs some stuff", func(t *testing.T) {
-
 		nm := NewMigrator_1_2(migl)
 		output := captureOutput(func() {
 			nm.Describe()
 		})
-		assert.Equal("removed certificate www.example.com\n", output)
+		assert.Equal("foo", output)
 
 	})
 
