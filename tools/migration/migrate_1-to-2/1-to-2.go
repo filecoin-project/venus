@@ -1,15 +1,14 @@
 package migrate_1_to_2
 
 import (
-	"os"
-
 	"github.com/pkg/errors"
+	"os"
 )
 
 const (
-	Description      = "a test migrator that just updates the repo version"
 	MigrationVersion = "0.2"
 	PreviousVersion  = "0.1"
+	Description      = "a test migrator that just updates the repo version"
 )
 
 var (
@@ -21,10 +20,7 @@ var (
 //  output repos, or a read-write repo to be migrated in place.
 
 type MigrationLogger interface {
-	Debug(string)
-	Error(string)
-	Info(string)
-	Warn(string)
+	Print(string)
 }
 
 type migrator struct {
@@ -39,7 +35,7 @@ func NewMigrator_1_2(log MigrationLogger) *migrator {
 // Describe emits a description of what this migrator will do.
 // Verbose option is ignored; output is not logged.
 func (mig *migrator) Describe() {
-	mig.log.Info(Description)
+	mig.log.Print(Description)
 	// use the emitter to output description
 }
 
@@ -49,7 +45,7 @@ func (mig *migrator) Migrate(oldRepo, newRepo *os.File) error {
 	// migrateStep1
 	// migrateStep2
 	// migrateStep3
-	mig.log.Info("Migrate succeeded")
+	mig.log.Print("Migrate succeeded")
 	return nil
 }
 
