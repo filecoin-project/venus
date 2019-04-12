@@ -20,6 +20,8 @@ type Datastore interface {
 
 // Repo is a representation of all persistent data in a filecoin node.
 type Repo interface {
+	NewFunc() string
+	
 	Config() *config.Config
 	// ReplaceConfig replaces the current config, with the newly passed in one.
 	ReplaceConfig(cfg *config.Config) error

@@ -194,6 +194,10 @@ func InitFSRepo(p string, cfg *config.Config) error {
 	return nil
 }
 
+func (r *FSRepo) NewFunc() string {
+	return "6 x 7"
+}
+
 // Config returns the configuration object.
 func (r *FSRepo) Config() *config.Config {
 	r.lk.RLock()

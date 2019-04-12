@@ -81,6 +81,10 @@ func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
 	return nil
 }
 
+func (mr *MemRepo) NewFunc() string {
+	return "6 x 7"
+}
+
 // Datastore returns the datastore.
 func (mr *MemRepo) Datastore() Datastore {
 	return mr.D
