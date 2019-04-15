@@ -6,10 +6,8 @@ import (
 )
 
 // Test enablement flags
-// TODO(frrist): All tests are enabled by default, this allows for changes to CI
-// to be pushed into a follow on. In the follow on these flags will be passed to
-// CI jobs and their default values will go back to false.
-var functionalTest = flag.Bool("functional", true, "Run the functional go tests")
+// Only run unit and integration tests by default, all others require their flags to be set.
+var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
 var integrationTest = flag.Bool("integration", true, "Run the integration go tests")
 var unitTest = flag.Bool("unit", true, "Run the unit go tests")
 
