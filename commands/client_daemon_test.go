@@ -1,6 +1,7 @@
 package commands_test
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -195,4 +196,37 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 	assert.Contains(result, "0\t240000\t10")
 	assert.Contains(result, "0\t480000\t20")
 	assert.Contains(result, "0\t720000\t30")
+}
+
+func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	assert := assert.New(t)
+	minerDaemon := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.AutoSealInterval("1"),
+	).Start()
+	defer minerDaemon.Shutdown()
+
+	clientDaemon := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		th.DefaultAddress(fixtures.TestAddresses[1]),
+	).Start()
+	defer clientDaemon.ShutdownSuccess()
+
+	minerDaemon.RunSuccess("mining", "start")
+	minerDaemon.UpdatePeerID()
+
+	minerDaemon.ConnectSuccess(clientDaemon)
+
+	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
+
+	dataCid := clientDaemon.RunWithStdin(bytes.NewReader(make([]byte, 3000)), "client", "import").ReadStdoutTrimNewlines()
+
+	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
+
+	assert.Contains(proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
 }
