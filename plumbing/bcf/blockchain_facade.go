@@ -27,6 +27,16 @@ type BlockChainFacade struct {
 	cst *hamt.CborIpldStore
 }
 
+var (
+	// ErrNoMethod is returned by Get when there is no method signature (eg, transfer).
+	ErrNoMethod = errors.New("no method")
+	// ErrNoActorImpl is returned by Get when the actor implementation doesn't exist, eg
+	// the actor address is an empty actor, an address that has received a transfer of FIL
+	// but hasn't yet been upgraded to an account actor. (The actor implementation might
+	// also genuinely be missing, which is not expected.)
+	ErrNoActorImpl = errors.New("no actor implementation")
+)
+
 // NewBlockChainFacade returns a new BlockChainFacade.
 func NewBlockChainFacade(chainReader chain.ReadStore, cst *hamt.CborIpldStore) *BlockChainFacade {
 	return &BlockChainFacade{
@@ -91,14 +101,14 @@ func (chn *BlockChainFacade) LsActors(ctx context.Context) (<-chan state.GetAllA
 // output of an actor method call (message).
 func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
 	if method == "" {
-		return nil, errors.New("no method")
+		return nil, ErrNoMethod
 	}
 
 	actor, err := chn.GetActor(ctx, actorAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get actor")
 	} else if actor.Empty() {
-		return nil, errors.New("no actor implementation")
+		return nil, ErrNoActorImpl
 	}
 
 	st, err := chn.getLatestState(ctx)
