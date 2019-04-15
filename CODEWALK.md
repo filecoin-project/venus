@@ -558,7 +558,9 @@ The goal of this is to unify duplicated code paths which bootstrap and drive `go
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
 Tests are typically run with `go run ./build/*.go test`. 
-It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. By default it will only run unit tests, to run functional or integration tests you will need to pass their corresponding flags, for a complete description of testing flags see [Test Categorization](#test-categorization).
+It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests.
+By default it will run unit and integration tests, but skip more expensive functional and sectorbuilder tests.
+For a complete description of testing flags see [Test Categorization](#test-categorization).
 Vanilla `go test` also works, after build scripts have built and installed appropriate dependencies.
 
 #### Test Categorization
@@ -577,6 +579,11 @@ An integration test exercises integrated functionality and/or multiple nodes and
 By default functional tests are disabled when issuing the `go test` command.
 To enable pass `-functional`.
 A functional test is an extensive multi-node orchestration or resource-intensive test that may take minutes to run.
+
+##### Sector Builder Tests (`-sectorbuilder`)
+By default sectorbuilder tests are disabled when issuing the `go test` command.
+To enable pass `-sectorbuilder`.
+A sectorbuilder test is a resource-intensive test that may take minutes to run.
 
 ## Dependencies
 
