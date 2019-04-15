@@ -2,6 +2,7 @@ package cfg
 
 import (
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/pkg/errors"
 	"sync"
 )
 
@@ -32,4 +33,24 @@ func (s *Config) Set(dottedKey string, jsonString string) error {
 // Get gets a value from config
 func (s *Config) Get(dottedKey string) (interface{}, error) {
 	return s.repo.Config().Get(dottedKey)
+}
+
+type ProtocolParams struct {
+	AutoSealInterval uint
+}
+
+func (s *Config) ProtocolParams() (*ProtocolParams, error) {
+	autoSealIntervalInterface, err := s.Get("mining.autoSealIntervalSeconds")
+	if err != nil {
+		return nil, err
+	}
+
+	autoSealInterval, ok := autoSealIntervalInterface.(uint)
+	if !ok {
+		return nil, errors.New("Failed to read autoSealInterval from config")
+	}
+
+	return &ProtocolParams{
+		AutoSealInterval: autoSealInterval,
+	}, nil
 }
