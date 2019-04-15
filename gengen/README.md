@@ -34,6 +34,8 @@ Usage of ./gengen:
     	enables json output and writes it to the given file
   -seed int
     	provides the seed for randomization, defaults to current unix epoch (default 1553189402)
+  -test-proofs-mode boolean
+       configures sealing and PoSt generation to be less computationally expensive
 ```
 
 #### Configuration File

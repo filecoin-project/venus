@@ -50,7 +50,7 @@ func TestDownloadGenesis(t *testing.T) {
 		ctx,
 		th.ProjectRoot("tools/genesis-file-server/genesis-file-server"),
 		"--genesis-file-path",
-		th.ProjectRoot("fixtures/genesis.car"),
+		th.ProjectRoot("fixtures/test/genesis.car"),
 		"--port",
 		strconv.Itoa(port),
 	).Start()

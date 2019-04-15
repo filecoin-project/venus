@@ -59,6 +59,9 @@ type GenesisCfg struct {
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []Miner
+
+	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
+	ProofsMode proofs.Mode
 }
 
 // RenderedGenInfo contains information about a genesis block creation
@@ -100,7 +103,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 	storageMap := vm.NewStorageMap(bs)
 
-	if err := consensus.SetupDefaultActors(ctx, st, storageMap); err != nil {
+	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode); err != nil {
 		return nil, err
 	}
 

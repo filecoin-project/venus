@@ -146,19 +146,6 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	return sb, nil
 }
 
-// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes which
-// will fit into a newly-provisioned staged sector.
-func (sb *RustSectorBuilder) GetMaxUserBytesPerStagedSector() (numBytes uint64, err error) {
-	defer elapsed("GetMaxUserBytesPerStagedSector")()
-
-	scfg, err := proofs.CProofsMode(sb.sectorStoreType)
-	if err != nil {
-		return 0, errors.Wrap(err, "CSectorStoreType failed")
-	}
-
-	return uint64(C.get_max_user_bytes_per_staged_sector((*C.ConfiguredStore)(unsafe.Pointer(scfg)))), nil
-}
-
 // AddPiece writes the given piece into an unsealed sector and returns the id
 // of that sector.
 func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {

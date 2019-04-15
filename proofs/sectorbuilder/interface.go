@@ -39,10 +39,6 @@ type SectorBuilder interface {
 	// regardless of the number of times SectorSealResults is called.
 	SectorSealResults() <-chan SectorSealResult
 
-	// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes
-	// which will fit into a newly-provisioned staged sector.
-	GetMaxUserBytesPerStagedSector() (uint64, error)
-
 	// GeneratePoSt creates a proof-of-spacetime for the replicas managed by
 	// the SectorBuilder. Its output includes the proof-of-spacetime proof which
 	// is posted to the blockchain along with any faults. The proof can be

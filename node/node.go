@@ -18,6 +18,7 @@ import (
 	"github.com/ipfs/go-ipfs-exchange-interface"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
@@ -588,10 +589,19 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 }
 
 func (node *Node) setupMining(ctx context.Context) error {
-	// configure the underlying sector store, defaulting to the non-test version
-	proofsMode := proofs.LiveMode
-	if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-		proofsMode = proofs.TestMode
+	var proofsMode proofs.Mode
+	values, err := node.PorcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		address.StorageMarketAddress,
+		"getProofsMode",
+	)
+	if err != nil {
+		return errors.Wrap(err, "'getProofsMode' query message failed")
+	}
+
+	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
+		return errors.Wrap(err, "could not convert query message result to Mode")
 	}
 
 	// initialize a sector builder

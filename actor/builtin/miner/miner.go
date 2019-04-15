@@ -2,7 +2,6 @@ package miner
 
 import (
 	"math/big"
-	"os"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -58,6 +57,8 @@ const (
 	ErrAskNotFound = 40
 	// ErrInvalidSealProof signals that the passed in seal proof was invalid.
 	ErrInvalidSealProof = 41
+	// ErrGetProofsModeFailed indicates the call to get the proofs mode failed.
+	ErrGetProofsModeFailed = 42
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -71,6 +72,7 @@ var Errors = map[uint8]error{
 	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
+	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
 }
 
 // Actor is the miner actor.
@@ -460,12 +462,12 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		// the PoRep verification operation needs to know some things (e.g. size)
 		// about the sector for which the proof was generated in order to verify.
 		//
-		// It is undefined behavior for a miner using "LiveMode" to verify a
-		// proof created by a miner using "TestMode" (and vice-versa).
+		// It is undefined behavior for a miner using "LiveMode" to verify a proof
+		// created by a miner in "TestMode"(and vice-versa).
 		//
-		proofsMode := proofs.LiveMode
-		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-			proofsMode = proofs.TestMode
+		proofsMode, err := GetProofsMode(ctx)
+		if err != nil {
+			return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
 		}
 
 		req := proofs.VerifySealRequest{}
@@ -675,9 +677,9 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 			// It is undefined behavior for a miner using "LiveMode" to verify a
 			// proof created by a miner using "TestMode" (and vice-versa).
 			//
-			proofsMode := proofs.LiveMode
-			if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-				proofsMode = proofs.TestMode
+			proofsMode, err := GetProofsMode(ctx)
+			if err != nil {
+				return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
 			}
 
 			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
@@ -751,4 +753,16 @@ func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (pro
 	copy(seed[:], bytes)
 
 	return seed, nil
+}
+
+func GetProofsMode(ctx exec.VMContext) (proofs.Mode, error) {
+	var proofsMode proofs.Mode
+	msgResult, _, err := ctx.Send(address.StorageMarketAddress, "getProofsMode", types.NewZeroAttoFIL(), nil)
+	if err != nil {
+		return proofs.TestMode, xerrors.Wrap(err, "'getProofsMode' message failed")
+	}
+	if err := cbor.DecodeInto(msgResult[0], &proofsMode); err != nil {
+		return proofs.TestMode, xerrors.Wrap(err, "could not unmarshall sector store type")
+	}
+	return proofsMode, nil
 }

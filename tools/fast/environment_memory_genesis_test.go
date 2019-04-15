@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/proofs"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
 )
@@ -41,7 +42,7 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 		require.NoError(err)
 		defer os.RemoveAll(testDir)
 
-		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir)
+		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, proofs.TestMode)
 		localenv := env.(*EnvironmentMemoryGenesis)
 		assert.NoError(err)
 		assert.NotNil(env)
@@ -66,7 +67,7 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 		require.NoError(err)
 		defer os.RemoveAll(testDir)
 
-		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir)
+		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, proofs.TestMode)
 		require.NoError(err)
 
 		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, EnvironmentOpts{})

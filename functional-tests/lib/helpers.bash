@@ -51,7 +51,7 @@ function free_port {
 }
 
 function import_private_key {
-  ./go-filecoin wallet import ./fixtures/"$1".key \
+  ./go-filecoin wallet import "${FIXTURES_PATH}/$1".key \
     --repodir="$2"
 }
 

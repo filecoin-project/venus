@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -19,9 +21,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func createTestMiner(assert *assert.Assertions, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
@@ -361,4 +360,52 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", ancestors, []proofs.PoStProof{proof})
 	require.NoError(err)
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
+}
+
+func TestGetProofsMode(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	ctx := context.Background()
+	st, vms := core.CreateStorages(ctx, t)
+
+	gasTracker := vm.NewGasTracker()
+	gasTracker.MsgGasLimit = 99999
+
+	t.Run("in TestMode", func(t *testing.T) {
+		vmCtx := vm.NewVMContext(vm.NewContextParams{
+			From:        &actor.Actor{},
+			To:          &actor.Actor{},
+			Message:     &types.Message{},
+			State:       state.NewCachedStateTree(st),
+			StorageMap:  vms,
+			GasTracker:  gasTracker,
+			BlockHeight: types.NewBlockHeight(0),
+			Ancestors:   []types.TipSet{},
+		})
+
+		require.NoError(consensus.SetupDefaultActors(ctx, st, vms, proofs.TestMode))
+
+		mode, err := GetProofsMode(vmCtx)
+		require.NoError(err)
+		assert.Equal(proofs.TestMode, mode)
+	})
+
+	t.Run("in LiveMode", func(t *testing.T) {
+		vmCtx := vm.NewVMContext(vm.NewContextParams{
+			From:        &actor.Actor{},
+			To:          &actor.Actor{},
+			Message:     &types.Message{},
+			State:       state.NewCachedStateTree(st),
+			StorageMap:  vms,
+			GasTracker:  gasTracker,
+			BlockHeight: types.NewBlockHeight(0),
+			Ancestors:   []types.TipSet{},
+		})
+
+		require.NoError(consensus.SetupDefaultActors(ctx, st, vms, proofs.LiveMode))
+
+		mode, err := GetProofsMode(vmCtx)
+		require.NoError(err)
+		assert.Equal(proofs.LiveMode, mode)
+	})
 }

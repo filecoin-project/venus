@@ -167,10 +167,18 @@ func generateGenesis() {
 	log.Println("Generating genesis...")
 	runCmd(cmd([]string{
 		"./gengen/gengen",
-		"--keypath", "fixtures",
-		"--out-car", "fixtures/genesis.car",
-		"--out-json", "fixtures/gen.json",
+		"--keypath", "fixtures/live",
+		"--out-car", "fixtures/live/genesis.car",
+		"--out-json", "fixtures/live/gen.json",
 		"--config", "./fixtures/setup.json",
+	}...))
+	runCmd(cmd([]string{
+		"./gengen/gengen",
+		"--keypath", "fixtures/test",
+		"--out-car", "fixtures/test/genesis.car",
+		"--out-json", "fixtures/test/gen.json",
+		"--config", "./fixtures/setup.json",
+		"--test-proofs-mode",
 	}...))
 }
 
