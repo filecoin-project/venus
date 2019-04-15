@@ -17,7 +17,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// BlockChainFacade is a simple facade for the chain core api
+// BlockChainFacade is a facade pattern for the chain core api. It provides a
+// simple, unified interface to the complex set of calls in chain, state, exec,
+// and sampling for use in protocols and commands.
 type BlockChainFacade struct {
 	// To get the head tipset state root.
 	reader chain.ReadStore
