@@ -554,8 +554,17 @@ The goal of this is to unify duplicated code paths which bootstrap and drive `go
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
 Tests are typically run with `go run ./build/*.go test`. 
-It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. 
+It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. By default it will only run unit tests, to run functional or integration tests you will need to pass their corresponding flags, for a complete description of testing flags see [Test Categorization](#test-categorization).
 Vanilla `go test` also works, after build scripts have built and installed appropriate dependencies.
+
+#### Test Categorization
+
+- Functional Tests (`-functional`)
+  - By default functional tests are disabled when issuing the `go test` command. To enable pass `-functional=true`.  A functional test is any test that ensures a filecoin node or set of filecoin nodes satisfies a protocol definition, for example the Retrieval Test. Functional tests usually take a minute or more to run,
+- Integration Tests (`-integration`)
+  - By default integration tests are disabled when issuing the `go test` command. To enable pass `-integration=true`. A integration test is any test that ensures a filecoin node or set of filecoin nodes satisfy part of a protocol definition, for example TestMinerCreate ensures a node is capable of creating a miner. Integration tests usually complete in seconds.
+- Unit Tests (`-unit`)
+  - By default unit tests are enabled when issuing the `go test` command. To disable pass `-unit=false`. A unit test is any test that ensures a component of a filecoin node functions correctly. Unit tests usually complete in under a second.
 
 ## Dependencies
 
