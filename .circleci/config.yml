@@ -68,7 +68,7 @@ commands:
           no_output_timeout: 30m
           command: |
             trap "go run github.com/jstemmer/go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
-            TESTS=$(go list ./... | circleci tests split)
+            TESTS=$(go list ./... | circleci tests split --split-by=timings)
             FILECOIN_RUN_SECTOR_BUILDER_TESTS=<< parameters.sector_builder_tests >> go test -timeout 30m -functional=<< parameters.functional >> -integration=<< parameters.integration >> -unit=<< parameters.unit >> -parallel 2 -v ${TESTS} 2>&1 | tee test-results/go-test-suite/go-test.out
   git_fetch_all_tags:
     steps:
@@ -392,21 +392,12 @@ jobs:
           cmd: "build"
 
       - run:
-          name: Functional Tests
-          command: ./functional-tests/run
-
-      - run:
           name: Create linux bundle
           command: ./scripts/build-bundle.sh
 
       - store_artifacts:
           path: "/go/src/github.com/filecoin-project/go-filecoin/bundle/"
           destination: bundle
-
-      - when:
-          condition: << parameters.nightly >>
-          steps:
-            - create_nightly_version
 
       - persist_to_workspace:
           root: "."
@@ -420,9 +411,9 @@ jobs:
   unit_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 8
+    parallelism: 4
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
-    resource_class: medium
+    resource_class: large
     parameters:
       <<: *sector_builder_tests_param
       <<: *nightly_param
@@ -476,9 +467,9 @@ jobs:
   integration_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 8
+    parallelism: 4
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
-    resource_class: medium
+    resource_class: large
     parameters:
       <<: *sector_builder_tests_param
       <<: *nightly_param
@@ -531,12 +522,15 @@ jobs:
           unit: "false"
           integration: "true"
 
+      - store_test_results:
+          path: test-results
+
   functional_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 8
+    parallelism: 4
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
-    resource_class: medium
+    resource_class: large
     parameters:
       <<: *sector_builder_tests_param
       <<: *nightly_param
@@ -589,6 +583,9 @@ jobs:
           unit: "false"
           integration: "false"
           functional: "true"
+
+      - store_test_results:
+          path: test-results
 
   publish_release:
     docker:
@@ -862,7 +859,14 @@ workflows:
               only:
                 - /^\d+\.\d+\.\d+$/
 
-      - deps_linux
+      - deps_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^\d+\.\d+\.\d+$/
       - build_linux:
           requires:
             - deps_linux
@@ -922,7 +926,14 @@ workflows:
               only:
                 - /^test\-devnet\-\d+\.\d+\.\d+$/
 
-      - deps_linux
+      - deps_linux:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^test\-devnet\-\d+\.\d+\.\d+$/
 
       - build_linux:
           requires:
