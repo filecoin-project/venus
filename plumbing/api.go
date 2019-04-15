@@ -138,7 +138,7 @@ func (api *API) ChainHead() (*types.TipSet, error) {
 	return api.chain.Head()
 }
 
-// ChainLs returns a channel of tipsets from head to genesis
+// ChainLs returns an iterator of tipsets from head to genesis
 func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 	return api.chain.Ls(ctx)
 }
