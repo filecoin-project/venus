@@ -139,7 +139,7 @@ func newTestClientAPI(require *require.Assertions) *clientTestAPI {
 	}
 }
 
-func (ctp *clientTestAPI) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
+func (ctp *clientTestAPI) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ctp.blockHeight, nil
 }
 

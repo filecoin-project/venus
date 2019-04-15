@@ -47,7 +47,7 @@ var minerPledgeCmd = &cmds.Command{
 			return err
 		}
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -389,7 +389,7 @@ var minerOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -428,7 +428,7 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -439,7 +439,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		}
 		power := big.NewInt(0).SetBytes(bytes[0])
 
-		bytes, _, err = GetPorcelainAPI(env).MessageQuery(
+		bytes, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			address.StorageMarketAddress,

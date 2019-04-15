@@ -23,10 +23,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -43,7 +43,7 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap      exchange.Interface
-	chain        chain.ReadStore
+	chain        *bcf.BlockChainFacade
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
@@ -53,7 +53,6 @@ type API struct {
 	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
 	network      *net.Network
-	sigGetter    *mthdsig.Getter
 	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
@@ -61,7 +60,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap      exchange.Interface
-	Chain        chain.ReadStore
+	Chain        *bcf.BlockChainFacade
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
@@ -72,7 +71,6 @@ type APIDeps struct {
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
 	Outbox       *core.MessageQueue
-	SigGetter    *mthdsig.Getter
 	Wallet       *wallet.Wallet
 }
 
@@ -92,17 +90,26 @@ func New(deps *APIDeps) *API {
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		outbox:       deps.Outbox,
-		sigGetter:    deps.SigGetter,
 		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
 	}
+}
+
+// ActorGet returns an actor from the latest state on the chain
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	return api.chain.GetActor(ctx, addr)
 }
 
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
 func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return api.sigGetter.Get(ctx, actorAddr, method)
+	return api.chain.GetActorSignature(ctx, actorAddr, method)
+}
+
+// ActorLs returns a channel with actors from the latest state on the chain
+func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+	return api.chain.LsActors(ctx)
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.
@@ -121,43 +128,26 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
 }
 
+// ChainGetBlock gets a block by CID
+func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
+	return api.chain.GetBlock(ctx, id)
+}
+
 // ChainHead returns the head tipset
-func (api *API) ChainHead(ctx context.Context) types.TipSet {
+func (api *API) ChainHead() (*types.TipSet, error) {
 	return api.chain.Head()
 }
 
-// GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
-// `TipSet` with height `descendantBlockHeight` in the heaviest chain.
-func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return chain.GetRecentAncestorsOfHeaviestChain(ctx, api.chain, descendantBlockHeight)
+// ChainLs returns an iterator of tipsets from head to genesis
+func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
+	return api.chain.Ls(ctx)
 }
 
-// ChainLs returns a channel of tipsets from head to genesis
-func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	return api.chain.BlockHistory(ctx, api.chain.Head())
-}
-
-// ActorGet returns an actor from the latest state on the chain
-func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	state, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetActor(ctx, addr)
-}
-
-// ActorLs returns a slice of actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetAllActors(ctx, st), nil
-}
-
-// BlockGet gets a block by CID
-func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return api.chain.GetBlock(ctx, id)
+// ChainSampleRandomness produces a slice of random bytes sampled from a TipSet
+// in the blockchain at a given height, useful for things like PoSt challenge seed
+// generation.
+func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 
 // DealsLs a slice of all storagedeals in the local datastore and possibly an error
@@ -209,7 +199,7 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 

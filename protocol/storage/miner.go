@@ -69,16 +69,18 @@ type Miner struct {
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
 type minerPorcelain interface {
-	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
+	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
+
+	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
-	SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 
 	DealsLs() ([]*storagedeal.Deal, error)
 	DealGet(cid.Cid) *storagedeal.Deal
 	DealPut(*storagedeal.Deal) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -86,7 +88,6 @@ type minerPorcelain interface {
 // are moving off of node and into the porcelain api (see porcelainAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the porcelain api.
 type node interface {
-	BlockHeight() (*types.BlockHeight, error)
 	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
@@ -207,7 +208,7 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	}
 
 	// start with current block height
-	blockHeight, err := sm.porcelainAPI.ChainBlockHeight(ctx)
+	blockHeight, err := sm.porcelainAPI.ChainBlockHeight()
 	if err != nil {
 		return fmt.Errorf("could not get current block height")
 	}
@@ -295,7 +296,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 
 	payer := p.Payment.Payer
 
-	ret, _, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
+	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}
@@ -620,7 +621,7 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
 	}
 
-	bytes, err := sm.porcelainAPI.SampleChainRandomness(ctx, currentProvingPeriodStart)
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
 		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
 	}
@@ -634,12 +635,16 @@ func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (pro
 // isBootstrapMinerActor is a convenience method used to determine if the miner
 // actor was created when bootstrapping the network. If it was,
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
-	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
+	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
 		sm.minerAddr,
 		"isBootstrapMiner",
 	)
+	if err != nil {
+		return false, errors.Wrap(err, "query method failed")
+	}
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "isBootstrapMiner")
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
 	}
@@ -660,12 +665,16 @@ func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 // getActorSectorCommitments is a convenience method used to obtain miner actor
 // commitments.
 func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]types.Commitments, error) {
-	returnValues, sig, err := sm.porcelainAPI.MessageQuery(
+	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Undef,
 		sm.minerAddr,
 		"getSectorCommitments",
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "query method failed")
+	}
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
@@ -771,7 +780,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 }
 
 func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
-	res, _, err := sm.porcelainAPI.MessageQuery(
+	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
@@ -818,7 +827,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed proofs.PoStChall
 		// TODO: proper fault handling
 	}
 
-	height, err := sm.node.BlockHeight()
+	height, err := sm.porcelainAPI.ChainBlockHeight()
 	if err != nil {
 		log.Errorf("failed to submit PoSt, as the current block height can not be determined: %s", err)
 		// TODO: what should happen in this case?

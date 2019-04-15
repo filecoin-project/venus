@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	pbConfig "github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -142,7 +142,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(nd.Start(ctx))
 
-	assert.NotNil(nd.ChainReader.Head())
+	assert.NotEqual(0, nd.ChainReader.GetHead().Len())
 	nd.Stop(ctx)
 }
 
@@ -159,16 +159,16 @@ func TestNodeStartMining(t *testing.T) {
 
 	// TODO we need a principled way to construct an API that can be used both by node and by
 	// tests. It should enable selective replacement of dependencies.
+	// https://github.com/filecoin-project/go-filecoin/issues/2352
 	plumbingAPI := plumbing.New(&plumbing.APIDeps{
-		Chain:        minerNode.ChainReader,
+		Chain:        bcf.NewBlockChainFacade(minerNode.ChainReader, minerNode.CborStore()),
 		Config:       pbConfig.NewConfig(minerNode.Repo),
 		MsgPool:      nil,
 		MsgPreviewer: msg.NewPreviewer(minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
 		MsgQueryer:   msg.NewQueryer(minerNode.Repo, minerNode.Wallet, minerNode.ChainReader, minerNode.CborStore(), minerNode.Blockstore),
-		MsgSender:    msg.NewSender(minerNode.Wallet, nil, nil, minerNode.Outbox, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
+		MsgSender:    msg.NewSender(minerNode.Wallet, nil, minerNode.CborStore(), nil, minerNode.Outbox, minerNode.MsgPool, validator, minerNode.PorcelainAPI.PubSubPublish),
 		MsgWaiter:    msg.NewWaiter(minerNode.ChainReader, minerNode.Blockstore, minerNode.CborStore()),
 		Network:      net.New(minerNode.Host(), nil, nil, nil, nil, nil),
-		SigGetter:    mthdsig.NewGetter(minerNode.ChainReader),
 		Wallet:       wallet.New(walletBackend),
 		Deals:        strgdls.New(minerNode.Repo.DealsDatastore()),
 	})
@@ -215,7 +215,10 @@ func TestUpdateMessagePool(t *testing.T) {
 	// to
 	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
 	assert.NoError(chainForTest.Load(ctx)) // load up head to get genesis block
-	genTS := chainForTest.Head()
+	head := chainForTest.GetHead()
+	headTipSetAndState, err := chainForTest.GetTipSetAndState(head)
+	require.NoError(err)
+	genTS := headTipSetAndState.TipSet
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
 

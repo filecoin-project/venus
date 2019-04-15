@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -21,10 +20,10 @@ type testPaymentChannelLsPlumbing struct {
 	channels map[string]*paymentbroker.PaymentChannel
 }
 
-func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	chnls, err := cbor.DumpObject(p.channels)
 	p.require.NoError(err)
-	return [][]byte{chnls}, nil, nil
+	return [][]byte{chnls}, nil
 }
 
 func (p *testPaymentChannelLsPlumbing) WalletDefaultAddress() (address.Address, error) {
@@ -57,10 +56,10 @@ type testPaymentChannelVoucherPlumbing struct {
 	voucher *paymentbroker.PaymentVoucher
 }
 
-func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	result, err := actor.MarshalStorage(p.voucher)
 	p.require.NoError(err)
-	return [][]byte{result}, nil, nil
+	return [][]byte{result}, nil
 }
 
 func (p *testPaymentChannelVoucherPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {

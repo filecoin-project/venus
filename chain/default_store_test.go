@@ -3,7 +3,6 @@ package chain_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,10 +67,16 @@ func requirePutTestChain(require *require.Assertions, chainStore chain.Store) {
 	th.RequirePutTsas(ctx, require, chainStore, link4Tsas)
 }
 
-func requireGetTsasByParentAndHeight(ctx context.Context, require *require.Assertions, chain chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
-	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(ctx, pKey, h)
+func requireGetTsasByParentAndHeight(require *require.Assertions, chain chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
+	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(err)
 	return tsasSlice
+}
+
+func requireHeadTipset(require *require.Assertions, chain chain.Store) types.TipSet {
+	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	require.NoError(err)
+	return headTipSetAndState.TipSet
 }
 
 /* Putting and getting tipsets into and from the store. */
@@ -99,17 +104,12 @@ func TestGetByKey(t *testing.T) {
 	chain := newChainStore()
 
 	requirePutTestChain(require, chain)
-	kg := genTS.String()
-	k1 := link1.String()
-	k2 := link2.String()
-	k3 := link3.String()
-	k4 := link4.String()
 
-	gotG := requireGetTsas(ctx, require, chain, kg)
-	got1 := requireGetTsas(ctx, require, chain, k1)
-	got2 := requireGetTsas(ctx, require, chain, k2)
-	got3 := requireGetTsas(ctx, require, chain, k3)
-	got4 := requireGetTsas(ctx, require, chain, k4)
+	gotG := requireGetTsas(ctx, require, chain, genTS.ToSortedCidSet())
+	got1 := requireGetTsas(ctx, require, chain, link1.ToSortedCidSet())
+	got2 := requireGetTsas(ctx, require, chain, link2.ToSortedCidSet())
+	got3 := requireGetTsas(ctx, require, chain, link3.ToSortedCidSet())
+	got4 := requireGetTsas(ctx, require, chain, link4.ToSortedCidSet())
 
 	assert.Equal(genTS, gotG.TipSet)
 	assert.Equal(link1, got1.TipSet)
@@ -139,11 +139,11 @@ func TestGetByParent(t *testing.T) {
 	pk3 := link2.String()
 	pk4 := link3.String()
 
-	gotG := requireGetTsasByParentAndHeight(ctx, require, chain, pkg, uint64(0))
-	got1 := requireGetTsasByParentAndHeight(ctx, require, chain, pk1, uint64(1))
-	got2 := requireGetTsasByParentAndHeight(ctx, require, chain, pk2, uint64(2))
-	got3 := requireGetTsasByParentAndHeight(ctx, require, chain, pk3, uint64(3))
-	got4 := requireGetTsasByParentAndHeight(ctx, require, chain, pk4, uint64(6)) // two null blocks in between 3 and 4!
+	gotG := requireGetTsasByParentAndHeight(require, chain, pkg, uint64(0))
+	got1 := requireGetTsasByParentAndHeight(require, chain, pk1, uint64(1))
+	got2 := requireGetTsasByParentAndHeight(require, chain, pk2, uint64(2))
+	got3 := requireGetTsasByParentAndHeight(require, chain, pk3, uint64(3))
+	got4 := requireGetTsasByParentAndHeight(require, chain, pk4, uint64(6)) // two null blocks in between 3 and 4!
 
 	assert.Equal(genTS, gotG[0].TipSet)
 	assert.Equal(link1, got1[0].TipSet)
@@ -189,7 +189,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		TipSetStateRoot: newRoot,
 	}
 	th.RequirePutTsas(ctx, require, chainStore, newChildTsas)
-	gotNew1 := requireGetTsasByParentAndHeight(ctx, require, chainStore, pk1, uint64(1))
+	gotNew1 := requireGetTsasByParentAndHeight(require, chainStore, pk1, uint64(1))
 	require.Equal(2, len(gotNew1))
 	for _, tsas := range gotNew1 {
 		if len(tsas.TipSet) == 1 {
@@ -278,51 +278,20 @@ func TestHead(t *testing.T) {
 	chain := newChainStore()
 	requirePutTestChain(require, chain)
 
-	// Head starts as nil
-	assert.Nil(chain.Head())
+	// Head starts as an empty cid set
+	assert.Equal(types.SortedCidSet{}, chain.GetHead())
 
 	// Set Head
 	assertSetHead(assert, chain, genTS)
-	assert.Equal(genTS, chain.Head())
+	assert.Equal(genTS.ToSortedCidSet(), chain.GetHead())
 
 	// Move head forward
 	assertSetHead(assert, chain, link4)
-	assert.Equal(link4, chain.Head())
+	assert.Equal(link4.ToSortedCidSet(), chain.GetHead())
 
 	// Move head back
 	assertSetHead(assert, chain, genTS)
-	assert.Equal(genTS, chain.Head())
-}
-
-// LatestState correctly returns the state of the head.
-func TestLatestState(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	require := require.New(t)
-	assert := assert.New(t)
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	bs := bstore.NewBlockstore(ds)
-	cst := hamt.NewCborStore()
-	chain := chain.NewDefaultStore(ds, cst, genCid)
-
-	requirePutTestChain(require, chain)
-
-	// LatestState errors without a set head
-	_, err := chain.LatestState(ctx)
-	assert.Error(err)
-
-	// Call init genesis again to load genesis state into cbor store.
-	// This is required for the chain to access the state in the cbor store.
-	_, err = initGenesis(cst, bs)
-	require.NoError(err)
-
-	assertSetHead(assert, chain, genTS)
-	st, err := chain.LatestState(ctx)
-	require.NoError(err)
-	c, err := st.Flush(ctx)
-	require.NoError(err)
-	assert.Equal(genStateRoot, c)
+	assert.Equal(genTS.ToSortedCidSet(), chain.GetHead())
 }
 
 func assertEmptyCh(assert *assert.Assertions, ch <-chan interface{}) {
@@ -371,91 +340,6 @@ func TestHeadEvents(t *testing.T) {
 	assertEmptyCh(assert, chB)
 }
 
-/* Block history */
-
-// Block history reports all ancestors in the chain
-func TestBlockHistory(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	assert := assert.New(t)
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-	assertSetHead(assert, chainStore, genTS) // set the genesis block
-
-	assertSetHead(assert, chainStore, link4)
-	historyCh := chainStore.BlockHistory(ctx, chainStore.Head())
-
-	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link2, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link1, ((<-historyCh).(types.TipSet)))
-	assert.Equal(genTS, ((<-historyCh).(types.TipSet)))
-
-	ts, more := <-historyCh
-	assert.Equal(nil, ts)     // Genesis block has no parent.
-	assert.Equal(false, more) // Channel is closed
-}
-
-func TestBlockHistoryCancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	initStoreTest(ctx, require.New(t))
-	assert := assert.New(t)
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-	assertSetHead(assert, chainStore, genTS) // set the genesis block
-
-	assertSetHead(assert, chainStore, link4)
-	historyCh := chainStore.BlockHistory(ctx, chainStore.Head())
-
-	assert.Equal(link4, ((<-historyCh).(types.TipSet)))
-	assert.Equal(link3, ((<-historyCh).(types.TipSet)))
-	cancel()
-	time.Sleep(10 * time.Millisecond)
-
-	ts, more := <-historyCh
-	// Channel is closed
-	assert.Equal(nil, ts)
-	assert.Equal(false, more)
-}
-
-func TestUnknownBlockRetrievalError(t *testing.T) {
-	ctx := context.Background()
-	initStoreTest(ctx, require.New(t))
-	require := require.New(t)
-	chainStore := newChainStore()
-	requirePutTestChain(require, chainStore)
-
-	parBlock := types.NewBlockForTest(nil, 0)
-	chlBlock := types.NewBlockForTest(parBlock, 1)
-
-	chlTS := th.RequireNewTipSet(require, chlBlock)
-	err := chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
-		TipSet:          chlTS,
-		TipSetStateRoot: chlBlock.StateRoot,
-	})
-	require.NoError(err)
-	err = chainStore.SetHead(ctx, chlTS)
-	require.NoError(err)
-
-	// parBlock is not known to the chain, which causes the timeout
-	var innerErr error
-	for raw := range chainStore.BlockHistory(ctx, chainStore.Head()) {
-		switch v := raw.(type) {
-		case error:
-			innerErr = v
-		case types.TipSet:
-			// ignore
-		default:
-			require.FailNow("invalid element in ls", v)
-		}
-	}
-
-	require.NotNil(innerErr)
-	require.Contains(innerErr.Error(), "failed to get block")
-}
-
 /* Loading  */
 // Load does not error and gives the chain store access to all blocks and
 // tipset indexes along the heaviest chain.
@@ -481,11 +365,11 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check that chain store has index
 	// Get a tipset and state by key
-	got2 := requireGetTsas(ctx, require, rebootChain, link2.String())
+	got2 := requireGetTsas(ctx, require, rebootChain, link2.ToSortedCidSet())
 	assert.Equal(link2, got2.TipSet)
 
 	// Get another by parent key
-	got4 := requireGetTsasByParentAndHeight(ctx, require, rebootChain, link3.String(), uint64(6))
+	got4 := requireGetTsasByParentAndHeight(require, rebootChain, link3.String(), uint64(6))
 	assert.Equal(1, len(got4))
 	assert.Equal(link4, got4[0].TipSet)
 

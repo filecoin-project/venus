@@ -6,7 +6,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -25,7 +24,7 @@ type Ask struct {
 
 type claPlubming interface {
 	ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
@@ -70,7 +69,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 
 	// TODO: at some point, we will need to check that the miners are actually part of the storage market
 	// for now, its impossible for them not to be.
-	ret, _, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks")
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks")
 	if err != nil {
 		return err
 	}
@@ -93,7 +92,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 }
 
 func getAskByID(ctx context.Context, plumbing claPlubming, addr address.Address, id uint64) (Ask, error) {
-	ret, _, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsk", big.NewInt(int64(id)))
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsk", big.NewInt(int64(id)))
 	if err != nil {
 		return Ask{}, err
 	}

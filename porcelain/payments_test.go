@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
@@ -25,12 +24,12 @@ const (
 )
 
 type paymentsTestPlumbing struct {
-	tipSets []*types.TipSet
-	msgCid  cid.Cid
+	height *types.BlockHeight
+	msgCid cid.Cid
 
 	messageSend  func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
 func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
@@ -39,16 +38,9 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	channelID := types.NewChannelID(channelID)
 	cidGetter := types.NewCidForTestGetter()
 	msgCid := cidGetter()
-	tipSet, err := types.NewTipSet(&types.Block{
-		Nonce:  43,
-		Height: startingBlock,
-	})
-	if err != nil {
-		panic("could not create tipset")
-	}
 	return &paymentsTestPlumbing{
-		msgCid:  msgCid,
-		tipSets: []*types.TipSet{&tipSet},
+		msgCid: msgCid,
+		height: types.NewBlockHeight(startingBlock),
 		messageSend: func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
@@ -61,7 +53,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 				GasAttoFIL: types.NewAttoFILFromFIL(9),
 			})
 		},
-		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			voucher := &paymentbroker.PaymentVoucher{
 				Channel: *channelID,
 				Payer:   payer,
@@ -73,7 +65,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 			if err != nil {
 				panic(err)
 			}
-			return [][]byte{voucherBytes}, nil, nil
+			return [][]byte{voucherBytes}, nil
 		},
 	}
 }
@@ -86,22 +78,12 @@ func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid
 	return ptp.messageWait(ctx, msgCid, cb)
 }
 
-func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
-func (ptp *paymentsTestPlumbing) ChainLs(ctx context.Context) <-chan interface{} {
-	out := make(chan interface{}, len(ptp.tipSets))
-
-	go func() {
-		defer close(out)
-
-		for _, tipSet := range ptp.tipSets {
-			out <- *tipSet
-		}
-	}()
-
-	return out
+func (ptp *paymentsTestPlumbing) ChainBlockHeight() (*types.BlockHeight, error) {
+	return ptp.height, nil
 }
 
 func (ptp *paymentsTestPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
@@ -216,28 +198,6 @@ func TestCreatePayments(t *testing.T) {
 		assert.Contains(err.Error(), "channel would expire")
 	})
 
-	t.Run("Errors retrieving block height are surfaced", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.tipSets = []*types.TipSet{}
-
-		config := validPaymentsConfig()
-		_, err := CreatePayments(context.Background(), plumbing, config)
-		require.Error(err)
-		assert.Contains(err.Error(), "block height")
-
-		plumbing = newTestCreatePaymentsPlumbing()
-		ts := types.TipSet{}
-		plumbing.tipSets = []*types.TipSet{&ts}
-
-		config = validPaymentsConfig()
-		_, err = CreatePayments(context.Background(), plumbing, config)
-		require.Error(err)
-		assert.Contains(err.Error(), "block height")
-	})
-
 	t.Run("Errors creating channel are surfaced", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -291,8 +251,8 @@ func TestCreatePayments(t *testing.T) {
 		require := require.New(t)
 
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-			return nil, nil, errors.New("Errors in MessageQuery")
+		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+			return nil, errors.New("Errors in MessageQuery")
 		}
 
 		config := validPaymentsConfig()

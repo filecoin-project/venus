@@ -155,11 +155,11 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 
 // tipSetState returns the state resulting from applying the input tipset to
 // the chain.  Precondition: the tipset must be in the store
-func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (state.Tree, error) {
-	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
+func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
+	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
-	tsas, err := syncer.chainStore.GetTipSetAndState(ctx, tsKey)
+	tsas, err := syncer.chainStore.GetTipSetAndState(tsKey)
 	if err != nil {
 		return nil, err
 	}
@@ -179,16 +179,16 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey string) (sta
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
 func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
-	head := syncer.chainStore.Head()
+	head := syncer.chainStore.GetHead()
 
 	// if tipset is already head, we've been here before. do nothing.
-	if head.Equals(next) {
+	if head.Equals(next.ToSortedCidSet()) {
 		return nil
 	}
 
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the chainStore.
-	st, err := syncer.tipSetState(ctx, parent.String())
+	st, err := syncer.tipSetState(ctx, parent.ToSortedCidSet())
 	if err != nil {
 		return err
 	}
@@ -225,23 +225,27 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 
 	// TipSet is validated and added to store, now check if it is the heaviest.
 	// If it is the heaviest update the chainStore.
-	nextParentSt, err := syncer.tipSetState(ctx, parent.String()) // call again to get a copy
+	nextParentSt, err := syncer.tipSetState(ctx, parent.ToSortedCidSet()) // call again to get a copy
 	if err != nil {
 		return err
 	}
-	headParentCids, err := head.Parents()
+	headTipSetAndState, err := syncer.chainStore.GetTipSetAndState(head)
+	if err != nil {
+		return err
+	}
+	headParentCids, err := headTipSetAndState.TipSet.Parents()
 	if err != nil {
 		return err
 	}
 	var headParentSt state.Tree
 	if headParentCids.Len() != 0 { // head is not genesis
-		headParentSt, err = syncer.tipSetState(ctx, headParentCids.String())
+		headParentSt, err = syncer.tipSetState(ctx, headParentCids)
 		if err != nil {
 			return err
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, head, nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, headTipSetAndState.TipSet, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
@@ -249,13 +253,14 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if heavier {
 		// Gather the entire new chain for reorg comparison.
 		// See Issue #2151 for making this scalable.
-		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, syncer.chainStore.BlockHistory(ctx, parent), types.NewBlockHeight(uint64(0)))
+		iterator := IterAncestors(ctx, syncer.chainStore, parent)
+		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, iterator, types.NewBlockHeight(uint64(0)))
 		if err != nil {
 			return err
 		}
 		newChain = append(newChain, next)
-		if IsReorg(syncer.chainStore.Head(), newChain) {
-			logSyncer.Infof("reorg occurring while switching from %s to %s", syncer.chainStore.Head().String(), next.String())
+		if IsReorg(headTipSetAndState.TipSet, newChain) {
+			logSyncer.Infof("reorg occurring while switching from %s to %s", headTipSetAndState.TipSet.String(), next.String())
 		}
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
@@ -280,10 +285,10 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	if err != nil {
 		return nil, err
 	}
-	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(ctx, parentSet.String(), height) {
+	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
 		return nil, nil
 	}
-	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(ctx, parentSet.String(), height)
+	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +349,7 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	if err != nil {
 		return err
 	}
-	parentTsas, err := syncer.chainStore.GetTipSetAndState(ctx, parentCids.String())
+	parentTsas, err := syncer.chainStore.GetTipSetAndState(parentCids)
 	if err != nil {
 		return err
 	}

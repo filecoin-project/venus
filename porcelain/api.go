@@ -44,20 +44,13 @@ func New(plumbing *plumbing.API) *API {
 }
 
 // ChainBlockHeight determines the current block height
-func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
-	return ChainBlockHeight(ctx, a)
+func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
+	return ChainBlockHeight(a)
 }
 
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
-}
-
-// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height, useful for things like PoSt challenge seed
-// generation.
-func (a *API) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	return SampleChainRandomness(ctx, a, sampleHeight)
 }
 
 // DealGet returns a single deal matching a given cid or an error

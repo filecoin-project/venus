@@ -118,32 +118,31 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
-	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		if logStatusEvery != 0 && (tips[0].Height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
-		}
-		ts, err := types.NewTipSet(tips...)
+	for iterator := IterAncestors(ctx, store, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
-			return false, err
+			return err
 		}
-		stateRoot, err := store.loadStateRoot(ts)
+
+		height, err := iterator.Value().Height()
 		if err != nil {
-			return false, err
+			return err
+		}
+		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
+			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
+		}
+		stateRoot, err := store.loadStateRoot(iterator.Value())
+		if err != nil {
+			return err
 		}
 		err = store.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          ts,
+			TipSet:          iterator.Value(),
 			TipSetStateRoot: stateRoot,
 		})
 		if err != nil {
-			return false, err
+			return err
 		}
-		// TODO: we should probably warm up the block cache with the
-		// most recent tipsets traversed here.
-		genesii = ts
-		return true, nil
-	})
-	if err != nil {
-		return err
+
+		genesii = iterator.Value()
 	}
 	// Check genesis here.
 	if len(genesii) != 1 {
@@ -227,9 +226,9 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 }
 
 // GetTipSetAndState returns the tipset and state of the tipset whose block
-// cids correspond to the input string.
-func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error) {
-	return store.tipIndex.Get(tsKey)
+// cids correspond to the input sorted cid set.
+func (store *DefaultStore) GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error) {
+	return store.tipIndex.Get(tsKey.String())
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -241,13 +240,13 @@ func (store *DefaultStore) HasTipSetAndState(ctx context.Context, tsKey string) 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have the parent set corresponding to the
 // input key.
-func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error) {
+func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error) {
 	return store.tipIndex.GetByParentsAndHeight(pTsKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset indexed by the provided parent ID.
-func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool {
+func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool {
 	return store.tipIndex.HasByParentsAndHeight(pTsKey, h)
 }
 
@@ -361,104 +360,40 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 	return store.ds.Put(key, val)
 }
 
-// Head returns the current head.
-func (store *DefaultStore) Head() types.TipSet {
+// GetHead returns the current head tipset cids.
+func (store *DefaultStore) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
-	return store.head
+	if store.head == nil {
+		return types.SortedCidSet{}
+	}
+
+	return store.head.ToSortedCidSet()
 }
 
 // BlockHeight returns the chain height of the head tipset.
 // Strictly speaking, the block height is the number of tip sets that appear on chain plus
 // the number of "null blocks" that occur when a mining round fails to produce a block.
 func (store *DefaultStore) BlockHeight() (uint64, error) {
-	return store.Head().Height()
-}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
 
-// LatestState returns the state associated with the latest chain head.
-func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
-	h := store.Head()
-	if h == nil {
-		return nil, errors.New("Unset head")
-	}
-	tsas, err := store.GetTipSetAndState(ctx, h.String())
-	if err != nil {
-		return nil, err
-	}
-	return state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
+	return store.head.Height()
 }
 
 // ActorFromLatestState gets the latest state and retrieves an actor from it.
 func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	st, err := store.LatestState(ctx)
+	tsas, err := store.GetTipSetAndState(store.GetHead())
+	if err != nil {
+		return nil, err
+	}
+	st, err := state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
 
 	return st.GetActor(ctx, addr)
-}
-
-// BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
-// followed by each subsequent parent and ending with the genesis block, after which the channel
-// is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (store *DefaultStore) BlockHistory(ctx context.Context, start types.TipSet) <-chan interface{} {
-	ctx = logStore.Start(ctx, "BlockHistory")
-	out := make(chan interface{})
-
-	go func() {
-		defer close(out)
-		defer logStore.Finish(ctx)
-		err := store.walkChain(ctx, start.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-			var raw interface{}
-			raw, err = types.NewTipSet(tips...)
-			if err != nil {
-				raw = err
-			}
-			select {
-			case <-ctx.Done():
-				return false, nil
-			case out <- raw:
-			}
-			return true, nil
-		})
-		if err != nil {
-			select {
-			case <-ctx.Done():
-			case out <- err:
-			}
-		}
-	}()
-	return out
-}
-
-// walkChain walks backward through the chain, starting at tips, invoking cb() at each height.
-func (store *DefaultStore) walkChain(ctx context.Context, tips []*types.Block, cb func(tips []*types.Block) (cont bool, err error)) error {
-	for {
-		cont, err := cb(tips)
-		if err != nil {
-			return errors.Wrap(err, "error processing block")
-		}
-		if !cont {
-			return nil
-		}
-		ids := tips[0].Parents
-		if ids.Empty() {
-			break
-		}
-
-		tips = tips[:0]
-		for it := ids.Iter(); !it.Complete(); it.Next() {
-			pid := it.Value()
-			p, err := store.GetBlock(ctx, pid)
-			if err != nil {
-				return errors.Wrap(err, "error retrieving block from store")
-			}
-			tips = append(tips, p)
-		}
-	}
-
-	return nil
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
