@@ -376,8 +376,9 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 	defer elapsed("GeneratePoSt")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, 32*len(req.CommRs))
-	for idx, commR := range req.CommRs {
+	commRs := req.SortedCommRs.Values()
+	flattened := make([]byte, 32*len(commRs))
+	for idx, commR := range commRs {
 		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
 	}
 

@@ -314,9 +314,11 @@ func TestSectorBuilder(t *testing.T) {
 			// entropy, e.g. the blockchain
 			challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
 
+			sortedCommRs := proofs.NewSortedCommRs(val.SealingResult.CommR)
+
 			// generate a proof-of-spacetime
 			gres, gerr := h.SectorBuilder.GeneratePoSt(sectorbuilder.GeneratePoStRequest{
-				CommRs:        []proofs.CommR{val.SealingResult.CommR},
+				SortedCommRs:  sortedCommRs,
 				ChallengeSeed: challengeSeed,
 			})
 			require.NoError(t, gerr)
@@ -324,7 +326,7 @@ func TestSectorBuilder(t *testing.T) {
 			// verify the proof-of-spacetime
 			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoSTRequest{
 				ChallengeSeed: challengeSeed,
-				CommRs:        []proofs.CommR{val.SealingResult.CommR},
+				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
 				ProofsMode:    proofs.TestMode,

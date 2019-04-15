@@ -1,5 +1,10 @@
 package proofs
 
+import (
+	"bytes"
+	"sort"
+)
+
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
 	CommD      CommD     // returned from seal
@@ -14,7 +19,7 @@ type VerifySealRequest struct {
 // VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoSTRequest struct {
 	ChallengeSeed PoStChallengeSeed
-	CommRs        []CommR
+	SortedCommRs  SortedCommRs
 	Faults        []uint64
 	Proofs        []PoStProof
 	ProofsMode    Mode // used to control sealing/verification performance
@@ -48,3 +53,26 @@ const (
 	// Filecoin node.
 	LiveMode
 )
+
+// SortedCommRs is a slice of CommRs that has deterministic ordering.
+type SortedCommRs struct {
+	c []CommR
+}
+
+// NewSortedCommRs returns a SortedCommRs with the given CommRs
+func NewSortedCommRs(commRs ...CommR) SortedCommRs {
+	fn := func(i, j int) bool {
+		return bytes.Compare(commRs[i][:], commRs[j][:]) == -1
+	}
+
+	sort.Slice(commRs[:], fn)
+
+	return SortedCommRs{
+		c: commRs,
+	}
+}
+
+// Values returns the sorted CommRs as a slice
+func (s *SortedCommRs) Values() []CommR {
+	return s.c
+}

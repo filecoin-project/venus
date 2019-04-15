@@ -690,9 +690,11 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 				commRs = append(commRs, v.CommR)
 			}
 
+			sortedCommRs := proofs.NewSortedCommRs(commRs...)
+
 			req := proofs.VerifyPoSTRequest{
 				ChallengeSeed: seed,
-				CommRs:        commRs,
+				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
 				Proofs:        postProofs,
 				ProofsMode:    proofsMode,
