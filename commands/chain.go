@@ -67,7 +67,7 @@ var chainLsCmd = &cmds.Command{
 				return err
 			}
 			if len(iter.Value()) == 0 {
-				panic("tipsets from this channel should have at least one member")
+				panic("tipsets from this iterator should have at least one member")
 			}
 			if err := re.Emit(iter.Value().ToSlice()); err != nil {
 				return err
