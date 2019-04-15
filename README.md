@@ -119,7 +119,7 @@ go run ./build build
 # Install go-filecoin to ${GOPATH}/bin (necessary for tests)
 go run ./build install
 
-# Then, run the tests.
+# Then, run the unit tests.
 go run ./build test
 
 # Build and test can be combined!
@@ -131,6 +131,9 @@ Other handy build commands include:
 ```sh
 # Check the code for style and correctness issues
 go run ./build lint
+
+# Run different categories of tests by toggling their flags
+go run ./build test -unit=false -integration=true -functional=true
 
 # Test with a coverage report
 go run ./build test -cover

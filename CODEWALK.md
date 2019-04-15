@@ -28,6 +28,7 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
   - [Plumbing & porcelain](#plumbing--porcelain)
   - [Commands](#commands)
   - [Protocols](#protocols)
+      - [Protocol Mining APIs](#protocol-mining-apis)
   - [Actors](#actors)
   - [The state tree](#the-state-tree)
   - [Messages and state transitions](#messages-and-state-transitions)
@@ -45,6 +46,10 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
   - [Datastores](#datastores)
   - [Keystore](#keystore)
 - [Testing](#testing)
+    - [Test Categorization](#test-categorization)
+      - [Unit Tests (`-unit`)](#unit-tests--unit)
+      - [Integration Tests (`-integration`)](#integration-tests--integration)
+      - [Functional Tests (`-functional`)](#functional-tests--functional)
 - [Dependencies](#dependencies)
 - [Patterns](#patterns)
   - [Plumbing and porcelain](#plumbing-and-porcelain)
@@ -553,8 +558,25 @@ The goal of this is to unify duplicated code paths which bootstrap and drive `go
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
 Tests are typically run with `go run ./build/*.go test`. 
-It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. 
+It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. By default it will only run unit tests, to run functional or integration tests you will need to pass their corresponding flags, for a complete description of testing flags see [Test Categorization](#test-categorization).
 Vanilla `go test` also works, after build scripts have built and installed appropriate dependencies.
+
+#### Test Categorization
+
+##### Unit Tests (`-unit`)
+By default unit tests are enabled when issuing the `go test` command.
+To disable pass `-unit=false`.
+A unit test exercises one or a few code modules exhaustively. Unit tests do not involve complex integrations or non-trivial communication, disk access, or artificial delays. A unit test should complete in well under a second, frequently <10 milliseconds. Unit tests should have no side effects and be executable in parallel
+
+##### Integration Tests (`-integration`)
+By default integration tests are enabled when issuing the `go test` command.
+To disable pass `-integration=false`.
+An integration test exercises integrated functionality and/or multiple nodes and may include multiple processes, inter-node communication, delays for consensus, nontrivial disk access and other expensive operations. Integration tests may involve multiple processes (daemon tests) or in-process integrations. An individual integration test should complete in seconds.
+
+##### Functional Tests (`-functional`)
+By default functional tests are disabled when issuing the `go test` command.
+To enable pass `-functional`.
+A functional test is an extensive multi-node orchestration or resource-intensive test that may take minutes to run.
 
 ## Dependencies
 
