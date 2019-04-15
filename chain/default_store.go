@@ -122,26 +122,27 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		genesii = iterator.Value()
 
-		height, err := genesii.Height()
+		height, err := iterator.Value().Height()
 		if err != nil {
 			return err
 		}
 		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", genesii.String(), height)
+			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
 		}
-		stateRoot, err := store.loadStateRoot(genesii)
+		stateRoot, err := store.loadStateRoot(iterator.Value())
 		if err != nil {
 			return err
 		}
 		err = store.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          genesii,
+			TipSet:          iterator.Value(),
 			TipSetStateRoot: stateRoot,
 		})
 		if err != nil {
 			return err
 		}
+
+		genesii = iterator.Value()
 	}
 	// Check genesis here.
 	if len(genesii) != 1 {
