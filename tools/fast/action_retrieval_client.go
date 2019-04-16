@@ -15,5 +15,23 @@ func (f *Filecoin) RetrievalClientRetrievePiece(ctx context.Context, pieceCID ci
 	if err != nil {
 		return nil, err
 	}
-	return out.Stdout(), nil
+
+	stdout := out.Stdout()
+
+	rc := &readCloser{
+		r: stdout,
+		closer: func() error {
+			if err := stdout.Close(); err != nil {
+				return err
+			}
+
+			if err := getOutputError(out); err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+
+	return rc, nil
 }

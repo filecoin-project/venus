@@ -14,14 +14,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/config"
-
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/go-filecoin/config"
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
@@ -123,14 +122,19 @@ func init() {
 // Init runs the node init process.
 func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
 	args = append([]string{l.binPath, "init"}, args...)
-	output, oerr := l.RunCmd(ctx, nil, args...)
-	if oerr != nil {
-		return nil, oerr
+	output, err := l.RunCmd(ctx, nil, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	_, _, err = readAllOutput(ctx, output)
+	if err != nil {
+		return nil, err
 	}
 
 	icfg, err := l.Config()
 	if err != nil {
-		return nil, err
+		return output, err
 	}
 
 	lcfg := icfg.(*config.Config)
@@ -147,7 +151,7 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 		return nil, err
 	}
 
-	return output, oerr
+	return nil, nil
 }
 
 // Start starts the node process.
@@ -293,42 +297,13 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 		return nil, err
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	var stderrbytes []byte
-	var stdoutbytes []byte
-
-	g.Go(func() error {
-		var err error
-		stderrbytes, err = ioutil.ReadAll(stderr)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		stdoutbytes, err = ioutil.ReadAll(stdout)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	exiterr := cmd.Wait()
-
-	var exitcode = 0
-	switch oerr := exiterr.(type) {
-	case *exec.ExitError:
-		if ctx.Err() == context.DeadlineExceeded {
-			err = errors.Wrapf(oerr, "context deadline exceeded for command: %q", strings.Join(cmd.Args, " "))
-		}
-
-		exitcode = 1
-	case nil:
-		err = oerr
-	}
-
-	return iptbutil.NewOutput(args, stdoutbytes, stderrbytes, exitcode, err), nil
+	return &Output{
+		args:   args,
+		ctx:    ctx,
+		cmd:    cmd,
+		stdout: stdout,
+		stderr: stderr,
+	}, nil
 }
 
 // Connect connects the node to another testbed node.
@@ -339,21 +314,16 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	}
 
 	output, err := l.RunCmd(ctx, nil, l.binPath, "swarm", "connect", swarmaddrs[0])
-
 	if err != nil {
 		return err
 	}
 
-	if output.ExitCode() != 0 {
-		out, err := ioutil.ReadAll(output.Stderr())
-		if err != nil {
-			return err
-		}
-
-		return fmt.Errorf("%s", string(out))
+	_, stderr, err := readAllOutput(ctx, output)
+	if err != nil {
+		return errors.Wrapf(err, string(stderr))
 	}
 
-	return err
+	return nil
 }
 
 // Shell starts a shell in the context of a node.
@@ -471,17 +441,17 @@ func (l *Localfilecoin) APIAddr() (string, error) {
 
 // SwarmAddrs returns the addresses a node is listening on for swarm connections.
 func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
-	out, err := l.RunCmd(context.Background(), nil, l.binPath, "id", "--format=<addrs>")
+	output, err := l.RunCmd(context.Background(), nil, l.binPath, "id", "--format=<addrs>")
 	if err != nil {
 		return nil, err
 	}
 
-	outStr, err := ioutil.ReadAll(out.Stdout())
+	stdout, stderr, err := readAllOutput(context.Background(), output)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, string(stderr))
 	}
 
-	addrs := strings.Split(string(outStr), "\n")
+	addrs := strings.Split(string(stdout), "\n")
 	return addrs, nil
 }
 
@@ -496,4 +466,42 @@ func (l *Localfilecoin) Config() (interface{}, error) {
 func (l *Localfilecoin) WriteConfig(cfg interface{}) error {
 	lcfg := cfg.(*config.Config)
 	return lcfg.WriteFile(filepath.Join(l.dir, "config.json"))
+}
+
+func readAllOutput(ctx context.Context, output testbedi.Output) ([]byte, []byte, error) {
+	stdout := output.Stdout()
+	stderr := output.Stderr()
+
+	g, _ := errgroup.WithContext(ctx)
+
+	var bstderr []byte
+	var bstdout []byte
+
+	g.Go(func() (err error) {
+		bstderr, err = ioutil.ReadAll(stderr)
+		return
+	})
+
+	g.Go(func() (err error) {
+		bstdout, err = ioutil.ReadAll(stdout)
+		return
+	})
+
+	if err := g.Wait(); err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	var err error
+
+	exitcode := output.ExitCode()
+	switch exitcode {
+	case 0:
+		err = nil
+	case -1:
+		err = output.Error()
+	default:
+		err = fmt.Errorf("%s exited with %d", strings.Join(output.Args(), " "), exitcode)
+	}
+
+	return bstdout, bstderr, err
 }

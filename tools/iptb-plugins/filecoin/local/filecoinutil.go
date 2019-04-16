@@ -1,7 +1,6 @@
 package pluginlocalfilecoin
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -95,22 +94,13 @@ func (l *Localfilecoin) GetPeerID() (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	if out.ExitCode() != 0 {
-		return cid.Undef, errors.New("Could not get PeerID, non-zero exit code")
+	stdout, stderr, err := readAllOutput(context.Background(), out)
+	if err != nil {
+		return cid.Undef, errors.Wrapf(err, string(stderr))
 	}
 
-	_, err = io.Copy(os.Stdout, out.Stderr())
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	// convert the reader to a string TODO this is annoying
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(out.Stdout())
-	if err != nil {
-		return cid.Undef, err
-	}
-	cidStr := strings.TrimSpace(buf.String())
+	rawcid := string(stdout)
+	cidStr := strings.TrimSpace(rawcid)
 
 	// decode the parsed string to a cid...maybe
 	return cid.Decode(cidStr)

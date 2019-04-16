@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -84,6 +85,10 @@ func TestRetrieval(t *testing.T) {
 
 	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
 	require.NoError(err)
+
+	defer client.DumpLastOutput(os.Stdout)
+	defer genesis.DumpLastOutput(os.Stdout)
+	defer miner.DumpLastOutput(os.Stdout)
 
 	// Start setting up the nodes
 	// Setup Genesis

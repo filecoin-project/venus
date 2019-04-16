@@ -2,7 +2,6 @@ package fast
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -62,6 +61,6 @@ func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*s
 
 // ClientListAsks runs the client list-asks command against the filecoin process.
 // A json decoer is returned that asks may be decoded from.
-func (f *Filecoin) ClientListAsks(ctx context.Context) (*json.Decoder, error) {
+func (f *Filecoin) ClientListAsks(ctx context.Context) (DecodeCloser, error) {
 	return f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "client", "list-asks")
 }

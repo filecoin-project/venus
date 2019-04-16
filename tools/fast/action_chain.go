@@ -2,7 +2,6 @@ package fast
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/ipfs/go-cid"
 )
@@ -18,6 +17,6 @@ func (f *Filecoin) ChainHead(ctx context.Context) ([]cid.Cid, error) {
 }
 
 // ChainLs runs the chain ls command against the filecoin process.
-func (f *Filecoin) ChainLs(ctx context.Context) (*json.Decoder, error) {
+func (f *Filecoin) ChainLs(ctx context.Context) (DecodeCloser, error) {
 	return f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "chain", "ls")
 }

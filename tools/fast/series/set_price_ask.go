@@ -56,6 +56,10 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		}
 
 		if err == io.EOF {
+			if err := dec.Close(); err != nil {
+				return porcelain.Ask{}, err
+			}
+
 			break
 		}
 	}
