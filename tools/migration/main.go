@@ -20,10 +20,9 @@ func main() {
 
 	args := os.Args[1:]
 	command := args[0]
-
 	verbose := false
 	if len(args) > 1 {
-		option := args[0]
+		option := args[1]
 		if option == "--verbose" || option == "-v" {
 			verbose = true
 		} else {
@@ -34,23 +33,21 @@ func main() {
 
 	switch command {
 	case "-h", "--help":
-		showUsage()
-	case "describe", "buildonly", "migrate":
-		cmd.Run(command, verbose)
+		showUsageAndExit(0)
+	case "describe", "buildonly", "migrate", "install":
+		if err := cmd.Run(command, verbose); err != nil {
+			exitErr(err.Error())
+		}
 	default:
-		fmt.Println("\tInvalid command: ", command)
+		exitErr(fmt.Sprintf("Invalid command: %s", command))
 	}
 }
 
-func showUsage() {
-	fmt.Println(`\tUsage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]`)
-}
-
-func exitErr(err string) {
-	fmt.Println(err)
+func exitErr(errstr string) {
+	fmt.Printf("Error: %s\n", errstr)
 	os.Exit(1)
 }
 func showUsageAndExit(code int) {
-	showUsage()
+	fmt.Println(`    Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]`)
 	os.Exit(code)
 }
