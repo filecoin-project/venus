@@ -62,7 +62,7 @@ var msgSendCmd = &cmds.Command{
 
 		rawVal := req.Options["value"]
 		if rawVal == nil {
-			return errors.New("value cannot be nil")
+			rawVal = "0"
 		}
 		val, ok := types.NewAttoFILFromFILString(rawVal.(string))
 		if !ok {
