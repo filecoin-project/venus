@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -95,9 +94,9 @@ func main() {
 		}
 		outfile = f
 	}
-	cfg.ProofsMode = proofs.LiveMode
+	cfg.ProofsMode = types.LiveProofsMode
 	if *testProofsMode {
-		cfg.ProofsMode = proofs.TestMode
+		cfg.ProofsMode = types.TestProofsMode
 	}
 	info, err := gengen.GenGenesisCar(cfg, outfile, *seed)
 	if err != nil {

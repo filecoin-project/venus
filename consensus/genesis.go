@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -42,7 +41,7 @@ type Config struct {
 	nonces     map[address.Address]uint64
 	actors     map[address.Address]*actor.Actor
 	miners     map[address.Address]*miner.State
-	proofsMode proofs.Mode
+	proofsMode types.ProofsMode
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -83,7 +82,7 @@ func AddActor(addr address.Address, actor *actor.Actor) GenOption {
 }
 
 // ProofsMode sets the mode of operation for the proofs library.
-func ProofsMode(proofsMode proofs.Mode) GenOption {
+func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	return func(gc *Config) error {
 		gc.proofsMode = proofsMode
 		return nil
@@ -97,7 +96,7 @@ func NewEmptyConfig() *Config {
 		nonces:     make(map[address.Address]uint64),
 		actors:     make(map[address.Address]*actor.Actor),
 		miners:     make(map[address.Address]*miner.State),
-		proofsMode: proofs.TestMode,
+		proofsMode: types.TestProofsMode,
 	}
 }
 
@@ -192,7 +191,7 @@ func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.B
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType proofs.Mode) error {
+func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode) error {
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
 		if err != nil {

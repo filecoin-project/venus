@@ -11,11 +11,13 @@ import (
 	"time"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
+
+	"github.com/stretchr/testify/require"
 )
 
 // MaxTimeToSealASector represents the maximum amount of time the test should
@@ -213,7 +215,7 @@ func TestSectorBuilder(t *testing.T) {
 				Proof:      val.SealingResult.Proof,
 				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
 				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
-				ProofsMode: h.ProofsMode,
+				SectorSize: types.OneKiBSectorSize,
 			})
 			require.NoError(t, err)
 			require.True(t, res.IsValid)
@@ -316,7 +318,7 @@ func TestSectorBuilder(t *testing.T) {
 
 			// TODO: This should be generates from some standard source of
 			// entropy, e.g. the blockchain
-			challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
+			challengeSeed := types.PoStChallengeSeed{1, 2, 3}
 
 			sortedCommRs := proofs.NewSortedCommRs(val.SealingResult.CommR)
 
@@ -333,7 +335,7 @@ func TestSectorBuilder(t *testing.T) {
 				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
-				ProofsMode:    proofs.TestMode,
+				SectorSize:    types.OneKiBSectorSize,
 			})
 
 			require.NoError(t, verr)

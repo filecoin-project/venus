@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	iptb "github.com/ipfs/iptb/testbed"
 )
@@ -41,13 +41,13 @@ type EnvironmentMemoryGenesis struct {
 	processesMu sync.Mutex
 	processes   []*Filecoin
 
-	proofsMode proofs.Mode
+	proofsMode types.ProofsMode
 }
 
 // NewEnvironmentMemoryGenesis builds an environment with a local genesis that can be used
 // to initialize nodes and create a genesis node. The genesis file is provided by an http
 // server.
-func NewEnvironmentMemoryGenesis(funds *big.Int, location string, proofsMode proofs.Mode) (Environment, error) {
+func NewEnvironmentMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMode) (Environment, error) {
 	env := &EnvironmentMemoryGenesis{
 		location:   location,
 		log:        logging.Logger("environment"),

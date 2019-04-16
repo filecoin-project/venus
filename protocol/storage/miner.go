@@ -97,9 +97,9 @@ type node interface {
 // generatePostInput is a struct containing sector id and related commitments
 // used to generate a proof-of-spacetime
 type generatePostInput struct {
-	commD     proofs.CommD
-	commR     proofs.CommR
-	commRStar proofs.CommRStar
+	commD     types.CommD
+	commR     types.CommR
+	commRStar types.CommRStar
 	sectorID  uint64
 }
 
@@ -615,18 +615,18 @@ func (sm *Miner) onCommitFail(dealCid cid.Cid, message string) {
 
 // currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
 // the miner actor's current proving period.
-func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (proofs.PoStChallengeSeed, error) {
+func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (types.PoStChallengeSeed, error) {
 	currentProvingPeriodStart, err := sm.getProvingPeriodStart()
 	if err != nil {
-		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
+		return types.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
 	}
 
 	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
-		return proofs.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
+		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
 	}
 
-	seed := proofs.PoStChallengeSeed{}
+	seed := types.PoStChallengeSeed{}
 	copy(seed[:], bytes)
 
 	return seed, nil
@@ -796,7 +796,7 @@ func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
 // generatePoSt creates the required PoSt, given a list of sector ids and
 // matching seeds. It returns the Snark Proof for the PoSt, and a list of
 // sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(sortedCommRs proofs.SortedCommRs, seed proofs.PoStChallengeSeed) ([]proofs.PoStProof, []uint64, error) {
+func (sm *Miner) generatePoSt(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
 	req := sectorbuilder.GeneratePoStRequest{
 		SortedCommRs:  sortedCommRs,
 		ChallengeSeed: seed,
@@ -809,8 +809,8 @@ func (sm *Miner) generatePoSt(sortedCommRs proofs.SortedCommRs, seed proofs.PoSt
 	return res.Proofs, res.Faults, nil
 }
 
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed proofs.PoStChallengeSeed, inputs []generatePostInput) {
-	commRs := make([]proofs.CommR, len(inputs))
+func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []generatePostInput) {
+	commRs := make([]types.CommR, len(inputs))
 	for i, input := range inputs {
 		commRs[i] = input.commR
 	}

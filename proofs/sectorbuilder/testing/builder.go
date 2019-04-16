@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/require"
 )
@@ -74,7 +75,7 @@ func (b *Builder) Build() Harness {
 		panic(err)
 	}
 
-	proofsMode := proofs.TestMode
+	class := types.NewTestSectorClass()
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
@@ -82,9 +83,12 @@ func (b *Builder) Build() Harness {
 		MetadataDir:      memRepo.StagingDir(),
 		MinerAddr:        minerAddr,
 		SealedSectorDir:  memRepo.SealedDir(),
-		ProofsMode:       proofsMode,
+		SectorClass:      class,
 		StagedSectorDir:  memRepo.StagingDir(),
 	})
+	require.NoError(b.t, err)
+
+	max, err := proofs.GetMaxUserBytesPerStagedSector(class.SectorSize())
 	require.NoError(b.t, err)
 
 	return Harness{
@@ -93,7 +97,6 @@ func (b *Builder) Build() Harness {
 		blockService:      blockService,
 		SectorBuilder:     sb,
 		MinerAddr:         minerAddr,
-		MaxBytesPerSector: proofs.SectorSize(proofsMode),
-		ProofsMode:        proofsMode,
+		MaxBytesPerSector: max,
 	}
 }

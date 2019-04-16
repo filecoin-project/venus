@@ -13,10 +13,8 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	sb "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +25,6 @@ type Harness struct {
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder
-	ProofsMode        proofs.Mode
 	t                 *testing.T
 }
 

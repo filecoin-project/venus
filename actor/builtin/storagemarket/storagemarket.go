@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -59,7 +58,7 @@ type State struct {
 	// in the whole network.
 	TotalCommittedStorage *big.Int
 
-	ProofsMode proofs.Mode
+	ProofsMode types.ProofsMode
 }
 
 // NewActor returns a new storage market actor.
@@ -69,7 +68,7 @@ func NewActor() (*actor.Actor, error) {
 
 // InitializeState stores the actor's initial data structure.
 func (sma *Actor) InitializeState(storage exec.Storage, proofsModeInterface interface{}) error {
-	proofsMode := proofsModeInterface.(proofs.Mode)
+	proofsMode := proofsModeInterface.(types.ProofsMode)
 
 	initStorage := &State{
 		TotalCommittedStorage: big.NewInt(0),
@@ -229,7 +228,7 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error)
 }
 
 // GetSectorSize returns the sector size of the block chain
-func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (proofs.Mode, uint8, error) {
+func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return 0, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -242,9 +241,9 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (proofs.Mode, uint8, error
 		return 0, errors.CodeError(err), err
 	}
 
-	size, ok := ret.(proofs.Mode)
+	size, ok := ret.(types.ProofsMode)
 	if !ok {
-		return 0, 1, fmt.Errorf("expected proofs.Mode to be returned, but got %T instead", ret)
+		return 0, 1, fmt.Errorf("expected types.ProofsMode to be returned, but got %T instead", ret)
 	}
 
 	return size, 0, nil

@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	flg "flag"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/types"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -279,8 +280,14 @@ func main() {
 			return
 		}
 
+		max, err := getMaxUserBytesPerStagedSector()
+		if err != nil {
+			exitcode = handleError(err, "failed to get max user bytes per staged sector;")
+			return
+		}
+
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(proofs.SectorSize(getProofsMode(smallSectors))))
+		dataReader := io.LimitReader(rand.Reader, int64(max))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -289,7 +296,6 @@ func main() {
 		}
 
 		deals = append(deals, deal)
-
 	}
 
 	for _, deal := range deals {
@@ -350,6 +356,18 @@ func main() {
 	<-exit
 }
 
+func getMaxUserBytesPerStagedSector() (uint64, error) {
+	proofsMode := getProofsMode(smallSectors)
+	var sectorClass types.SectorClass
+	if proofsMode == types.TestProofsMode {
+		sectorClass = types.NewTestSectorClass()
+	} else {
+		sectorClass = types.NewLiveSectorClass()
+	}
+
+	return proofs.GetMaxUserBytesPerStagedSector(sectorClass.SectorSize())
+}
+
 func handleError(err error, msg ...string) int {
 	if err == nil {
 		return 0
@@ -379,11 +397,11 @@ func isEmpty(name string) (bool, error) {
 	return false, err // Either not empty or error, suits both cases
 }
 
-func getProofsMode(smallSectors bool) proofs.Mode {
+func getProofsMode(smallSectors bool) types.ProofsMode {
 	if smallSectors {
-		return proofs.TestMode
+		return types.TestProofsMode
 	}
-	return proofs.LiveMode
+	return types.LiveProofsMode
 }
 
 func getFilecoinBinary() (string, error) {

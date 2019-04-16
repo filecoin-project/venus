@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -84,11 +83,11 @@ func (t Type) String() string {
 	case CommitmentsMap:
 		return "map[string]types.Commitments"
 	case PoStProofs:
-		return "[]proofs.PoStProof"
+		return "[]types.PoStProof"
 	case Boolean:
 		return "bool"
 	case ProofsMode:
-		return "proofs.Mode"
+		return "types.ProofsMode"
 	default:
 		return "<unknown type>"
 	}
@@ -129,11 +128,11 @@ func (av *Value) String() string {
 	case CommitmentsMap:
 		return fmt.Sprint(av.Val.(map[string]types.Commitments))
 	case PoStProofs:
-		return fmt.Sprint(av.Val.([]proofs.PoStProof))
+		return fmt.Sprint(av.Val.([]types.PoStProof))
 	case Boolean:
 		return fmt.Sprint(av.Val.(bool))
 	case ProofsMode:
-		return fmt.Sprint(av.Val.(proofs.Mode))
+		return fmt.Sprint(av.Val.(types.ProofsMode))
 	default:
 		return "<unknown type>"
 	}
@@ -234,9 +233,9 @@ func (av *Value) Serialize() ([]byte, error) {
 
 		return cbor.DumpObject(m)
 	case PoStProofs:
-		m, ok := av.Val.([]proofs.PoStProof)
+		m, ok := av.Val.([]types.PoStProof)
 		if !ok {
-			return nil, &typeError{[]proofs.PoStProof{}, av.Val}
+			return nil, &typeError{[]types.PoStProof{}, av.Val}
 		}
 
 		return cbor.DumpObject(m)
@@ -253,9 +252,9 @@ func (av *Value) Serialize() ([]byte, error) {
 
 		return []byte{b}, nil
 	case ProofsMode:
-		v, ok := av.Val.(proofs.Mode)
+		v, ok := av.Val.(types.ProofsMode)
 		if !ok {
-			return nil, &typeError{proofs.TestMode, av.Val}
+			return nil, &typeError{types.TestProofsMode, av.Val}
 		}
 
 		return []byte{byte(v)}, nil
@@ -298,11 +297,11 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: SectorID, Val: v})
 		case map[string]types.Commitments:
 			out = append(out, &Value{Type: CommitmentsMap, Val: v})
-		case []proofs.PoStProof:
+		case []types.PoStProof:
 			out = append(out, &Value{Type: PoStProofs, Val: v})
 		case bool:
 			out = append(out, &Value{Type: Boolean, Val: v})
-		case proofs.Mode:
+		case types.ProofsMode:
 			out = append(out, &Value{Type: ProofsMode, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
@@ -408,7 +407,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Val:  m,
 		}, nil
 	case PoStProofs:
-		var slice []proofs.PoStProof
+		var slice []types.PoStProof
 		if err := cbor.DecodeInto(data, &slice); err != nil {
 			return nil, err
 		}
@@ -428,7 +427,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 	case ProofsMode:
 		return &Value{
 			Type: t,
-			Val:  proofs.Mode(int(data[0])),
+			Val:  types.ProofsMode(int(data[0])),
 		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
@@ -450,9 +449,9 @@ var typeTable = map[Type]reflect.Type{
 	PeerID:         reflect.TypeOf(peer.ID("")),
 	SectorID:       reflect.TypeOf(uint64(0)),
 	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
-	PoStProofs:     reflect.TypeOf([]proofs.PoStProof{}),
+	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
 	Boolean:        reflect.TypeOf(false),
-	ProofsMode:     reflect.TypeOf(proofs.TestMode),
+	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

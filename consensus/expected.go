@@ -332,10 +332,10 @@ func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower ui
 //   TODO -- in general this won't work with only the base tipset.
 //     We'll potentially need some chain manager utils, similar to
 //     the State function, to sample further back in the chain.
-func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (proofs.PoStChallengeSeed, error) {
+func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStChallengeSeed, error) {
 	smallest, err := parents.MinTicket()
 	if err != nil {
-		return proofs.PoStChallengeSeed{}, err
+		return types.PoStChallengeSeed{}, err
 	}
 
 	buf := make([]byte, binary.MaxVarintLen64)
@@ -406,7 +406,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 // 			 signerPubKey []byte, the public key for the signer. Must exist in the signer
 //      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
 //  returns:  types.Signature ( []byte ), error
-func CreateTicket(proof proofs.PoStProof, signerPubKey []byte, signer TicketSigner) (types.Signature, error) {
+func CreateTicket(proof types.PoStProof, signerPubKey []byte, signer TicketSigner) (types.Signature, error) {
 
 	var ticket types.Signature
 
