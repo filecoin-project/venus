@@ -62,7 +62,7 @@ var msgSendCmd = &cmds.Command{
 
 		val, ok := types.NewAttoFILFromFILString(req.Options["value"].(string))
 		if !ok {
-			val = types.NewZeroAttoFIL()
+			return errors.New("mal-formed value")
 		}
 
 		o := req.Options["from"]
