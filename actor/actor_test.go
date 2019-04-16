@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
@@ -14,11 +16,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestActorCid(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	actor1 := NewActor(types.AccountActorCodeCid, nil)
@@ -35,6 +38,8 @@ func TestActorCid(t *testing.T) {
 }
 
 func TestActorFormat(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
 
@@ -118,6 +123,8 @@ func makeCtx(method string) exec.VMContext {
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("no return", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -190,6 +197,8 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 }
 
 func TestMakeTypedExportFail(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		Name   string
 		Actor  *MockActor

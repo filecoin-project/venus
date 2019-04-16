@@ -15,11 +15,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTotal(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx := context.Background()
@@ -34,6 +37,8 @@ func TestTotal(t *testing.T) {
 }
 
 func TestMiner(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	require := require.New(t)
 	assert := assert.New(t)

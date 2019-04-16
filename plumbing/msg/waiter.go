@@ -46,12 +46,11 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 
 // Find searches the blockchain history for a message (but doesn't wait).
 func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool, error) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
-	return w.waitForMessage(ctx, historyCh, msgCid)
+	headTipSetAndState, err := w.chainReader.GetTipSetAndState(w.chainReader.GetHead())
+	if err != nil {
+		return nil, false, err
+	}
+	return w.findMessage(ctx, &headTipSetAndState.TipSet, msgCid)
 }
 
 // Wait invokes the callback when a message with the given cid appears on chain.
@@ -70,42 +69,58 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
-	// Ch will contain a stream of blocks to check for message (or errors).
-	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
-	ch := make(chan (interface{}))
 
-	// New blocks
-	newHeadCh := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	defer w.chainReader.HeadEvents().Unsub(newHeadCh, chain.NewHeadTopic)
+	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	chainMsg, found, err := w.Find(ctx, msgCid)
+	if err != nil {
+		return err
+	}
+	if found {
+		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
+	}
 
-	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
-
-	// Merge historical and new block Channels.
-	go func() {
-		for raw := range newHeadCh {
-			ch <- raw
-		}
-	}()
-	go func() {
-		for raw := range historyCh {
-			ch <- raw
-		}
-	}()
-
-	chainMsg, found, err := w.waitForMessage(ctx, ch, msgCid)
+	chainMsg, found, err = w.waitForMessage(ctx, ch, msgCid)
 	if found {
 		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
 	}
 	return err
 }
 
-// waitForMessage looks for a message CID in a channel of tipsets and returns the message, block and receipt,
-// when it is found. Reads until the channel is closed or the context done.
-// Returns the found message/block (or nil if the channel closed without finding it), whether it was found, or an error.
+// findMessage looks for a message CID in the chain and returns the message,
+// block and receipt, when it is found. Returns the found message/block or nil
+// if now block with the given CID exists in the chain.
+func (w *Waiter) findMessage(ctx context.Context, ts *types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+	var err error
+	for iterator := chain.IterAncestors(ctx, w.chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			log.Errorf("Waiter.Wait: %s", err)
+			return nil, false, err
+		}
+		for _, blk := range iterator.Value() {
+			for _, msg := range blk.Messages {
+				c, err := msg.Cid()
+				if err != nil {
+					return nil, false, err
+				}
+				if c.Equals(msgCid) {
+					recpt, err := w.receiptFromTipSet(ctx, msgCid, iterator.Value())
+					if err != nil {
+						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+					}
+					return &ChainMessage{msg, blk, recpt}, true, nil
+				}
+			}
+		}
+	}
+	return nil, false, nil
+}
+
+// waitForMessage looks for a message CID in a channel of tipsets and returns
+// the message, block and receipt, when it is found. Reads until the channel is
+// closed or the context done. Returns the found message/block (or nil if the
+// channel closed without finding it), whether it was found, or an error.
 func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	for {
 		select {
@@ -171,7 +186,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids.String())
+	tsas, err := w.chainReader.GetTipSetAndState(ids)
 	if err != nil {
 		return nil, err
 	}

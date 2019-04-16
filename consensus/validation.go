@@ -7,13 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
-
-// MaxNonceGap is the maximum nonce of a message past the last received on chain
-const MaxNonceGap = 100
 
 // SignedMessageValidator validates incoming signed messages.
 type SignedMessageValidator interface {
@@ -102,13 +100,15 @@ type ingestionValidatorAPI interface {
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
 type IngestionValidator struct {
 	api       ingestionValidatorAPI
+	cfg       *config.MessagePoolConfig
 	validator defaultMessageValidator
 }
 
 // NewIngestionValidator creates a new validator with an api
-func NewIngestionValidator(api ingestionValidatorAPI) *IngestionValidator {
+func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolConfig) *IngestionValidator {
 	return &IngestionValidator{
 		api:       api,
+		cfg:       cfg,
 		validator: defaultMessageValidator{allowHighNonce: true},
 	}
 }
@@ -127,7 +127,7 @@ func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMess
 	}
 
 	// check that message nonce is not too high
-	if msg.Nonce > fromActor.Nonce && msg.Nonce-fromActor.Nonce > MaxNonceGap {
+	if msg.Nonce > fromActor.Nonce && msg.Nonce-fromActor.Nonce > v.cfg.MaxNonceGap {
 		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.Nonce, fromActor.Nonce)
 	}
 

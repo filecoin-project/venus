@@ -13,9 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestTriangleEncoding(t *testing.T) {
+	tf.UnitTest(t)
+
 	// We want to be sure that:
 	//      Block => json => Block
 	// yields exactly the same thing as:
@@ -111,6 +114,8 @@ func TestTriangleEncoding(t *testing.T) {
 }
 
 func TestBlockIsParentOf(t *testing.T) {
+	tf.UnitTest(t)
+
 	var p, c Block
 	assert.False(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
@@ -121,6 +126,8 @@ func TestBlockIsParentOf(t *testing.T) {
 }
 
 func TestBlockString(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	var b Block
 
@@ -131,6 +138,8 @@ func TestBlockString(t *testing.T) {
 }
 
 func TestBlockScore(t *testing.T) {
+	tf.UnitTest(t)
+
 	source := rand.NewSource(time.Now().UnixNano())
 
 	t.Run("block score equals block height", func(t *testing.T) {
@@ -153,6 +162,8 @@ func cidFromString(input string) (cid.Cid, error) {
 }
 
 func TestDecodeBlock(t *testing.T) {
+	tf.UnitTest(t)
+
 	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		assert := assert.New(t)
@@ -193,6 +204,8 @@ func TestDecodeBlock(t *testing.T) {
 }
 
 func TestEquals(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	c1, err := cidFromString("a")
@@ -215,6 +228,8 @@ func TestEquals(t *testing.T) {
 }
 
 func TestParanoidPanic(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	paranoid = true
 
@@ -228,6 +243,8 @@ func TestParanoidPanic(t *testing.T) {
 }
 
 func TestBlockJsonMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	newSignedMessage := NewSignedMessageForTestGetter(mockSigner)
 

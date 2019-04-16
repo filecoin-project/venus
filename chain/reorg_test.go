@@ -8,10 +8,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestIsReorg(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	// Only need dummy blocks for this test

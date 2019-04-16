@@ -116,7 +116,7 @@ NETWORK COMMANDS
   go-filecoin stats                  - Monitor statistics on your network usage
 
 ACTOR COMMANDS
-  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts.
+  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts
   go-filecoin paych                  - Payment channel operations
 
 MESSAGE COMMANDS
@@ -124,7 +124,8 @@ MESSAGE COMMANDS
   go-filecoin mpool                  - Manage the message pool
 
 TOOL COMMANDS
-  go-filecoin log                    - Interact with the daemon event log output.
+  go-filecoin log                    - Interact with the daemon event log output
+  go-filecoin protocol               - Show protocol parameter details
   go-filecoin version                - Show go-filecoin version information
 `,
 	},
@@ -170,6 +171,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"outbox":           outboxCmd,
 	"paych":            paymentChannelCmd,
 	"ping":             pingCmd,
+	"protocol":         protocolCmd,
 	"retrieval-client": retrievalClientCmd,
 	"show":             showCmd,
 	"stats":            statsCmd,

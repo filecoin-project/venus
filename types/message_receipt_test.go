@@ -5,10 +5,13 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageReceiptMarshal(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	cases := []MessageReceipt{

@@ -12,13 +12,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +81,8 @@ func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte,
 }
 
 func TestMinerCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -161,6 +163,8 @@ func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backe
 }
 
 func TestMinerPreviewCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("returns the price given by message preview", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -248,6 +252,8 @@ func (mtp *minerSetPricePlumbing) ConfigGet(dottedPath string) (interface{}, err
 }
 
 func TestMinerSetPrice(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("reports error when get miner address fails", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -438,6 +444,8 @@ func (mtp *minerPreviewSetPricePlumbing) ConfigGet(dottedPath string) (interface
 }
 
 func TestMinerPreviewSetPrice(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("returns the gas cost given by preview query", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -455,11 +463,13 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 
 type minerGetOwnerPlumbing struct{}
 
-func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	return [][]byte{address.TestAddress.Bytes()}, nil, nil
+func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{address.TestAddress.Bytes()}, nil
 }
 
 func TestMinerGetOwnerAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
@@ -469,13 +479,15 @@ func TestMinerGetOwnerAddress(t *testing.T) {
 
 type minerGetPeerIDPlumbing struct{}
 
-func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 
 	peerID := requirePeerID()
-	return [][]byte{[]byte(peerID)}, nil, nil
+	return [][]byte{[]byte(peerID)}, nil
 }
 
 func TestMinerGetPeerID(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -489,7 +501,7 @@ func TestMinerGetPeerID(t *testing.T) {
 
 type minerGetAskPlumbing struct{}
 
-func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	out, err := cbor.DumpObject(miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
 		Expiry: types.NewBlockHeight(41),
@@ -498,10 +510,12 @@ func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 	if err != nil {
 		panic("Could not encode ask")
 	}
-	return [][]byte{out}, nil, nil
+	return [][]byte{out}, nil
 }
 
 func TestMinerGetAsk(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

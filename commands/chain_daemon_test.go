@@ -7,17 +7,18 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestChainHead(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -39,9 +40,10 @@ func TestChainHead(t *testing.T) {
 }
 
 func TestChainLs(t *testing.T) {
-	t.Parallel()
+	tf.IntegrationTest(t)
+
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -76,7 +78,7 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -94,7 +96,7 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls with text encoding returns only CIDs", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -117,7 +119,7 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		daemon := makeTestDaemonWithMinerAndStart(t)
@@ -134,7 +136,7 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls --long with JSON encoding returns integer string block height and nonce", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		daemon := makeTestDaemonWithMinerAndStart(t)

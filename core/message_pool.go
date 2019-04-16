@@ -9,14 +9,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message pool")
-
-// MaxMessagePoolSize is the maximum number of pending messages will will allow in the message pool at any time
-const MaxMessagePoolSize = 10000
 
 // MessageTimeOut is the number of tipsets we should receive before timing out messages
 const MessageTimeOut = 6
@@ -56,6 +54,7 @@ type MessagePool struct {
 	lk sync.RWMutex
 
 	api           MessagePoolAPI
+	cfg           *config.MessagePoolConfig
 	validator     MessagePoolValidator
 	pending       map[cid.Cid]*timedmessage // all pending messages
 	addressNonces map[addressNonce]bool     // set of address nonce pairs used to efficiently validate duplicate nonces
@@ -137,9 +136,10 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 }
 
 // NewMessagePool constructs a new MessagePool.
-func NewMessagePool(api MessagePoolAPI, validator MessagePoolValidator) *MessagePool {
+func NewMessagePool(api MessagePoolAPI, cfg *config.MessagePoolConfig, validator MessagePoolValidator) *MessagePool {
 	return &MessagePool{
 		api:           api,
+		cfg:           cfg,
 		validator:     validator,
 		pending:       make(map[cid.Cid]*timedmessage),
 		addressNonces: make(map[addressNonce]bool),
@@ -253,8 +253,8 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 // validateMessage validates that too many messages aren't added to the pool and the ones that are
 // have a high probability of making it through processing.
 func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
-	if len(pool.pending) >= MaxMessagePoolSize {
-		return errors.Errorf("message pool is full (%d messages)", MaxMessagePoolSize)
+	if len(pool.pending) >= pool.cfg.MaxPoolSize {
+		return errors.Errorf("message pool is full (%d messages)", pool.cfg.MaxPoolSize)
 	}
 
 	// check that message with this nonce does not already exist

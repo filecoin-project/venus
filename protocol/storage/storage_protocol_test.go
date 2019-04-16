@@ -9,14 +9,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSerializeProposal(t *testing.T) {
-	require := require.New(t)
+	tf.UnitTest(t)
 
-	t.Parallel()
+	require := require.New(t)
 
 	ag := address.NewForTestGetter()
 	cg := types.NewCidForTestGetter()

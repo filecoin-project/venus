@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -15,7 +16,9 @@ import (
 // These tests could use a fake/mock policy target, but it would require some sophistication to
 // validate the order of removals, so using a real queue is a bit easier.
 func TestMessageQueuePolicy(t *testing.T) {
-	t.Parallel() // Individual tests share a MessageMaker so not parallel (but quick)
+	tf.UnitTest(t)
+
+	// Individual tests share a MessageMaker so not parallel (but quick)
 	ctx := context.Background()
 	assert := assert.New(t)
 	require := require.New(t)

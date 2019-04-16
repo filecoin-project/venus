@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
 )
 
@@ -40,6 +41,8 @@ type testJSONOutParam struct {
 
 // A sanity test to ensure returning strings, json, and ldjson works as expected.
 func TestRunCmds(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -85,6 +88,8 @@ func TestRunCmds(t *testing.T) {
 }
 
 func TestInitDaemon(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -115,6 +120,8 @@ func TestInitDaemon(t *testing.T) {
 }
 
 func TestStartDaemon(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()

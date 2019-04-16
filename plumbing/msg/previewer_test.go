@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ import (
 )
 
 func TestPreview(t *testing.T) {
-	// Don't add t.Parallel here; these tests muck with globals.
+	tf.BadUnitTestWithSideEffects(t)
 
 	t.Run("returns appropriate Gas used", func(t *testing.T) {
 		assert := assert.New(t)

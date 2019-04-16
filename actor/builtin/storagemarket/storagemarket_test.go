@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -14,12 +15,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStorageMarketCreateMiner(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -55,6 +59,8 @@ func TestStorageMarketCreateMiner(t *testing.T) {
 }
 
 func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -72,6 +78,8 @@ func TestStorageMarketCreateMinerPledgeTooLow(t *testing.T) {
 }
 
 func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,6 +96,8 @@ func TestStorageMarketCreateMinerInsufficientCollateral(t *testing.T) {
 }
 
 func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,6 +133,8 @@ func TestStorageMarkeCreateMinerDoesNotOverwriteActorBalance(t *testing.T) {
 }
 
 func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -140,10 +152,35 @@ func TestStorageMarkeCreateMinerErrorsOnInvalidKey(t *testing.T) {
 }
 
 func TestMinimumCollateral(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	numSectors := big.NewInt(25000)
 	expected := types.NewAttoFILFromFIL(25)
 	assert.Equal(MinimumCollateral(numSectors), expected)
+}
+
+func TestProofsMode(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := core.CreateStorages(ctx, t)
+	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+
+	require.NoError(err)
+	require.NoError(result.ExecutionError)
+
+	proofsModeInterface, err := abi.Deserialize(result.Receipt.Return[0], abi.ProofsMode)
+	require.NoError(err)
+
+	proofsMode, ok := proofsModeInterface.Val.(types.ProofsMode)
+	require.True(ok)
+
+	assert.Equal(types.TestProofsMode, proofsMode)
 }
 
 // this is used to simulate an attack where someone derives the likely address of another miner's

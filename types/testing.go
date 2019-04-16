@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
@@ -96,7 +95,7 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 }
 
 // CreateTicket is effectively a duplicate of Wallet CreateTicket for testing purposes.
-func (ms MockSigner) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (Signature, error) {
+func (ms MockSigner) CreateTicket(proof PoStProof, signerPubKey []byte) (Signature, error) {
 	var ticket Signature
 
 	signerAddr, err := ms.GetAddressForPubKey(signerPubKey)

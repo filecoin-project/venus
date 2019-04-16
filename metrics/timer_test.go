@@ -4,11 +4,14 @@ import (
 	"context"
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"go.opencensus.io/stats/view"
 )
 
 func TestTimerSimple(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 
 	ctx := context.Background()
@@ -28,6 +31,8 @@ func TestTimerSimple(t *testing.T) {
 }
 
 func TestDuplicateTimersPanics(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 
@@ -50,6 +55,8 @@ func TestDuplicateTimersPanics(t *testing.T) {
 }
 
 func TestMultipleTimers(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
 	assert := assert.New(t)
 
 	ctx1 := context.Background()

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,7 +30,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func TestBlockPropsManyNodes(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	require := require.New(t)
 
@@ -53,7 +54,10 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	connect(t, nodes[1], nodes[2])
 	connect(t, nodes[2], nodes[3])
 
-	baseTS := minerNode.ChainReader.Head()
+	head := minerNode.ChainReader.GetHead()
+	headTipSetAndState, err := minerNode.ChainReader.GetTipSetAndState(head)
+	require.NoError(err)
+	baseTS := headTipSetAndState.TipSet
 	require.NotNil(t, baseTS)
 	proof := testhelpers.MakeRandomPoSTProofForTest()
 
@@ -78,9 +82,9 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	equal := false
 	for i := 0; i < 30; i++ {
 		for j := 1; j < numNodes; j++ {
-			otherHead := nodes[j].ChainReader.Head()
+			otherHead := nodes[j].ChainReader.GetHead()
 			assert.NotNil(t, otherHead)
-			equal = otherHead.ToSlice()[0].Cid().Equals(nextBlk.Cid())
+			equal = otherHead.ToSlice()[0].Equals(nextBlk.Cid())
 			if equal {
 				break
 			}
@@ -93,14 +97,20 @@ func TestBlockPropsManyNodes(t *testing.T) {
 }
 
 func TestChainSync(t *testing.T) {
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	assert := assert.New(t)
+	require := require.New(t)
 
 	minerAddr, nodes := makeNodes(t, assert, 2)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
-	baseTS := nodes[0].ChainReader.Head()
+	head := nodes[0].ChainReader.GetHead()
+	headTipSetAndState, err := nodes[0].ChainReader.GetTipSetAndState(head)
+	require.NoError(err)
+	baseTS := headTipSetAndState.TipSet
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
 	mockSignerPubKey := ki[0].PublicKey()
@@ -117,9 +127,9 @@ func TestChainSync(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].ChainReader.Head()
+		otherHead := nodes[1].ChainReader.GetHead()
 		assert.NotNil(t, otherHead)
-		equal = otherHead.ToSlice()[0].Cid().Equals(nextBlk3.Cid())
+		equal = otherHead.ToSlice()[0].Equals(nextBlk3.Cid())
 		if equal {
 			break
 		}

@@ -50,7 +50,7 @@ const (
 )
 
 type clientPorcelainAPI interface {
-	ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error)
+	ChainBlockHeight() (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(cid.Cid) *storagedeal.Deal
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
@@ -113,7 +113,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 	price := ask.Price
 
-	chainHeight, err := smc.api.ChainBlockHeight(ctxSetup)
+	chainHeight, err := smc.api.ChainBlockHeight()
 	if err != nil {
 		return nil, err
 	}

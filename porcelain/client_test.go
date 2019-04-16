@@ -8,11 +8,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -54,14 +54,14 @@ func (cla *claPlumbing) ActorLs(ctx context.Context) (<-chan state.GetAllActorsR
 	return out, nil
 }
 
-func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if cla.messageFail {
-		return nil, nil, errors.New("MESSAGE FAILURE")
+		return nil, errors.New("MESSAGE FAILURE")
 	}
 
 	if method == "getAsks" {
 		askIDs, _ := cbor.DumpObject([]uint64{0})
-		return [][]byte{askIDs}, nil, nil
+		return [][]byte{askIDs}, nil
 	}
 
 	ask := miner.Ask{
@@ -70,11 +70,11 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 		Price:  types.NewAttoFILFromFIL(3),
 	}
 	askBytes, _ := cbor.DumpObject(ask)
-	return [][]byte{askBytes}, nil, nil
+	return [][]byte{askBytes}, nil
 }
 
 func TestClientListAsks(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("success", func(t *testing.T) {
 		assert := assert.New(t)

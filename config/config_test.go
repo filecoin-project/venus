@@ -10,9 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestDefaults(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	cfg := NewDefaultConfig()
@@ -24,6 +27,8 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestWriteFile(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "config")
@@ -84,6 +89,10 @@ func TestWriteFile(t *testing.T) {
 		"prometheusEnabled": false,
 		"reportInterval": "5s",
 		"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
+	},
+	"mpool": {
+		"maxPoolSize": 10000,
+		"maxNonceGap": "100"
 	}
 }`,
 		string(content),
@@ -93,6 +102,8 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestSetRejectsInvalidNicks(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	cfg := NewDefaultConfig()
 
@@ -106,6 +117,8 @@ func TestSetRejectsInvalidNicks(t *testing.T) {
 }
 
 func TestConfigRoundtrip(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	dir, err := ioutil.TempDir("", "config")
@@ -124,6 +137,8 @@ func TestConfigRoundtrip(t *testing.T) {
 }
 
 func TestConfigReadFileDefaults(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("all sections exist", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -180,6 +195,8 @@ func TestConfigReadFileDefaults(t *testing.T) {
 }
 
 func TestConfigGet(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("valid gets", func(t *testing.T) {
 		assert := assert.New(t)
 		cfg := NewDefaultConfig()
@@ -240,6 +257,8 @@ func TestConfigGet(t *testing.T) {
 }
 
 func TestConfigSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("set leaf values", func(t *testing.T) {
 		assert := assert.New(t)
 		cfg := NewDefaultConfig()

@@ -5,10 +5,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFaultError(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	assert.Contains(NewFaultErrorf("%d", 42).Error(), "42")
@@ -29,6 +32,8 @@ func TestFaultError(t *testing.T) {
 }
 
 func TestRevertError(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	assert.Contains(NewRevertErrorf("%d", 42).Error(), "42")
@@ -50,6 +55,8 @@ func TestRevertError(t *testing.T) {
 }
 
 func TestApplyErrorPermanent(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("random errors dont satisfy", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(IsApplyErrorPermanent(errors.New("boom")))
@@ -73,6 +80,8 @@ func TestApplyErrorPermanent(t *testing.T) {
 }
 
 func TestApplyErrorTemporary(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("random errors dont satisfy", func(t *testing.T) {
 		assert := assert.New(t)
 		assert.False(IsApplyErrorTemporary(errors.New("boom")))

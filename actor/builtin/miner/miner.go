@@ -2,7 +2,6 @@ package miner
 
 import (
 	"math/big"
-	"os"
 	"strconv"
 
 	"github.com/ipfs/go-cid"
@@ -58,6 +57,8 @@ const (
 	ErrAskNotFound = 40
 	// ErrInvalidSealProof signals that the passed in seal proof was invalid.
 	ErrInvalidSealProof = 41
+	// ErrGetProofsModeFailed indicates the call to get the proofs mode failed.
+	ErrGetProofsModeFailed = 42
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -71,6 +72,7 @@ var Errors = map[uint8]error{
 	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
+	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
 }
 
 // Actor is the miner actor.
@@ -441,13 +443,13 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
-	if len(commD) != int(proofs.CommitmentBytesLen) {
+	if len(commD) != int(types.CommitmentBytesLen) {
 		return 1, errors.NewRevertError("invalid sized commD")
 	}
-	if len(commR) != int(proofs.CommitmentBytesLen) {
+	if len(commR) != int(types.CommitmentBytesLen) {
 		return 1, errors.NewRevertError("invalid sized commR")
 	}
-	if len(commRStar) != int(proofs.CommitmentBytesLen) {
+	if len(commRStar) != int(types.CommitmentBytesLen) {
 		return 1, errors.NewRevertError("invalid sized commRStar")
 	}
 
@@ -460,12 +462,19 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		// the PoRep verification operation needs to know some things (e.g. size)
 		// about the sector for which the proof was generated in order to verify.
 		//
-		// It is undefined behavior for a miner using "LiveMode" to verify a
-		// proof created by a miner using "TestMode" (and vice-versa).
+		// It is undefined behavior for a miner using "LiveProofsMode" to verify
+		// a proof created by a miner in "TestProofsMode"(and vice-versa).
 		//
-		proofsMode := proofs.LiveMode
-		if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-			proofsMode = proofs.TestMode
+		proofsMode, err := GetProofsMode(ctx)
+		if err != nil {
+			return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
+		}
+
+		var sectorSize types.SectorSize
+		if proofsMode == types.TestProofsMode {
+			sectorSize = types.OneKiBSectorSize
+		} else {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
 		}
 
 		req := proofs.VerifySealRequest{}
@@ -475,7 +484,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(req.Proof[:], proof)
 		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
 		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
-		req.ProofsMode = proofsMode
+		req.SectorSize = sectorSize
 
 		res, err := (&proofs.RustVerifier{}).VerifySeal(req)
 		if err != nil {
@@ -508,9 +517,9 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		inc := big.NewInt(1)
 		state.Power = state.Power.Add(state.Power, inc)
 		comms := types.Commitments{
-			CommD:     proofs.CommD{},
-			CommR:     proofs.CommR{},
-			CommRStar: proofs.CommRStar{},
+			CommD:     types.CommD{},
+			CommR:     types.CommR{},
+			CommRStar: types.CommRStar{},
 		}
 		copy(comms.CommD[:], commD)
 		copy(comms.CommR[:], commR)
@@ -645,7 +654,7 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -672,12 +681,20 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 		if !ma.Bootstrap {
 			// See comment above, in CommitSector.
 			//
-			// It is undefined behavior for a miner using "LiveMode" to verify a
-			// proof created by a miner using "TestMode" (and vice-versa).
+			// It is undefined behavior for a miner using "LiveProofsMode" to
+			// verify a proof created by a miner using "TestProofsMode" (and
+			// vice-versa).
 			//
-			proofsMode := proofs.LiveMode
-			if os.Getenv("FIL_USE_SMALL_SECTORS") == "true" {
-				proofsMode = proofs.TestMode
+			proofsMode, err := GetProofsMode(ctx)
+			if err != nil {
+				return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
+			}
+
+			var sectorSize types.SectorSize
+			if proofsMode == types.TestProofsMode {
+				sectorSize = types.OneKiBSectorSize
+			} else {
+				sectorSize = types.TwoHundredFiftySixMiBSectorSize
 			}
 
 			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
@@ -685,17 +702,19 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []proofs.PoStProof) (
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
 
-			var commRs []proofs.CommR
+			var commRs []types.CommR
 			for _, v := range state.SectorCommitments {
 				commRs = append(commRs, v.CommR)
 			}
 
+			sortedCommRs := proofs.NewSortedCommRs(commRs...)
+
 			req := proofs.VerifyPoSTRequest{
 				ChallengeSeed: seed,
-				CommRs:        commRs,
+				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
 				Proofs:        postProofs,
-				ProofsMode:    proofsMode,
+				SectorSize:    sectorSize,
 			}
 
 			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
@@ -739,14 +758,27 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 	return state.ProvingPeriodStart, 0, nil
 }
 
-func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (proofs.PoStChallengeSeed, error) {
+func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
 	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
 	if err != nil {
-		return proofs.PoStChallengeSeed{}, err
+		return types.PoStChallengeSeed{}, err
 	}
 
-	seed := proofs.PoStChallengeSeed{}
+	seed := types.PoStChallengeSeed{}
 	copy(seed[:], bytes)
 
 	return seed, nil
+}
+
+// GetProofsMode returns the genesis block-configured proofs mode.
+func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
+	var proofsMode types.ProofsMode
+	msgResult, _, err := ctx.Send(address.StorageMarketAddress, "getProofsMode", types.NewZeroAttoFIL(), nil)
+	if err != nil {
+		return types.TestProofsMode, xerrors.Wrap(err, "'getProofsMode' message failed")
+	}
+	if err := cbor.DecodeInto(msgResult[0], &proofsMode); err != nil {
+		return types.TestProofsMode, xerrors.Wrap(err, "could not unmarshall sector store type")
+	}
+	return proofsMode, nil
 }

@@ -20,6 +20,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
 )
@@ -27,6 +28,8 @@ import (
 var testSignature = types.Signature("<test signature>")
 
 func TestProposeDeal(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 	ctx := context.Background()
@@ -139,7 +142,7 @@ func newTestClientAPI(require *require.Assertions) *clientTestAPI {
 	}
 }
 
-func (ctp *clientTestAPI) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
+func (ctp *clientTestAPI) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ctp.blockHeight, nil
 }
 

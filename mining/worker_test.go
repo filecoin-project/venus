@@ -15,16 +15,19 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func Test_Mine(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -98,7 +101,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), th.NewMockMessagePoolValidator())
+	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid
@@ -137,6 +140,8 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 
 // TODO this test belongs in core, it calls ApplyMessages
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	vms := th.VMStorage()
@@ -194,6 +199,8 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 }
 
 func TestGenerateMultiBlockTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	ctx := context.Background()
@@ -231,7 +238,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:    stateRoot,
 		Nonce:        1,
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, proofs.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, types.PoStProof{}, 0)
 	assert.NoError(err)
 
 	assert.Len(blk.Messages, 0)
@@ -241,6 +248,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 	CreatePoSTFunc := func() {}
@@ -305,9 +314,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: stateRoot,
-		Proof:     proofs.PoStProof{},
+		Proof:     types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, proofs.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, types.PoStProof{}, 0)
 	assert.NoError(err)
 
 	// This is the temporary failure + the good message,
@@ -320,6 +329,8 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -348,16 +359,16 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Height:       h,
 		ParentWeight: w,
 		StateRoot:    newCid(),
-		Proof:        proofs.PoStProof{},
+		Proof:        types.PoStProof{},
 	}
 	baseTipSet := th.RequireNewTipSet(require, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, nil, proofs.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
 	assert.NoError(err)
 
 	assert.Equal(h+1, blk.Height)
 	assert.Equal(minerAddr, blk.Miner)
 
-	blk, err = worker.Generate(ctx, baseTipSet, nil, proofs.PoStProof{}, 1)
+	blk, err = worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 1)
 	assert.NoError(err)
 
 	assert.Equal(h+2, blk.Height)
@@ -366,6 +377,8 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -390,9 +403,9 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
-		Proof:     proofs.PoStProof{},
+		Proof:     types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, proofs.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, types.PoStProof{}, 0)
 	assert.NoError(err)
 
 	assert.Len(pool.Pending(), 0) // This is the temporary failure.
@@ -402,6 +415,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 // If something goes wrong while generating a new block, even as late as when flushing it,
 // no block should be returned, and the message pool should not be pruned.
 func TestGenerateError(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -432,10 +447,10 @@ func TestGenerateError(t *testing.T) {
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
-		Proof:     proofs.PoStProof{},
+		Proof:     types.PoStProof{},
 	}
 	baseTipSet := th.RequireNewTipSet(require, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, nil, proofs.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
 	assert.Error(err, "boom")
 	assert.Nil(blk)
 

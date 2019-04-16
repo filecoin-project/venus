@@ -4,9 +4,12 @@ import (
 	"testing"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestSwarmConnectPeersValid(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/0.0.0.0/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
 
@@ -17,6 +20,8 @@ func TestSwarmConnectPeersValid(t *testing.T) {
 }
 
 func TestSwarmConnectPeersInvalid(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/0.0.0.0/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
 

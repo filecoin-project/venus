@@ -6,10 +6,13 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestMessageQueueOrder(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 

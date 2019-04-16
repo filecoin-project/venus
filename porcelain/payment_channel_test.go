@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -21,10 +21,10 @@ type testPaymentChannelLsPlumbing struct {
 	channels map[string]*paymentbroker.PaymentChannel
 }
 
-func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	chnls, err := cbor.DumpObject(p.channels)
 	p.require.NoError(err)
-	return [][]byte{chnls}, nil, nil
+	return [][]byte{chnls}, nil
 }
 
 func (p *testPaymentChannelLsPlumbing) WalletDefaultAddress() (address.Address, error) {
@@ -32,7 +32,7 @@ func (p *testPaymentChannelLsPlumbing) WalletDefaultAddress() (address.Address, 
 }
 
 func TestPaymentChannelLs(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)
@@ -57,10 +57,10 @@ type testPaymentChannelVoucherPlumbing struct {
 	voucher *paymentbroker.PaymentVoucher
 }
 
-func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	result, err := actor.MarshalStorage(p.voucher)
 	p.require.NoError(err)
-	return [][]byte{result}, nil, nil
+	return [][]byte{result}, nil
 }
 
 func (p *testPaymentChannelVoucherPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
@@ -72,7 +72,7 @@ func (p *testPaymentChannelVoucherPlumbing) WalletDefaultAddress() (address.Addr
 }
 
 func TestPaymentChannelVoucher(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
 		assert := assert.New(t)

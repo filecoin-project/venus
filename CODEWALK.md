@@ -455,12 +455,11 @@ The `install-rust-proofs.sh` script fetches or generates these Groth parameters 
 Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at go-filecoin runtime.
 The parameters are identified by the `parameters.json` file from fil-rust-proofs, which includes a checksum.
 
-### Sector size configuration
-Sealing a sector is a compute-intensive process that grows with the size of the sector being sealed (replication grows linearly, and proof-generation logarithmically).
-For ease of development, go-filecoin can be configured to use tiny sectors, holding only 1016 bytes of user data, which are faster to seal. 
-This mode is triggered by the `FIL_USE_SMALL_SECTORS` environment variable. 
-Sector size is a parameter on which nodes in a network must agree, and determines the Groth parameters; 
-nodes with different sector sizes cannot verify each other’s proofs.
+### Proof mode configuration
+For ease of development, go-filecoin can be configured to use a test proofs mode, which will cause storage miners to use sectors into which only 1016 bytes of user data can be written.
+This lowers the computational burden of sealing and generating PoSts.
+
+The `genesis.car` in `fixtures/test/` is configured to use test proofs mode.
 
 ## Networking
 

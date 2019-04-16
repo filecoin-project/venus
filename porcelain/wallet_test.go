@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 	"github.com/stretchr/testify/assert"
@@ -58,6 +59,8 @@ func (wdatp *wdaTestPlumbing) WalletNewAddress() (address.Address, error) {
 }
 
 func TestWalletBalance(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("Returns the correct value for wallet balance", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -75,7 +78,7 @@ func TestWalletBalance(t *testing.T) {
 }
 
 func TestWalletDefaultAddress(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
 		require := require.New(t)

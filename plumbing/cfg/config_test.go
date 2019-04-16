@@ -4,15 +4,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/repo"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestConfigGet(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	t.Run("emits the referenced config value", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -27,7 +29,7 @@ func TestConfigGet(t *testing.T) {
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		repo := repo.NewInMemoryRepo()
@@ -45,9 +47,10 @@ func TestConfigGet(t *testing.T) {
 }
 
 func TestConfigSet(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
+
 	t.Run("sets the config value", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -101,7 +104,7 @@ func TestConfigSet(t *testing.T) {
 	})
 
 	t.Run("failure cases fail", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		repo := repo.NewInMemoryRepo()
@@ -131,7 +134,7 @@ func TestConfigSet(t *testing.T) {
 	})
 
 	t.Run("validates the node nickname", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		repo := repo.NewInMemoryRepo()

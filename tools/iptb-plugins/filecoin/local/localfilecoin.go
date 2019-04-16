@@ -12,17 +12,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/config"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
+	"github.com/filecoin-project/go-filecoin/config"
+
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
 
 // PluginName is the name of the plugin
@@ -40,9 +41,6 @@ var DefaultFilecoinBinary = "go-filecoin"
 // DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
 var DefaultLogLevel = "3"
 
-// DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
-var DefaultUseSmallSectors = "false"
-
 // DefaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
 var DefaultLogJSON = "false"
 
@@ -55,9 +53,6 @@ var (
 
 	// AttrLogJSON is the key used to set the node to output json logs
 	AttrLogJSON = "logJSON"
-
-	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
-	AttrUseSmallSectors = "useSmallSectors"
 )
 
 // Localfilecoin represents a filecoin node
@@ -66,10 +61,9 @@ type Localfilecoin struct {
 	peerid  cid.Cid
 	apiaddr multiaddr.Multiaddr
 
-	binPath         string
-	logLevel        string
-	logJSON         string
-	useSmallSectors string
+	binPath  string
+	logLevel string
+	logJSON  string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -79,10 +73,9 @@ func init() {
 		var (
 			err error
 
-			binPath         = ""
-			logLevel        = DefaultLogLevel
-			logJSON         = DefaultLogJSON
-			useSmallSectors = DefaultUseSmallSectors
+			binPath  = ""
+			logLevel = DefaultLogLevel
+			logJSON  = DefaultLogJSON
 		)
 
 		if v, ok := attrs[AttrFilecoinBinary]; ok {
@@ -91,10 +84,6 @@ func init() {
 
 		if v, ok := attrs[AttrLogLevel]; ok {
 			logLevel = v
-		}
-
-		if v, ok := attrs[AttrUseSmallSectors]; ok {
-			useSmallSectors = v
 		}
 
 		if v, ok := attrs[AttrLogJSON]; ok {
@@ -121,11 +110,10 @@ func init() {
 		}
 
 		return &Localfilecoin{
-			dir:             dir,
-			binPath:         dst,
-			logLevel:        logLevel,
-			logJSON:         logJSON,
-			useSmallSectors: useSmallSectors,
+			dir:      dir,
+			binPath:  dst,
+			logLevel: logLevel,
+			logJSON:  logJSON,
 		}, nil
 	}
 }

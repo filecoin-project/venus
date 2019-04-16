@@ -37,10 +37,11 @@ func init() {
 
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts map[address.Address]*types.AttoFIL
-	nonces   map[address.Address]uint64
-	actors   map[address.Address]*actor.Actor
-	miners   map[address.Address]*miner.State
+	accounts   map[address.Address]*types.AttoFIL
+	nonces     map[address.Address]uint64
+	actors     map[address.Address]*actor.Actor
+	miners     map[address.Address]*miner.State
+	proofsMode types.ProofsMode
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -80,13 +81,22 @@ func AddActor(addr address.Address, actor *actor.Actor) GenOption {
 	}
 }
 
+// ProofsMode sets the mode of operation for the proofs library.
+func ProofsMode(proofsMode types.ProofsMode) GenOption {
+	return func(gc *Config) error {
+		gc.proofsMode = proofsMode
+		return nil
+	}
+}
+
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts: make(map[address.Address]*types.AttoFIL),
-		nonces:   make(map[address.Address]uint64),
-		actors:   make(map[address.Address]*actor.Actor),
-		miners:   make(map[address.Address]*miner.State),
+		accounts:   make(map[address.Address]*types.AttoFIL),
+		nonces:     make(map[address.Address]uint64),
+		actors:     make(map[address.Address]*actor.Actor),
+		miners:     make(map[address.Address]*miner.State),
+		proofsMode: types.TestProofsMode,
 	}
 }
 
@@ -142,7 +152,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				return nil, err
 			}
 		}
-		if err := SetupDefaultActors(ctx, st, storageMap); err != nil {
+		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode); err != nil {
 			return nil, err
 		}
 		// Now add any other actors configured.
@@ -181,7 +191,7 @@ func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.B
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap) error {
+func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode) error {
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
 		if err != nil {
@@ -197,7 +207,8 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	if err != nil {
 		return err
 	}
-	err = (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), nil)
+
+	err = (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
 	if err != nil {
 		return err
 	}

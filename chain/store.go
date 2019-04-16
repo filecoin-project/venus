@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -32,19 +31,15 @@ type ReadStore interface {
 	// GetTipSet retrieves the tipindex value (tipset, state) at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
-	GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error)
+	GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error)
 	// GetBlock gets a block by cid.
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
 	HeadEvents() *pubsub.PubSub
-	// Head returns the head of the chain tracked by the store.
-	Head() types.TipSet
-	// LatestState returns the latest state of the head
-	LatestState(ctx context.Context) (state.Tree, error)
+	// GetHead returns the head of the chain tracked by the store.
+	GetHead() types.SortedCidSet
 	// ActorFromLatestState tries to get an actor from the latest state
 	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
-
-	BlockHistory(ctx context.Context, tips types.TipSet) <-chan interface{}
 
 	GenesisCid() cid.Cid
 }
@@ -66,9 +61,9 @@ type Store interface {
 	// HasTipSet indicates whether the tipset is in the store.
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
 	// GetTipSetsByParentsAndHeight returns all tipsets with the given parent set and the given height
-	GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error)
 	// HasTipSetsWithParentsAndHeight indicates whether tipsets with these parents and this height are in the store.
-	HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool
 
 	// GetBlocks gets several blocks by cid. In the future there is caching here
 	GetBlocks(ctx context.Context, cids types.SortedCidSet) ([]*types.Block, error)

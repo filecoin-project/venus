@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -69,6 +69,7 @@ func main() {
 	var defaultSeed = time.Now().Unix()
 
 	jsonout := flag.Bool("json", false, "sets output to be json")
+	testProofsMode := flag.Bool("test-proofs-mode", false, "change sealing, sector packing, PoSt, etc. to be compatible with test environments")
 	keypath := flag.String("keypath", ".", "sets location to write key files to")
 	outJSON := flag.String("out-json", "", "enables json output and writes it to the given file")
 	outCar := flag.String("out-car", "", "writes the generated car file to the give path, instead of stdout")
@@ -92,6 +93,10 @@ func main() {
 			panic(err)
 		}
 		outfile = f
+	}
+	cfg.ProofsMode = types.LiveProofsMode
+	if *testProofsMode {
+		cfg.ProofsMode = types.TestProofsMode
 	}
 	info, err := gengen.GenGenesisCar(cfg, outfile, *seed)
 	if err != nil {

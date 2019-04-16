@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -59,6 +58,9 @@ type GenesisCfg struct {
 
 	// Miners is a list of miners that should be set up at the start of the network
 	Miners []Miner
+
+	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
+	ProofsMode types.ProofsMode
 }
 
 // RenderedGenInfo contains information about a genesis block creation
@@ -100,7 +102,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 	storageMap := vm.NewStorageMap(bs)
 
-	if err := consensus.SetupDefaultActors(ctx, st, storageMap); err != nil {
+	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode); err != nil {
 		return nil, err
 	}
 
@@ -270,7 +272,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			commD := make([]byte, 32)
 			commR := make([]byte, 32)
 			commRStar := make([]byte, 32)
-			sealProof := make([]byte, proofs.SealBytesLen)
+			sealProof := make([]byte, types.SealBytesLen)
 			if _, err := pnrg.Read(commD[:]); err != nil {
 				return nil, err
 			}

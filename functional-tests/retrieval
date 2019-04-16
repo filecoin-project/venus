@@ -6,20 +6,18 @@ DIR="$(dirname "${BASH_SOURCE[0]}")"
 
 source "$DIR/lib/helpers.bash"
 
-go run ./build/*.go build
-
 export GO_FILECOIN_LOG_LEVEL=3
 export FILECOIN_PROOFS_FAST_DELAY_SECONDS=1
 
 if [ -z "$1" ]; then
-    USE_SMALL_SECTORS="true"
+    FIXTURES_PATH="./fixtures/test"
     COMMIT_SECTOR_AND_POST_TIMEOUT=120
 else
-    USE_SMALL_SECTORS="$1"
+    FIXTURES_PATH="./fixtures/live"
     COMMIT_SECTOR_AND_POST_TIMEOUT=3600
 fi
 
-export FIL_USE_SMALL_SECTORS=${USE_SMALL_SECTORS}
+go run ./build/*.go build
 
 if [ -z "$2" ]; then
     AUTO_SEAL_INTERVAL_SECONDS="0"
@@ -40,7 +38,7 @@ UNSEAL_PATH=$(mktemp)
 BLOCK_TIME="5s"
 HODL="HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL"
 
-if [ "${USE_SMALL_SECTORS}" = true ] ; then
+if [ "${FIXTURES_PATH}" = "./fixtures/test" ] ; then
     dd if=/dev/urandom of="${PIECE_2_PATH}" bs=1 count=700
     dd if=/dev/urandom of="${PIECE_1_PATH}" bs=1 count=500
 else
@@ -67,13 +65,13 @@ CL_SWARM_PORT=$(free_port)
 
 echo ""
 echo "generating private keys..."
-BOOTSTRAP_MN_MINER_FIL_ADDR=$(jq -r '.Miners[] | select(.Owner == 0).Address' < fixtures/gen.json)
+BOOTSTRAP_MN_MINER_FIL_ADDR=$(jq -r '.Miners[] | select(.Owner == 0).Address' < "${FIXTURES_PATH}/gen.json")
 
 echo ""
 echo "initializing daemons..."
-init_local_daemon "${BOOTSTRAP_MN_REPO_DIR}" "${BOOTSTRAP_MN_CMDAPI_PORT}" ./fixtures/genesis.car
-init_local_daemon "${STORAGE_MN_REPO_DIR}" "${STORAGE_MN_CMDAPI_PORT}" ./fixtures/genesis.car
-init_local_daemon "${CL_REPO_DIR}" "${CL_CMDAPI_PORT}" ./fixtures/genesis.car
+init_local_daemon "${BOOTSTRAP_MN_REPO_DIR}" "${BOOTSTRAP_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
+init_local_daemon "${STORAGE_MN_REPO_DIR}" "${STORAGE_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
+init_local_daemon "${CL_REPO_DIR}" "${CL_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
 
 echo ""
 echo "start daemons..."

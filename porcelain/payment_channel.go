@@ -7,12 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type pclPlumbing interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -34,7 +33,7 @@ func PaymentChannelLs(
 		payerAddr = fromAddr
 	}
 
-	values, _, err := plumbing.MessageQuery(
+	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -53,7 +52,7 @@ func PaymentChannelLs(
 }
 
 type pcvPlumbing interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -74,7 +73,7 @@ func PaymentChannelVoucher(
 		}
 	}
 
-	values, _, err := plumbing.MessageQuery(
+	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,

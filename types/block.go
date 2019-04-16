@@ -11,7 +11,6 @@ import (
 	node "github.com/ipfs/go-ipld-format"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 )
 
 func init() {
@@ -53,7 +52,7 @@ type Block struct {
 
 	// Proof is a proof of spacetime generated using the hash of the previous ticket as
 	// a challenge
-	Proof proofs.PoStProof `json:"proof"`
+	Proof PoStProof `json:"proof"`
 
 	cachedCid cid.Cid
 

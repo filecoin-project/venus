@@ -15,10 +15,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTransfer(t *testing.T) {
+	tf.UnitTest(t)
+
 	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
 	actor3 := actor.NewActor(cid.Undef, nil)
@@ -45,6 +48,8 @@ func TestTransfer(t *testing.T) {
 }
 
 func TestSendErrorHandling(t *testing.T) {
+	tf.UnitTest(t)
+
 	actor1 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()

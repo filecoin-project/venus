@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ import (
 )
 
 func TestQuery(t *testing.T) {
-	// Don't add t.Parallel here; these tests muck with globals.
+	tf.BadUnitTestWithSideEffects(t)
 
 	t.Run("success", func(t *testing.T) {
 		require := require.New(t)
@@ -51,10 +52,10 @@ func TestQuery(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
 
 		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
-		returnValue, funcSig, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
+		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(err)
 		require.NotNil(returnValue)
-		v, err := abi.Deserialize(returnValue[0], funcSig.Return[0])
+		v, err := abi.Deserialize(returnValue[0], abi.Address)
 		require.NoError(err)
 		_, ok := v.Val.(address.Address)
 		require.True(ok)
@@ -90,7 +91,7 @@ func TestQuery(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
 
 		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
-		_, _, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
+		_, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
 		require.Error(err)
 		assert.Contains(err.Error(), "42")
 	})

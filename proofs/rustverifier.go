@@ -6,6 +6,8 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/lib -lfilecoin_proofs
@@ -50,14 +52,14 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
-	mode, err := CProofsMode(req.ProofsMode)
+	size, err := cFFISectorSize(req.SectorSize)
 	if err != nil {
 		return VerifySealResponse{}, err
 	}
 
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
-		mode,
+		size,
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
@@ -81,8 +83,9 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	defer elapsed("VerifyPoST")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, 32*len(req.CommRs))
-	for idx, commR := range req.CommRs {
+	commRs := req.SortedCommRs.Values()
+	flattened := make([]byte, 32*len(commRs))
+	for idx, commR := range commRs {
 		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
 	}
 
@@ -100,14 +103,14 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	faultsPtr, faultsSize := cUint64s(req.Faults)
 	defer C.free(unsafe.Pointer(faultsPtr))
 
-	cfg, err := CProofsMode(req.ProofsMode)
+	size, err := cFFISectorSize(req.SectorSize)
 	if err != nil {
 		return VerifyPoSTResponse{}, err
 	}
 
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
-		cfg,
+		size,
 		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(challengeSeedCBytes),
@@ -130,10 +133,23 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	}, nil
 }
 
+// GetMaxUserBytesPerStagedSector returns the number of user bytes that will fit
+// into a staged sector. Due to bit-padding, the number of user bytes that will
+// fit into the staged sector will be less than number of bytes reported in
+// types.SectorSize.
+func GetMaxUserBytesPerStagedSector(size types.SectorSize) (uint64, error) {
+	fsize, err := cFFISectorSize(size)
+	if err != nil {
+		return 0, errors.Wrap(err, "CSectorStoreType failed")
+	}
+
+	return uint64(C.get_max_user_bytes_per_staged_sector(fsize)), nil
+}
+
 // cPoStProofs copies bytes from the provided PoSt proofs to a C array and
 // returns a pointer to that array and its size. Callers are responsible for
 // freeing the pointer. If they do not do that, the array will be leaked.
-func cPoStProofs(src []PoStProof) (*C.uint8_t, C.size_t) {
+func cPoStProofs(src []types.PoStProof) (*C.uint8_t, C.size_t) {
 	flattenedLen := C.size_t(192 * len(src))
 
 	// flattening the byte slice makes it easier to copy into the C heap
@@ -163,16 +179,14 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	return (*C.uint64_t)(cUint64s), srcCSizeT
 }
 
-// CProofsMode marshals from Mode to the FFI type *C.ConfiguredStore.
-func CProofsMode(cfg Mode) (*C.ConfiguredStore, error) {
-	var scfg C.ConfiguredStore
-	if cfg == LiveMode {
-		scfg = C.ConfiguredStore(C.Live)
-	} else if cfg == TestMode {
-		scfg = C.ConfiguredStore(C.Test)
-	} else {
-		return nil, errors.Errorf("unknown sector store type: %v", cfg)
+// cFFISectorSize marshals to the FFI type C.FFISectorSize.
+func cFFISectorSize(ss types.SectorSize) (C.FFISectorSize, error) {
+	switch ss {
+	case types.OneKiBSectorSize:
+		return C.FFISectorSize(C.SSB_OneKiB), nil
+	case types.TwoHundredFiftySixMiBSectorSize:
+		return C.FFISectorSize(C.SSB_TwoHundredFiftySixMiB), nil
+	default:
+		return C.FFISectorSize(0), errors.Errorf("unhandled value: %v", ss)
 	}
-
-	return &scfg, nil
 }

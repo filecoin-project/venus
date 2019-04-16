@@ -8,9 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/crypto"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestGenerateKey(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	rand.Seed(time.Now().UnixNano())
 

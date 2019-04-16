@@ -8,6 +8,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -38,10 +39,6 @@ type SectorBuilder interface {
 	// A *SealedSectorMetadata will be sent to the returned channel only once,
 	// regardless of the number of times SectorSealResults is called.
 	SectorSealResults() <-chan SectorSealResult
-
-	// GetMaxUserBytesPerStagedSector produces the number of user piece-bytes
-	// which will fit into a newly-provisioned staged sector.
-	GetMaxUserBytesPerStagedSector() (uint64, error)
 
 	// GeneratePoSt creates a proof-of-spacetime for the replicas managed by
 	// the SectorBuilder. Its output includes the proof-of-spacetime proof which
@@ -77,22 +74,22 @@ type PieceInfo struct {
 
 // SealedSectorMetadata is a sector that has been sealed by the PoRep setup process
 type SealedSectorMetadata struct {
-	CommD     proofs.CommD
-	CommR     proofs.CommR // deprecated (will be removed soon)
-	CommRStar proofs.CommRStar
+	CommD     types.CommD
+	CommR     types.CommR // deprecated (will be removed soon)
+	CommRStar types.CommRStar
 	Pieces    []*PieceInfo // deprecated (will be removed soon)
-	Proof     proofs.SealProof
+	Proof     types.SealProof
 	SectorID  uint64
 }
 
 // GeneratePoStRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoStRequest struct {
-	CommRs        []proofs.CommR
-	ChallengeSeed proofs.PoStChallengeSeed
+	SortedCommRs  proofs.SortedCommRs
+	ChallengeSeed types.PoStChallengeSeed
 }
 
 // GeneratePoStResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoStResponse struct {
 	Faults []uint64
-	Proofs []proofs.PoStProof
+	Proofs []types.PoStProof
 }

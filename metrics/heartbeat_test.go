@@ -19,6 +19,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -68,6 +69,8 @@ func newEndpoint(t *testing.T, port int) endpoint {
 }
 
 func TestHeartbeatConnectSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	aggregator := newEndpoint(t, 0)
@@ -83,10 +86,10 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return types.TipSet{
+		func() (*types.TipSet, error) {
+			return &types.TipSet{
 				testCid: nil,
-			}
+			}, nil
 		},
 	)
 
@@ -99,6 +102,8 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 }
 
 func TestHeartbeatConnectFailure(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	ctx := context.Background()
 	filecoin := newEndpoint(t, 60001)
@@ -111,16 +116,18 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return types.TipSet{
+		func() (*types.TipSet, error) {
+			return &types.TipSet{
 				testCid: nil,
-			}
+			}, nil
 		},
 	)
 	assert.Error(hbs.Connect(ctx))
 }
 
 func TestHeartbeatRunSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -162,8 +169,8 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return expTs
+		func() (*types.TipSet, error) {
+			return &expTs, nil
 		},
 		WithMinerAddressGetter(func() address.Address {
 			return addr

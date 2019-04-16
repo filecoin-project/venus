@@ -10,12 +10,14 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 func TestWalletSimple(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create a backend")
@@ -67,6 +69,8 @@ func TestWalletSimple(t *testing.T) {
 }
 
 func TestSimpleSignAndVerify(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create a backend")
@@ -129,6 +133,8 @@ func TestSimpleSignAndVerify(t *testing.T) {
 }
 
 func TestSignErrorCases(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	t.Log("create 2 backends")
@@ -177,6 +183,8 @@ func TestSignErrorCases(t *testing.T) {
 }
 
 func TestGetAddressForPubKeyy(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
@@ -200,6 +208,8 @@ func TestGetAddressForPubKeyy(t *testing.T) {
 }
 
 func TestWallet_CreateTicket(t *testing.T) {
+	tf.UnitTest(t)
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -213,14 +223,14 @@ func TestWallet_CreateTicket(t *testing.T) {
 	require.NoError(err)
 
 	t.Run("Returns real ticket and nil error with good params", func(t *testing.T) {
-		proof := proofs.PoStProof{0xbb}
+		proof := types.PoStProof{0xbb}
 		ticket, err := consensus.CreateTicket(proof, pubKey, w)
 		assert.NoError(err)
 		assert.NotNil(ticket)
 	})
 
 	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
-		proof := proofs.PoStProof{0xc0}
+		proof := types.PoStProof{0xc0}
 		badPubKey := []byte{0xf0}
 		ticket, err := consensus.CreateTicket(proof, badPubKey, w)
 		assert.Error(err, "SignBytes error in CreateTicket: public key not found")

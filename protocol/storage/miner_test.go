@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,6 +26,8 @@ var (
 )
 
 func TestReceiveStorageProposal(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
@@ -220,6 +223,8 @@ func TestReceiveStorageProposal(t *testing.T) {
 }
 
 func TestDealsAwaitingSeal(t *testing.T) {
+	tf.UnitTest(t)
+
 	newCid := types.NewCidForTestGetter()
 	cid0 := newCid()
 	cid1 := newCid()
@@ -232,7 +237,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	wantMessage := "boom"
 
 	t.Run("saveDealsAwaitingSeal saves, loadDealsAwaitingSeal loads", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 		require := require.New(t)
 
@@ -255,7 +260,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add before success", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -278,7 +283,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add after success", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -301,7 +306,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add before fail", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -324,7 +329,7 @@ func TestDealsAwaitingSeal(t *testing.T) {
 	})
 
 	t.Run("add after fail", func(t *testing.T) {
-		t.Parallel()
+
 		assert := assert.New(t)
 
 		dealsAwaitingSeal := &dealsAwaitingSealStruct{
@@ -363,7 +368,7 @@ type minerTestPorcelain struct {
 	require *require.Assertions
 }
 
-func (mtp *minerTestPorcelain) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 	bytes := make([]byte, 42)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(err)
@@ -402,11 +407,15 @@ func newMinerTestPorcelain(require *require.Assertions) *minerTestPorcelain {
 	}
 }
 
+func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+	return nil, nil
+}
+
 func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
 }
 
-func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	channels := map[string]*paymentbroker.PaymentChannel{}
 
 	if !mtp.noChannels {
@@ -421,14 +430,14 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 
 	channelsBytes, err := actor.MarshalStorage(channels)
 	mtp.require.NoError(err)
-	return [][]byte{channelsBytes}, nil, nil
+	return [][]byte{channelsBytes}, nil
 }
 
 func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error) {
 	return mtp.config.Get(dottedPath)
 }
 
-func (mtp *minerTestPorcelain) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
+func (mtp *minerTestPorcelain) ChainBlockHeight() (*types.BlockHeight, error) {
 	return mtp.blockHeight, nil
 }
 

@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -202,7 +201,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
-	var proof proofs.PoStProof
+	var proof types.PoStProof
 	var ticket []byte
 	select {
 	case <-ctx.Done():
@@ -246,8 +245,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 
 // TODO: Actually use the results of the PoST once it is implemented.
 // Currently createProof just passes the challenge seed through.
-func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan proofs.PoStChallengeSeed {
-	c := make(chan proofs.PoStChallengeSeed)
+func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan types.PoStChallengeSeed {
+	c := make(chan types.PoStChallengeSeed)
 	go func() {
 		// TODO send new PoST on channel once we can create it
 		//  https://github.com/filecoin-project/go-filecoin/issues/1791

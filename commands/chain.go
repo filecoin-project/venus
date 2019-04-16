@@ -29,7 +29,11 @@ var chainHeadCmd = &cmds.Command{
 		Tagline: "Get heaviest tipset CIDs",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return re.Emit(GetPorcelainAPI(env).ChainHead(req.Context).ToSortedCidSet())
+		head, err := GetPorcelainAPI(env).ChainHead()
+		if err != nil {
+			return err
+		}
+		return re.Emit(head.ToSortedCidSet())
 	},
 	Type: []cid.Cid{},
 	Encoders: cmds.EncoderMap{
@@ -54,19 +58,19 @@ var chainLsCmd = &cmds.Command{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		for raw := range GetPorcelainAPI(env).ChainLs(req.Context) {
-			switch v := raw.(type) {
-			case error:
-				return v
-			case types.TipSet:
-				if len(v) == 0 {
-					panic("tipsets from this channel should have at least one member")
-				}
-				if err := re.Emit(v.ToSlice()); err != nil {
-					return err
-				}
-			default:
-				return fmt.Errorf("unexpected type")
+		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
+		if err != nil {
+			return err
+		}
+		for ; !iter.Complete(); err = iter.Next() {
+			if err != nil {
+				return err
+			}
+			if len(iter.Value()) == 0 {
+				panic("tipsets from this iterator should have at least one member")
+			}
+			if err := re.Emit(iter.Value().ToSlice()); err != nil {
+				return err
 			}
 		}
 		return nil

@@ -11,16 +11,15 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // cpPlumbing is the subset of the plumbing.API that CreatePayments uses.
 type cpPlumbing interface {
+	ChainBlockHeight() (*types.BlockHeight, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	ChainLs(ctx context.Context) <-chan interface{}
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
 
@@ -87,7 +86,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	}
 
 	// get current block height
-	currentHeight, err := ChainBlockHeight(ctx, plumbing)
+	currentHeight, err := plumbing.ChainBlockHeight()
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not retrieve block height for making payments")
 	}
@@ -164,7 +163,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 }
 
 func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount *types.AttoFIL, validAt *types.BlockHeight) error {
-	ret, _, err := plumbing.MessageQuery(ctx,
+	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
 		address.PaymentBrokerAddress,
 		"voucher",
