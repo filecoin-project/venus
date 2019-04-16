@@ -60,7 +60,11 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		val, ok := types.NewAttoFILFromFILString(req.Options["value"].(string))
+		rawVal := req.Options["value"]
+		if rawVal == nil {
+			return errors.New("value cannot be nil")
+		}
+		val, ok := types.NewAttoFILFromFILString(rawVal.(string))
 		if !ok {
 			return errors.New("mal-formed value")
 		}
