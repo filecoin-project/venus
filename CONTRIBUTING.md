@@ -241,6 +241,8 @@ A **Maintainer** is someone:
 3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
 4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
 
+Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, @phritz, @whyrusleeping. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
+
 Responsibilities:
 
 * Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
@@ -253,7 +255,7 @@ Abilities:
 * Manage issues
 * Merge PRs
 
-**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an issue {TODO: link to correct repo} pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities decsribed in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
+**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an [issue](https://github.com/filecoin-project/go-filecoin/issues) pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities described in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
 
 
 ## Additional Developer Notes
