@@ -18,6 +18,7 @@ func TestNewMigrator_1_2(t *testing.T) {
 
 }
 
+// TODO: Issue 2595 , complete these tests
 func TestMigrator_Describe(t *testing.T) {
 	require := req.New(t)
 	migl := requireMakeMigl(require)
@@ -29,11 +30,9 @@ func TestMigrator_Describe(t *testing.T) {
 }
 
 func TestMigrator_Migrate(t *testing.T) {
-
 }
 
 func TestMigrator_Validate(t *testing.T) {
-
 }
 
 func requireMakeMigl(require *req.Assertions) *int.Migl {

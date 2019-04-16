@@ -7,18 +7,14 @@ import (
 )
 
 const (
-	MigrationVersion = "0.2"
-	PreviousVersion  = "0.1"
-	Description      = "a test migrator that just updates the repo version"
+	MigrationVersion = "2"
+	PreviousVersion  = "1"
+	Description      = "Updates the repo version"
 )
 
 var (
 	ErrMigrationFailed = errors.New("migrator failed")
 )
-
-//  Migration runner defines an interface which migrator code must satisfy.
-//  Migrations are a pure function, given access to the input (read-only) and
-//  output repos, or a read-write repo to be migrated in place.
 
 type MigrationLogger interface {
 	Print(string)
@@ -28,7 +24,8 @@ type migrator struct {
 	log MigrationLogger
 }
 
-// NewMigrator instantiates a new migrator
+// TODO: Issue 2595
+// NewMigrator_1_2 instantiates a new migrator
 func NewMigrator_1_2(log MigrationLogger) *migrator {
 	return &migrator{log: log}
 }
@@ -39,7 +36,7 @@ func (mig *migrator) Describe() {
 	fmt.Printf("Migration from %s to %s: %s", PreviousVersion, MigrationVersion, Description)
 }
 
-// Run runs the migrator steps on a copy of the repo
+// Run executes the migration steps
 func (mig *migrator) Migrate(oldRepo, newRepo *os.File) error {
 	mig.log.Print("Migrate succeeded")
 	return nil
