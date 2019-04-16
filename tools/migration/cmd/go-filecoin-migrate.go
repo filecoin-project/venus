@@ -1,17 +1,16 @@
-package migration
+package cmd
 
 import (
 	"fmt"
-
-	"github.com/filecoin-project/go-filecoin/config"
-
-	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 	"os"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
+	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 )
 
 // runner
@@ -22,7 +21,7 @@ type Migrator interface {
 	Validate(oldRepo, newRepo *os.File) error
 }
 
-func Run(req *cmds.Request) {
+func Run(cmd string, verbose bool) {
 	var err error
 	log := logging.Logger("Migration runner")
 	// TODO: proper log path
@@ -72,7 +71,7 @@ func Run(req *cmds.Request) {
 	}
 	mig = migrate_1_to_2.NewMigrator_1_2(mgl)
 
-	switch req.Arguments[0] {
+	switch cmd {
 	case "Describe":
 		mig.Describe()
 		err = nil
@@ -131,12 +130,12 @@ func install(oldRepo, newRepo *os.File) error {
 	return nil
 }
 
-func makeMigl() (*Migl, error) {
+func makeMigl() (*internal.Migl, error) {
 	// TODO you'll have to use Create here
-	logfile, err := os.OpenFile("/tmp/foo.txt", os.O_CREATE|os.O_WRONLY, os.ModeExclusive)
+	logfile, err := os.Create("/tmp/foo.txt") // truncates
 	if err != nil {
 		return nil, err
 	}
-	migl := NewMigl(logfile, true)
+	migl := internal.NewMigl(logfile, true)
 	return &migl, nil
 }
