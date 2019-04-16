@@ -150,6 +150,11 @@ func (a *API) MinerPreviewSetPrice(
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
 }
 
+// ProtocolParams fetches the current protocol configuration parameters.
+func (a *API) ProtocolParameters() (*ProtocolParams, error) {
+	return ProtocolParameters(a)
+}
+
 // WalletBalance returns the current balance of the given wallet address.
 func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)
