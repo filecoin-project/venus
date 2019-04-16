@@ -47,7 +47,7 @@ var msgSendCmd = &cmds.Command{
 		cmdkit.StringArg("method", false, false, "The method to invoke on the target actor"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.IntOption("value", "Value to send with message in FIL"),
+		cmdkit.StringOption("value", "Value to send with message in FIL"),
 		cmdkit.StringOption("from", "Address to send message from"),
 		priceOption,
 		limitOption,
@@ -60,9 +60,13 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		val, ok := req.Options["value"].(int)
+		rawVal := req.Options["value"]
+		if rawVal == nil {
+			rawVal = "0"
+		}
+		val, ok := types.NewAttoFILFromFILString(rawVal.(string))
 		if !ok {
-			val = 0
+			return errors.New("mal-formed value")
 		}
 
 		o := req.Options["from"]
@@ -106,7 +110,7 @@ var msgSendCmd = &cmds.Command{
 			req.Context,
 			fromAddr,
 			target,
-			types.NewAttoFILFromFIL(uint64(val)),
+			val,
 			gasPrice,
 			gasLimit,
 			method,

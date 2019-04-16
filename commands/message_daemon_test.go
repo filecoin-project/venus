@@ -51,12 +51,21 @@ func TestMessageSend(t *testing.T) {
 		fixtures.TestAddresses[3],
 	)
 
-	t.Log("[success] with from and value")
+	t.Log("[success] with from and int value")
 	d.RunSuccess("message", "send",
 		"--from", from,
 		"--gas-price", "0",
 		"--gas-limit", "300",
-		"--value=10",
+		"--value", "10",
+		fixtures.TestAddresses[3],
+	)
+
+	t.Log("[success] with from and decimal value")
+	d.RunSuccess("message", "send",
+		"--from", from,
+		"--gas-price", "0",
+		"--gas-limit", "300",
+		"--value", "5.5",
 		fixtures.TestAddresses[3],
 	)
 }
