@@ -226,11 +226,6 @@ func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
 }
 
-// ProtocolParams fetches the current protocol configuration parameters.
-func (api *API) ProtocolParams() (*cfg.ProtocolParams, error) {
-	return api.config.ProtocolParams()
-}
-
 // PubSubSubscribe subscribes to a topic for notifications from the filecoin network
 func (api *API) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
 	return api.network.Subscribe(topic)

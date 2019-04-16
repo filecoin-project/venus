@@ -145,24 +145,3 @@ func TestConfigSet(t *testing.T) {
 		assert.EqualError(err, `"heartbeat.nickname" must only contain letters`)
 	})
 }
-
-func TestProtocolParams(t *testing.T) {
-	t.Parallel()
-
-	t.Run("emits the a ProtocolParams object with the correct values", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-		require := require.New(t)
-
-		repo := repo.NewInMemoryRepo()
-		cfgAPI := NewConfig(repo)
-
-		out, err := cfgAPI.ProtocolParams()
-
-		require.NoError(err)
-		expected := &ProtocolParams{
-			AutoSealInterval: config.NewDefaultConfig().Mining.AutoSealIntervalSeconds,
-		}
-		assert.Equal(expected, out)
-	})
-}
