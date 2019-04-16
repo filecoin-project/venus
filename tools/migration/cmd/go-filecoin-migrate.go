@@ -4,16 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	cmds "github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 )
-
-// runner
 
 type Migrator interface {
 	Migrate(oldRepo, newRepo *os.File) error
@@ -21,21 +16,12 @@ type Migrator interface {
 	Validate(oldRepo, newRepo *os.File) error
 }
 
-func Run(cmd string, verbose bool) {
+// Run runs the given migration command
+func Run(cmd string, verbose bool) error {
 	var err error
 	log := logging.Logger("Migration runner")
-	// TODO: proper log path
 	logpath := "/tmp/migration_log.txt"
-	// set up logfile & writing to logfile
 
-	// 1. do version checking
-	// look at this version
-	// look at repo version
-	// if this version is too high, exit with error
-
-	// look at the options
-	// repodir is:
-	// 1) FIL_PATH 2) default
 	var oldRepo, newRepo *os.File
 	var oldpath string
 	filpath := os.Getenv("FIL_PATH")
@@ -48,81 +34,54 @@ func Run(cmd string, verbose bool) {
 	oldRepo, err = os.Open(oldpath)
 	if err != nil {
 		log.Error(err)
-		return // or return error, something.
+		return err
 	}
 
 	// open repodir read-only
 	// create new repodir & open read-write
 	newRepo, err = os.Create("/tmp/somedir")
 	if err != nil {
-		log.Error("failed to create dir: ")
 		log.Error(err)
-		return
+		return err
 	}
 
-	var mig Migrator
-	// figure out which migrator to run and run it ?
-	// or do we figure out what migration + runner to build and build it, and then run?
-	// or does this line get updated to the latest migrator?
-	// or ?
-	mgl, err := makeMigl()
+	var migrator Migrator
+	miglog, err := makeMigl()
 	if err != nil {
-		log.Fatalf("could not make Migl logger, %v", err)
+		miglog.Error(err)
+		return err
 	}
-	mig = migrate_1_to_2.NewMigrator_1_2(mgl)
+	// TODO see Issue #2585
+	migrator = migrate_1_to_2.NewMigrator_1_2(miglog)
 
 	switch cmd {
-	case "Describe":
-		mig.Describe()
-		err = nil
-	case "BuildOnly":
-		err = mig.Migrate(oldRepo, newRepo)
-	case "Install":
-		// runner controls the installation, not migrator
-		// check that the migration completed successfully
+	case "describe":
+		migrator.Describe()
+	case "buildonly":
+		err = migrator.Migrate(oldRepo, newRepo)
+	case "install":
 		if err = install(oldRepo, newRepo); err != nil {
-			log.Error(err)
-			return
+			miglog.Error(err)
 		}
-	case "Run":
-		if err = mig.Migrate(oldRepo, newRepo); err != nil {
-			log.Error(err) // replace these with a call to a logging/output func that respects verbose
-			return
+	case "migrate":
+		if err = migrator.Migrate(oldRepo, newRepo); err != nil {
+			miglog.Error(err)
 		}
 
-		if err = mig.Validate(oldRepo, newRepo); err != nil {
-			log.Error(err)
-			return
+		if err = migrator.Validate(oldRepo, newRepo); err != nil {
+			miglog.Error(err)
 		}
-		// run install
+
 		if err = install(oldRepo, newRepo); err != nil {
-			log.Error(err)
-			return
+			miglog.Error(err)
 		}
 	}
 	if err != nil {
-		// don't panic
-		log.Errorf(err.Error())
+		miglog.Error(err)
+		return err
 	}
-	log.Info("============================================================================================")
-	log.Infof("Done.  Please see log for more detail: %s", logpath)
-	log.Info("============================================================================================")
-}
-
-// fs access and we should know the location since we know the previous version.
-func getOldFSRepo(req *cmds.Request) (repo.FSRepo, error) {
-	return repo.FSRepo{}, nil
-}
-
-// fs access in the old repo
-func getCurrentRepoVersion(req *cmds.Request) string {
-	return ""
-}
-
-// 	getNewRepoVersion() string
-// also just fs access
-func getOldConfig() *config.Config {
-	return &config.Config{}
+	miglog.Print(fmt.Sprintf("Done.  Please see log for more detail: ", logpath))
+	return nil
 }
 
 // swap old repo for new
@@ -130,8 +89,8 @@ func install(oldRepo, newRepo *os.File) error {
 	return nil
 }
 
+// make a new logger
 func makeMigl() (*internal.Migl, error) {
-	// TODO you'll have to use Create here
 	logfile, err := os.Create("/tmp/foo.txt") // truncates
 	if err != nil {
 		return nil, err

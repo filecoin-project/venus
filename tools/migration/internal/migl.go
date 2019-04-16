@@ -5,12 +5,7 @@ import (
 	"os"
 )
 
-// right now this is only a wrapper for golang logger, but will
-// take a logfile os.File to write to also.
-//   there are two logs here, one for the logfile and one for stdout.
-//   everything is output to the logfile.
-//   if verbose is true, stdout/err are identical to the logfile.
-//   if verbose is false, all that is shown is status + errors.
+// TODO: see Issue #2584
 type Migl struct {
 	logfile *os.File
 	verbose bool
@@ -21,14 +16,10 @@ func NewMigl(out *os.File, verb bool) Migl {
 	return Migl{logfile: out, verbose: verb}
 }
 
-func (m *Migl) Fatal(msg string) {
-	log.Fatal(msg)
+func (m *Migl) Error(err error) {
+	log.Printf("ERROR: %s", err.Error())
 }
 
 func (m *Migl) Print(msg string) {
 	log.Print(msg)
-}
-
-func (m *Migl) Panic(msg string) {
-	log.Panic(msg)
 }
