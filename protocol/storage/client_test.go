@@ -168,7 +168,7 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 }
 
 func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
-	return 1000000000, nil
+	return 1016, nil
 }
 
 func (ctp *clientTestAPI) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error) {
@@ -249,4 +249,8 @@ func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	ctp.deals[storageDeal.Response.ProposalCid] = storageDeal
 	return nil
+}
+
+func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }

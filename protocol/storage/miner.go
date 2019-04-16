@@ -169,6 +169,15 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, err.Error())
 	}
 
+	sectorSize, err := sm.getSectorSize(ctx)
+	if err != nil {
+		return sm.proposalRejector(sm, p, "failed to get sector size")
+	}
+
+	if sp.Size.GreaterThan(types.NewBytesAmount(sectorSize)) {
+		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %d bytes", sp.Size.String(), sectorSize))
+	}
+
 	// Payment is valid, everything else checks out, let's accept this proposal
 	return sm.proposalAcceptor(sm, p)
 }
@@ -889,4 +898,22 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
 		log.Errorf("failed to write query response: %s", err)
 	}
+}
+
+func (sm *Miner) getSectorSize(ctx context.Context) (uint64, error) {
+	var proofsMode types.ProofsMode
+	values, err := sm.porcelainAPI.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
+	if err != nil {
+		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
+	}
+
+	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
+		return 0, errors.Wrap(err, "could not convert query message result to Mode")
+	}
+
+	sectorSizeEnum := types.OneKiBSectorSize
+	if proofsMode == types.LiveProofsMode {
+		sectorSizeEnum = types.TwoHundredFiftySixMiBSectorSize
+	}
+	return proofs.GetMaxUserBytesPerStagedSector(sectorSizeEnum)
 }

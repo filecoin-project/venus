@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-peer"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
@@ -56,6 +58,7 @@ type clientPorcelainAPI interface {
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs() ([]*storagedeal.Deal, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
@@ -105,6 +108,15 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	size, err := smc.api.DAGGetFileSize(ctxSetup, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
+	}
+
+	sectorSize, err := smc.getSectorSize(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get sector size")
+	}
+
+	if size > sectorSize {
+		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, sectorSize)
 	}
 
 	ask, err := smc.api.MinerGetAsk(ctxSetup, miner, askID)
@@ -310,6 +322,24 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.Paymen
 		return []*paymentbroker.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
+}
+
+func (smc *Client) getSectorSize(ctx context.Context) (uint64, error) {
+	var proofsMode types.ProofsMode
+	values, err := smc.api.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
+	if err != nil {
+		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
+	}
+
+	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
+		return 0, errors.Wrap(err, "could not convert query message result to Mode")
+	}
+
+	sectorSizeEnum := types.OneKiBSectorSize
+	if proofsMode == types.LiveProofsMode {
+		sectorSizeEnum = types.TwoHundredFiftySixMiBSectorSize
+	}
+	return proofs.GetMaxUserBytesPerStagedSector(sectorSizeEnum)
 }
 
 // MakeProtocolRequest makes a request and expects a response from the host using the given protocol.
