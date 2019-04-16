@@ -1,4 +1,4 @@
-package migration
+package internal
 
 import (
 	"log"
@@ -16,9 +16,8 @@ type Migl struct {
 	verbose bool
 }
 
-// verbose is hard-coded to true for now.
 func NewMigl(out *os.File, verb bool) Migl {
-	log.SetOutput(os.Stdout)
+	log.SetOutput(out)
 	return Migl{logfile: out, verbose: verb}
 }
 
