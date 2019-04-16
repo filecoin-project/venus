@@ -56,7 +56,7 @@ func TestMessageSend(t *testing.T) {
 		"--from", from,
 		"--gas-price", "0",
 		"--gas-limit", "300",
-		"--value=10",
+		"--value", "10",
 		fixtures.TestAddresses[3],
 	)
 
@@ -65,7 +65,7 @@ func TestMessageSend(t *testing.T) {
 		"--from", from,
 		"--gas-price", "0",
 		"--gas-limit", "300",
-		"--value=5.5",
+		"--value", "5.5",
 		fixtures.TestAddresses[3],
 	)
 }
