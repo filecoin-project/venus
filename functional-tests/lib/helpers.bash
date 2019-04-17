@@ -43,7 +43,7 @@ function finish {
   rm -f "${UNSEAL_PATH}"
   rm -rf "${CL_REPO_DIR}"
   rm -rf "${BOOTSTRAP_MN_REPO_DIR}"
-  rm -rf "${MN_REPO_DIR}"
+  rm -rf "${STORAGE_MN_REPO_DIR}"
 }
 
 function free_port {
