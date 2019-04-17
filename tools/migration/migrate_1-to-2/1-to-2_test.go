@@ -18,7 +18,7 @@ func TestNewMigrator_1_2(t *testing.T) {
 
 }
 
-// TODO: Issue 2595 , complete these tests
+// TODO: Issue 2595 , complete these tests, also: how to capture output for testing?
 func TestMigrator_Describe(t *testing.T) {
 	require := req.New(t)
 	migl := requireMakeMigl(require)

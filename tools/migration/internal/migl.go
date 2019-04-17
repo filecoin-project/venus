@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// TODO: see Issue #2584
+// TODO: see Issue #2584.
 type Migl struct {
 	logfile *os.File
 	verbose bool
