@@ -194,7 +194,7 @@ func TestMinerCreate(t *testing.T) {
 
 			d1.ConnectSuccess(d)
 
-			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "0", "--gas-limit", "300"}
+			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "1", "--gas-limit", "300"}
 
 			if pid.Pretty() != peer.ID("").Pretty() {
 				args = append(args, "--peerid", pid.Pretty())
@@ -237,23 +237,23 @@ func TestMinerCreate(t *testing.T) {
 
 		d.RunFail("invalid peer id",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
 		)
 		d.RunFail("invalid from address",
 			"miner", "create",
-			"--from", "hello", "--gas-price", "0", "--gas-limit", "300", "1000000", "20",
+			"--from", "hello", "--gas-price", "1", "--gas-limit", "300", "1000000", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "'-123'", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "'-123'", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1f", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1f", "20",
 		)
 		d.RunFail("invalid collateral",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "100", "2f",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "100", "2f",
 		)
 	})
 
@@ -273,7 +273,7 @@ func TestMinerCreate(t *testing.T) {
 		go func() {
 			d.RunFail("pledge must be at least",
 				"miner", "create",
-				"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1", "10",
+				"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1", "10",
 			)
 			wg.Done()
 		}()
@@ -297,7 +297,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 	d1.RunSuccess("mining", "start")
 
-	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "0", "--gas-limit", "300")
+	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "1", "--gas-limit", "300")
 	assert.Contains(setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
@@ -318,7 +318,7 @@ func TestMinerCreateSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(err)
 		assert.NotEqual(addr, address.Undef)

@@ -45,7 +45,7 @@ const (
 	ChannelExpiryInterval = 2000
 
 	// CreateChannelGasPrice is the gas price of the message used to create the payment channel
-	CreateChannelGasPrice = 0
+	CreateChannelGasPrice = 1
 
 	// CreateChannelGasLimit is the gas limit of the message used to create the payment channel
 	CreateChannelGasLimit = 300

@@ -72,7 +72,7 @@ func TestMessagePropagation(t *testing.T) {
 			senderAddress,
 			address.NetworkAddress,
 			types.NewAttoFILFromFIL(1),
-			types.NewGasPrice(0),
+			types.NewGasPrice(1),
 			types.NewGasUnits(0),
 			"foo",
 		)
