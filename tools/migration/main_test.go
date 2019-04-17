@@ -18,10 +18,10 @@ func TestUsage(t *testing.T) {
 	command := mustGetMigrationBinary(require)
 	expected := "Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]"
 
-	t.Run("bare command prints usage", func(t *testing.T) {
+	t.Run("bare invocation prints usage but exits with 1", func(t *testing.T) {
 		out, err := exec.Command(command).CombinedOutput()
 		assert.Contains(string(out), expected)
-		assert.NoError(err)
+		assert.Error(err)
 	})
 
 	t.Run("-h prints usage", func(t *testing.T) {
@@ -49,6 +49,12 @@ func TestOptions(t *testing.T) {
 	})
 
 	t.Run("accepts --verbose with valid command", func(t *testing.T) {
+		out, err := exec.Command(command, "describe", "--verbose").CombinedOutput()
+		assert.Contains(string(out), "Migration from 0.1 to 0.2: a test migrator that just updates the repo version")
+		assert.NoError(err)
+	})
+
+	t.Run("accepts -v with valid command", func(t *testing.T) {
 		out, err := exec.Command(command, "describe", "--verbose").CombinedOutput()
 		assert.Contains(string(out), "Migration from 0.1 to 0.2: a test migrator that just updates the repo version")
 		assert.NoError(err)

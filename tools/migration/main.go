@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 
@@ -9,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/util/version"
 )
 
-func main() {
+func main() { // nolint: deadcode
 	if len(os.Args) < 2 {
 		showUsageAndExit(1)
 	}
@@ -18,19 +20,12 @@ func main() {
 		exitErr(fmt.Sprintf("Invalid go version: %s", runtime.Version()))
 	}
 
-	args := os.Args[1:]
-	command := args[0]
-	verbose := false
-	if len(args) > 1 {
-		option := args[1]
-		if option == "--verbose" || option == "-v" {
-			verbose = true
-		} else {
-			fmt.Println("\tInvalid option: ", option)
-			os.Exit(1)
-		}
-	}
+	command := getCommand()
 
+	verbose, err := getVerbose()
+	if err != nil {
+		exitErr(err.Error())
+	}
 	switch command {
 	case "-h", "--help":
 		showUsageAndExit(0)
@@ -43,11 +38,29 @@ func main() {
 	}
 }
 
+// TODO: should this go to the same logs as the migration log? Maybe not.
 func exitErr(errstr string) {
-	fmt.Printf("Error: %s\n", errstr)
+	log.New(os.Stderr, "", 0).Println(errstr)
 	os.Exit(1)
 }
+
 func showUsageAndExit(code int) {
 	fmt.Println(`    Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]`)
 	os.Exit(code)
+}
+
+func getCommand() string {
+	return os.Args[1:][0]
+}
+
+func getVerbose() (bool, error) {
+	if len(os.Args[1:]) > 1 {
+		option := os.Args[2]
+		if option == "--verbose" || option == "-v" {
+			return true, nil
+		} else {
+			return false, errors.New("Invalid option")
+		}
+	}
+	return false, nil
 }

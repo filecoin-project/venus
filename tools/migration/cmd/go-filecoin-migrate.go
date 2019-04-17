@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	logging "github.com/ipfs/go-log"
-
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 	"github.com/filecoin-project/go-filecoin/tools/migration/migrate_1-to-2"
 )
@@ -19,34 +17,25 @@ type Migrator interface {
 // Run runs the given migration command
 func Run(cmd string, verbose bool) error {
 	var err error
-	log := logging.Logger("Migration runner")
+	miglog, err := makeMigl()
 	logpath := "/tmp/migration_log.txt"
 
-	var oldRepo, newRepo *os.File
-	var oldpath string
-	filpath := os.Getenv("FIL_PATH")
-	if filpath == "" {
-		homeDir := os.Getenv("HOME")
-		oldpath = fmt.Sprintf("%s/.filecoin", homeDir)
-	} else {
-		oldpath = filpath
-	}
-	oldRepo, err = os.Open(oldpath)
+	oldRepo, err := getOldRepo()
 	if err != nil {
-		log.Error(err)
+		miglog.Error(err)
 		return err
 	}
 
 	// open repodir read-only
 	// create new repodir & open read-write
-	newRepo, err = os.Create("/tmp/somedir")
+	// TODO: decide where to put the temp new repo.
+	newRepo, err := os.Create("/tmp/newRepo")
 	if err != nil {
-		log.Error(err)
+		miglog.Error(err)
 		return err
 	}
 
 	var migrator Migrator
-	miglog, err := makeMigl()
 	if err != nil {
 		miglog.Error(err)
 		return err
@@ -77,7 +66,6 @@ func Run(cmd string, verbose bool) error {
 		}
 	}
 	if err != nil {
-		miglog.Error(err)
 		return err
 	}
 	miglog.Print(fmt.Sprintf("Done.  Please see log for more detail: ", logpath))
@@ -97,4 +85,21 @@ func makeMigl() (*internal.Migl, error) {
 	}
 	migl := internal.NewMigl(logfile, true)
 	return &migl, nil
+}
+
+func getOldRepo() (*os.File, error) {
+	var oldRepo *os.File
+	var oldpath string
+	filpath := os.Getenv("FIL_PATH")
+	if filpath == "" {
+		homeDir := os.Getenv("HOME")
+		oldpath = fmt.Sprintf("%s/.filecoin", homeDir)
+	} else {
+		oldpath = filpath
+	}
+	oldRepo, err := os.Open(oldpath)
+	if err != nil {
+		return &os.File{}, err
+	}
+	return oldRepo, nil
 }

@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/filecoin-project/go-filecoin v0.0.1
+	github.com/golang/mock v1.2.0 // indirect
+	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-ipfs-api v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.0.5
 	github.com/ipfs/go-log v0.0.1
@@ -16,6 +18,7 @@ require (
 	github.com/whyrusleeping/json-filter v0.0.0-20160615203754-ff25329a9528 // indirect
 	github.com/whyrusleeping/progmeter v0.0.0-20180725015555-f3e57218a75b // indirect
 	github.com/whyrusleeping/stump v0.0.0-20160611222256-206f8f13aae1 // indirect
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
 
 // uncomment below for testing ? see
