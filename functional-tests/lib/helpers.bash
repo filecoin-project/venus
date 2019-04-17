@@ -167,7 +167,7 @@ function wait_for_message_in_chain_by_method_and_sender {
 function create_miner {
   ./go-filecoin miner create 10 100 \
     --gas-limit=10000 \
-    --gas-price=0 \
+    --gas-price=1 \
     --repodir="$1"
 }
 
@@ -176,7 +176,7 @@ function send_fil {
     --from "$1" \
     --value $2 \
     --gas-limit=10000 \
-    --gas-price=0 \
+    --gas-price=1 \
     "$3" \
     --repodir="$4"
 }
@@ -198,12 +198,12 @@ function wait_mpool_size {
 }
 
 function set_price {
-  ./go-filecoin miner set-price --repodir="$3" --gas-price=0 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
+  ./go-filecoin miner set-price --repodir="$3" --gas-price=1 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
 }
 
 function miner_update_pid {
   ./go-filecoin miner update-peerid "$1" "$2" \
-    --gas-price=0 --gas-limit=300 \
+    --gas-price=1 --gas-limit=300 \
     --repodir="$3"
 }
 

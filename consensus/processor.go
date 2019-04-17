@@ -338,6 +338,7 @@ var (
 	// used in any other context as they are an implementation detail.
 	errFromAccountNotFound       = errors.NewRevertError("from (sender) account not found")
 	errGasAboveBlockLimit        = errors.NewRevertError("message gas limit above block gas limit")
+	errGasPriceZero              = errors.NewRevertError("message gas price is zero")
 	errGasTooHighForCurrentBlock = errors.NewRevertError("message gas limit too high for current block")
 	errNonceTooHigh              = errors.NewRevertError("nonce too high")
 	errNonceTooLow               = errors.NewRevertError("nonce too low")

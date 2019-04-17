@@ -831,7 +831,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 				} else if result.SealingResult != nil {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
-					gasPrice := types.NewGasPrice(0)
+					gasPrice := types.NewGasPrice(1)
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult

@@ -244,7 +244,7 @@ func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.Nonce = Uint64(i)
-		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(0), NewGasUnits(0))
+		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(1), NewGasUnits(0))
 		if err != nil {
 			panic(err)
 		}
