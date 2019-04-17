@@ -181,7 +181,7 @@ func RequirePutTsas(ctx context.Context, t *testing.T, chn chain.Store, tsas *ch
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
 func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPower uint64, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
 
-	var postProof types.PoStProof
+	postProof := make([]byte, types.OnePoStProofPartition.ProofLen())
 	var ticket types.Signature
 
 	if totalPower/minerPower > 100000 {

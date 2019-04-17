@@ -11,8 +11,8 @@ type SectorClass struct {
 // NewTestSectorClass returns a SectorClass suitable for testing.
 func NewTestSectorClass() SectorClass {
 	return SectorClass{
-		poRepProofPartitions: TestPoRepProofPartitions,
-		postProofPartitions:  TestPoStPartitions,
+		poRepProofPartitions: TwoPoRepProofPartitions,
+		postProofPartitions:  OnePoStProofPartition,
 		sectorSize:           OneKiBSectorSize,
 	}
 }
@@ -21,8 +21,8 @@ func NewTestSectorClass() SectorClass {
 // go-filecoin node.
 func NewLiveSectorClass() SectorClass {
 	return SectorClass{
-		postProofPartitions:  OnePoStPartition,
-		poRepProofPartitions: TwoPoRepPartitions,
+		postProofPartitions:  OnePoStProofPartition,
+		poRepProofPartitions: TwoPoRepProofPartitions,
 		sectorSize:           TwoHundredFiftySixMiBSectorSize,
 	}
 }

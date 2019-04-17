@@ -283,7 +283,7 @@ func TestMinerCommitSector(t *testing.T) {
 	commRStar := th.MakeCommitment()
 	commD := th.MakeCommitment()
 
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(types.SealBytesLen)))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -296,7 +296,7 @@ func TestMinerCommitSector(t *testing.T) {
 	require.Equal(t, types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
 
 	// fail because commR already exists
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(int(types.SealBytesLen)))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.EqualError(t, res.ExecutionError, "sector already committed")
 	require.Equal(t, uint8(0x23), res.Receipt.ExitCode)
@@ -314,13 +314,13 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(types.SealBytesLen)))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	// add another sector
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(types.SealBytesLen)))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -360,7 +360,7 @@ func TestVerifyPIP(t *testing.T) {
 	commD := th.MakeCommitment()
 
 	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorId, commD, th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(types.SealBytesLen)))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorId, commD, th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)

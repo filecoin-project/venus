@@ -493,7 +493,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(req.CommD[:], commD)
 		copy(req.CommR[:], commR)
 		copy(req.CommRStar[:], commRStar)
-		copy(req.Proof[:], proof)
+		req.Proof = append(types.PoRepProof{}, proof...)
 		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
 		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 		req.SectorSize = sectorSize

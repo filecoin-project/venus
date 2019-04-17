@@ -52,20 +52,17 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
-	size, err := cFFISectorSize(req.SectorSize)
-	if err != nil {
-		return VerifySealResponse{}, err
-	}
-
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
-		size,
+		C.uint64_t(req.SectorSize.Uint64()),
+		C.uint8_t(req.Proof.ProofPartitions().Int()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
 		(*[31]C.uint8_t)(proverIDCBytes),
 		(*[31]C.uint8_t)(sectorIDCbytes),
-		(*[384]C.uint8_t)(proofCBytes),
+		(*C.uint8_t)(proofCBytes),
+		C.size_t(len(req.Proof)),
 	)))
 	defer C.destroy_verify_seal_response(resPtr)
 
@@ -82,8 +79,16 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
-	// flattening the byte slice makes it easier to copy into the C heap
+	// validate verification request
+	if len(req.Proofs) == 0 {
+		return VerifyPoSTResponse{}, errors.New("must provide at least one proof to verify")
+	}
+
+	// CommRs must be provided to C.verify_post in the same order that they were
+	// provided to the C.generate_post
 	commRs := req.SortedCommRs.Values()
+
+	// flattening the byte slice makes it easier to copy into the C heap
 	flattened := make([]byte, 32*len(commRs))
 	for idx, commR := range commRs {
 		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
@@ -96,21 +101,17 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	challengeSeedCBytes := C.CBytes(req.ChallengeSeed[:])
 	defer C.free(challengeSeedCBytes)
 
-	proofsPtr, proofsLen := cPoStProofs(req.Proofs)
+	proofPartitions, proofsPtr, proofsLen := cPoStProofs(req.Proofs)
 	defer C.free(unsafe.Pointer(proofsPtr))
 
 	// allocate fixed-length array of uint64s in C heap
 	faultsPtr, faultsSize := cUint64s(req.Faults)
 	defer C.free(unsafe.Pointer(faultsPtr))
 
-	size, err := cFFISectorSize(req.SectorSize)
-	if err != nil {
-		return VerifyPoSTResponse{}, err
-	}
-
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
-		size,
+		C.uint64_t(req.SectorSize.Uint64()),
+		proofPartitions,
 		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(challengeSeedCBytes),
@@ -126,10 +127,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	}
 
 	return VerifyPoSTResponse{
-		// TODO: change this to the bool statement
-		// See https://github.com/filecoin-project/go-filecoin/issues/1302
-		// bool(resPtr.is_valid),
-		IsValid: true,
+		IsValid: bool(resPtr.is_valid),
 	}, nil
 }
 
@@ -138,55 +136,5 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 // fit into the staged sector will be less than number of bytes reported in
 // types.SectorSize.
 func GetMaxUserBytesPerStagedSector(size types.SectorSize) (uint64, error) {
-	fsize, err := cFFISectorSize(size)
-	if err != nil {
-		return 0, errors.Wrap(err, "CSectorStoreType failed")
-	}
-
-	return uint64(C.get_max_user_bytes_per_staged_sector(fsize)), nil
-}
-
-// cPoStProofs copies bytes from the provided PoSt proofs to a C array and
-// returns a pointer to that array and its size. Callers are responsible for
-// freeing the pointer. If they do not do that, the array will be leaked.
-func cPoStProofs(src []types.PoStProof) (*C.uint8_t, C.size_t) {
-	flattenedLen := C.size_t(192 * len(src))
-
-	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, flattenedLen)
-	for idx, proof := range src {
-		copy(flattened[(192*idx):(192*(1+idx))], proof[:])
-	}
-
-	return (*C.uint8_t)(C.CBytes(flattened)), flattenedLen
-}
-
-// cUint64s copies the contents of a slice into a C heap-allocated array and
-// returns a pointer to that array and its size. Callers are responsible for
-// freeing the pointer. If they do not do that, the array will be leaked.
-func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
-	srcCSizeT := C.size_t(len(src))
-
-	// allocate array in C heap
-	cUint64s := C.malloc(srcCSizeT * C.sizeof_uint64_t)
-
-	// create a Go slice backed by the C-array
-	pp := (*[1 << 30]C.uint64_t)(cUint64s)
-	for i, v := range src {
-		pp[i] = C.uint64_t(v)
-	}
-
-	return (*C.uint64_t)(cUint64s), srcCSizeT
-}
-
-// cFFISectorSize marshals to the FFI type C.FFISectorSize.
-func cFFISectorSize(ss types.SectorSize) (C.FFISectorSize, error) {
-	switch ss {
-	case types.OneKiBSectorSize:
-		return C.FFISectorSize(C.SSB_OneKiB), nil
-	case types.TwoHundredFiftySixMiBSectorSize:
-		return C.FFISectorSize(C.SSB_TwoHundredFiftySixMiB), nil
-	default:
-		return C.FFISectorSize(0), errors.Errorf("unhandled value: %v", ss)
-	}
+	return uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(size.Uint64()))), nil
 }

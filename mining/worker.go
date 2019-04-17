@@ -212,7 +212,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			log.Errorf("Worker.Mine got zero value from channel prChRead")
 			return false
 		}
-		copy(proof[:], prChRead[:])
+		proof := append(types.PoStProof{}, prChRead[:]...)
 		ticket, err = consensus.CreateTicket(proof, w.minerPubKey, w.workerSigner)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)

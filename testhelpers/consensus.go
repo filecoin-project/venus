@@ -96,10 +96,11 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 }
 
 // MakeRandomPoSTProofForTest creates a random proof.
-func MakeRandomPoSTProofForTest() types.PoStProof {
-	p := MakeRandomBytes(192)
+func MakeRandomPoSTProofForTest() []byte {
+	proofSize := types.OnePoStProofPartition.ProofLen()
+	p := MakeRandomBytes(proofSize)
 	p[0] = 42
-	var postProof types.PoStProof
+	postProof := make([]byte, proofSize)
 	for idx, elem := range p {
 		postProof[idx] = elem
 	}
