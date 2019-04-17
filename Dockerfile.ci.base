@@ -20,8 +20,3 @@ RUN set -x \
 && cd /tmp \
 && wget -q -O tini https://github.com/krallin/tini/releases/download/$TINI_VERSION/tini \
 && chmod +x tini
-
-# need jq for parsing genesis output
-RUN cd /tmp \
-&& wget -q -O jq https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 \
-&& chmod +x jq
