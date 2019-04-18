@@ -34,7 +34,6 @@ func main() { // nolint: deadcode
 	}
 }
 
-// TODO: should this go to the same logs as the migration log? Maybe not.
 func exitErr(errstr string) {
 	log.New(os.Stderr, "", 0).Println(errstr)
 	os.Exit(1)
