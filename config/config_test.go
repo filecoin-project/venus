@@ -66,35 +66,42 @@ func TestWriteFile(t *testing.T) {
 		"type": "badgerds",
 		"path": "badger"
 	},
-	"swarm": {
-		"address": "/ip4/0.0.0.0/tcp/6000"
-	},
-	"mining": {
-		"minerAddress": "empty",
-		"autoSealIntervalSeconds": 120,
-		"storagePrice": "0"
-	},
-	"wallet": {
-		"defaultAddress": "empty"
-	},
 	"heartbeat": {
 		"beatTarget": "",
 		"beatPeriod": "3s",
 		"reconnectPeriod": "10s",
 		"nickname": ""
 	},
-	"net": "",
-	"metrics": {
-		"prometheusEnabled": false,
-		"reportInterval": "5s",
-		"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
+	"mining": {
+		"minerAddress": "empty",
+		"autoSealIntervalSeconds": 120,
+		"storagePrice": "0"
 	},
 	"mpool": {
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
 	},
+	"net": "",
+	"observability": {
+		"metrics": {
+			"prometheusEnabled": false,
+			"reportInterval": "5s",
+			"prometheusEndpoint": "/ip4/0.0.0.0/tcp/9400"
+		},
+		"tracing": {
+			"jaegerTracingEnabled": false,
+			"probabilitySampler": 1,
+			"jaegerEndpoint": "http://localhost:14268/api/traces"
+		}
+	},
 	"sectorbase": {
 		"rootdir": ""
+	},
+	"swarm": {
+		"address": "/ip4/0.0.0.0/tcp/6000"
+	},
+	"wallet": {
+		"defaultAddress": "empty"
 	}
 }`,
 		string(content),

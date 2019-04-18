@@ -7,8 +7,10 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"go.opencensus.io/exporter/jaeger"
 	"go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats/view"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/config"
 )
@@ -56,6 +58,26 @@ func RegisterPrometheusEndpoint(cfg *config.MetricsConfig) error {
 			log.Errorf("failed to serve /metrics endpoint on %v", err)
 		}
 	}()
+
+	return nil
+}
+
+func RegisterJaeger(name string, cfg *config.TraceConfig) error {
+	if !cfg.JaegerTracingEnabled {
+		return nil
+	}
+	je, err := jaeger.NewExporter(jaeger.Options{
+		CollectorEndpoint: cfg.JaegerEndpoint,
+		Process: jaeger.Process{
+			ServiceName: name,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	trace.RegisterExporter(je)
+	trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(cfg.ProbabilitySampler)})
 
 	return nil
 }
