@@ -228,7 +228,20 @@ func install() {
 func test(args ...string) {
 	log.Println("Testing...")
 
-	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./... %s", strings.Join(args, " "))))
+	parallelism, ok := os.LookupEnv("TEST_PARALLELISM")
+
+	if !ok {
+		parallelism = "8"
+	}
+
+	packages, ok := os.LookupEnv("TEST_PACKAGES")
+
+	if !ok {
+		packages = "./..."
+	}
+
+	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel %s %s %s",
+		parallelism, strings.Join(args, " "), strings.Replace(packages, "\n", " ", -1))))
 }
 
 func main() {
