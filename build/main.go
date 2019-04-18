@@ -241,7 +241,7 @@ func test(args ...string) {
 	}
 
 	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel %s %s %s",
-		parallelism, strings.Join(args, " "), strings.Replace(packages, "\n", " ", -1))))
+		parallelism, strings.Replace(packages, "\n", " ", -1), strings.Join(args, " "))))
 }
 
 func main() {
