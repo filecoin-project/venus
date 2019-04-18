@@ -450,6 +450,27 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	assert.Contains(result.ExecutionError.Error(), "payment channel eol may not be decreased")
 }
 
+func TestPaymentBrokerCancel(t *testing.T) {
+	tf.UnitTest(t)
+
+	require := require.New(t)
+	assert := assert.New(t)
+	sys := setup(t)
+
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+
+	result, err := sys.ApplyMessage(msg, 5)
+	require.NoError(result.ExecutionError)
+	require.NoError(err)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
+
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+
+	assert.Equal(types.NewBlockHeight(6), channel.Eol)
+}
+
 func TestPaymentBrokerLs(t *testing.T) {
 	tf.UnitTest(t)
 

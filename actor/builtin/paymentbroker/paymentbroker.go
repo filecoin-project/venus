@@ -87,6 +87,10 @@ func (pb *Actor) Exports() exec.Exports {
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var paymentBrokerExports = exec.Exports{
+	"cancel": &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID},
+		Return: nil,
+	},
 	"close": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
 		Return: nil,
@@ -327,6 +331,49 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 		// ensure error is properly wrapped
 		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
 			return 1, errors.FaultErrorWrap(err, "Error extending channel")
+		}
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
+// Cancel can be used to end a storage deal early. It lowers the EOL of the
+// payment channel to 1 blocktime from now and allows a client to reclaim their
+// payments. In the time before the channel is closed, a miner can potentially
+// dispute a closer.
+func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+
+	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
+		}
+
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
+		}
+
+		channel.Eol = vmctx.BlockHeight().Add(types.NewBlockHeight(1))
+
+		return byChannelID.Set(ctx, chid.KeyString(), channel)
+	})
+
+	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error cancelling channel")
 		}
 		return errors.CodeError(err), err
 	}
