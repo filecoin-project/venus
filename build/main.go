@@ -143,6 +143,7 @@ func build() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
+	buildMigrations()
 }
 
 func forcebuild() {
@@ -151,6 +152,7 @@ func forcebuild() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
+	buildMigrations()
 }
 
 func forceBuildFC() {
@@ -227,6 +229,11 @@ func test(args ...string) {
 	log.Println("Testing...")
 
 	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./... %s", strings.Join(args, " "))))
+	testMigrations(args...)
+}
+
+func testMigrations(args ...string) {
+	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./tools/migration/... %s", strings.Join(args, " "))))
 }
 
 func main() {
