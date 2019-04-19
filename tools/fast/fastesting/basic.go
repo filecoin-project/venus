@@ -46,6 +46,10 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.Envi
 	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(err)
 
+	defer func() {
+		dumpEnvOutputOnFail(t, env.Processes())
+	}()
+
 	// Setup options for nodes.
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "1"                                        // Enable JSON logs
@@ -137,4 +141,23 @@ func (env *TestEnvironment) RequireNewNodeWithFunds(funds int) *fast.Filecoin {
 	require.NoError(err)
 
 	return p
+}
+
+func (env *TestEnvironment) Teardown(ctx context.Context) error {
+	env.DumpEnvOutputOnFail()
+	return env.Environment.Teardown(ctx)
+}
+
+func (env *TestEnvironment) DumpEnvOutputOnFail() {
+	dumpEnvOutputOnFail(env.t, env.Processes())
+}
+
+func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
+	if t.Failed() {
+		w := newPrintWriter(t)
+		for _, node := range procs {
+			node.DumpLastOutput(w)
+		}
+		w.Close()
+	}
 }
