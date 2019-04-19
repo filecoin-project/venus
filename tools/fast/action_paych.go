@@ -67,6 +67,23 @@ func (f *Filecoin) PaychExtend(ctx context.Context,
 
 }
 
+// PaychCancel runs the `paych cancel` command against the filecoin process.
+func (f *Filecoin) PaychCancel(ctx context.Context, channel *types.ChannelID, options ...ActionOption) (cid.Cid, error) {
+
+	var out commands.CancelResult
+	args := []string{"go-filecoin", "paych", "cancel", channel.String()}
+
+	for _, option := range options {
+		args = append(args, option()...)
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
+		return cid.Undef, err
+	}
+
+	return out.Cid, nil
+}
+
 // PaychLs runs the `paych ls` command against the filecoin process.
 func (f *Filecoin) PaychLs(ctx context.Context, options ...ActionOption) (map[string]*paymentbroker.PaymentChannel, error) {
 	var out map[string]*paymentbroker.PaymentChannel
