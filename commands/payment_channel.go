@@ -629,10 +629,10 @@ var cancelCmd = &cmds.Command{
 		Tagline: "Cancel a payment channel early to recover funds",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("channel", true, false, "Id of channel to extend"),
+		cmdkit.StringArg("channel", true, false, "id of channel to cancel"),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "Address of the channel creator"),
+		cmdkit.StringOption("from", "address of the channel creator"),
 		priceOption,
 		limitOption,
 		previewOption,
