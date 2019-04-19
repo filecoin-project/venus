@@ -1,11 +1,10 @@
-package paymentbroker
+package types
 
 import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multibase"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {
@@ -14,12 +13,12 @@ func init() {
 
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
-	Channel   types.ChannelID   `json:"channel"`
+	Channel   ChannelID   `json:"channel"`
 	Payer     address.Address   `json:"payer"`
 	Target    address.Address   `json:"target"`
-	Amount    types.AttoFIL     `json:"amount"`
-	ValidAt   types.BlockHeight `json:"valid_at"`
-	Signature types.Signature   `json:"signature"`
+	Amount    AttoFIL     `json:"amount"`
+	ValidAt   BlockHeight `json:"valid_at"`
+	Signature Signature   `json:"signature"`
 }
 
 // DecodeVoucher creates a *PaymentVoucher from a base58, Cbor-encoded one

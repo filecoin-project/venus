@@ -541,7 +541,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.NoError(res.ExecutionError)
 		assert.Equal(uint8(0), res.Receipt.ExitCode)
 
-		voucher := PaymentVoucher{}
+		voucher := types.PaymentVoucher{}
 		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
 		require.NoError(err)
 

@@ -271,7 +271,7 @@ var redeemCmd = &cmds.Command{
 				return err
 			}
 
-			var voucher paymentbroker.PaymentVoucher
+			var voucher types.PaymentVoucher
 			err = cbor.DecodeInto(cborVoucher, &voucher)
 			if err != nil {
 				return err
@@ -294,7 +294,7 @@ var redeemCmd = &cmds.Command{
 			})
 		}
 
-		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
+		voucher, err := types.DecodeVoucher(req.Arguments[0])
 		if err != nil {
 			return err
 		}
@@ -456,7 +456,7 @@ var closeCmd = &cmds.Command{
 				return err
 			}
 
-			var voucher paymentbroker.PaymentVoucher
+			var voucher types.PaymentVoucher
 			err = cbor.DecodeInto(cborVoucher, &voucher)
 			if err != nil {
 				return err
@@ -479,7 +479,7 @@ var closeCmd = &cmds.Command{
 			})
 		}
 
-		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
+		voucher, err := types.DecodeVoucher(req.Arguments[0])
 		if err != nil {
 			return err
 		}

@@ -392,7 +392,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
-	var voucher PaymentVoucher
+	var voucher types.PaymentVoucher
 
 	err := withPayerChannelsForReading(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
 		var channel *PaymentChannel
@@ -416,7 +416,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 		}
 
 		// set voucher
-		voucher = PaymentVoucher{
+		voucher = types.PaymentVoucher{
 			Channel: *chid,
 			Payer:   vmctx.Message().From,
 			Target:  channel.Target,
