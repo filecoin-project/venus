@@ -21,6 +21,7 @@ var paymentChannelCmd = &cmds.Command{
 		Tagline: "Payment channel operations",
 	},
 	Subcommands: map[string]*cmds.Command{
+		"cancel":  cancelCmd,
 		"close":   closeCmd,
 		"create":  createChannelCmd,
 		"extend":  extendCmd,
@@ -606,6 +607,93 @@ var extendCmd = &cmds.Command{
 	Type: &ExtendResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *ExtendResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
+		}),
+	},
+}
+
+// CancelResult type returned from Cancel
+type CancelResult struct {
+	Cid     cid.Cid
+	GasUsed types.GasUnits
+	Preview bool
+}
+
+var cancelCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Cancel a payment channel early to recover funds",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("channel", true, false, "Id of channel to extend"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("from", "Address of the channel creator"),
+		priceOption,
+		limitOption,
+		previewOption,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		fromAddr, err := optionalAddr(req.Options["from"])
+		if err != nil {
+			return err
+		}
+
+		channel, ok := types.NewChannelIDFromString(req.Arguments[0], 10)
+		if !ok {
+			return fmt.Errorf("invalid channel id")
+		}
+
+		gasPrice, gasLimit, preview, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		if preview {
+			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				"cancel",
+				channel,
+			)
+			if err != nil {
+				return err
+			}
+			return re.Emit(&ExtendResult{
+				Cid:     cid.Cid{},
+				GasUsed: usedGas,
+				Preview: true,
+			})
+		}
+
+		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			req.Context,
+			fromAddr,
+			address.PaymentBrokerAddress,
+			types.NewAttoFILFromFIL(0),
+			gasPrice,
+			gasLimit,
+			"cancel",
+			channel,
+		)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&CancelResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
+	},
+	Type: &CancelResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *CancelResult) error {
 			if res.Preview {
 				output := strconv.FormatUint(uint64(res.GasUsed), 10)
 				_, err := w.Write([]byte(output))
