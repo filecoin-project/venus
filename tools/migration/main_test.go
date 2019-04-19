@@ -41,10 +41,12 @@ func TestOptions(t *testing.T) {
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
+	usage := "Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]"
 
 	t.Run("error when calling with invalid command", func(t *testing.T) {
 		out, err := exec.Command(command, "foo").CombinedOutput()
 		assert.Contains(string(out), "Error: Invalid command: foo")
+		assert.Contains(string(out), usage)
 		assert.Error(err)
 	})
 

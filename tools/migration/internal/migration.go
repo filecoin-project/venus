@@ -31,7 +31,13 @@ type Migration interface {
 }
 
 // TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
-type MigrationRunner struct{}
+type MigrationRunner struct {
+	verbose bool
+}
+
+func NewMigrationRunner(verb bool) *MigrationRunner {
+	return &MigrationRunner{verbose: verb}
+}
 
 func (m *MigrationRunner) Run(cmd string) error {
 
