@@ -143,15 +143,20 @@ func (env *TestEnvironment) RequireNewNodeWithFunds(funds int) *fast.Filecoin {
 	return p
 }
 
+// Teardown stops all of the nodes and cleans up the environment. If the test failed,
+// it will also print the last output of each process by calling `DumpLastOutput`.
+// Output is logged using the Log method on the testing.T
 func (env *TestEnvironment) Teardown(ctx context.Context) error {
 	env.DumpEnvOutputOnFail()
 	return env.Environment.Teardown(ctx)
 }
 
+// DumpEnvOutputOnFail calls `DumpLastOutput for each process if the test failed.
 func (env *TestEnvironment) DumpEnvOutputOnFail() {
 	dumpEnvOutputOnFail(env.t, env.Processes())
 }
 
+// helper to dump the output using the t.Log method.
 func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 	if t.Failed() {
 		w := newPrintWriter(t)
