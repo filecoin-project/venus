@@ -253,9 +253,6 @@ jobs:
       - image: circleci/golang:1.12.1
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
-    parameters:
-      <<: *sector_builder_tests_param
-      <<: *nightly_param
     steps:
       - run:
           name: Configure environment variables
@@ -336,7 +333,6 @@ jobs:
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     parameters:
-      <<: *sector_builder_tests_param
       <<: *nightly_param
     steps:
       - run:
@@ -420,9 +416,6 @@ jobs:
     parallelism: 3
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: large
-    parameters:
-      <<: *sector_builder_tests_param
-      <<: *nightly_param
     steps:
       - run:
           name: Configure environment variables
@@ -465,7 +458,6 @@ jobs:
       - mkdir_test_results
 
       - go_test:
-          sector_builder_tests: "<< parameters.sector_builder_tests >>"
           functional: false
           integration: false
 
@@ -478,9 +470,6 @@ jobs:
     parallelism: 3
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
-    parameters:
-      <<: *sector_builder_tests_param
-      <<: *nightly_param
     steps:
       - run:
           name: Configure environment variables
@@ -526,7 +515,6 @@ jobs:
       - mkdir_test_results
 
       - go_test:
-          sector_builder_tests: "<< parameters.sector_builder_tests >>"
           unit: false
           integration: true
 
@@ -541,7 +529,6 @@ jobs:
     resource_class: xlarge
     parameters:
       <<: *sector_builder_tests_param
-      <<: *nightly_param
     steps:
       - run:
           name: Configure environment variables
@@ -824,9 +811,12 @@ workflows:
     jobs:
       - deps_linux
       - build_linux:
-          sector_builder_tests: true
           requires:
             - deps_linux
+      - functional_test_linux:
+          sector_builder_tests: true
+          requires:
+            - build_linux
 
   build_nightly_devnet:
     triggers:
@@ -840,6 +830,7 @@ workflows:
     jobs:
       - deps_linux
       - build_linux:
+          nightly: true
           requires:
             - deps_linux
       - unit_test_linux:
