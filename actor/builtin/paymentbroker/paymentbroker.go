@@ -347,10 +347,10 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 	return 0, nil
 }
 
-// Cancel can be used to end a storage deal early. It lowers the EOL of the
-// payment channel to 1 blocktime from now and allows a client to reclaim their
-// payments. In the time before the channel is closed, a miner can potentially
-// dispute a closer.
+// Cancel can be used to end an off chain payment early. It lowers the EOL of
+// the payment channel to 1 blocktime from now and allows a caller to reclaim
+// their payments. In the time before the channel is closed, a target can
+// potentially dispute a closer.
 func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
