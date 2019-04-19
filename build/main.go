@@ -233,7 +233,7 @@ func test(args ...string) {
 }
 
 func testMigrations(args ...string) {
-	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./tools/migration/... %s", strings.Join(args, " "))))
+	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./tools/migration/...")))
 }
 
 func main() {
