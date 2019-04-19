@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 )
 
-func TestEncodeThenDecode(t *testing.T){
+func TestEncodeThenDecode(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -18,22 +18,21 @@ func TestEncodeThenDecode(t *testing.T){
 	addr2 := addrGetter()
 
 	paymentVoucher := &PaymentVoucher{
-		Channel:   *NewChannelID(5),
-		Payer:     addr1,
-		Target:    addr2,
-		Amount:    *NewAttoFILFromFIL(100),
-		ValidAt:   *NewBlockHeight(25),
+		Channel: *NewChannelID(5),
+		Payer:   addr1,
+		Target:  addr2,
+		Amount:  *NewAttoFILFromFIL(100),
+		ValidAt: *NewBlockHeight(25),
 	}
-	
-	rawPaymentVoucher,err:=paymentVoucher.Encode()
+
+	rawPaymentVoucher, err := paymentVoucher.Encode()
+	require.NoError(err)
+	DecodedPaymentVoucher, err := DecodeVoucher(rawPaymentVoucher)
 	require.NoError(err)
 
-	DecodedPaymentVoucher,err:=DecodeVoucher(rawPaymentVoucher)
-	require.NoError(err)
-
-	assert.Equal((*paymentVoucher).Channel,DecodedPaymentVoucher.Channel)
-	assert.Equal((*paymentVoucher).Payer,DecodedPaymentVoucher.Payer)
-	assert.Equal((*paymentVoucher).Target,DecodedPaymentVoucher.Target)
-	assert.Equal((*paymentVoucher).Amount,DecodedPaymentVoucher.Amount)
-	assert.Equal((*paymentVoucher).ValidAt,DecodedPaymentVoucher.ValidAt)
+	assert.Equal((*paymentVoucher).Channel, DecodedPaymentVoucher.Channel)
+	assert.Equal((*paymentVoucher).Payer, DecodedPaymentVoucher.Payer)
+	assert.Equal((*paymentVoucher).Target, DecodedPaymentVoucher.Target)
+	assert.Equal((*paymentVoucher).Amount, DecodedPaymentVoucher.Amount)
+	assert.Equal((*paymentVoucher).ValidAt, DecodedPaymentVoucher.ValidAt)
 }

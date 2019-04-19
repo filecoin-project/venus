@@ -13,12 +13,12 @@ func init() {
 
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
-	Channel   ChannelID   `json:"channel"`
-	Payer     address.Address   `json:"payer"`
-	Target    address.Address   `json:"target"`
-	Amount    AttoFIL     `json:"amount"`
-	ValidAt   BlockHeight `json:"valid_at"`
-	Signature Signature   `json:"signature"`
+	Channel   ChannelID       `json:"channel"`
+	Payer     address.Address `json:"payer"`
+	Target    address.Address `json:"target"`
+	Amount    AttoFIL         `json:"amount"`
+	ValidAt   BlockHeight     `json:"valid_at"`
+	Signature Signature       `json:"signature"`
 }
 
 // DecodeVoucher creates a *PaymentVoucher from a base58, Cbor-encoded one
