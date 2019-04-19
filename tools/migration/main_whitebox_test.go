@@ -3,10 +3,12 @@ package main
 import (
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	ast "github.com/stretchr/testify/assert"
 )
 
 func TestMigrationRunner_findOpt(t *testing.T) {
+	tf.UnitTest(t)
 	assert := ast.New(t)
 	args := []string{"newRepo=/tmp/somedir", "verbose"}
 

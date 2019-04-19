@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	ast "github.com/stretchr/testify/assert"
 	req "github.com/stretchr/testify/require"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func TestUsage(t *testing.T) {
+	tf.UnitTest(t)
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
@@ -38,6 +40,7 @@ func TestUsage(t *testing.T) {
 }
 
 func TestOptions(t *testing.T) {
+	tf.UnitTest(t)
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
