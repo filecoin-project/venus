@@ -487,6 +487,59 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
 }
 
+func TestPaymentChannelCancelSuccess(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
+
+	// Start test
+	rsrc := requireNewPaychResource(ctx, t, env)
+
+	channelExpiry := types.NewBlockHeight(20000)
+
+	chanid, _ := rsrc.requirePaymentChannel(ctx, types.NewAttoFILFromFIL(1000), channelExpiry)
+
+	channels, err := rsrc.payer.PaychLs(ctx)
+	require.NoError(err)
+
+	assert.Len(channels, 1)
+
+	channel := channels[chanid.String()]
+	assert.Equal(channelExpiry, channel.AgreedEol)
+	assert.Equal(channelExpiry, channel.Eol)
+
+	mcid, err := rsrc.payer.PaychCancel(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
+	require.NoError(err)
+
+	series.CtxMiningOnce(ctx)
+
+	resp, err := rsrc.payer.MessageWait(ctx, mcid)
+	require.NoError(err)
+	assert.Equal(0, int(resp.Receipt.ExitCode))
+
+	channels, err = rsrc.payer.PaychLs(ctx)
+	require.NoError(err)
+
+	assert.Len(channels, 1)
+
+	channel = channels[chanid.String()]
+	assert.Equal(channelExpiry, channel.AgreedEol)
+	assert.Equal(types.NewBlockHeight(10004), channel.Eol)
+}
+
 type paychResources struct {
 	t *testing.T
 
