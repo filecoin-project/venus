@@ -66,7 +66,11 @@ type PaymentChannel struct {
 	Target         address.Address    `json:"target"`
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
+	// AgreedEol is the expiration for the payment channel agreed upon by the
+	// payer and payee upon initialization or extension
 	AgreedEol      *types.BlockHeight `json:"agreed_eol"`
+	// Eol is the actual expiration for the payment channel which can differ from
+	// AgreedEol when the payment channel is in dispute
 	Eol            *types.BlockHeight `json:"eol"`
 }
 
