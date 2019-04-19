@@ -152,8 +152,8 @@ func (a *API) MinerPreviewSetPrice(
 }
 
 // ProtocolParams fetches the current protocol configuration parameters.
-func (a *API) ProtocolParameters() (*ProtocolParams, error) {
-	return ProtocolParameters(a)
+func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
+	return ProtocolParameters(ctx, a)
 }
 
 // WalletBalance returns the current balance of the given wallet address.
