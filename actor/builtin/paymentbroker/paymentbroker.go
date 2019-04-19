@@ -64,6 +64,7 @@ type PaymentChannel struct {
 	Target         address.Address    `json:"target"`
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
+	AgreedEol      *types.BlockHeight `json:"agreed_eol"`
 	Eol            *types.BlockHeight `json:"eol"`
 }
 
@@ -154,6 +155,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 			Target:         target,
 			Amount:         vmctx.Message().Value,
 			AmountRedeemed: types.NewAttoFILFromFIL(0),
+			AgreedEol:      eol,
 			Eol:            eol,
 		})
 		if err != nil {
@@ -319,6 +321,7 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 		}
 
 		// set new eol
+		channel.AgreedEol = eol
 		channel.Eol = eol
 
 		// increment the value

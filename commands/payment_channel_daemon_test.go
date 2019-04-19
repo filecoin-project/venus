@@ -78,6 +78,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 		channel := channels[chanid.String()]
 		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(channelExpiry, channel.AgreedEol)
 		assert.Equal(channelExpiry, channel.Eol)
 		assert.Equal(rsrc.targetAddr, channel.Target)
 		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -114,6 +115,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 		channel := channels[chanid.String()]
 		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(channelExpiry, channel.AgreedEol)
 		assert.Equal(channelExpiry, channel.Eol)
 		assert.Equal(rsrc.targetAddr, channel.Target)
 		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -455,6 +457,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 	channel := channels[chanid.String()]
 	assert.Equal(channelAmount, channel.Amount)
+	assert.Equal(channelExpiry, channel.AgreedEol)
 	assert.Equal(channelExpiry, channel.Eol)
 	assert.Equal(rsrc.targetAddr, channel.Target)
 	assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -478,6 +481,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 	channel = channels[chanid.String()]
 	assert.Equal(channelAmount.Add(extendAmount), channel.Amount)
+	assert.Equal(extendExpiry, channel.AgreedEol)
 	assert.Equal(extendExpiry, channel.Eol)
 	assert.Equal(rsrc.targetAddr, channel.Target)
 	assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)

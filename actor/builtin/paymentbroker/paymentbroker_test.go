@@ -76,6 +76,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
 	assert.Equal(target, channel.Target)
+	assert.Equal(types.NewBlockHeight(10), channel.AgreedEol)
 	assert.Equal(types.NewBlockHeight(10), channel.Eol)
 }
 
@@ -412,6 +413,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 
 	assert.Equal(types.NewAttoFILFromFIL(2000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(1100), channel.AmountRedeemed)
+	assert.Equal(types.NewBlockHeight(20), channel.AgreedEol)
 	assert.Equal(types.NewBlockHeight(20), channel.Eol)
 }
 
@@ -468,6 +470,7 @@ func TestPaymentBrokerCancel(t *testing.T) {
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 	channel := sys.retrieveChannel(paymentBroker)
 
+	assert.Equal(types.NewBlockHeight(10), channel.AgreedEol)
 	assert.Equal(types.NewBlockHeight(6), channel.Eol)
 }
 
@@ -510,6 +513,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(target1, pc1.Target)
 		assert.Equal(types.NewAttoFILFromFIL(1000), pc1.Amount)
 		assert.Equal(types.NewAttoFILFromFIL(0), pc1.AmountRedeemed)
+		assert.Equal(types.NewBlockHeight(10), pc1.AgreedEol)
 		assert.Equal(types.NewBlockHeight(10), pc1.Eol)
 
 		pc2, found := channels[channelID2.String()]
@@ -517,7 +521,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(target2, pc2.Target)
 		assert.Equal(types.NewAttoFILFromFIL(2000), pc2.Amount)
 		assert.Equal(types.NewAttoFILFromFIL(0), pc2.AmountRedeemed)
-		assert.Equal(types.NewBlockHeight(20), pc2.Eol)
+		assert.Equal(types.NewBlockHeight(20), pc2.AgreedEol)
 	})
 
 	t.Run("Returns empty map when payer has no channels", func(t *testing.T) {

@@ -460,6 +460,7 @@ func (mtp *minerTestPorcelain) messageQueryPaymentBrokerLs() ([][]byte, error) {
 			Target:         mtp.targetAddress,
 			Amount:         types.NewAttoFILFromFIL(100000),
 			AmountRedeemed: types.NewAttoFILFromFIL(0),
+			AgreedEol:      mtp.channelEol,
 			Eol:            mtp.channelEol,
 		}
 	}
