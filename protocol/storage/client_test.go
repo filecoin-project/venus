@@ -190,11 +190,8 @@ func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.
 	return id, nil
 }
 
-func (ctp *clientTestAPI) NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
-	out := make(chan time.Duration, 1)
-	out <- 0
-	close(out)
-	return out, nil
+func (ctp *clientTestAPI) PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error {
+	return nil
 }
 
 func (ctp *clientTestAPI) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
