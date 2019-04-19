@@ -40,6 +40,8 @@ const (
 	ErrTooEarly = 43
 )
 
+var cancelDelayBlockTime = types.NewBlockHeight(10000)
+
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrTooEarly:                 errors.NewCodedRevertError(ErrTooEarly, "block height too low to redeem voucher"),
@@ -368,7 +370,12 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		channel.Eol = vmctx.BlockHeight().Add(types.NewBlockHeight(1))
+		eol := vmctx.BlockHeight().Add(cancelDelayBlockTime)
+
+		// eol can only be decreased
+		if channel.Eol.GreaterThan(eol) {
+			channel.Eol = eol
+		}
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
