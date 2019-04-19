@@ -16,6 +16,7 @@ func TestEncodeThenDecode(t *testing.T){
 	addrGetter := address.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
+
 	paymentVoucher := &PaymentVoucher{
 		Channel:   *NewChannelID(5),
 		Payer:     addr1,
@@ -23,6 +24,7 @@ func TestEncodeThenDecode(t *testing.T){
 		Amount:    *NewAttoFILFromFIL(100),
 		ValidAt:   *NewBlockHeight(25),
 	}
+	
 	rawPaymentVoucher,err:=paymentVoucher.Encode()
 	require.NoError(err)
 
