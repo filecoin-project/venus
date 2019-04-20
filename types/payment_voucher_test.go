@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 )
 
-func TestEncodeThenDecode(t *testing.T) {
+func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
@@ -27,12 +27,12 @@ func TestEncodeThenDecode(t *testing.T) {
 
 	rawPaymentVoucher, err := paymentVoucher.Encode()
 	require.NoError(err)
-	DecodedPaymentVoucher, err := DecodeVoucher(rawPaymentVoucher)
+	decodedPaymentVoucher, err := DecodeVoucher(rawPaymentVoucher)
 	require.NoError(err)
 
-	assert.Equal((*paymentVoucher).Channel, DecodedPaymentVoucher.Channel)
-	assert.Equal((*paymentVoucher).Payer, DecodedPaymentVoucher.Payer)
-	assert.Equal((*paymentVoucher).Target, DecodedPaymentVoucher.Target)
-	assert.Equal((*paymentVoucher).Amount, DecodedPaymentVoucher.Amount)
-	assert.Equal((*paymentVoucher).ValidAt, DecodedPaymentVoucher.ValidAt)
+	assert.Equal((*paymentVoucher).Channel, decodedPaymentVoucher.Channel)
+	assert.Equal((*paymentVoucher).Payer, decodedPaymentVoucher.Payer)
+	assert.Equal((*paymentVoucher).Target, decodedPaymentVoucher.Target)
+	assert.Equal((*paymentVoucher).Amount, decodedPaymentVoucher.Amount)
+	assert.Equal((*paymentVoucher).ValidAt, decodedPaymentVoucher.ValidAt)
 }
