@@ -14,7 +14,7 @@ import (
 )
 
 func TestUsage(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t) // because we're using exec.Command
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
@@ -40,7 +40,7 @@ func TestUsage(t *testing.T) {
 }
 
 func TestOptions(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t) // because we're using exec.Command
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
