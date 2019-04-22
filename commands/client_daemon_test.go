@@ -2,16 +2,23 @@ package commands_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 )
 
 func TestListAsks(t *testing.T) {
@@ -229,4 +236,58 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
 
 	assert.Contains(proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
+}
+
+func TestSelfDialStorageGoodError(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	ctx := context.Background()
+
+	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+	// Teardown after test ends.
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
+
+	// Start mining.
+	miningNode := env.RequireNewNodeWithFunds(1000)
+
+	// This is what mining start should do, but FAST uses mining once
+	// for some very helpful builtins and because of issue 2579 we need to
+	// mine once in a loop instead of calling start.  Once #2579 is fixed
+	// this can be replaced with start.
+	minerCreateDoneCh := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-minerCreateDoneCh:
+				return
+			default:
+				series.CtxMiningOnce(ctx)
+			}
+		}
+	}()
+
+	pledge := uint64(10)
+	collateral := big.NewInt(int64(1))
+	price := big.NewFloat(float64(0.001))
+	expiry := big.NewInt(int64(500))
+	ask, err := series.CreateMinerWithAsk(ctx, miningNode, pledge, collateral, price, expiry)
+	minerCreateDoneCh <- struct{}{}
+	require.NoError(err)
+
+	// Try to make a storage deal with self and fail on self dial.
+	f := files.NewBytesFile([]byte("satyamevajayate"))
+	_, _, err = series.ImportAndStore(ctx, miningNode, ask, f)
+	assert.Error(err)
+	var cmdOutBytes []byte
+	w := bytes.NewBuffer(cmdOutBytes)
+	miningNode.DumpLastOutput(w)
+	outputStr := string(w.Bytes())
+	expectedErrStr := "attempting to make storage deal with self"
+	assert.Contains(outputStr, expectedErrStr)
 }
