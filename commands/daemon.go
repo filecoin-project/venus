@@ -55,13 +55,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	// second highest precedence is env vars.
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		rep.Config().API.Address = envapi
+	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
+		rep.Config().API.Address = envAPI
 	}
 
 	// highest precedence is cmd line flag.
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		rep.Config().API.Address = apiAddress
+	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
+		rep.Config().API.Address = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
@@ -130,7 +130,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	defer nd.Stop(ctx)
 
 	servenv := &Env{
-		// TODO: should this be the passed in context?
+		// TODO: should this be the passed in context?  Issue 2641
 		blockMiningAPI: nd.BlockMiningAPI,
 		ctx:            context.Background(),
 		porcelainAPI:   nd.PorcelainAPI,
