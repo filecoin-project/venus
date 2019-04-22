@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -300,10 +299,10 @@ func (smc *Client) isMaybeDupDeal(p *storagedeal.Proposal) bool {
 }
 
 // LoadVouchersForDeal loads vouchers from disk for a given deal
-func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
+func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
 	storageDeal := smc.api.DealGet(dealCid)
 	if storageDeal == nil {
-		return []*paymentbroker.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
+		return []*types.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
 }

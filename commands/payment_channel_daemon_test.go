@@ -184,7 +184,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	voucher, err := paymentbroker.DecodeVoucher(voucherStr)
+	voucher, err := types.DecodeVoucher(voucherStr)
 	require.NoError(err)
 
 	assert.Equal(voucherAmount, &voucher.Amount)

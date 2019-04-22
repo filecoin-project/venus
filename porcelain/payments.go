@@ -69,7 +69,7 @@ type CreatePaymentsReturn struct {
 	GasAttoFIL *types.AttoFIL
 
 	// Vouchers are the payment vouchers created to pay the target at regular intervals.
-	Vouchers []*paymentbroker.PaymentVoucher
+	Vouchers []*types.PaymentVoucher
 }
 
 // CreatePayments establishes a payment channel and create multiple payments against it
@@ -136,7 +136,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	valuePerPayment := *config.Value.MulBigInt(intervalAsBigInt).DivCeil(durationAsAttoFIL)
 
 	// generate payments
-	response.Vouchers = []*paymentbroker.PaymentVoucher{}
+	response.Vouchers = []*types.PaymentVoucher{}
 	voucherAmount := types.ZeroAttoFIL
 	for i := 0; uint64(i+1)*config.PaymentInterval < config.Duration; i++ {
 		voucherAmount = voucherAmount.Add(&valuePerPayment)
@@ -174,7 +174,7 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePay
 		return err
 	}
 
-	var voucher paymentbroker.PaymentVoucher
+	var voucher types.PaymentVoucher
 	if err := cbor.DecodeInto(ret[0], &voucher); err != nil {
 		return err
 	}

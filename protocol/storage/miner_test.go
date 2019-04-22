@@ -132,7 +132,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		require := require.New(t)
 
 		porcelainAPI, miner, _ := defaultMinerTestSetup(require, VoucherInterval, defaultAmountInc)
-		proposal := testSignedDealProposal(porcelainAPI, []*paymentbroker.PaymentVoucher{}, defaultPieceSize)
+		proposal := testSignedDealProposal(porcelainAPI, []*types.PaymentVoucher{}, defaultPieceSize)
 
 		res, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(err)
@@ -506,8 +506,8 @@ func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, am
 	return newTestMiner(porcelainAPI), testSignedDealProposal(porcelainAPI, vouchers, 1000)
 }
 
-func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) []*paymentbroker.PaymentVoucher {
-	vouchers := make([]*paymentbroker.PaymentVoucher, 10)
+func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) []*types.PaymentVoucher {
+	vouchers := make([]*types.PaymentVoucher, 10)
 
 	for i := 0; i < 10; i++ {
 		validAt := porcelainAPI.paymentStart.Add(types.NewBlockHeight(uint64((i + 1) * voucherInterval)))
@@ -515,7 +515,7 @@ func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, 
 		signature, err := paymentbroker.SignVoucher(porcelainAPI.channelID, amount, validAt, porcelainAPI.payerAddress, porcelainAPI.signer)
 		porcelainAPI.require.NoError(err, "could not sign valid proposal")
 
-		vouchers[i] = &paymentbroker.PaymentVoucher{
+		vouchers[i] = &types.PaymentVoucher{
 			Channel:   *porcelainAPI.channelID,
 			Payer:     porcelainAPI.payerAddress,
 			Target:    porcelainAPI.targetAddress,
@@ -528,7 +528,7 @@ func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, 
 
 }
 
-func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*paymentbroker.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
+func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
 	duration := uint64(10000)
 	minerPrice, _ := types.NewAttoFILFromFILString(minerPriceString)
 	totalPrice := minerPrice.MulBigInt(big.NewInt(int64(size * duration)))

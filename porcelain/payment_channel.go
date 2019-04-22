@@ -65,7 +65,7 @@ func PaymentChannelVoucher(
 	channel *types.ChannelID,
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
-) (voucher *paymentbroker.PaymentVoucher, err error) {
+) (voucher *types.PaymentVoucher, err error) {
 	if fromAddr.Empty() {
 		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
