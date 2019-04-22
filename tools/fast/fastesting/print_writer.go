@@ -8,8 +8,10 @@ import (
 )
 
 type printWriter struct {
-	pw io.WriteCloser
-	wg sync.WaitGroup
+	bpr *bufio.Reader
+	pw  io.WriteCloser
+	wg  sync.WaitGroup
+	t   *testing.T
 }
 
 // newPrintWriter returns a io.WriteCloser which will take all lines written to
@@ -20,24 +22,28 @@ func newPrintWriter(t *testing.T) io.WriteCloser {
 	bpr := bufio.NewReader(pr)
 
 	p := &printWriter{
-		pw: pw,
+		pw:  pw,
+		bpr: bpr,
+		t:   t,
 	}
 
 	p.wg.Add(1)
-	go func() {
-		p.wg.Done()
-		for {
-			l, err := bpr.ReadBytes('\n')
-			if len(l) != 0 {
-				t.Logf(string(l))
-			}
-			if err != nil {
-				break
-			}
-		}
-	}()
+	go p.writeOut()
 
 	return p
+}
+
+func (p *printWriter) writeOut() {
+	defer p.wg.Done()
+	for {
+		l, err := p.bpr.ReadBytes('\n')
+		if len(l) != 0 {
+			p.t.Logf(string(l))
+		}
+		if err != nil {
+			break
+		}
+	}
 }
 
 // Write the bytes b using t.Logf on each full line
