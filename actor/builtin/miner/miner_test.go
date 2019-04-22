@@ -361,6 +361,103 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.EqualError(res.ExecutionError, "submitted PoSt late, need to pay a fee")
 }
 
+func TestVerifyPIP(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	st, vms := core.CreateStorages(ctx, t)
+
+	ancestors := th.RequireTipSetChain(t, 10)
+
+	origPid := th.RequireRandomPeerID(require.New(t))
+	minerAddr := createTestMiner(assert.New(t), st, vms, address.TestAddress, []byte("my public key"), origPid)
+
+	sectorId := uint64(1)
+	commD := th.MakeCommitment()
+
+	// add a sector
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorId, commD, th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(int(types.SealBytesLen)))
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
+	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+	runVerifyPIP := func(t *testing.T, bh uint64, commP []byte, sectorId uint64, proof []byte) (bool, string) {
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, bh, "verifyPIP", ancestors, commP, sectorId, proof)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		valid := parseAbiBoolean(res.Receipt.Return[0])
+		reason := string(res.Receipt.Return[1])
+
+		return valid, reason
+	}
+
+	commP := th.MakeCommitment()
+
+	// TODO: This is a fake pip form by concatenating commP and commD.
+	// It will need to be generated correctly once real verification is implemented
+	// see https://github.com/filecoin-project/go-filecoin/issues/2629
+	pip := []byte{}
+	pip = append(pip, commP[:]...)
+	pip = append(pip, commD[:]...)
+
+	t.Run("PIP is invalid if miner has not submitted any proofs", func(t *testing.T) {
+		valid, reason := runVerifyPIP(t, 3, commP, sectorId, pip)
+
+		require.False(t, valid)
+		require.Equal(t, "proofs out of date", reason)
+	})
+
+	t.Run("After submitting a PoSt", func(t *testing.T) {
+		// submit a post
+		proof := th.MakeRandomPoSTProofForTest()
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []types.PoStProof{proof})
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		t.Run("Valid PIP returns true", func(t *testing.T) {
+			valid, reason := runVerifyPIP(t, 3, commP, sectorId, pip)
+
+			require.True(t, valid)
+			require.Equal(t, "", reason)
+		})
+
+		t.Run("PIP is invalid if miner hasn't committed sector", func(t *testing.T) {
+			wrongSectorId := sectorId + 1
+			valid, reason := runVerifyPIP(t, 3, commP, wrongSectorId, pip)
+
+			require.False(t, valid)
+			require.Equal(t, "sector not committed", reason)
+		})
+
+		t.Run("PIP is invalid if miner's PoSts are out of date", func(t *testing.T) {
+			blockHeight := uint64(ClientProofOfStorageTimeout.AsBigInt().Int64() + 100)
+			valid, reason := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
+
+			require.False(t, valid)
+			require.Equal(t, "proofs out of date", reason)
+		})
+
+		t.Run("PIP is invalid if proof is invalid", func(t *testing.T) {
+			wrongPIP := append([]byte{pip[0] + 1}, pip[1:]...)
+			valid, reason := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
+
+			require.False(t, valid)
+			require.Equal(t, "invalid inclusion proof", reason)
+		})
+
+		t.Run("Malformed PIP is a validation error, but not a revert error", func(t *testing.T) {
+			wrongPIP := pip[1:]
+			valid, reason := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
+
+			require.False(t, valid)
+			require.Equal(t, "malformed inclusion proof", reason)
+		})
+	})
+}
+
 func TestGetProofsMode(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -407,4 +504,8 @@ func TestGetProofsMode(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(types.LiveProofsMode, mode)
 	})
+}
+
+func parseAbiBoolean(bytes []byte) bool {
+	return bytes[0] == 1
 }
