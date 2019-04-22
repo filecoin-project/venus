@@ -159,7 +159,7 @@ func (env *TestEnvironment) DumpEnvOutputOnFail() {
 // helper to dump the output using the t.Log method.
 func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 	if t.Failed() {
-		w := newPrintWriter(t)
+		w := newLogWriter(t)
 		for _, node := range procs {
 			node.DumpLastOutput(w)
 		}

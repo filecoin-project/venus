@@ -4,27 +4,30 @@ import (
 	"bufio"
 	"io"
 	"sync"
-	"testing"
 )
 
-type printWriter struct {
+type logWriter struct {
 	bpr *bufio.Reader
 	pw  io.WriteCloser
 	wg  sync.WaitGroup
-	t   *testing.T
+	out logf
 }
 
-// newPrintWriter returns a io.WriteCloser which will take all lines written to
-// it and call `t.Logf` with it. This is currently used with the FAST DumpLastOutput
+type logf interface {
+	Logf(string, ...interface{})
+}
+
+// newLogWriter returns a io.WriteCloser which will take all lines written to
+// it and call out.Logf with it. This is currently used with the FAST DumpLastOutput
 // to print the output of a command to the test logger.
-func newPrintWriter(t *testing.T) io.WriteCloser {
+func newLogWriter(out logf) io.WriteCloser {
 	pr, pw := io.Pipe()
 	bpr := bufio.NewReader(pr)
 
-	p := &printWriter{
+	p := &logWriter{
 		pw:  pw,
 		bpr: bpr,
-		t:   t,
+		out: out,
 	}
 
 	p.wg.Add(1)
@@ -33,12 +36,12 @@ func newPrintWriter(t *testing.T) io.WriteCloser {
 	return p
 }
 
-func (p *printWriter) writeOut() {
+func (p *logWriter) writeOut() {
 	defer p.wg.Done()
 	for {
 		l, err := p.bpr.ReadBytes('\n')
 		if len(l) != 0 {
-			p.t.Logf(string(l))
+			p.out.Logf(string(l))
 		}
 		if err != nil {
 			break
@@ -47,12 +50,12 @@ func (p *printWriter) writeOut() {
 }
 
 // Write the bytes b using t.Logf on each full line
-func (p *printWriter) Write(b []byte) (int, error) {
+func (p *logWriter) Write(b []byte) (int, error) {
 	return p.pw.Write(b)
 }
 
 // Close the writer
-func (p *printWriter) Close() error {
+func (p *logWriter) Close() error {
 	err := p.pw.Close()
 	p.wg.Wait()
 	return err
