@@ -34,7 +34,7 @@ var testConfig = &GenesisCfg{
 }
 
 func TestGenGenLoading(t *testing.T) {
-	tf.UnitTest(t)
+	tf.IntegrationTest(t)
 
 	assert := assert.New(t)
 	fi, err := ioutil.TempFile("", "gengentest")

@@ -49,15 +49,26 @@ commands:
       - run:
           name: Create directories for test results
           command: mkdir -p test-results/go-test-suite
+
   go_test:
     parameters:
       <<: *sector_builder_tests_param
+      unit:
+        type: string
+        default: "true"
+      integration:
+        type: string
+        default: "true"
+      functional:
+        type: string
+        default: "false"
     steps:
       - run:
           name: Test
           no_output_timeout: 30m
           command: "trap \"go run github.com/jstemmer/go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml\" EXIT;
-            FILECOIN_RUN_SECTOR_BUILDER_TESTS=<< parameters.sector_builder_tests >> go run ./build/*.go test -v 2>&1 | tee test-results/go-test-suite/go-test.out"
+            go run ./build/*.go test -functional=<< parameters.functional >> -integration=<< parameters.integration >> -sectorbuilder=<< parameters.sector_builder_tests >>  -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out"
+
   git_fetch_all_tags:
     steps:
       - run:
@@ -338,6 +349,7 @@ jobs:
 
       - go_test:
           sector_builder_tests: "<< parameters.sector_builder_tests >>"
+
       - run:
           name: Functional Tests
           command: ./functional-tests/run

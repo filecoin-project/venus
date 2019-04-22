@@ -41,7 +41,7 @@ const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
 const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
 // TODO: replace this with a queries to pick reasonable gas price and limits.
-const submitPostGasPrice = 0
+const submitPostGasPrice = 1
 const submitPostGasLimit = 300
 
 const waitForPaymentChannelDuration = 2 * time.Minute

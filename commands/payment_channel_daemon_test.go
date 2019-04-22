@@ -69,7 +69,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		channelExpiry := types.NewBlockHeight(20)
 		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+		chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 		channels, err := rsrc.payer.PaychLs(ctx)
 		require.NoError(err)
@@ -78,6 +78,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 		channel := channels[chanid.String()]
 		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(channelExpiry, channel.AgreedEol)
 		assert.Equal(channelExpiry, channel.Eol)
 		assert.Equal(rsrc.targetAddr, channel.Target)
 		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -105,7 +106,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		channelExpiry := types.NewBlockHeight(20)
 		channelAmount := types.NewAttoFILFromFIL(1000)
 
-		chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+		chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 		channels, err := rsrc.payer.PaychLs(ctx, fast.AOPayer(rsrc.payerAddr))
 		require.NoError(err)
@@ -114,6 +115,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 		channel := channels[chanid.String()]
 		assert.Equal(channelAmount, channel.Amount)
+		assert.Equal(channelExpiry, channel.AgreedEol)
 		assert.Equal(channelExpiry, channel.Eol)
 		assert.Equal(rsrc.targetAddr, channel.Target)
 		assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -175,14 +177,14 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
 	voucherValidAt := types.NewBlockHeight(0)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	voucher, err := paymentbroker.DecodeVoucher(voucherStr)
+	voucher, err := types.DecodeVoucher(voucherStr)
 	require.NoError(err)
 
 	assert.Equal(voucherAmount, &voucher.Amount)
@@ -212,14 +214,14 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
 	voucherValidAt := types.NewBlockHeight(0)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -260,14 +262,14 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(20)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
 	voucherValidAt := types.NewBlockHeight(10)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -318,14 +320,14 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	balanceBefore, err := rsrc.payer.WalletBalance(ctx, rsrc.payerAddr)
 	require.NoError(err)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, gasReceipt := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
 	voucherValidAt := types.NewBlockHeight(0)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -343,7 +345,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 
 	series.CtxMiningOnce(ctx)
 
-	mcid, err = rsrc.payer.PaychReclaim(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err = rsrc.payer.PaychReclaim(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -351,6 +353,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	resp, err = rsrc.payer.MessageWait(ctx, mcid)
 	require.NoError(err)
 	assert.Equal(0, int(resp.Receipt.ExitCode))
+	gasReceipt = gasReceipt.Add(resp.Receipt.GasAttoFIL)
 
 	channels, err = rsrc.payer.PaychLs(ctx, fast.AOFromAddr(rsrc.payerAddr))
 	require.NoError(err)
@@ -359,7 +362,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	balanceAfter, err := rsrc.payer.WalletBalance(ctx, rsrc.payerAddr)
 	require.NoError(err)
 
-	assert.Equal(balanceBefore, balanceAfter.Add(voucherAmount))
+	assert.Equal(balanceBefore.Sub(gasReceipt), balanceAfter.Add(voucherAmount))
 }
 
 func TestPaymentChannelCloseSuccess(t *testing.T) {
@@ -392,14 +395,14 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	targetBalanceBefore, err := rsrc.target.WalletBalance(ctx, rsrc.targetAddr)
 	require.NoError(err)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, gasReceiptForPaychCreate := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
 	voucherValidAt := types.NewBlockHeight(0)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(err)
 
-	mcid, err := rsrc.target.PaychClose(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.target.PaychClose(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -414,11 +417,11 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 
 	payerBalanceAfter, err := rsrc.payer.WalletBalance(ctx, rsrc.payerAddr)
 	require.NoError(err)
-	assert.Equal(payerBalanceBefore.Sub(voucherAmount), payerBalanceAfter)
+	assert.Equal(payerBalanceBefore.Sub(voucherAmount).Sub(gasReceiptForPaychCreate), payerBalanceAfter)
 
 	targetBalanceAfter, err := rsrc.target.WalletBalance(ctx, rsrc.targetAddr)
 	require.NoError(err)
-	assert.Equal(targetBalanceBefore.Add(voucherAmount), targetBalanceAfter)
+	assert.Equal(targetBalanceBefore.Add(voucherAmount).Sub(resp.Receipt.GasAttoFIL), targetBalanceAfter)
 }
 
 func TestPaymentChannelExtendSuccess(t *testing.T) {
@@ -445,7 +448,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	channelExpiry := types.NewBlockHeight(5)
 	channelAmount := types.NewAttoFILFromFIL(1000)
 
-	chanid := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
+	chanid, _ := rsrc.requirePaymentChannel(ctx, channelAmount, channelExpiry)
 
 	channels, err := rsrc.payer.PaychLs(ctx)
 	require.NoError(err)
@@ -454,6 +457,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 	channel := channels[chanid.String()]
 	assert.Equal(channelAmount, channel.Amount)
+	assert.Equal(channelExpiry, channel.AgreedEol)
 	assert.Equal(channelExpiry, channel.Eol)
 	assert.Equal(rsrc.targetAddr, channel.Target)
 	assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
@@ -461,7 +465,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	extendAmount := types.NewAttoFILFromFIL(100)
 	extendExpiry := types.NewBlockHeight(100)
 
-	mcid, err := rsrc.payer.PaychExtend(ctx, chanid, extendAmount, extendExpiry, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.payer.PaychExtend(ctx, chanid, extendAmount, extendExpiry, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -477,9 +481,63 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 
 	channel = channels[chanid.String()]
 	assert.Equal(channelAmount.Add(extendAmount), channel.Amount)
+	assert.Equal(extendExpiry, channel.AgreedEol)
 	assert.Equal(extendExpiry, channel.Eol)
 	assert.Equal(rsrc.targetAddr, channel.Target)
 	assert.Equal(types.ZeroAttoFIL, channel.AmountRedeemed)
+}
+
+func TestPaymentChannelCancelSuccess(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	require := require.New(t)
+	assert := assert.New(t)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
+	defer cancel()
+
+	// Get basic testing environment
+	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+
+	// Teardown after test ends
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(err)
+	}()
+
+	// Start test
+	rsrc := requireNewPaychResource(ctx, t, env)
+
+	channelExpiry := types.NewBlockHeight(20000)
+
+	chanid, _ := rsrc.requirePaymentChannel(ctx, types.NewAttoFILFromFIL(1000), channelExpiry)
+
+	channels, err := rsrc.payer.PaychLs(ctx)
+	require.NoError(err)
+
+	assert.Len(channels, 1)
+
+	channel := channels[chanid.String()]
+	assert.Equal(channelExpiry, channel.AgreedEol)
+	assert.Equal(channelExpiry, channel.Eol)
+
+	mcid, err := rsrc.payer.PaychCancel(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
+	require.NoError(err)
+
+	series.CtxMiningOnce(ctx)
+
+	resp, err := rsrc.payer.MessageWait(ctx, mcid)
+	require.NoError(err)
+	assert.Equal(0, int(resp.Receipt.ExitCode))
+
+	channels, err = rsrc.payer.PaychLs(ctx)
+	require.NoError(err)
+
+	assert.Len(channels, 1)
+
+	channel = channels[chanid.String()]
+	assert.Equal(channelExpiry, channel.AgreedEol)
+	assert.Equal(types.NewBlockHeight(10004), channel.Eol)
 }
 
 type paychResources struct {
@@ -517,11 +575,11 @@ func requireNewPaychResource(ctx context.Context, t *testing.T, env *fastesting.
 	}
 }
 
-func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, amt *types.AttoFIL, eol *types.BlockHeight) (*types.ChannelID, *types.AttoFIL) {
 	require := require.New(rsrc.t)
 	assert := assert.New(rsrc.t)
 
-	mcid, err := rsrc.payer.PaychCreate(ctx, rsrc.targetAddr, amt, eol, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(0)), fast.AOLimit(300))
+	mcid, err := rsrc.payer.PaychCreate(ctx, rsrc.targetAddr, amt, eol, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(err)
 
 	series.CtxMiningOnce(ctx)
@@ -533,5 +591,5 @@ func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, amt *type
 	chanid := types.NewChannelIDFromBytes(resp.Receipt.Return[0])
 	require.NotNil(chanid)
 
-	return chanid
+	return chanid, resp.Receipt.GasAttoFIL
 }

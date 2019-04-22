@@ -18,7 +18,7 @@ func TestOutbox(t *testing.T) {
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
 		return d.RunSuccess("message", "send",
 			"--from", from,
-			"--gas-price", "0", "--gas-limit", "300",
+			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", to,
 		)
 	}

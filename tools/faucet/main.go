@@ -81,7 +81,7 @@ func main() {
 			return
 		}
 
-		reqStr := fmt.Sprintf("http://%s/api/message/send?arg=%s&value=%d&from=%s&gas-price=0&gas-limit=0", *filapi, addr.String(), *faucetval, *filwal)
+		reqStr := fmt.Sprintf("http://%s/api/message/send?arg=%s&value=%d&from=%s&gas-price=1&gas-limit=0", *filapi, addr.String(), *faucetval, *filwal)
 		log.Infof("Request URL: %s", reqStr)
 
 		resp, err := http.Post(reqStr, "application/json", nil)

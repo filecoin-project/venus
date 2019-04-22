@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"io/ioutil"
-	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -31,11 +30,7 @@ const MaxTimeToSealASector = time.Second * 360
 const MaxTimeToGenerateSectorPoSt = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
-	tf.FunctionalTest(t)
-
-	if os.Getenv("FILECOIN_RUN_SECTOR_BUILDER_TESTS") != "true" {
-		t.SkipNow()
-	}
+	tf.SectorBuilderTest(t)
 
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()

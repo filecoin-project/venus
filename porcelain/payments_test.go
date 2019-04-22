@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -55,7 +54,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 			})
 		},
 		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-			voucher := &paymentbroker.PaymentVoucher{
+			voucher := &types.PaymentVoucher{
 				Channel: *channelID,
 				Payer:   payer,
 				Target:  target,

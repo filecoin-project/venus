@@ -183,7 +183,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 }
 
 func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)
 	}

@@ -1,6 +1,6 @@
 # Filecoin (go-filecoin)
 
-[![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg&circle-token=5a9d1cb48788b41d98bdfbc8b15298816ec71fea)](https://circleci.com/gh/filecoin-project/go-filecoin)
+[![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg)](https://circleci.com/gh/filecoin-project/go-filecoin)
 [![User Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/user-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases/latest)
 [![Nightly Devnet Release](https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/nightly-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
 [![Test Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/test-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
@@ -119,7 +119,7 @@ go run ./build build
 # Install go-filecoin to ${GOPATH}/bin (necessary for tests)
 go run ./build install
 
-# Then, run the tests.
+# Then, run the unit tests.
 go run ./build test
 
 # Build and test can be combined!
@@ -131,6 +131,9 @@ Other handy build commands include:
 ```sh
 # Check the code for style and correctness issues
 go run ./build lint
+
+# Run different categories of tests by toggling their flags
+go run ./build test -unit=false -integration=true -functional=true
 
 # Test with a coverage report
 go run ./build test -cover

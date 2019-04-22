@@ -6,12 +6,11 @@ import (
 )
 
 // Test enablement flags
-// TODO(frrist): All tests are enabled by default, this allows for changes to CI
-// to be pushed into a follow on. In the follow on these flags will be passed to
-// CI jobs and their default values will go back to false.
-var functionalTest = flag.Bool("functional", true, "Run the functional go tests")
+// Only run unit and integration tests by default, all others require their flags to be set.
 var integrationTest = flag.Bool("integration", true, "Run the integration go tests")
 var unitTest = flag.Bool("unit", true, "Run the unit go tests")
+var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
+var sectorBuilderTest = flag.Bool("sectorbuilder", false, "Run the sector builder tests")
 
 // FunctionalTest will run the test its called from iff the `-functional` flag
 // is passed when calling `go test`. Otherwise the test will be skipped. FunctionalTest
@@ -49,6 +48,14 @@ func UnitTest(t *testing.T) {
 // serially. Tests that use this flag are bad an should feel bad.
 func BadUnitTestWithSideEffects(t *testing.T) {
 	if !*unitTest && !testing.Short() {
+		t.SkipNow()
+	}
+}
+
+// SectorBuilderTest will run the test its called from iff the `-sectorbuilder` flag
+// is passed when calling `go test`. Otherwise the test will be skipped.
+func SectorBuilderTest(t *testing.T) {
+	if !*sectorBuilderTest {
 		t.SkipNow()
 	}
 }

@@ -8,11 +8,10 @@ COPY filecoin/go-filecoin /usr/local/bin/go-filecoin
 COPY bin/container_daemon /usr/local/bin/start_filecoin
 COPY bin/devnet_start /usr/local/bin/devnet_start
 COPY bin/node_restart /usr/local/bin/node_restart
-COPY fixtures/* /data/
+COPY fixtures/ /data/
 COPY gengen/gengen /usr/local/bin/gengen
 COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=filecoin:all /tmp/tini /sbin/tini
-COPY --from=filecoin:all /tmp/jq /usr/local/bin/jq
 COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
 
 RUN ln -sf /tmp/filecoin-proof-parameters/v9-zigzag-proof-of-replication-52431242c129794fe51d373ae29953f2ff52abd94c78756e318ce45f3e4946d8 /tmp/filecoin-proof-parameters/params.out
@@ -21,6 +20,10 @@ COPY --from=filecoin:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/libutil.so.1 /lib/libutil.so.1
+
+# need jq for parsing genesis output
+RUN wget -q -O /usr/local/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 \
+  && chmod +x /usr/local/bin/jq
 
 # Ports for Swarm and CmdAPI
 EXPOSE 6000
@@ -31,10 +34,6 @@ ENV FILECOIN_PATH /data/filecoin
 RUN mkdir -p $FILECOIN_PATH \
 && adduser -D -h $FILECOIN_PATH -u 1000 -G users filecoin \
 && chown filecoin:users $FILECOIN_PATH
-
-# There is only one bootstrapped miner
-RUN cat /data/gen.json | jq ".Miners[0].Address" > /data/minerAddr0 \
-&& cat /data/gen.json | jq ".Keys[0]" > /data/walletKey0
 
 # Expose the fs-repo as a volume.
 # start_filecoin initializes an fs-repo if none is mounted.

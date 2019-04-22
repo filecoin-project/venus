@@ -367,7 +367,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up pinger
-	pinger := ping.NewPingService(peerHost)
+	pingService := ping.NewPingService(peerHost)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
@@ -429,7 +429,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
 		MsgSender:    msg.NewSender(fcWallet, chainStore, &cstOffline, chainStore, outbox, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
-		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, pinger),
+		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:       outbox,
 		Wallet:       fcWallet,
 	}))
@@ -831,7 +831,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 				} else if result.SealingResult != nil {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
-					gasPrice := types.NewGasPrice(0)
+					gasPrice := types.NewGasPrice(1)
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult
@@ -1034,7 +1034,7 @@ func (node *Node) setupProtocols() error {
 	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime, node.PorcelainAPI))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api

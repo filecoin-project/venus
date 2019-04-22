@@ -10,10 +10,10 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var clientCmd = &cmds.Command{
@@ -251,9 +251,9 @@ var paymentsCmd = &cmds.Command{
 
 		return re.Emit(vouchers)
 	},
-	Type: []*paymentbroker.PaymentVoucher{},
+	Type: []*types.PaymentVoucher{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*paymentbroker.PaymentVoucher) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*types.PaymentVoucher) error {
 			if _, err := fmt.Println("Channel\tAmount\tValidAt\tEncoded Voucher"); err != nil {
 				return err
 			}

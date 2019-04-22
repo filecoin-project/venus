@@ -21,7 +21,7 @@ func TestMpoolLs(t *testing.T) {
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
 		return d.RunSuccess("message", "send",
 			"--from", from,
-			"--gas-price", "0", "--gas-limit", "300",
+			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", to,
 		)
 	}
@@ -92,7 +92,7 @@ func TestMpoolShow(t *testing.T) {
 
 		msgCid := d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--gas-price", "0", "--gas-limit", "300",
+			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
 		).ReadStdoutTrimNewlines()
 
@@ -127,7 +127,7 @@ func TestMpoolRm(t *testing.T) {
 
 		msgCid := d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--gas-price", "0", "--gas-limit", "300",
+			"--gas-price", "1", "--gas-limit", "300",
 			"--value=10", fixtures.TestAddresses[2],
 		).ReadStdoutTrimNewlines()
 
