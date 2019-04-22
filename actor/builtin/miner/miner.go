@@ -31,20 +31,20 @@ const MaximumPublicKeySize = 100
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
-var ProvingPeriodBlocks = types.NewBlockHeight(20000)
+const ProvingPeriodBlocks = 20000
 
 // GracePeriodBlocks is the number of blocks after a proving period over
 // which a miner can still submit a post at a penalty.
 // TODO: what is a secure value for this?  Value is arbitrary right now.
 // See https://github.com/filecoin-project/go-filecoin/issues/1887
-var GracePeriodBlocks = types.NewBlockHeight(100)
+const GracePeriodBlocks = 100
 
 // ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
 // after which the miner is no longer considered to be storing the client's piece and they are entitled to
 // a refund.
 // TODO: what is a fair value for this? Value is arbitrary right now.
 // See https://github.com/filecoin-project/go-filecoin/issues/1887
-var ClientProofOfStorageTimeout = types.NewBlockHeight(10000)
+const ClientProofOfStorageTimeout = 10000
 
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
@@ -571,7 +571,12 @@ func (ma *Actor) VerifyPIP(ctx exec.VMContext, commP []byte, sectorID uint64, pr
 		}
 
 		// If miner is not up-to-date on their PoSts, proof is invalid
-		if state.LastPoSt == nil || ctx.BlockHeight().Sub(ClientProofOfStorageTimeout).GreaterEqual(state.LastPoSt) {
+		if state.LastPoSt == nil {
+			return xerrors.New("proofs out of date"), nil
+		}
+
+		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(ClientProofOfStorageTimeout))
+		if ctx.BlockHeight().GreaterEqual(clientProofsTimeout) {
 			return xerrors.New("proofs out of date"), nil
 		}
 
@@ -734,7 +739,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (u
 		}
 
 		// Check if we submitted it in time
-		provingPeriodEnd := state.ProvingPeriodStart.Add(ProvingPeriodBlocks)
+		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodBlocks))
 		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
 			// Not great.
 			// TODO: charge penalty

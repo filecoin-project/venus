@@ -199,7 +199,8 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		return err
 	}
 	newBlockHeight := types.NewBlockHeight(h)
-	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return err
 	}

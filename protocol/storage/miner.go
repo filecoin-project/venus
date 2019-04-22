@@ -766,7 +766,8 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	}
 
 	h := types.NewBlockHeight(height)
-	provingPeriodEnd := provingPeriodStart.Add(miner.ProvingPeriodBlocks)
+	provingPeriodHeight := types.NewBlockHeight(miner.ProvingPeriodBlocks)
+	provingPeriodEnd := provingPeriodStart.Add(provingPeriodHeight)
 
 	if h.GreaterEqual(provingPeriodStart) {
 		if h.LessThan(provingPeriodEnd) {

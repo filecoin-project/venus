@@ -433,7 +433,7 @@ func TestVerifyPIP(t *testing.T) {
 		})
 
 		t.Run("PIP is invalid if miner's PoSts are out of date", func(t *testing.T) {
-			blockHeight := uint64(ClientProofOfStorageTimeout.AsBigInt().Int64() + 100)
+			blockHeight := uint64(ClientProofOfStorageTimeout + 100)
 			valid, reason := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
 
 			require.False(t, valid)

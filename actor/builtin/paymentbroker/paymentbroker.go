@@ -40,7 +40,11 @@ const (
 	ErrTooEarly = 43
 )
 
-var cancelDelayBlockTime = types.NewBlockHeight(10000)
+// CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
+// is canceled before it expires.
+// TODO: what is a secure value for this?  Value is arbitrary right now.
+// See https://github.com/filecoin-project/go-filecoin/issues/1887
+const CancelDelayBlockTime = 10000
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
@@ -63,12 +67,19 @@ func init() {
 
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
-	Target         address.Address `json:"target"`
-	Amount         *types.AttoFIL  `json:"amount"`
-	AmountRedeemed *types.AttoFIL  `json:"amount_redeemed"`
+	// Target is the address of the account to which funds will be transferred
+	Target address.Address `json:"target"`
+
+	// Amount is the total amount of FIL that has been transferred to the channel from the payer
+	Amount *types.AttoFIL `json:"amount"`
+
+	// AmountRedeemed is the amount of FIL already transferred to the target
+	AmountRedeemed *types.AttoFIL `json:"amount_redeemed"`
+
 	// AgreedEol is the expiration for the payment channel agreed upon by the
 	// payer and payee upon initialization or extension
 	AgreedEol *types.BlockHeight `json:"agreed_eol"`
+
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
 	Eol *types.BlockHeight `json:"eol"`
@@ -374,7 +385,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		eol := vmctx.BlockHeight().Add(cancelDelayBlockTime)
+		eol := vmctx.BlockHeight().Add(types.NewBlockHeight(CancelDelayBlockTime))
 
 		// eol can only be decreased
 		if channel.Eol.GreaterThan(eol) {
