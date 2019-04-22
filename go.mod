@@ -20,7 +20,7 @@ require (
 	github.com/ipfs/go-car v0.0.1
 	github.com/ipfs/go-cid v0.0.1
 	github.com/ipfs/go-datastore v0.0.1
-	github.com/ipfs/go-ds-badger v0.0.2
+	github.com/ipfs/go-ds-badger v0.0.3
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
