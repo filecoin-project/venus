@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 type tlogWriter struct {
@@ -18,6 +20,8 @@ func (w *tlogWriter) Logf(format string, args ...interface{}) {
 }
 
 func TestLogWriter(t *testing.T) {
+	tf.UnitTest(t)
+
 	require := require.New(t)
 
 	input := []string{
