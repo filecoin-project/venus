@@ -11,6 +11,13 @@ func init() {
 	cbor.RegisterCborType(PaymentVoucher{})
 }
 
+// Predicate is an optional message that is sent to another actor and must return true for the voucher to be valid.
+type Predicate struct {
+	To     address.Address `json:"to"`
+	Method string          `json:"method"`
+	Params []byte          `json:"params"`
+}
+
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.
 type PaymentVoucher struct {
 	Channel   ChannelID       `json:"channel"`
@@ -19,6 +26,7 @@ type PaymentVoucher struct {
 	Amount    AttoFIL         `json:"amount"`
 	ValidAt   BlockHeight     `json:"valid_at"`
 	Signature Signature       `json:"signature"`
+	Condition *Predicate      `json:"condition"`
 }
 
 // DecodeVoucher creates a *PaymentVoucher from a base58, Cbor-encoded one

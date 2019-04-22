@@ -100,6 +100,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			types.NewChannelID(5),
 			types.NewAttoFILFromFIL(10),
 			types.NewBlockHeight(0),
+			nil,
 		)
 		require.NoError(err)
 		assert.Equal(expectedVoucher.Channel, voucher.Channel)

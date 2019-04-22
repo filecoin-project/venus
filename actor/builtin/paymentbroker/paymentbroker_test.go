@@ -301,13 +301,14 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt, sys.defaultValidAt)
+	signature, err := sys.Signature(amt, sys.defaultValidAt, nil)
 	require.NoError(err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, signature)
+	var condition *types.Predicate
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature)
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -321,13 +322,14 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt, sys.defaultValidAt)
+	signature, err := sys.Signature(amt, sys.defaultValidAt, nil)
 	require.NoError(err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, signature)
+	var condition *types.Predicate
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature)
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -682,8 +684,8 @@ func setup(t *testing.T) system {
 	}
 }
 
-func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight) ([]byte, error) {
-	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, mockSigner)
+func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
+	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, condition, mockSigner)
 	if err != nil {
 		return nil, err
 	}
@@ -753,10 +755,11 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	require := require.New(sys.t)
 
 	amt := types.NewAttoFILFromFIL(amtInt)
-	signature, err := sys.Signature(amt, validAt)
+	signature, err := sys.Signature(amt, validAt, nil)
 	require.NoError(err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, signature)
+	var predicate *types.Predicate
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, predicate, signature)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)

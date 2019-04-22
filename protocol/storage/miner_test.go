@@ -512,7 +512,7 @@ func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, 
 	for i := 0; i < 10; i++ {
 		validAt := porcelainAPI.paymentStart.Add(types.NewBlockHeight(uint64((i + 1) * voucherInterval)))
 		amount := types.NewAttoFILFromFIL(uint64(i+1) * amountInc)
-		signature, err := paymentbroker.SignVoucher(porcelainAPI.channelID, amount, validAt, porcelainAPI.payerAddress, porcelainAPI.signer)
+		signature, err := paymentbroker.SignVoucher(porcelainAPI.channelID, amount, validAt, porcelainAPI.payerAddress, nil, porcelainAPI.signer)
 		porcelainAPI.require.NoError(err, "could not sign valid proposal")
 
 		vouchers[i] = &types.PaymentVoucher{
