@@ -162,7 +162,7 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	}
 
 	dir := l.dir
-	repoFlag := fmt.Sprintf("--repodir=%s", l.Dir())
+	repoFlag := fmt.Sprintf("--repodir=%s", l.dir)
 	dargs := append([]string{"daemon", repoFlag}, args...)
 	cmd := exec.CommandContext(ctx, l.binPath, dargs...)
 	cmd.Dir = dir
@@ -418,7 +418,7 @@ func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// Dir returns the directory the node is using.
+// Dir returns the repo directory the node is using.
 func (l *Localfilecoin) Dir() string {
 	return l.dir
 }

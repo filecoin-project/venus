@@ -45,11 +45,5 @@ type Repo interface {
 
 	Version() uint
 
-	// StagingDir is used to store staged sectors.
-	StagingDir() string
-
-	// SealedDir is used to store sealed sectors.
-	SealedDir() string
-
 	Close() error
 }
