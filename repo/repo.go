@@ -6,8 +6,8 @@ import (
 	keystore "github.com/ipfs/go-ipfs-keystore"
 )
 
-// Version is the version of repo schema that this code understands.
-const Version uint = 1
+// Version is the version of repo schema that this code understands.	
+const Version uint = 2
 
 // Datastore is the datastore interface provided by the repo
 type Datastore interface {
