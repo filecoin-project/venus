@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
+// USAGE is the usage of the migration tool
 const USAGE = `
 USAGE
 	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [-h|--help] [-v|--verbose]

@@ -26,12 +26,14 @@ type Migration interface {
 	Validate(oldRepoPath, newRepoPath string) error
 }
 
+// MigrationRunner represent a migration command
 type MigrationRunner struct {
 	verbose    bool
 	command    string
 	oldRepoOpt string
 }
 
+// NewMigrationRunner builds a MirgrationRunner for the given command and repo options
 func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
 	// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
 
@@ -42,6 +44,7 @@ func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner 
 	}
 }
 
+// Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
 	return nil

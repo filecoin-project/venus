@@ -6,10 +6,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PoRepProofPartitions represents the number of partitions used when creating a
+// PoRep proof, and impacts the size of the proof.
 type PoRepProofPartitions int
 
 const (
+	// UnknownPoRepProofPartitions is an opaque value signaling that an unknown number
+	// of partitions were used when creating a PoRep proof in test mode.
 	UnknownPoRepProofPartitions = PoRepProofPartitions(iota)
+
+	// TwoPoRepProofPartitions indicates that two partitions were used to create a PoRep proof.
 	TwoPoRepProofPartitions
 )
 

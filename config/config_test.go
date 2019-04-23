@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -29,7 +30,9 @@ func TestWriteFile(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "config")
 	assert.NoError(t, err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(t, os.RemoveAll(dir))
+	}()
 
 	cfg := NewDefaultConfig()
 
@@ -119,7 +122,9 @@ func TestConfigRoundtrip(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "config")
 	assert.NoError(t, err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		require.NoError(t, os.RemoveAll(dir))
+	}()
 
 	cfg := NewDefaultConfig()
 
@@ -147,7 +152,9 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(t, err)
-		defer cleaner()
+		defer func() {
+			require.NoError(t, cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -164,7 +171,9 @@ func TestConfigReadFileDefaults(t *testing.T) {
 			}
 		}`)
 		assert.NoError(t, err)
-		defer cleaner()
+		defer func() {
+			require.NoError(t, cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -175,7 +184,9 @@ func TestConfigReadFileDefaults(t *testing.T) {
 	t.Run("empty file", func(t *testing.T) {
 		cfgpath, cleaner, err := createConfigFile("")
 		assert.NoError(t, err)
-		defer cleaner()
+		defer func() {
+			require.NoError(t, cleaner())
+		}()
 		cfg, err := ReadFile(cfgpath)
 		assert.NoError(t, err)
 
@@ -272,7 +283,9 @@ func TestConfigSet(t *testing.T) {
 
 		cfg1path, cleaner, err := createConfigFile(fmt.Sprintf(`{"datastore": %s}`, jsonBlob))
 		assert.NoError(t, err)
-		defer cleaner()
+		defer func() {
+			require.NoError(t, cleaner())
+		}()
 
 		cfg1, err := ReadFile(cfg1path)
 		assert.NoError(t, err)
@@ -332,7 +345,7 @@ path = "mushroom-mushroom"}`
 	})
 }
 
-func createConfigFile(content string) (string, func(), error) {
+func createConfigFile(content string) (string, func() error, error) {
 	dir, err := ioutil.TempDir("", "config")
 	if err != nil {
 		return "", nil, err
@@ -343,5 +356,7 @@ func createConfigFile(content string) (string, func(), error) {
 		return "", nil, err
 	}
 
-	return cfgpath, func() { os.RemoveAll(dir) }, nil
+	return cfgpath, func() error {
+		return os.RemoveAll(dir)
+	}, nil
 }
