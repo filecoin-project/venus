@@ -29,13 +29,10 @@ func TestFaucetSendFunds(t *testing.T) {
 		panic("faucet not found, run `go run build/*.go build` to fix")
 	}
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	ctx := context.Background()
 
 	tns, err := iptbtester.NewTestNodes(t, 2, nil)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	node0 := tns[0]
 	node1 := tns[1]
@@ -90,10 +87,10 @@ func TestFaucetSendFunds(t *testing.T) {
 	var balanceStr string
 	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0])
 	balance, err := strconv.ParseInt(balanceStr, 10, 64)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Assert funds have arrived
-	assert.Equal(fundAmount, balance)
+	assert.Equal(t, fundAmount, balance)
 }
 
 // MustStartFaucet runs the faucet using the given node. It sends funds from the nodes default wallet

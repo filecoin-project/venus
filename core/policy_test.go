@@ -20,8 +20,6 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	// Individual tests share a MessageMaker so not parallel (but quick)
 	ctx := context.Background()
-	assert := assert.New(t)
-	require := require.New(t)
 
 	keys := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
 	mm := types.NewMessageMaker(t, keys)
@@ -31,7 +29,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	requireEnqueue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) *types.SignedMessage {
 		err := q.Enqueue(msg, stamp)
-		require.NoError(err)
+		require.NoError(t, err)
 		return msg
 	}
 
@@ -49,9 +47,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b1 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{}, root)
 
 		err := policy.OnNewHeadTipset(ctx, requireTipset(t, root), requireTipset(t, b1))
-		assert.NoError(err)
-		assert.Equal(qm(fromAlice, 100), q.List(alice)[0])
-		assert.Equal(qm(fromBob, 200), q.List(bob)[0])
+		assert.NoError(t, err)
+		assert.Equal(t, qm(fromAlice, 100), q.List(alice)[0])
+		assert.Equal(t, qm(fromBob, 200), q.List(bob)[0])
 	})
 
 	t.Run("removes mined messages", func(t *testing.T) {
@@ -66,37 +64,37 @@ func TestMessageQueuePolicy(t *testing.T) {
 			requireEnqueue(q, mm.NewSignedMessage(bob, 1), 100),
 		}
 
-		assert.Equal(qm(msgs[0], 100), q.List(alice)[0])
-		assert.Equal(qm(msgs[3], 100), q.List(bob)[0])
+		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0])
+		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
 		root := blocks.NewBlock(0)
 		root.Height = 103
 		b1 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{msgs[0]}, root)
 
 		err := policy.OnNewHeadTipset(ctx, requireTipset(t, root), requireTipset(t, b1))
-		require.NoError(err)
-		assert.Equal(qm(msgs[1], 101), q.List(alice)[0]) // First message removed successfully
-		assert.Equal(qm(msgs[3], 100), q.List(bob)[0])   // No change
+		require.NoError(t, err)
+		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0]) // First message removed successfully
+		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])   // No change
 
 		// A block with no messages does nothing
 		b2 := blocks.NewBlockWithMessages(2, []*types.SignedMessage{}, b1)
 		err = policy.OnNewHeadTipset(ctx, requireTipset(t, b1), requireTipset(t, b2))
-		require.NoError(err)
-		assert.Equal(qm(msgs[1], 101), q.List(alice)[0])
-		assert.Equal(qm(msgs[3], 100), q.List(bob)[0])
+		require.NoError(t, err)
+		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0])
+		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
 		// Block with both alice and bob's next message
 		b3 := blocks.NewBlockWithMessages(3, []*types.SignedMessage{msgs[1], msgs[3]}, b2)
 		err = policy.OnNewHeadTipset(ctx, requireTipset(t, b2), requireTipset(t, b3))
-		require.NoError(err)
-		assert.Equal(qm(msgs[2], 102), q.List(alice)[0])
-		assert.Empty(q.List(bob)) // None left
+		require.NoError(t, err)
+		assert.Equal(t, qm(msgs[2], 102), q.List(alice)[0])
+		assert.Empty(t, q.List(bob)) // None left
 
 		// Block with alice's last message
 		b4 := blocks.NewBlockWithMessages(4, []*types.SignedMessage{msgs[2]}, b3)
 		err = policy.OnNewHeadTipset(ctx, requireTipset(t, b3), requireTipset(t, b4))
-		require.NoError(err)
-		assert.Empty(q.List(alice))
+		require.NoError(t, err)
+		assert.Empty(t, q.List(alice))
 	})
 
 	t.Run("expires old messages", func(t *testing.T) {
@@ -111,8 +109,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 			requireEnqueue(q, mm.NewSignedMessage(bob, 1), 200),
 		}
 
-		assert.Equal(qm(msgs[0], 100), q.List(alice)[0])
-		assert.Equal(qm(msgs[3], 200), q.List(bob)[0])
+		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0])
+		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
 		root := blocks.NewBlock(0)
 		root.Height = 100
@@ -121,16 +119,16 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b1 := blocks.NewBlock(1, root)
 		b1.Height = 110
 		err := policy.OnNewHeadTipset(ctx, requireTipset(t, root), requireTipset(t, b1))
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(qm(msgs[0], 100), q.List(alice)[0]) // No change
-		assert.Equal(qm(msgs[3], 200), q.List(bob)[0])
+		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0]) // No change
+		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
 		b2 := blocks.NewBlock(2, b1) // Height 111
 		err = policy.OnNewHeadTipset(ctx, requireTipset(t, b1), requireTipset(t, b2))
-		require.NoError(err)
-		assert.Empty(q.List(alice))                    // Alice's messages all expired
-		assert.Equal(qm(msgs[3], 200), q.List(bob)[0]) // Bob's remain
+		require.NoError(t, err)
+		assert.Empty(t, q.List(alice))                    // Alice's messages all expired
+		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0]) // Bob's remain
 	})
 
 	t.Run("fails when messages out of nonce order", func(t *testing.T) {
@@ -149,8 +147,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 		b1 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{msgs[1]}, root)
 		err := policy.OnNewHeadTipset(ctx, requireTipset(t, root), requireTipset(t, b1))
-		require.Error(err)
-		assert.Contains(err.Error(), "nonce 1, expected 2")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})
 }
 

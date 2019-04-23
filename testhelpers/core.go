@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -24,68 +25,68 @@ import (
 
 // RequireMakeStateTree takes a map of addresses to actors and stores them on
 // the state tree, requiring that all its steps succeed.
-func RequireMakeStateTree(require *require.Assertions, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
+func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	t := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	tree := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
 
 	for addr, act := range acts {
-		err := t.SetActor(ctx, addr, act)
-		require.NoError(err)
+		err := tree.SetActor(ctx, addr, act)
+		require.NoError(t, err)
 	}
 
-	c, err := t.Flush(ctx)
-	require.NoError(err)
+	c, err := tree.Flush(ctx)
+	require.NoError(t, err)
 
-	return c, t
+	return c, tree
 }
 
 // RequireNewEmptyActor creates a new empty actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewEmptyActor(require *require.Assertions, value *types.AttoFIL) *actor.Actor {
+func RequireNewEmptyActor(value *types.AttoFIL) *actor.Actor {
 	return &actor.Actor{Balance: value}
 }
 
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewAccountActor(require *require.Assertions, value *types.AttoFIL) *actor.Actor {
+func RequireNewAccountActor(t *testing.T, value *types.AttoFIL) *actor.Actor {
 	act, err := account.NewActor(value)
-	require.NoError(err)
+	require.NoError(t, err)
 	return act
 }
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
+func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
-	require.NoError(err)
-	require.NoError(storage.Flush())
+	require.NoError(t, err)
+	require.NoError(t, storage.Flush())
 	return act
 }
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
-	return RequireNewFakeActorWithTokens(require, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
+func RequireNewFakeActor(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
+	return RequireNewFakeActorWithTokens(t, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(require *require.Assertions, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt *types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
-	require.NoError(err)
-	require.NoError(vms.Flush())
+	require.NoError(t, err)
+	require.NoError(t, vms.Flush())
 	return act
 }
 
 // RequireRandomPeerID returns a new libp2p peer ID or panics.
-func RequireRandomPeerID(require *require.Assertions) peer.ID {
+func RequireRandomPeerID(t *testing.T) peer.ID {
 	pid, err := RandPeerID()
-	require.NoError(err)
+	require.NoError(t, err)
 	return pid
 }
 

@@ -23,8 +23,6 @@ func TestPreview(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
 	t.Run("returns appropriate Gas used", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
 		newAddr := address.NewForTestGetter()
 		ctx := context.Background()
 		r := repo.NewInMemoryRepo()
@@ -34,7 +32,7 @@ func TestPreview(t *testing.T) {
 		fakeActorAddr := newAddr()
 		fromAddr := newAddr()
 		vms := vm.NewStorageMap(bs)
-		fakeActor := th.RequireNewFakeActor(require, vms, fakeActorAddr, fakeActorCodeCid)
+		fakeActor := th.RequireNewFakeActor(t, vms, fakeActorAddr, fakeActorCodeCid)
 		// The genesis init function we give below will install the fake actor at
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
@@ -47,12 +45,12 @@ func TestPreview(t *testing.T) {
 			// Actor we will send the query from. The method we will call returns an Address.
 			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
-		deps := requireCommonDepsWithGifAndBlockstore(require, testGen, r, bs)
+		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
 		previewer := NewPreviewer(deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
 		returnValue, err := previewer.Preview(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
-		require.NoError(err)
-		require.NotNil(returnValue)
-		assert.Equal(types.NewGasUnits(100), returnValue)
+		require.NoError(t, err)
+		require.NotNil(t, returnValue)
+		assert.Equal(t, types.NewGasUnits(100), returnValue)
 	})
 }

@@ -32,14 +32,11 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 func TestBlockPropsManyNodes(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert := assert.New(t)
 
 	numNodes := 4
-	minerAddr, nodes := makeNodes(t, assert, numNodes)
+	minerAddr, nodes := makeNodes(t, numNodes)
 
 	// Now add 10 null blocks and 1 tipset.
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
@@ -56,13 +53,13 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	head := minerNode.ChainReader.GetHead()
 	headTipSetAndState, err := minerNode.ChainReader.GetTipSetAndState(head)
-	require.NoError(err)
+	require.NoError(t, err)
 	baseTS := headTipSetAndState.TipSet
 	require.NotNil(t, baseTS)
 	proof := testhelpers.MakeRandomPoSTProofForTest()
 
 	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
@@ -77,7 +74,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 300)
 
-	assert.NoError(minerNode.AddNewBlock(ctx, nextBlk))
+	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
 
 	equal := false
 	for i := 0; i < 30; i++ {
@@ -92,24 +89,21 @@ func TestBlockPropsManyNodes(t *testing.T) {
 		}
 	}
 
-	assert.True(equal, "failed to sync chains")
-
+	assert.True(t, equal, "failed to sync chains")
 }
 
 func TestChainSync(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	assert := assert.New(t)
-	require := require.New(t)
 
-	minerAddr, nodes := makeNodes(t, assert, 2)
+	minerAddr, nodes := makeNodes(t, 2)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
 	head := nodes[0].ChainReader.GetHead()
 	headTipSetAndState, err := nodes[0].ChainReader.GetTipSetAndState(head)
-	require.NoError(err)
+	require.NoError(t, err)
 	baseTS := headTipSetAndState.TipSet
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
@@ -120,9 +114,9 @@ func TestChainSync(t *testing.T) {
 	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, mockSignerPubKey, signer)
 	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, mockSignerPubKey, signer)
 
-	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk1))
-	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk2))
-	assert.NoError(nodes[0].AddNewBlock(ctx, nextBlk3))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk1))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk2))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk3))
 
 	connect(t, nodes[0], nodes[1])
 	equal := false
@@ -136,7 +130,7 @@ func TestChainSync(t *testing.T) {
 		time.Sleep(time.Millisecond * 20)
 	}
 
-	assert.True(equal, "failed to sync chains")
+	assert.True(t, equal, "failed to sync chains")
 }
 
 type ZeroRewarder struct{}
@@ -150,7 +144,7 @@ func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr a
 }
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodes(t *testing.T, assertions *assert.Assertions, numNodes int) (address.Address, []*Node) {
+func makeNodes(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
 	configOpts := []ConfigOpt{RewarderConfigOption(&ZeroRewarder{})}
 	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
@@ -160,7 +154,7 @@ func makeNodes(t *testing.T, assertions *assert.Assertions, numNodes int) (addre
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
 	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
-	assertions.NoError(err)
+	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}
 

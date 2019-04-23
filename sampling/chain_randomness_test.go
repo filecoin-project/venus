@@ -16,27 +16,24 @@ import (
 func TestSamplingChainRandomness(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
-
 	// set a tripwire
-	require.Equal(sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
+	require.Equal(t, sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
 
 	t.Run("happy path", func(t *testing.T) {
 
 		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(20)), chain)
-		assert.NoError(err)
-		assert.Equal([]byte(strconv.Itoa(17)), r)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(17)), r)
 
 		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(3)), chain)
-		assert.NoError(err)
-		assert.Equal([]byte(strconv.Itoa(0)), r)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(0)), r)
 
 		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(10)), chain)
-		assert.NoError(err)
-		assert.Equal([]byte(strconv.Itoa(7)), r)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(7)), r)
 	})
 
 	t.Run("faults with height out of range", func(t *testing.T) {
@@ -48,7 +45,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		afterNull := types.NewBlockForTest(baseBlock, uint64(0))
 		afterNull.Height += types.Uint64(uint64(5))
 		afterNull.Ticket = []byte(strconv.Itoa(int(afterNull.Height)))
-		chain = append([]types.TipSet{types.RequireNewTipSet(require, afterNull)}, chain...)
+		chain = append([]types.TipSet{types.RequireNewTipSet(t, afterNull)}, chain...)
 
 		// ancestor block heights:
 		//
@@ -56,7 +53,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		//
 		// no tip set with height 30 exists in ancestors
 		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(30)), chain)
-		assert.Error(err)
+		assert.Error(t, err)
 	})
 
 	t.Run("faults with lookback out of range", func(t *testing.T) {
@@ -70,7 +67,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		// going back in time by `LookbackParameter`-number of tip sets from
 		// block height 17 does not find us the genesis block
 		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(17)), chain)
-		assert.Error(err)
+		assert.Error(t, err)
 	})
 
 	t.Run("falls back to genesis block", func(t *testing.T) {
@@ -84,7 +81,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		// going back in time by `LookbackParameter`-number of tip sets from 1
 		// would put us into the negative - so fall back to genesis block
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(1)), chain)
-		assert.NoError(err)
-		assert.Equal([]byte(strconv.Itoa(0)), r)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(0)), r)
 	})
 }

@@ -25,7 +25,6 @@ var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 func TestMessagePoolAddRemove(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 
 	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
@@ -33,43 +32,40 @@ func TestMessagePoolAddRemove(t *testing.T) {
 	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
 
 	c1, err := msg1.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := msg2.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Len(pool.Pending(), 0)
+	assert.Len(t, pool.Pending(), 0)
 	m, ok := pool.Get(c1)
-	assert.Nil(m)
-	assert.False(ok)
+	assert.Nil(t, m)
+	assert.False(t, ok)
 
 	_, err = pool.Add(ctx, msg1)
-	assert.NoError(err)
-	assert.Len(pool.Pending(), 1)
+	assert.NoError(t, err)
+	assert.Len(t, pool.Pending(), 1)
 
 	_, err = pool.Add(ctx, msg2)
-	assert.NoError(err)
-	assert.Len(pool.Pending(), 2)
+	assert.NoError(t, err)
+	assert.Len(t, pool.Pending(), 2)
 
 	m, ok = pool.Get(c1)
-	assert.Equal(msg1, m)
-	assert.True(ok)
+	assert.Equal(t, msg1, m)
+	assert.True(t, ok)
 	m, ok = pool.Get(c2)
-	assert.Equal(msg2, m)
-	assert.True(ok)
+	assert.Equal(t, msg2, m)
+	assert.True(t, ok)
 
 	pool.Remove(c1)
-	assert.Len(pool.Pending(), 1)
+	assert.Len(t, pool.Pending(), 1)
 	pool.Remove(c2)
-	assert.Len(pool.Pending(), 0)
+	assert.Len(t, pool.Pending(), 0)
 }
 
 func TestMessagePoolValidate(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("message pool rejects messages after it reaches its limit", func(t *testing.T) {
-		require := require.New(t)
-		assert := assert.New(t)
-
 		// pull the default size from the default config value
 		mpoolCfg := config.NewDefaultConfig().Mpool
 		maxMessagePoolSize := mpoolCfg.MaxPoolSize
@@ -79,40 +75,34 @@ func TestMessagePoolValidate(t *testing.T) {
 		smsgs := types.NewSignedMsgs(maxMessagePoolSize+1, mockSigner)
 		for _, smsg := range smsgs[:maxMessagePoolSize] {
 			_, err := pool.Add(ctx, smsg)
-			require.NoError(err)
+			require.NoError(t, err)
 		}
 
-		assert.Len(pool.Pending(), maxMessagePoolSize)
+		assert.Len(t, pool.Pending(), maxMessagePoolSize)
 
 		// attempt to add one more
 		_, err := pool.Add(ctx, smsgs[maxMessagePoolSize])
-		require.Error(err)
-		assert.Contains(err.Error(), "message pool is full")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "message pool is full")
 
-		assert.Len(pool.Pending(), maxMessagePoolSize)
+		assert.Len(t, pool.Pending(), maxMessagePoolSize)
 	})
 
 	t.Run("validates no two messages are added with same nonce", func(t *testing.T) {
-		require := require.New(t)
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		smsg1 := newSignedMessage()
 		_, err := pool.Add(ctx, smsg1)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Nonce)
 		_, err = pool.Add(ctx, smsg2)
-		require.Error(err)
-		assert.Contains(err.Error(), "message with same actor and nonce")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "message with same actor and nonce")
 	})
 
 	t.Run("validates using supplied validator", func(t *testing.T) {
-		require := require.New(t)
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		api := th.NewTestMessagePoolAPI(0)
 		validator := th.NewMockMessagePoolValidator()
@@ -121,34 +111,32 @@ func TestMessagePoolValidate(t *testing.T) {
 
 		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
 		_, err := pool.Add(ctx, smsg1)
-		require.Error(err)
-		assert.Contains(err.Error(), "mock validation error")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "mock validation error")
 	})
 }
 
 func TestMessagePoolDedup(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 
 	pool := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 
-	assert.Len(pool.Pending(), 0)
+	assert.Len(t, pool.Pending(), 0)
 	_, err := pool.Add(ctx, msg1)
-	assert.NoError(err)
-	assert.Len(pool.Pending(), 1)
+	assert.NoError(t, err)
+	assert.Len(t, pool.Pending(), 1)
 
 	_, err = pool.Add(ctx, msg1)
-	assert.NoError(err)
-	assert.Len(pool.Pending(), 1)
+	assert.NoError(t, err)
+	assert.Len(t, pool.Pending(), 1)
 }
 
 func TestMessagePoolAsync(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 
 	count := 400
@@ -164,14 +152,14 @@ func TestMessagePoolAsync(t *testing.T) {
 		go func(i int) {
 			for j := 0; j < count/4; j++ {
 				_, err := pool.Add(ctx, msgs[j+(count/4)*i])
-				assert.NoError(err)
+				assert.NoError(t, err)
 			}
 			wg.Done()
 		}(i)
 	}
 
 	wg.Wait()
-	assert.Len(pool.Pending(), count)
+	assert.Len(t, pool.Pending(), count)
 }
 
 func msgAsString(msg *types.SignedMessage) string {
@@ -191,10 +179,10 @@ func msgsAsString(msgs []*types.SignedMessage) string {
 }
 
 // assertPoolEquals returns true if p contains exactly the expected messages.
-func assertPoolEquals(assert *assert.Assertions, p *MessagePool, expMsgs ...*types.SignedMessage) {
+func assertPoolEquals(t *testing.T, p *MessagePool, expMsgs ...*types.SignedMessage) {
 	msgs := p.Pending()
 	if len(msgs) != len(expMsgs) {
-		assert.Failf("wrong messages in pool", "expMsgs %v, got msgs %v", msgsAsString(expMsgs), msgsAsString(msgs))
+		assert.Failf(t, "wrong messages in pool", "expMsgs %v, got msgs %v", msgsAsString(expMsgs), msgsAsString(msgs))
 
 	}
 	for _, m1 := range expMsgs {
@@ -206,7 +194,7 @@ func assertPoolEquals(assert *assert.Assertions, p *MessagePool, expMsgs ...*typ
 			}
 		}
 		if !found {
-			assert.Failf("wrong messages in pool", "expMsgs %v, got msgs %v (msgs doesn't contain %v)", msgsAsString(expMsgs), msgsAsString(msgs), msgAsString(m1))
+			assert.Failf(t, "wrong messages in pool", "expMsgs %v, got msgs %v (msgs doesn't contain %v)", msgsAsString(expMsgs), msgsAsString(msgs), msgAsString(m1))
 		}
 	}
 }
@@ -218,7 +206,6 @@ func headOf(chain []types.TipSet) types.TipSet {
 func TestUpdateMessagePool(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	type msgs []*types.SignedMessage
 	type msgsSet [][]*types.SignedMessage
@@ -243,8 +230,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, parent, msgsSet{msgs{m[1]}})
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[0])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[0])
 	})
 
 	t.Run("Replace head with self", func(t *testing.T) {
@@ -260,8 +247,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSet)) // sic
-		assertPoolEquals(assert, p, m[0], m[1])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSet)) // sic
+		assertPoolEquals(t, p, m[0], m[1])
 	})
 
 	t.Run("Replace head with a long chain", func(t *testing.T) {
@@ -286,8 +273,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[1])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[1])
 	})
 
 	t.Run("Replace head with multi-block tipset chains", func(t *testing.T) {
@@ -310,8 +297,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[1])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[1])
 	})
 
 	t.Run("Replace internal node (second one)", func(t *testing.T) {
@@ -330,8 +317,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[1], m[2])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[1], m[2])
 	})
 
 	t.Run("Replace internal node (second one) with a long chain", func(t *testing.T) {
@@ -359,8 +346,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[6])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[6])
 	})
 
 	t.Run("Replace internal node with multi-block tipset chains", func(t *testing.T) {
@@ -386,8 +373,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[6])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[6])
 	})
 
 	t.Run("Replace with same messages in different block structure", func(t *testing.T) {
@@ -412,8 +399,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[3], m[5])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[3], m[5])
 	})
 
 	t.Run("Truncate to internal node", func(t *testing.T) {
@@ -433,8 +420,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		oldTipSet := headOf(oldChain)
 
 		oldTipSetPrev := oldChain[1]
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSetPrev))
-		assertPoolEquals(assert, p, m[2], m[3])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, oldTipSetPrev))
+		assertPoolEquals(t, p, m[2], m[3])
 	})
 
 	t.Run("Extend head", func(t *testing.T) {
@@ -453,8 +440,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		newChain := NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p, m[0])
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p, m[0])
 	})
 
 	t.Run("Extend head with a longer chain and more messages", func(t *testing.T) {
@@ -477,13 +464,11 @@ func TestUpdateMessagePool(t *testing.T) {
 		)
 		newTipSet := headOf(newChain)
 
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
-		assertPoolEquals(assert, p)
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, oldTipSet, newTipSet))
+		assertPoolEquals(t, p)
 	})
 
 	t.Run("Times out old messages", func(t *testing.T) {
-		require := require.New(t)
-
 		var err error
 		store := hamt.NewCborStore()
 		api := th.NewTestMessagePoolAPI(0)
@@ -497,36 +482,34 @@ func TestUpdateMessagePool(t *testing.T) {
 		for i := 0; i < MessageTimeOut; i++ {
 			// api.Height determines block time at which message is added
 			api.Height, err = head.Height()
-			require.NoError(err)
+			require.NoError(t, err)
 
 			MustAdd(p, m[i])
 
 			// update pool with tipset that has no messages
 			next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-			assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
+			assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 
 			// assert all added messages still in pool
-			assertPoolEquals(assert, p, m[:i+1]...)
+			assertPoolEquals(t, p, m[:i+1]...)
 
 			head = next
 		}
 
 		// next tipset times out first message only
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
-		assertPoolEquals(assert, p, m[1:]...)
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
+		assertPoolEquals(t, p, m[1:]...)
 
 		// adding a chain of multiple tipsets times out based on final state
 		for i := 0; i < 4; i++ {
 			next = headOf(NewChainWithMessages(store, next, msgsSet{msgs{}}))
 		}
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
-		assertPoolEquals(assert, p, m[5:]...)
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
+		assertPoolEquals(t, p, m[5:]...)
 	})
 
 	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
-		require := require.New(t)
-
 		var err error
 		store := hamt.NewCborStore()
 		blockTimer := th.NewTestMessagePoolAPI(0)
@@ -540,13 +523,13 @@ func TestUpdateMessagePool(t *testing.T) {
 		for i := 0; i < MessageTimeOut; i++ {
 			// blockTimer.Height determines block time at which message is added
 			blockTimer.Height, err = head.Height()
-			require.NoError(err)
+			require.NoError(t, err)
 
 			MustAdd(p, m[i])
 
 			// update pool with tipset that has no messages
 			height, err := head.Height()
-			require.NoError(err)
+			require.NoError(t, err)
 
 			// create a tipset at given height with one block containing no messages
 			next := types.TipSet{}
@@ -558,26 +541,23 @@ func TestUpdateMessagePool(t *testing.T) {
 			MustPut(store, blk)
 			next[blk.Cid()] = blk
 
-			assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
+			assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
 
 			// assert all added messages still in pool
-			assertPoolEquals(assert, p, m[:i+1]...)
+			assertPoolEquals(t, p, m[:i+1]...)
 
 			head = next
 		}
 
 		// next tipset times out first message only
 		next := headOf(NewChainWithMessages(store, head, msgsSet{msgs{}}))
-		assert.NoError(p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
-		assertPoolEquals(assert, p, m[1:]...)
+		assert.NoError(t, p.UpdateMessagePool(ctx, &storeBlockProvider{store}, head, next))
+		assertPoolEquals(t, p, m[1:]...)
 	})
 }
 
 func TestLargestNonce(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	t.Run("No matches", func(t *testing.T) {
 		p := NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
@@ -586,7 +566,7 @@ func TestLargestNonce(t *testing.T) {
 		MustAdd(p, m[0], m[1])
 
 		_, found := p.LargestNonce(address.NewForTestGetter()())
-		assert.False(found)
+		assert.False(t, found)
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
@@ -596,13 +576,13 @@ func TestLargestNonce(t *testing.T) {
 		m[0].Nonce = 0
 
 		sm, err := types.SignMsgs(mockSigner, m)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		MustAdd(p, sm...)
 
 		largest, found := p.LargestNonce(m[0].From)
-		assert.True(found)
-		assert.Equal(uint64(0), largest)
+		assert.True(t, found)
+		assert.Equal(t, uint64(0), largest)
 	})
 
 	t.Run("Match", func(t *testing.T) {
@@ -614,13 +594,13 @@ func TestLargestNonce(t *testing.T) {
 		m[2].From = m[1].From
 
 		sm, err := types.SignMsgs(mockSigner, m)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		MustAdd(p, sm...)
 
 		largest, found := p.LargestNonce(m[2].From)
-		assert.True(found)
-		assert.Equal(uint64(2), largest)
+		assert.True(t, found)
+		assert.Equal(t, uint64(2), largest)
 	})
 }
 

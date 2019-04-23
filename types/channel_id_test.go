@@ -15,34 +15,30 @@ import (
 func TestChannelIDCreation(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	a := NewChannelID(123)
-	assert.IsType(&ChannelID{}, a)
+	assert.IsType(t, &ChannelID{}, a)
 
 	ab := a.Bytes()
 	b := NewChannelIDFromBytes(ab)
-	assert.Equal(a, b)
+	assert.Equal(t, a, b)
 
 	as := a.String()
-	assert.Equal(as, "123")
+	assert.Equal(t, as, "123")
 	c, ok := NewChannelIDFromString(as, 10)
-	assert.True(ok)
-	assert.Equal(a, c)
+	assert.True(t, ok)
+	assert.Equal(t, a, c)
 
 	next := a.Inc()
-	assert.Equal("124", next.String())
+	assert.Equal(t, "124", next.String())
 
 	_, ok = NewChannelIDFromString("asdf", 10)
-	assert.False(ok)
+	assert.False(t, ok)
 }
 
 func TestChannelIDCborMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("CBOR decode(encode(ChannelID)) == identity(ChannelID)", func(t *testing.T) {
-		assert := assert.New(t)
-
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
@@ -50,26 +46,24 @@ func TestChannelIDCborMarshaling(t *testing.T) {
 			postDecode := ChannelID{}
 
 			out, err := cbor.DumpObject(preEncode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			err = cbor.DecodeInto(out, &postDecode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
+			assert.True(t, preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
 		}
 	})
 	t.Run("cannot CBOR encode nil as *ChannelID", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *ChannelID
 
 		out, err := cbor.DumpObject(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := cbor.DumpObject(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }
 
@@ -77,34 +71,30 @@ func TestChannelIDJsonMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("JSON unmarshal(marshal(ChannelID)) == identity(ChannelID)", func(t *testing.T) {
-		assert := assert.New(t)
-
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
 			toBeMarshaled := NewChannelID(rng.Uint64())
 
 			marshaled, err := json.Marshal(toBeMarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var unmarshaled ChannelID
 			err = json.Unmarshal(marshaled, &unmarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
+			assert.True(t, toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
 	t.Run("cannot JSON marshall nil as *ChannelID", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *ChannelID
 
 		out, err := json.Marshal(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := json.Marshal(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }

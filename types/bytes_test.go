@@ -12,19 +12,18 @@ import (
 func TestRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	cases := [][]byte{nil, {}, []byte("bytes")}
 	for _, c := range cases {
 		b, err := cbor.WrapObject(c, DefaultHashFunction, -1)
-		assert.NoError(err)
+		assert.NoError(t, err)
 		var out []byte
 		err = cbor.DecodeInto(b.RawData(), &out)
-		assert.NoError(err)
+		assert.NoError(t, err)
 		switch {
 		case c == nil:
-			assert.Nil(out)
+			assert.Nil(t, out)
 		default:
-			assert.True(bytes.Equal(c, out))
+			assert.True(t, bytes.Equal(c, out))
 		}
 	}
 }

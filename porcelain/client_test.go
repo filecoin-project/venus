@@ -77,8 +77,6 @@ func TestClientListAsks(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{}
 
@@ -92,12 +90,10 @@ func TestClientListAsks(t *testing.T) {
 			Price:  types.NewAttoFILFromFIL(3),
 		}
 
-		assert.Equal(expectedResult, result)
+		assert.Equal(t, expectedResult, result)
 	})
 
 	t.Run("failed actor ls", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			actorFail: true,
@@ -106,12 +102,10 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "ACTOR FAILURE")
+		assert.Error(t, result.Error, "ACTOR FAILURE")
 	})
 
 	t.Run("failed actor ls via channel", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			actorChFail: true,
@@ -120,12 +114,10 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "ACTOR CHANNEL FAILURE")
+		assert.Error(t, result.Error, "ACTOR CHANNEL FAILURE")
 	})
 
 	t.Run("failed message query", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			messageFail: true,
@@ -134,6 +126,6 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "MESSAGE FAILURE")
+		assert.Error(t, result.Error, "MESSAGE FAILURE")
 	})
 }

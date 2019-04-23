@@ -37,21 +37,19 @@ func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*types.TipSet, error) {
 func TestHelloHandshake(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy1 := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := th.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -62,10 +60,10 @@ func TestHelloHandshake(t *testing.T) {
 	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
 	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	require.NoError(t, mn.LinkAll())
+	require.NoError(t, mn.ConnectAllButSelf())
 
-	require.NoError(th.WaitForIt(10, 50*time.Millisecond, func() (bool, error) {
+	require.NoError(t, th.WaitForIt(10, 50*time.Millisecond, func() (bool, error) {
 		var msc1Done bool
 		var msc2Done bool
 		for _, call := range msc1.Calls {
@@ -94,7 +92,6 @@ func TestHelloBadGenesis(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require := require.New(t)
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
@@ -105,8 +102,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := &types.Block{Nonce: 451}
 	genesisB := &types.Block{Nonce: 101}
 
-	heavy1 := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := th.RequireNewTipSet(require, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -117,8 +114,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	require.NoError(t, mn.LinkAll())
+	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -131,7 +128,6 @@ func TestHelloWrongVersion(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require := require.New(t)
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
@@ -140,7 +136,7 @@ func TestHelloWrongVersion(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -151,8 +147,8 @@ func TestHelloWrongVersion(t *testing.T) {
 	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-user", "sha2")
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	require.NoError(t, mn.LinkAll())
+	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -165,7 +161,6 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require := require.New(t)
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
@@ -174,7 +169,7 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy := th.RequireNewTipSet(require, &types.Block{Nonce: 1000, Height: 2})
+	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 
 	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -185,8 +180,8 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
 	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	require.NoError(mn.LinkAll())
-	require.NoError(mn.ConnectAllButSelf())
+	require.NoError(t, mn.LinkAll())
+	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -199,7 +194,6 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	require := require.New(t)
 
 	mn, err := mocknet.WithNPeers(ctx, 2)
 	assert.NoError(t, err)
@@ -209,12 +203,12 @@ func TestHelloMultiBlock(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 452}
 
-	heavy1 := th.RequireNewTipSet(require,
+	heavy1 := th.RequireNewTipSet(t,
 		&types.Block{Nonce: 1000, Height: 2},
 		&types.Block{Nonce: 1002, Height: 2},
 		&types.Block{Nonce: 1004, Height: 2},
 	)
-	heavy2 := th.RequireNewTipSet(require,
+	heavy2 := th.RequireNewTipSet(t,
 		&types.Block{Nonce: 1001, Height: 3},
 		&types.Block{Nonce: 1003, Height: 3},
 		&types.Block{Nonce: 1005, Height: 3},
