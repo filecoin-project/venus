@@ -205,7 +205,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) (uint8, error) {
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams [][]byte) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -213,6 +213,13 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
+
+	// decode condition params
+
+	// decode redeemer params
+	// mash them together
+	params := []interface{}{}
+	vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
 
 	ctx := context.Background()
 	storage := vmctx.Storage()

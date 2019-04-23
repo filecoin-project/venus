@@ -70,6 +70,20 @@ func MustConvertParams(params ...interface{}) []byte {
 	return out
 }
 
+// MustConvertParams abi encodes the given parameters into a byte array (or panics)
+func MustDecodeParams([]byte) {
+	vals, err := abi.ToValues(params)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := abi.EncodeValues(vals)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
 // NewChainWithMessages creates a chain of tipsets containing the given messages
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
