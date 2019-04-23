@@ -153,7 +153,7 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 }
 
 // Shell starts a user shell targeting the filecoin process. Exact behavior is plugin
-// dependent. Please refer to the plugin documenation for more information.
+// dependent. Please refer to the plugin documentation for more information.
 func (f *Filecoin) Shell() error {
 	return f.core.Shell(f.ctx, []testbedi.Core{})
 }
