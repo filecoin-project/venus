@@ -4,7 +4,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -38,7 +37,7 @@ type PaymentInfo struct {
 	// Vouchers is a set of payments from the client to the miner that can be
 	// cashed out contingent on the agreed upon data being provably within a
 	// live sector in the miners control on-chain
-	Vouchers []*paymentbroker.PaymentVoucher
+	Vouchers []*types.PaymentVoucher
 }
 
 // Proposal is the information sent over the wire, when a client proposes a deal to a miner.

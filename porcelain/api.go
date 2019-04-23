@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-peer"
@@ -151,8 +152,8 @@ func (a *API) MinerPreviewSetPrice(
 }
 
 // ProtocolParams fetches the current protocol configuration parameters.
-func (a *API) ProtocolParameters() (*ProtocolParams, error) {
-	return ProtocolParameters(a)
+func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
+	return ProtocolParameters(ctx, a)
 }
 
 // WalletBalance returns the current balance of the given wallet address.
@@ -182,11 +183,21 @@ func (a *API) PaymentChannelVoucher(
 	channel *types.ChannelID,
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
-) (voucher *paymentbroker.PaymentVoucher, err error) {
+) (voucher *types.PaymentVoucher, err error) {
 	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
+}
+
+// PingMinerWithTimeout pings a storage or retrieval miner, waiting the given
+// timeout and returning desciptive errors.
+func (a *API) PingMinerWithTimeout(
+	ctx context.Context,
+	minerPID peer.ID,
+	timeout time.Duration,
+) error {
+	return PingMinerWithTimeout(ctx, minerPID, timeout, a)
 }

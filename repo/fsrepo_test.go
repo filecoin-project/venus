@@ -120,7 +120,7 @@ func getSnapshotFilenames(t *testing.T, dir string) []string {
 func TestFSRepoOpen(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("[fail] wrong version", func(t *testing.T) {
+	t.Run("[fail] repo version newer than binary", func(t *testing.T) {
 		assert := assert.New(t)
 
 		dir, err := ioutil.TempDir("", "")
@@ -133,7 +133,36 @@ func TestFSRepoOpen(t *testing.T) {
 		assert.NoError(ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("2"), 0644))
 
 		_, err = OpenFSRepo(dir)
-		assert.EqualError(err, "invalid repo version, got 2 expected 1")
+		assert.EqualError(err, "binary needs update to handle repo version, got 2 expected 1. Update binary to latest release")
+	})
+	t.Run("[fail] binary version newer than repo", func(t *testing.T) {
+		assert := assert.New(t)
+
+		dir, err := ioutil.TempDir("", "")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
+
+		// set wrong version
+		assert.NoError(ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("0"), 0644))
+		_, err = OpenFSRepo(dir)
+		assert.EqualError(err, "out of date repo version, got 0 expected 1. Migrate with tools/migration/go-filecoin-migrate")
+	})
+	t.Run("[fail] version corrupt", func(t *testing.T) {
+		assert := assert.New(t)
+
+		dir, err := ioutil.TempDir("", "")
+		assert.NoError(err)
+		defer os.RemoveAll(dir)
+
+		assert.NoError(InitFSRepo(dir, config.NewDefaultConfig()))
+
+		// set wrong version
+		assert.NoError(ioutil.WriteFile(filepath.Join(dir, versionFilename), []byte("v.8"), 0644))
+
+		_, err = OpenFSRepo(dir)
+		assert.EqualError(err, "failed to load version: corrupt version file: version is not an integer")
 	})
 }
 

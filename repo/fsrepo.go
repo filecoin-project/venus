@@ -131,8 +131,12 @@ func (r *FSRepo) loadFromDisk() error {
 		return errors.Wrap(err, "failed to load version")
 	}
 
-	if localVersion != Version {
-		return fmt.Errorf("invalid repo version, got %d expected %d", localVersion, Version)
+	if localVersion < Version {
+		return fmt.Errorf("out of date repo version, got %d expected %d. Migrate with tools/migration/go-filecoin-migrate", localVersion, Version)
+	}
+
+	if localVersion > Version {
+		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, Version)
 	}
 
 	r.version = localVersion
@@ -336,7 +340,7 @@ func (r *FSRepo) loadVersion() (uint, error) {
 
 	version, err := strconv.Atoi(strings.Trim(string(file), "\n"))
 	if err != nil {
-		return 0, err
+		return 0, errors.New("corrupt version file: version is not an integer")
 	}
 
 	return uint(version), nil

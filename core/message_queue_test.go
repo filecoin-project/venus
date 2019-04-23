@@ -287,4 +287,31 @@ func TestMessageQueue(t *testing.T) {
 		assert.Empty(q.List(bob))
 		assertNoNonce(q, bob)
 	})
+
+	t.Run("oldest is correct", func(t *testing.T) {
+		fromAlice := []*types.SignedMessage{
+			mm.NewSignedMessage(alice, 0),
+			mm.NewSignedMessage(alice, 1),
+		}
+		fromBob := []*types.SignedMessage{
+			mm.NewSignedMessage(bob, 10),
+			mm.NewSignedMessage(bob, 11),
+		}
+		q := core.NewMessageQueue()
+
+		assert.Equal(uint64(0), q.Oldest())
+
+		requireEnqueue(q, fromAlice[0], 100)
+		assert.Equal(uint64(100), q.Oldest())
+
+		requireEnqueue(q, fromAlice[1], 101)
+		assert.Equal(uint64(100), q.Oldest())
+
+		requireEnqueue(q, fromBob[0], 99)
+		assert.Equal(uint64(99), q.Oldest())
+
+		requireEnqueue(q, fromBob[1], 1)
+		assert.Equal(uint64(1), q.Oldest())
+
+	})
 }

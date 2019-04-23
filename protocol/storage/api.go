@@ -5,9 +5,9 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // API here is the API for a storage client.
@@ -33,6 +33,6 @@ func (a *API) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.
 }
 
 // Payments calls the storage client LoadVouchersForDeal function
-func (a *API) Payments(ctx context.Context, dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
+func (a *API) Payments(ctx context.Context, dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
 	return a.sc.LoadVouchersForDeal(dealCid)
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -26,7 +25,7 @@ func TestSerializeProposal(t *testing.T) {
 	cmc := cg()
 	p.Payment.ChannelMsgCid = &cmc
 	p.Payment.Channel = types.NewChannelID(4)
-	voucher := &paymentbroker.PaymentVoucher{
+	voucher := &types.PaymentVoucher{
 		Channel:   *types.NewChannelID(4),
 		Payer:     ag(),
 		Target:    ag(),
@@ -34,7 +33,7 @@ func TestSerializeProposal(t *testing.T) {
 		ValidAt:   *types.NewBlockHeight(3),
 		Signature: types.Signature{},
 	}
-	p.Payment.Vouchers = []*paymentbroker.PaymentVoucher{voucher}
+	p.Payment.Vouchers = []*types.PaymentVoucher{voucher}
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
 	chunk, err := cbor.DumpObject(p)

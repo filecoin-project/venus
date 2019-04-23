@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -152,11 +151,11 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 		Channel:              ctp.channelID,
 		ChannelMsgCid:        ctp.msgCid,
 		GasAttoFIL:           types.NewAttoFILFromFIL(100),
-		Vouchers:             make([]*paymentbroker.PaymentVoucher, 10),
+		Vouchers:             make([]*types.PaymentVoucher, 10),
 	}
 
 	for i := 0; i < 10; i++ {
-		resp.Vouchers[i] = &paymentbroker.PaymentVoucher{
+		resp.Vouchers[i] = &types.PaymentVoucher{
 			Channel: *ctp.channelID,
 			Payer:   ctp.payer,
 			Target:  ctp.target,
@@ -190,11 +189,8 @@ func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.
 	return id, nil
 }
 
-func (ctp *clientTestAPI) NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error) {
-	out := make(chan time.Duration, 1)
-	out <- 0
-	close(out)
-	return out, nil
+func (ctp *clientTestAPI) PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error {
+	return nil
 }
 
 func (ctp *clientTestAPI) SignBytes(data []byte, addr address.Address) (types.Signature, error) {

@@ -5,7 +5,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -38,7 +37,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 		Payer:         addressMaker(),
 		Channel:       &channelID,
 		ChannelMsgCid: &channelMessageCid,
-		Vouchers: []*paymentbroker.PaymentVoucher{{
+		Vouchers: []*types.PaymentVoucher{{
 			Channel: channelID,
 			Payer:   clientAddr,
 			Target:  minerAddr,

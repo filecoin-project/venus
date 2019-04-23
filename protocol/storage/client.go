@@ -16,9 +16,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -63,7 +63,7 @@ type clientPorcelainAPI interface {
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
-	NetworkPing(ctx context.Context, p peer.ID) (<-chan time.Duration, error)
+	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -102,7 +102,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	minerAlive := make(chan error, 1)
 	go func() {
 		defer close(minerAlive)
-		minerAlive <- smc.pingMiner(ctxSetup, pid, 15*time.Second)
+		minerAlive <- smc.api.PingMinerWithTimeout(ctxSetup, pid, 15*time.Second)
 	}()
 
 	size, err := smc.api.DAGGetFileSize(ctxSetup, data)
@@ -157,6 +157,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	// see if we managed to connect to the miner
 	select {
 	case err := <-minerAlive:
+		if err == net.ErrPingSelf {
+			return nil, errors.New("attempting to make storage deal with self. This is currently unsupported.  Please use a separate go-filecoin node as client")
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -211,26 +214,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
 
 	return &response, nil
-}
-
-func (smc *Client) pingMiner(ctx context.Context, pid peer.ID, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	res, err := smc.api.NetworkPing(ctx, pid)
-	if err != nil {
-		return fmt.Errorf("couldn't establish connection to miner: %s", err)
-	}
-
-	select {
-	case _, ok := <-res:
-		if !ok {
-			return errors.New("couldn't establish connection to miner: ping channel closed")
-		}
-		return nil
-	case <-ctx.Done():
-		return fmt.Errorf("couldn't establish connection to miner: %s, timed out after %s", ctx.Err(), timeout.String())
-	}
 }
 
 func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
@@ -316,10 +299,10 @@ func (smc *Client) isMaybeDupDeal(p *storagedeal.Proposal) bool {
 }
 
 // LoadVouchersForDeal loads vouchers from disk for a given deal
-func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*paymentbroker.PaymentVoucher, error) {
+func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
 	storageDeal := smc.api.DealGet(dealCid)
 	if storageDeal == nil {
-		return []*paymentbroker.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
+		return []*types.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
 }

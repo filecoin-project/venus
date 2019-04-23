@@ -1,7 +1,12 @@
 package porcelain_test
 
 import (
+	"context"
+
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -15,6 +20,10 @@ type testProtocolParamsPlumbing struct {
 func (tppp *testProtocolParamsPlumbing) ConfigGet(path string) (interface{}, error) {
 	tppp.assert.Equal("mining.autoSealIntervalSeconds", path)
 	return tppp.autoSealInterval, nil
+}
+
+func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }
 
 func TestProtocolParams(t *testing.T) {
@@ -32,9 +41,10 @@ func TestProtocolParams(t *testing.T) {
 
 		expected := &porcelain.ProtocolParams{
 			AutoSealInterval: 120,
+			SectorSizes:      []uint64{1016},
 		}
 
-		out, err := porcelain.ProtocolParameters(plumbing)
+		out, err := porcelain.ProtocolParameters(context.TODO(), plumbing)
 		require.NoError(err)
 
 		assert.Equal(expected, out)

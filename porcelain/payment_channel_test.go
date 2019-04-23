@@ -54,7 +54,7 @@ func TestPaymentChannelLs(t *testing.T) {
 
 type testPaymentChannelVoucherPlumbing struct {
 	require *require.Assertions
-	voucher *paymentbroker.PaymentVoucher
+	voucher *types.PaymentVoucher
 }
 
 func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
@@ -78,7 +78,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 		assert := assert.New(t)
 		require := require.New(t)
 
-		expectedVoucher := &paymentbroker.PaymentVoucher{
+		expectedVoucher := &types.PaymentVoucher{
 			Channel:   *types.NewChannelID(5),
 			Payer:     address.Undef,
 			Target:    address.Undef,

@@ -76,6 +76,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
 	assert.Equal(target, channel.Target)
+	assert.Equal(types.NewBlockHeight(10), channel.AgreedEol)
 	assert.Equal(types.NewBlockHeight(10), channel.Eol)
 }
 
@@ -186,7 +187,7 @@ func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	sys := setup(t)
 
 	// set block height to Eol
-	result, err := sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 10)
+	result, err := sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 20000)
 	require.NoError(err)
 
 	// expect an error
@@ -346,7 +347,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	pdata := core.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is after Eol
-	res, err := sys.ApplyMessage(msg, 11)
+	res, err := sys.ApplyMessage(msg, 20001)
 	require.NoError(err)
 	require.NoError(res.ExecutionError)
 
@@ -387,7 +388,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(20))
+	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
@@ -412,7 +413,8 @@ func TestPaymentBrokerExtend(t *testing.T) {
 
 	assert.Equal(types.NewAttoFILFromFIL(2000), channel.Amount)
 	assert.Equal(types.NewAttoFILFromFIL(1100), channel.AmountRedeemed)
-	assert.Equal(types.NewBlockHeight(20), channel.Eol)
+	assert.Equal(types.NewBlockHeight(30000), channel.AgreedEol)
+	assert.Equal(types.NewBlockHeight(30000), channel.Eol)
 }
 
 func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
@@ -423,7 +425,7 @@ func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
+	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
@@ -448,6 +450,28 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 
 	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
 	assert.Contains(result.ExecutionError.Error(), "payment channel eol may not be decreased")
+}
+
+func TestPaymentBrokerCancel(t *testing.T) {
+	tf.UnitTest(t)
+
+	require := require.New(t)
+	assert := assert.New(t)
+	sys := setup(t)
+
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+
+	result, err := sys.ApplyMessage(msg, 100)
+	require.NoError(result.ExecutionError)
+	require.NoError(err)
+	assert.Equal(uint8(0), result.Receipt.ExitCode)
+
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+
+	assert.Equal(types.NewBlockHeight(20000), channel.AgreedEol)
+	assert.Equal(types.NewBlockHeight(10100), channel.Eol)
 }
 
 func TestPaymentBrokerLs(t *testing.T) {
@@ -489,6 +513,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(target1, pc1.Target)
 		assert.Equal(types.NewAttoFILFromFIL(1000), pc1.Amount)
 		assert.Equal(types.NewAttoFILFromFIL(0), pc1.AmountRedeemed)
+		assert.Equal(types.NewBlockHeight(10), pc1.AgreedEol)
 		assert.Equal(types.NewBlockHeight(10), pc1.Eol)
 
 		pc2, found := channels[channelID2.String()]
@@ -496,7 +521,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(target2, pc2.Target)
 		assert.Equal(types.NewAttoFILFromFIL(2000), pc2.Amount)
 		assert.Equal(types.NewAttoFILFromFIL(0), pc2.AmountRedeemed)
-		assert.Equal(types.NewBlockHeight(20), pc2.Eol)
+		assert.Equal(types.NewBlockHeight(20), pc2.AgreedEol)
 	})
 
 	t.Run("Returns empty map when payer has no channels", func(t *testing.T) {
@@ -541,7 +566,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.NoError(res.ExecutionError)
 		assert.Equal(uint8(0), res.Receipt.ExitCode)
 
-		voucher := PaymentVoucher{}
+		voucher := types.PaymentVoucher{}
 		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
 		require.NoError(err)
 
@@ -642,7 +667,7 @@ func setup(t *testing.T) system {
 	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
-	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
 	return system{
 		t:              t,

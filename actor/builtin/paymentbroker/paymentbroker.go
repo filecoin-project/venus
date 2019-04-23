@@ -40,6 +40,8 @@ const (
 	ErrTooEarly = 43
 )
 
+var cancelDelayBlockTime = types.NewBlockHeight(10000)
+
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrTooEarly:                 errors.NewCodedRevertError(ErrTooEarly, "block height too low to redeem voucher"),
@@ -64,6 +66,11 @@ type PaymentChannel struct {
 	Target         address.Address    `json:"target"`
 	Amount         *types.AttoFIL     `json:"amount"`
 	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
+	// AgreedEol is the expiration for the payment channel agreed upon by the
+	// payer and payee upon initialization or extension
+	AgreedEol      *types.BlockHeight `json:"agreed_eol"`
+	// Eol is the actual expiration for the payment channel which can differ from
+	// AgreedEol when the payment channel is in dispute
 	Eol            *types.BlockHeight `json:"eol"`
 }
 
@@ -87,6 +94,10 @@ func (pb *Actor) Exports() exec.Exports {
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var paymentBrokerExports = exec.Exports{
+	"cancel": &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID},
+		Return: nil,
+	},
 	"close": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
 		Return: nil,
@@ -150,6 +161,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 			Target:         target,
 			Amount:         vmctx.Message().Value,
 			AmountRedeemed: types.NewAttoFILFromFIL(0),
+			AgreedEol:      eol,
 			Eol:            eol,
 		})
 		if err != nil {
@@ -315,6 +327,7 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 		}
 
 		// set new eol
+		channel.AgreedEol = eol
 		channel.Eol = eol
 
 		// increment the value
@@ -327,6 +340,54 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 		// ensure error is properly wrapped
 		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
 			return 1, errors.FaultErrorWrap(err, "Error extending channel")
+		}
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
+// Cancel can be used to end an off chain payment early. It lowers the EOL of
+// the payment channel to 1 blocktime from now and allows a caller to reclaim
+// their payments. In the time before the channel is closed, a target can
+// potentially dispute a closer.
+func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	ctx := context.Background()
+	storage := vmctx.Storage()
+	payerAddress := vmctx.Message().From
+
+	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
+		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		if err != nil {
+			if err == hamt.ErrNotFound {
+				return Errors[ErrUnknownChannel]
+			}
+			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
+		}
+
+		channel, ok := chInt.(*PaymentChannel)
+		if !ok {
+			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
+		}
+
+		eol := vmctx.BlockHeight().Add(cancelDelayBlockTime)
+
+		// eol can only be decreased
+		if channel.Eol.GreaterThan(eol) {
+			channel.Eol = eol
+		}
+
+		return byChannelID.Set(ctx, chid.KeyString(), channel)
+	})
+
+	if err != nil {
+		// ensure error is properly wrapped
+		if !errors.IsFault(err) && !errors.ShouldRevert(err) {
+			return 1, errors.FaultErrorWrap(err, "Error cancelling channel")
 		}
 		return errors.CodeError(err), err
 	}
@@ -392,7 +453,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
-	var voucher PaymentVoucher
+	var voucher types.PaymentVoucher
 
 	err := withPayerChannelsForReading(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
 		var channel *PaymentChannel
@@ -416,7 +477,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 		}
 
 		// set voucher
-		voucher = PaymentVoucher{
+		voucher = types.PaymentVoucher{
 			Channel: *chid,
 			Payer:   vmctx.Message().From,
 			Target:  channel.Target,
