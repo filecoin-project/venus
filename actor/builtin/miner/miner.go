@@ -555,6 +555,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// This method returns nothing if the verification succeeds and returns a revert error if verification fails.
 func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
