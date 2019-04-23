@@ -381,16 +381,11 @@ func TestVerifyPIP(t *testing.T) {
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-	runVerifyPIP := func(t *testing.T, bh uint64, commP []byte, sectorId uint64, proof []byte) (bool, string) {
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, bh, "verifyPIP", ancestors, commP, sectorId, proof)
+	runVerifyPIP := func(t *testing.T, bh uint64, commP []byte, sectorId uint64, proof []byte) error {
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, bh, "verifyPieceInclusion", ancestors, commP, sectorId, proof)
 		require.NoError(t, err)
-		require.NoError(t, res.ExecutionError)
-		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-		valid := parseAbiBoolean(res.Receipt.Return[0])
-		reason := string(res.Receipt.Return[1])
-
-		return valid, reason
+		return res.ExecutionError
 	}
 
 	commP := th.MakeCommitment()
@@ -403,57 +398,56 @@ func TestVerifyPIP(t *testing.T) {
 	pip = append(pip, commD[:]...)
 
 	t.Run("PIP is invalid if miner has not submitted any proofs", func(t *testing.T) {
-		valid, reason := runVerifyPIP(t, 3, commP, sectorId, pip)
+		err := runVerifyPIP(t, 3, commP, sectorId, pip)
 
-		require.False(t, valid)
-		require.Equal(t, "proofs out of date", reason)
+		assert.Error(t, err)
+		assert.Equal(t, "proofs out of date", err.Error())
 	})
 
 	t.Run("After submitting a PoSt", func(t *testing.T) {
 		// submit a post
 		proof := th.MakeRandomPoSTProofForTest()
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []types.PoStProof{proof})
-		require.NoError(t, err)
-		require.NoError(t, res.ExecutionError)
-		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		t.Run("Valid PIP returns true", func(t *testing.T) {
-			valid, reason := runVerifyPIP(t, 3, commP, sectorId, pip)
+			err := runVerifyPIP(t, 3, commP, sectorId, pip)
 
-			require.True(t, valid)
-			require.Equal(t, "", reason)
+			assert.NoError(t, err)
 		})
 
 		t.Run("PIP is invalid if miner hasn't committed sector", func(t *testing.T) {
 			wrongSectorId := sectorId + 1
-			valid, reason := runVerifyPIP(t, 3, commP, wrongSectorId, pip)
+			err := runVerifyPIP(t, 3, commP, wrongSectorId, pip)
 
-			require.False(t, valid)
-			require.Equal(t, "sector not committed", reason)
+			require.Error(t, err)
+			assert.Equal(t, "sector not committed", err.Error())
 		})
 
 		t.Run("PIP is invalid if miner's PoSts are out of date", func(t *testing.T) {
 			blockHeight := uint64(ClientProofOfStorageTimeout + 100)
-			valid, reason := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
+			err := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
 
-			require.False(t, valid)
-			require.Equal(t, "proofs out of date", reason)
+			require.Error(t, err)
+			assert.Equal(t, "proofs out of date", err.Error())
 		})
 
 		t.Run("PIP is invalid if proof is invalid", func(t *testing.T) {
 			wrongPIP := append([]byte{pip[0] + 1}, pip[1:]...)
-			valid, reason := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
+			err := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
 
-			require.False(t, valid)
-			require.Equal(t, "invalid inclusion proof", reason)
+			require.Error(t, err)
+			assert.Equal(t, "invalid inclusion proof", err.Error())
 		})
 
 		t.Run("Malformed PIP is a validation error, but not a revert error", func(t *testing.T) {
 			wrongPIP := pip[1:]
-			valid, reason := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
+			err := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
 
-			require.False(t, valid)
-			require.Equal(t, "malformed inclusion proof", reason)
+			assert.Error(t, err)
+			assert.Equal(t, "malformed inclusion proof", err.Error())
 		})
 	})
 }

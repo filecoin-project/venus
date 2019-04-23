@@ -236,9 +236,9 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{abi.PoStProofs},
 		Return: []abi.Type{},
 	},
-	"verifyPIP": &exec.FunctionSignature{
+	"verifyPieceInclusion": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
-		Return: []abi.Type{abi.Boolean, abi.String},
+		Return: []abi.Type{},
 	},
 	"getProvingPeriodStart": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -554,30 +554,30 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
-// VerifyPIP verifies that proof proves that the data represented by commP is included in the sector.
-func (ma *Actor) VerifyPIP(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (bool, string, uint8, error) {
+// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return false, "", exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
 		// If miner has not committed sector id, proof is invalid
 		sectorIDstr := strconv.FormatUint(sectorID, 10)
 		commitment, ok := state.SectorCommitments[sectorIDstr]
 		if !ok {
-			return xerrors.New("sector not committed"), nil
+			return nil, errors.NewRevertError("sector not committed")
 		}
 
 		// If miner is not up-to-date on their PoSts, proof is invalid
 		if state.LastPoSt == nil {
-			return xerrors.New("proofs out of date"), nil
+			return nil, errors.NewRevertError("proofs out of date")
 		}
 
 		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(ClientProofOfStorageTimeout))
 		if ctx.BlockHeight().GreaterEqual(clientProofsTimeout) {
-			return xerrors.New("proofs out of date"), nil
+			return nil, errors.NewRevertError("proofs out of date")
 		}
 
 		// Verify proof proves CommP is in sector's CommD
@@ -585,33 +585,17 @@ func (ma *Actor) VerifyPIP(ctx exec.VMContext, commP []byte, sectorID uint64, pr
 		copy(typedCommP[:], commP)
 		valid, err := verifyInclusionProof(typedCommP, commitment.CommD, proof)
 		if err != nil {
-			// malformed proofs should not revert this message
-			if err.Error() == "malformed inclusion proof" {
-				return err, nil
-			}
 			return nil, err
 		}
 
 		if !valid {
-			return xerrors.New("invalid inclusion proof"), nil
+			return nil, errors.NewRevertError("invalid inclusion proof")
 		}
 
 		return nil, nil
 	})
-	if err != nil {
-		return false, "", errors.CodeError(err), err
-	}
 
-	if out == nil {
-		return true, "", 0, nil
-	}
-
-	validOut, ok := out.(error)
-	if !ok {
-		return false, "", 1, errors.NewRevertError("expected an error for output")
-	}
-
-	return false, validOut.Error(), 0, nil
+	return errors.CodeError(err), err
 }
 
 // GetKey returns the public key for this miner.
