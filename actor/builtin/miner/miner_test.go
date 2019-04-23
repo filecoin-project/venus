@@ -407,7 +407,8 @@ func TestVerifyPIP(t *testing.T) {
 	t.Run("After submitting a PoSt", func(t *testing.T) {
 		// submit a post
 		proof := th.MakeRandomPoSTProofForTest()
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []types.PoStProof{proof})
+		blockheightOfPoSt := uint64(8)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, blockheightOfPoSt, "submitPoSt", ancestors, []types.PoStProof{proof})
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -426,8 +427,22 @@ func TestVerifyPIP(t *testing.T) {
 			assert.Equal(t, "sector not committed", err.Error())
 		})
 
-		t.Run("PIP is invalid if miner's PoSts are out of date", func(t *testing.T) {
-			blockHeight := uint64(ClientProofOfStorageTimeout + 100)
+		t.Run("PIP is valid if miner's PoSts are before the end of the grace period", func(t *testing.T) {
+			blockHeight := blockheightOfPoSt + PieceInclusionGracePeriodBlocks - 1
+			err := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
+
+			assert.NoError(t, err)
+		})
+
+		t.Run("PIP is valid if miner's PoSts are at the very end of the grace period", func(t *testing.T) {
+			blockHeight := blockheightOfPoSt + PieceInclusionGracePeriodBlocks
+			err := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
+
+			assert.NoError(t, err)
+		})
+
+		t.Run("PIP is invalid if miner's PoSts are after the end of the grace period", func(t *testing.T) {
+			blockHeight := blockheightOfPoSt + PieceInclusionGracePeriodBlocks + 1
 			err := runVerifyPIP(t, blockHeight, commP, sectorId, pip)
 
 			require.Error(t, err)
@@ -442,7 +457,7 @@ func TestVerifyPIP(t *testing.T) {
 			assert.Equal(t, "invalid inclusion proof", err.Error())
 		})
 
-		t.Run("Malformed PIP is a validation error, but not a revert error", func(t *testing.T) {
+		t.Run("Malformed PIP is a validation error", func(t *testing.T) {
 			wrongPIP := pip[1:]
 			err := runVerifyPIP(t, 3, commP, sectorId, wrongPIP)
 

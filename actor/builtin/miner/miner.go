@@ -44,7 +44,7 @@ const GracePeriodBlocks = 100
 // a refund.
 // TODO: what is a fair value for this? Value is arbitrary right now.
 // See https://github.com/filecoin-project/go-filecoin/issues/1887
-const ClientProofOfStorageTimeout = 10000
+const PieceInclusionGracePeriodBlocks = 10000
 
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
@@ -575,8 +575,8 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID
 			return nil, errors.NewRevertError("proofs out of date")
 		}
 
-		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(ClientProofOfStorageTimeout))
-		if ctx.BlockHeight().GreaterEqual(clientProofsTimeout) {
+		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(PieceInclusionGracePeriodBlocks))
+		if ctx.BlockHeight().GreaterThan(clientProofsTimeout) {
 			return nil, errors.NewRevertError("proofs out of date")
 		}
 
