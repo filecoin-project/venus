@@ -47,7 +47,7 @@ var (
 	NetworkAddress Address
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market.
 	StorageMarketAddress Address
-	// PaymentBrokerAddress is the hard-coded address of the filecoin storage market.
+	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker.
 	PaymentBrokerAddress Address
 )
 
