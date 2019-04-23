@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# this script updates go-filecoin status badges in https://github.com/filecoin-project/go-filecoin-badges
+# with latest binary release version
 set -e
 FILENAME="${1}"
 if [[ -z "${FILENAME}" ]]; then

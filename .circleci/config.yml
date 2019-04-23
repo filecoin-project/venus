@@ -609,15 +609,15 @@ workflows:
             - unit_test_linux
             - integration_test_linux
             - functional_test_linux
-      - trigger_nightly_devnet_deploy:
-          requires:
-            - build_docker_img
       - publish_release:
           nightly: true
           requires:
             - build_linux
             - build_macos
             - trigger_nightly_devnet_deploy
+      - trigger_nightly_devnet_deploy:
+          requires:
+            - build_docker_img
 
   build_user_devnet:
     jobs:
@@ -822,14 +822,7 @@ commands:
       - run:
           name: Update badge << parameters.filename >>
           command: |
-            git config --global user.email dev-helper@filecoin.io
-            git config --global user.name filecoin-helper
-            git clone https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin-badges.git
-            cd go-filecoin-badges
-            cat << parameters.filename >> | jq --arg FILECOIN_BINARY_VERSION "${FILECOIN_BINARY_VERSION}" -r '.message = $FILECOIN_BINARY_VERSION' | tee << parameters.filename >>
-            git add << parameters.filename >>
-            git commit -m "badge update bot: update << parameters.filename >> to ${FILECOIN_BINARY_VERSION}"
-            git push https://${GITHUB_TOKEN}@github.com/filecoin-project/go-filecoin-badges.git
+            ./scripts/update-badge.sh << parameters.filename >>
   update_submodules:
     steps:
       - run:
