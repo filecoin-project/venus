@@ -79,7 +79,7 @@ func PaymentChannelVoucher(
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"voucher",
-		channel, amount, validAt,
+		channel, amount, validAt, condition,
 	)
 	if err != nil {
 		return nil, err

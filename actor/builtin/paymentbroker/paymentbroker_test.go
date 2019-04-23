@@ -555,13 +555,69 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 	require := require.New(t)
 	assert := assert.New(t)
+	var nilCondition *types.Predicate
 
 	t.Run("Returns valid voucher", func(t *testing.T) {
 		sys := setup(t)
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
+		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		res, err := sys.ApplyMessage(msg, 9)
+		assert.NoError(err)
+		assert.NoError(res.ExecutionError)
+		assert.Equal(uint8(0), res.Receipt.ExitCode)
+
+		voucher := types.PaymentVoucher{}
+		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
+		require.NoError(err)
+
+		assert.Equal(*sys.channelID, voucher.Channel)
+		assert.Equal(sys.payer, voucher.Payer)
+		assert.Equal(sys.target, voucher.Target)
+		assert.Equal(*voucherAmount, voucher.Amount)
+		assert.Nil(voucher.Condition)
+	})
+
+	t.Run("Errors when channel does not exist", func(t *testing.T) {
+		sys := setup(t)
+
+		notChannelID := types.NewChannelID(999)
+
+		// create voucher
+		voucherAmount := types.NewAttoFILFromFIL(100)
+		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		assert.NotEqual(uint8(0), exitCode)
+		assert.Contains(fmt.Sprintf("%v", err), "unknown")
+	})
+
+	t.Run("Errors when voucher exceed channel amount", func(t *testing.T) {
+		sys := setup(t)
+
+		// create voucher
+		voucherAmount := types.NewAttoFILFromFIL(2000)
+		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
+
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
+		res, err := sys.ApplyMessage(msg, 9)
+		assert.NoError(err)
+		assert.NotEqual(uint8(0), res.Receipt.ExitCode)
+		assert.Contains(fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
+	})
+
+	t.Run("Returns valid voucher with condition", func(t *testing.T) {
+		sys := setup(t)
+
+		condition := &types.Predicate{
+			To:     address.NewForTestGetter()(),
+			Method: "someMethod",
+			Params: []byte("encoded params"),
+		}
+
+		// create voucher
+		voucherAmount := types.NewAttoFILFromFIL(100)
+		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(err)
@@ -577,31 +633,40 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(sys.target, voucher.Target)
 		assert.Equal(*voucherAmount, voucher.Amount)
 	})
+}
 
-	t.Run("Errors when channel does not exist", func(t *testing.T) {
-		sys := setup(t)
+func TestSignVoucher(t *testing.T) {
+	payer := mockSigner.Addresses[0]
+	value := types.NewAttoFILFromFIL(10)
+	channelId := types.NewChannelID(3)
+	blockHeight := types.NewBlockHeight(393)
+	condition := &types.Predicate{
+		To:     address.NewForTestGetter()(),
+		Method: "someMethod",
+		Params: []byte("encoded params"),
+	}
+	var nilCondition *types.Predicate
 
-		notChannelID := types.NewChannelID(999)
+	t.Run("validates signatures with empty condition", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
 
-		// create voucher
-		voucherAmount := types.NewAttoFILFromFIL(100)
-		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt)
-		assert.NotEqual(uint8(0), exitCode)
-		assert.Contains(fmt.Sprintf("%v", err), "unknown")
+		sig, err := SignVoucher(channelId, value, blockHeight, payer, nilCondition, mockSigner)
+		require.NoError(err)
+
+		assert.True(VerifyVoucherSignature(payer, channelId, value, blockHeight, nilCondition, sig))
+		assert.False(VerifyVoucherSignature(payer, channelId, value, blockHeight, condition, sig))
 	})
 
-	t.Run("Errors when voucher exceed channel amount", func(t *testing.T) {
-		sys := setup(t)
+	t.Run("validates signatures with condition", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
 
-		// create voucher
-		voucherAmount := types.NewAttoFILFromFIL(2000)
-		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
+		sig, err := SignVoucher(channelId, value, blockHeight, payer, condition, mockSigner)
+		require.NoError(err)
 
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
-		res, err := sys.ApplyMessage(msg, 9)
-		assert.NoError(err)
-		assert.NotEqual(uint8(0), res.Receipt.ExitCode)
-		assert.Contains(fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
+		assert.True(VerifyVoucherSignature(payer, channelId, value, blockHeight, condition, sig))
+		assert.False(VerifyVoucherSignature(payer, channelId, value, blockHeight, nilCondition, sig))
 	})
 }
 

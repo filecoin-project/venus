@@ -169,7 +169,9 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePay
 		"voucher",
 		response.Channel,
 		amount,
-		validAt)
+		validAt,
+		condition,
+	)
 	if err != nil {
 		return err
 	}

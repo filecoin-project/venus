@@ -123,7 +123,7 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"voucher": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight},
+		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate},
 		Return: []abi.Type{abi.Bytes},
 	},
 }
@@ -445,7 +445,10 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 // enforcing that the voucher is not reclaimed until the given block height
 // Voucher errors if the channel doesn't exist or contains less than request
 // amount.
-func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) ([]byte, uint8, error) {
+// If a condition is provided, attempts to redeem or close with the voucher will
+// first send a message based on the condition and require a successful response
+// for funds to be transferred.
+func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -478,11 +481,12 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 
 		// set voucher
 		voucher = types.PaymentVoucher{
-			Channel: *chid,
-			Payer:   vmctx.Message().From,
-			Target:  channel.Target,
-			Amount:  *amount,
-			ValidAt: *validAt,
+			Channel:   *chid,
+			Payer:     vmctx.Message().From,
+			Target:    channel.Target,
+			Amount:    *amount,
+			ValidAt:   *validAt,
+			Condition: condition,
 		}
 
 		return nil

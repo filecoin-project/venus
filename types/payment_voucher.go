@@ -8,6 +8,7 @@ import (
 )
 
 func init() {
+	cbor.RegisterCborType(Predicate{})
 	cbor.RegisterCborType(PaymentVoucher{})
 }
 
