@@ -40,7 +40,11 @@ const (
 	ErrTooEarly = 43
 )
 
-var cancelDelayBlockTime = types.NewBlockHeight(10000)
+// CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
+// is canceled before it expires.
+// TODO: what is a secure value for this?  Value is arbitrary right now.
+// See https://github.com/filecoin-project/go-filecoin/issues/1887
+const CancelDelayBlockTime = 10000
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
@@ -63,15 +67,22 @@ func init() {
 
 // PaymentChannel records the intent to pay funds to a target account.
 type PaymentChannel struct {
-	Target         address.Address    `json:"target"`
-	Amount         *types.AttoFIL     `json:"amount"`
-	AmountRedeemed *types.AttoFIL     `json:"amount_redeemed"`
+	// Target is the address of the account to which funds will be transferred
+	Target address.Address `json:"target"`
+
+	// Amount is the total amount of FIL that has been transferred to the channel from the payer
+	Amount *types.AttoFIL `json:"amount"`
+
+	// AmountRedeemed is the amount of FIL already transferred to the target
+	AmountRedeemed *types.AttoFIL `json:"amount_redeemed"`
+
 	// AgreedEol is the expiration for the payment channel agreed upon by the
 	// payer and payee upon initialization or extension
-	AgreedEol      *types.BlockHeight `json:"agreed_eol"`
+	AgreedEol *types.BlockHeight `json:"agreed_eol"`
+
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
-	Eol            *types.BlockHeight `json:"eol"`
+	Eol *types.BlockHeight `json:"eol"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -99,7 +110,7 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"close": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes},
 		Return: nil,
 	},
 	"createChannel": &exec.FunctionSignature{
@@ -119,11 +130,11 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"redeem": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes},
 		Return: nil,
 	},
 	"voucher": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight},
+		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate},
 		Return: []abi.Type{abi.Bytes},
 	},
 }
@@ -194,12 +205,12 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	if !VerifyVoucherSignature(payer, chid, amt, validAt, sig) {
+	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
@@ -244,12 +255,12 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) (uint8, error) {
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	if !VerifyVoucherSignature(payer, chid, amt, validAt, sig) {
+	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
@@ -374,7 +385,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		eol := vmctx.BlockHeight().Add(cancelDelayBlockTime)
+		eol := vmctx.BlockHeight().Add(types.NewBlockHeight(CancelDelayBlockTime))
 
 		// eol can only be decreased
 		if channel.Eol.GreaterThan(eol) {
@@ -445,7 +456,10 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 // enforcing that the voucher is not reclaimed until the given block height
 // Voucher errors if the channel doesn't exist or contains less than request
 // amount.
-func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) ([]byte, uint8, error) {
+// If a condition is provided, attempts to redeem or close with the voucher will
+// first send a message based on the condition and require a successful response
+// for funds to be transferred.
+func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -478,11 +492,12 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 
 		// set voucher
 		voucher = types.PaymentVoucher{
-			Channel: *chid,
-			Payer:   vmctx.Message().From,
-			Target:  channel.Target,
-			Amount:  *amount,
-			ValidAt: *validAt,
+			Channel:   *chid,
+			Payer:     vmctx.Message().From,
+			Target:    channel.Target,
+			Amount:    *amount,
+			ValidAt:   *validAt,
+			Condition: condition,
 		}
 
 		return nil
@@ -610,21 +625,26 @@ const separator = 0x0
 // SignVoucher creates the signature for the given combination of
 // channel, amount, validAt (earliest block height for redeem) and from address.
 // It does so by signing the following bytes: (channelID | 0x0 | amount | 0x0 | validAt)
-func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, signer types.Signer) (types.Signature, error) {
-	data := createVoucherSignatureData(channelID, amount, validAt)
+func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, condition *types.Predicate, signer types.Signer) (types.Signature, error) {
+	data := createVoucherSignatureData(channelID, amount, validAt, condition)
 	return signer.SignBytes(data, addr)
 }
 
 // VerifyVoucherSignature returns whether the voucher's signature is valid
-func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, sig []byte) bool {
-	data := createVoucherSignatureData(chid, amt, validAt)
+func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) bool {
+	data := createVoucherSignatureData(chid, amt, validAt, condition)
 	return types.IsValidSignature(data, payer, sig)
 }
 
-func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight) []byte {
+func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) []byte {
 	data := append(channelID.Bytes(), separator)
 	data = append(data, amount.Bytes()...)
 	data = append(data, separator)
+	if condition != nil {
+		data = append(data, condition.To.Bytes()...)
+		data = append(data, []byte(condition.Method)...)
+		data = append(data, condition.Params...)
+	}
 	return append(data, validAt.Bytes()...)
 }
 
