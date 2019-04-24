@@ -2,7 +2,6 @@ package builtin_test
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
@@ -34,11 +33,12 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	addrGetter := address.NewForTestGetter()
 	target := addrGetter()
 	defaultValidAt := types.NewBlockHeight(uint64(0))
+	//sectorID := uint64(123)
 	_, st, vms := requireGenesis(ctx, t, target)
 
 	minerActor := actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
 	storage := vms.NewStorage(address.TestAddress, minerActor)
-	minerState := miner.State{}
+	minerState := miner.State{SectorCommitments: {"STRING": {CommD: [32]byte{}, CommR: [32]byte{}, CommRStar: [32]byte{}}}}
 	require.NoError(t, miner.Actor{}.InitializeState(storage, minerState))
 	require.NoError(t, st.SetActor(ctx, address.TestAddress, minerActor))
 
