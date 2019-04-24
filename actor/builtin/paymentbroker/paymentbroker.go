@@ -734,6 +734,9 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 }
 
 func checkCondition(vmctx exec.VMContext, condition *types.Predicate, redeemerSuppliedParams []interface{}) (uint8, error) {
+	if condition == nil {
+		return 0, nil
+	}
 	params := append(condition.Params[:0:0], condition.Params...)
 	params = append(params, redeemerSuppliedParams...)
 	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)

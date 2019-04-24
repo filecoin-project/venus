@@ -354,7 +354,7 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	signature[1] = 1
 
 	var condition *types.Predicate
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -401,7 +401,7 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	signature[1] = 1
 
 	var condition *types.Predicate
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())

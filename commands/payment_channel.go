@@ -277,6 +277,7 @@ var redeemCmd = &cmds.Command{
 			&voucher.ValidAt,
 			voucher.Condition,
 			[]byte(voucher.Signature),
+			[]interface{}{},
 		}
 
 		if preview {
@@ -451,6 +452,7 @@ var closeCmd = &cmds.Command{
 			&voucher.ValidAt,
 			voucher.Condition,
 			[]byte(voucher.Signature),
+			[]interface{}{},
 		}
 
 		if preview {
