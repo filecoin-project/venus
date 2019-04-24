@@ -39,14 +39,14 @@ type RepoHelper interface {
 type MigrationRunner struct {
 	verbose bool
 	command string
-	rmh     RepoHelper
+	helper  RepoHelper
 }
 
 func NewMigrationRunner(verb bool, command string, rmh RepoHelper) *MigrationRunner {
 	return &MigrationRunner{
 		verbose: verb,
 		command: command,
-		rmh:     rmh,
+		helper:  rmh,
 	}
 }
 
