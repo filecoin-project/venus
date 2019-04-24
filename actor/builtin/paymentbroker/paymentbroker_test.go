@@ -110,23 +110,62 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	tf.UnitTest(t)
 
 	addrGetter := address.NewForTestGetter()
-	conditionToAddress := addrGetter()
-
-	condition := &types.Predicate{
-		To:     conditionToAddress,
-		Method: "supportsTypedParams",
-		Params: []interface{}{
-			addrGetter(),
-			uint64(6),
-		},
-	}
+	toAddress := addrGetter()
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), conditionToAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-	appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
-	require.NoError(t, err)
-	require.NoError(t, appResult.ExecutionError)
+	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+	})
+
+	t.Run("Redeem should fail if condition is _NOT_ met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{address.Undef, uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+	})
+
+	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
+		condition := &types.Predicate{To: addrGetter(), Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+	})
+
+	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "nonexistentMethod", Params: []interface{}{addrGetter(), uint64(6)}}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+	})
+
+	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{}}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+	})
+
+	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+	})
 }
 
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
@@ -845,7 +884,7 @@ var _ exec.ExecutableActor = (*PBTestActor)(nil)
 // Exports returns the list of fake actor exported functions.
 func (ma *PBTestActor) Exports() exec.Exports {
 	return exec.Exports{
-		"supportsTypedParams": &exec.FunctionSignature{
+		"checkParams": &exec.FunctionSignature{
 			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
 			Return: nil,
 		},
@@ -857,7 +896,7 @@ func (ma *PBTestActor) InitializeState(storage exec.Storage, initializerData int
 	return nil
 }
 
-func (ma *PBTestActor) SupportsTypedParams(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) CheckParams(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}
