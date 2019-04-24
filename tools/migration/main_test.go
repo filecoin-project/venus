@@ -18,7 +18,7 @@ func TestUsage(t *testing.T) {
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
-	expected := "Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]"
+	expected := "go-filecoin-migrate (describe|buildonly|migrate) [-h|--help][-v|--verbose][--old-repo=<repodir>][--new-repo=<newrepo-prefix]"
 
 	t.Run("bare invocation prints usage but exits with 1", func(t *testing.T) {
 		out, err := exec.Command(command).CombinedOutput()
@@ -44,7 +44,7 @@ func TestOptions(t *testing.T) {
 	require := req.New(t)
 	assert := ast.New(t)
 	command := mustGetMigrationBinary(require)
-	usage := "Usage:  go-filecoin-migrate (describe|buildonly|migrate) [--verbose]"
+	usage := "go-filecoin-migrate (describe|buildonly|migrate) [-h|--help][-v|--verbose][--old-repo=<repodir>][--new-repo=<newrepo-prefix]"
 
 	t.Run("error when calling with invalid command", func(t *testing.T) {
 		out, err := exec.Command(command, "foo").CombinedOutput()

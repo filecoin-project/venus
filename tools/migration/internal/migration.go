@@ -30,17 +30,27 @@ type Migration interface {
 	Validate(oldRepo, newRepo *os.File) error
 }
 
+type RepoHelper interface {
+	GetOldRepo() (*os.File, error)
+	MakeNewRepo() (*os.File, error)
+}
+
 // TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
 type MigrationRunner struct {
 	verbose bool
+	command string
+	rmh     RepoHelper
 }
 
-func NewMigrationRunner(verb bool) *MigrationRunner {
-	return &MigrationRunner{verbose: verb}
+func NewMigrationRunner(verb bool, command string, rmh RepoHelper) *MigrationRunner {
+	return &MigrationRunner{
+		verbose: verb,
+		command: command,
+		rmh:     rmh,
+	}
 }
 
-func (m *MigrationRunner) Run(cmd string) error {
-
-	// TODO: Issue #2595 Implement first repo migration which is just a version bump
+func (m *MigrationRunner) Run() error {
+	// TODO: Issue #2595 Implement first repo migration
 	return nil
 }
