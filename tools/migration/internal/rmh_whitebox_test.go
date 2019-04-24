@@ -1,13 +1,15 @@
 package internal
 
 import (
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	ast "github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+
+	ast "github.com/stretchr/testify/assert"
+	req "github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestGetNewRepoPath(t *testing.T) {

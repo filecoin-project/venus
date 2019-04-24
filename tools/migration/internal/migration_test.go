@@ -1,12 +1,13 @@
 package internal_test
 
 import (
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 	"os"
 	"testing"
 
 	ast "github.com/stretchr/testify/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
 func TestNewMigrationRunner(t *testing.T) {

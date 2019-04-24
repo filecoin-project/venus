@@ -5,12 +5,11 @@ import (
 	"testing"
 
 	"github.com/golangci/golangci-lint/pkg/fsutils"
+	ast "github.com/stretchr/testify/assert"
+	req "github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
-
-	ast "github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
 )
 
 func TestRepoMigrationHelper_GetOldRepo(t *testing.T) {
