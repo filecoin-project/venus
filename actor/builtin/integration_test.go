@@ -6,10 +6,9 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -33,31 +32,37 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	addrGetter := address.NewForTestGetter()
 	target := addrGetter()
 	defaultValidAt := types.NewBlockHeight(uint64(0))
-	//sectorID := uint64(123)
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	minerActor := actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
-	storage := vms.NewStorage(address.TestAddress, minerActor)
-	minerState := miner.State{SectorCommitments: {"STRING": {CommD: [32]byte{}, CommR: [32]byte{}, CommRStar: [32]byte{}}}}
-	require.NoError(t, miner.Actor{}.InitializeState(storage, minerState))
-	require.NoError(t, st.SetActor(ctx, address.TestAddress, minerActor))
+	minerAddr := addrGetter()
+	sectorID := uint64(123)
+	commP := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	commD := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
+	lastPoSt := types.NewBlockHeight(10)
+
+	require.NoError(t, createMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
 
 	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
 	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
-	toAddress := addrGetter()
-
-	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
+		// create voucher with piece inclusion condition
+		condition := &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
 
 		amt := types.NewAttoFILFromFIL(100)
 		sig, err := paymentbroker.SignVoucher(channelID, amt, defaultValidAt, payer, condition, mockSigner)
 		require.NoError(t, err)
 		signature := ([]byte)(sig)
 
-		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, []interface{}{types.NewBlockHeight(43)})
+		// make redeem request with correct sector id and PIP
+		// TODO: this pip is very fake
+		pip := []byte{}
+		pip = append(pip, commP[:]...)
+		pip = append(pip, commD[:]...)
+		suppliedParams := []interface{}{sectorID, pip}
+		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
 		msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 
 		appResult, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -65,6 +70,25 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 	})
+}
+
+func createMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorId uint64, commD []byte, lastPoSt *types.BlockHeight) error {
+	minerActor := miner.NewActor()
+	storage := vms.NewStorage(minerAddr, minerActor)
+
+	commitments := map[string]types.Commitments{}
+	commD32 := [32]byte{}
+	copy(commD32[:], commD)
+	commitments[string(sectorId)] = types.Commitments{CommD: commD32, CommR: [32]byte{}, CommRStar: [32]byte{}}
+	minerState := &miner.State{
+		SectorCommitments: commitments,
+		LastPoSt:          lastPoSt,
+	}
+	executableActor := miner.Actor{}
+	if err := executableActor.InitializeState(storage, minerState); err != nil {
+		return err
+	}
+	return st.SetActor(ctx, minerAddr, minerActor)
 }
 
 func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
