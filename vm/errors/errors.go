@@ -85,6 +85,9 @@ func ShouldRevert(err error) bool {
 
 // CodeError returns the RevertError's error code if it is a revert error, or 1 otherwise.
 func CodeError(err error) uint8 {
+	if err == nil {
+		return 0
+	}
 	if ShouldRevert(err) {
 		return err.(*RevertError).Code()
 	}
