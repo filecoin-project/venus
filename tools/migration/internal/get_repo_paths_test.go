@@ -20,7 +20,7 @@ func TestGetNewRepoPath(t *testing.T) {
 	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
 		dirname := "/tmp/mynew_repodir"
 		newpath := getNewRepoPath("/tmp/myold_repodir", dirname, "1", "2")
-		rgx, err := regexp.Compile("/tmp/mynew_repodir_1_2_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}")
+		rgx, err := regexp.Compile("/tmp/mynew_repodir_1_2_[0-9]{8}-[0-9]{6}$")
 		require.NoError(err)
 		assert.Regexp(rgx, newpath)
 	})
@@ -28,7 +28,7 @@ func TestGetNewRepoPath(t *testing.T) {
 	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
 		dirname := "/tmp/myfilecoindir"
 		newpath := getNewRepoPath(dirname, "", "1", "2")
-		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}")
+		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
 		require.NoError(err)
 		assert.Regexp(rgx, newpath)
 	})

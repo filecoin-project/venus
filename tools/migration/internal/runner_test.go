@@ -10,15 +10,6 @@ import (
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
-func TestNewMigrationRunner(t *testing.T) {
-	tf.UnitTest(t)
-	assert := ast.New(t)
-
-	rmh := TestRepoHelper{}
-
-	assert.NotNil(NewMigrationRunner(false, "describe", &rmh))
-}
-
 // TODO: Issue #2595 Implement first repo migration
 func TestMigrationRunner_Run(t *testing.T) {
 	tf.UnitTest(t)

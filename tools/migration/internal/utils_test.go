@@ -14,7 +14,7 @@ func TestNowString(t *testing.T) {
 	tf.UnitTest(t)
 	assert := ast.New(t)
 	adateStr := NowString()
-	rg, _ := regexp.Compile("^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}$")
+	rg, _ := regexp.Compile("^[0-9]{8}-[0-9]{6}$")
 	assert.Regexp(rg, adateStr)
 }
 

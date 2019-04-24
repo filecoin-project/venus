@@ -9,7 +9,7 @@ import (
 // NowString creates an ISO8601-like timestamp string
 func NowString() string {
 	now := time.Now()
-	return now.Format("2006-01-02_150405")
+	return now.Format("20060102-150405")
 }
 
 // expandHomedir replaces an initial tilde in a dirname to the home dir.
