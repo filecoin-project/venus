@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,6 +29,11 @@ func TestBasicEncodingRoundTrip(t *testing.T) {
 		"a string":   {"flugzeug"},
 		"mixed":      {big.NewInt(17), []byte("beep"), "mr rogers", addrGetter()},
 		"sector ids": {uint64(1234), uint64(0)},
+		"predicate": {&types.Predicate{
+			To:     addrGetter(),
+			Method: "someMethod",
+			Params: []interface{}{uint64(3), []byte("proof")},
+		}},
 	}
 
 	for tname, tcase := range cases {

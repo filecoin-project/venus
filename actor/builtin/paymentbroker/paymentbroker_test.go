@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -30,6 +33,8 @@ import (
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
+
+var pbTestActorCid = types.NewCidForTestGetter()()
 
 func TestPaymentBrokerGenesis(t *testing.T) {
 	tf.UnitTest(t)
@@ -99,6 +104,26 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	assert.Equal(t, types.NewAttoFILFromFIL(1000), channel.Amount)
 	assert.Equal(t, types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
 	assert.Equal(t, sys.target, channel.Target)
+}
+
+func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	condition := &types.Predicate{
+		To:     addrGetter(),
+		Method: "supportsTypedParameters",
+		Params: []interface{}{
+			addrGetter(),
+			uint64(6),
+			types.NewBlockHeight(43),
+		},
+	}
+
+	sys := setup(t)
+
+	_, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+	require.NoError(t, err)
 }
 
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
@@ -655,7 +680,13 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	blk, err := consensus.DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	builtinsWithTestActor := map[cid.Cid]exec.ExecutableActor{}
+	for cid, actor := range builtin.Actors {
+		builtinsWithTestActor[cid] = actor
+	}
+	builtinsWithTestActor[pbTestActorCid] = &PBTestActor{}
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtinsWithTestActor)
 	require.NoError(t, err)
 
 	for _, addr := range targetAddresses {
@@ -727,19 +758,19 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0, nil)
 }
 
 func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height, nil)
 }
 
 func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0, nil)
 }
 
 func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*consensus.ApplicationResult, error) {
@@ -749,7 +780,7 @@ func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address
 		sys.t.Fatalf("method %s is not a signature method", method)
 	}
 
-	return sys.applySignatureMessage(target, amtInt, types.NewBlockHeight(validAt), nonce, method, height)
+	return sys.applySignatureMessage(target, amtInt, types.NewBlockHeight(validAt), nonce, method, height, nil)
 }
 
 func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
@@ -770,15 +801,14 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	return channel
 }
 
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	amt := types.NewAttoFILFromFIL(amtInt)
 	signature, err := sys.Signature(amt, validAt, nil)
 	require.NoError(sys.t, err)
 
-	var predicate *types.Predicate
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, predicate, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
@@ -802,4 +832,37 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	require.True(t, ok)
 
 	return result
+}
+
+// PBTestActor is a fake actor for use in tests.
+type PBTestActor struct{}
+
+var _ exec.ExecutableActor = (*PBTestActor)(nil)
+
+// Exports returns the list of fake actor exported functions.
+func (ma *PBTestActor) Exports() exec.Exports {
+	return exec.Exports{
+		"supportsTypedParams": &exec.FunctionSignature{
+			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
+			Return: nil,
+		},
+	}
+}
+
+// InitializeState stores this actors
+func (ma *PBTestActor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+	return nil
+}
+
+func (ma *PBTestActor) SupportsTypedParams(ctx exec.VMContext, addr address.Address, sector uint64, bh types.BlockHeight) (uint8, error) {
+	if addr == address.Undef {
+		return 1, errors.NewRevertError("got undefined address")
+	}
+	if sector == 0 {
+		return 1, errors.NewRevertError("got zero sector")
+	}
+	if types.NewBlockHeight(0).Equal(&bh) {
+		return 1, errors.NewRevertError("got zero block height")
+	}
+	return 0, nil
 }

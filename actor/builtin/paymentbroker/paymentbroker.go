@@ -38,6 +38,8 @@ const (
 	ErrInvalidSignature = 42
 	//ErrTooEarly indicates that the block height is too low to satisfy a voucher
 	ErrTooEarly = 43
+	//ErrConditionInvalid indicates that the condition attached to a voucher did not execute successfully
+	ErrConditionInvalid = 43
 )
 
 // CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
@@ -130,7 +132,7 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"redeem": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
 		Return: nil,
 	},
 	"voucher": &exec.FunctionSignature{
@@ -205,7 +207,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams [][]byte) (uint8, error) {
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -214,12 +216,20 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	// decode condition params
-
-	// decode redeemer params
-	// mash them together
-	params := []interface{}{}
-	vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
+	// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
+	// Any non-fault error is considered a validation failure.
+	if condition != nil {
+		allParams := make([]interface{}, len(condition.Params)+len(redeemerSuppliedParams))
+		allParams = append(allParams, condition.Params)
+		allParams = append(allParams, redeemerSuppliedParams)
+		_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), allParams)
+		if err != nil {
+			if errors.IsFault(err) {
+				return errors.CodeError(err), err
+			}
+			return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to validate voucher condition")
+		}
+	}
 
 	ctx := context.Background()
 	storage := vmctx.Storage()
