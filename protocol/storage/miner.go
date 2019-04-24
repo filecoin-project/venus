@@ -237,7 +237,7 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	lastValidAt := expectedFirstPayment
 	for _, v := range p.Payment.Vouchers {
 		// confirm signature is valid against expected actor and channel id
-		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Signature) {
+		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Condition, v.Signature) {
 			return errors.New("invalid signature in voucher")
 		}
 

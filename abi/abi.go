@@ -52,6 +52,8 @@ const (
 	Boolean
 	// ProofsMode is an enumeration of possible modes of proof operation
 	ProofsMode
+	// Predicate is subset of a message used to ask an actor about a condition
+	Predicate
 )
 
 func (t Type) String() string {
@@ -88,6 +90,8 @@ func (t Type) String() string {
 		return "bool"
 	case ProofsMode:
 		return "types.ProofsMode"
+	case Predicate:
+		return "*types.Predicate"
 	default:
 		return "<unknown type>"
 	}
@@ -133,6 +137,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(bool))
 	case ProofsMode:
 		return fmt.Sprint(av.Val.(types.ProofsMode))
+	case Predicate:
+		return fmt.Sprint(av.Val.(*types.Predicate))
 	default:
 		return "<unknown type>"
 	}
@@ -258,6 +264,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte{byte(v)}, nil
+	case Predicate:
+		p, ok := av.Val.(*types.Predicate)
+		if !ok {
+			return nil, &typeError{&types.Predicate{}, av.Val}
+		}
+
+		return cbor.DumpObject(p)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -303,6 +316,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Boolean, Val: v})
 		case types.ProofsMode:
 			out = append(out, &Value{Type: ProofsMode, Val: v})
+		case *types.Predicate:
+			out = append(out, &Value{Type: Predicate, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -429,6 +444,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  types.ProofsMode(int(data[0])),
 		}, nil
+	case Predicate:
+		var predicate *types.Predicate
+		if err := cbor.DecodeInto(data, &predicate); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  predicate,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -452,6 +476,7 @@ var typeTable = map[Type]reflect.Type{
 	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
 	Boolean:        reflect.TypeOf(false),
 	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
+	Predicate:      reflect.TypeOf(&types.Predicate{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

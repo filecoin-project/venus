@@ -145,7 +145,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		}
 
 		validAt := currentHeight.Add(types.NewBlockHeight(uint64(i+1) * config.PaymentInterval))
-		err = createPayment(ctx, plumbing, response, voucherAmount, validAt)
+		err = createPayment(ctx, plumbing, response, voucherAmount, validAt, nil)
 		if err != nil {
 			return response, err
 		}
@@ -153,7 +153,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 
 	if voucherAmount.LessThan(&config.Value) {
 		validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
-		err = createPayment(ctx, plumbing, response, &config.Value, validAt)
+		err = createPayment(ctx, plumbing, response, &config.Value, validAt, nil)
 		if err != nil {
 			return response, err
 		}
@@ -162,14 +162,16 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	return response, nil
 }
 
-func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount *types.AttoFIL, validAt *types.BlockHeight) error {
+func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
 		address.PaymentBrokerAddress,
 		"voucher",
 		response.Channel,
 		amount,
-		validAt)
+		validAt,
+		condition,
+	)
 	if err != nil {
 		return err
 	}
@@ -179,7 +181,7 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePay
 		return err
 	}
 
-	sig, err := paymentbroker.SignVoucher(&voucher.Channel, amount, validAt, voucher.Payer, plumbing)
+	sig, err := paymentbroker.SignVoucher(&voucher.Channel, amount, validAt, voucher.Payer, condition, plumbing)
 	if err != nil {
 		return err
 	}
