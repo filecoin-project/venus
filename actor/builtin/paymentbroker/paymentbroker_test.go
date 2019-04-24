@@ -118,14 +118,13 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		Params: []interface{}{
 			addrGetter(),
 			uint64(6),
-			types.NewBlockHeight(43),
 		},
 	}
 
 	sys := setup(t)
 	require.NoError(t, sys.st.SetActor(context.TODO(), conditionToAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-	appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+	appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
 	require.NoError(t, err)
 	require.NoError(t, appResult.ExecutionError)
 }
@@ -805,14 +804,14 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	return channel
 }
 
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate) (*consensus.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	amt := types.NewAttoFILFromFIL(amtInt)
 	signature, err := sys.Signature(amt, validAt, condition)
 	require.NoError(sys.t, err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, []interface{}{})
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, suppliedParams)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
