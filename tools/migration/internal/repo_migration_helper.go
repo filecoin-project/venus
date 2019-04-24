@@ -15,9 +15,9 @@ type RepoMigrationHelper struct {
 // what the correct paths should be, and creates a new RepoMigrationHelper with the
 // correct paths.
 func NewRepoMigrationHelper(oldRepoOpt, newRepoOpt, oldVersion, newVersion string) *RepoMigrationHelper {
-	oldPath := GetOldRepoPath(oldRepoOpt)
+	oldPath := getOldRepoPath(oldRepoOpt)
 	return &RepoMigrationHelper{
-		newRepoPath: GetNewRepoPath(oldPath, newRepoOpt, oldVersion, newVersion),
+		newRepoPath: getNewRepoPath(oldPath, newRepoOpt, oldVersion, newVersion),
 		newVersion:  newVersion,
 		oldRepoPath: oldPath,
 		oldVersion:  oldVersion,
@@ -26,7 +26,7 @@ func NewRepoMigrationHelper(oldRepoOpt, newRepoOpt, oldVersion, newVersion strin
 
 // GetOldRepo returns the old repo dir, opened as read-only.
 func (rmh *RepoMigrationHelper) GetOldRepo() (*os.File, error) {
-	return os.Open(GetOldRepoPath(rmh.oldRepoPath))
+	return os.Open(getOldRepoPath(rmh.oldRepoPath))
 }
 
 // MakeNewRepo creates the new repo dir and returns it with Read/Write access.
@@ -37,14 +37,14 @@ func (rmh *RepoMigrationHelper) MakeNewRepo() (*os.File, error) {
 	return os.Open(rmh.newRepoPath)
 }
 
-// GetOldRepoPath takes a command line option (which can be blank) and uses it
+// getOldRepoPath takes a command line option (which can be blank) and uses it
 // to find the correct old repo path.
-func GetOldRepoPath(cliOpt string) string {
+func getOldRepoPath(cliOpt string) string {
 	dirname := repo.GetRepoDir(cliOpt)
 	return ExpandHomedir(dirname)
 }
 
-// GetNewRepoPath generates a new repo path for a migration.
+// getNewRepoPath generates a new repo path for a migration.
 // Params:
 //     oldPath:  the actual old repo path
 //  newRepoOpt:  whatever was passed in by the CLI (can be blank)
@@ -52,7 +52,7 @@ func GetOldRepoPath(cliOpt string) string {
 //  newVersion:  version to migrate to
 // Returns:  a path generated using all of the above information plus a timestamp.
 // Example output:   /Users/davonte/.filecoin_1_2_2019-08-06_150455
-func GetNewRepoPath(oldPath, newRepoOpt, oldVersion, newVersion string) string {
+func getNewRepoPath(oldPath, newRepoOpt, oldVersion, newVersion string) string {
 	var newRepoDir string
 	if newRepoOpt != "" {
 		newRepoDir = newRepoOpt
