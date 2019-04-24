@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"os"
+	"os/user"
 	"strings"
 	"time"
 )
@@ -12,13 +12,14 @@ func NowString() string {
 	return now.Format("2006-01-02_150405")
 }
 
-// expandHomedir replaces an initial tilde in a dirname to the actual value of HOME.
+// expandHomedir replaces an initial tilde in a dirname to the home dir.
 // if there is no initial ~ , it returns dirname.
 func ExpandHomedir(dirname string) string {
 	if strings.LastIndex(dirname, "~") != 0 {
 		return dirname
 	}
-	// This counts on $HOME being set, just as FSRepo does
-	home := os.Getenv("HOME")
+
+	usr, _ := user.Current()
+	home := usr.HomeDir
 	return strings.Replace(dirname, "~", home, 1)
 }

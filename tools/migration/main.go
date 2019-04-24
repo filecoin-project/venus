@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
-	"github.com/filecoin-project/go-filecoin/util/version"
 )
 
 const USAGE = `
@@ -52,10 +50,6 @@ EXAMPLES
 func main() { // nolint: deadcode
 	if len(os.Args) < 2 {
 		showUsageAndExit(1)
-	}
-
-	if !version.Check(runtime.Version()) {
-		exitErr(fmt.Sprintf("Invalid go version: %s", runtime.Version()))
 	}
 
 	command := getCommand()
