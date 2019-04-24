@@ -361,6 +361,33 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestPaymentBrokerCloseWithCondition(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	t.Run("Close should succeed if condition is met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+	})
+
+	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{address.Undef, uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+	})
+}
+
 func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	tf.UnitTest(t)
 

@@ -112,7 +112,7 @@ var paymentBrokerExports = exec.Exports{
 		Return: nil,
 	},
 	"close": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes},
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
 		Return: nil,
 	},
 	"createChannel": &exec.FunctionSignature{
@@ -207,6 +207,8 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
+// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
+// Any non-fault error is considered a validation failure.
 func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -216,19 +218,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
-	// Any non-fault error is considered a validation failure.
-	if condition != nil {
-		allParams := []interface{}{}
-		allParams = append(allParams, condition.Params...)
-		allParams = append(allParams, redeemerSuppliedParams...)
-		_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), allParams)
-		if err != nil {
-			if errors.IsFault(err) {
-				return errors.CodeError(err), err
-			}
-			return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to validate voucher condition")
-		}
+	if errCode, err := checkCondition(vmctx, condition, redeemerSuppliedParams); err != nil {
+		return errCode, err
 	}
 
 	ctx := context.Background()
@@ -272,13 +263,17 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) (uint8, error) {
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
+	}
+
+	if errCode, err := checkCondition(vmctx, condition, redeemerSuppliedParams); err != nil {
+		return errCode, err
 	}
 
 	ctx := context.Background()
@@ -736,4 +731,17 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 	}
 
 	return actor.LoadTypedLookup(ctx, storage, byChannelCID, &PaymentChannel{})
+}
+
+func checkCondition(vmctx exec.VMContext, condition *types.Predicate, redeemerSuppliedParams []interface{}) (uint8, error) {
+	params := append(condition.Params[:0:0], condition.Params...)
+	params = append(params, redeemerSuppliedParams...)
+	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
+	if err != nil {
+		if errors.IsFault(err) {
+			return errors.CodeError(err), err
+		}
+		return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to validate voucher condition")
+	}
+	return 0, nil
 }
