@@ -110,9 +110,11 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	tf.UnitTest(t)
 
 	addrGetter := address.NewForTestGetter()
+	conditionToAddress := addrGetter()
+
 	condition := &types.Predicate{
-		To:     addrGetter(),
-		Method: "supportsTypedParameters",
+		To:     conditionToAddress,
+		Method: "supportsTypedParams",
 		Params: []interface{}{
 			addrGetter(),
 			uint64(6),
@@ -121,9 +123,11 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	}
 
 	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), conditionToAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-	_, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+	appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
 	require.NoError(t, err)
+	require.NoError(t, appResult.ExecutionError)
 }
 
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
@@ -805,10 +809,10 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	sys.t.Helper()
 
 	amt := types.NewAttoFILFromFIL(amtInt)
-	signature, err := sys.Signature(amt, validAt, nil)
+	signature, err := sys.Signature(amt, validAt, condition)
 	require.NoError(sys.t, err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
@@ -854,14 +858,14 @@ func (ma *PBTestActor) InitializeState(storage exec.Storage, initializerData int
 	return nil
 }
 
-func (ma *PBTestActor) SupportsTypedParams(ctx exec.VMContext, addr address.Address, sector uint64, bh types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) SupportsTypedParams(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}
 	if sector == 0 {
 		return 1, errors.NewRevertError("got zero sector")
 	}
-	if types.NewBlockHeight(0).Equal(&bh) {
+	if types.NewBlockHeight(0).Equal(bh) {
 		return 1, errors.NewRevertError("got zero block height")
 	}
 	return 0, nil

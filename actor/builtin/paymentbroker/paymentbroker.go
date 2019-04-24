@@ -219,9 +219,9 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 	// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
 	// Any non-fault error is considered a validation failure.
 	if condition != nil {
-		allParams := make([]interface{}, len(condition.Params)+len(redeemerSuppliedParams))
-		allParams = append(allParams, condition.Params)
-		allParams = append(allParams, redeemerSuppliedParams)
+		allParams := []interface{}{}
+		allParams = append(allParams, condition.Params...)
+		allParams = append(allParams, redeemerSuppliedParams...)
 		_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), allParams)
 		if err != nil {
 			if errors.IsFault(err) {
