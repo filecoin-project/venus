@@ -633,26 +633,37 @@ const separator = 0x0
 // channel, amount, validAt (earliest block height for redeem) and from address.
 // It does so by signing the following bytes: (channelID | 0x0 | amount | 0x0 | validAt)
 func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, condition *types.Predicate, signer types.Signer) (types.Signature, error) {
-	data := createVoucherSignatureData(channelID, amount, validAt, condition)
+	data, err := createVoucherSignatureData(channelID, amount, validAt, condition)
+	if err != nil {
+		return nil, err
+	}
 	return signer.SignBytes(data, addr)
 }
 
 // VerifyVoucherSignature returns whether the voucher's signature is valid
 func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) bool {
-	data := createVoucherSignatureData(chid, amt, validAt, condition)
+	data, err := createVoucherSignatureData(chid, amt, validAt, condition)
+	// the only error is failure to encode the values
+	if err != nil {
+		return false
+	}
 	return types.IsValidSignature(data, payer, sig)
 }
 
-func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) []byte {
+func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
 	data := append(channelID.Bytes(), separator)
 	data = append(data, amount.Bytes()...)
 	data = append(data, separator)
 	if condition != nil {
 		data = append(data, condition.To.Bytes()...)
 		data = append(data, []byte(condition.Method)...)
-		data = append(data, condition.Params...)
+		encodedParams, err := abi.ToEncodedValues(condition.Params...)
+		if err != nil {
+			return []byte{}, err
+		}
+		data = append(data, encodedParams...)
 	}
-	return append(data, validAt.Bytes()...)
+	return append(data, validAt.Bytes()...), nil
 }
 
 func withPayerChannels(ctx context.Context, storage exec.Storage, payer address.Address, f func(exec.Lookup) error) error {

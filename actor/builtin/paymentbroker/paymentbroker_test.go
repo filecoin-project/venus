@@ -573,7 +573,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		condition := &types.Predicate{
 			To:     address.NewForTestGetter()(),
 			Method: "someMethod",
-			Params: []byte("encoded params"),
+			Params: []interface{}{"encoded params"},
 		}
 
 		// create voucher
@@ -604,7 +604,7 @@ func TestSignVoucher(t *testing.T) {
 	condition := &types.Predicate{
 		To:     address.NewForTestGetter()(),
 		Method: "someMethod",
-		Params: []byte("encoded params"),
+		Params: []interface{}{"encoded params"},
 	}
 	var nilCondition *types.Predicate
 

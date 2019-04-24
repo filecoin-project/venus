@@ -21,7 +21,8 @@ type Predicate struct {
 	Method string `json:"method"`
 
 	// Params are the parameters (or a subset of the parameters) used to call the actor method.
-	Params []byte `json:"params"`
+	// The must all be individually abi encodable.
+	Params []interface{} `json:"params"`
 }
 
 // PaymentVoucher is a voucher for a payment channel that can be transferred off-chain but guarantees a future payment.

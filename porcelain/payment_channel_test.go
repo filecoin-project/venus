@@ -82,7 +82,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			Condition: &types.Predicate{
 				To:     address.Undef,
 				Method: "someMethod",
-				Params: []byte("params"),
+				Params: []interface{}{"params"},
 			},
 		}
 
@@ -102,7 +102,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			&types.Predicate{
 				To:     address.Undef,
 				Method: "someMethod",
-				Params: []byte("params"),
+				Params: []interface{}{"params"},
 			},
 		)
 		require.NoError(t, err)
