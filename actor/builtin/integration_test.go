@@ -2,6 +2,7 @@ package builtin_test
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
 	"github.com/ipfs/go-datastore"
@@ -72,14 +73,15 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	})
 }
 
-func createMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorId uint64, commD []byte, lastPoSt *types.BlockHeight) error {
+func createMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
 	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 
 	commitments := map[string]types.Commitments{}
 	commD32 := [32]byte{}
 	copy(commD32[:], commD)
-	commitments[string(sectorId)] = types.Commitments{CommD: commD32, CommR: [32]byte{}, CommRStar: [32]byte{}}
+	sectorIDstr := strconv.FormatUint(sectorID, 10)
+	commitments[sectorIDstr] = types.Commitments{CommD: commD32, CommR: [32]byte{}, CommRStar: [32]byte{}}
 	minerState := &miner.State{
 		SectorCommitments: commitments,
 		LastPoSt:          lastPoSt,
