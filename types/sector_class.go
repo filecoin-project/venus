@@ -3,7 +3,7 @@ package types
 // SectorClass represents the miner's chosen sector size and PoSt/seal proof
 // partitions.
 type SectorClass struct {
-	postProofPartitions  PoStProofPartitions
+	poStProofPartitions  PoStProofPartitions
 	poRepProofPartitions PoRepProofPartitions
 	sectorSize           SectorSize
 }
@@ -12,7 +12,7 @@ type SectorClass struct {
 func NewTestSectorClass() SectorClass {
 	return SectorClass{
 		poRepProofPartitions: TwoPoRepProofPartitions,
-		postProofPartitions:  OnePoStProofPartition,
+		poStProofPartitions:  OnePoStProofPartition,
 		sectorSize:           OneKiBSectorSize,
 	}
 }
@@ -21,7 +21,7 @@ func NewTestSectorClass() SectorClass {
 // go-filecoin node.
 func NewLiveSectorClass() SectorClass {
 	return SectorClass{
-		postProofPartitions:  OnePoStProofPartition,
+		poStProofPartitions:  OnePoStProofPartition,
 		poRepProofPartitions: TwoPoRepProofPartitions,
 		sectorSize:           TwoHundredFiftySixMiBSectorSize,
 	}
@@ -34,7 +34,7 @@ func (sc *SectorClass) PoRepProofPartitions() PoRepProofPartitions {
 
 // PoStProofPartitions returns the sector class's PoSt proof partitions
 func (sc *SectorClass) PoStProofPartitions() PoStProofPartitions {
-	return sc.postProofPartitions
+	return sc.poStProofPartitions
 }
 
 // SectorSize returns the size of this sector class's sectors after bit-padding

@@ -711,7 +711,7 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -770,7 +770,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (u
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
-				Proofs:        postProofs,
+				Proofs:        poStProofs,
 				SectorSize:    sectorSize,
 			}
 
