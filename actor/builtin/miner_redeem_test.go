@@ -26,33 +26,40 @@ import (
 func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	tf.UnitTest(t)
 
-	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
-
 	ctx := context.Background()
-	payer := mockSigner.Addresses[0]
 	addrGetter := address.NewForTestGetter()
+	amt := types.NewAttoFILFromFIL(100)
+	blockHeight := types.NewBlockHeight(0)
+
+	// Make a payment target who will receive the funds
 	target := addrGetter()
 	defaultValidAt := types.NewBlockHeight(uint64(0))
+
+	// Establish our state
 	_, st, vms := requireGenesis(ctx, t, target)
 
+	// Create a miner actor with fake commitments
 	minerAddr := addrGetter()
 	sectorID := uint64(123)
 	commP := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	commD := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
 	lastPoSt := types.NewBlockHeight(10)
-
 	require.NoError(t, createMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
 
+	// Create the payer actor
+	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
+	payer := mockSigner.Addresses[0]
 	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
+	// Create a payment channel from payer -> target
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
+
+	// Make a pip
+	// TODO: This pip is very Fake
 	pip := []byte{}
 	pip = append(pip, commP[:]...)
 	pip = append(pip, commD[:]...)
-
-	amt := types.NewAttoFILFromFIL(100)
-	blockHeight := types.NewBlockHeight(0)
 
 	makeCondition := func() *types.Predicate {
 		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}

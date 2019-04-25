@@ -39,7 +39,7 @@ const (
 	//ErrTooEarly indicates that the block height is too low to satisfy a voucher
 	ErrTooEarly = 43
 	//ErrConditionInvalid indicates that the condition attached to a voucher did not execute successfully
-	ErrConditionInvalid = 43
+	ErrConditionInvalid = 44
 )
 
 // CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
@@ -208,7 +208,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
 // If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
-// Any non-fault error is considered a validation failure.
+// Any non-fault error when the condition is run is considered a validation failure.
 func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -263,6 +263,9 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
+//
+// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
+// Any non-fault error when the condition is run is considered a validation failure.
 func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
