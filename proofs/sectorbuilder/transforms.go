@@ -88,7 +88,7 @@ func goPoStProofPartitions(partitions C.uint8_t) types.PoStProofPartitions {
 func cSectorClass(c types.SectorClass) (C.FFISectorClass, error) {
 	return C.FFISectorClass{
 		sector_size:            C.uint64_t(c.SectorSize().Uint64()),
-		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
-		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
+		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Uint8()),
+		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Uint8()),
 	}, nil
 }
