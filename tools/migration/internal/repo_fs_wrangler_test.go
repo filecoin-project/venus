@@ -2,6 +2,7 @@ package internal_test
 
 import (
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/golangci/golangci-lint/pkg/fsutils"
@@ -23,7 +24,7 @@ func TestRepoMigrationHelper_GetOldRepo(t *testing.T) {
 		mustMakeTmpDir(require, dirname)
 		defer mustRmDir(require, dirname)
 
-		rmh := NewRepoMigrationHelper(dirname, "", "1", "2")
+		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
 		or, err := rmh.GetOldRepo()
 		require.NoError(err)
 
@@ -42,13 +43,37 @@ func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 		mustMakeTmpDir(require, dirname)
 		defer mustRmDir(require, dirname)
 
-		rmh := NewRepoMigrationHelper(dirname, "", "1", "2")
+		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
 		or, err := rmh.MakeNewRepo()
 		require.NoError(err)
 		defer mustRmDir(require, or.Name())
 		assert.True(fsutils.IsDir(or.Name()))
 	})
 
+}
+
+func TestGetNewRepoPath(t *testing.T) {
+	tf.UnitTest(t)
+	assert := ast.New(t)
+	require := req.New(t)
+
+	dirname := "/tmp/myfilecoindir"
+
+	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
+		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse", "1", "2")
+		newpath := rmh.GetNewRepoPath()
+		rgx, err := regexp.Compile("/tmp/somethingelse_1_2_[0-9]{8}-[0-9]{6}$")
+		require.NoError(err)
+		assert.Regexp(rgx, newpath)
+	})
+
+	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
+		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
+		newpath := rmh.GetNewRepoPath()
+		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
+		require.NoError(err)
+		assert.Regexp(rgx, newpath)
+	})
 }
 
 func mustMakeTmpDir(require *req.Assertions, dirname string) {

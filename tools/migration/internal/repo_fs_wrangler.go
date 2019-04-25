@@ -11,10 +11,10 @@ type RepoFSWrangler struct {
 	oldRepoPath, newRepoPath string
 }
 
-// NewRepoMigrationHelper takes options for old and new repo paths, figures out
+// NewRepoFSWrangler takes options for old and new repo paths, figures out
 // what the correct paths should be, and creates a new RepoFSWrangler with the
 // correct paths.
-func NewRepoMigrationHelper(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion string) *RepoFSWrangler {
+func NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion string) *RepoFSWrangler {
 	return &RepoFSWrangler{
 		newRepoPath: getNewRepoPath(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion),
 		oldRepoPath: oldRepoOpt,

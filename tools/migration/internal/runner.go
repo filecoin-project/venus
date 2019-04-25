@@ -54,7 +54,7 @@ func NewMigrationRunner(verb bool, command, oldRepoOpt, newRepoPrefixOpt string)
 	oldVersion := "1"
 	newVersion := "2"
 
-	helper := NewRepoMigrationHelper(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion)
+	helper := NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion)
 	return &MigrationRunner{
 		verbose: verb,
 		command: command,
