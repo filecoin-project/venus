@@ -12,8 +12,6 @@ import (
 func TestPing2Nodes(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
 	d2 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6001")).Start()
@@ -29,8 +27,8 @@ func TestPing2Nodes(t *testing.T) {
 	ping2 := d2.RunSuccess("ping", "--count=2", d1.GetID())
 
 	t.Log("[success] 1 -> 2")
-	assert.Contains(ping1.ReadStdout(), "Pong received")
+	assert.Contains(t, ping1.ReadStdout(), "Pong received")
 
 	t.Log("[success] 2 -> 1")
-	assert.Contains(ping2.ReadStdout(), "Pong received")
+	assert.Contains(t, ping2.ReadStdout(), "Pong received")
 }

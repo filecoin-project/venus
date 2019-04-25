@@ -16,8 +16,6 @@ import (
 func TestSerializeProposal(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-
 	ag := address.NewForTestGetter()
 	cg := types.NewCidForTestGetter()
 	p := &storagedeal.Proposal{}
@@ -37,8 +35,8 @@ func TestSerializeProposal(t *testing.T) {
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
 	chunk, err := cbor.DumpObject(p)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	err = cbor.DecodeInto(chunk, &storagedeal.Proposal{})
-	require.NoError(err)
+	require.NoError(t, err)
 }

@@ -14,7 +14,6 @@ import (
 func TestMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 
 	// TODO: allow more types than just strings for the params
@@ -34,26 +33,25 @@ func TestMessageMarshal(t *testing.T) {
 	require.Equal(t, 6, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	msgBack := Message{}
-	assert.False(msg.Equals(&msgBack))
+	assert.False(t, msg.Equals(&msgBack))
 
 	err = msgBack.Unmarshal(marshalled)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(msg.To, msgBack.To)
-	assert.Equal(msg.From, msgBack.From)
-	assert.Equal(msg.Value, msgBack.Value)
-	assert.Equal(msg.Method, msgBack.Method)
-	assert.Equal(msg.Params, msgBack.Params)
-	assert.True(msg.Equals(&msgBack))
+	assert.Equal(t, msg.To, msgBack.To)
+	assert.Equal(t, msg.From, msgBack.From)
+	assert.Equal(t, msg.Value, msgBack.Value)
+	assert.Equal(t, msg.Method, msgBack.Method)
+	assert.Equal(t, msg.Params, msgBack.Params)
+	assert.True(t, msg.Equals(&msgBack))
 }
 
 func TestMessageCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 
 	msg1 := NewMessage(
@@ -75,18 +73,16 @@ func TestMessageCid(t *testing.T) {
 	)
 
 	c1, err := msg1.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := msg2.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.NotEqual(c1.String(), c2.String())
+	assert.NotEqual(t, c1.String(), c2.String())
 }
 
 func TestMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	addrGetter := address.NewForTestGetter()
 
 	msg := NewMessage(
@@ -99,8 +95,8 @@ func TestMessageString(t *testing.T) {
 	)
 
 	cid, err := msg.Cid()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	got := msg.String()
-	assert.Contains(got, cid.String())
+	assert.Contains(t, got, cid.String())
 }

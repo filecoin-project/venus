@@ -20,43 +20,40 @@ import (
 func TestSelfDialRetrievalGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	ctx := context.Background()
 
 	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)
-		require.NoError(err)
+		require.NoError(t, err)
 	}()
 
 	// Update genesis miner's peerid
 	var minerAddr address.Address
 	err := env.GenesisMiner.ConfigGet(ctx, "mining.minerAddress", &minerAddr)
-	require.NoError(err)
+	require.NoError(t, err)
 	details, err := env.GenesisMiner.ID(ctx)
-	require.NoError(err)
+	require.NoError(t, err)
 	msgCid, err := env.GenesisMiner.MinerUpdatePeerid(ctx, minerAddr, details.ID, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
-	require.NoError(err)
+	require.NoError(t, err)
 
 	series.CtxMiningOnce(ctx)
 	_, err = env.GenesisMiner.MessageWait(ctx, msgCid)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Add data to Genesis Miner.
 	f := files.NewBytesFile([]byte("satyamevajayate"))
 	cid, err := env.GenesisMiner.ClientImport(ctx, f)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Genesis Miner fails on self dial when retrieving from itself.
 	_, err = env.GenesisMiner.RetrievalClientRetrievePiece(ctx, cid, minerAddr)
-	assert.Error(err)
+	assert.Error(t, err)
 	var cmdOutBytes []byte
 	w := bytes.NewBuffer(cmdOutBytes)
 	env.GenesisMiner.DumpLastOutput(w)
 	outputStr := string(w.Bytes())
 	expectedErrStr := "attempting to retrieve piece from self"
-	assert.Contains(outputStr, expectedErrStr)
+	assert.Contains(t, outputStr, expectedErrStr)
 }

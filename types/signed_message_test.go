@@ -16,72 +16,63 @@ var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, GenerateKeyInfoSeed()))
 func TestSignedMessageString(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	smsg := makeMessage(t, mockSigner, 42)
 	cid, err := smsg.Cid()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	got := smsg.String()
-	assert.Contains(got, cid.String())
+	assert.Contains(t, got, cid.String())
 }
 
 func TestSignedMessageRecover(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
 
 	smsg := makeMessage(t, mockSigner, 42)
 
 	mockRecoverer := MockRecoverer{}
 
 	addr, err := smsg.RecoverAddress(&mockRecoverer)
-	assert.NoError(err)
-	assert.Equal(mockSigner.Addresses[0], addr)
+	assert.NoError(t, err)
+	assert.Equal(t, mockSigner.Addresses[0], addr)
 }
 
 func TestSignedMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	smsg := makeMessage(t, mockSigner, 42)
 
 	marshalled, err := smsg.Marshal()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	smsgBack := SignedMessage{}
-	assert.False(smsg.Equals(&smsgBack))
+	assert.False(t, smsg.Equals(&smsgBack))
 
 	err = smsgBack.Unmarshal(marshalled)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(smsg.To, smsgBack.To)
-	assert.Equal(smsg.From, smsgBack.From)
-	assert.Equal(smsg.Value, smsgBack.Value)
-	assert.Equal(smsg.Method, smsgBack.Method)
-	assert.Equal(smsg.Params, smsgBack.Params)
-	assert.Equal(smsg.GasPrice, smsgBack.GasPrice)
-	assert.Equal(smsg.GasLimit, smsgBack.GasLimit)
-	assert.Equal(smsg.Signature, smsgBack.Signature)
-	assert.True(smsg.Equals(&smsgBack))
+	assert.Equal(t, smsg.To, smsgBack.To)
+	assert.Equal(t, smsg.From, smsgBack.From)
+	assert.Equal(t, smsg.Value, smsgBack.Value)
+	assert.Equal(t, smsg.Method, smsgBack.Method)
+	assert.Equal(t, smsg.Params, smsgBack.Params)
+	assert.Equal(t, smsg.GasPrice, smsgBack.GasPrice)
+	assert.Equal(t, smsg.GasLimit, smsgBack.GasLimit)
+	assert.Equal(t, smsg.Signature, smsgBack.Signature)
+	assert.True(t, smsg.Equals(&smsgBack))
 }
 
 func TestSignedMessageCid(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	smsg1 := makeMessage(t, mockSigner, 41)
 	smsg2 := makeMessage(t, mockSigner, 42)
 
 	c1, err := smsg1.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := smsg2.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.NotEqual(c1.String(), c2.String())
+	assert.NotEqual(t, c1.String(), c2.String())
 }
 
 func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {

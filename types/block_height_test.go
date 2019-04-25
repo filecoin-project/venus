@@ -15,31 +15,27 @@ import (
 func TestBlockHeightCreation(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	a := NewBlockHeight(123)
-	assert.IsType(&BlockHeight{}, a)
+	assert.IsType(t, &BlockHeight{}, a)
 
 	ab := a.Bytes()
 	b := NewBlockHeightFromBytes(ab)
-	assert.Equal(a, b)
+	assert.Equal(t, a, b)
 
 	as := a.String()
-	assert.Equal(as, "123")
+	assert.Equal(t, as, "123")
 	c, ok := NewBlockHeightFromString(as, 10)
-	assert.True(ok)
-	assert.Equal(a, c)
+	assert.True(t, ok)
+	assert.Equal(t, a, c)
 
 	_, ok = NewBlockHeightFromString("asdf", 10)
-	assert.False(ok)
+	assert.False(t, ok)
 }
 
 func TestBlockHeightCborMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("CBOR decode(encode(BlockHeight)) == identity(BlockHeight)", func(t *testing.T) {
-		assert := assert.New(t)
-
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
@@ -47,26 +43,24 @@ func TestBlockHeightCborMarshaling(t *testing.T) {
 			postDecode := BlockHeight{}
 
 			out, err := cbor.DumpObject(preEncode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			err = cbor.DecodeInto(out, &postDecode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
+			assert.True(t, preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
 		}
 	})
 	t.Run("cannot CBOR encode nil as *BlockHeight", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *BlockHeight
 
 		out, err := cbor.DumpObject(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := cbor.DumpObject(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }
 
@@ -74,35 +68,31 @@ func TestBlockHeightJsonMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("JSON unmarshal(marshal(BlockHeight)) == identity(BlockHeight)", func(t *testing.T) {
-		assert := assert.New(t)
-
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
 			toBeMarshaled := NewBlockHeight(rng.Uint64())
 
 			marshaled, err := json.Marshal(toBeMarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var unmarshaled BlockHeight
 			err = json.Unmarshal(marshaled, &unmarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
+			assert.True(t, toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
 	t.Run("cannot JSON marshall nil as *BlockHeight", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *BlockHeight
 
 		out, err := json.Marshal(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := json.Marshal(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }
 
@@ -114,19 +104,17 @@ func TestBlockHeightComparison(t *testing.T) {
 	c := NewBlockHeight(456)
 
 	t.Run("handles comparison", func(t *testing.T) {
-		assert := assert.New(t)
+		assert.True(t, a.Equal(b))
+		assert.True(t, b.Equal(a))
 
-		assert.True(a.Equal(b))
-		assert.True(b.Equal(a))
+		assert.False(t, a.Equal(c))
+		assert.False(t, c.Equal(a))
 
-		assert.False(a.Equal(c))
-		assert.False(c.Equal(a))
-
-		assert.True(a.LessThan(c))
-		assert.True(a.LessEqual(c))
-		assert.True(c.GreaterThan(a))
-		assert.True(c.GreaterEqual(a))
-		assert.True(a.GreaterEqual(b))
-		assert.True(a.LessEqual(b))
+		assert.True(t, a.LessThan(c))
+		assert.True(t, a.LessEqual(c))
+		assert.True(t, c.GreaterThan(a))
+		assert.True(t, c.GreaterEqual(a))
+		assert.True(t, a.GreaterEqual(b))
+		assert.True(t, a.LessEqual(b))
 	})
 }

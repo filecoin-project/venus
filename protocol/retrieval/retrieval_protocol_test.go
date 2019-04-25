@@ -23,21 +23,20 @@ import (
 func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	ctx := context.Background()
 
 	minerNode, _, minerAddr, _ := configureMinerAndClient(t)
 
-	require.NoError(minerNode.StartMining(ctx))
+	require.NoError(t, minerNode.StartMining(ctx))
 	defer minerNode.StopMining(ctx)
 
 	someRandomCid := types.NewCidForTestGetter()()
 
 	minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	_, err = retrievePieceBytes(ctx, minerNode.RetrievalAPI, someRandomCid, minerPID, minerAddr)
-	require.Error(err)
+	require.Error(t, err)
 }
 
 func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) {

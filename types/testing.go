@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -214,9 +215,9 @@ func NewBlockForTest(parent *Block, nonce uint64) *Block {
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*Block) TipSet {
+func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
 	ts, err := NewTipSet(blks...)
-	require.NoError(err)
+	require.NoError(t, err)
 	return ts
 }
 
@@ -316,15 +317,15 @@ type HasCid interface {
 }
 
 // AssertHaveSameCid asserts that two values have identical CIDs.
-func AssertHaveSameCid(a *assert.Assertions, m HasCid, n HasCid) {
+func AssertHaveSameCid(t *testing.T, m HasCid, n HasCid) {
 	if !m.Cid().Equals(n.Cid()) {
-		a.Fail("CIDs don't match", "not equal %v %v", m.Cid(), n.Cid())
+		assert.Fail(t, "CIDs don't match", "not equal %v %v", m.Cid(), n.Cid())
 	}
 }
 
 // AssertCidsEqual asserts that two CIDS are identical.
-func AssertCidsEqual(a *assert.Assertions, m cid.Cid, n cid.Cid) {
+func AssertCidsEqual(t *testing.T, m cid.Cid, n cid.Cid) {
 	if !m.Equals(n) {
-		a.Fail("CIDs don't match", "not equal %v %v", m, n)
+		assert.Fail(t, "CIDs don't match", "not equal %v %v", m, n)
 	}
 }

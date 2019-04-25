@@ -18,8 +18,6 @@ import (
 func TestCachedStateGetCommit(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
 
@@ -40,15 +38,15 @@ func TestCachedStateGetCommit(t *testing.T) {
 	addr1, addr2 := addrGetter(), addrGetter()
 
 	// add actors to underlying cache
-	assert.NoError(underlying.SetActor(ctx, addr1, act1))
-	assert.NoError(underlying.SetActor(ctx, addr2, act2))
+	assert.NoError(t, underlying.SetActor(ctx, addr1, act1))
+	assert.NoError(t, underlying.SetActor(ctx, addr2, act2))
 
 	// get act1 from cache
 	cAct1, err := tree.GetActor(ctx, addr1)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(uint64(1), uint64(cAct1.Nonce))
-	assert.Equal(act1Cid, cAct1.Head)
+	assert.Equal(t, uint64(1), uint64(cAct1.Nonce))
+	assert.Equal(t, act1Cid, cAct1.Head)
 
 	// altering act1 doesn't alter it in underlying cache
 	cAct1.IncNonce()
@@ -56,39 +54,37 @@ func TestCachedStateGetCommit(t *testing.T) {
 	cAct1.Head = cAct1Cid
 
 	uAct1, err := underlying.GetActor(ctx, addr1)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(uint64(1), uint64(uAct1.Nonce))
-	assert.Equal(act1.Head, uAct1.Head)
+	assert.Equal(t, uint64(1), uint64(uAct1.Nonce))
+	assert.Equal(t, act1.Head, uAct1.Head)
 
 	// retrieving from the cache again returns the same instance
 	cAct1Again, err := tree.GetActor(ctx, addr1)
-	require.NoError(err)
-	assert.True(cAct1 == cAct1Again, "Cache returns same instance on second get")
+	require.NoError(t, err)
+	assert.True(t, cAct1 == cAct1Again, "Cache returns same instance on second get")
 
 	// commit changes sets changes in underlying tree
 	err = tree.Commit(ctx)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	uAct1Again, err := underlying.GetActor(ctx, addr1)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(uint64(2), uint64(uAct1Again.Nonce))
-	assert.Equal(cAct1Cid, uAct1Again.Head)
+	assert.Equal(t, uint64(2), uint64(uAct1Again.Nonce))
+	assert.Equal(t, cAct1Cid, uAct1Again.Head)
 
 	// commit doesn't affect untouched actors
 	uAct2, err := underlying.GetActor(ctx, addr2)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(uint64(0), uint64(uAct2.Nonce))
-	assert.Equal(act2Cid, uAct2.Head)
+	assert.Equal(t, uint64(0), uint64(uAct2.Nonce))
+	assert.Equal(t, act2Cid, uAct2.Head)
 }
 
 func TestCachedStateGetOrCreate(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
 
@@ -103,17 +99,17 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 		return actorToCreate, nil
 	})
-	require.NoError(err)
-	assert.True(actor == actorToCreate, "GetOrCreate returns same instance created in creator")
+	require.NoError(t, err)
+	assert.True(t, actor == actorToCreate, "GetOrCreate returns same instance created in creator")
 
 	// cache returns same instance
 	cAct, err := tree.GetActor(ctx, addr)
-	require.NoError(err)
-	assert.True(actor == cAct, "actor retrieved from cache is same as actor created in cache")
+	require.NoError(t, err)
+	assert.True(t, actor == cAct, "actor retrieved from cache is same as actor created in cache")
 
 	// GetOrCreate does not add actor to underlying tree
 	_, err = underlying.GetActor(ctx, addr)
-	require.Equal("actor not found", err.Error())
+	require.Equal(t, "actor not found", err.Error())
 }
 
 func requireCid(t *testing.T, data string) cid.Cid {

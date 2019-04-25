@@ -12,12 +12,10 @@ import (
 func TestBootstrapList(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	bs := d.RunSuccess("bootstrap ls")
 
-	assert.Equal("&{[]}\n", bs.ReadStdout())
+	assert.Equal(t, "&{[]}\n", bs.ReadStdout())
 }

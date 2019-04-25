@@ -77,8 +77,6 @@ func TestMessageWait(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
-		assert := assert.New(t)
-
 		msg := d.RunSuccess(
 			"message", "send",
 			"--from", fixtures.TestAddresses[0],
@@ -100,7 +98,7 @@ func TestMessageWait(t *testing.T) {
 				msgcid,
 			)
 			// nothing should be printed, as there is no return value
-			assert.Equal("", wait.ReadStdout())
+			assert.Equal(t, "", wait.ReadStdout())
 			wg.Done()
 		}()
 
@@ -157,8 +155,6 @@ func TestMessageStatus(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	t.Run("queue then on chain", func(t *testing.T) {
-		assert := assert.New(t)
-
 		msg := d.RunSuccess(
 			"message", "send",
 			"--from", fixtures.TestAddresses[0],
@@ -170,23 +166,23 @@ func TestMessageStatus(t *testing.T) {
 		msgcid := strings.Trim(msg.ReadStdout(), "\n")
 		status := d.RunSuccess("message", "status", msgcid).ReadStdout()
 
-		assert.Contains(status, "In outbox")
-		assert.Contains(status, "In mpool")
-		assert.NotContains(status, "On chain") // not found on chain (yet)
-		assert.Contains(status, "1234")        // the "value"
+		assert.Contains(t, status, "In outbox")
+		assert.Contains(t, status, "In mpool")
+		assert.NotContains(t, status, "On chain") // not found on chain (yet)
+		assert.Contains(t, status, "1234")        // the "value"
 
 		d.RunSuccess("mining once")
 
 		status = d.RunSuccess("message", "status", msgcid).ReadStdout()
 
-		assert.NotContains(status, "In outbox")
-		assert.NotContains(status, "In mpool")
-		assert.Contains(status, "On chain")
-		assert.Contains(status, "1234") // the "value"
+		assert.NotContains(t, status, "In outbox")
+		assert.NotContains(t, status, "In mpool")
+		assert.Contains(t, status, "On chain")
+		assert.Contains(t, status, "1234") // the "value"
 
 		status = d.RunSuccess("message", "status", "QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS").ReadStdout()
-		assert.NotContains(status, "In outbox")
-		assert.NotContains(status, "In mpool")
-		assert.NotContains(status, "On chain")
+		assert.NotContains(t, status, "In outbox")
+		assert.NotContains(t, status, "In mpool")
+		assert.NotContains(t, status, "On chain")
 	})
 }

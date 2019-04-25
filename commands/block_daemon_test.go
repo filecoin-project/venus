@@ -17,8 +17,6 @@ func TestBlockDaemon(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("show block <cid-of-genesis-block> returns human readable output for the filecoin block", func(t *testing.T) {
-		assert := assert.New(t)
-
 		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
@@ -28,15 +26,13 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		output := d.RunSuccess("show", "block", minedBlockCidStr).ReadStdoutTrimNewlines()
 
-		assert.Contains(output, "Block Details")
-		assert.Contains(output, "Weight: 0")
-		assert.Contains(output, "Height: 1")
-		assert.Contains(output, "Nonce:  0")
+		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "Weight: 0")
+		assert.Contains(t, output, "Height: 1")
+		assert.Contains(t, output, "Nonce:  0")
 	})
 
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {
-		require := require.New(t)
-
 		d := th.NewDaemon(t,
 			th.KeyFile(fixtures.KeyFilePaths()[0]),
 			th.WithMiner(fixtures.TestMiners[0])).Start()
@@ -48,11 +44,11 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		blockGetLine := th.RunSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
 		var blockGetBlock types.Block
-		require.NoError(json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
+		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		// ensure that we were returned the correct block
 
-		require.Equal(minedBlockCidStr, blockGetBlock.Cid().String())
+		require.Equal(t, minedBlockCidStr, blockGetBlock.Cid().String())
 
 		// ensure that the JSON we received from block get conforms to schema
 

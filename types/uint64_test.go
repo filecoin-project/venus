@@ -13,28 +13,24 @@ import (
 func TestUint64CBor(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	v := Uint64(64)
 	m, err := cbor.DumpObject(v)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	var got Uint64
 	err = cbor.DecodeInto(m, &got)
-	assert.NoError(err)
-	assert.Equal(v, got)
+	assert.NoError(t, err)
+	assert.Equal(t, v, got)
 }
 
 func TestUint64Json(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	v := Uint64(64)
 	m, err := json.Marshal(v)
-	assert.NoError(err)
-	assert.Equal(`"64"`, string(m))
+	assert.NoError(t, err)
+	assert.Equal(t, `"64"`, string(m))
 	var got Uint64
 	err = json.Unmarshal(m, &got)
-	assert.NoError(err)
-	assert.Equal(v, got)
+	assert.NoError(t, err)
+	assert.Equal(t, v, got)
 }

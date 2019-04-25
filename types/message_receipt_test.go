@@ -12,8 +12,6 @@ import (
 func TestMessageReceiptMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	cases := []MessageReceipt{
 		{
 			ExitCode: 1,
@@ -27,12 +25,12 @@ func TestMessageReceiptMarshal(t *testing.T) {
 
 	for _, expected := range cases {
 		bytes, err := cbor.DumpObject(expected)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		var actual MessageReceipt
 		err = cbor.DecodeInto(bytes, &actual)
 
-		assert.NoError(err)
-		assert.Equal(expected, actual)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
 	}
 }
