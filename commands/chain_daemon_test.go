@@ -19,9 +19,6 @@ import (
 func TestChainHead(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
@@ -29,31 +26,27 @@ func TestChainHead(t *testing.T) {
 
 	var cidsFromJSON []cid.Cid
 	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	textResult := d.RunSuccess("chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
 
 	textCid, err := cid.Decode(textResult)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(textCid, cidsFromJSON[0])
+	assert.Equal(t, textCid, cidsFromJSON[0])
 }
 
 func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
-
-		assert := assert.New(t)
-		require := require.New(t)
-
 		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
 
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
 		result1 := op1.ReadStdoutTrimNewlines()
 		c, err := cid.Parse(result1)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
 		result2 := op2.ReadStdoutTrimNewlines()
@@ -62,9 +55,9 @@ func TestChainLs(t *testing.T) {
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
 			var b []types.Block
 			err := json.Unmarshal(line, &b)
-			require.NoError(err)
+			require.NoError(t, err)
 			bs = append(bs, b)
-			require.Equal(1, len(b))
+			require.Equal(t, 1, len(b))
 			line = bytes.TrimPrefix(line, []byte{'['})
 			line = bytes.TrimSuffix(line, []byte{']'})
 
@@ -72,16 +65,12 @@ func TestChainLs(t *testing.T) {
 			requireSchemaConformance(t, line, "filecoin_block")
 		}
 
-		assert.Equal(2, len(bs))
-		assert.True(bs[1][0].Parents.Empty())
-		assert.True(c.Equals(bs[0][0].Cid()))
+		assert.Equal(t, 2, len(bs))
+		assert.True(t, bs[1][0].Parents.Empty())
+		assert.True(t, c.Equals(bs[0][0].Cid()))
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
-
-		assert := assert.New(t)
-		require := require.New(t)
-
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -90,16 +79,12 @@ func TestChainLs(t *testing.T) {
 
 		var b []types.Block
 		err := json.Unmarshal([]byte(result), &b)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.True(b[0].Parents.Empty())
+		assert.True(t, b[0].Parents.Empty())
 	})
 
 	t.Run("chain ls with text encoding returns only CIDs", func(t *testing.T) {
-
-		assert := assert.New(t)
-		require := require.New(t)
-
 		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
@@ -107,7 +92,7 @@ func TestChainLs(t *testing.T) {
 		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
 		err := json.Unmarshal([]byte(blockJSON), &blocks)
 		genesisBlockCid := blocks[0].Cid().String()
-		require.NoError(err)
+		require.NoError(t, err)
 
 		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
 
@@ -115,13 +100,10 @@ func TestChainLs(t *testing.T) {
 
 		chainLsResult := daemon.RunSuccess("chain", "ls").ReadStdoutTrimNewlines()
 
-		assert.Equal(chainLsResult, expectedOutput)
+		assert.Equal(t, chainLsResult, expectedOutput)
 	})
 
 	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
-
-		assert := assert.New(t)
-
 		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
@@ -129,23 +111,20 @@ func TestChainLs(t *testing.T) {
 
 		chainLsResult := daemon.RunSuccess("chain", "ls", "--long").ReadStdoutTrimNewlines()
 
-		assert.Contains(chainLsResult, newBlockCid)
-		assert.Contains(chainLsResult, fixtures.TestMiners[0])
-		assert.Contains(chainLsResult, "1")
-		assert.Contains(chainLsResult, "0")
+		assert.Contains(t, chainLsResult, newBlockCid)
+		assert.Contains(t, chainLsResult, fixtures.TestMiners[0])
+		assert.Contains(t, chainLsResult, "1")
+		assert.Contains(t, chainLsResult, "0")
 	})
 
 	t.Run("chain ls --long with JSON encoding returns integer string block height and nonce", func(t *testing.T) {
-
-		assert := assert.New(t)
-
 		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
 		daemon.RunSuccess("mining", "once", "--enc", "text")
 		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
-		assert.Contains(chainLsResult, `"height":"0"`)
-		assert.Contains(chainLsResult, `"height":"1"`)
-		assert.Contains(chainLsResult, `"nonce":"0"`)
+		assert.Contains(t, chainLsResult, `"height":"0"`)
+		assert.Contains(t, chainLsResult, `"height":"1"`)
+		assert.Contains(t, chainLsResult, `"nonce":"0"`)
 	})
 }

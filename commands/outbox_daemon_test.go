@@ -13,8 +13,6 @@ import (
 func TestOutbox(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
 		return d.RunSuccess("message", "send",
 			"--from", from,
@@ -33,19 +31,19 @@ func TestOutbox(t *testing.T) {
 		c3 := sendMessage(d, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
 
 		out := d.RunSuccess("outbox", "ls").ReadStdout()
-		assert.Contains(out, fixtures.TestAddresses[0])
-		assert.Contains(out, fixtures.TestAddresses[1])
-		assert.Contains(out, c1)
-		assert.Contains(out, c2)
-		assert.Contains(out, c3)
+		assert.Contains(t, out, fixtures.TestAddresses[0])
+		assert.Contains(t, out, fixtures.TestAddresses[1])
+		assert.Contains(t, out, c1)
+		assert.Contains(t, out, c2)
+		assert.Contains(t, out, c3)
 
 		// With address filter
 		out = d.RunSuccess("outbox", "ls", fixtures.TestAddresses[1]).ReadStdout()
-		assert.NotContains(out, fixtures.TestAddresses[0])
-		assert.Contains(out, fixtures.TestAddresses[1])
-		assert.NotContains(out, c1)
-		assert.NotContains(out, c2)
-		assert.Contains(out, c3)
+		assert.NotContains(t, out, fixtures.TestAddresses[0])
+		assert.Contains(t, out, fixtures.TestAddresses[1])
+		assert.NotContains(t, out, c1)
+		assert.NotContains(t, out, c2)
+		assert.Contains(t, out, c3)
 	})
 
 	t.Run("clear queue", func(t *testing.T) {
@@ -60,11 +58,11 @@ func TestOutbox(t *testing.T) {
 		// With address filter
 		d.RunSuccess("outbox", "clear", fixtures.TestAddresses[1])
 		out := d.RunSuccess("outbox", "ls").ReadStdout()
-		assert.Contains(out, fixtures.TestAddresses[0])
-		assert.NotContains(out, fixtures.TestAddresses[1]) // Cleared
-		assert.Contains(out, c1)
-		assert.Contains(out, c2)
-		assert.NotContains(out, c3) // cleared
+		assert.Contains(t, out, fixtures.TestAddresses[0])
+		assert.NotContains(t, out, fixtures.TestAddresses[1]) // Cleared
+		assert.Contains(t, out, c1)
+		assert.Contains(t, out, c2)
+		assert.NotContains(t, out, c3) // cleared
 
 		// Repopulate
 		sendMessage(d, fixtures.TestAddresses[1], fixtures.TestAddresses[2]).ReadStdoutTrimNewlines()
@@ -72,11 +70,11 @@ func TestOutbox(t *testing.T) {
 		// #nofilter
 		d.RunSuccess("outbox", "clear")
 		out = d.RunSuccess("outbox", "ls").ReadStdoutTrimNewlines()
-		assert.Empty(out)
+		assert.Empty(t, out)
 
 		// Clearing empty queue
 		d.RunSuccess("outbox", "clear")
 		out = d.RunSuccess("outbox", "ls").ReadStdoutTrimNewlines()
-		assert.Empty(out)
+		assert.Empty(t, out)
 	})
 }

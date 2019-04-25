@@ -27,23 +27,19 @@ func TestTransfer(t *testing.T) {
 	actor3 := actor.NewActor(cid.Undef, nil)
 
 	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
+		assert.NoError(t, Transfer(actor1, actor2, types.NewAttoFILFromFIL(10)))
+		assert.Equal(t, actor1.Balance, types.NewAttoFILFromFIL(90))
+		assert.Equal(t, actor2.Balance, types.NewAttoFILFromFIL(60))
 
-		assert.NoError(Transfer(actor1, actor2, types.NewAttoFILFromFIL(10)))
-		assert.Equal(actor1.Balance, types.NewAttoFILFromFIL(90))
-		assert.Equal(actor2.Balance, types.NewAttoFILFromFIL(60))
-
-		assert.NoError(Transfer(actor1, actor3, types.NewAttoFILFromFIL(20)))
-		assert.Equal(actor1.Balance, types.NewAttoFILFromFIL(70))
-		assert.Equal(actor3.Balance, types.NewAttoFILFromFIL(20))
+		assert.NoError(t, Transfer(actor1, actor3, types.NewAttoFILFromFIL(20)))
+		assert.Equal(t, actor1.Balance, types.NewAttoFILFromFIL(70))
+		assert.Equal(t, actor3.Balance, types.NewAttoFILFromFIL(20))
 	})
 
 	t.Run("fail", func(t *testing.T) {
-		assert := assert.New(t)
-
 		negval := types.NewAttoFILFromFIL(0).Sub(types.NewAttoFILFromFIL(1000))
-		assert.EqualError(Transfer(actor2, actor3, types.NewAttoFILFromFIL(1000)), "not enough balance")
-		assert.EqualError(Transfer(actor2, actor3, negval), "cannot transfer negative values")
+		assert.EqualError(t, Transfer(actor2, actor3, types.NewAttoFILFromFIL(1000)), "not enough balance")
+		assert.EqualError(t, Transfer(actor2, actor3, negval), "cannot transfer negative values")
 	})
 }
 
@@ -58,8 +54,6 @@ func TestSendErrorHandling(t *testing.T) {
 	vms := NewStorageMap(bs)
 
 	t.Run("returns exit code 1 and an unwrapped error if we fail to transfer value from one actor to another", func(t *testing.T) {
-		assert := assert.New(t)
-
 		transferErr := xerrors.New("error")
 
 		msg := newMsg()
@@ -84,14 +78,12 @@ func TestSendErrorHandling(t *testing.T) {
 		vmCtx := NewVMContext(vmCtxParams)
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
-		assert.Error(sendErr)
-		assert.Equal(1, int(code))
-		assert.Equal(transferErr, sendErr)
+		assert.Error(t, sendErr)
+		assert.Equal(t, 1, int(code))
+		assert.Equal(t, transferErr, sendErr)
 	})
 
 	t.Run("returns right exit code and a revert error if we can't load the recipient actor's code", func(t *testing.T) {
-		assert := assert.New(t)
-
 		msg := newMsg()
 		msg.Value = nil // such that we don't transfer
 
@@ -110,19 +102,17 @@ func TestSendErrorHandling(t *testing.T) {
 		vmCtx := NewVMContext(vmCtxParams)
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
-		assert.Error(sendErr)
-		assert.Equal(errors.ErrNoActorCode, int(code))
-		assert.True(errors.ShouldRevert(sendErr))
+		assert.Error(t, sendErr)
+		assert.Equal(t, errors.ErrNoActorCode, int(code))
+		assert.True(t, errors.ShouldRevert(sendErr))
 	})
 
 	t.Run("returns exit code 1 and a revert error if code doesn't export a matching method", func(t *testing.T) {
-		assert := assert.New(t)
-
 		msg := newMsg()
 		msg.Value = nil // such that we don't transfer
 		msg.Method = "bar"
 
-		assert.False(actor.FakeActorExports.Has(msg.Method))
+		assert.False(t, actor.FakeActorExports.Has(msg.Method))
 
 		deps := sendDeps{}
 
@@ -142,8 +132,8 @@ func TestSendErrorHandling(t *testing.T) {
 		vmCtx := NewVMContext(vmCtxParams)
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
 
-		assert.Error(sendErr)
-		assert.Equal(1, int(code))
-		assert.True(errors.ShouldRevert(sendErr))
+		assert.Error(t, sendErr)
+		assert.Equal(t, 1, int(code))
+		assert.True(t, errors.ShouldRevert(sendErr))
 	})
 }

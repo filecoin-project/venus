@@ -21,8 +21,6 @@ func TestDAGGet(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("invalid ref", func(t *testing.T) {
-
-		assert := assert.New(t)
 		ctx := context.Background()
 
 		mds := datastore.NewMapDatastore()
@@ -33,12 +31,10 @@ func TestDAGGet(t *testing.T) {
 		dag := NewDAG(dserv)
 
 		_, err := dag.GetNode(ctx, "awful")
-		assert.EqualError(err, "invalid 'ipfs ref' path")
+		assert.EqualError(t, err, "invalid 'ipfs ref' path")
 	})
 
 	t.Run("ILPD node not found results in error", func(t *testing.T) {
-
-		assert := assert.New(t)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*200)
 		defer cancel()
 
@@ -52,12 +48,10 @@ func TestDAGGet(t *testing.T) {
 		someCid := types.SomeCid()
 
 		_, err := dag.GetNode(ctx, someCid.String())
-		assert.EqualError(err, "merkledag: not found")
+		assert.EqualError(t, err, "merkledag: not found")
 	})
 
 	t.Run("matching IPLD node is emitted", func(t *testing.T) {
-
-		assert := assert.New(t)
 		ctx := context.Background()
 
 		mds := datastore.NewMapDatastore()
@@ -70,13 +64,13 @@ func TestDAGGet(t *testing.T) {
 		ipldnode := types.NewBlockForTest(nil, 1234).ToNode()
 
 		// put into out blockservice
-		assert.NoError(blkserv.AddBlock(ipldnode))
+		assert.NoError(t, blkserv.AddBlock(ipldnode))
 
 		res, err := dag.GetNode(ctx, ipldnode.Cid().String())
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		nodeBack, ok := res.(format.Node)
-		assert.True(ok)
-		assert.Equal(ipldnode.Cid().String(), nodeBack.Cid().String())
+		assert.True(t, ok)
+		assert.Equal(t, ipldnode.Cid().String(), nodeBack.Cid().String())
 	})
 }

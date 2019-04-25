@@ -17,13 +17,13 @@ import (
 )
 
 type testPaymentChannelLsPlumbing struct {
-	require  *require.Assertions
+	testing  *testing.T
 	channels map[string]*paymentbroker.PaymentChannel
 }
 
 func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	chnls, err := cbor.DumpObject(p.channels)
-	p.require.NoError(err)
+	require.NoError(p.testing, err)
 	return [][]byte{chnls}, nil
 }
 
@@ -35,31 +35,28 @@ func TestPaymentChannelLs(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
 		expectedChannels := map[string]*paymentbroker.PaymentChannel{}
 
 		plumbing := &testPaymentChannelLsPlumbing{
 			channels: expectedChannels,
-			require:  require,
+			testing:  t,
 		}
 		ctx := context.Background()
 
 		channels, err := porcelain.PaymentChannelLs(ctx, plumbing, address.Undef, address.Undef)
-		require.NoError(err)
-		assert.Equal(expectedChannels, channels)
+		require.NoError(t, err)
+		assert.Equal(t, expectedChannels, channels)
 	})
 }
 
 type testPaymentChannelVoucherPlumbing struct {
-	require *require.Assertions
+	testing *testing.T
 	voucher *types.PaymentVoucher
 }
 
 func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	result, err := actor.MarshalStorage(p.voucher)
-	p.require.NoError(err)
+	require.NoError(p.testing, err)
 	return [][]byte{result}, nil
 }
 
@@ -75,9 +72,6 @@ func TestPaymentChannelVoucher(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("succeeds", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
 		expectedVoucher := &types.PaymentVoucher{
 			Channel:   *types.NewChannelID(5),
 			Payer:     address.Undef,
@@ -93,7 +87,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 		}
 
 		plumbing := &testPaymentChannelVoucherPlumbing{
-			require: require,
+			testing: t,
 			voucher: expectedVoucher,
 		}
 		ctx := context.Background()
@@ -111,15 +105,15 @@ func TestPaymentChannelVoucher(t *testing.T) {
 				Params: []byte("params"),
 			},
 		)
-		require.NoError(err)
-		assert.Equal(expectedVoucher.Channel, voucher.Channel)
-		assert.Equal(expectedVoucher.Payer, voucher.Payer)
-		assert.Equal(expectedVoucher.Target, voucher.Target)
-		assert.Equal(expectedVoucher.Amount, voucher.Amount)
-		assert.Equal(expectedVoucher.ValidAt, voucher.ValidAt)
-		assert.Equal(expectedVoucher.Condition.To, voucher.Condition.To)
-		assert.Equal(expectedVoucher.Condition.Method, voucher.Condition.Method)
-		assert.Equal(expectedVoucher.Condition.Params, voucher.Condition.Params)
-		assert.NotEqual(expectedVoucher.Signature, voucher.Signature)
+		require.NoError(t, err)
+		assert.Equal(t, expectedVoucher.Channel, voucher.Channel)
+		assert.Equal(t, expectedVoucher.Payer, voucher.Payer)
+		assert.Equal(t, expectedVoucher.Target, voucher.Target)
+		assert.Equal(t, expectedVoucher.Amount, voucher.Amount)
+		assert.Equal(t, expectedVoucher.ValidAt, voucher.ValidAt)
+		assert.Equal(t, expectedVoucher.Condition.To, voucher.Condition.To)
+		assert.Equal(t, expectedVoucher.Condition.Method, voucher.Condition.Method)
+		assert.Equal(t, expectedVoucher.Condition.Params, voucher.Condition.Params)
+		assert.NotEqual(t, expectedVoucher.Signature, voucher.Signature)
 	})
 }

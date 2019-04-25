@@ -29,9 +29,9 @@ func init() {
 	}
 }
 
-func mustGetStdout(require *require.Assertions, out io.ReadCloser) string {
+func mustGetStdout(t *testing.T, out io.ReadCloser) string {
 	o, err := ioutil.ReadAll(out)
-	require.NoError(err)
+	require.NoError(t, err)
 	return string(o)
 }
 
@@ -43,8 +43,6 @@ type testJSONOutParam struct {
 func TestRunCmds(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	dir := "mockdir"
 
@@ -55,43 +53,41 @@ func TestRunCmds(t *testing.T) {
 	}
 
 	c, err := ns.Load()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	fc, ok := c.(IPTBCoreExt)
-	require.True(ok)
+	require.True(t, ok)
 
 	mfc := NewFilecoinProcess(ctx, fc, EnvironmentOpts{})
 
 	t.Run("test RunCmdWithStdin", func(t *testing.T) {
 		out, err := mfc.RunCmdWithStdin(ctx, nil, "")
-		require.NoError(err)
-		outStr := mustGetStdout(require, out.Stdout())
-		assert.Equal("string", outStr)
+		require.NoError(t, err)
+		outStr := mustGetStdout(t, out.Stdout())
+		assert.Equal(t, "string", outStr)
 	})
 
 	t.Run("test RunCmdJSONWithStdin", func(t *testing.T) {
 		var outParam testJSONOutParam
 		err = mfc.RunCmdJSONWithStdin(ctx, nil, &outParam, "json")
-		require.NoError(err)
-		assert.Equal("value", outParam.Key)
+		require.NoError(t, err)
+		assert.Equal(t, "value", outParam.Key)
 	})
 
 	t.Run("test RunCmdLDJsonWithStdin", func(t *testing.T) {
 		var outLdParam testJSONOutParam
 		cmdDecoder, err := mfc.RunCmdLDJSONWithStdin(ctx, nil, "ldjson")
-		require.NoError(err)
-		assert.NoError(cmdDecoder.Decode(&outLdParam))
-		assert.Equal("value1", outLdParam.Key)
-		assert.NoError(cmdDecoder.Decode(&outLdParam))
-		assert.Equal("value2", outLdParam.Key)
+		require.NoError(t, err)
+		assert.NoError(t, cmdDecoder.Decode(&outLdParam))
+		assert.Equal(t, "value1", outLdParam.Key)
+		assert.NoError(t, cmdDecoder.Decode(&outLdParam))
+		assert.Equal(t, "value2", outLdParam.Key)
 	})
 }
 
 func TestInitDaemon(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	dir := "mockdir"
 
@@ -102,10 +98,10 @@ func TestInitDaemon(t *testing.T) {
 	}
 
 	c, err := ns.Load()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	fc, ok := c.(IPTBCoreExt)
-	require.True(ok)
+	require.True(t, ok)
 
 	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
 
@@ -115,15 +111,13 @@ func TestInitDaemon(t *testing.T) {
 
 		mfc := NewFilecoinProcess(ctx, fc, fastenvOpts)
 		_, err := mfc.InitDaemon(context.Background(), "--foo")
-		require.Equal(ErrDoubleInitOpts, err)
+		require.Equal(t, ErrDoubleInitOpts, err)
 	})
 }
 
 func TestStartDaemon(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	dir := "mockdir"
 
@@ -134,10 +128,10 @@ func TestStartDaemon(t *testing.T) {
 	}
 
 	c, err := ns.Load()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	fc, ok := c.(IPTBCoreExt)
-	require.True(ok)
+	require.True(t, ok)
 
 	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
 
@@ -147,6 +141,6 @@ func TestStartDaemon(t *testing.T) {
 
 		mfc := NewFilecoinProcess(ctx, fc, fastenvOpts)
 		_, err := mfc.StartDaemon(context.Background(), true, "--foo")
-		require.Equal(ErrDoubleDaemonOpts, err)
+		require.Equal(t, ErrDoubleDaemonOpts, err)
 	})
 }

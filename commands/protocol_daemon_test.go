@@ -12,13 +12,11 @@ import (
 func TestProtocol(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	protocol := d.RunSuccess("protocol")
 
 	protocolContent := protocol.ReadStdout()
-	assert.Contains(protocolContent, "Auto-Seal Interval: 120 seconds")
+	assert.Contains(t, protocolContent, "Auto-Seal Interval: 120 seconds")
 }

@@ -11,12 +11,10 @@ import (
 func TestBitswapStats(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	stats := d.RunSuccess("bitswap", "stats").ReadStdoutTrimNewlines()
 
-	assert.Equal(`{"ProvideBufLen":0,"Wantlist":[],"Peers":[],"BlocksReceived":0,"DataReceived":0,"BlocksSent":0,"DataSent":0,"DupBlksReceived":0,"DupDataReceived":0,"MessagesReceived":0}`, stats)
+	assert.Equal(t, `{"ProvideBufLen":0,"Wantlist":[],"Peers":[],"BlocksReceived":0,"DataReceived":0,"BlocksSent":0,"DataSent":0,"DupBlksReceived":0,"DupDataReceived":0,"MessagesReceived":0}`, stats)
 }

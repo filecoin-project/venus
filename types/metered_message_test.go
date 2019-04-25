@@ -14,7 +14,6 @@ import (
 func TestMeteredMessageMessage(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	addrGetter := address.NewForTestGetter()
 
 	t.Run("marshal and equality", func(t *testing.T) {
@@ -34,22 +33,22 @@ func TestMeteredMessageMessage(t *testing.T) {
 		require.Equal(t, 3, reflect.TypeOf(*mmsg).NumField())
 
 		marshalled, err := mmsg.Marshal()
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		msgBack := MeteredMessage{}
-		assert.False(mmsg.Equals(&msgBack))
+		assert.False(t, mmsg.Equals(&msgBack))
 
 		err = msgBack.Unmarshal(marshalled)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.Equal(mmsg.To, msgBack.To)
-		assert.Equal(mmsg.From, msgBack.From)
-		assert.Equal(mmsg.Value, msgBack.Value)
-		assert.Equal(mmsg.Method, msgBack.Method)
-		assert.Equal(mmsg.Params, msgBack.Params)
-		assert.Equal(mmsg.GasPrice, msgBack.GasPrice)
-		assert.Equal(mmsg.GasLimit, msgBack.GasLimit)
+		assert.Equal(t, mmsg.To, msgBack.To)
+		assert.Equal(t, mmsg.From, msgBack.From)
+		assert.Equal(t, mmsg.Value, msgBack.Value)
+		assert.Equal(t, mmsg.Method, msgBack.Method)
+		assert.Equal(t, mmsg.Params, msgBack.Params)
+		assert.Equal(t, mmsg.GasPrice, msgBack.GasPrice)
+		assert.Equal(t, mmsg.GasLimit, msgBack.GasLimit)
 
-		assert.True(mmsg.Equals(&msgBack))
+		assert.True(t, mmsg.Equals(&msgBack))
 	})
 }

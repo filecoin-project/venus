@@ -10,9 +10,6 @@ import (
 )
 
 func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-
 	addrGetter := address.NewForTestGetter()
 	addr1 := addrGetter()
 	addr2 := addrGetter()
@@ -33,17 +30,17 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 	}
 
 	rawPaymentVoucher, err := paymentVoucher.Encode()
-	require.NoError(err)
+	require.NoError(t, err)
 	decodedPaymentVoucher, err := DecodeVoucher(rawPaymentVoucher)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal((*paymentVoucher).Channel, decodedPaymentVoucher.Channel)
-	assert.Equal((*paymentVoucher).Payer, decodedPaymentVoucher.Payer)
-	assert.Equal((*paymentVoucher).Target, decodedPaymentVoucher.Target)
-	assert.Equal((*paymentVoucher).Amount, decodedPaymentVoucher.Amount)
-	assert.Equal((*paymentVoucher).ValidAt, decodedPaymentVoucher.ValidAt)
+	assert.Equal(t, (*paymentVoucher).Channel, decodedPaymentVoucher.Channel)
+	assert.Equal(t, (*paymentVoucher).Payer, decodedPaymentVoucher.Payer)
+	assert.Equal(t, (*paymentVoucher).Target, decodedPaymentVoucher.Target)
+	assert.Equal(t, (*paymentVoucher).Amount, decodedPaymentVoucher.Amount)
+	assert.Equal(t, (*paymentVoucher).ValidAt, decodedPaymentVoucher.ValidAt)
 
-	assert.Equal(condition.To, decodedPaymentVoucher.Condition.To)
-	assert.Equal(condition.Method, decodedPaymentVoucher.Condition.Method)
-	assert.Equal(condition.Params, decodedPaymentVoucher.Condition.Params)
+	assert.Equal(t, condition.To, decodedPaymentVoucher.Condition.To)
+	assert.Equal(t, condition.Method, decodedPaymentVoucher.Condition.Method)
+	assert.Equal(t, condition.Params, decodedPaymentVoucher.Condition.Params)
 }

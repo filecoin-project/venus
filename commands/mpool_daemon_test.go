@@ -16,8 +16,6 @@ import (
 func TestMpoolLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
 		return d.RunSuccess("message", "send",
 			"--from", from,
@@ -37,18 +35,18 @@ func TestMpoolLs(t *testing.T) {
 		out := d.RunSuccess("mpool", "ls")
 
 		cids := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
-		assert.Equal(2, len(cids))
+		assert.Equal(t, 2, len(cids))
 
 		for _, c := range cids {
 			ci, err := cid.Decode(c)
-			assert.NoError(err)
-			assert.True(ci.Defined())
+			assert.NoError(t, err)
+			assert.True(t, ci.Defined())
 		}
 
 		// Should return immediately with --wait-for-count equal to message count
 		out = d.RunSuccess("mpool", "ls", "--wait-for-count=2")
 		cids = strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
-		assert.Equal(2, len(cids))
+		assert.Equal(t, 2, len(cids))
 	})
 
 	t.Run("wait for enough messages", func(t *testing.T) {
@@ -64,26 +62,24 @@ func TestMpoolLs(t *testing.T) {
 			out := d.RunSuccess("mpool", "ls", "--wait-for-count=3")
 			complete = true
 			c := strings.Split(strings.Trim(out.ReadStdout(), "\n"), "\n")
-			assert.Equal(3, len(c))
+			assert.Equal(t, 3, len(c))
 			wg.Done()
 		}()
 
 		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
-		assert.False(complete)
+		assert.False(t, complete)
 		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
-		assert.False(complete)
+		assert.False(t, complete)
 		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 
 		wg.Wait()
 
-		assert.True(complete)
+		assert.True(t, complete)
 	})
 }
 
 func TestMpoolShow(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	t.Run("shows message", func(t *testing.T) {
 
@@ -98,9 +94,9 @@ func TestMpoolShow(t *testing.T) {
 
 		out := d.RunSuccess("mpool", "show", msgCid).ReadStdoutTrimNewlines()
 
-		assert.Contains(out, "From:      "+fixtures.TestAddresses[0])
-		assert.Contains(out, "To:        "+fixtures.TestAddresses[2])
-		assert.Contains(out, "Value:     10")
+		assert.Contains(t, out, "From:      "+fixtures.TestAddresses[0])
+		assert.Contains(t, out, "To:        "+fixtures.TestAddresses[2])
+		assert.Contains(t, out, "Value:     10")
 	})
 
 	t.Run("fails missing message", func(t *testing.T) {
@@ -111,14 +107,12 @@ func TestMpoolShow(t *testing.T) {
 		const c = "QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw"
 
 		out := d.RunFail("not found", "mpool", "show", c).ReadStderr()
-		assert.Contains(out, c)
+		assert.Contains(t, out, c)
 	})
 }
 
 func TestMpoolRm(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	t.Run("remove a message", func(t *testing.T) {
 
@@ -134,6 +128,6 @@ func TestMpoolRm(t *testing.T) {
 		d.RunSuccess("mpool", "rm", msgCid)
 
 		out := d.RunSuccess("mpool", "ls").ReadStdoutTrimNewlines()
-		assert.Equal("", out)
+		assert.Equal(t, "", out)
 	})
 }

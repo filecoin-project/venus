@@ -43,8 +43,6 @@ func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Sub
 func TestMessagePoolWait(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	signer := types.NewMockSigner(ki)
 
@@ -52,8 +50,8 @@ func TestMessagePoolWait(t *testing.T) {
 
 		plumbing := newFakeMpoolWaitPlumbing(nil)
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, 0)
-		require.NoError(e)
-		assert.Equal(0, len(msgs))
+		require.NoError(t, e)
+		assert.Equal(t, 0, len(msgs))
 	})
 
 	t.Run("returns immediates", func(t *testing.T) {
@@ -62,8 +60,8 @@ func TestMessagePoolWait(t *testing.T) {
 		plumbing.pending = types.NewSignedMsgs(3, signer)
 
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, 3)
-		require.NoError(e)
-		assert.Equal(3, len(msgs))
+		require.NoError(t, e)
+		assert.Equal(t, 3, len(msgs))
 	})
 
 	t.Run("waits", func(t *testing.T) {
@@ -90,7 +88,7 @@ func TestMessagePoolWait(t *testing.T) {
 		}
 
 		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)
-		finished := assertMessagePoolWaitAsync(plumbing, 1, require, assert)
+		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
 
 		finished.Wait()
 		plumbing.subscription.AwaitCancellation()
@@ -107,7 +105,7 @@ func TestMessagePoolWait(t *testing.T) {
 		}
 
 		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)
-		finished := assertMessagePoolWaitAsync(plumbing, 1, require, assert)
+		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
 
 		finished.Wait()
 		plumbing.subscription.AwaitCancellation()
@@ -115,14 +113,14 @@ func TestMessagePoolWait(t *testing.T) {
 }
 
 // assertMessagePoolWaitAsync waits for msgCount messages asynchronously
-func assertMessagePoolWaitAsync(plumbing *fakeMpoolWaitPlumbing, msgCount uint, require *require.Assertions, assert *assert.Assertions) *sync.WaitGroup {
+func assertMessagePoolWaitAsync(plumbing *fakeMpoolWaitPlumbing, msgCount uint, t *testing.T) *sync.WaitGroup {
 	finished := sync.WaitGroup{}
 	finished.Add(1)
 
 	go func() {
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, msgCount)
-		require.NoError(e)
-		assert.Equal(msgCount, uint(len(msgs)))
+		require.NoError(t, e)
+		assert.Equal(t, msgCount, uint(len(msgs)))
 		defer finished.Done()
 	}()
 

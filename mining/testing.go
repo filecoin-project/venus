@@ -3,6 +3,7 @@ package mining
 import (
 	"context"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -63,9 +64,9 @@ func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, int, chan<- Out
 
 // MakeEchoMine returns a test worker function that itself returns the first
 // block of the input tipset as output.
-func MakeEchoMine(require *require.Assertions) func(context.Context, types.TipSet, int, chan<- Output) bool {
+func MakeEchoMine(t *testing.T) func(context.Context, types.TipSet, int, chan<- Output) bool {
 	echoMine := func(c context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
-		require.NotEqual(0, len(ts))
+		require.NotEqual(t, 0, len(ts))
 		b := ts.ToSlice()[0]
 		select {
 		case outCh <- Output{NewBlock: b}:
