@@ -7,7 +7,7 @@ const (
 	TwoPoRepProofPartitions
 )
 
-func (p PoRepProofPartitions) Uint8() uint8 {
+func (p PoRepProofPartitions) Int() int {
 	switch p {
 	case TwoPoRepProofPartitions:
 		return 2

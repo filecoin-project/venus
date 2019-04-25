@@ -55,7 +55,7 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
 		C.uint64_t(req.SectorSize.Uint64()),
-		C.uint8_t(req.Proof.ProofPartitions().Uint8()),
+		C.uint8_t(req.Proof.ProofPartitions().Int()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),

@@ -7,7 +7,7 @@ const (
 	OnePoStProofPartition
 )
 
-func (p PoStProofPartitions) Uint8() uint8 {
+func (p PoStProofPartitions) Int() int {
 	switch p {
 	case OnePoStProofPartition:
 		return 1
