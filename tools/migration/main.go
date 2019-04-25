@@ -11,7 +11,7 @@ import (
 
 const USAGE = `
 USAGE
-	go-filecoin-migrate (describe|buildonly|migrate) [-h|--help][-v|--verbose][--old-repo=<repodir>][--new-repo=<newrepo-prefix]
+	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [--new-repo=<newrepo-prefix] [-h|--help] [-v|--verbose]
 
 COMMANDS
 	describe
@@ -22,22 +22,30 @@ COMMANDS
 		runs the migration, runs validation tests on the migrated repo, then
 		installs the newly migrated repo
 
+REQUIRED ARGUMENTS
+	--old-repo
+		The location of this node's filecoin home directory. This is required even for the
+		'describe' command, as the its repo version helps determine which migration to run.
+
 OPTIONS
 	-h, --help
 		This message
 	-v --verbose
 		Print diagnostic messages to stdout
-	--old-repo
-		The location of your repo. Pass this option $FIL_PATH is not set and 
-		your repo is not in $HOME/.filecoin
 	--new-repo
-		The prefix of the migrated repo location. A directory prefixed with this 
+		The prefix for the migrated repo. A directory prefixed with this 
 		path will be created to hold the copy of the old repo for migration, named 
 		with a timestamp and migration versions. 
 
+		Provide this if you want the migrated repo to be in a different directory, on a 
+        different device, or you just prefer a different naming scheme.
+
+		Ensure the parent directory exists; go-filecoin-migrate will not create tree
+        structure.
+
 EXAMPLES
 	for a migration from version 1 to 2:
-	go-filecoin-migrate migrate
+	go-filecoin-migrate migrate --old-repo=~/.filecoin
 		Migrates then installs the repo. Migrated repo will be in ~/.filecoin_1_2_<timestamp>
 
 	go-filecoin-migrate migrate --old-repo=/opt/filecoin
@@ -57,7 +65,12 @@ func main() { // nolint: deadcode
 	case "-h", "--help":
 		showUsageAndExit(0)
 	case "describe", "buildonly", "migrate", "install":
-		oldRepoOpt, _ := findOpt("old-repo", os.Args)
+		oldRepoOpt, found := findOpt("old-repo", os.Args)
+
+		if found == false {
+			exitErr(fmt.Sprintf("Error: --old-repo is required\n%s\n", USAGE))
+		}
+
 		newRepoPrefixOpt, _ := findOpt("new-repo", os.Args)
 		runner := internal.NewMigrationRunner(getVerbose(), command, oldRepoOpt, newRepoPrefixOpt)
 		if err := runner.Run(); err != nil {

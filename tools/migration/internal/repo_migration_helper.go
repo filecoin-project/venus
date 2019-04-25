@@ -3,8 +3,6 @@ package internal
 import (
 	"os"
 	"strings"
-
-	"github.com/filecoin-project/go-filecoin/repo"
 )
 
 // RepoFSWrangler manages filesystem operations and figures out what the correct paths
@@ -17,11 +15,9 @@ type RepoFSWrangler struct {
 // what the correct paths should be, and creates a new RepoFSWrangler with the
 // correct paths.
 func NewRepoMigrationHelper(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion string) *RepoFSWrangler {
-	oldPath := getOldRepoPath(oldRepoOpt)
-
 	return &RepoFSWrangler{
-		newRepoPath: getNewRepoPath(oldPath, newRepoPrefixOpt, oldVersion, newVersion),
-		oldRepoPath: oldPath,
+		newRepoPath: getNewRepoPath(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion),
+		oldRepoPath: oldRepoOpt,
 	}
 }
 
@@ -48,13 +44,6 @@ func (rmh *RepoFSWrangler) MakeNewRepo() (*os.File, error) {
 		return nil, err
 	}
 	return os.Open(rmh.newRepoPath)
-}
-
-// getOldRepoPath takes a command line option (which can be blank) and uses it
-// to find the correct old repo path.
-func getOldRepoPath(cliOpt string) string {
-	dirname := repo.GetRepoDir(cliOpt)
-	return ExpandHomedir(dirname)
 }
 
 // getNewRepoPath generates a new repo path for a migration.

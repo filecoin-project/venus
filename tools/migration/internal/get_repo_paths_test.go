@@ -1,9 +1,7 @@
 package internal
 
 import (
-	"os"
 	"regexp"
-	"strings"
 	"testing"
 
 	ast "github.com/stretchr/testify/assert"
@@ -32,15 +30,4 @@ func TestGetNewRepoPath(t *testing.T) {
 		require.NoError(err)
 		assert.Regexp(rgx, newpath)
 	})
-}
-
-func TestGetOldRepoPath(t *testing.T) {
-	// technically it'll return what's at FIL_PATH if that is set,
-	// but in testing this is set to the default.
-	tf.UnitTest(t)
-	assert := ast.New(t)
-
-	home := os.Getenv("HOME")
-	expected := strings.Join([]string{home, "/.filecoin"}, "")
-	assert.Equal(expected, getOldRepoPath(""))
 }
