@@ -17,12 +17,19 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
+	condition := &Predicate{
+		To:     addrGetter(),
+		Method: "someMethod",
+		Params: []byte("some encoded parameters"),
+	}
+
 	paymentVoucher := &PaymentVoucher{
-		Channel: *NewChannelID(5),
-		Payer:   addr1,
-		Target:  addr2,
-		Amount:  *NewAttoFILFromFIL(100),
-		ValidAt: *NewBlockHeight(25),
+		Channel:   *NewChannelID(5),
+		Payer:     addr1,
+		Target:    addr2,
+		Amount:    *NewAttoFILFromFIL(100),
+		ValidAt:   *NewBlockHeight(25),
+		Condition: condition,
 	}
 
 	rawPaymentVoucher, err := paymentVoucher.Encode()
@@ -35,4 +42,8 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 	assert.Equal((*paymentVoucher).Target, decodedPaymentVoucher.Target)
 	assert.Equal((*paymentVoucher).Amount, decodedPaymentVoucher.Amount)
 	assert.Equal((*paymentVoucher).ValidAt, decodedPaymentVoucher.ValidAt)
+
+	assert.Equal(condition.To, decodedPaymentVoucher.Condition.To)
+	assert.Equal(condition.Method, decodedPaymentVoucher.Condition.Method)
+	assert.Equal(condition.Params, decodedPaymentVoucher.Condition.Params)
 }

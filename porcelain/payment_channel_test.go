@@ -85,6 +85,11 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			Amount:    *types.NewAttoFILFromFIL(10),
 			ValidAt:   *types.NewBlockHeight(0),
 			Signature: []byte{},
+			Condition: &types.Predicate{
+				To:     address.Undef,
+				Method: "someMethod",
+				Params: []byte("params"),
+			},
 		}
 
 		plumbing := &testPaymentChannelVoucherPlumbing{
@@ -100,6 +105,11 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			types.NewChannelID(5),
 			types.NewAttoFILFromFIL(10),
 			types.NewBlockHeight(0),
+			&types.Predicate{
+				To:     address.Undef,
+				Method: "someMethod",
+				Params: []byte("params"),
+			},
 		)
 		require.NoError(err)
 		assert.Equal(expectedVoucher.Channel, voucher.Channel)
@@ -107,6 +117,9 @@ func TestPaymentChannelVoucher(t *testing.T) {
 		assert.Equal(expectedVoucher.Target, voucher.Target)
 		assert.Equal(expectedVoucher.Amount, voucher.Amount)
 		assert.Equal(expectedVoucher.ValidAt, voucher.ValidAt)
+		assert.Equal(expectedVoucher.Condition.To, voucher.Condition.To)
+		assert.Equal(expectedVoucher.Condition.Method, voucher.Condition.Method)
+		assert.Equal(expectedVoucher.Condition.Params, voucher.Condition.Params)
 		assert.NotEqual(expectedVoucher.Signature, voucher.Signature)
 	})
 }
