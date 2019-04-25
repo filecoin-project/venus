@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ const MaxTimeToSealASector = time.Second * 360
 const MaxTimeToGenerateSectorPoSt = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
-	// tf.SectorBuilderTest(t)
+	tf.SectorBuilderTest(t)
 
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()
