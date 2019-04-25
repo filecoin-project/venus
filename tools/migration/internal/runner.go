@@ -11,7 +11,7 @@ type Migration interface {
 	//		a directory
 	// 		read/writeable by this process,
 	//      contain a copy of the old repo.
-	Migrate(newRepo *os.File) error
+	Migrate(newRepoPath string) error
 
 	// Describe returns a list of steps, as a formatted string, that a given Migration will take.
 	// These should correspond to named functions in the given Migration.
@@ -27,26 +27,38 @@ type Migration interface {
 	//		a directory
 	//      read-only by this process
 	//  A successful validation returns nil.
-	Validate(oldRepo, newRepo *os.File) error
+	Validate(oldRepoPath, newRepoPath string) error
 }
 
-type RepoHelper interface {
+// RepoWrangler is a helper that manages filesystem operations and figures out what the correct paths
+// are for everything.
+type RepoWrangler interface {
+	// GetOldRepo opens and returns the old repo with read-only access
 	GetOldRepo() (*os.File, error)
+	// MakeNewRepo creates and returns the new repo dir with read/write permissions
 	MakeNewRepo() (*os.File, error)
+	// GetOldRepoPath returns the full path of the old repo
+	GetOldRepoPath() string
+	// GetNewRepoPath returns the full path of the old repo
+	GetNewRepoPath() string
 }
 
-// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
 type MigrationRunner struct {
 	verbose bool
 	command string
-	helper  RepoHelper
+	helper  RepoWrangler
 }
 
-func NewMigrationRunner(verb bool, command string, rmh RepoHelper) *MigrationRunner {
+func NewMigrationRunner(verb bool, command, oldRepoOpt, newRepoPrefixOpt string) *MigrationRunner {
+	// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
+	oldVersion := "1"
+	newVersion := "2"
+
+	helper := NewRepoMigrationHelper(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion)
 	return &MigrationRunner{
 		verbose: verb,
 		command: command,
-		helper:  rmh,
+		helper:  helper,
 	}
 }
 

@@ -53,18 +53,13 @@ func main() { // nolint: deadcode
 	}
 
 	command := getCommand()
-	// TODO: Issue #2585 migration decisioning and version detection
-	oldVersion := "1"
-	newVersion := "2"
-
 	switch command {
 	case "-h", "--help":
 		showUsageAndExit(0)
 	case "describe", "buildonly", "migrate", "install":
-		oldRepo, _ := findOpt("old-repo", os.Args)
-		newRepo, _ := findOpt("new-repo", os.Args)
-		helper := internal.NewRepoMigrationHelper(oldRepo, newRepo, oldVersion, newVersion)
-		runner := internal.NewMigrationRunner(getVerbose(), command, helper)
+		oldRepoOpt, _ := findOpt("old-repo", os.Args)
+		newRepoPrefixOpt, _ := findOpt("new-repo", os.Args)
+		runner := internal.NewMigrationRunner(getVerbose(), command, oldRepoOpt, newRepoPrefixOpt)
 		if err := runner.Run(); err != nil {
 			exitErr(err.Error())
 		}
