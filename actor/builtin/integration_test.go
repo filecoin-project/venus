@@ -47,86 +47,111 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	state.MustSetActor(st, payer, payerActor)
 
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
+	pip := []byte{}
+	pip = append(pip, commP[:]...)
+	pip = append(pip, commD[:]...)
 
-	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
-		// create voucher with piece inclusion condition
-		condition := &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+	amt := types.NewAttoFILFromFIL(100)
+	blockHeight := types.NewBlockHeight(0)
 
-		amt := types.NewAttoFILFromFIL(100)
+	makeCondition := func() *types.Predicate {
+		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+	}
+
+	makeAndSignVoucher := func(condition *types.Predicate) []byte {
 		sig, err := paymentbroker.SignVoucher(channelID, amt, defaultValidAt, payer, condition, mockSigner)
 		require.NoError(t, err)
 		signature := ([]byte)(sig)
 
-		// make redeem request with correct sector id and PIP
-		// TODO: this pip is very fake
-		pip := []byte{}
-		pip = append(pip, commP[:]...)
-		pip = append(pip, commD[:]...)
+		return signature
+	}
+
+	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.Message {
 		suppliedParams := []interface{}{sectorID, pip}
 		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+		return types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+	}
 
-		appResult, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
+		condition := makeCondition()
+		signature := makeAndSignVoucher(condition)
+		msg := makeRedeemMsg(condition, sectorID, pip, signature)
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
 
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 	})
 
-	t.Run("Voucher with piece inclusion condition and wrong miner fails", func(t *testing.T) {
-		differentMinerAddr := addrGetter()
-		differentMinerActor := miner.NewActor()
-		storage := vms.NewStorage(differentMinerAddr, differentMinerActor)
-		require.NoError(t, (&miner.Actor{}).InitializeState(storage, &miner.State{}))
-		require.NoError(t, st.SetActor(ctx, differentMinerAddr, differentMinerActor))
+	t.Run("Voucher with piece inclusion condition and wrong address fails", func(t *testing.T) {
+		condition := makeCondition()
 
-		// create voucher with piece inclusion condition
-		condition := &types.Predicate{To: differentMinerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+		condition.To = addrGetter()
 
-		amt := types.NewAttoFILFromFIL(100)
-		sig, err := paymentbroker.SignVoucher(channelID, amt, defaultValidAt, payer, condition, mockSigner)
+		signature := makeAndSignVoucher(condition)
+		msg := makeRedeemMsg(condition, sectorID, pip, signature)
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
+
 		require.NoError(t, err)
-		signature := ([]byte)(sig)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+	})
 
-		// make redeem request with correct sector id and PIP
-		// TODO: this pip is very fake
-		pip := []byte{}
-		pip = append(pip, commP[:]...)
-		pip = append(pip, commD[:]...)
-		suppliedParams := []interface{}{sectorID, pip}
-		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+	t.Run("Voucher with piece inclusion condition and incorrect PIP fails", func(t *testing.T) {
+		condition := makeCondition()
+		signature := makeAndSignVoucher(condition)
 
-		appResult, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+		badPip := make([]byte, len(pip))
+		copy(badPip, pip)
+		badPip[12]++
+
+		msg := makeRedeemMsg(condition, sectorID, badPip, signature)
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid inclusion proof")
+	})
+
+	t.Run("Voucher with piece inclusion condition and wrong sectorID fails", func(t *testing.T) {
+		condition := makeCondition()
+		signature := makeAndSignVoucher(condition)
+
+		badSectorID := sectorID + 1
+
+		msg := makeRedeemMsg(condition, badSectorID, pip, signature)
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: sector not committed")
 	})
 
-	t.Run("Voucher with piece inclusion condition and incorrect PIP fails", func(t *testing.T) {
-		// create voucher with piece inclusion condition
-		condition := &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+	t.Run("Voucher with piece inclusion condition and out of date Last PoSt", func(t *testing.T) {
+		condition := makeCondition()
+		signature := makeAndSignVoucher(condition)
+		msg := makeRedeemMsg(condition, sectorID, pip, signature)
 
-		amt := types.NewAttoFILFromFIL(100)
-		sig, err := paymentbroker.SignVoucher(channelID, amt, defaultValidAt, payer, condition, mockSigner)
-		require.NoError(t, err)
-		signature := ([]byte)(sig)
+		blockHeightThatExpiresLastPoSt := types.NewBlockHeight(100000)
 
-		// make redeem request with correct sector id and PIP
-		// TODO: this pip is very fake
-		pip := []byte{}
-		pip = append(pip, commP[:]...)
-		pip = append(pip, commD[:]...)
-		pip[12]++ // Make PIP wrong
-		suppliedParams := []interface{}{sectorID, pip}
-		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		msg := types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
-
-		appResult, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeightThatExpiresLastPoSt)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid inclusion proof")
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: proofs out of date")
+	})
+
+	t.Run("Signed voucher cannot be altered", func(t *testing.T) {
+		condition := makeCondition()
+		signature := makeAndSignVoucher(condition)
+
+		condition.Method = "unsignedConditionMethod"
+
+		msg := makeRedeemMsg(condition, sectorID, pip, signature)
+		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "signature failed to validate")
 	})
 }
 
