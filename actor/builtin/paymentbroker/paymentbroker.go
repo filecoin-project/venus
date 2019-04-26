@@ -208,10 +208,12 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
 // If a condition is provided in the voucher:
-// - The parameters provided in the condition will be combined with redeemerSuppliedParams
+// - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL,
+	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
+
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -220,7 +222,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	if errCode, err := checkCondition(vmctx, condition, redeemerSuppliedParams); err != nil {
+	if errCode, err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
 		return errCode, err
 	}
 
@@ -267,10 +269,12 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 // funds remaining in the channel to the payer account and deletes the channel.
 //
 // If a condition is provided in the voucher:
-// - The parameters provided in the condition will be combined with redeemerSuppliedParams
+// - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL,
+	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
+
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -279,7 +283,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	if errCode, err := checkCondition(vmctx, condition, redeemerSuppliedParams); err != nil {
+	if errCode, err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
 		return errCode, err
 	}
 

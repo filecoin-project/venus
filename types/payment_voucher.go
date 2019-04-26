@@ -21,7 +21,7 @@ type Predicate struct {
 	Method string `json:"method"`
 
 	// Params are the parameters (or a subset of the parameters) used to call the actor method.
-	// The must all be individually abi encodable.
+	// They must all be individually abi encodable.
 	Params []interface{} `json:"params"`
 }
 
