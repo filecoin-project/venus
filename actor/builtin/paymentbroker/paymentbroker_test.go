@@ -121,7 +121,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
 	callRedeem := func(condition *types.Predicate, params []interface{}) (*consensus.ApplicationResult, error) {
-		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, params...)
 	}
 
 	// All the following tests attempt to call PBTestActor.CheckParams with a condition.
@@ -162,16 +162,21 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "nonexistentMethod", Params: []interface{}{addrGetter(), uint64(6)}}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		badMethod := "nonexistentMethod"
+
+		condition := &types.Predicate{To: toAddress, Method: badMethod, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{}}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		badParams := []interface{}{}
+
+		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
+		appResult, err := callRedeem(condition, redeemerParams)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -179,8 +184,10 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		badRedeemerParams := []interface{}{}
+
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, badRedeemerParams)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
