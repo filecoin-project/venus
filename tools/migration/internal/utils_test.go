@@ -16,13 +16,3 @@ func TestNowString(t *testing.T) {
 	rg, _ := regexp.Compile("^[0-9]{8}-[0-9]{6}$")
 	assert.Regexp(t, rg, adateStr)
 }
-
-func TestExpandHomedir(t *testing.T) {
-	tf.UnitTest(t)
-	assert.Equal(t, ExpandHomedir("/tmp/foo"), "/tmp/foo")
-
-	home := os.Getenv("HOME")
-	expected := strings.Join([]string{home, "/foo"}, "")
-
-	assert.Equal(t, expected, ExpandHomedir("~/foo"))
-}
