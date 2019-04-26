@@ -40,30 +40,33 @@ func (rmh *RepoFSWrangler) GetNewRepoPath() string {
 	return rmh.newRepoPath
 }
 
-// MakeNewRepo creates the new repo dir and returns it with Read/Write access.
-//   This returns an error if the directory exists.
-func (rmh *RepoFSWrangler) MakeNewRepo() (*os.File, error) {
-	if err := os.Mkdir(rmh.newRepoPath, os.ModeDir|0744); err != nil {
-		return nil, err
-	}
-	return os.Open(rmh.newRepoPath)
-}
-
-func (rmh *RepoFSWrangler) CopyRepo() error {
-	return rcopy.Copy(rmh.oldRepoPath, rmh.newRepoPath)
-}
-
-func (rmh *RepoFSWrangler) InstallNewRepo() error {
-	// rename the old dir:
-	archiveName := strings.Join([]string{rmh.oldRepoPath, rmh.oldVersion, NowString()}, "-")
-	if err := os.Rename(rmh.oldRepoPath, archiveName); err != nil {
+// MakeNewRepo copies the old repo to the new repo dir with Read/Write access.
+//   Returns an error if the directory exists.
+func (rmh *RepoFSWrangler) MakeNewRepo() error {
+	if err := rcopy.Copy(rmh.oldRepoPath, rmh.newRepoPath); err != nil {
 		return err
 	}
-	// symlink the new dir
+
+	return os.Chmod(rmh.newRepoPath, os.ModeDir|0744)
+}
+
+// InstallNewRepo renames the old repo and symlinks the new repo at the old name.
+// returns the new path to the old repo and any error.
+func (rmh *RepoFSWrangler) InstallNewRepo() (string, error) {
+	archivedRepo := strings.Join([]string{rmh.oldRepoPath, rmh.oldVersion, NowString()}, "-")
+
+	if err := os.Rename(rmh.oldRepoPath, archivedRepo); err != nil {
+		return archivedRepo, err
+	}
+	if err := os.Chmod(archivedRepo, os.ModeDir|0444); err != nil {
+		return archivedRepo, err
+	}
+
 	if err := os.Symlink(rmh.newRepoPath, rmh.oldRepoPath); err != nil {
-		return err
+		return archivedRepo, err
 	}
-	return nil
+
+	return archivedRepo, nil
 }
 
 // getNewRepoPath generates a new repo path for a migration.
