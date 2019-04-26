@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 type PoRepProofPartitions int
 
 const (
@@ -13,7 +15,7 @@ func (p PoRepProofPartitions) Int() int {
 	case TwoPoRepProofPartitions:
 		return 2
 	default:
-		return 0
+		panic(fmt.Sprintf("unexpected value %v", p))
 	}
 }
 
@@ -24,17 +26,17 @@ func (p PoRepProofPartitions) ProofLen() int {
 	case TwoPoRepProofPartitions:
 		return SinglePartitionProofLen * 2
 	default:
-		return 0
+		panic(fmt.Sprintf("unexpected value %v", p))
 	}
 }
 
 // NewPoRepProofPartitions produces the PoRepProofPartitions corresponding to
 // the provided integer.
-func NewPoRepProofPartitions(partitions int) PoRepProofPartitions {
-	switch partitions {
+func NewPoRepProofPartitions(numPartitions int) PoRepProofPartitions {
+	switch numPartitions {
 	case 2:
 		return TwoPoRepProofPartitions
 	default:
-		return UnknownPoRepProofPartitions
+		panic(fmt.Sprintf("unexpected value %v", numPartitions))
 	}
 }

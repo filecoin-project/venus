@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // SectorSize is the amount of bytes in a sector. This amount will be slightly
 // greater than the number of user bytes which can be written to a sector due to
 // bit-padding.
@@ -20,6 +22,6 @@ func (s SectorSize) Uint64() uint64 {
 	case TwoHundredFiftySixMiBSectorSize:
 		return 1 << 28
 	default:
-		return 0
+		panic(fmt.Sprintf("unexpected value %v", s))
 	}
 }

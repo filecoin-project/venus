@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 type PoStProofPartitions int
 
 const (
@@ -13,7 +15,7 @@ func (p PoStProofPartitions) Int() int {
 	case OnePoStProofPartition:
 		return 1
 	default:
-		return 0
+		panic(fmt.Sprintf("unexpected value %v", p))
 	}
 }
 
@@ -24,17 +26,17 @@ func (p PoStProofPartitions) ProofLen() int {
 	case OnePoStProofPartition:
 		return SinglePartitionProofLen
 	default:
-		return 0
+		panic(fmt.Sprintf("unexpected value %v", p))
 	}
 }
 
 // NewPoStProofPartitions produces the PoStProofPartitions corresponding to the
 // provided integer.
-func NewPoStProofPartitions(partitions int) PoStProofPartitions {
-	switch partitions {
+func NewPoStProofPartitions(numPartitions int) PoStProofPartitions {
+	switch numPartitions {
 	case 1:
 		return OnePoStProofPartition
 	default:
-		return UnknownPoStProofPartitions
+		panic(fmt.Sprintf("unexpected value %v", numPartitions))
 	}
 }

@@ -77,12 +77,7 @@ func goPieceInfos(src *C.FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) 
 }
 
 func goPoStProofPartitions(partitions C.uint8_t) types.PoStProofPartitions {
-	switch int(partitions) {
-	case 1:
-		return types.OnePoStProofPartition
-	default:
-		return types.UnknownPoStProofPartitions
-	}
+	return types.NewPoStProofPartitions(int(partitions))
 }
 
 func cSectorClass(c types.SectorClass) (C.FFISectorClass, error) {
