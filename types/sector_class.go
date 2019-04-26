@@ -21,8 +21,8 @@ func NewTestSectorClass() SectorClass {
 // go-filecoin node.
 func NewLiveSectorClass() SectorClass {
 	return SectorClass{
-		poStProofPartitions:  OnePoStProofPartition,
 		poRepProofPartitions: TwoPoRepProofPartitions,
+		poStProofPartitions:  OnePoStProofPartition,
 		sectorSize:           TwoHundredFiftySixMiBSectorSize,
 	}
 }
