@@ -19,8 +19,13 @@ func goBytes(src *C.uint8_t, size C.size_t) []byte {
 func goPoStProofs(partitions C.uint8_t, src *C.uint8_t, size C.size_t) ([]types.PoStProof, error) {
 	tmp := goBytes(src, size)
 
+	ppp, err := goPoStProofPartitions(partitions)
+	if err != nil {
+		return nil, err
+	}
+
 	arraySize := len(tmp)
-	chunkSize := goPoStProofPartitions(partitions).ProofLen()
+	chunkSize := ppp.ProofLen()
 
 	out := make([]types.PoStProof, arraySize/chunkSize)
 	for i := 0; i < len(out); i++ {
@@ -76,7 +81,7 @@ func goPieceInfos(src *C.FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) 
 	return ps, nil
 }
 
-func goPoStProofPartitions(partitions C.uint8_t) types.PoStProofPartitions {
+func goPoStProofPartitions(partitions C.uint8_t) (types.PoStProofPartitions, error) {
 	return types.NewPoStProofPartitions(int(partitions))
 }
 

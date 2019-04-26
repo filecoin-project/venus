@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/pkg/errors"
+)
 
 type PoStProofPartitions int
 
@@ -32,11 +35,11 @@ func (p PoStProofPartitions) ProofLen() int {
 
 // NewPoStProofPartitions produces the PoStProofPartitions corresponding to the
 // provided integer.
-func NewPoStProofPartitions(numPartitions int) PoStProofPartitions {
+func NewPoStProofPartitions(numPartitions int) (PoStProofPartitions, error) {
 	switch numPartitions {
 	case 1:
-		return OnePoStProofPartition
+		return OnePoStProofPartition, nil
 	default:
-		panic(fmt.Sprintf("unexpected value %v", numPartitions))
+		return UnknownPoStProofPartitions, errors.Errorf("unexpected value %v", numPartitions)
 	}
 }
