@@ -416,7 +416,7 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 	stdin := os.Stdin
 
 	// When running code with `go test`, the os.Stdin is not connected to the shell
-	// where `go test` was ran. This makes the shell exit immeidately and it's not
+	// where `go test` was ran. This makes the shell exit immediately and it's not
 	// possible to run it. To get around this issue we can let the user tell us the
 	// TTY their shell is using by setting the TTY env. This will allow the shell
 	// to use the same TTY the user started running `go test` in.

@@ -15,7 +15,7 @@ The Filecoin localplugin shell environment will have the following variables set
 | `PATH` | The users `PATH` will be updated to include a location that contains the binary used for executing all `go-filecoin` commands. The `go-filecoin` binary included in this location itself is defined by either the value of the `localplugin.AttrFilecoinBinary`, or the first `go-filecoin` binary found in the users `PATH`. <br/> <br/>_Note: The value of `FIL_BINARY` will not be the exact value. During node setup, the binary is copied to ensure it does not change during execution. `FIL_BINARY` will be this new path._ |
 
 The information around the `PATH` seems a little complex, but it's to ensure that there are no issues as a result of mixing binaries.
-This has the advantage that while using FAST, users can re-compile `go-filecoin`.
+This has the advantage that while using FAST, users can re-compile `go-filecoin` without affecting constructed nodes.
 It should be noted that the copying of the binary occurs during the call to `NewProcess`.
 
 It should also be noted that users shell configuration will be ran when the shell opens.
@@ -26,6 +26,10 @@ If shell configuration updates the `PATH` by appending to the front, if any of t
 The FAST Shell should only be used when running a single test.
 
 _Note: When using the FAST Shell, it's best to increase deadlines set for tests, as it's very easy to exceed them, and you will be kicked out of your shell._
+```diff
+-       ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Second))
++       ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(30*time.Day))
+```
 
 When using FAST inside of go tests, `stdin` is not properly configured to the users shell.
 This results in the shell exiting immediately, with no error.
@@ -37,11 +41,7 @@ This can easily be set by using the `tty` program.
 $ env TTY=$(tty) go test -v -run TestFilecoin
 ```
 
-#### FAST Shell use cases
-
-##### Pausing test execution to inspect a node
-
-Test execution can be paused by dropping a call to `node.Shell()` anywhere _after_ the daemon has been started.
+Test execution can be paused, much like a breakpoint, by dropping a call to `node.Shell()` anywhere _after_ the daemon has been started.
 It is used to wrap the call of in a `require.NoError` which will ensure the test fails quickly if the expected shell has an issue starting.
 You can also kill the test by exiting the shell with `exit 1` as the shell will return a non-zero exit code as an error.
 
@@ -50,6 +50,8 @@ require.NoError(node.Shell())
 ```
 
 While in the shell, no daemons are paused, but further test code execution is paused till the shell exits.
+
+#### FAST Shell use cases
 
 ##### Attaching a debugger to the node
 
