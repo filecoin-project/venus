@@ -54,6 +54,8 @@ const (
 	ProofsMode
 	// Predicate is subset of a message used to ask an actor about a condition
 	Predicate
+	// Parameters is a slice of individually encodable parameters
+	Parameters
 )
 
 func (t Type) String() string {
@@ -92,6 +94,8 @@ func (t Type) String() string {
 		return "types.ProofsMode"
 	case Predicate:
 		return "*types.Predicate"
+	case Parameters:
+		return "[]interface{}"
 	default:
 		return "<unknown type>"
 	}
@@ -139,6 +143,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(types.ProofsMode))
 	case Predicate:
 		return fmt.Sprint(av.Val.(*types.Predicate))
+	case Parameters:
+		return fmt.Sprint(av.Val.([]interface{}))
 	default:
 		return "<unknown type>"
 	}
@@ -271,6 +277,13 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(p)
+	case Parameters:
+		p, ok := av.Val.([]interface{})
+		if !ok {
+			return nil, &typeError{[]interface{}{}, av.Val}
+		}
+
+		return cbor.DumpObject(p)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -318,6 +331,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: ProofsMode, Val: v})
 		case *types.Predicate:
 			out = append(out, &Value{Type: Predicate, Val: v})
+		case []interface{}:
+			out = append(out, &Value{Type: Parameters, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -453,6 +468,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  predicate,
 		}, nil
+	case Parameters:
+		var parameters []interface{}
+		if err := cbor.DecodeInto(data, &parameters); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  parameters,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -477,6 +501,7 @@ var typeTable = map[Type]reflect.Type{
 	Boolean:        reflect.TypeOf(false),
 	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
 	Predicate:      reflect.TypeOf(&types.Predicate{}),
+	Parameters:     reflect.TypeOf([]interface{}{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

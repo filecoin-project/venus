@@ -17,7 +17,7 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 	condition := &Predicate{
 		To:     addrGetter(),
 		Method: "someMethod",
-		Params: []byte("some encoded parameters"),
+		Params: []interface{}{"some encoded parameters"},
 	}
 
 	paymentVoucher := &PaymentVoucher{
