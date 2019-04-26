@@ -209,7 +209,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.Bytes},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
 		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -451,7 +451,7 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar, proof []byte) (uint8, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -493,7 +493,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(req.CommD[:], commD)
 		copy(req.CommR[:], commR)
 		copy(req.CommRStar[:], commRStar)
-		req.Proof = append(types.PoRepProof{}, proof...)
+		req.Proof = proof
 		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
 		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 		req.SectorSize = sectorSize
