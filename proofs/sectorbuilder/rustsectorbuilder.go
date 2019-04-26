@@ -358,7 +358,7 @@ func (sb *RustSectorBuilder) Close() error {
 
 // GeneratePoSt produces a proof-of-spacetime for the provided commitment replicas.
 func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoStResponse, error) {
-	defer elapsed("Generate  PoSt")()
+	defer elapsed("GeneratePoSt")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
 	commRs := req.SortedCommRs.Values()
