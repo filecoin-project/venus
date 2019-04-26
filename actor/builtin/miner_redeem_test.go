@@ -57,6 +57,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 	// Make a pip
 	// TODO: This pip is very Fake
+	// https://github.com/filecoin-project/go-filecoin/issues/2629
 	pip := []byte{}
 	pip = append(pip, commP[:]...)
 	pip = append(pip, commD[:]...)

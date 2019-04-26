@@ -110,31 +110,52 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
+	method := "checkParams"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
 	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+	callRedeem := func(condition *types.Predicate, params []interface{}) (*consensus.ApplicationResult, error) {
+		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	}
 
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+	// All the following tests attempt to call PBTestActor.CheckParams with a condition.
+	// PBTestActor.CheckParams takes 3 parameter: an Address, a uint64 sector id, and a BlockHeight
+	// If any of these are zero values the method throws an error indicating the condition is false.
+	// The Address and the sector id will be included within the condition predicate, and the block
+	// height will be added as a redeemer supplied parameter to redeem.
+
+	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 	})
 
 	t.Run("Redeem should fail if condition is _NOT_ met", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{address.Undef, uint64(6)}}
+		badAddressParam := address.Undef
+		badParams := []interface{}{badAddressParam, sectorIdParam}
 
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
-		condition := &types.Predicate{To: addrGetter(), Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+		badToAddress := addrGetter()
 
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, types.NewBlockHeight(43))
+		condition := &types.Predicate{To: badToAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")

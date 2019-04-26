@@ -207,8 +207,10 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // target Redeem(200)          -> Payer: 1000, Target: 200, Channel: 800
 // target Close(500)           -> Payer: 1500, Target: 500, Channel: 0
 //
-// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
-// Any non-fault error when the condition is run is considered a validation failure.
+// If a condition is provided in the voucher:
+// - The parameters provided in the condition will be combined with redeemerSuppliedParams
+// - A message will be sent to the the condition.To address using the condition.Method with the combined params
+// - If the message returns an error the condition is considered to be false and the redeem will fail
 func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -264,8 +266,10 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 // Close first executes the logic performed in the the Update method, then returns all
 // funds remaining in the channel to the payer account and deletes the channel.
 //
-// If a condition is provided in the voucher, concatenate its params with supplied params to send a message.
-// Any non-fault error when the condition is run is considered a validation failure.
+// If a condition is provided in the voucher:
+// - The parameters provided in the condition will be combined with redeemerSuppliedParams
+// - A message will be sent to the the condition.To address using the condition.Method with the combined params
+// - If the message returns an error the condition is considered to be false and the redeem will fail
 func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -736,6 +740,8 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 	return actor.LoadTypedLookup(ctx, storage, byChannelCID, &PaymentChannel{})
 }
 
+// checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
+// to the actor and method specified in the condition, and returns an error if one exists.
 func checkCondition(vmctx exec.VMContext, condition *types.Predicate, redeemerSuppliedParams []interface{}) (uint8, error) {
 	if condition == nil {
 		return 0, nil
