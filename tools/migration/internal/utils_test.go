@@ -4,9 +4,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 	"github.com/stretchr/testify/assert"
-	"os"
 	"regexp"
-	"strings"
 	"testing"
 )
 
