@@ -49,7 +49,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Create the payer actor
 	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 	payer := mockSigner.Addresses[0]
-	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
+	payerActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
 	// Create a payment channel from payer -> target
@@ -197,7 +197,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	require.NoError(err)
 
 	for _, addr := range targetAddresses {
-		targetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+		targetActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, addr, targetActor)
 	}
 

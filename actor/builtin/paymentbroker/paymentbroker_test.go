@@ -398,7 +398,7 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
 	t.Run("Close should succeed if condition is met", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{addrGetter(), uint64(6)}}
+		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
 		require.NoError(t, err)
@@ -406,7 +406,7 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	})
 
 	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
-		condition := &types.Predicate{To: toAddress, Method: "checkParams", Params: []interface{}{address.Undef, uint64(6)}}
+		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
 		require.NoError(t, err)
