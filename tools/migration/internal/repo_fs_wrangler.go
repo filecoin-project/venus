@@ -3,12 +3,14 @@ package internal
 import (
 	"os"
 	"strings"
+
+	rcopy "github.com/otiai10/copy"
 )
 
 // RepoFSWrangler manages filesystem operations and figures out what the correct paths
 // are for everything.
 type RepoFSWrangler struct {
-	oldRepoPath, newRepoPath string
+	oldVersion, oldRepoPath, newRepoPath string
 }
 
 // NewRepoFSWrangler takes options for old and new repo paths, figures out
@@ -18,6 +20,7 @@ func NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion stri
 	return &RepoFSWrangler{
 		newRepoPath: getNewRepoPath(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion),
 		oldRepoPath: oldRepoOpt,
+		oldVersion:  oldVersion,
 	}
 }
 
@@ -44,6 +47,23 @@ func (rmh *RepoFSWrangler) MakeNewRepo() (*os.File, error) {
 		return nil, err
 	}
 	return os.Open(rmh.newRepoPath)
+}
+
+func (rmh *RepoFSWrangler) CopyRepo() error {
+	return rcopy.Copy(rmh.oldRepoPath, rmh.newRepoPath)
+}
+
+func (rmh *RepoFSWrangler) InstallNewRepo() error {
+	// rename the old dir:
+	archiveName := strings.Join([]string{rmh.oldRepoPath, rmh.oldVersion, NowString()}, "-")
+	if err := os.Rename(rmh.oldRepoPath, archiveName); err != nil {
+		return err
+	}
+	// symlink the new dir
+	if err := os.Symlink(rmh.newRepoPath, rmh.oldRepoPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getNewRepoPath generates a new repo path for a migration.

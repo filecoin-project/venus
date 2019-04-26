@@ -1,13 +1,16 @@
 package internal_test
 
 import (
+	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/repo"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"testing"
 
 	"github.com/golangci/golangci-lint/pkg/fsutils"
-	ast "github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
@@ -16,71 +19,77 @@ import (
 func TestRepoMigrationHelper_GetOldRepo(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
-
 	t.Run("Uses the option values when passed to ctor", func(t *testing.T) {
-		dirname := "/tmp/filecoindir"
-		mustMakeTmpDir(require, dirname)
-		defer mustRmDir(require, dirname)
+		dirname := mustMakeTmpDir(t, "filecoindir")
+		defer mustRmDir(t, dirname)
 
 		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
 		or, err := rmh.GetOldRepo()
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(dirname, or.Name())
+		assert.Equal(t, dirname, or.Name())
 	})
 }
 
 func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
-
 	t.Run("Creates the dir", func(t *testing.T) {
-		dirname := "/tmp/myfilecoindir"
-		mustMakeTmpDir(require, dirname)
-		defer mustRmDir(require, dirname)
+		dirname := "myfilecoindir"
+		mustMakeTmpDir(t, dirname)
+		defer mustRmDir(t, dirname)
 
 		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
 		or, err := rmh.MakeNewRepo()
-		require.NoError(err)
-		defer mustRmDir(require, or.Name())
-		assert.True(fsutils.IsDir(or.Name()))
+		require.NoError(t, err)
+		defer mustRmDir(t, or.Name())
+		assert.True(t, fsutils.IsDir(or.Name()))
 	})
 
 }
 
 func TestGetNewRepoPath(t *testing.T) {
 	tf.UnitTest(t)
-	assert := ast.New(t)
-	require := req.New(t)
 
-	dirname := "/tmp/myfilecoindir"
+	dirname := "myfilecoindir"
 
 	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
-		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse", "1", "2")
+		rmh := NewRepoFSWrangler(dirname, "somethingelse", "1", "2")
 		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/somethingelse_1_2_[0-9]{8}-[0-9]{6}$")
-		require.NoError(err)
-		assert.Regexp(rgx, newpath)
+		rgx, err := regexp.Compile("somethingelse_1_2_[0-9]{8}-[0-9]{6}$")
+		require.NoError(t, err)
+		assert.Regexp(t, rgx, newpath)
 	})
 
 	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
 		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
 		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
-		require.NoError(err)
-		assert.Regexp(rgx, newpath)
+		rgx, err := regexp.Compile("myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
+		require.NoError(t, err)
+		assert.Regexp(t, rgx, newpath)
 	})
 }
 
-func mustMakeTmpDir(require *req.Assertions, dirname string) {
-	require.NoError(os.Mkdir(dirname, os.ModeDir|os.ModeTemporary|os.ModePerm))
+func TestRepoFSWrangler_CopyRepo(t *testing.T) {
+	tf.UnitTest(t)
+
+	dirname := mustMakeTmpDir(t, "myfilecoindir")
+	defer mustRmDir(t, dirname)
+	require.NoError(t, repo.InitFSRepo(dirname, config.NewDefaultConfig()))
+
+	wrangler := NewRepoFSWrangler(dirname, "", "1", "2")
+	_, err  := wrangler.MakeNewRepo()
+	require.NoError(t, err)
+	require.NoError(t, wrangler.CopyRepo())
+}
+
+func mustMakeTmpDir(t *testing.T, prefix string) string {
+	path, err := ioutil.TempDir("", prefix)
+	require.NoError(t, err)
+	return path
 }
 
 // ensure that the error condition is checked when we clean up after creating tmpdirs.
-func mustRmDir(require *req.Assertions, dirname string) {
-	require.NoError(os.Remove(dirname))
+func mustRmDir(t *testing.T, dirname string) {
+	require.NoError(t, os.RemoveAll(dirname))
 }
