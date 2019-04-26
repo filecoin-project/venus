@@ -18,7 +18,7 @@ func (s SectorSize) Uint64() uint64 {
 	case OneKiBSectorSize:
 		return 1024
 	case TwoHundredFiftySixMiBSectorSize:
-		return 266338304
+		return 1 << 28
 	default:
 		return 0
 	}
