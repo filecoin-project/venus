@@ -123,6 +123,7 @@ MESSAGE COMMANDS
   go-filecoin mpool                  - Manage the message pool
 
 TOOL COMMANDS
+  go-filecoin inspect                - Show info about the go-filecoin node
   go-filecoin log                    - Interact with the daemon event log output
   go-filecoin protocol               - Show protocol parameter details
   go-filecoin version                - Show go-filecoin version information
@@ -162,6 +163,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"dag":              dagCmd,
 	"dht":              dhtCmd,
 	"id":               idCmd,
+	"inspect":          inspectCmd,
 	"log":              logCmd,
 	"message":          msgCmd,
 	"miner":            minerCmd,

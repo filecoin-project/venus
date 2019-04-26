@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
+	"github.com/filecoin-project/go-filecoin/plumbing/inspector"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -46,6 +47,7 @@ type API struct {
 	chain        *bcf.BlockChainFacade
 	config       *cfg.Config
 	dag          *dag.DAG
+	inspect      *inspector.Service
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
@@ -64,6 +66,7 @@ type APIDeps struct {
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
+	Inspect      *inspector.Service
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
@@ -83,6 +86,7 @@ func New(deps *APIDeps) *API {
 		chain:        deps.Chain,
 		config:       deps.Config,
 		dag:          deps.DAG,
+		inspect:      deps.Inspect,
 		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
@@ -341,4 +345,9 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 
 func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
 	return api.bitswap.(*bitswap.Bitswap).Stat()
+}
+
+// Inspector returns an inspector service.
+func (api *API) Inspector() *inspector.Service {
+	return api.inspect
 }
