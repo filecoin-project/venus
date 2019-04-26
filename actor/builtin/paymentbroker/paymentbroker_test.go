@@ -110,7 +110,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "checkParams"
+	method := "paramsNotZero"
 	addrParam := addrGetter()
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{addrParam, sectorIdParam}
@@ -124,8 +124,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, params...)
 	}
 
-	// All the following tests attempt to call PBTestActor.CheckParams with a condition.
-	// PBTestActor.CheckParams takes 3 parameter: an Address, a uint64 sector id, and a BlockHeight
+	// All the following tests attempt to call PBTestActor.ParamsNotZero with a condition.
+	// PBTestActor.ParamsNotZero takes 3 parameter: an Address, a uint64 sector id, and a BlockHeight
 	// If any of these are zero values the method throws an error indicating the condition is false.
 	// The Address and the sector id will be included within the condition predicate, and the block
 	// height will be added as a redeemer supplied parameter to redeem.
@@ -897,6 +897,8 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	return channel
 }
 
+// applySignatureMessage signs voucher parameters and then creates a redeem or close message with all
+// the voucher parameters and the signature, sends it to the payment broker, and returns the result
 func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
@@ -938,7 +940,7 @@ var _ exec.ExecutableActor = (*PBTestActor)(nil)
 // Exports returns the list of fake actor exported functions.
 func (ma *PBTestActor) Exports() exec.Exports {
 	return exec.Exports{
-		"checkParams": &exec.FunctionSignature{
+		"paramsNotZero": &exec.FunctionSignature{
 			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
 			Return: nil,
 		},
@@ -950,7 +952,7 @@ func (ma *PBTestActor) InitializeState(storage exec.Storage, initializerData int
 	return nil
 }
 
-func (ma *PBTestActor) CheckParams(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) ParamsNotZero(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}
