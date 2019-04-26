@@ -7,6 +7,7 @@ const (
 	TwoPoRepProofPartitions
 )
 
+// Int returns an integer representing the number of PoRep partitions
 func (p PoRepProofPartitions) Int() int {
 	switch p {
 	case TwoPoRepProofPartitions:
@@ -16,6 +17,8 @@ func (p PoRepProofPartitions) Int() int {
 	}
 }
 
+// ProofLen returns an integer representing the number of bytes in a PoRep proof
+// created with this number of partitions.
 func (p PoRepProofPartitions) ProofLen() int {
 	switch p {
 	case TwoPoRepProofPartitions:
@@ -25,6 +28,8 @@ func (p PoRepProofPartitions) ProofLen() int {
 	}
 }
 
+// NewPoRepProofPartitions produces the PoRepProofPartitions corresponding to
+// the provided integer.
 func NewPoRepProofPartitions(partitions int) PoRepProofPartitions {
 	switch partitions {
 	case 2:

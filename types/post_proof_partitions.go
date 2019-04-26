@@ -7,6 +7,7 @@ const (
 	OnePoStProofPartition
 )
 
+// Int returns an integer representing the number of PoSt partitions
 func (p PoStProofPartitions) Int() int {
 	switch p {
 	case OnePoStProofPartition:
@@ -16,6 +17,8 @@ func (p PoStProofPartitions) Int() int {
 	}
 }
 
+// ProofLen returns an integer representing the number of bytes in a PoSt proof
+// created with this number of partitions.
 func (p PoStProofPartitions) ProofLen() int {
 	switch p {
 	case OnePoStProofPartition:
@@ -25,6 +28,8 @@ func (p PoStProofPartitions) ProofLen() int {
 	}
 }
 
+// NewPoStProofPartitions produces the PoStProofPartitions corresponding to the
+// provided integer.
 func NewPoStProofPartitions(partitions int) PoStProofPartitions {
 	switch partitions {
 	case 1:

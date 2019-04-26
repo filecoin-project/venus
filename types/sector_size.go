@@ -11,6 +11,8 @@ const (
 	TwoHundredFiftySixMiBSectorSize
 )
 
+// Uint64 produces the number of bytes which the miner will get power for when
+// committing a sector of this size to the network.
 func (s SectorSize) Uint64() uint64 {
 	switch s {
 	case OneKiBSectorSize:
