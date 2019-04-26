@@ -341,7 +341,7 @@ jobs:
 
   publish_release:
     docker:
-      - image: circleci/golang:latest
+      - image: circleci/golang:1.12.1
     resource_class: small
     parameters:
       <<: *nightly_param
@@ -367,7 +367,7 @@ jobs:
 
   build_docker_img:
     docker:
-      - image: circleci/golang:latest
+      - image: circleci/golang:1.12.1
     resource_class: xlarge
     parameters:
       <<: *nightly_param
@@ -454,9 +454,10 @@ jobs:
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
               docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
             fi
+
   trigger_nightly_devnet_deploy:
     docker:
-      - image: circleci/golang:latest
+      - image: circleci/golang:1.12.1
     resource_class: small
     steps:
       - setup_remote_docker
@@ -489,7 +490,7 @@ jobs:
       <<: *user_devnet_param
       <<: *test_devnet_param
     docker:
-      - image: circleci/golang:latest
+      - image: circleci/golang:1.12.1
     resource_class: small
     steps:
       - checkout
