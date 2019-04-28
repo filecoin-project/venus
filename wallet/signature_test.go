@@ -23,13 +23,13 @@ import (
 
 /* Test types.IsValidSignature */
 
-func requireSignerAddr(require *require.Assertions) (*DSBackend, address.Address) {
+func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
 	fs, err := NewDSBackend(ds)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	addr, err := fs.NewAddress()
-	require.NoError(err)
+	require.NoError(t, err)
 	return fs, addr
 }
 
@@ -38,83 +38,68 @@ func requireSignerAddr(require *require.Assertions) (*DSBackend, address.Address
 func TestSignatureOk(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES WILL BE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.True(types.IsValidSignature(data, addr, sig))
+	assert.True(t, types.IsValidSignature(data, addr, sig))
 }
 
 // Signature is nil.
 func TestNilSignature(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
-	require := require.New(t)
-	_, addr := requireSignerAddr(require)
+	_, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES NEED A SIGNATURE")
-	assert.False(types.IsValidSignature(data, addr, nil))
+	assert.False(t, types.IsValidSignature(data, addr, nil))
 }
 
 // Signature is over different data.
 func TestDataCorrupted(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	corruptData := []byte("THESE BYTEZ ARE SIGNED")
 
-	assert.False(types.IsValidSignature(corruptData, addr, sig))
+	assert.False(t, types.IsValidSignature(corruptData, addr, sig))
 }
 
 // Signature is valid for data but was signed by a different address.
 func TestInvalidAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	badAddr, err := fs.NewAddress()
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.False(types.IsValidSignature(data, badAddr, sig))
+	assert.False(t, types.IsValidSignature(data, badAddr, sig))
 }
 
 // Signature is corrupted.
 func TestSignatureCorrupted(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	data := []byte("THESE BYTES ARE SIGNED")
 	sig, err := fs.SignBytes(data, addr)
-	require.NoError(err)
+	require.NoError(t, err)
 	sig[0] = sig[0] ^ 0xFF // This operation ensures sig is modified
 
-	assert.False(types.IsValidSignature(data, addr, sig))
+	assert.False(t, types.IsValidSignature(data, addr, sig))
 }
 
 /* Test types.SignedMessage */
@@ -123,73 +108,61 @@ func TestSignatureCorrupted(t *testing.T) {
 func TestSignMessageOk(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.True(smsg.VerifySignature())
+	assert.True(t, smsg.VerifySignature())
 }
 
 // Signature is valid but signer does not match From Address.
 func TestBadFrom(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 	addr2, err := fs.NewAddress()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
 	meteredMsg := types.NewMeteredMessage(*msg, types.NewGasPrice(0), types.NewGasUnits(0))
 	// Can't use NewSignedMessage constructor as it always signs with msg.From.
 	bmsg, err := meteredMsg.Marshal()
-	require.NoError(err)
+	require.NoError(t, err)
 	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
-	require.NoError(err)
+	require.NoError(t, err)
 	smsg := &types.SignedMessage{
 		MeteredMessage: *meteredMsg,
 		Signature:      sig,
 	}
 
-	assert.False(smsg.VerifySignature())
+	assert.False(t, smsg.VerifySignature())
 }
 
 // Signature corrupted.
 func TestSignedMessageBadSignature(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	require.NoError(t, err)
 
 	smsg.Signature[0] = smsg.Signature[0] ^ 0xFF
-	assert.False(smsg.VerifySignature())
+	assert.False(t, smsg.VerifySignature())
 }
 
 // Message corrupted.
 func TestSignedMessageCorrupted(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
-	fs, addr := requireSignerAddr(require)
+	fs, addr := requireSignerAddr(t)
 
 	msg := types.NewMessage(addr, addr, 1, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	require.NoError(t, err)
 
 	smsg.Message.Nonce = types.Uint64(uint64(42))
-	assert.False(smsg.VerifySignature())
+	assert.False(t, smsg.VerifySignature())
 }

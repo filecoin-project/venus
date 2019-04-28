@@ -183,8 +183,9 @@ func (a *API) PaymentChannelVoucher(
 	channel *types.ChannelID,
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
-) (voucher *paymentbroker.PaymentVoucher, err error) {
-	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
+	condition *types.Predicate,
+) (voucher *types.PaymentVoucher, err error) {
+	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt, condition)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state

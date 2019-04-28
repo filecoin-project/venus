@@ -7,7 +7,6 @@ import (
 
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/net"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
@@ -40,33 +39,27 @@ func newNtwkPingPlumbing(rtt time.Duration, self peer.ID) *ntwkPingPlumbing {
 }
 
 func TestPingSuccess(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	self := th.RequireRandomPeerID(require)
+	self := th.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(100*time.Millisecond, self)
-	pid := th.RequireRandomPeerID(require)
+	pid := th.RequireRandomPeerID(t)
 	ctx := context.Background()
 
-	assert.NoError(PingMinerWithTimeout(ctx, pid, time.Second, plumbing))
+	assert.NoError(t, PingMinerWithTimeout(ctx, pid, time.Second, plumbing))
 }
 
 func TestPingSelfFails(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	self := th.RequireRandomPeerID(require)
+	self := th.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(100*time.Millisecond, self)
 	ctx := context.Background()
 
-	assert.Error(PingMinerWithTimeout(ctx, self, time.Second, plumbing))
+	assert.Error(t, PingMinerWithTimeout(ctx, self, time.Second, plumbing))
 }
 
 func TestPingTimeout(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	self := th.RequireRandomPeerID(require)
+	self := th.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(300*time.Millisecond, self)
-	pid := th.RequireRandomPeerID(require)
+	pid := th.RequireRandomPeerID(t)
 	ctx := context.Background()
 
-	assert.Error(PingMinerWithTimeout(ctx, pid, 100*time.Millisecond, plumbing))
+	assert.Error(t, PingMinerWithTimeout(ctx, pid, 100*time.Millisecond, plumbing))
 }

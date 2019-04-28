@@ -42,21 +42,21 @@ require (
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.0.0-20160826012719-b497e2f366b8
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
-	github.com/libp2p/go-libp2p v0.0.2
+	github.com/libp2p/go-libp2p v0.0.16
 	github.com/libp2p/go-libp2p-autonat-svc v0.0.2
-	github.com/libp2p/go-libp2p-circuit v0.0.1
+	github.com/libp2p/go-libp2p-circuit v0.0.4
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-host v0.0.1
 	github.com/libp2p/go-libp2p-interface-connmgr v0.0.1
 	github.com/libp2p/go-libp2p-kad-dht v0.0.4
 	github.com/libp2p/go-libp2p-metrics v0.0.1
-	github.com/libp2p/go-libp2p-net v0.0.1
+	github.com/libp2p/go-libp2p-net v0.0.2
 	github.com/libp2p/go-libp2p-peer v0.0.1
-	github.com/libp2p/go-libp2p-peerstore v0.0.1
+	github.com/libp2p/go-libp2p-peerstore v0.0.2
 	github.com/libp2p/go-libp2p-protocol v0.0.1
 	github.com/libp2p/go-libp2p-pubsub v0.0.1
 	github.com/libp2p/go-libp2p-routing v0.0.1
-	github.com/libp2p/go-libp2p-swarm v0.0.1
+	github.com/libp2p/go-libp2p-swarm v0.0.2
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.0.0-20190131020904-2d45a736cd16

@@ -5,15 +5,12 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multibase"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
 )
 
 var paymentChannelCmd = &cmds.Command{
@@ -215,7 +212,7 @@ var voucherCmd = &cmds.Command{
 			return err
 		}
 
-		voucher, err := GetPorcelainAPI(env).PaymentChannelVoucher(req.Context, fromAddr, channel, amount, validAt)
+		voucher, err := GetPorcelainAPI(env).PaymentChannelVoucher(req.Context, fromAddr, channel, amount, validAt, nil)
 		if err != nil {
 			return err
 		}
@@ -266,59 +263,49 @@ var redeemCmd = &cmds.Command{
 			return err
 		}
 
+		voucher, err := types.DecodeVoucher(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		result := &ReclaimResult{Preview: preview}
+
+		params := []interface{}{
+			voucher.Payer,
+			&voucher.Channel,
+			&voucher.Amount,
+			&voucher.ValidAt,
+			voucher.Condition,
+			[]byte(voucher.Signature),
+			[]interface{}{},
+		}
+
 		if preview {
-			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
-			if err != nil {
-				return err
-			}
-
-			var voucher paymentbroker.PaymentVoucher
-			err = cbor.DecodeInto(cborVoucher, &voucher)
-			if err != nil {
-				return err
-			}
-
-			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+			result.GasUsed, err = GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
 				"redeem",
-				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+				params...,
 			)
-			if err != nil {
-				return err
-			}
-			return re.Emit(&RedeemResult{
-				Cid:     cid.Cid{},
-				GasUsed: usedGas,
-				Preview: true,
-			})
+		} else {
+			result.Cid, err = GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				types.NewAttoFILFromFIL(0),
+				gasPrice,
+				gasLimit,
+				"redeem",
+				params...,
+			)
 		}
 
-		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
 		if err != nil {
 			return err
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
-			req.Context,
-			fromAddr,
-			address.PaymentBrokerAddress,
-			types.NewAttoFILFromFIL(0),
-			gasPrice,
-			gasLimit,
-			"redeem",
-			voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-		)
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(&RedeemResult{
-			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
-			Preview: false,
-		})
+		return re.Emit(result)
 	},
 	Type: &RedeemResult{},
 	Encoders: cmds.EncoderMap{
@@ -451,59 +438,49 @@ var closeCmd = &cmds.Command{
 			return err
 		}
 
+		voucher, err := types.DecodeVoucher(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		result := &CloseResult{Preview: preview}
+
+		params := []interface{}{
+			voucher.Payer,
+			&voucher.Channel,
+			&voucher.Amount,
+			&voucher.ValidAt,
+			voucher.Condition,
+			[]byte(voucher.Signature),
+			[]interface{}{},
+		}
+
 		if preview {
-			_, cborVoucher, err := multibase.Decode(req.Arguments[0])
-			if err != nil {
-				return err
-			}
-
-			var voucher paymentbroker.PaymentVoucher
-			err = cbor.DecodeInto(cborVoucher, &voucher)
-			if err != nil {
-				return err
-			}
-
-			usedGas, err := GetPorcelainAPI(env).MessagePreview(
+			result.GasUsed, err = GetPorcelainAPI(env).MessagePreview(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
 				"close",
-				voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
+				params...,
 			)
-			if err != nil {
-				return err
-			}
-			return re.Emit(&CloseResult{
-				Cid:     cid.Cid{},
-				GasUsed: usedGas,
-				Preview: true,
-			})
+		} else {
+			result.Cid, err = GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+				req.Context,
+				fromAddr,
+				address.PaymentBrokerAddress,
+				types.NewAttoFILFromFIL(0),
+				gasPrice,
+				gasLimit,
+				"close",
+				params...,
+			)
 		}
 
-		voucher, err := paymentbroker.DecodeVoucher(req.Arguments[0])
 		if err != nil {
 			return err
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
-			req.Context,
-			fromAddr,
-			address.PaymentBrokerAddress,
-			types.NewAttoFILFromFIL(0),
-			gasPrice,
-			gasLimit,
-			"close",
-			voucher.Payer, &voucher.Channel, &voucher.Amount, &voucher.ValidAt, []byte(voucher.Signature),
-		)
-		if err != nil {
-			return err
-		}
-
-		return re.Emit(&CloseResult{
-			Cid:     c,
-			GasUsed: types.NewGasUnits(0),
-			Preview: false,
-		})
+		return re.Emit(result)
 	},
 	Type: &CloseResult{},
 	Encoders: cmds.EncoderMap{

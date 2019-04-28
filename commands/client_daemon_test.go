@@ -24,8 +24,6 @@ import (
 func TestListAsks(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	minerDaemon := makeTestDaemonWithMinerAndStart(t)
 	defer minerDaemon.ShutdownSuccess()
 
@@ -33,13 +31,11 @@ func TestListAsks(t *testing.T) {
 	minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 
 	listAsksOutput := minerDaemon.RunSuccess("client", "list-asks").ReadStdoutTrimNewlines()
-	assert.Equal(fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
+	assert.Equal(t, fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 	minerDaemon := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
@@ -76,13 +72,11 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
-	assert.NotEmpty(clientDaemon.RunSuccess("client", "query-storage-deal", dealCid).ReadStdout())
+	assert.NotEmpty(t, clientDaemon.RunSuccess("client", "query-storage-deal", dealCid).ReadStdout())
 }
 
 func TestDuplicateDeals(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	miner := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
@@ -112,14 +106,12 @@ func TestDuplicateDeals(t *testing.T) {
 	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
 		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
 		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDuplicateDeal].Error())
-		assert.Equal(expectedError, proposeDealOutput)
+		assert.Equal(t, expectedError, proposeDealOutput)
 	})
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	miner1Addr := fixtures.TestMiners[0]
 	minerOwner1 := fixtures.TestAddresses[0]
@@ -157,15 +149,13 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
 
 	firstDeal := client.RunSuccess("client", "propose-storage-deal", miner1Addr, dataCid, "0", "5").ReadStdoutTrimNewlines()
-	assert.Contains(firstDeal, "accepted")
+	assert.Contains(t, firstDeal, "accepted")
 	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
-	assert.Contains(secondDeal, "accepted")
+	assert.Contains(t, secondDeal, "accepted")
 }
 
 func TestVoucherPersistenceAndPayments(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	// DefaultAddress required here
 	miner := th.NewDaemon(t,
@@ -194,21 +184,20 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 
 	result := client.RunSuccess("client", "payments", dealCid).ReadStdoutTrimNewlines()
 
-	assert.Contains(result, "Channel\tAmount\tValidAt\tEncoded Voucher")
+	assert.Contains(t, result, "Channel\tAmount\tValidAt\tEncoded Voucher")
 	// Note: in the assertion below the expiration is four digits, but we're only checking
 	// two. This is intentional: the expiry depends on the block at which the vouchers were
 	// created, which could be any small number eg 0 or 3. The expiry in each case would
 	// be 1000/2000/3000 or 1003/2003/3003. Anyway, it's non-deterministic. So we just check
 	// the first couple of digits.
-	assert.Contains(result, "0\t240000\t10")
-	assert.Contains(result, "0\t480000\t20")
-	assert.Contains(result, "0\t720000\t30")
+	assert.Contains(t, result, "0\t240000\t10")
+	assert.Contains(t, result, "0\t480000\t20")
+	assert.Contains(t, result, "0\t720000\t30")
 }
 
 func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
 	minerDaemon := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
@@ -235,14 +224,11 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 
 	proposeDealErrors := clientDaemon.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
 
-	assert.Contains(proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
+	assert.Contains(t, proposeDealErrors, "piece is 3000 bytes but sector size is 1016 bytes")
 }
 
 func TestSelfDialStorageGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	ctx := context.Background()
 
@@ -250,7 +236,7 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)
-		require.NoError(err)
+		require.NoError(t, err)
 	}()
 
 	// Start mining.
@@ -278,16 +264,16 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	expiry := big.NewInt(int64(500))
 	ask, err := series.CreateMinerWithAsk(ctx, miningNode, pledge, collateral, price, expiry)
 	minerCreateDoneCh <- struct{}{}
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Try to make a storage deal with self and fail on self dial.
 	f := files.NewBytesFile([]byte("satyamevajayate"))
 	_, _, err = series.ImportAndStore(ctx, miningNode, ask, f)
-	assert.Error(err)
+	assert.Error(t, err)
 	var cmdOutBytes []byte
 	w := bytes.NewBuffer(cmdOutBytes)
 	miningNode.DumpLastOutput(w)
 	outputStr := string(w.Bytes())
 	expectedErrStr := "attempting to make storage deal with self"
-	assert.Contains(outputStr, expectedErrStr)
+	assert.Contains(t, outputStr, expectedErrStr)
 }

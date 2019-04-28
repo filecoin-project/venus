@@ -71,7 +71,6 @@ func newEndpoint(t *testing.T, port int) endpoint {
 func TestHeartbeatConnectSuccess(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	aggregator := newEndpoint(t, 0)
 	filecoin := newEndpoint(t, 0)
@@ -93,18 +92,17 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 		},
 	)
 
-	assert.Equal(1, len(aggregator.Host.Peerstore().Peers()))
-	assert.Contains(aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
-	assert.NoError(hbs.Connect(ctx))
-	assert.Equal(2, len(aggregator.Host.Peerstore().Peers()))
-	assert.Contains(aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
-	assert.Contains(aggregator.Host.Peerstore().Peers(), filecoin.Host.ID())
+	assert.Equal(t, 1, len(aggregator.Host.Peerstore().Peers()))
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
+	assert.NoError(t, hbs.Connect(ctx))
+	assert.Equal(t, 2, len(aggregator.Host.Peerstore().Peers()))
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), filecoin.Host.ID())
 }
 
 func TestHeartbeatConnectFailure(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	filecoin := newEndpoint(t, 60001)
 
@@ -122,14 +120,11 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			}, nil
 		},
 	)
-	assert.Error(hbs.Connect(ctx))
+	assert.Error(t, hbs.Connect(ctx))
 }
 
 func TestHeartbeatRunSuccess(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	ctx := context.Background()
 	// we will use this to stop the run method after making assertions
@@ -144,7 +139,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	expTs := mustMakeTipset(t, expHeight)
 
 	addr, err := address.NewActorAddress([]byte("miner address"))
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// The handle method will run the assertions for the test
 	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(s net.Stream) {
@@ -152,12 +147,12 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 		dec := json.NewDecoder(s)
 		var hb Heartbeat
-		require.NoError(dec.Decode(&hb))
+		require.NoError(t, dec.Decode(&hb))
 
-		assert.Equal(expTs.String(), hb.Head)
-		assert.Equal(uint64(444), hb.Height)
-		assert.Equal("BobHoblaw", hb.Nickname)
-		assert.Equal(addr, hb.MinerAddress)
+		assert.Equal(t, expTs.String(), hb.Head)
+		assert.Equal(t, uint64(444), hb.Height)
+		assert.Equal(t, "BobHoblaw", hb.Nickname)
+		assert.Equal(t, addr, hb.MinerAddress)
 		cancel()
 	})
 
@@ -177,10 +172,10 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		}),
 	)
 
-	require.NoError(hbs.Connect(ctx))
+	require.NoError(t, hbs.Connect(ctx))
 
-	assert.NoError(hbs.Run(runCtx))
-	assert.Error(runCtx.Err(), context.Canceled.Error())
+	assert.NoError(t, hbs.Run(runCtx))
+	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 
 }
 

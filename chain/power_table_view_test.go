@@ -23,40 +23,35 @@ import (
 func TestTotal(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	ctx := context.Background()
 
 	power := uint64(19)
 	bs, _, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(power, actual)
+	assert.Equal(t, power, actual)
 }
 
 func TestMiner(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	require := require.New(t)
-	assert := assert.New(t)
 
 	power := uint64(12)
 	bs, addr, st := requireMinerWithPower(ctx, t, power)
 
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(power, actual)
+	assert.Equal(t, power, actual)
 }
 
 func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	require := require.New(t)
 
 	// set up genesis block with power
 	genCfg := &gengen.GenesisCfg{
@@ -69,13 +64,13 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bst
 	}
 
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	var calcGenBlk types.Block
-	require.NoError(cst.Get(ctx, info.GenesisCid, &calcGenBlk))
+	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
 	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot, builtin.Actors)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	return bs, info.Miners[0].Address, stateTree
 }

@@ -13,12 +13,12 @@ import (
 )
 
 type testProtocolParamsPlumbing struct {
-	assert           *assert.Assertions
+	testing          *testing.T
 	autoSealInterval uint
 }
 
 func (tppp *testProtocolParamsPlumbing) ConfigGet(path string) (interface{}, error) {
-	tppp.assert.Equal("mining.autoSealIntervalSeconds", path)
+	assert.Equal(tppp.testing, "mining.autoSealIntervalSeconds", path)
 	return tppp.autoSealInterval, nil
 }
 
@@ -31,11 +31,9 @@ func TestProtocolParams(t *testing.T) {
 
 	t.Run("emits the a ProtocolParams object with the correct values", func(t *testing.T) {
 		t.Parallel()
-		assert := assert.New(t)
-		require := require.New(t)
 
 		plumbing := &testProtocolParamsPlumbing{
-			assert:           assert,
+			testing:          t,
 			autoSealInterval: 120,
 		}
 
@@ -45,8 +43,8 @@ func TestProtocolParams(t *testing.T) {
 		}
 
 		out, err := porcelain.ProtocolParameters(context.TODO(), plumbing)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(expected, out)
+		assert.Equal(t, expected, out)
 	})
 }

@@ -12,12 +12,10 @@ import (
 func TestStatsBandwidth(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	stats := d.RunSuccess("stats", "bandwidth").ReadStdoutTrimNewlines()
 
-	assert.Equal("{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
+	assert.Equal(t, "{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
 }

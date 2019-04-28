@@ -22,8 +22,6 @@ type fooTestMessage struct {
 func TestMessageSending(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	buf := new(bytes.Buffer)
 	w := NewMsgWriter(buf)
 	r := NewMsgReader(buf)
@@ -36,12 +34,12 @@ func TestMessageSending(t *testing.T) {
 	}
 
 	for _, it := range items {
-		assert.NoError(w.WriteMsg(it))
+		assert.NoError(t, w.WriteMsg(it))
 	}
 
 	for _, it := range items {
 		var msg fooTestMessage
-		assert.NoError(r.ReadMsg(&msg))
-		assert.Equal(it, msg)
+		assert.NoError(t, r.ReadMsg(&msg))
+		assert.Equal(t, it, msg)
 	}
 }

@@ -67,7 +67,7 @@ const ECPrM uint64 = 100
 
 // AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
 // to process all state transitions.
-var AncestorRoundsNeeded = miner.ProvingPeriodBlocks.Add(miner.GracePeriodBlocks)
+const AncestorRoundsNeeded = miner.ProvingPeriodBlocks + miner.GracePeriodBlocks
 
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {

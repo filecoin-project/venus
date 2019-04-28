@@ -143,6 +143,7 @@ func build() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
+	buildMigrations()
 }
 
 func forcebuild() {
@@ -151,6 +152,7 @@ func forcebuild() {
 	buildFaucet()
 	buildGenesisFileServer()
 	generateGenesis()
+	buildMigrations()
 }
 
 func forceBuildFC() {
@@ -210,6 +212,12 @@ func buildGenesisFileServer() {
 	runCmd(cmd([]string{"go", "build", "-o", "./tools/genesis-file-server/genesis-file-server", "./tools/genesis-file-server/"}...))
 }
 
+func buildMigrations() {
+	log.Println("Building migrations...")
+	runCmd(cmd([]string{
+		"go", "build", "-o", "./tools/migration/go-filecoin-migrate", "./tools/migration/main.go"}...))
+}
+
 func install() {
 	log.Println("Installing...")
 
@@ -220,7 +228,20 @@ func install() {
 func test(args ...string) {
 	log.Println("Testing...")
 
-	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel 8 ./... %s", strings.Join(args, " "))))
+	parallelism, ok := os.LookupEnv("TEST_PARALLELISM")
+
+	if !ok {
+		parallelism = "8"
+	}
+
+	packages, ok := os.LookupEnv("TEST_PACKAGES")
+
+	if !ok {
+		packages = "./..."
+	}
+
+	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel %s %s %s",
+		parallelism, strings.Replace(packages, "\n", " ", -1), strings.Join(args, " "))))
 }
 
 func main() {
@@ -247,6 +268,8 @@ func main() {
 		buildGengen()
 	case "generate-genesis":
 		generateGenesis()
+	case "build-migrations":
+		buildMigrations()
 	case "build":
 		build()
 	case "fbuild":

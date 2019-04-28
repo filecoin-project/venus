@@ -21,20 +21,19 @@ func TestInitOverHttp(t *testing.T) {
 
 	td := th.NewDaemon(t).Start()
 	defer td.ShutdownSuccess()
-	require := require.New(t)
 
 	maddr, err := ma.NewMultiaddr(td.CmdAddr())
-	require.NoError(err)
+	require.NoError(t, err)
 
 	_, host, err := manet.DialArgs(maddr)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	url := fmt.Sprintf("http://%s/api/init", host)
 	req, err := http.NewRequest("POST", url, nil)
-	require.NoError(err)
+	require.NoError(t, err)
 	res, err := http.DefaultClient.Do(req)
-	require.NoError(err)
-	require.Equal(http.StatusNotFound, res.StatusCode)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, res.StatusCode)
 }
 
 func TestDownloadGenesis(t *testing.T) {

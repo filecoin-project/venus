@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -30,8 +29,6 @@ var testSignature = types.Signature("<test signature>")
 func TestProposeDeal(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	ctx := context.Background()
 	addressCreator := address.NewForTestGetter()
 
@@ -39,11 +36,11 @@ func TestProposeDeal(t *testing.T) {
 
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
 		p, ok := request.(*storagedeal.SignedDealProposal)
-		require.True(ok)
+		require.True(t, ok)
 		proposal = p
 
 		pcid, err := convert.ToCid(p.Proposal)
-		require.NoError(err)
+		require.NoError(t, err)
 		return &storagedeal.Response{
 			State:       storagedeal.Accepted,
 			Message:     "OK",
@@ -51,7 +48,7 @@ func TestProposeDeal(t *testing.T) {
 		}, nil
 	})
 
-	testAPI := newTestClientAPI(require)
+	testAPI := newTestClientAPI(t)
 	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -60,58 +57,58 @@ func TestProposeDeal(t *testing.T) {
 	askID := uint64(67)
 	duration := uint64(10000)
 	dealResponse, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	t.Run("and creates proposal from parameters", func(t *testing.T) {
-		assert.Equal(dataCid, proposal.PieceRef)
-		assert.Equal(duration, proposal.Duration)
-		assert.Equal(minerAddr, proposal.MinerAddress)
-		assert.Equal(testSignature, proposal.Signature)
+		assert.Equal(t, dataCid, proposal.PieceRef)
+		assert.Equal(t, duration, proposal.Duration)
+		assert.Equal(t, minerAddr, proposal.MinerAddress)
+		assert.Equal(t, testSignature, proposal.Signature)
 	})
 
 	t.Run("and creates proposal with file size", func(t *testing.T) {
 		expectedFileSize, err := testAPI.DAGGetFileSize(ctx, dataCid)
-		require.NoError(err)
-		assert.Equal(types.NewBytesAmount(expectedFileSize), proposal.Size)
+		require.NoError(t, err)
+		assert.Equal(t, types.NewBytesAmount(expectedFileSize), proposal.Size)
 	})
 
 	t.Run("and computes the correct total price", func(t *testing.T) {
 		expectedAskPrice := types.NewAttoFILFromFIL(32) // from test plumbing
 		expectedFileSize, err := testAPI.DAGGetFileSize(ctx, dataCid)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		expectedTotalPrice := expectedAskPrice.MulBigInt(big.NewInt(int64(expectedFileSize * duration)))
-		assert.Equal(expectedTotalPrice, proposal.TotalPrice)
+		assert.Equal(t, expectedTotalPrice, proposal.TotalPrice)
 	})
 
 	t.Run("and creates a new payment channel", func(t *testing.T) {
 		// correct payment id and message cid in proposal implies a call to createChannel
-		assert.Equal(testAPI.channelID, proposal.Payment.Channel)
-		assert.Equal(&testAPI.msgCid, proposal.Payment.ChannelMsgCid)
+		assert.Equal(t, testAPI.channelID, proposal.Payment.Channel)
+		assert.Equal(t, &testAPI.msgCid, proposal.Payment.ChannelMsgCid)
 	})
 
 	t.Run("and creates payment info", func(t *testing.T) {
-		assert.Equal(int(duration/VoucherInterval), len(proposal.Payment.Vouchers))
+		assert.Equal(t, int(duration/VoucherInterval), len(proposal.Payment.Vouchers))
 
 		lastValidAt := types.NewBlockHeight(0)
 		for i, voucher := range proposal.Payment.Vouchers {
-			assert.Equal(testAPI.channelID, &voucher.Channel)
-			assert.True(voucher.ValidAt.GreaterThan(lastValidAt))
-			assert.Equal(testAPI.target, voucher.Target)
-			assert.Equal(testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), &voucher.Amount)
-			assert.Equal(testAPI.payer, voucher.Payer)
+			assert.Equal(t, testAPI.channelID, &voucher.Channel)
+			assert.True(t, voucher.ValidAt.GreaterThan(lastValidAt))
+			assert.Equal(t, testAPI.target, voucher.Target)
+			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), &voucher.Amount)
+			assert.Equal(t, testAPI.payer, voucher.Payer)
 			lastValidAt = &voucher.ValidAt
 		}
 	})
 
 	t.Run("and sends proposal and stores response", func(t *testing.T) {
-		assert.NotNil(dealResponse)
+		assert.NotNil(t, dealResponse)
 
-		assert.Equal(storagedeal.Accepted, dealResponse.State)
+		assert.Equal(t, storagedeal.Accepted, dealResponse.State)
 
 		retrievedDeal := testAPI.DealGet(dealResponse.ProposalCid)
 
-		assert.Equal(retrievedDeal.Response, dealResponse)
+		assert.Equal(t, retrievedDeal.Response, dealResponse)
 	})
 }
 
@@ -122,11 +119,11 @@ type clientTestAPI struct {
 	payer       address.Address
 	target      address.Address
 	perPayment  *types.AttoFIL
-	require     *require.Assertions
+	testing     *testing.T
 	deals       map[cid.Cid]*storagedeal.Deal
 }
 
-func newTestClientAPI(require *require.Assertions) *clientTestAPI {
+func newTestClientAPI(t *testing.T) *clientTestAPI {
 	cidGetter := types.NewCidForTestGetter()
 	addressGetter := address.NewForTestGetter()
 
@@ -137,7 +134,7 @@ func newTestClientAPI(require *require.Assertions) *clientTestAPI {
 		payer:       addressGetter(),
 		target:      addressGetter(),
 		perPayment:  types.NewAttoFILFromFIL(10),
-		require:     require,
+		testing:     t,
 		deals:       make(map[cid.Cid]*storagedeal.Deal),
 	}
 }
@@ -152,11 +149,11 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 		Channel:              ctp.channelID,
 		ChannelMsgCid:        ctp.msgCid,
 		GasAttoFIL:           types.NewAttoFILFromFIL(100),
-		Vouchers:             make([]*paymentbroker.PaymentVoucher, 10),
+		Vouchers:             make([]*types.PaymentVoucher, 10),
 	}
 
 	for i := 0; i < 10; i++ {
-		resp.Vouchers[i] = &paymentbroker.PaymentVoucher{
+		resp.Vouchers[i] = &types.PaymentVoucher{
 			Channel: *ctp.channelID,
 			Payer:   ctp.payer,
 			Target:  ctp.target,
@@ -185,7 +182,7 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 
 func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
-	ctp.require.NoError(err, "Could not create peer id")
+	require.NoError(ctp.testing, err, "Could not create peer id")
 
 	return id, nil
 }

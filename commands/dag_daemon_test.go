@@ -18,9 +18,6 @@ func TestDagDaemon(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("dag get <cid> returning the genesis block", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -32,8 +29,8 @@ func TestDagDaemon(t *testing.T) {
 
 		var expectedRaw []types.Block
 		err := json.Unmarshal(genesisBlockJSONStr, &expectedRaw)
-		assert.NoError(err)
-		require.Equal(1, len(expectedRaw))
+		assert.NoError(t, err)
+		require.Equal(t, 1, len(expectedRaw))
 		expected := expectedRaw[0]
 
 		// get an IPLD node from the DAG by its CID
@@ -43,7 +40,7 @@ func TestDagDaemon(t *testing.T) {
 		result2 := op2.ReadStdoutTrimNewlines()
 
 		ipldnode, err := cbor.FromJSON(bytes.NewReader([]byte(result2)), types.DefaultHashFunction, -1)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		// CBOR decode the IPLD node's raw data into a Filecoin block
 

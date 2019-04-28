@@ -14,19 +14,17 @@ import (
 func TestVersion(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	var gitOut, verOut []byte
 	var err error
 	gitArgs := []string{"rev-parse", "--verify", "HEAD"}
 	if gitOut, err = exec.Command("git", gitArgs...).Output(); err != nil {
-		assert.NoError(err)
+		assert.NoError(t, err)
 	}
 	commit := string(gitOut)
 
 	if verOut, err = exec.Command(th.MustGetFilecoinBinary(), "version").Output(); err != nil {
-		assert.NoError(err)
+		assert.NoError(t, err)
 	}
 	version := string(verOut)
-	assert.Exactly(version, fmt.Sprintf("commit: %s", commit))
+	assert.Exactly(t, version, fmt.Sprintf("commit: %s", commit))
 }

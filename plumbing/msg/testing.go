@@ -2,6 +2,7 @@ package msg
 
 import (
 	"context"
+	"testing"
 
 	bserv "github.com/ipfs/go-blockservice"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -23,21 +24,21 @@ type commonDeps struct {
 	cst        *hamt.CborIpldStore
 }
 
-func requiredCommonDeps(require *require.Assertions, gif consensus.GenesisInitFunc) *commonDeps { // nolint: deadcode
+func requiredCommonDeps(t *testing.T, gif consensus.GenesisInitFunc) *commonDeps { // nolint: deadcode
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	return requireCommonDepsWithGifAndBlockstore(require, gif, r, bs)
+	return requireCommonDepsWithGifAndBlockstore(t, gif, r, bs)
 }
 
 // This version is useful if you are installing actors with consensus.AddActor and you
 // need to set some actor state up ahead of time (actor state is ultimately found in the
 // block store).
-func requireCommonDepsWithGifAndBlockstore(require *require.Assertions, gif consensus.GenesisInitFunc, r repo.Repo, bs bstore.Blockstore) *commonDeps {
+func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisInitFunc, r repo.Repo, bs bstore.Blockstore) *commonDeps {
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
-	require.NoError(err)
+	require.NoError(t, err)
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
-	require.NoError(err)
+	require.NoError(t, err)
 	wallet := wallet.New(backend)
 
 	return &commonDeps{

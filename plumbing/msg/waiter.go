@@ -200,7 +200,8 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		return nil, err
 	}
 	tsBlockHeight := types.NewBlockHeight(tsHeight)
-	ancestors, err := chain.GetRecentAncestors(ctx, tsas.TipSet, w.chainReader, tsBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	ancestors, err := chain.GetRecentAncestors(ctx, tsas.TipSet, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, err
 	}

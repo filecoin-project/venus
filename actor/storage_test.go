@@ -23,35 +23,32 @@ import (
 func TestActorMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	actor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(1))
 	actor.Head = requireCid(t, "Actor Storage")
 	actor.IncNonce()
 
 	marshalled, err := actor.Marshal()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	actorBack := Actor{}
 	err = actorBack.Unmarshal(marshalled)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(actor.Code, actorBack.Code)
-	assert.Equal(actor.Head, actorBack.Head)
-	assert.Equal(actor.Nonce, actorBack.Nonce)
+	assert.Equal(t, actor.Code, actorBack.Code)
+	assert.Equal(t, actor.Head, actorBack.Head)
+	assert.Equal(t, actor.Nonce, actorBack.Nonce)
 
 	c1, err := actor.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := actorBack.Cid()
-	assert.NoError(err)
-	assert.Equal(c1, c2)
+	assert.NoError(t, err)
+	assert.Equal(t, c1, c2)
 }
 
 func TestMarshalValue(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
-
 		testCases := []struct {
 			In  interface{}
 			Out []byte
@@ -63,25 +60,20 @@ func TestMarshalValue(t *testing.T) {
 
 		for _, tc := range testCases {
 			out, err := MarshalValue(tc.In)
-			assert.NoError(err)
-			assert.Equal(out, tc.Out)
+			assert.NoError(t, err)
+			assert.Equal(t, out, tc.Out)
 		}
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		assert := assert.New(t)
-
 		out, err := MarshalValue(big.NewRat(1, 2))
-		assert.Equal(err.Error(), "unknown type: *big.Rat")
-		assert.Nil(out)
+		assert.Equal(t, err.Error(), "unknown type: *big.Rat")
+		assert.Nil(t, out)
 	})
 }
 
 func TestLoadLookup(t *testing.T) {
 	tf.UnitTest(t)
-
-	require := require.New(t)
-	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
@@ -90,21 +82,21 @@ func TestLoadLookup(t *testing.T) {
 	ctx := context.TODO()
 
 	lookup, err := LoadLookup(ctx, storage, cid.Undef)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	err = lookup.Set(ctx, "foo", "someData")
-	require.NoError(err)
+	require.NoError(t, err)
 
 	c, err := lookup.Commit(ctx)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.True(c.Defined())
+	assert.True(t, c.Defined())
 
 	err = storage.Commit(c, cid.Undef)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	err = vms.Flush()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	t.Run("Fetch chunk by cid", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
@@ -112,12 +104,12 @@ func TestLoadLookup(t *testing.T) {
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		value, err := lookup.Find(ctx, "foo")
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal("someData", value)
+		assert.Equal(t, "someData", value)
 	})
 
 	t.Run("Get errs for missing key", func(t *testing.T) {
@@ -126,19 +118,16 @@ func TestLoadLookup(t *testing.T) {
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		_, err := lookup.Find(ctx, "bar")
-		require.Error(err)
-		assert.Equal(hamt.ErrNotFound, err)
+		require.Error(t, err)
+		assert.Equal(t, hamt.ErrNotFound, err)
 	})
 }
 
 func TestLoadLookupWithInvalidCid(t *testing.T) {
 	tf.UnitTest(t)
-
-	require := require.New(t)
-	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
@@ -149,15 +138,12 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 	c := types.NewCidForTestGetter()()
 
 	_, err := LoadLookup(ctx, storage, c)
-	require.Error(err)
-	assert.Equal(vm.ErrNotFound, err)
+	require.Error(t, err)
+	assert.Equal(t, vm.ErrNotFound, err)
 }
 
 func TestSetKeyValue(t *testing.T) {
 	tf.UnitTest(t)
-
-	require := require.New(t)
-	assert := assert.New(t)
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
@@ -166,13 +152,13 @@ func TestSetKeyValue(t *testing.T) {
 	ctx := context.TODO()
 
 	c, err := SetKeyValue(ctx, storage, cid.Undef, "foo", "bar")
-	require.NoError(err)
-	assert.True(c.Defined())
+	require.NoError(t, err)
+	assert.True(t, c.Defined())
 
 	lookup, err := LoadLookup(ctx, storage, c)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	val, err := lookup.Find(ctx, "foo")
-	require.NoError(err)
-	assert.Equal("bar", val)
+	require.NoError(t, err)
+	assert.Equal(t, "bar", val)
 }

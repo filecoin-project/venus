@@ -16,8 +16,6 @@ import (
 func TestStartLogCapture(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	dir := "mockdir"
 
@@ -28,33 +26,33 @@ func TestStartLogCapture(t *testing.T) {
 	}
 
 	c, err := ns.Load()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	fc, ok := c.(IPTBCoreExt)
-	require.True(ok)
+	require.True(t, ok)
 
 	mfc := NewFilecoinProcess(ctx, fc, EnvironmentOpts{})
 	err = mfc.setupStderrCapturing()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	t.Run("test capture logs", func(t *testing.T) {
 		capture, err := mfc.StartLogCapture()
-		require.NoError(err)
+		require.NoError(t, err)
 
 		_, err = mfc.RunCmdWithStdin(ctx, nil, "add-to-daemonstderr", "hello")
-		require.NoError(err)
+		require.NoError(t, err)
 
 		err = mfc.lp.Pull()
-		require.NoError(err)
+		require.NoError(t, err)
 
 		capture.Stop()
 
 		bb, err := ioutil.ReadAll(capture)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		require.Equal("hello\n", string(bb))
+		require.Equal(t, "hello\n", string(bb))
 	})
 
 	err = mfc.teardownStderrCapturing()
-	require.NoError(err)
+	require.NoError(t, err)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -115,21 +116,21 @@ func MkFakeChildCore(parent types.TipSet,
 }
 
 // RequireMkFakeChild wraps MkFakeChild with a testify requirement that it does not error
-func RequireMkFakeChild(require *require.Assertions, params FakeChildParams) *types.Block {
+func RequireMkFakeChild(t *testing.T, params FakeChildParams) *types.Block {
 	child, err := MkFakeChild(params)
-	require.NoError(err)
+	require.NoError(t, err)
 	return child
 }
 
 // RequireMkFakeChain returns a chain of num successive tipsets (no null blocks)
 // created with MkFakeChild and starting off of base.  Nonce, genCid and
 // stateRoot parameters for the whole chain are passed in with params.
-func RequireMkFakeChain(require *require.Assertions, base types.TipSet, num int, params FakeChildParams) []types.TipSet {
+func RequireMkFakeChain(t *testing.T, base types.TipSet, num int, params FakeChildParams) []types.TipSet {
 	var ret []types.TipSet
 	params.Parent = base
 	for i := 0; i < num; i++ {
-		block := RequireMkFakeChild(require, params)
-		ts := RequireNewTipSet(require, block)
+		block := RequireMkFakeChild(t, params)
+		ts := RequireNewTipSet(t, block)
 		ret = append(ret, ts)
 		params.Parent = ts
 	}
@@ -138,15 +139,15 @@ func RequireMkFakeChain(require *require.Assertions, base types.TipSet, num int,
 
 // RequireMkFakeChildWithCon wraps MkFakeChildWithCon with a requirement that
 // it does not error.
-func RequireMkFakeChildWithCon(require *require.Assertions, params FakeChildParams) *types.Block {
+func RequireMkFakeChildWithCon(t *testing.T, params FakeChildParams) *types.Block {
 	child, err := MkFakeChildWithCon(params)
-	require.NoError(err)
+	require.NoError(t, err)
 	return child
 }
 
 // RequireMkFakeChildCore wraps MkFakeChildCore with a requirement that
 // it does not errror.
-func RequireMkFakeChildCore(require *require.Assertions,
+func RequireMkFakeChildCore(t *testing.T,
 	params FakeChildParams,
 	wFun func(types.TipSet) (uint64, error)) *types.Block {
 	child, err := MkFakeChildCore(params.Parent,
@@ -157,7 +158,7 @@ func RequireMkFakeChildCore(require *require.Assertions,
 		params.MinerPubKey,
 		params.Signer,
 		wFun)
-	require.NoError(err)
+	require.NoError(t, err)
 	return child
 }
 
@@ -172,9 +173,9 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 
 // RequirePutTsas ensures that the provided tipset and state is placed in the
 // input store.
-func RequirePutTsas(ctx context.Context, require *require.Assertions, chn chain.Store, tsas *chain.TipSetAndState) {
+func RequirePutTsas(ctx context.Context, t *testing.T, chn chain.Store, tsas *chain.TipSetAndState) {
 	err := chn.PutTipSetAndState(ctx, tsas)
-	require.NoError(err)
+	require.NoError(t, err)
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
