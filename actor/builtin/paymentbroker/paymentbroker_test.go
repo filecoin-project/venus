@@ -195,6 +195,52 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	})
 }
 
+func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
+	tf.UnitTest(t)
+
+	t.Run("resets EOL on success", func(t *testing.T) {
+		sys := setup(t)
+
+		pdata := core.MustConvertParams(sys.channelID)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+
+		result, err := sys.ApplyMessage(msg, 100)
+		require.NoError(t, result.ExecutionError)
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), result.Receipt.ExitCode)
+
+		result, err = sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 10000)
+		require.NoError(t, err)
+
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+
+		assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
+		assert.Equal(t, types.NewBlockHeight(20000), channel.Eol)
+	})
+
+	t.Run("does not reset EOL on failure", func(t *testing.T) {
+		sys := setup(t)
+
+		pdata := core.MustConvertParams(sys.channelID)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+
+		result, err := sys.ApplyMessage(msg, 100)
+		require.NoError(t, result.ExecutionError)
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), result.Receipt.ExitCode)
+
+		result, err = sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 10200)
+		require.NoError(t, err)
+
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+
+		assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
+		assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
+	})
+}
+
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	tf.UnitTest(t)
 
