@@ -245,15 +245,13 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		if channel.Eol.GreaterThan(vmctx.BlockHeight()) {
-			channel.Eol = channel.AgreedEol
-		}
-
 		// validate the amount can be sent to the target and send payment to that address.
 		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
 		if err != nil {
 			return err
 		}
+
+		channel.Eol = channel.AgreedEol
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
