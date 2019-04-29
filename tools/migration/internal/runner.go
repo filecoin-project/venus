@@ -35,8 +35,8 @@ type Migration interface {
 type RepoWrangler interface {
 	// GetOldRepo opens and returns the old repo with read-only access
 	GetOldRepo() (*os.File, error)
-	// MakeNewRepo creates and returns the new repo dir with read/write permissions
-	MakeNewRepo() error
+	// CloneRepo creates and returns the new repo dir with read/write permissions
+	CloneRepo() error
 	// GetOldRepoPath returns the full path of the old repo
 	GetOldRepoPath() string
 	// GetNewRepoPath returns the full path of the old repo

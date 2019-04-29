@@ -18,10 +18,10 @@ func TestRepoMigrationHelper_GetOldRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Uses the option values when passed to ctor", func(t *testing.T) {
-		oldRepo := mustMakeTmpDir(t, "")
-		defer mustRmDir(t, oldRepo)
+		oldRepo := requireMakeTempDir(t, "")
+		defer requireRmDir(t, oldRepo)
 
-		rmh := NewRepoFSWrangler(oldRepo, "", "1", "2")
+		rmh := NewRepoFSWrangler(oldRepo, "")
 		or, err := rmh.GetOldRepo()
 		require.NoError(t, err)
 
@@ -33,12 +33,12 @@ func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Creates the dir with the right permissions", func(t *testing.T) {
-		oldRepo := mustMakeTmpDir(t, "")
-		defer mustRmDir(t, oldRepo)
+		oldRepo := requireMakeTempDir(t, "")
+		defer requireRmDir(t, oldRepo)
 
-		rmh := NewRepoFSWrangler(oldRepo, "", "1", "2")
-		require.NoError(t, rmh.MakeNewRepo())
-		defer mustRmDir(t, rmh.GetNewRepoPath())
+		rmh := NewRepoFSWrangler(oldRepo, "")
+		require.NoError(t, rmh.CloneRepo())
+		defer requireRmDir(t, rmh.GetNewRepoPath())
 
 		stat, err := os.Stat(rmh.GetNewRepoPath())
 		require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestGetNewRepoPath(t *testing.T) {
 	dirname := "/tmp/myfilecoindir"
 
 	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
-		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse", "1", "2")
+		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse")
 		newpath := rmh.GetNewRepoPath()
 		rgx, err := regexp.Compile("/tmp/somethingelse_1_2_[0-9]{8}-[0-9]{6}$")
 		require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestGetNewRepoPath(t *testing.T) {
 	})
 
 	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
-		rmh := NewRepoFSWrangler(dirname, "", "1", "2")
+		rmh := NewRepoFSWrangler(dirname, "")
 		newpath := rmh.GetNewRepoPath()
 		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
 		require.NoError(t, err)
@@ -71,9 +71,11 @@ func TestGetNewRepoPath(t *testing.T) {
 }
 
 func TestRepoFSWrangler_MakeNewRepo(t *testing.T) {
-	dirname := mustMakeTmpDir(t, "")
-	rmh := NewRepoFSWrangler(dirname, "", "1", "2")
-	require.NoError(t, rmh.MakeNewRepo())
+	tf.UnitTest(t)
+
+	dirname := requireMakeTempDir(t, "")
+	rmh := NewRepoFSWrangler(dirname, "")
+	require.NoError(t, rmh.CloneRepo())
 	dir, err := os.Open(rmh.GetNewRepoPath())
 	require.NoError(t, err)
 	stat, err := dir.Stat()
@@ -83,12 +85,14 @@ func TestRepoFSWrangler_MakeNewRepo(t *testing.T) {
 }
 
 func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
-	oldRepo := mustMakeTmpDir(t, "")
-	rmh := NewRepoFSWrangler(oldRepo, "", "1", "2")
+	tf.UnitTest(t)
+
+	oldRepo := requireMakeTempDir(t, "")
+	rmh := NewRepoFSWrangler(oldRepo, "")
 	// put something in each repo dir so we know which is which
 	_, err := os.Create(path.Join(oldRepo, "oldRepoFile"))
 	require.NoError(t, err)
-	require.NoError(t, rmh.MakeNewRepo())
+	require.NoError(t, rmh.CloneRepo())
 	_, err = os.Create(path.Join(rmh.GetNewRepoPath(), "newRepoFile"))
 	require.NoError(t, err)
 
@@ -114,13 +118,13 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	assert.Contains(t, contents, "newRepoFile")
 }
 
-func mustMakeTmpDir(t *testing.T, dirname string) string {
+func requireMakeTempDir(t *testing.T, dirname string) string {
 	newdir, err := ioutil.TempDir("", dirname)
 	require.NoError(t, err)
 	return newdir
 }
 
 // ensure that the error condition is checked when we clean up after creating tmpdirs.
-func mustRmDir(t *testing.T, dirname string) {
+func requireRmDir(t *testing.T, dirname string) {
 	require.NoError(t, os.RemoveAll(dirname))
 }
