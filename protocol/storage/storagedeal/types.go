@@ -45,6 +45,9 @@ type Proposal struct {
 	// PieceRef is the cid of the piece being stored
 	PieceRef cid.Cid
 
+	// DataCommitment is the the data commitment of the piece used for proof of piece inclusion
+	DataCommitment types.CommP
+
 	// Size is the total number of bytes the proposal is asking to store
 	Size *types.BytesAmount
 
