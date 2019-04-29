@@ -45,6 +45,13 @@ func PODevnetNightly() ProcessInitOption {
 	}
 }
 
+// POSectorDir provides the `--sectordir=<path>` to process when starting.
+func POSectorDir(sd string) ProcessInitOption {
+	return func() []string {
+		return []string{"--sectordir", sd}
+	}
+}
+
 // ProcessDaemonOption are options passed to process when starting.
 type ProcessDaemonOption func() []string
 

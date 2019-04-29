@@ -45,6 +45,12 @@ func TestRetrieval(t *testing.T) {
 	dir, err := ioutil.TempDir("", t.Name())
 	require.NoError(t, err)
 
+	// Create a separate sector directory for miner.  TODO make this work
+	// by default by nesting repodir in a wraper directory: #2689.
+	// this should probably be set at the newprocess level.
+	minerSectorDir, err := ioutil.TempDir(dir, "miner-sectors")
+	require.NoError(t, err)
+
 	// Create an environment that includes a genesis block with 1MM FIL
 	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(t, err)
@@ -76,8 +82,11 @@ func TestRetrieval(t *testing.T) {
 	// Setup nodes used for the test
 	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
 	require.NoError(t, err)
-
-	miner, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
+	minerFastEnvOpts := fast.EnvironmentOpts{
+		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI), fast.POSectorDir(minerSectorDir)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
+	}
+	miner, err := env.NewProcess(ctx, localplugin.PluginName, options, minerFastEnvOpts)
 	require.NoError(t, err)
 
 	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
@@ -102,7 +111,6 @@ func TestRetrieval(t *testing.T) {
 	// Connect everything to the genesis node so it can issue filecoin when needed
 	err = series.Connect(ctx, genesis, miner)
 	require.NoError(t, err)
-
 	err = series.Connect(ctx, genesis, client)
 	require.NoError(t, err)
 
