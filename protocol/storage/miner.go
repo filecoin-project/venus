@@ -603,7 +603,7 @@ func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, ms
 		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
 		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
 	} else {
-		sm.dealsAwaitingSeal.CommitmentMessages[sector.SectorID] = msgCid
+		sm.dealsAwaitingSeal.addCommitmentMessageCid(sectorID, msgCid)
 		sm.dealsAwaitingSeal.success(sector)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
