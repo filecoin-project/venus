@@ -82,9 +82,18 @@ type PaymentChannel struct {
 	// payer and payee upon initialization or extension
 	AgreedEol *types.BlockHeight `json:"agreed_eol"`
 
+	// Conditions are the set of conditions for redeeming or closing the payment
+	// channel
+	Conditions *types.Predicate
+
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
 	Eol *types.BlockHeight `json:"eol"`
+
+	// Redeemed is a flag indicating whether or not Redeem has been called on the
+	// payment channel yet. This is necessary because AmountRedeemed can still be
+	// zero in the event of a zero-value voucher
+	Redeemed boolean
 }
 
 // Actor provides a mechanism for off chain payments.
