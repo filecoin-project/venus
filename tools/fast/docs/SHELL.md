@@ -19,7 +19,7 @@ This has the advantage that while using FAST, users can re-compile `go-filecoin`
 It should be noted that the copying of the binary occurs during the call to `NewProcess`.
 
 It should also be noted that users shell configuration will be ran when the shell opens.
-If shell configuration updates the `PATH` by appending to the front, if any of those directories contain `go-filecoin`, then the `go-filecoin` command inside of the FAST Shell will **not** point to the correct binary.
+If shell configuration updates the `PATH` by appending to the front, if any of those directories contain `go-filecoin`, then the `go-filecoin` command inside of the FAST Shell will **not** point to the correct binary, because of this, it is best to actually execute commands using the `$FIL_BINARY` variable (eg: `$FIL_BINARY id`).
 
 ### Using a FAST Shell in _go test_
 
