@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/ipfs/go-car"
 	hamt "github.com/ipfs/go-hamt-ipld"
@@ -80,6 +81,10 @@ var initCmd = &cmds.Command{
 
 func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 	newConfig := config.NewDefaultConfig()
+
+	if dir, ok := options[OptionRepoDir].(string); ok {
+		newConfig.SectorBase.RootDir = filepath.Join(dir, "sectors")
+	}
 
 	if m, ok := options[WithMiner].(string); ok {
 		var err error
