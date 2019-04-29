@@ -51,10 +51,8 @@ type MigrationRunner struct {
 
 func NewMigrationRunner(verb bool, command, oldRepoOpt, newRepoPrefixOpt string) *MigrationRunner {
 	// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
-	oldVersion := "1"
-	newVersion := "2"
 
-	helper := NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion)
+	helper := NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt)
 	return &MigrationRunner{
 		verbose: verb,
 		command: command,

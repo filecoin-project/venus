@@ -45,7 +45,6 @@ func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 		expectedPerms := "drwxr--r--"
 		assert.Equal(t, expectedPerms, stat.Mode().String())
 	})
-
 }
 
 func TestGetNewRepoPath(t *testing.T) {
@@ -56,7 +55,7 @@ func TestGetNewRepoPath(t *testing.T) {
 	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
 		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse")
 		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/somethingelse_1_2_[0-9]{8}-[0-9]{6}$")
+		rgx, err := regexp.Compile("/tmp/somethingelse_tmp_[0-9]{8}-[0-9]{6}$")
 		require.NoError(t, err)
 		assert.Regexp(t, rgx, newpath)
 	})
@@ -64,24 +63,10 @@ func TestGetNewRepoPath(t *testing.T) {
 	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
 		rmh := NewRepoFSWrangler(dirname, "")
 		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/myfilecoindir_1_2_[0-9]{8}-[0-9]{6}$")
+		rgx, err := regexp.Compile("/tmp/myfilecoindir_tmp_[0-9]{8}-[0-9]{6}$")
 		require.NoError(t, err)
 		assert.Regexp(t, rgx, newpath)
 	})
-}
-
-func TestRepoFSWrangler_MakeNewRepo(t *testing.T) {
-	tf.UnitTest(t)
-
-	dirname := requireMakeTempDir(t, "")
-	rmh := NewRepoFSWrangler(dirname, "")
-	require.NoError(t, rmh.CloneRepo())
-	dir, err := os.Open(rmh.GetNewRepoPath())
-	require.NoError(t, err)
-	stat, err := dir.Stat()
-	require.NoError(t, err)
-	expectedPerms := "drwxr--r--"
-	assert.Equal(t, expectedPerms, stat.Mode().String())
 }
 
 func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
@@ -104,7 +89,7 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	require.NoError(t, err)
 	stat, err := dir.Stat()
 	require.NoError(t, err)
-	expectedPerms := "dr--r--r--"
+	expectedPerms := "drwx------"
 	assert.Equal(t, expectedPerms, stat.Mode().String())
 	contents, err := dir.Readdirnames(0)
 	require.NoError(t, err)
