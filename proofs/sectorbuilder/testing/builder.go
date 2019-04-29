@@ -67,7 +67,7 @@ func (b *Builder) Build() Harness {
 		b.sealedDir = sealedDir
 	}
 
-	memRepo := repo.NewInMemoryRepoWithSectorDirectories(b.stagingDir, b.sealedDir)
+	memRepo := repo.NewInMemoryRepo()
 	blockStore := bstore.NewBlockstore(memRepo.Datastore())
 	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
 	minerAddr, err := address.NewActorAddress([]byte("wombat"))
@@ -80,11 +80,11 @@ func (b *Builder) Build() Harness {
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
 		LastUsedSectorID: 0,
-		MetadataDir:      memRepo.StagingDir(),
+		MetadataDir:      b.stagingDir,
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  memRepo.SealedDir(),
+		SealedSectorDir:  b.sealedDir,
 		SectorClass:      class,
-		StagedSectorDir:  memRepo.StagingDir(),
+		StagedSectorDir:  b.stagingDir,
 	})
 	require.NoError(b.t, err)
 

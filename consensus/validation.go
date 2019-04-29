@@ -49,6 +49,10 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 		return errSelfSend
 	}
 
+	if msg.GasPrice.LessEqual(types.ZeroAttoFIL) {
+		return errGasPriceZero
+	}
+
 	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
 	// when the message is processed.
 	if !(fromActor.Empty() || account.IsAccount(fromActor)) {

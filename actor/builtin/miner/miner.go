@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"bytes"
 	"math/big"
 	"strconv"
 
@@ -30,13 +31,20 @@ const MaximumPublicKeySize = 100
 // ProvingPeriodBlocks defines how long a proving period is for.
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
-var ProvingPeriodBlocks = types.NewBlockHeight(20000)
+const ProvingPeriodBlocks = 20000
 
 // GracePeriodBlocks is the number of blocks after a proving period over
 // which a miner can still submit a post at a penalty.
 // TODO: what is a secure value for this?  Value is arbitrary right now.
 // See https://github.com/filecoin-project/go-filecoin/issues/1887
-var GracePeriodBlocks = types.NewBlockHeight(100)
+const GracePeriodBlocks = 100
+
+// ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
+// after which the miner is no longer considered to be storing the client's piece and they are entitled to
+// a refund.
+// TODO: what is a fair value for this? Value is arbitrary right now.
+// See https://github.com/filecoin-project/go-filecoin/issues/1887
+const PieceInclusionGracePeriodBlocks = 10000
 
 const (
 	// ErrPublicKeyTooBig indicates an invalid public key.
@@ -226,6 +234,10 @@ var minerExports = exec.Exports{
 	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProofs},
+		Return: []abi.Type{},
+	},
+	"verifyPieceInclusion": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
 	"getProvingPeriodStart": &exec.FunctionSignature{
@@ -542,6 +554,51 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
+// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// This method returns nothing if the verification succeeds and returns a revert error if verification fails.
+func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+
+		// If miner has not committed sector id, proof is invalid
+		sectorIDstr := strconv.FormatUint(sectorID, 10)
+		commitment, ok := state.SectorCommitments[sectorIDstr]
+		if !ok {
+			return nil, errors.NewRevertError("sector not committed")
+		}
+
+		// If miner is not up-to-date on their PoSts, proof is invalid
+		if state.LastPoSt == nil {
+			return nil, errors.NewRevertError("proofs out of date")
+		}
+
+		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(PieceInclusionGracePeriodBlocks))
+		if ctx.BlockHeight().GreaterThan(clientProofsTimeout) {
+			return nil, errors.NewRevertError("proofs out of date")
+		}
+
+		// Verify proof proves CommP is in sector's CommD
+		var typedCommP types.CommP
+		copy(typedCommP[:], commP)
+		valid, err := verifyInclusionProof(typedCommP, commitment.CommD, proof)
+		if err != nil {
+			return nil, err
+		}
+
+		if !valid {
+			return nil, errors.NewRevertError("invalid inclusion proof")
+		}
+
+		return nil, nil
+	})
+
+	return errors.CodeError(err), err
+}
+
 // GetKey returns the public key for this miner.
 func (ma *Actor) GetKey(ctx exec.VMContext) ([]byte, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
@@ -667,7 +724,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (u
 		}
 
 		// Check if we submitted it in time
-		provingPeriodEnd := state.ProvingPeriodStart.Add(ProvingPeriodBlocks)
+		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodBlocks))
 		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
 			// Not great.
 			// TODO: charge penalty
@@ -781,4 +838,17 @@ func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
 		return types.TestProofsMode, xerrors.Wrap(err, "could not unmarshall sector store type")
 	}
 	return proofsMode, nil
+}
+
+// TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
+// see https://github.com/filecoin-project/go-filecoin/issues/2629
+func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
+	if len(proof) != 2*int(types.CommitmentBytesLen) {
+		return false, errors.NewRevertError("malformed inclusion proof")
+	}
+	combined := []byte{}
+	combined = append(combined, commP[:]...)
+	combined = append(combined, commD[:]...)
+
+	return bytes.Equal(combined, proof), nil
 }

@@ -469,16 +469,14 @@ func (td *TestDaemon) WaitForAPI() error {
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
 func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
-	require := require.New(td.test)
-
 	var wg sync.WaitGroup
 	var minerAddr address.Address
 	wg.Add(1)
 	go func() {
-		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "0", "--gas-limit", "300", "100", "20")
+		miner := td.RunSuccess("miner", "create", "--from", fromAddr, "--gas-price", "1", "--gas-limit", "300", "100", "20")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		require.NoError(err)
-		require.NotEqual(addr, address.Undef)
+		require.NoError(td.test, err)
+		require.NotEqual(td.test, addr, address.Undef)
 		minerAddr = addr
 		wg.Done()
 	}()
@@ -493,7 +491,7 @@ func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price str
 	setPriceReturn := td.RunSuccess("miner", "set-price",
 		"--from", fromAddr,
 		"--miner", minerAddr,
-		"--gas-price", "0",
+		"--gas-price", "1",
 		"--gas-limit", "300",
 		"--enc", "json",
 		price, expiry).ReadStdout()
@@ -512,17 +510,14 @@ func (td *TestDaemon) MinerSetPrice(minerAddr string, fromAddr string, price str
 
 // UpdatePeerID updates a currently mining miner's peer ID
 func (td *TestDaemon) UpdatePeerID() {
-	require := require.New(td.test)
-	assert := assert.New(td.test)
-
 	var idOutput map[string]interface{}
 	peerIDJSON := td.RunSuccess("id").ReadStdout()
 	err := json.Unmarshal([]byte(peerIDJSON), &idOutput)
-	require.NoError(err)
-	updateCidStr := td.RunSuccess("miner", "update-peerid", "--gas-price=0", "--gas-limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
+	require.NoError(td.test, err)
+	updateCidStr := td.RunSuccess("miner", "update-peerid", "--gas-price=1", "--gas-limit=300", td.GetMinerAddress().String(), idOutput["ID"].(string)).ReadStdoutTrimNewlines()
 	updateCid, err := cid.Parse(updateCidStr)
-	require.NoError(err)
-	assert.NotNil(updateCid)
+	require.NoError(td.test, err)
+	assert.NotNil(td.test, updateCid)
 
 	td.WaitForMessageRequireSuccess(updateCid)
 }

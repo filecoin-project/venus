@@ -7,10 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -19,22 +22,22 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
+var pbTestActorCid = types.NewCidForTestGetter()()
+
 func TestPaymentBrokerGenesis(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -42,14 +45,12 @@ func TestPaymentBrokerGenesis(t *testing.T) {
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
-	assert.Equal(types.NewAttoFILFromFIL(0), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 }
 
 func TestPaymentBrokerCreateChannel(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 
 	payer := address.TestAddress
@@ -60,8 +61,8 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(err)
-	require.NoError(result.ExecutionError)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
 
 	st.Flush(ctx)
 
@@ -69,275 +70,374 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 
 	paymentBroker := state.MustGetActor(st, address.PaymentBrokerAddress)
 
-	assert.Equal(types.NewAttoFILFromFIL(1000), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(1000), paymentBroker.Balance)
 
 	channel := requireGetPaymentChannel(t, ctx, st, vms, payer, channelID)
 
-	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
-	assert.Equal(types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
-	assert.Equal(target, channel.Target)
-	assert.Equal(types.NewBlockHeight(10), channel.Eol)
+	assert.Equal(t, types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(t, types.NewAttoFILFromFIL(0), channel.AmountRedeemed)
+	assert.Equal(t, target, channel.Target)
+	assert.Equal(t, types.NewBlockHeight(10), channel.AgreedEol)
+	assert.Equal(t, types.NewBlockHeight(10), channel.Eol)
 }
 
 func TestPaymentBrokerUpdate(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	sys := setup(t)
 
 	result, err := sys.ApplyRedeemMessage(sys.target, 100, 0)
-	require.NoError(err)
-	require.Equal(uint8(0), result.Receipt.ExitCode)
+	require.NoError(t, err)
+	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 
-	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
 	payee := state.MustGetActor(sys.st, sys.target)
 
-	assert.Equal(types.NewAttoFILFromFIL(100), payee.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(100), payee.Balance)
 
 	channel := sys.retrieveChannel(paymentBroker)
 
-	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
-	assert.Equal(types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
-	assert.Equal(sys.target, channel.Target)
+	assert.Equal(t, types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(t, types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
+	assert.Equal(t, sys.target, channel.Target)
+}
+
+func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	callRedeem := func(condition *types.Predicate, params []interface{}) (*consensus.ApplicationResult, error) {
+		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, params...)
+	}
+
+	// All the following tests attempt to call PBTestActor.ParamsNotZero with a condition.
+	// PBTestActor.ParamsNotZero takes 3 parameter: an Address, a uint64 sector id, and a BlockHeight
+	// If any of these are zero values the method throws an error indicating the condition is false.
+	// The Address and the sector id will be included within the condition predicate, and the block
+	// height will be added as a redeemer supplied parameter to redeem.
+
+	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+	})
+
+	t.Run("Redeem should fail if condition is _NOT_ met", func(t *testing.T) {
+		badAddressParam := address.Undef
+		badParams := []interface{}{badAddressParam, sectorIdParam}
+
+		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+	})
+
+	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
+		badToAddress := addrGetter()
+
+		condition := &types.Predicate{To: badToAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+	})
+
+	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
+		badMethod := "nonexistentMethod"
+
+		condition := &types.Predicate{To: toAddress, Method: badMethod, Params: payerParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+	})
+
+	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
+		badParams := []interface{}{}
+
+		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
+		appResult, err := callRedeem(condition, redeemerParams)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+	})
+
+	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
+		badRedeemerParams := []interface{}{}
+
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := callRedeem(condition, badRedeemerParams)
+
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+	})
 }
 
 func TestPaymentBrokerUpdateErrorsWithIncorrectChannel(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	// update message from payer instead of target results in error
 	result, err := sys.ApplyRedeemMessage(sys.payer, 100, 1)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.NotEqual(t, uint8(0), result.Receipt.ExitCode)
 
 	// invalid channel id results in revert error
 	sys.channelID = types.NewChannelID(39932)
 	result, err = sys.ApplyRedeemMessage(sys.target, 100, 0)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NotEqual(uint8(0), result.Receipt.ExitCode)
-	require.Contains(result.ExecutionError.Error(), "unknown")
+	require.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	require.Contains(t, result.ExecutionError.Error(), "unknown")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenNotFromTarget(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	wrongTargetAddress := sys.addressGetter()
-	wrongTargetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+	wrongTargetActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
 	sys.st.SetActor(sys.ctx, wrongTargetAddress, wrongTargetActor)
 
 	result, err := sys.ApplyRedeemMessage(wrongTargetAddress, 100, 0)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NotEqual(uint8(0), result.Receipt.ExitCode)
-	require.Contains(result.ExecutionError.Error(), "wrong target account")
+	require.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	require.Contains(t, result.ExecutionError.Error(), "wrong target account")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingMoreThanChannelContains(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	result, err := sys.ApplyRedeemMessage(sys.target, 1100, 0)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NotEqual(uint8(0), result.Receipt.ExitCode)
-	require.Contains(result.ExecutionError.Error(), "exceeds amount")
+	require.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	require.Contains(t, result.ExecutionError.Error(), "exceeds amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenRedeemingFundsAlreadyRedeemed(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	// redeem some
 	result, err := sys.ApplyRedeemMessage(sys.target, 500, 0)
-	require.NoError(result.ExecutionError)
-	require.NoError(err)
+	require.NoError(t, result.ExecutionError)
+	require.NoError(t, err)
 
-	require.Equal(uint8(0), result.Receipt.ExitCode)
+	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// redeeming funds already redeemed is an error
 	result, err = sys.ApplyRedeemMessage(sys.target, 400, 1)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.NotEqual(uint8(0), result.Receipt.ExitCode)
-	require.Contains(result.ExecutionError.Error(), "update amount")
+	require.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	require.Contains(t, result.ExecutionError.Error(), "update amount")
 }
 
 func TestPaymentBrokerUpdateErrorsWhenAtEol(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	// set block height to Eol
-	result, err := sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 10)
-	require.NoError(err)
+	result, err := sys.ApplyRedeemMessageWithBlockHeight(sys.target, 500, 0, 20000)
+	require.NoError(t, err)
 
 	// expect an error
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
-	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height"), "Error should relate to block height")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	assert.True(t, strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height"), "Error should relate to block height")
 }
 
 func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "redeem")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
-	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	assert.True(t, strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
 }
 
 func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	// Redeem at block height == validAt != 0.
 	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 4, 4, "redeem")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.Equal(uint8(0), result.Receipt.ExitCode)
+	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
-	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance)
 
 	payee := state.MustGetActor(sys.st, sys.target)
-	assert.Equal(types.NewAttoFILFromFIL(100), payee.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(100), payee.Balance)
 
 	channel := sys.retrieveChannel(paymentBroker)
-	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
-	assert.Equal(types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
-	assert.Equal(sys.target, channel.Target)
+	assert.Equal(t, types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(t, types.NewAttoFILFromFIL(100), channel.AmountRedeemed)
+	assert.Equal(t, sys.target, channel.Target)
 
 	// Redeem after block height == validAt.
 	result, err = sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 200, 0, 4, 6, "redeem")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	require.Equal(uint8(0), result.Receipt.ExitCode)
+	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
-	assert.Equal(types.NewAttoFILFromFIL(800), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(800), paymentBroker.Balance)
 
 	payee = state.MustGetActor(sys.st, sys.target)
-	assert.Equal(types.NewAttoFILFromFIL(200), payee.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(200), payee.Balance)
 
 	channel = sys.retrieveChannel(paymentBroker)
-	assert.Equal(types.NewAttoFILFromFIL(1000), channel.Amount)
-	assert.Equal(types.NewAttoFILFromFIL(200), channel.AmountRedeemed)
-	assert.Equal(sys.target, channel.Target)
+	assert.Equal(t, types.NewAttoFILFromFIL(1000), channel.Amount)
+	assert.Equal(t, types.NewAttoFILFromFIL(200), channel.AmountRedeemed)
+	assert.Equal(t, sys.target, channel.Target)
 }
 
 func TestPaymentBrokerClose(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	sys := setup(t)
 
 	payerActor := state.MustGetActor(sys.st, sys.payer)
 	payerBalancePriorToClose := payerActor.Balance
 
 	result, err := sys.ApplyCloseMessage(sys.target, 100, 0)
-	require.NoError(err)
-	require.NoError(result.ExecutionError)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 
 	// all funds have been redeemed or returned
-	assert.Equal(types.NewAttoFILFromFIL(0), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 
 	targetActor := state.MustGetActor(sys.st, sys.target)
 
 	// targetActor has been paid
-	assert.Equal(types.NewAttoFILFromFIL(100), targetActor.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(100), targetActor.Balance)
 
 	// remaining balance is returned to payer
 	payerActor = state.MustGetActor(sys.st, sys.payer)
-	assert.Equal(payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(900)), payerActor.Balance)
+	assert.Equal(t, payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(900)), payerActor.Balance)
 }
 
 func TestPaymentBrokerCloseErrorsBeforeValidAt(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "close")
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
-	assert.True(strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	assert.True(t, strings.Contains(strings.ToLower(result.ExecutionError.Error()), "block height too low"), "Error should relate to height lower than validAt")
 }
 
 func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt, sys.defaultValidAt)
-	require.NoError(err)
+	signature, err := sys.Signature(amt, sys.defaultValidAt, nil)
+	require.NoError(t, err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, signature)
+	var condition *types.Predicate
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
-	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
-	require.NoError(err)
+	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
+	require.NoError(t, err)
+}
+
+func TestPaymentBrokerCloseWithCondition(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	t.Run("Close should succeed if condition is met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+	})
+
+	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
+		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
+
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+	})
 }
 
 func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
 	sys := setup(t)
 
 	amt := types.NewAttoFILFromFIL(100)
-	signature, err := sys.Signature(amt, sys.defaultValidAt)
-	require.NoError(err)
+	signature, err := sys.Signature(amt, sys.defaultValidAt, nil)
+	require.NoError(t, err)
 	// make the signature invalid
 	signature[0] = 0
 	signature[1] = 1
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, signature)
+	var condition *types.Predicate
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
-	require.EqualError(res.ExecutionError, Errors[ErrInvalidSignature].Error())
-	require.NoError(err)
+	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
+	require.NoError(t, err)
 }
 
 func TestPaymentBrokerReclaim(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	sys := setup(t)
 
 	payer := state.MustGetActor(sys.st, sys.payer)
@@ -346,97 +446,90 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	pdata := core.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is after Eol
-	res, err := sys.ApplyMessage(msg, 11)
-	require.NoError(err)
-	require.NoError(res.ExecutionError)
+	res, err := sys.ApplyMessage(msg, 20001)
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
 
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 
 	// all funds have been redeemed or returned
-	assert.Equal(types.NewAttoFILFromFIL(0), paymentBroker.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(0), paymentBroker.Balance)
 
 	// entire balance is returned to payer
 	payer = state.MustGetActor(sys.st, sys.payer)
-	assert.Equal(payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(1000)), payer.Balance)
+	assert.Equal(t, payerBalancePriorToClose.Add(types.NewAttoFILFromFIL(1000)), payer.Balance)
 }
 
 func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	sys := setup(t)
 
 	pdata := core.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is before Eol
 	result, err := sys.ApplyMessage(msg, 0)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// fails
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
-	assert.Contains(result.ExecutionError.Error(), "reclaim")
-	assert.Contains(result.ExecutionError.Error(), "eol")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	assert.Contains(t, result.ExecutionError.Error(), "reclaim")
+	assert.Contains(t, result.ExecutionError.Error(), "eol")
 }
 
 func TestPaymentBrokerExtend(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(20))
+	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
-	require.NoError(result.ExecutionError)
-	require.NoError(err)
-	assert.Equal(uint8(0), result.Receipt.ExitCode)
+	require.NoError(t, result.ExecutionError)
+	require.NoError(t, err)
+	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// try to request too high an amount after the eol for the original channel
 	result, err = sys.ApplyRedeemMessageWithBlockHeight(sys.target, 1100, 0, 12)
-	require.NoError(result.ExecutionError)
+	require.NoError(t, result.ExecutionError)
 
 	// expect success
-	require.NoError(err)
-	assert.Equal(uint8(0), result.Receipt.ExitCode)
+	require.NoError(t, err)
+	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	// check value
 	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
-	assert.Equal(types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
+	assert.Equal(t, types.NewAttoFILFromFIL(900), paymentBroker.Balance) // 1000 + 1000 - 1100
 
 	// get payment channel
 	channel := sys.retrieveChannel(paymentBroker)
 
-	assert.Equal(types.NewAttoFILFromFIL(2000), channel.Amount)
-	assert.Equal(types.NewAttoFILFromFIL(1100), channel.AmountRedeemed)
-	assert.Equal(types.NewBlockHeight(20), channel.Eol)
+	assert.Equal(t, types.NewAttoFILFromFIL(2000), channel.Amount)
+	assert.Equal(t, types.NewAttoFILFromFIL(1100), channel.AmountRedeemed)
+	assert.Equal(t, types.NewBlockHeight(30000), channel.AgreedEol)
+	assert.Equal(t, types.NewBlockHeight(30000), channel.Eol)
 }
 
 func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(20))
+	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
-	require.NoError(err)
-	require.EqualError(result.ExecutionError, "payment channel is unknown")
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
+	require.NoError(t, err)
+	require.EqualError(t, result.ExecutionError, "payment channel is unknown")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
 }
 
 func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
 	sys := setup(t)
 
 	// extend channel setting block height to 5 (<10)
@@ -444,17 +537,34 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.NotEqual(uint8(0), result.Receipt.ExitCode)
-	assert.Contains(result.ExecutionError.Error(), "payment channel eol may not be decreased")
+	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
+	assert.Contains(t, result.ExecutionError.Error(), "payment channel eol may not be decreased")
+}
+
+func TestPaymentBrokerCancel(t *testing.T) {
+	tf.UnitTest(t)
+
+	sys := setup(t)
+
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+
+	result, err := sys.ApplyMessage(msg, 100)
+	require.NoError(t, result.ExecutionError)
+	require.NoError(t, err)
+	assert.Equal(t, uint8(0), result.Receipt.ExitCode)
+
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+
+	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
+	assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
 }
 
 func TestPaymentBrokerLs(t *testing.T) {
 	tf.UnitTest(t)
-
-	require := require.New(t)
-	assert := assert.New(t)
 
 	t.Run("Successfully returns channels", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -464,7 +574,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		target1 := address.NewForTestGetter()()
 		target2 := address.NewForTestGetter()()
 		_, st, vms := requireGenesis(ctx, t, target1)
-		targetActor2 := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+		targetActor2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, target2, targetActor2)
 
 		channelID1 := establishChannel(ctx, st, vms, payer, target1, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
@@ -472,31 +582,32 @@ func TestPaymentBrokerLs(t *testing.T) {
 
 		// retrieve channels
 		args, err := abi.ToEncodedValues(payer)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
-		require.NoError(err)
-		assert.Equal(uint8(0), exitCode)
+		require.NoError(t, err)
+		assert.Equal(t, uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
 		err = cbor.DecodeInto(returnValue[0], &channels)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(2, len(channels))
+		assert.Equal(t, 2, len(channels))
 
 		pc1, found := channels[channelID1.String()]
-		require.True(found)
-		assert.Equal(target1, pc1.Target)
-		assert.Equal(types.NewAttoFILFromFIL(1000), pc1.Amount)
-		assert.Equal(types.NewAttoFILFromFIL(0), pc1.AmountRedeemed)
-		assert.Equal(types.NewBlockHeight(10), pc1.Eol)
+		require.True(t, found)
+		assert.Equal(t, target1, pc1.Target)
+		assert.Equal(t, types.NewAttoFILFromFIL(1000), pc1.Amount)
+		assert.Equal(t, types.NewAttoFILFromFIL(0), pc1.AmountRedeemed)
+		assert.Equal(t, types.NewBlockHeight(10), pc1.AgreedEol)
+		assert.Equal(t, types.NewBlockHeight(10), pc1.Eol)
 
 		pc2, found := channels[channelID2.String()]
-		require.True(found)
-		assert.Equal(target2, pc2.Target)
-		assert.Equal(types.NewAttoFILFromFIL(2000), pc2.Amount)
-		assert.Equal(types.NewAttoFILFromFIL(0), pc2.AmountRedeemed)
-		assert.Equal(types.NewBlockHeight(20), pc2.Eol)
+		require.True(t, found)
+		assert.Equal(t, target2, pc2.Target)
+		assert.Equal(t, types.NewAttoFILFromFIL(2000), pc2.Amount)
+		assert.Equal(t, types.NewAttoFILFromFIL(0), pc2.AmountRedeemed)
+		assert.Equal(t, types.NewBlockHeight(20), pc2.AgreedEol)
 	})
 
 	t.Run("Returns empty map when payer has no channels", func(t *testing.T) {
@@ -509,46 +620,46 @@ func TestPaymentBrokerLs(t *testing.T) {
 
 		// retrieve channels
 		args, err := abi.ToEncodedValues(payer)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
-		require.NoError(err)
-		assert.Equal(uint8(0), exitCode)
+		require.NoError(t, err)
+		assert.Equal(t, uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
 		err = cbor.DecodeInto(returnValue[0], &channels)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(0, len(channels))
+		assert.Equal(t, 0, len(channels))
 	})
 }
 
 func TestNewPaymentBrokerVoucher(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-	assert := assert.New(t)
+	var nilCondition *types.Predicate
 
 	t.Run("Returns valid voucher", func(t *testing.T) {
 		sys := setup(t)
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
+		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
-		assert.NoError(err)
-		assert.NoError(res.ExecutionError)
-		assert.Equal(uint8(0), res.Receipt.ExitCode)
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-		voucher := PaymentVoucher{}
+		voucher := types.PaymentVoucher{}
 		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(*sys.channelID, voucher.Channel)
-		assert.Equal(sys.payer, voucher.Payer)
-		assert.Equal(sys.target, voucher.Target)
-		assert.Equal(*voucherAmount, voucher.Amount)
+		assert.Equal(t, *sys.channelID, voucher.Channel)
+		assert.Equal(t, sys.payer, voucher.Payer)
+		assert.Equal(t, sys.target, voucher.Target)
+		assert.Equal(t, *voucherAmount, voucher.Amount)
+		assert.Nil(t, voucher.Condition)
 	})
 
 	t.Run("Errors when channel does not exist", func(t *testing.T) {
@@ -558,9 +669,9 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt)
-		assert.NotEqual(uint8(0), exitCode)
-		assert.Contains(fmt.Sprintf("%v", err), "unknown")
+		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		assert.NotEqual(t, uint8(0), exitCode)
+		assert.Contains(t, fmt.Sprintf("%v", err), "unknown")
 	})
 
 	t.Run("Errors when voucher exceed channel amount", func(t *testing.T) {
@@ -568,13 +679,76 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(2000)
-		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt)
+		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
 		res, err := sys.ApplyMessage(msg, 9)
-		assert.NoError(err)
-		assert.NotEqual(uint8(0), res.Receipt.ExitCode)
-		assert.Contains(fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
+		assert.NoError(t, err)
+		assert.NotEqual(t, uint8(0), res.Receipt.ExitCode)
+		assert.Contains(t, fmt.Sprintf("%s", res.ExecutionError), "exceeds amount")
+	})
+
+	t.Run("Returns valid voucher with condition", func(t *testing.T) {
+		sys := setup(t)
+
+		condition := &types.Predicate{
+			To:     address.NewForTestGetter()(),
+			Method: "someMethod",
+			Params: []interface{}{"encoded params"},
+		}
+
+		// create voucher
+		voucherAmount := types.NewAttoFILFromFIL(100)
+		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		res, err := sys.ApplyMessage(msg, 9)
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		voucher := types.PaymentVoucher{}
+		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
+		require.NoError(t, err)
+
+		assert.Equal(t, *sys.channelID, voucher.Channel)
+		assert.Equal(t, sys.payer, voucher.Payer)
+		assert.Equal(t, sys.target, voucher.Target)
+		assert.Equal(t, *voucherAmount, voucher.Amount)
+	})
+}
+
+func TestSignVoucher(t *testing.T) {
+	payer := mockSigner.Addresses[0]
+	value := types.NewAttoFILFromFIL(10)
+	channelId := types.NewChannelID(3)
+	blockHeight := types.NewBlockHeight(393)
+	condition := &types.Predicate{
+		To:     address.NewForTestGetter()(),
+		Method: "someMethod",
+		Params: []interface{}{"encoded params"},
+	}
+	var nilCondition *types.Predicate
+
+	t.Run("validates signatures with empty condition", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		sig, err := SignVoucher(channelId, value, blockHeight, payer, nilCondition, mockSigner)
+		require.NoError(err)
+
+		assert.True(VerifyVoucherSignature(payer, channelId, value, blockHeight, nilCondition, sig))
+		assert.False(VerifyVoucherSignature(payer, channelId, value, blockHeight, condition, sig))
+	})
+
+	t.Run("validates signatures with condition", func(t *testing.T) {
+		require := require.New(t)
+		assert := assert.New(t)
+
+		sig, err := SignVoucher(channelId, value, blockHeight, payer, condition, mockSigner)
+		require.NoError(err)
+
+		assert.True(VerifyVoucherSignature(payer, channelId, value, blockHeight, condition, sig))
+		assert.False(VerifyVoucherSignature(payer, channelId, value, blockHeight, nilCondition, sig))
 	})
 }
 
@@ -595,20 +769,24 @@ func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, fro
 }
 
 func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
-	require := require.New(t)
-
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := vm.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
 	blk, err := consensus.DefaultGenesis(cst, bs)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-	require.NoError(err)
+	builtinsWithTestActor := map[cid.Cid]exec.ExecutableActor{}
+	for cid, actor := range builtin.Actors {
+		builtinsWithTestActor[cid] = actor
+	}
+	builtinsWithTestActor[pbTestActorCid] = &PBTestActor{}
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtinsWithTestActor)
+	require.NoError(t, err)
 
 	for _, addr := range targetAddresses {
-		targetActor := th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(0))
+		targetActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
 		st.SetActor(ctx, addr, targetActor)
 	}
 
@@ -639,10 +817,10 @@ func setup(t *testing.T) system {
 	defaultValidAt := types.NewBlockHeight(uint64(0))
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	payerActor := th.RequireNewAccountActor(require.New(t), types.NewAttoFILFromFIL(50000))
+	payerActor := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(50000))
 	state.MustSetActor(st, payer, payerActor)
 
-	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(10))
+	channelID := establishChannel(ctx, st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
 	return system{
 		t:              t,
@@ -657,8 +835,8 @@ func setup(t *testing.T) system {
 	}
 }
 
-func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight) ([]byte, error) {
-	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, mockSigner)
+func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
+	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, condition, mockSigner)
 	if err != nil {
 		return nil, err
 	}
@@ -676,19 +854,19 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0, nil)
 }
 
 func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height, nil)
 }
 
 func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0, nil)
 }
 
 func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*consensus.ApplicationResult, error) {
@@ -698,40 +876,37 @@ func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address
 		sys.t.Fatalf("method %s is not a signature method", method)
 	}
 
-	return sys.applySignatureMessage(target, amtInt, types.NewBlockHeight(validAt), nonce, method, height)
+	return sys.applySignatureMessage(target, amtInt, types.NewBlockHeight(validAt), nonce, method, height, nil)
 }
 
 func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
-	assert := assert.New(sys.t)
-	require := require.New(sys.t)
-
 	// retrieve channels
 	args, err := abi.ToEncodedValues(sys.payer)
-	require.NoError(err)
+	require.NoError(sys.t, err)
 
 	returnValue, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
-	require.NoError(err)
-	assert.Equal(uint8(0), exitCode)
+	require.NoError(sys.t, err)
+	assert.Equal(sys.t, uint8(0), exitCode)
 
 	channels := make(map[string]*PaymentChannel)
 	err = cbor.DecodeInto(returnValue[0], &channels)
-	require.NoError(err)
+	require.NoError(sys.t, err)
 
 	channel := channels[sys.channelID.KeyString()]
-	require.NotNil(channel)
+	require.NotNil(sys.t, channel)
 	return channel
 }
 
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64) (*consensus.ApplicationResult, error) {
+// applySignatureMessage signs voucher parameters and then creates a redeem or close message with all
+// the voucher parameters and the signature, sends it to the payment broker, and returns the result
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	require := require.New(sys.t)
-
 	amt := types.NewAttoFILFromFIL(amtInt)
-	signature, err := sys.Signature(amt, validAt)
-	require.NoError(err)
+	signature, err := sys.Signature(amt, validAt, condition)
+	require.NoError(sys.t, err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, signature)
+	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, suppliedParams)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
@@ -742,18 +917,50 @@ func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.A
 }
 
 func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
-	require := require.New(t)
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := core.MustConvertParams(payer)
 	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
-	require.Zero(ec)
-	require.NoError(err)
+	require.Zero(t, ec)
+	require.NoError(t, err)
 
 	actor.UnmarshalStorage(values[0], &paymentMap)
 
 	result, ok := paymentMap[channelId.KeyString()]
-	require.True(ok)
+	require.True(t, ok)
 
 	return result
+}
+
+// PBTestActor is a fake actor for use in tests.
+type PBTestActor struct{}
+
+var _ exec.ExecutableActor = (*PBTestActor)(nil)
+
+// Exports returns the list of fake actor exported functions.
+func (ma *PBTestActor) Exports() exec.Exports {
+	return exec.Exports{
+		"paramsNotZero": &exec.FunctionSignature{
+			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
+			Return: nil,
+		},
+	}
+}
+
+// InitializeState stores this actors
+func (ma *PBTestActor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+	return nil
+}
+
+func (ma *PBTestActor) ParamsNotZero(ctx exec.VMContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+	if addr == address.Undef {
+		return 1, errors.NewRevertError("got undefined address")
+	}
+	if sector == 0 {
+		return 1, errors.NewRevertError("got zero sector")
+	}
+	if types.NewBlockHeight(0).Equal(bh) {
+		return 1, errors.NewRevertError("got zero block height")
+	}
+	return 0, nil
 }

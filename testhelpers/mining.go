@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p-peer"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -56,20 +55,18 @@ func MakeRandomBytes(size int) []byte {
 // RequireTipSetChain produces a chain of TipSet of the requested length. The
 // TipSet with greatest height will be at the front of the returned slice.
 func RequireTipSetChain(t *testing.T, numTipSets int) []types.TipSet {
-	require := require.New(t)
-
 	var tipSetsDescBlockHeight []types.TipSet
 	// setup ancestor chain
 	head := types.NewBlockForTest(nil, uint64(0))
 	head.Ticket = []byte(strconv.Itoa(0))
 	for i := 0; i < numTipSets; i++ {
-		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
+		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
 		newBlock := types.NewBlockForTest(head, uint64(0))
 		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
 		head = newBlock
 	}
 
-	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(require, head)}, tipSetsDescBlockHeight...)
+	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
 
 	return tipSetsDescBlockHeight
 }

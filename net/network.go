@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-swarm"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
@@ -68,7 +67,7 @@ type Network struct {
 	*pubsub.Publisher
 	metrics.Reporter
 	*Router
-	*ping.PingService
+	*Pinger
 }
 
 // New returns a new Network
@@ -78,15 +77,15 @@ func New(
 	subscriber *pubsub.Subscriber,
 	router *Router,
 	reporter metrics.Reporter,
-	pinger *ping.PingService,
+	pinger *Pinger,
 ) *Network {
 	return &Network{
-		host:        host,
-		PingService: pinger,
-		Publisher:   publisher,
-		Reporter:    reporter,
-		Router:      router,
-		Subscriber:  subscriber,
+		host:       host,
+		Pinger:     pinger,
+		Publisher:  publisher,
+		Reporter:   reporter,
+		Router:     router,
+		Subscriber: subscriber,
 	}
 }
 

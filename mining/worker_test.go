@@ -28,9 +28,6 @@ import (
 func Test_Mine(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	var doSomeWorkCalled bool
 	CreatePoSTFunc := func() { doSomeWorkCalled = true }
 
@@ -40,7 +37,7 @@ func Test_Mine(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
 	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
-	tipSet := th.RequireNewTipSet(require, baseBlock)
+	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
@@ -65,8 +62,8 @@ func Test_Mine(t *testing.T) {
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
-		assert.NoError(r.Err)
-		assert.True(doSomeWorkCalled)
+		assert.NoError(t, r.Err)
+		assert.True(t, doSomeWorkCalled)
 		cancel()
 	})
 	t.Run("Block generation fails", func(t *testing.T) {
@@ -78,8 +75,8 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
-		assert.EqualError(r.Err, "generate flush state tree: boom no flush")
-		assert.True(doSomeWorkCalled)
+		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
+		assert.True(t, doSomeWorkCalled)
 		cancel()
 
 	})
@@ -93,8 +90,8 @@ func Test_Mine(t *testing.T) {
 		outCh := make(chan mining.Output)
 		go worker.Mine(ctx, input, 0, outCh)
 		r := <-outCh
-		assert.EqualError(r.Err, "bad input tipset with no blocks sent to Mine()")
-		assert.False(doSomeWorkCalled)
+		assert.EqualError(t, r.Err, "bad input tipset with no blocks sent to Mine()")
+		assert.False(t, doSomeWorkCalled)
 		cancel()
 	})
 }
@@ -110,8 +107,6 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 
-	require := require.New(t)
-
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()
 	d := datastore.NewMapDatastore()
@@ -121,12 +116,12 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2, addr3, addr4, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3], mockSigner.Addresses[4]
-	act1 := th.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	act2 := th.RequireNewFakeActor(require, vms, addr2, fakeActorCodeCid)
-	fakeNetAct := th.RequireNewFakeActorWithTokens(require, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
-	minerAct := th.RequireNewMinerActor(require, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(require), types.NewAttoFILFromFIL(10000))
-	minerOwner := th.RequireNewFakeActor(require, vms, addr5, fakeActorCodeCid)
-	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
+	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
+	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
+	fakeNetAct := th.RequireNewFakeActorWithTokens(t, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
+	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+	minerOwner := th.RequireNewFakeActor(t, vms, addr5, fakeActorCodeCid)
+	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
 		address.NetworkAddress: fakeNetAct,
 
@@ -142,8 +137,6 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	vms := th.VMStorage()
 
 	mockSigner, _ := setupSigner()
@@ -151,9 +144,9 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	// Stick two fake actors in the state tree so they can talk.
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
-	act1 := th.RequireNewFakeActor(require, vms, addr1, fakeActorCodeCid)
-	_, st := th.RequireMakeStateTree(require, cst, map[address.Address]*actor.Actor{
-		address.NetworkAddress: th.RequireNewAccountActor(require, types.NewAttoFILFromFIL(1000000)),
+	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
+	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
+		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
 		addr1:                  act1,
 	})
 
@@ -164,45 +157,43 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// exercise the categorization.
 	// addr2 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addr2, addr1, 0, nil, "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	// This is actually okay and should result in a receipt
 	msg2 := types.NewMessage(addr1, addr2, 0, nil, "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	// The following two are sending to self -- errSelfSend, a permanent error.
 	msg3 := types.NewMessage(addr1, addr1, 1, nil, "", nil)
-	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
-	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
 	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
 
-	assert.Len(res.PermanentFailures, 2)
-	assert.Contains(res.PermanentFailures, smsg3)
-	assert.Contains(res.PermanentFailures, smsg4)
+	assert.Len(t, res.PermanentFailures, 2)
+	assert.Contains(t, res.PermanentFailures, smsg3)
+	assert.Contains(t, res.PermanentFailures, smsg4)
 
-	assert.Len(res.TemporaryFailures, 1)
-	assert.Contains(res.TemporaryFailures, smsg1)
+	assert.Len(t, res.TemporaryFailures, 1)
+	assert.Contains(t, res.TemporaryFailures, smsg1)
 
-	assert.Len(res.Results, 1)
-	assert.Contains(res.SuccessfulMessages, smsg2)
+	assert.Len(t, res.Results, 1)
+	assert.Contains(t, res.SuccessfulMessages, smsg2)
 
-	assert.NoError(err)
+	assert.NoError(t, err)
 }
 
 func TestGenerateMultiBlockTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 
 	CreatePoSTFunc := func() {}
@@ -238,20 +229,18 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		StateRoot:    stateRoot,
 		Nonce:        1,
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock1, &baseBlock2), nil, types.PoStProof{}, 0)
-	assert.NoError(err)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock1, &baseBlock2), nil, types.PoStProof{}, 0)
+	assert.NoError(t, err)
 
-	assert.Len(blk.Messages, 0)
-	assert.Equal(types.Uint64(101), blk.Height)
-	assert.Equal(types.Uint64(1020), blk.ParentWeight)
+	assert.Len(t, blk.Messages, 0)
+	assert.Equal(t, types.Uint64(101), blk.Height)
+	assert.Equal(t, types.Uint64(1020), blk.ParentWeight)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	CreatePoSTFunc := func() {}
 
 	ctx := context.Background()
@@ -270,45 +259,45 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	// This is actually okay and should result in a receipt
 	msg2 := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	// add the following and then increment the actor nonce at addrs[1], nonceTooLow, a permanent error.
 	msg3 := types.NewMessage(addrs[1], addrs[0], 0, nil, "", nil)
-	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	msg4 := types.NewMessage(addrs[1], addrs[2], 1, nil, "", nil)
-	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	_, err = pool.Add(ctx, smsg1)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	_, err = pool.Add(ctx, smsg2)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	_, err = pool.Add(ctx, smsg3)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	_, err = pool.Add(ctx, smsg4)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Len(pool.Pending(), 4)
+	assert.Len(t, pool.Pending(), 4)
 
 	// Set actor nonce past nonce of message in pool.
 	// Have to do this here to get a permanent error in the pool.
 	act, err := st.GetActor(ctx, addrs[1])
-	require.NoError(err)
+	require.NoError(t, err)
 
 	act.Nonce = types.Uint64(2)
 	err = st.SetActor(ctx, addrs[1], act)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	stateRoot, err := st.Flush(ctx)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
@@ -316,23 +305,20 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		StateRoot: stateRoot,
 		Proof:     types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, types.PoStProof{}, 0)
-	assert.NoError(err)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), nil, types.PoStProof{}, 0)
+	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
 	// which will be removed by the node if this block is accepted.
-	assert.Len(pool.Pending(), 2)
-	assert.Contains(pool.Pending(), smsg1)
-	assert.Contains(pool.Pending(), smsg2)
+	assert.Len(t, pool.Pending(), 2)
+	assert.Contains(t, pool.Pending(), smsg1)
+	assert.Contains(t, pool.Pending(), smsg2)
 
-	assert.Len(blk.Messages, 1) // This is the good message
+	assert.Len(t, blk.Messages, 1) // This is the good message
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -361,26 +347,23 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		StateRoot:    newCid(),
 		Proof:        types.PoStProof{},
 	}
-	baseTipSet := th.RequireNewTipSet(require, &baseBlock)
+	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(h+1, blk.Height)
-	assert.Equal(minerAddr, blk.Miner)
+	assert.Equal(t, h+1, blk.Height)
+	assert.Equal(t, minerAddr, blk.Miner)
 
 	blk, err = worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 1)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(h+2, blk.Height)
-	assert.Equal(w+10.0, blk.ParentWeight)
-	assert.Equal(minerAddr, blk.Miner)
+	assert.Equal(t, h+2, blk.Height)
+	assert.Equal(t, w+10.0, blk.ParentWeight)
+	assert.Equal(t, minerAddr, blk.Miner)
 }
 
 func TestGenerateWithoutMessages(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -398,27 +381,24 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
 		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
-	assert.Len(pool.Pending(), 0)
+	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 		Proof:     types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(require, &baseBlock), nil, types.PoStProof{}, 0)
-	assert.NoError(err)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), nil, types.PoStProof{}, 0)
+	assert.NoError(t, err)
 
-	assert.Len(pool.Pending(), 0) // This is the temporary failure.
-	assert.Len(blk.Messages, 0)
+	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
+	assert.Len(t, blk.Messages, 0)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,
 // no block should be returned, and the message pool should not be pruned.
 func TestGenerateError(t *testing.T) {
 	tf.UnitTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	CreatePoSTFunc := func() {}
 
@@ -438,23 +418,23 @@ func TestGenerateError(t *testing.T) {
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	require.NoError(t, err)
 	_, err = pool.Add(ctx, smsg)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Len(pool.Pending(), 1)
+	assert.Len(t, pool.Pending(), 1)
 	baseBlock := types.Block{
 		Parents:   types.NewSortedCidSet(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 		Proof:     types.PoStProof{},
 	}
-	baseTipSet := th.RequireNewTipSet(require, &baseBlock)
+	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
 	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
-	assert.Error(err, "boom")
-	assert.Nil(blk)
+	assert.Error(t, err, "boom")
+	assert.Nil(t, blk)
 
-	assert.Len(pool.Pending(), 1) // No messages are removed from the pool.
+	assert.Len(t, pool.Pending(), 1) // No messages are removed from the pool.
 }
 
 type stateTreeForTest struct {

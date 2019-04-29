@@ -10,20 +10,18 @@ import (
 func TestMakePrivateKey(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	// should fail if less than 1024
 	badKey, err := makePrivateKey(10)
-	assert.Error(err, ErrLittleBits)
-	assert.Nil(badKey)
+	assert.Error(t, err, ErrLittleBits)
+	assert.Nil(t, badKey)
 
 	// 1024 should work
 	okKey, err := makePrivateKey(1024)
-	assert.NoError(err)
-	assert.NotNil(okKey)
+	assert.NoError(t, err)
+	assert.NotNil(t, okKey)
 
 	// large values should work
 	goodKey, err := makePrivateKey(4096)
-	assert.NoError(err)
-	assert.NotNil(goodKey)
+	assert.NoError(t, err)
+	assert.NotNil(t, goodKey)
 }

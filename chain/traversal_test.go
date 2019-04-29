@@ -16,8 +16,6 @@ import (
 func TestGetParentTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
 	ctx := context.Background()
 	store := th.NewFakeBlockProvider()
 
@@ -29,20 +27,20 @@ func TestGetParentTipSet(t *testing.T) {
 	t.Run("root has empty parent", func(t *testing.T) {
 		ts := requireTipset(t, root)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.Empty(parent)
+		require.NoError(t, e)
+		assert.Empty(t, parent)
 	})
 	t.Run("plural tipset", func(t *testing.T) {
 		ts := requireTipset(t, b11, b12)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.True(requireTipset(t, root).Equals(parent))
+		require.NoError(t, e)
+		assert.True(t, requireTipset(t, root).Equals(parent))
 	})
 	t.Run("plural parent", func(t *testing.T) {
 		ts := requireTipset(t, b21)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.True(requireTipset(t, b11, b12).Equals(parent))
+		require.NoError(t, e)
+		assert.True(t, requireTipset(t, b11, b12).Equals(parent))
 	})
 }
 
@@ -50,8 +48,6 @@ func TestIterAncestors(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("iterates", func(t *testing.T) {
-
-		assert := assert.New(t)
 		ctx := context.Background()
 		store := th.NewFakeBlockProvider()
 
@@ -65,24 +61,22 @@ func TestIterAncestors(t *testing.T) {
 		t2 := requireTipset(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
-		assert.False(it.Complete())
-		assert.True(t2.Equals(it.Value()))
+		assert.False(t, it.Complete())
+		assert.True(t, t2.Equals(it.Value()))
 
-		assert.NoError(it.Next())
-		assert.False(it.Complete())
-		assert.True(t1.Equals(it.Value()))
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t1.Equals(it.Value()))
 
-		assert.NoError(it.Next())
-		assert.False(it.Complete())
-		assert.True(t0.Equals(it.Value()))
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t0.Equals(it.Value()))
 
-		assert.NoError(it.Next())
-		assert.True(it.Complete())
+		assert.NoError(t, it.Next())
+		assert.True(t, it.Complete())
 	})
 
 	t.Run("respects context", func(t *testing.T) {
-
-		assert := assert.New(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		store := th.NewFakeBlockProvider()
 
@@ -96,16 +90,16 @@ func TestIterAncestors(t *testing.T) {
 		t2 := requireTipset(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
-		assert.False(it.Complete())
-		assert.True(t2.Equals(it.Value()))
+		assert.False(t, it.Complete())
+		assert.True(t, t2.Equals(it.Value()))
 
-		assert.NoError(it.Next())
-		assert.False(it.Complete())
-		assert.True(t1.Equals(it.Value()))
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t1.Equals(it.Value()))
 
 		cancel()
 
-		assert.Error(it.Next())
+		assert.Error(t, it.Next())
 	})
 }
 

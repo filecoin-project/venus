@@ -30,8 +30,6 @@ import (
 func TestMinerHelp(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	t.Run("--help shows general miner help", func(t *testing.T) {
 
 		expected := []string{
@@ -45,26 +43,26 @@ func TestMinerHelp(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "--help")
 		for _, elem := range expected {
-			assert.Contains(result, elem)
+			assert.Contains(t, result, elem)
 		}
 	})
 
 	t.Run("pledge --help shows pledge help", func(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "pledge", "--help")
-		assert.Contains(result, "Shows the number of pledged sectors for the given miner address")
+		assert.Contains(t, result, "Shows the number of pledged sectors for the given miner address")
 	})
 
 	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
-		assert.Contains(result, "Issues a new message to the network to update the miner's libp2p identity.")
+		assert.Contains(t, result, "Issues a new message to the network to update the miner's libp2p identity.")
 	})
 
 	t.Run("owner --help shows owner help", func(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "owner", "--help")
-		assert.Contains(result, "Given <miner> miner address, output the address of the actor that owns the miner.")
+		assert.Contains(t, result, "Given <miner> miner address, output the address of the actor that owns the miner.")
 	})
 
 	t.Run("power --help shows power help", func(t *testing.T) {
@@ -75,7 +73,7 @@ func TestMinerHelp(t *testing.T) {
 			"Values will be output as a ratio where the first number is the miner power and second is the total market power.",
 		}
 		for _, elem := range expected {
-			assert.Contains(result, elem)
+			assert.Contains(t, result, elem)
 		}
 	})
 
@@ -89,7 +87,7 @@ func TestMinerHelp(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "create", "--help")
 		for _, elem := range expected {
-			assert.Contains(result, elem)
+			assert.Contains(t, result, elem)
 		}
 	})
 
@@ -115,8 +113,6 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 
 func TestMinerPledge(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
@@ -150,25 +146,22 @@ func TestMinerPledge(t *testing.T) {
 			line := scanner.Text()
 			if strings.Contains(line, "MinerActor") {
 				err := json.Unmarshal([]byte(line), &addressStruct)
-				assert.NoError(err)
+				assert.NoError(t, err)
 				break
 			}
 		}
 
 		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
 		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "10000")
+		assert.Contains(t, result1, "10000")
 	})
 }
 
 func TestMinerCreate(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
-	require.NoError(err)
+	require.NoError(t, err)
 
 	t.Run("create --help includes pledge text", func(t *testing.T) {
 
@@ -177,7 +170,7 @@ func TestMinerCreate(t *testing.T) {
 
 		op1 := d.RunSuccess("miner", "create", "--help")
 		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
+		assert.Contains(t, result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -194,7 +187,7 @@ func TestMinerCreate(t *testing.T) {
 
 			d1.ConnectSuccess(d)
 
-			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "0", "--gas-limit", "300"}
+			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "1", "--gas-limit", "300"}
 
 			if pid.Pretty() != peer.ID("").Pretty() {
 				args = append(args, "--peerid", pid.Pretty())
@@ -208,8 +201,8 @@ func TestMinerCreate(t *testing.T) {
 			go func() {
 				miner := d.RunSuccess(args...)
 				addr, err = address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-				assert.NoError(err)
-				assert.NotEqual(addr, address.Undef)
+				assert.NoError(t, err)
+				assert.NotEqual(t, addr, address.Undef)
 				wg.Done()
 			}()
 
@@ -219,13 +212,13 @@ func TestMinerCreate(t *testing.T) {
 
 			// expect address to have been written in config
 			config := d.RunSuccess("config mining.minerAddress")
-			assert.Contains(config.ReadStdout(), addr.String())
+			assert.Contains(t, config.ReadStdout(), addr.String())
 		}
 
 		tf(testAddr, peer.ID(""))
 
 		// Will accept a peer ID if one is provided
-		tf(testAddr, th.RequireRandomPeerID(require))
+		tf(testAddr, th.RequireRandomPeerID(t))
 	})
 
 	t.Run("validation failure", func(t *testing.T) {
@@ -237,23 +230,23 @@ func TestMinerCreate(t *testing.T) {
 
 		d.RunFail("invalid peer id",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
 		)
 		d.RunFail("invalid from address",
 			"miner", "create",
-			"--from", "hello", "--gas-price", "0", "--gas-limit", "300", "1000000", "20",
+			"--from", "hello", "--gas-price", "1", "--gas-limit", "300", "1000000", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "'-123'", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "'-123'", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1f", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1f", "20",
 		)
 		d.RunFail("invalid collateral",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "100", "2f",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "100", "2f",
 		)
 	})
 
@@ -273,7 +266,7 @@ func TestMinerCreate(t *testing.T) {
 		go func() {
 			d.RunFail("pledge must be at least",
 				"miner", "create",
-				"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1", "10",
+				"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1", "10",
 			)
 			wg.Done()
 		}()
@@ -287,8 +280,6 @@ func TestMinerCreate(t *testing.T) {
 func TestMinerSetPrice(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d1 := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
@@ -297,18 +288,16 @@ func TestMinerSetPrice(t *testing.T) {
 
 	d1.RunSuccess("mining", "start")
 
-	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "0", "--gas-limit", "300")
-	assert.Contains(setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "1", "--gas-limit", "300")
+	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
 
-	assert.Equal(`"62"`, configuredPrice.ReadStdoutTrimNewlines())
+	assert.Equal(t, `"62"`, configuredPrice.ReadStdoutTrimNewlines())
 }
 
 func TestMinerCreateSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
@@ -318,10 +307,10 @@ func TestMinerCreateSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Undef)
+		assert.NoError(t, err)
+		assert.NotEqual(t, addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -332,11 +321,8 @@ func TestMinerCreateSuccess(t *testing.T) {
 func TestMinerCreateChargesGas(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-	require := require.New(t)
-
 	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(err)
+	require.NoError(t, err)
 
 	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
@@ -352,8 +338,8 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	go func() {
 		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "300", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Undef)
+		assert.NoError(t, err)
+		assert.NotEqual(t, addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -365,7 +351,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	expectedGasCost := big.NewInt(100)
 	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
 	newBalance := queryBalance(t, d, miningMinerOwnerAddr)
-	assert.Equal(expectedBalance.String(), newBalance.Sub(startingBalance).String())
+	assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 
 func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *types.AttoFIL {
@@ -386,8 +372,6 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 func TestMinerOwner(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
 		t.Fatal(err)
@@ -411,7 +395,7 @@ func TestMinerOwner(t *testing.T) {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
 			err = json.Unmarshal([]byte(line), &addressStruct)
-			assert.NoError(err)
+			assert.NoError(t, err)
 			break
 		}
 	}
@@ -420,13 +404,11 @@ func TestMinerOwner(t *testing.T) {
 
 	_, err = address.NewFromString(ownerOutput.ReadStdoutTrimNewlines())
 
-	assert.NoError(err)
+	assert.NoError(t, err)
 }
 
 func TestMinerPower(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
@@ -451,7 +433,7 @@ func TestMinerPower(t *testing.T) {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
 			err = json.Unmarshal([]byte(line), &addressStruct)
-			assert.NoError(err)
+			assert.NoError(t, err)
 			break
 		}
 	}
@@ -460,8 +442,8 @@ func TestMinerPower(t *testing.T) {
 
 	power := powerOutput.ReadStdoutTrimNewlines()
 
-	assert.NoError(err)
-	assert.Equal("3 / 6", power)
+	assert.NoError(t, err)
+	assert.Equal(t, "3 / 6", power)
 }
 
 var testConfig = &gengen.GenesisCfg{

@@ -12,14 +12,12 @@ import (
 func TestRequiresDaemon(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	reqWithDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"chain"}, nil, chainCmd)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	reqWithoutDaemon, err := cmds.NewRequest(context.Background(), []string{}, nil, []string{"daemon"}, nil, daemonCmd)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.True(requiresDaemon(reqWithDaemon))
-	assert.False(requiresDaemon(reqWithoutDaemon))
+	assert.True(t, requiresDaemon(reqWithDaemon))
+	assert.False(t, requiresDaemon(reqWithoutDaemon))
 }

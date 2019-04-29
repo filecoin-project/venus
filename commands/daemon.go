@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -55,13 +56,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	// second highest precedence is env vars.
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		rep.Config().API.Address = envapi
+	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
+		rep.Config().API.Address = envAPI
 	}
 
 	// highest precedence is cmd line flag.
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		rep.Config().API.Address = apiAddress
+	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
+		rep.Config().API.Address = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
@@ -119,8 +120,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
 	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir = repo.GetRepoDir(repoDir)
-	return repo.OpenFSRepo(repoDir)
+	repoDir = paths.GetRepoPath(repoDir)
+	r, err := repo.OpenFSRepo(repoDir)
+	return r, err
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
@@ -130,7 +132,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	defer nd.Stop(ctx)
 
 	servenv := &Env{
-		// TODO: should this be the passed in context?
+		// TODO: should this be the passed in context?  Issue 2641
 		blockMiningAPI: nd.BlockMiningAPI,
 		ctx:            context.Background(),
 		porcelainAPI:   nd.PorcelainAPI,

@@ -17,16 +17,17 @@ import (
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
-	API       *APIConfig         `json:"api"`
-	Bootstrap *BootstrapConfig   `json:"bootstrap"`
-	Datastore *DatastoreConfig   `json:"datastore"`
-	Swarm     *SwarmConfig       `json:"swarm"`
-	Mining    *MiningConfig      `json:"mining"`
-	Wallet    *WalletConfig      `json:"wallet"`
-	Heartbeat *HeartbeatConfig   `json:"heartbeat"`
-	Net       string             `json:"net"`
-	Metrics   *MetricsConfig     `json:"metrics"`
-	Mpool     *MessagePoolConfig `json:"mpool"`
+	API        *APIConfig         `json:"api"`
+	Bootstrap  *BootstrapConfig   `json:"bootstrap"`
+	Datastore  *DatastoreConfig   `json:"datastore"`
+	Swarm      *SwarmConfig       `json:"swarm"`
+	Mining     *MiningConfig      `json:"mining"`
+	Wallet     *WalletConfig      `json:"wallet"`
+	Heartbeat  *HeartbeatConfig   `json:"heartbeat"`
+	Net        string             `json:"net"`
+	Metrics    *MetricsConfig     `json:"metrics"`
+	Mpool      *MessagePoolConfig `json:"mpool"`
+	SectorBase *SectorBaseConfig  `json:"sectorbase"`
 }
 
 // APIConfig holds all configuration options related to the api.
@@ -183,20 +184,35 @@ func newDefaultMessagePoolConfig() *MessagePoolConfig {
 	}
 }
 
+// SectorBaseConfig holds all configuration options related to the node's
+// sector storage.
+type SectorBaseConfig struct {
+	// RootDir is the path to the root directory holding sector data.
+	// If empty the default of <homedir>/sectors is implied.
+	RootDir string `json:"rootdir"`
+}
+
+func newDefaultSectorbaseConfig() *SectorBaseConfig {
+	return &SectorBaseConfig{
+		RootDir: "",
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
 	return &Config{
-		API:       newDefaultAPIConfig(),
-		Bootstrap: newDefaultBootstrapConfig(),
-		Datastore: newDefaultDatastoreConfig(),
-		Swarm:     newDefaultSwarmConfig(),
-		Mining:    newDefaultMiningConfig(),
-		Wallet:    newDefaultWalletConfig(),
-		Heartbeat: newDefaultHeartbeatConfig(),
-		Net:       "",
-		Metrics:   newDefaultMetricsConfig(),
-		Mpool:     newDefaultMessagePoolConfig(),
+		API:        newDefaultAPIConfig(),
+		Bootstrap:  newDefaultBootstrapConfig(),
+		Datastore:  newDefaultDatastoreConfig(),
+		Swarm:      newDefaultSwarmConfig(),
+		Mining:     newDefaultMiningConfig(),
+		Wallet:     newDefaultWalletConfig(),
+		Heartbeat:  newDefaultHeartbeatConfig(),
+		Net:        "",
+		Metrics:    newDefaultMetricsConfig(),
+		Mpool:      newDefaultMessagePoolConfig(),
+		SectorBase: newDefaultSectorbaseConfig(),
 	}
 }
 

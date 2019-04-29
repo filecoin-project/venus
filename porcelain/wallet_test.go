@@ -27,10 +27,10 @@ type wdaTestPlumbing struct {
 	wallet *wallet.Wallet
 }
 
-func newWdaTestPlumbing(require *require.Assertions) *wdaTestPlumbing {
+func newWdaTestPlumbing(t *testing.T) *wdaTestPlumbing {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
-	require.NoError(err)
+	require.NoError(t, err)
 	return &wdaTestPlumbing{
 		config: cfg.NewConfig(repo),
 		wallet: wallet.New(backend),
@@ -62,8 +62,6 @@ func TestWalletBalance(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Returns the correct value for wallet balance", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
 		ctx := context.Background()
 
 		expectedBalance := types.NewAttoFILFromFIL(20)
@@ -71,9 +69,9 @@ func TestWalletBalance(t *testing.T) {
 			balance: expectedBalance,
 		}
 		balance, err := porcelain.WalletBalance(ctx, plumbing, address.Undef)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(expectedBalance, balance)
+		assert.Equal(t, expectedBalance, balance)
 	})
 }
 
@@ -81,39 +79,34 @@ func TestWalletDefaultAddress(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("it returns the configured wallet default if it exists", func(t *testing.T) {
-		require := require.New(t)
-
-		wdatp := newWdaTestPlumbing(require)
+		wdatp := newWdaTestPlumbing(t)
 
 		addr, err := wdatp.WalletNewAddress()
-		require.NoError(err)
+		require.NoError(t, err)
 		err = wdatp.ConfigSet("wallet.defaultAddress", addr.String())
-		require.NoError(err)
+		require.NoError(t, err)
 
 		_, err = porcelain.WalletDefaultAddress(wdatp)
-		require.NoError(err)
+		require.NoError(t, err)
 	})
 
 	t.Run("default is consistent if none configured", func(t *testing.T) {
-		require := require.New(t)
-		assert := assert.New(t)
-
-		wdatp := newWdaTestPlumbing(require)
+		wdatp := newWdaTestPlumbing(t)
 
 		addresses := []address.Address{}
 		for i := 0; i < 10; i++ {
 			a, err := wdatp.WalletNewAddress()
-			require.NoError(err)
+			require.NoError(t, err)
 			addresses = append(addresses, a)
 		}
 
 		expected, err := porcelain.WalletDefaultAddress(wdatp)
-		require.NoError(err)
-		require.True(isInList(expected, addresses))
+		require.NoError(t, err)
+		require.True(t, isInList(expected, addresses))
 		for i := 0; i < 30; i++ {
 			got, err := porcelain.WalletDefaultAddress(wdatp)
-			require.NoError(err)
-			assert.Equal(expected, got)
+			require.NoError(t, err)
+			assert.Equal(t, expected, got)
 		}
 	})
 }

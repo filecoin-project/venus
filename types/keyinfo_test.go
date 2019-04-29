@@ -12,10 +12,8 @@ import (
 func TestKeyInfoMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
-
 	testKey, err := crypto.GenerateKey()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	testType := "test_key_type"
 	ki := &KeyInfo{
 		PrivateKey: testKey,
@@ -23,13 +21,13 @@ func TestKeyInfoMarshal(t *testing.T) {
 	}
 
 	marshaled, err := ki.Marshal()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	kiBack := &KeyInfo{}
 	err = kiBack.Unmarshal(marshaled)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.Equal(ki.Key(), kiBack.Key())
-	assert.Equal(ki.Type(), kiBack.Type())
-	assert.True(ki.Equals(kiBack))
+	assert.Equal(t, ki.Key(), kiBack.Key())
+	assert.Equal(t, ki.Type(), kiBack.Type())
+	assert.True(t, ki.Equals(kiBack))
 }

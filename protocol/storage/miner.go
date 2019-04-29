@@ -41,7 +41,7 @@ const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
 const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
 // TODO: replace this with a queries to pick reasonable gas price and limits.
-const submitPostGasPrice = 0
+const submitPostGasPrice = 1
 const submitPostGasLimit = 300
 
 const waitForPaymentChannelDuration = 2 * time.Minute
@@ -237,7 +237,7 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	lastValidAt := expectedFirstPayment
 	for _, v := range p.Payment.Vouchers {
 		// confirm signature is valid against expected actor and channel id
-		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Signature) {
+		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Condition, v.Signature) {
 			return errors.New("invalid signature in voucher")
 		}
 
@@ -766,7 +766,8 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	}
 
 	h := types.NewBlockHeight(height)
-	provingPeriodEnd := provingPeriodStart.Add(miner.ProvingPeriodBlocks)
+	provingPeriodHeight := types.NewBlockHeight(miner.ProvingPeriodBlocks)
+	provingPeriodEnd := provingPeriodStart.Add(provingPeriodHeight)
 
 	if h.GreaterEqual(provingPeriodStart) {
 		if h.LessThan(provingPeriodEnd) {

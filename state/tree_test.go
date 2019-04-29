@@ -19,7 +19,6 @@ import (
 func TestStatePutGet(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
@@ -34,50 +33,49 @@ func TestStatePutGet(t *testing.T) {
 	addr1 := addrGetter()
 	addr2 := addrGetter()
 
-	assert.NoError(tree.SetActor(ctx, addr1, act1))
-	assert.NoError(tree.SetActor(ctx, addr2, act2))
+	assert.NoError(t, tree.SetActor(ctx, addr1, act1))
+	assert.NoError(t, tree.SetActor(ctx, addr2, act2))
 
 	act1out, err := tree.GetActor(ctx, addr1)
-	assert.NoError(err)
-	assert.Equal(act1, act1out)
+	assert.NoError(t, err)
+	assert.Equal(t, act1, act1out)
 	act2out, err := tree.GetActor(ctx, addr2)
-	assert.NoError(err)
-	assert.Equal(act2, act2out)
+	assert.NoError(t, err)
+	assert.Equal(t, act2, act2out)
 
 	// now test it persists across recreation of tree
 	tcid, err := tree.Flush(ctx)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	tree2, err := LoadStateTree(ctx, cst, tcid, nil)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	act1out2, err := tree2.GetActor(ctx, addr1)
-	assert.NoError(err)
-	assert.Equal(act1, act1out2)
+	assert.NoError(t, err)
+	assert.Equal(t, act1, act1out2)
 	act2out2, err := tree2.GetActor(ctx, addr2)
-	assert.NoError(err)
-	assert.Equal(act2, act2out2)
+	assert.NoError(t, err)
+	assert.Equal(t, act2, act2out2)
 }
 
 func TestStateErrors(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
 	a, err := tree.GetActor(ctx, address.NewForTestGetter()())
-	assert.Nil(a)
-	assert.Error(err)
-	assert.True(IsActorNotFoundError(err))
+	assert.Nil(t, a)
+	assert.Error(t, err)
+	assert.True(t, IsActorNotFoundError(err))
 
 	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	tr2, err := LoadStateTree(ctx, cst, c, nil)
-	assert.EqualError(err, "failed to load node: not found")
-	assert.Nil(tr2)
+	assert.EqualError(t, err, "failed to load node: not found")
+	assert.Nil(t, tr2)
 }
 
 func TestStateGetOrCreate(t *testing.T) {
@@ -91,43 +89,36 @@ func TestStateGetOrCreate(t *testing.T) {
 
 	// no actor - error
 	t.Run("no actor - error", func(t *testing.T) {
-		assert := assert.New(t)
-
 		actor, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 			return nil, fmt.Errorf("fail")
 		})
-		assert.EqualError(err, "fail")
-		assert.Nil(actor)
+		assert.EqualError(t, err, "fail")
+		assert.Nil(t, actor)
 	})
 
 	t.Run("no actor - success", func(t *testing.T) {
-		assert := assert.New(t)
-
 		a, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 			return &actor.Actor{}, nil
 		})
-		assert.NoError(err)
-		assert.Equal(a, &actor.Actor{})
+		assert.NoError(t, err)
+		assert.Equal(t, a, &actor.Actor{})
 	})
 
 	t.Run("actor exists", func(t *testing.T) {
-		assert := assert.New(t)
-
 		a := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(10))
-		assert.NoError(tree.SetActor(ctx, addr, a))
+		assert.NoError(t, tree.SetActor(ctx, addr, a))
 
 		actorBack, err := tree.GetOrCreateActor(ctx, addr, func() (*actor.Actor, error) {
 			return &actor.Actor{}, nil
 		})
-		assert.NoError(err)
-		assert.Equal(actorBack, a)
+		assert.NoError(t, err)
+		assert.Equal(t, actorBack, a)
 	})
 }
 
 func TestGetAllActors(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := assert.New(t)
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
@@ -137,14 +128,14 @@ func TestGetAllActors(t *testing.T) {
 	err := tree.SetActor(ctx, addr, &actor)
 	tree.Flush(ctx)
 
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	results := GetAllActors(ctx, tree)
 
 	for result := range results {
-		assert.Equal(addr.String(), result.Address)
-		assert.Equal(actor.Code, result.Actor.Code)
-		assert.Equal(actor.Nonce, result.Actor.Nonce)
-		assert.Equal(actor.Balance, result.Actor.Balance)
+		assert.Equal(t, addr.String(), result.Address)
+		assert.Equal(t, actor.Code, result.Actor.Code)
+		assert.Equal(t, actor.Nonce, result.Actor.Nonce)
+		assert.Equal(t, actor.Balance, result.Actor.Balance)
 	}
 }

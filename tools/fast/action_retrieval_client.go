@@ -2,6 +2,7 @@ package fast
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -14,6 +15,9 @@ func (f *Filecoin) RetrievalClientRetrievePiece(ctx context.Context, pieceCID ci
 	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "retrieval-client", "retrieve-piece", minerAddr.String(), pieceCID.String())
 	if err != nil {
 		return nil, err
+	}
+	if out.ExitCode() > 0 {
+		return nil, fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
 	}
 	return out.Stdout(), nil
 }

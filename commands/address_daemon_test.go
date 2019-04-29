@@ -19,8 +19,6 @@ import (
 func TestAddrsNewAndList(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	assert := assert.New(t)
-
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
@@ -31,14 +29,12 @@ func TestAddrsNewAndList(t *testing.T) {
 
 	list := d.RunSuccess("address", "ls").ReadStdout()
 	for _, addr := range addrs {
-		assert.Contains(list, addr)
+		assert.Contains(t, list, addr)
 	}
 }
 
 func TestWalletBalance(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
@@ -46,22 +42,20 @@ func TestWalletBalance(t *testing.T) {
 
 	t.Log("[success] not found, zero")
 	balance := d.RunSuccess("wallet", "balance", addr)
-	assert.Equal("0", balance.ReadStdoutTrimNewlines())
+	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] balance 9999900000")
 	balance = d.RunSuccess("wallet", "balance", address.NetworkAddress.String())
-	assert.Equal("9999900000", balance.ReadStdoutTrimNewlines())
+	assert.Equal(t, "9999900000", balance.ReadStdoutTrimNewlines())
 
 	t.Log("[success] newly generated one")
 	addrNew := d.RunSuccess("address new")
 	balance = d.RunSuccess("wallet", "balance", addrNew.ReadStdoutTrimNewlines())
-	assert.Equal("0", balance.ReadStdoutTrimNewlines())
+	assert.Equal(t, "0", balance.ReadStdoutTrimNewlines())
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
@@ -76,7 +70,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	addr := fixtures.TestAddresses[0]
 	minerAddr := fixtures.TestMiners[0]
-	minerPidForUpdate := th.RequireRandomPeerID(require.New(t))
+	minerPidForUpdate := th.RequireRandomPeerID(t)
 
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
@@ -88,7 +82,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	updateMsg := th.RunSuccessFirstLine(d,
 		"miner", "update-peerid",
 		"--from", addr,
-		"--gas-price", "0",
+		"--gas-price", "1",
 		"--gas-limit", "300",
 		minerAddr,
 		minerPidForUpdate.Pretty(),
@@ -102,14 +96,12 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	// use the address lookup command to ensure update happened
 	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
-	assert.Equal(minerPidForUpdate.Pretty(), lookupOutB)
-	assert.NotEqual(lookupOutA, lookupOutB)
+	assert.Equal(t, minerPidForUpdate.Pretty(), lookupOutB)
+	assert.NotEqual(t, lookupOutA, lookupOutB)
 }
 
 func TestWalletLoadFromFile(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
@@ -122,19 +114,16 @@ func TestWalletLoadFromFile(t *testing.T) {
 
 	for _, addr := range fixtures.TestAddresses {
 		// assert we loaded the test address from the file
-		assert.Contains(dw, addr)
+		assert.Contains(t, dw, addr)
 	}
 
 	// assert default amount of funds were allocated to address during genesis
 	wb := d.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
-	assert.Contains(wb, "10000")
+	assert.Contains(t, wb, "10000")
 }
 
 func TestWalletExportImportRoundTrip(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
-	require := require.New(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
@@ -144,21 +133,19 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	ki := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
 
 	wf, err := os.Create("walletFileTest")
-	require.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove("walletFileTest")
 	_, err = wf.WriteString(ki)
-	require.NoError(err)
-	require.NoError(wf.Close())
+	require.NoError(t, err)
+	require.NoError(t, wf.Close())
 
 	maybeAddr := d.RunSuccess("wallet", "import", wf.Name()).ReadStdoutTrimNewlines()
-	assert.Equal(dw, maybeAddr)
+	assert.Equal(t, dw, maybeAddr)
 
 }
 
 func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 	tf.IntegrationTest(t)
-
-	assert := assert.New(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
@@ -171,5 +158,5 @@ func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 
 	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
 
-	assert.Contains(exportJSON, exportTextPrivateKey)
+	assert.Contains(t, exportJSON, exportTextPrivateKey)
 }

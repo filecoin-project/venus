@@ -18,7 +18,8 @@ func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStor
 	if err != nil {
 		return nil, err
 	}
-	return GetRecentAncestors(ctx, headTipSetAndState.TipSet, chainReader, descendantBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	return GetRecentAncestors(ctx, headTipSetAndState.TipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
 }
 
 // GetRecentAncestors returns the ancestors of base as a slice of TipSets.

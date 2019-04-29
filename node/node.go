@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -367,7 +368,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up pinger
-	pinger := ping.NewPingService(peerHost)
+	pingService := ping.NewPingService(peerHost)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
@@ -429,7 +430,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
 		MsgSender:    msg.NewSender(fcWallet, chainStore, &cstOffline, chainStore, outbox, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
-		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, pinger),
+		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:       outbox,
 		Wallet:       fcWallet,
 	}))
@@ -831,7 +832,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 				} else if result.SealingResult != nil {
 
 					// TODO: determine these algorithmically by simulating call and querying historical prices
-					gasPrice := types.NewGasPrice(0)
+					gasPrice := types.NewGasPrice(1)
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult
@@ -933,16 +934,18 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.
 		sectorClass = types.NewLiveSectorClass()
 	}
 
-	// TODO: Where should we store the RustSectorBuilder metadata? Currently, we
-	// configure the RustSectorBuilder to store its metadata in the staging
-	// directory.
+	// TODO: Currently, weconfigure the RustSectorBuilder to store its
+	// metadata in the staging directory, it should be in its own directory.
+	//
+	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
+	sectorDir := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir)
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      node.Repo.StagingDir(),
+		MetadataDir:      paths.StagingDir(sectorDir),
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  node.Repo.SealedDir(),
-		StagedSectorDir:  node.Repo.StagingDir(),
+		SealedSectorDir:  paths.SealedDir(sectorDir),
+		StagedSectorDir:  paths.StagingDir(sectorDir),
 		SectorClass:      sectorClass,
 	}
 
@@ -1034,7 +1037,7 @@ func (node *Node) setupProtocols() error {
 	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime, node.PorcelainAPI))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api
@@ -1103,7 +1106,8 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 
 // getAncestors is the default GetAncestors function for the mining worker.
 func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, ancestorHeight, sampling.LookbackParameter)
 }
 
 // -- Accessors

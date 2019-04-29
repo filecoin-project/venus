@@ -40,9 +40,9 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.TipSet {
+func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 	ts, err := types.NewTipSet(blks...)
-	require.NoError(err)
+	require.NoError(t, err)
 	return ts
 }
 
@@ -183,7 +183,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 }
 
 func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)
 	}

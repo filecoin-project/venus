@@ -263,7 +263,7 @@ func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan 
 
 // NetworkPing sends echo request packets over the network.
 func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
-	return api.network.PingService.Ping(ctx, pid)
+	return api.network.Pinger.Ping(ctx, pid)
 }
 
 // NetworkFindPeer searches the libp2p router for a given peer id
