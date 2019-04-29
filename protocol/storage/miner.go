@@ -603,7 +603,7 @@ func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, ms
 		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
 		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
 	} else {
-		sm.dealsAwaitingSeal.addCommitmentMessageCid(sectorID, msgCid)
+		sm.dealsAwaitingSeal.CommitmentMessages[sector.SectorID] = msgCid
 		sm.dealsAwaitingSeal.success(sector)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
@@ -613,24 +613,21 @@ func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, ms
 }
 
 func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
-	pieceInfo, err := sm.findPieceInfo(dealCid, sector)
-	if err != nil {
-		// log error, but continue to update deal with the information we have
-		log.Errorf("commit succeeded, but could not find piece info %s", err)
+	var pieceInclusionProof []byte
+	pieceInfo, _ := sm.findPieceInfo(dealCid, sector)
+	if pieceInfo != nil {
+		pieceInclusionProof = pieceInfo.InclusionProof
 	}
 
-	// failure to locate commitmentMessage should not block update
 	commitmentMessage := sm.dealsAwaitingSeal.CommitmentMessages[sector.SectorID]
 
-	err = sm.updateDealResponse(dealCid, func(resp *storagedeal.Response) {
+	err := sm.updateDealResponse(dealCid, func(resp *storagedeal.Response) {
 
 		resp.State = storagedeal.Posted
 		resp.ProofInfo = &storagedeal.ProofInfo{
-			SectorID:          sector.SectorID,
-			CommitmentMessage: &commitmentMessage,
-		}
-		if pieceInfo != nil {
-			resp.ProofInfo.PieceInclusionProof = pieceInfo.InclusionProof
+			SectorID:            sector.SectorID,
+			CommitmentMessage:   &commitmentMessage,
+			PieceInclusionProof: pieceInclusionProof,
 		}
 	})
 	if err != nil {
