@@ -52,15 +52,9 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
-	ppp, err := req.Proof.ProofPartitions()
-	if err != nil {
-		return VerifySealResponse{}, errors.Wrap(err, "failed to get proof partitions")
-	}
-
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
 		C.uint64_t(req.SectorSize.Uint64()),
-		C.uint8_t(ppp.Int()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
