@@ -11,6 +11,8 @@ COPY --from=filecoin:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
 
+RUN chmod +x /usr/local/bin/faucet
+
 EXPOSE 9797
 
 # There's an fs-repo, and initializes one if there isn't.
