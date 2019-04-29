@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -49,6 +50,7 @@ var initCmd = &cmds.Command{
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
+		repoDir = paths.GetRepoPath(repoDir)
 		rep, err := repo.CreateRepo(repoDir, newConfig)
 		if err != nil {
 			return err

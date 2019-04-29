@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -119,8 +120,9 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
 	repoDir, _ := req.Options[OptionRepoDir].(string)
-	repoDir = repo.GetRepoDir(repoDir)
-	return repo.OpenFSRepo(repoDir)
+	repoDir = paths.GetRepoPath(repoDir)
+	r, err := repo.OpenFSRepo(repoDir)
+	return r, err
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {

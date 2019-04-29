@@ -89,6 +89,9 @@ func TestWriteFile(t *testing.T) {
 	"mpool": {
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
+	},
+	"sectorbase": {
+		"rootdir": ""
 	}
 }`,
 		string(content),
