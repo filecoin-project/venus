@@ -266,7 +266,9 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 
 		// Mark the payment channel as redeemed and set the conditions
 		channel.Redeemed = true
-		if condition != nil {
+		if condition == nil {
+			channel.Conditions = nil
+		} else {
 			newConditions := *condition
 			newConditions.Params = append(newConditions.Params, redeemerConditionParams...)
 			channel.Conditions = &newConditions
@@ -793,7 +795,9 @@ func checkCondition(vmctx exec.VMContext, chid *types.ChannelID, payerAddress ad
 				return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 			}
 
-			cachedCondition = channel.Conditions
+			if channel.Redeemed {
+				cachedCondition = channel.Conditions
+			}
 			return nil
 		})
 		if err != nil {

@@ -228,7 +228,7 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		assert.Equal(t, true, channel.Redeemed)
 	})
 
-	t.Run("Redeem should set the payment channel conditions on success", func(t *testing.T) {
+	t.Run("Redeem should set cached conditions on success", func(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
@@ -252,6 +252,37 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		assert.Contains(t, channel.Conditions.Params, addrParam.Bytes())
 		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
 		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
+	})
+
+	t.Run("Redeem should set cached conditions back to nil when no condition is provided", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Successfully redeem the payment channel with conditions
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the conditions are set and correct
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Conditions)
+		assert.Equal(t, toAddress, channel.Conditions.To)
+		assert.Equal(t, method, channel.Conditions.Method)
+		assert.Contains(t, channel.Conditions.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
+		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
+
+		// Successfully redeem the payment channel again without conditions
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the conditions are now nil
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.Nil(t, channel.Conditions)
 	})
 
 	t.Run("Redeem uses cached conditions in subsequent calls", func(t *testing.T) {
