@@ -84,7 +84,7 @@ type PaymentChannel struct {
 
 	// Conditions are the set of conditions for redeeming or closing the payment
 	// channel
-	Conditions *types.Predicate
+	Conditions *types.Predicate `json:"conditions"`
 
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
@@ -93,7 +93,7 @@ type PaymentChannel struct {
 	// Redeemed is a flag indicating whether or not Redeem has been called on the
 	// payment channel yet. This is necessary because AmountRedeemed can still be
 	// zero in the event of a zero-value voucher
-	Redeemed boolean
+	Redeemed bool `json:"redeemed"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -263,6 +263,9 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// Reset the EOL to the originally agreed upon EOL in the event that the
 		// channel has been cancelled.
 		channel.Eol = channel.AgreedEol
+
+		// Mark the payment channel as redeemed
+		channel.Redeemed = true
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})

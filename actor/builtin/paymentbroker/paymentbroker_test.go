@@ -195,6 +195,40 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	})
 }
 
+func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	t.Run("Redeem should set the redeemed flag to true on success", func(t *testing.T) {
+		// Expect that the redeemed flag is false on init
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.Equal(t, false, channel.Redeemed)
+
+		// Successfully redeem the payment channel
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the redeemed flag is now true
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.Equal(t, true, channel.Redeemed)
+	})
+}
+
 func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 	tf.UnitTest(t)
 
