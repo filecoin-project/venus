@@ -266,23 +266,21 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 	} else if resPtr.seal_status_code == C.Sealing {
 		return nil, nil
 	} else if resPtr.seal_status_code == C.Sealed {
-		commRSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r[0]), 32)
+		commRSlice := goBytes(&resPtr.comm_r[0], 32)
 		var commR types.CommR
 		copy(commR[:], commRSlice)
 
-		commDSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_d[0]), 32)
+		commDSlice := goBytes(&resPtr.comm_d[0], 32)
 		var commD types.CommD
 		copy(commD[:], commDSlice)
 
-		commRStarSlice := C.GoBytes(unsafe.Pointer(&resPtr.comm_r_star[0]), 32)
+		commRStarSlice := goBytes(&resPtr.comm_r_star[0], 32)
 		var commRStar types.CommRStar
 		copy(commRStar[:], commRStarSlice)
 
-		proofSlice := C.GoBytes(unsafe.Pointer(&resPtr.snark_proof[0]), 384)
-		var proof types.SealProof
-		copy(proof[:], proofSlice)
+		proof := goBytes(resPtr.proof_ptr, resPtr.proof_len)
 
-		ps, err := goPieceInfos((*C.FFIPieceMetadata)(unsafe.Pointer(resPtr.pieces_ptr)), resPtr.pieces_len)
+		ps, err := goPieceInfos(resPtr.pieces_ptr, resPtr.pieces_len)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
@@ -314,7 +312,7 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Rea
 		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	return bytes.NewReader(C.GoBytes(unsafe.Pointer(resPtr.data_ptr), C.int(resPtr.data_len))), nil
+	return bytes.NewReader(goBytes(resPtr.data_ptr, resPtr.data_len)), nil
 }
 
 // SealAllStagedSectors schedules sealing of all staged sectors.
@@ -383,9 +381,9 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 		return GeneratePoStResponse{}, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	proofs, err := goPoStProofs(resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len)
+	proofs, err := goPoStProofs(resPtr.proof_partitions, resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len)
 	if err != nil {
-		return GeneratePoStResponse{}, err
+		return GeneratePoStResponse{}, errors.Wrap(err, "failed to convert to []PoStProof")
 	}
 
 	return GeneratePoStResponse{
@@ -394,149 +392,8 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 	}, nil
 }
 
-// goPoStProofs accepts a pointer to a C-allocated byte array and a size and
-// produces a Go-managed slice of PoStProof. Note that this function copies
-// values into the Go heap from C.
-func goPoStProofs(src *C.uint8_t, size C.size_t) ([]types.PoStProof, error) {
-	chunkSize := int(types.PoStBytesLen)
-	arrSize := int(size)
-
-	if src == nil {
-		return []types.PoStProof{}, nil
-	}
-
-	if arrSize%chunkSize != 0 {
-		msg := "PoSt proof array invalid size (arrSize=%d % PoStBytesLen=%d != 0)"
-		return nil, errors.Errorf(msg, arrSize, types.PoStBytesLen)
-	}
-
-	out := make([]types.PoStProof, arrSize/chunkSize)
-
-	// Create a slice from a pointer to an array on the C heap by slicing to
-	// the appropriate size. We can then copy from this slice into the Go heap.
-	//
-	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
-	tmp := (*(*[1 << 30]byte)(unsafe.Pointer(src)))[:size:size]
-
-	for i := 0; i < len(out); i++ {
-		copy(out[i][:], tmp[i*chunkSize:(i+1)*chunkSize])
-	}
-
-	return out, nil
-}
-
-// goUint64s accepts a pointer to a C-allocated uint64 and a size and produces
-// a Go-managed slice of uint64. Note that this function copies values into the
-// Go heap from C.
-func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
-	out := make([]uint64, size)
-	if src != nil {
-		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
-	}
-	return out
-}
-
-// destroy deallocates and destroys a RustSectorBuilder.
 func (sb *RustSectorBuilder) destroy() {
 	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
 
 	sb.ptr = nil
-}
-
-func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*stagedSectorMetadata, error) {
-	sectors := make([]*stagedSectorMetadata, size)
-	if src == nil || size == 0 {
-		return sectors, nil
-	}
-
-	sectorPtrs := (*[1 << 30]C.FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
-	for i := 0; i < int(size); i++ {
-		sectors[i] = &stagedSectorMetadata{
-			sectorID: uint64(sectorPtrs[i].sector_id),
-		}
-	}
-
-	return sectors, nil
-}
-
-func goPieceInfos(src *C.FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) {
-	ps := make([]*PieceInfo, size)
-	if src == nil || size == 0 {
-		return ps, nil
-	}
-
-	ptrs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
-	for i := 0; i < int(size); i++ {
-		ref, err := cid.Decode(C.GoString(ptrs[i].piece_key))
-		if err != nil {
-			return nil, err
-		}
-
-		ps[i] = &PieceInfo{
-			Ref:  ref,
-			Size: uint64(ptrs[i].num_bytes),
-		}
-	}
-
-	return ps, nil
-}
-
-func cFFISealProofPartitions(spp types.PoRepProofPartitions) (C.FFISealProofPartitions, error) {
-	switch spp {
-	case types.TestPoRepProofPartitions:
-		return C.FFISealProofPartitions(0), nil
-	case types.TwoPoRepPartitions:
-		return C.FFISealProofPartitions(C.SPP_Two), nil
-	default:
-		return C.FFISealProofPartitions(0), errors.Errorf("unhandled value: %v", spp)
-	}
-}
-
-func cFFIPoStProofPartitions(ppp types.PoStProofPartitions) (C.FFIPoStProofPartitions, error) {
-	switch ppp {
-	case types.TestPoStPartitions:
-		return C.FFIPoStProofPartitions(0), nil
-	case types.OnePoStPartition:
-		return C.FFIPoStProofPartitions(C.PPP_One), nil
-	default:
-		return C.FFIPoStProofPartitions(0), errors.Errorf("unhandled value: %v", ppp)
-	}
-}
-
-func cSectorClass(c types.SectorClass) (C.FFISectorClass, error) {
-	size, err := cFFISectorSizeFrom(c.SectorSize())
-	if err != nil {
-		return C.FFISectorClass{}, nil
-	}
-
-	seal, err := cFFISealProofPartitions(c.PoRepProofPartitions())
-	if err != nil {
-		return C.FFISectorClass{}, nil
-	}
-
-	post, err := cFFIPoStProofPartitions(c.PoStProofPartitions())
-	if err != nil {
-		return C.FFISectorClass{}, nil
-	}
-
-	return C.FFISectorClass{
-		sector_size:           size,
-		seal_proof_partitions: seal,
-		post_proof_partitions: post,
-	}, nil
-}
-
-// cFFISectorSizeFrom produces an FFI-compatible FFISectorSize from a
-// SectorSize. This function's return type includes a C type, so it cannot be
-// exported. See: https://golang.org/cmd/cgo/#hdr-Go_references_to_C for more
-// information.
-func cFFISectorSizeFrom(ss types.SectorSize) (C.FFISectorSize, error) {
-	switch ss {
-	case types.OneKiBSectorSize:
-		return C.FFISectorSize(C.SSB_OneKiB), nil
-	case types.TwoHundredFiftySixMiBSectorSize:
-		return C.FFISectorSize(C.SSB_TwoHundredFiftySixMiB), nil
-	default:
-		return C.FFISectorSize(0), errors.Errorf("unhandled value: %v", ss)
-	}
 }

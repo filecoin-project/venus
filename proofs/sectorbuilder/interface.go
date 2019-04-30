@@ -78,7 +78,7 @@ type SealedSectorMetadata struct {
 	CommR     types.CommR // deprecated (will be removed soon)
 	CommRStar types.CommRStar
 	Pieces    []*PieceInfo // deprecated (will be removed soon)
-	Proof     types.SealProof
+	Proof     types.PoRepProof
 	SectorID  uint64
 }
 

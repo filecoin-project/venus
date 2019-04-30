@@ -209,7 +209,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
-		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.Bytes},
+		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
 		Return: []abi.Type{},
 	},
 	"getKey": &exec.FunctionSignature{
@@ -451,7 +451,7 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
-func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar, proof []byte) (uint8, error) {
+func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -493,7 +493,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(req.CommD[:], commD)
 		copy(req.CommR[:], commR)
 		copy(req.CommRStar[:], commRStar)
-		copy(req.Proof[:], proof)
+		req.Proof = proof
 		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
 		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 		req.SectorSize = sectorSize
@@ -711,7 +711,7 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -770,7 +770,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, postProofs []types.PoStProof) (u
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
-				Proofs:        postProofs,
+				Proofs:        poStProofs,
 				SectorSize:    sectorSize,
 			}
 
