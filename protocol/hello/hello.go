@@ -90,11 +90,11 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Warningf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
