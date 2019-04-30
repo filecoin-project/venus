@@ -16,7 +16,7 @@ import (
 func TestUsage(t *testing.T) {
 	tf.IntegrationTest(t) // because we're using exec.Command
 	command := requireGetMigrationBinary(t)
-	expected := "go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [--new-repo=<newrepo-prefix] [-h|--help] [-v|--verbose]"
+	expected := "go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [-h|--help] [-v|--verbose]"
 
 	t.Run("bare invocation prints usage but exits with 1", func(t *testing.T) {
 		out, err := exec.Command(command).CombinedOutput()
@@ -40,7 +40,7 @@ func TestUsage(t *testing.T) {
 func TestOptions(t *testing.T) {
 	tf.IntegrationTest(t) // because we're using exec.Command
 	command := requireGetMigrationBinary(t)
-	usage := "go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [--new-repo=<newrepo-prefix] [-h|--help] [-v|--verbose]"
+	usage := "go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [-h|--help] [-v|--verbose]"
 
 	t.Run("error when calling with invalid command", func(t *testing.T) {
 		out, err := exec.Command(command, "foo", "--old-repo=something").CombinedOutput()

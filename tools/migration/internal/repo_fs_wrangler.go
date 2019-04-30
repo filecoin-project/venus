@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -10,9 +12,14 @@ import (
 // CloneRepo copies the old repo to the new repo dir with Read/Write access.
 //   Returns an error if the directory exists.
 func CloneRepo(oldRepoPath string) (string, error) {
+	realRepoPath, err := os.Readlink(oldRepoPath)
+	if err != nil {
+		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
+	}
+
 	newRepoPath := getNewRepoPath(oldRepoPath, "")
 
-	if err := rcopy.Copy(oldRepoPath, newRepoPath); err != nil {
+	if err := rcopy.Copy(realRepoPath, newRepoPath); err != nil {
 		return "", err
 	}
 	if err := os.Chmod(newRepoPath, os.ModeDir|0744); err != nil {
@@ -23,16 +30,24 @@ func CloneRepo(oldRepoPath string) (string, error) {
 
 // InstallNewRepo archives the old repo, and symlinks the new repo in its place.
 // returns the new path to the old repo and any error.
-func InstallNewRepo(oldRepoPath, newRepoPath string) (string, error) {
-	archivedRepo := strings.Join([]string{oldRepoPath, NowString()}, "-")
+func InstallNewRepo(oldRepoLink, newRepoPath string) (string, error) {
+	realRepoPath, err := os.Readlink(oldRepoLink)
+	if err != nil {
+		return "", err
+	}
 
-	if err := os.Rename(oldRepoPath, archivedRepo); err != nil {
-		return archivedRepo, err
+	archivedRepoPath := strings.Join([]string{realRepoPath, "archived", NowString()}, "_")
+
+	if err := os.Rename(realRepoPath, archivedRepoPath); err != nil {
+		return archivedRepoPath, err
 	}
-	if err := os.Symlink(newRepoPath, oldRepoPath); err != nil {
-		return archivedRepo, err
+	if err := os.Remove(oldRepoLink); err != nil {
+		return archivedRepoPath, err
 	}
-	return archivedRepo, nil
+	if err := os.Symlink(newRepoPath, oldRepoLink); err != nil {
+		return archivedRepoPath, err
+	}
+	return archivedRepoPath, nil
 }
 
 func OpenRepo(repoPath string) (*os.File, error) {

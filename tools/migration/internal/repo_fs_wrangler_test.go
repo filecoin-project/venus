@@ -13,14 +13,18 @@ import (
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
-func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
+func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Creates the dir with the right permissions", func(t *testing.T) {
 		oldRepo := requireMakeTempDir(t, "")
 		defer requireRmDir(t, oldRepo)
 
-		newRepoPath, err := CloneRepo(oldRepo)
+		linkedRepoPath := oldRepo + "something"
+		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
+		defer requireRmDir(t, linkedRepoPath)
+
+		newRepoPath, err := CloneRepo(linkedRepoPath)
 		require.NoError(t, err)
 		defer requireRmDir(t, newRepoPath)
 
@@ -28,6 +32,23 @@ func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 		require.NoError(t, err)
 		expectedPerms := "drwxr--r--"
 		assert.Equal(t, expectedPerms, stat.Mode().String())
+	})
+
+	t.Run("fails if the old repo does not point to a symbolic link", func(t *testing.T) {
+		oldRepo := requireMakeTempDir(t, "")
+		defer requireRmDir(t, oldRepo)
+
+		result, err := CloneRepo(oldRepo)
+		assert.Error(t, err, "old-repo must be a symbolic link.")
+		assert.Equal(t, "", result)
+
+		linkedRepoPath := oldRepo + "something"
+		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
+		defer requireRmDir(t, linkedRepoPath)
+
+		result, err = CloneRepo(linkedRepoPath)
+		assert.NoError(t, err)
+		assert.NotEqual(t, "", result)
 	})
 }
 
@@ -39,22 +60,23 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	_, err := os.Create(path.Join(oldRepo, "oldRepoFile"))
 	require.NoError(t, err)
 
-	newRepoPath, err := CloneRepo(oldRepo)
+	linkedRepoPath := oldRepo + "something"
+	require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
+	defer requireRmDir(t, linkedRepoPath)
+
+	newRepoPath, err := CloneRepo(linkedRepoPath)
 	require.NoError(t, err)
 
+	// put something in each repo dir so we know which is which
 	_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
 	require.NoError(t, err)
 
-	archivedRepo, err := InstallNewRepo(oldRepo, newRepoPath)
+	archivedRepo, err := InstallNewRepo(linkedRepoPath, newRepoPath)
 	require.NoError(t, err)
 
 	// check that the archive is there
 	dir, err := os.Open(archivedRepo)
 	require.NoError(t, err)
-	stat, err := dir.Stat()
-	require.NoError(t, err)
-	expectedPerms := "drwx------"
-	assert.Equal(t, expectedPerms, stat.Mode().String())
 	contents, err := dir.Readdirnames(0)
 	require.NoError(t, err)
 	assert.Contains(t, contents, "oldRepoFile")
