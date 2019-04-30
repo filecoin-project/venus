@@ -1,9 +1,11 @@
 package internal_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +51,36 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 		result, err = CloneRepo(linkedRepoPath)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", result)
+	})
+
+	t.Run("Increments the int on the end until a free filename is found", func(t *testing.T) {
+		oldRepo := requireMakeTempDir(t, "")
+		defer requireRmDir(t, oldRepo)
+
+		linkedRepoPath := oldRepo + "something"
+		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
+		defer requireRmDir(t, linkedRepoPath)
+
+		// Call CloneRepo several times and ensure that the filename end
+		// is incremented, since these calls will happen in <1s.
+		// 1000 times is more than enough; change this loop to 1000 and
+		// this test fails because the index restarts, due to the timestamp
+		// updating, which is correct behavior. Programmatically proving it restarts
+		// in this test was more trouble than it was worth.
+		repos := []string{}
+		for i := 1; i < 50; i++ {
+			result, err := CloneRepo(linkedRepoPath)
+			require.NoError(t, err)
+			repos = append(repos, result)
+			endRegex := fmt.Sprintf("-%03d$", i)
+			regx, err := regexp.Compile(endRegex)
+			assert.NoError(t, err)
+			assert.Regexp(t, regx, result)
+		}
+		for _, dir := range repos {
+			requireRmDir(t, dir)
+		}
+
 	})
 }
 

@@ -17,7 +17,10 @@ func CloneRepo(oldRepoPath string) (string, error) {
 		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
 	}
 
-	newRepoPath := getNewRepoPath(oldRepoPath, "")
+	newRepoPath, err := getNewRepoPath(oldRepoPath, "")
+	if err != nil {
+		return "", err
+	}
 
 	if err := rcopy.Copy(realRepoPath, newRepoPath); err != nil {
 		return "", err
@@ -36,7 +39,7 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) (string, error) {
 		return "", err
 	}
 
-	archivedRepoPath := strings.Join([]string{realRepoPath, "archived", NowString()}, "_")
+	archivedRepoPath := strings.Join([]string{realRepoPath, "archived", NowString()}, "-")
 
 	if err := os.Rename(realRepoPath, archivedRepoPath); err != nil {
 		return archivedRepoPath, err
@@ -61,8 +64,8 @@ func OpenRepo(repoPath string) (*os.File, error) {
 // Returns:
 //     a path generated using the above information plus tmp_<timestamp>.
 // Example output:
-//     /Users/davonte/.filecoin_tmp_20190806-150455
-func getNewRepoPath(oldPath, newRepoOpt string) string {
+//     /Users/davonte/.filecoin_tmp_20190806-150455-001
+func getNewRepoPath(oldPath, newRepoOpt string) (string, error) {
 	var newRepoPrefix string
 	if newRepoOpt != "" {
 		newRepoPrefix = newRepoOpt
@@ -70,5 +73,16 @@ func getNewRepoPath(oldPath, newRepoOpt string) string {
 		newRepoPrefix = oldPath
 	}
 
-	return strings.Join([]string{newRepoPrefix, "tmp", NowString()}, "_")
+	// unlikely to see a name collision but make sure; making it loop up to 1000
+	// ensures that even if there are 1000 calls/sec then the timestamp will change
+	// anyway.
+	var newpath string
+	for i := 1; i < 1000; i++ {
+		newpath = strings.Join([]string{newRepoPrefix, NowString(), fmt.Sprintf("%03d", i)}, "-")
+		if _, err := os.Stat(newpath); os.IsNotExist(err) {
+			return newpath, nil
+		}
+	}
+	// this should never happen, but just in case.
+	return "", errors.New("couldn't find a free dirname for cloning")
 }
