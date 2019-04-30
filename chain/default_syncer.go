@@ -326,7 +326,7 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
 func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error {
-	logSyncer.Debugf("trying to sync %v\n", tipsetCids)
+	logSyncer.Debugf("trying to sync %v", tipsetCids)
 
 	// This lock could last a long time as we fetch all the blocks needed to block the chain.
 	// This is justified because the app is pretty useless until it is synced.
@@ -356,6 +356,12 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	}
 	parent := parentTsas.TipSet
 
+	// used for logging
+	highestBlock, err := chain[len(chain)-1].Height()
+	if err != nil {
+		return err
+	}
+
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
 	for i, ts := range chain {
@@ -382,6 +388,9 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 			// so we don't really lose anything with this simplification.
 			syncer.badTipSets.AddChain(chain[i:])
 			return err
+		}
+		if (i % 500) == 0 {
+			logSyncer.Infof("processing block %d of %v", i, highestBlock)
 		}
 		parent = ts
 	}
