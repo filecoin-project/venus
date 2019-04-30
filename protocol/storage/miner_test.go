@@ -328,41 +328,68 @@ func TestDealsAwaitingSeal(t *testing.T) {
 func TestOnCommitmentAddedToChain(t *testing.T) {
 	tf.UnitTest(t)
 
-	porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
-
-	porcelainAPI := newMinerTestPorcelain(t)
-	miner := &Miner{
-		porcelainAPI: porcelainAPI,
-		dealsAwaitingSeal: &dealsAwaitingSealStruct{
-			SectorsToDeals:     make(map[uint64][]cid.Cid),
-			SuccessfulSectors:  make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-			CommitmentMessages: make(map[uint64]cid.Cid),
-		},
-		dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsDatastore(),
-	}
-
 	cidGetter := types.NewCidForTestGetter()
+	proposalCid := cidGetter()
 	sectorId := uint64(777)
+
+	// Simulate successful sealing and posting a commitSector to chain
 	msgCid := cidGetter()
 	var commD types.CommD
 	copy(commD[:], []byte{9, 9, 9, 9})
 	pip := []byte{3, 3, 3, 3, 3}
 
-	piece := &sectorbuilder.PieceInfo{
-		Ref:            cidGetter(),
-		Size:           10999,
-		InclusionProof: pip,
-	}
+	t.Run("On successful commitment", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
 
-	sector := &sectorbuilder.SealedSectorMetadata{
-		SectorID: sectorId,
-		CommD:    commD,
-		Pieces:   []*sectorbuilder.PieceInfo{piece},
-	}
+		piece := &sectorbuilder.PieceInfo{Ref: proposal.PieceRef, Size: 10999, InclusionProof: pip}
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
 
-	miner.OnCommitmentAddedToChain(sector, msgCid, nil)
-	miner.onCommitSuccess()
+		miner.OnCommitmentSent(sector, msgCid, nil)
 
+		// retrieve deal response
+		dealResponse := miner.Query(proposal.Proposal.PieceRef)
+
+		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
+		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
+		assert.Equal(t, sectorId, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
+		assert.Equal(t, &msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
+		assert.Equal(t, pip, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
+	})
+
+	t.Run("Committing doesn't fail when piece info is missing", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
+
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
+
+		miner.OnCommitmentSent(sector, msgCid, nil)
+
+		// retrieve deal response
+		dealResponse := miner.Query(proposal.Proposal.PieceRef)
+
+		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
+
+		// expect proof to be nil because it wasn't provided
+		assert.Nil(t, dealResponse.ProofInfo.PieceInclusionProof)
+	})
+
+	t.Run("Committing doesn't fail when deal isn't found", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
+
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
+
+		miner.OnCommitmentSent(sector, msgCid, nil)
+
+		// retrieve deal response
+		dealResponse := miner.Query(proposal.Proposal.PieceRef)
+
+		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
+
+		// expect proof to be nil because it wasn't provided
+		assert.Nil(t, dealResponse.ProofInfo.PieceInclusionProof)
+	})
 }
 
 type minerTestPorcelain struct {
@@ -485,11 +512,6 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 			return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
 		},
 	}
-}
-
-func minerWithAcceptedDealTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
-	porcelainAPI, miner, proposal := defaultMinerTestSetup(t, voucherInverval, amountInc)
-	acceptProposal(miner, proposal)
 }
 
 func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
