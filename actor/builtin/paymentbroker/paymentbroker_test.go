@@ -243,10 +243,15 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
-		// Expect that the conditions are now set
+		// Expect that the conditions are now set and correct
 		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
 		assert.NotNil(t, channel.Conditions)
+		assert.Equal(t, toAddress, channel.Conditions.To)
+		assert.Equal(t, method, channel.Conditions.Method)
+		assert.Contains(t, channel.Conditions.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
+		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
 	})
 }
 
