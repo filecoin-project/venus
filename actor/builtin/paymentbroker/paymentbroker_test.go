@@ -253,6 +253,23 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
 		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
 	})
+
+	t.Run("Redeem uses cached conditions in subsequent calls", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Successfully redeem the payment channel with params
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Redeem again without params
+		condition = &types.Predicate{To: toAddress, Method: method}
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+	})
 }
 
 func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
