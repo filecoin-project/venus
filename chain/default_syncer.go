@@ -110,7 +110,7 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // that interacts with the network. It does NOT add tipsets to the chainStore..
 func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) ([]types.TipSet, error) {
 	var chain []types.TipSet
-	defer logSyncer.Info("chain synced")
+	defer logSyncer.Info("chain fetch from network complete")
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
