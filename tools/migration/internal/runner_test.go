@@ -13,6 +13,6 @@ import (
 func TestMigrationRunner_Run(t *testing.T) {
 	tf.UnitTest(t)
 
-	runner := NewMigrationRunner(false, "describe", "1", "2")
+	runner := NewMigrationRunner(false, "describe", "/home/filecoin-symlink")
 	assert.NoError(t, runner.Run())
 }

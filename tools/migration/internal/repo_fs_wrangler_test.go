@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,21 +13,6 @@ import (
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
-func TestRepoMigrationHelper_GetOldRepo(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("Uses the option values when passed to ctor", func(t *testing.T) {
-		oldRepo := requireMakeTempDir(t, "")
-		defer requireRmDir(t, oldRepo)
-
-		rmh := NewRepoFSWrangler(oldRepo, "")
-		or, err := rmh.GetOldRepo()
-		require.NoError(t, err)
-
-		assert.Equal(t, oldRepo, or.Name())
-	})
-}
-
 func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -36,36 +20,14 @@ func TestRepoMigrationHelper_MakeNewRepo(t *testing.T) {
 		oldRepo := requireMakeTempDir(t, "")
 		defer requireRmDir(t, oldRepo)
 
-		rmh := NewRepoFSWrangler(oldRepo, "")
-		require.NoError(t, rmh.CloneRepo())
-		defer requireRmDir(t, rmh.GetNewRepoPath())
+		newRepoPath, err := CloneRepo(oldRepo)
+		require.NoError(t, err)
+		defer requireRmDir(t, newRepoPath)
 
-		stat, err := os.Stat(rmh.GetNewRepoPath())
+		stat, err := os.Stat(newRepoPath)
 		require.NoError(t, err)
 		expectedPerms := "drwxr--r--"
 		assert.Equal(t, expectedPerms, stat.Mode().String())
-	})
-}
-
-func TestGetNewRepoPath(t *testing.T) {
-	tf.UnitTest(t)
-
-	dirname := "/tmp/myfilecoindir"
-
-	t.Run("Uses the new repo opt as a prefix if provided", func(t *testing.T) {
-		rmh := NewRepoFSWrangler(dirname, "/tmp/somethingelse")
-		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/somethingelse_tmp_[0-9]{8}-[0-9]{6}$")
-		require.NoError(t, err)
-		assert.Regexp(t, rgx, newpath)
-	})
-
-	t.Run("Adds a timestamp to the new repo dir", func(t *testing.T) {
-		rmh := NewRepoFSWrangler(dirname, "")
-		newpath := rmh.GetNewRepoPath()
-		rgx, err := regexp.Compile("/tmp/myfilecoindir_tmp_[0-9]{8}-[0-9]{6}$")
-		require.NoError(t, err)
-		assert.Regexp(t, rgx, newpath)
 	})
 }
 
@@ -73,15 +35,17 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	oldRepo := requireMakeTempDir(t, "")
-	rmh := NewRepoFSWrangler(oldRepo, "")
 	// put something in each repo dir so we know which is which
 	_, err := os.Create(path.Join(oldRepo, "oldRepoFile"))
 	require.NoError(t, err)
-	require.NoError(t, rmh.CloneRepo())
-	_, err = os.Create(path.Join(rmh.GetNewRepoPath(), "newRepoFile"))
+
+	newRepoPath, err := CloneRepo(oldRepo)
 	require.NoError(t, err)
 
-	archivedRepo, err := rmh.InstallNewRepo()
+	_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
+	require.NoError(t, err)
+
+	archivedRepo, err := InstallNewRepo(oldRepo, newRepoPath)
 	require.NoError(t, err)
 
 	// check that the archive is there
@@ -96,7 +60,7 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	assert.Contains(t, contents, "oldRepoFile")
 
 	// check that the new repo is at the old location.
-	dir, err = os.Open(rmh.GetOldRepoPath())
+	dir, err = os.Open(newRepoPath)
 	require.NoError(t, err)
 	contents, err = dir.Readdirnames(0)
 	require.NoError(t, err)

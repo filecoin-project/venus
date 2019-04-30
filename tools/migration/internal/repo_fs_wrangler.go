@@ -7,62 +7,36 @@ import (
 	rcopy "github.com/otiai10/copy"
 )
 
-// RepoFSWrangler manages filesystem operations and figures out what the correct paths
-// are for everything.
-type RepoFSWrangler struct {
-	oldRepoPath, newRepoPath string
-}
-
-// NewRepoFSWrangler takes options for old and new repo paths, figures out
-// what the correct paths should be, and creates a new RepoFSWrangler with the
-// correct paths.
-func NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt string) *RepoFSWrangler {
-	return &RepoFSWrangler{
-		newRepoPath: getNewRepoPath(oldRepoOpt, newRepoPrefixOpt),
-		oldRepoPath: oldRepoOpt,
-	}
-}
-
-// GetOldRepo returns the old repo dir, opened as read-only.
-func (rmh *RepoFSWrangler) GetOldRepo() (*os.File, error) {
-	return os.Open(rmh.oldRepoPath)
-}
-
-// GetOldRepoPath returns the path to the existing repo
-func (rmh *RepoFSWrangler) GetOldRepoPath() string {
-	return rmh.oldRepoPath
-}
-
-// GetNewRepoPath returns the path to the new repo. It makes no guarantees about
-//   whether the directory exists.
-func (rmh *RepoFSWrangler) GetNewRepoPath() string {
-	return rmh.newRepoPath
-}
-
 // CloneRepo copies the old repo to the new repo dir with Read/Write access.
 //   Returns an error if the directory exists.
-func (rmh *RepoFSWrangler) CloneRepo() error {
-	if err := rcopy.Copy(rmh.oldRepoPath, rmh.newRepoPath); err != nil {
-		return err
-	}
+func CloneRepo(oldRepoPath string) (string, error) {
+	newRepoPath := getNewRepoPath(oldRepoPath, "")
 
-	return os.Chmod(rmh.newRepoPath, os.ModeDir|0744)
+	if err := rcopy.Copy(oldRepoPath, newRepoPath); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(newRepoPath, os.ModeDir|0744); err != nil {
+		return "", err
+	}
+	return newRepoPath, nil
 }
 
-// InstallNewRepo renames the old repo and symlinks the new repo at the old name.
+// InstallNewRepo archives the old repo, and symlinks the new repo in its place.
 // returns the new path to the old repo and any error.
-func (rmh *RepoFSWrangler) InstallNewRepo() (string, error) {
-	archivedRepo := strings.Join([]string{rmh.oldRepoPath, NowString()}, "-")
+func InstallNewRepo(oldRepoPath, newRepoPath string) (string, error) {
+	archivedRepo := strings.Join([]string{oldRepoPath, NowString()}, "-")
 
-	if err := os.Rename(rmh.oldRepoPath, archivedRepo); err != nil {
+	if err := os.Rename(oldRepoPath, archivedRepo); err != nil {
 		return archivedRepo, err
 	}
-
-	if err := os.Symlink(rmh.newRepoPath, rmh.oldRepoPath); err != nil {
+	if err := os.Symlink(newRepoPath, oldRepoPath); err != nil {
 		return archivedRepo, err
 	}
-
 	return archivedRepo, nil
+}
+
+func OpenRepo(repoPath string) (*os.File, error) {
+	return os.Open(repoPath)
 }
 
 // getNewRepoPath generates a new repo path for a migration.
