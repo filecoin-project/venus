@@ -28,6 +28,9 @@ const (
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
 
+	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
+	OptionSectorDir = "sectordir"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 
