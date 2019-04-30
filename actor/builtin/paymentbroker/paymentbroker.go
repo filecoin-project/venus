@@ -264,8 +264,13 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// channel has been cancelled.
 		channel.Eol = channel.AgreedEol
 
-		// Mark the payment channel as redeemed
+		// Mark the payment channel as redeemed and set the conditions
 		channel.Redeemed = true
+		if condition != nil {
+			newConditions := *condition
+			newConditions.Params = append(newConditions.Params, redeemerConditionParams...)
+			channel.Conditions = &newConditions
+		}
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
