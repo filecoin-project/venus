@@ -104,10 +104,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 	var emptyResults []*ApplicationResult
 
 	pbsw := pbTimer.Start(ctx)
-	defer func() {
-		dur := pbsw.Stop(ctx)
-		log.Infof("[TIMER] DefaultProcessor.ProcessBlock BlkCID: %s - elapsed time: %s", blk.Cid(), dur)
-	}()
+	defer pbsw.Stop(ctx)
 
 	// find miner's owner address
 	minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
@@ -269,18 +266,8 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //   - everything else: successfully applied (include, keep changes)
 //
 func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*ApplicationResult, error) {
-
-	// used for log timer call below
-	msgCid, err := msg.Cid()
-	if err != nil {
-		return nil, errors.FaultErrorWrap(err, "could not get message cid")
-	}
-
 	amsw := amTimer.Start(ctx)
-	defer func() {
-		dur := amsw.Stop(ctx)
-		log.Infof("[TIMER] DefaultProcessor.ApplyMessage CID: %s - elapsed time: %s", msgCid.String(), dur)
-	}()
+	defer amsw.Stop(ctx)
 
 	cachedStateTree := state.NewCachedStateTree(st)
 
