@@ -251,6 +251,10 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return err
 		}
 
+		// Reset the EOL to the originally agreed upon EOL in the event that the
+		// channel has been cancelled.
+		channel.Eol = channel.AgreedEol
+
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
 
