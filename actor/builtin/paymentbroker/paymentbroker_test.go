@@ -539,10 +539,10 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
 
-	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
-
 	t.Run("Close should succeed if condition is met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
@@ -551,6 +551,9 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	})
 
 	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))

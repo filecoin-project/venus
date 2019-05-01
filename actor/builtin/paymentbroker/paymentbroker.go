@@ -235,17 +235,6 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 	storage := vmctx.Storage()
 
 	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		var channel *PaymentChannel
-
-		// If we already have params to check the condition with, check them before
-		// fetching the channel so we return more helpful errors in the event of
-		// undefined address
-		if len(redeemerConditionParams) > 0 {
-			if err := checkCondition(vmctx, nil, condition, redeemerConditionParams); err != nil {
-				return err
-			}
-		}
-
 		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
 			if err == hamt.ErrNotFound {
@@ -259,15 +248,11 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		// If we didn't have any condition params earlier, check for a cached
-		// condition and check condition with it
 		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
 			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
 				return err
 			}
 		} else {
-			// Otherwise, check condition again with the provided condition params to
-			// cache the new condition params on the payment channel
 			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
 				return err
 			}
@@ -322,15 +307,6 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 	storage := vmctx.Storage()
 
 	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		// If we already have params to check the condition with, check them before
-		// fetching the channel so we return more helpful errors in the event of
-		// undefined address
-		if len(redeemerConditionParams) > 0 {
-			if err := checkCondition(vmctx, nil, condition, redeemerConditionParams); err != nil {
-				return err
-			}
-		}
-
 		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
 			if err == hamt.ErrNotFound {
@@ -344,15 +320,11 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		// If we didn't have any condition params earlier, check for a cached
-		// condition and check condition with it
 		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
 			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
 				return err
 			}
 		} else {
-			// Otherwise, check condition again with the provided condition params to
-			// cache the new condition params on the payment channel
 			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
 				return err
 			}
