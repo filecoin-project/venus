@@ -32,7 +32,7 @@ func TestNoDaemonNoHang(t *testing.T) {
 	require.NoError(t, os.Rename(path.Join(repoDir, "repo.lock.backup"), path.Join(repoDir, "repo.lock")))
 
 	// run actor ls with the old repo that still has the lock file, but no running daemon
-	out, _ := exec.Command(testhelpers.MustGetFilecoinBinary(), "--repodir", repoDir, "actor", "ls").CombinedOutput()
+	out, _ := exec.Command(testhelpers.MustGetFilecoinBinary(), "--repodir", d.RepoDir(), "actor", "ls").CombinedOutput()
 
 	assert.Contains(t, string(out), "Is the daemon running?")
 }

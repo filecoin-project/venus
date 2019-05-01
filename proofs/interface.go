@@ -6,12 +6,12 @@ import (
 
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
-	CommD      types.CommD     // returned from seal
-	CommR      types.CommR     // returned from seal
-	CommRStar  types.CommRStar // returned from seal
-	Proof      types.SealProof // returned from seal
-	ProverID   [31]byte        // uniquely identifies miner
-	SectorID   [31]byte        // uniquely identifies sector
+	CommD      types.CommD      // returned from seal
+	CommR      types.CommR      // returned from seal
+	CommRStar  types.CommRStar  // returned from seal
+	Proof      types.PoRepProof // returned from seal
+	ProverID   [31]byte         // uniquely identifies miner
+	SectorID   [31]byte         // uniquely identifies sector
 	SectorSize types.SectorSize
 }
 

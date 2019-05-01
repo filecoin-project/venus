@@ -6,18 +6,17 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"syscall"
 
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-cmds/cli"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
-	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -28,6 +27,9 @@ const (
 
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
+
+	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
+	OptionSectorDir = "sectordir"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
@@ -131,7 +133,7 @@ TOOL COMMANDS
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionRepoDir, "set the directory of the repo, defaults to ~/.filecoin"),
+		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
@@ -257,6 +259,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
+	var err error
 	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
 		rawAddr = envapi
@@ -270,18 +273,11 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir = repo.GetRepoDir(repoDir)
-		rawPath := filepath.Join(filepath.Clean(repoDir), repo.APIFile)
-		apiFilePath, err := homedir.Expand(rawPath)
-		if err != nil {
-			return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", rawPath))
-		}
-
-		rawAddr, err = repo.APIAddrFromFile(apiFilePath)
+		repoDir = paths.GetRepoPath(repoDir)
+		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
-
 	}
 
 	maddr, err := ma.NewMultiaddr(rawAddr)

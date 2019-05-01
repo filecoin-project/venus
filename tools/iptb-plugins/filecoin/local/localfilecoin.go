@@ -162,7 +162,7 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	}
 
 	dir := l.dir
-	repoFlag := fmt.Sprintf("--repodir=%s", l.Dir())
+	repoFlag := fmt.Sprintf("--repodir=%s", l.dir)
 	dargs := append([]string{"daemon", repoFlag}, args...)
 	cmd := exec.CommandContext(ctx, l.binPath, dargs...)
 	cmd.Dir = dir
@@ -356,7 +356,22 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	return err
 }
 
-// Shell starts a shell in the context of a node.
+// Shell starts a user shell in the context of a node setting FIL_PATH to ensure calls to
+// go-filecoin will be ran agasint the target node. Stderr, stdout will be set to os.Stderr
+// and os.Stdout. If env TTY is set, it will be used for stdin, otherwise os.Stdin will be used.
+//
+// If FIL_PATH is already set, an error will be returned.
+//
+// The shell environment will have the follow variables set in the shell for the user.
+//
+// NODE0-NODE# - set to the PeerID for each value in ns passed.
+// FIL_PATH    - The value is set to the directory for the Filecoin node.
+// FIL_PID     - The value is set to the pid for the Filecoin daemon
+// FIL_BINARY  - The value is set to the path of the binary used for running the Filecoin daemon.
+// PATH        - The users PATH will be updated to include a location that contains the FIL_BINARY.
+//
+// Note: user shell configuration may lead to the `go-filecoin` command not pointing to FIL_BINARY,
+// due to PATH ordering.
 func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
@@ -397,7 +412,25 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 	cmd := exec.CommandContext(ctx, shell)
 	cmd.Env = nenvs
-	cmd.Stdin = os.Stdin
+
+	stdin := os.Stdin
+
+	// When running code with `go test`, the os.Stdin is not connected to the shell
+	// where `go test` was ran. This makes the shell exit immediately and it's not
+	// possible to run it. To get around this issue we can let the user tell us the
+	// TTY their shell is using by setting the TTY env. This will allow the shell
+	// to use the same TTY the user started running `go test` in.
+	tty := os.Getenv("TTY")
+	if len(tty) != 0 {
+		f, err := os.Open(tty)
+		if err != nil {
+			return err
+		}
+
+		stdin = f
+	}
+
+	cmd.Stdin = stdin
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
@@ -418,7 +451,7 @@ func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// Dir returns the directory the node is using.
+// Dir returns the repo directory the node is using.
 func (l *Localfilecoin) Dir() string {
 	return l.dir
 }

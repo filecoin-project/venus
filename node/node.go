@@ -49,6 +49,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -933,16 +934,18 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.
 		sectorClass = types.NewLiveSectorClass()
 	}
 
-	// TODO: Where should we store the RustSectorBuilder metadata? Currently, we
-	// configure the RustSectorBuilder to store its metadata in the staging
-	// directory.
+	// TODO: Currently, weconfigure the RustSectorBuilder to store its
+	// metadata in the staging directory, it should be in its own directory.
+	//
+	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
+	sectorDir := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir)
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      node.Repo.StagingDir(),
+		MetadataDir:      paths.StagingDir(sectorDir),
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  node.Repo.SealedDir(),
-		StagedSectorDir:  node.Repo.StagingDir(),
+		SealedSectorDir:  paths.SealedDir(sectorDir),
+		StagedSectorDir:  paths.StagingDir(sectorDir),
 		SectorClass:      sectorClass,
 	}
 
