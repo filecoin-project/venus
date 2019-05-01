@@ -43,7 +43,12 @@ type Repo interface {
 	// APIAddr returns the address of the running API.
 	APIAddr() (string, error)
 
+	// Version returns the current repo version.
 	Version() uint
 
+	// Path returns the repo path.
+	Path() (string, error)
+
+	// Close shuts down the repo.
 	Close() error
 }

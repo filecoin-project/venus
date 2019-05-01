@@ -318,13 +318,13 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			info, err := os.Stat(filepath.Join(r.repoPath, apiFile))
+			info, err := os.Stat(filepath.Join(r.path, apiFile))
 			assert.NoError(t, err)
 			assert.Equal(t, apiFile, info.Name())
 
 			r.Close()
 
-			_, err = os.Stat(filepath.Join(r.repoPath, apiFile))
+			_, err = os.Stat(filepath.Join(r.path, apiFile))
 			assert.Error(t, err)
 		})
 	})
@@ -333,7 +333,7 @@ func TestRepoAPIFile(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			mustSetAPIAddr(t, r, "/ip4/127.0.0.1/tcp/1234")
 
-			err := os.Remove(filepath.Join(r.repoPath, apiFile))
+			err := os.Remove(filepath.Join(r.path, apiFile))
 			assert.NoError(t, err)
 
 			assert.NoError(t, r.Close())
@@ -343,7 +343,7 @@ func TestRepoAPIFile(t *testing.T) {
 	t.Run("SetAPI fails if unable to create API file", func(t *testing.T) {
 		withFSRepo(t, func(r *FSRepo) {
 			// create a file with permission bits that prevent us from truncating
-			err := ioutil.WriteFile(filepath.Join(r.repoPath, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
+			err := ioutil.WriteFile(filepath.Join(r.path, apiFile), []byte("/ip4/127.0.0.1/tcp/9999"), 0000)
 			assert.NoError(t, err)
 
 			// try to os.Create to same path - will see a failure
