@@ -273,7 +273,10 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir = paths.GetRepoPath(repoDir)
+		repoDir, err = paths.GetRepoPath(repoDir)
+		if err != nil {
+			return "", err
+		}
 		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
