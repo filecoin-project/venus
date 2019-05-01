@@ -27,6 +27,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+const notMinerAddr = "t1ebxo3dgpkawkreayhhnq3umue6g6sbcmlnji3si"
+
 func TestMinerHelp(t *testing.T) {
 	tf.IntegrationTest(t)
 
@@ -154,6 +156,14 @@ func TestMinerPledge(t *testing.T) {
 		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
 		result1 := op1.ReadStdoutTrimNewlines()
 		assert.Contains(t, result1, "10000")
+	})
+
+	t.Run("shows an error if the address is not a miner address", func(t *testing.T) {
+		t.Parallel()
+		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+		defer d.ShutdownSuccess()
+
+		d.RunFail("not a miner address", "miner", "pledge", notMinerAddr)
 	})
 }
 
@@ -296,6 +306,19 @@ func TestMinerSetPrice(t *testing.T) {
 	assert.Equal(t, `"62"`, configuredPrice.ReadStdoutTrimNewlines())
 }
 
+func TestMinerSetPriceRequiresMinerAddr(t *testing.T) {
+	t.Parallel()
+
+	d1 := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0])).Start()
+	defer d1.ShutdownSuccess()
+
+	d1.RunSuccess("mining", "start")
+	d1.RunFail("not a miner address", "miner", "set-price", "62", "6", "--miner", notMinerAddr, "--gas-price", "0", "--gas-limit", "300")
+}
+
 func TestMinerCreateSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
@@ -407,6 +430,25 @@ func TestMinerOwner(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestMinerOwnerRequiresMinerAddr(t *testing.T) {
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	t.Parallel()
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	d.RunFail("not a miner address", "miner", "owner", notMinerAddr)
+}
+
 func TestMinerPower(t *testing.T) {
 	tf.IntegrationTest(t)
 
@@ -444,6 +486,25 @@ func TestMinerPower(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "3 / 6", power)
+}
+
+func TestMinerPowerRequiresMinerAddr(t *testing.T) {
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	t.Parallel()
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	d.RunFail("not a miner address", "miner", "power", notMinerAddr)
 }
 
 var testConfig = &gengen.GenesisCfg{

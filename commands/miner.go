@@ -46,6 +46,9 @@ var minerPledgeCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		if minerAddr.Protocol() != address.Actor {
+			return errors.Errorf("address %s is not a miner address", minerAddr.String())
+		}
 
 		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
@@ -214,6 +217,9 @@ This command waits for the ask to be mined.`,
 			if err != nil {
 				return errors.Wrap(err, "miner must be an address")
 			}
+			if minerAddr.Protocol() != address.Actor {
+				return errors.Errorf("address %s is not a miner address", minerAddr.String())
+			}
 		}
 
 		expiry, ok := big.NewInt(0).SetString(req.Arguments[1], 10)
@@ -310,6 +316,9 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		if minerAddr.Protocol() != address.Actor {
+			return errors.Errorf("address %s is not a miner address", minerAddr.String())
+		}
 
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
@@ -388,6 +397,9 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
+		if minerAddr.Protocol() != address.Actor {
+			return errors.Errorf("address %s is not a miner address", minerAddr.String())
+		}
 
 		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
@@ -426,6 +438,9 @@ Values will be output as a ratio where the first number is the miner power and s
 		minerAddr, err := optionalAddr(req.Arguments[0])
 		if err != nil {
 			return err
+		}
+		if minerAddr.Protocol() != address.Actor {
+			return errors.Errorf("address %s is not a miner address", minerAddr.String())
 		}
 
 		bytes, err := GetPorcelainAPI(env).MessageQuery(
