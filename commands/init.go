@@ -51,7 +51,10 @@ var initCmd = &cmds.Command{
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
-		repoDir = paths.GetRepoPath(repoDir)
+		repoDir, err = paths.GetRepoPath(repoDir)
+		if err != nil {
+			return err
+		}
 		rep, err := repo.CreateRepo(repoDir, newConfig)
 		if err != nil {
 			return err
