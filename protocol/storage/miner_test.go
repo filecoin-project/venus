@@ -251,10 +251,7 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
 		require.NoError(t, miner.loadDealsAwaitingSeal())
 
-		savedSector, ok := miner.dealsAwaitingSeal.SuccessfulSectors[sector.SectorID]
-		require.True(t, ok)
-		assert.Equal(t, sector, savedSector.Metadata)
-		assert.Equal(t, msgCid, *savedSector.CommitMessage)
+		assert.Equal(t, dealCid, miner.dealsAwaitingSeal.SectorsToDeals[42][0])
 	})
 }
 
