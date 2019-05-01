@@ -11,9 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	w "github.com/filecoin-project/go-filecoin/wallet"
@@ -283,6 +285,7 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 // mgoaAPI is the subset of the plumbing.API that MinerGetOwnerAddress uses.
 type mgoaAPI interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
@@ -293,6 +296,57 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 	}
 
 	return address.NewFromBytes(res[0])
+}
+
+// MinerGetSectorSize queries for the sector size of the given miner.
+func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (*types.BytesAmount, error) {
+	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getSectorSize")
+	if err != nil {
+		return nil, errors.Wrap(err, "'getSectorSize' query message failed")
+	}
+
+	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, "getSectorSize")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to acquire 'getSectorSize' signature")
+	}
+
+	sectorSizeVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize returned value")
+	}
+
+	sectorSize, ok := sectorSizeVal.Val.(*types.BytesAmount)
+	if !ok {
+		return nil, errors.New("failed to convert returned ABI value")
+	}
+
+	return sectorSize, nil
+}
+
+// MinerGetLastCommittedSectorID queries for the id of the last sector committed
+// by the given miner.
+func MinerGetLastCommittedSectorID(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (uint64, error) {
+	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getLastUsedSectorID")
+	if err != nil {
+		return 0, errors.Wrap(err, "'getLastUsedSectorID' query message failed")
+	}
+
+	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to acquire 'getLastUsedSectorID' signature")
+	}
+
+	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to deserialize returned value")
+	}
+
+	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
+	if !ok {
+		return 0, errors.New("failed to convert returned ABI value")
+	}
+
+	return lastUsedSectorID, nil
 }
 
 // MinerGetKey queries for the public key of the given miner

@@ -8,6 +8,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var protocolCmd = &cmds.Command{
@@ -28,12 +29,17 @@ var protocolCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			for _, sectorSize := range pp.SectorSizes {
-				_, err := fmt.Fprintf(w, "\t%d bytes\n", sectorSize)
-				if err != nil {
-					return err
-				}
+
+			sectorSize := types.OneKiBSectorSize
+			if pp.ProofsMode == types.LiveProofsMode {
+				sectorSize = types.TwoHundredFiftySixMiBSectorSize
 			}
+
+			_, err = fmt.Fprintf(w, "\t%d bytes\n", sectorSize.Uint64())
+			if err != nil {
+				return err
+			}
+
 			return nil
 		}),
 	},

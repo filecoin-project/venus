@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-peer"
@@ -60,6 +59,7 @@ type clientPorcelainAPI interface {
 	DealsLs() ([]*storagedeal.Deal, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
+	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
@@ -110,13 +110,14 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
 
-	sectorSize, err := smc.getSectorSize(ctx)
+	sectorSize, err := smc.api.MinerGetSectorSize(ctxSetup, miner)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get sector size")
 	}
 
-	if size > sectorSize {
-		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, sectorSize)
+	maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize).Uint64()
+	if size > maxUserBytes {
+		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, maxUserBytes)
 	}
 
 	ask, err := smc.api.MinerGetAsk(ctxSetup, miner, askID)
@@ -305,24 +306,6 @@ func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher
 		return []*types.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
-}
-
-func (smc *Client) getSectorSize(ctx context.Context) (uint64, error) {
-	var proofsMode types.ProofsMode
-	values, err := smc.api.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
-	if err != nil {
-		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
-	}
-
-	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
-		return 0, errors.Wrap(err, "could not convert query message result to Mode")
-	}
-
-	sectorSizeEnum := types.OneKiBSectorSize
-	if proofsMode == types.LiveProofsMode {
-		sectorSizeEnum = types.TwoHundredFiftySixMiBSectorSize
-	}
-	return proofs.GetMaxUserBytesPerStagedSector(sectorSizeEnum)
 }
 
 // MakeProtocolRequest makes a request and expects a response from the host using the given protocol.

@@ -3,6 +3,7 @@ package porcelain_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -10,8 +11,10 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-peer"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -422,6 +425,17 @@ type minerGetOwnerPlumbing struct{}
 
 func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return [][]byte{address.TestAddress.Bytes()}, nil
+}
+
+func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "getSectorSize" {
+		return &exec.FunctionSignature{
+			Params: nil,
+			Return: []abi.Type{abi.BytesAmount},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported method: %s", method)
 }
 
 func TestMinerGetOwnerAddress(t *testing.T) {

@@ -7,14 +7,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // ProtocolParams TODO(rosa)
 type ProtocolParams struct {
 	AutoSealInterval uint
-	SectorSizes      []uint64
+	ProofsMode       types.ProofsMode
 }
 
 type protocolParamsPlumbing interface {
@@ -34,18 +33,18 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.New("Failed to read autoSealInterval from config")
 	}
 
-	sectorSize, err := getSectorSize(ctx, plumbing)
+	proofsMode, err := getProofsMode(ctx, plumbing)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not retrive sector size")
+		return nil, errors.Wrap(err, "could not retrieve proofs mode")
 	}
 
 	return &ProtocolParams{
 		AutoSealInterval: autoSealInterval,
-		SectorSizes:      []uint64{sectorSize},
+		ProofsMode:       proofsMode,
 	}, nil
 }
 
-func getSectorSize(ctx context.Context, plumbing protocolParamsPlumbing) (uint64, error) {
+func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
 	values, err := plumbing.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
 	if err != nil {
@@ -53,12 +52,8 @@ func getSectorSize(ctx context.Context, plumbing protocolParamsPlumbing) (uint64
 	}
 
 	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
-		return 0, errors.Wrap(err, "could not convert query message result to Mode")
+		return 0, errors.Wrap(err, "could not convert query message result to ProofsMode")
 	}
 
-	sectorSizeEnum := types.OneKiBSectorSize
-	if proofsMode == types.LiveProofsMode {
-		sectorSizeEnum = types.TwoHundredFiftySixMiBSectorSize
-	}
-	return proofs.GetMaxUserBytesPerStagedSector(sectorSizeEnum)
+	return proofsMode, nil
 }

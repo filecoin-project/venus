@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"github.com/filecoin-project/go-filecoin/types"
 	"io"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ import (
 // Harness is a struct used to make SectorBuilder testing easier
 type Harness struct {
 	blockService      bserv.BlockService
-	MaxBytesPerSector uint64
+	MaxBytesPerSector *types.BytesAmount
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder
