@@ -560,6 +560,39 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	})
 }
 
+func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Close without params and expect a panic
+	condition := &types.Predicate{To: toAddress, Method: method}
+	require.Panics(t, func() {
+		sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
+	})
+
+	// Successfully redeem the payment channel with params
+	condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Close again without params and expect no error
+	result, err = sys.ApplyCloseMessage(sys.target, 200, 0)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+}
+
 func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	tf.UnitTest(t)
 
