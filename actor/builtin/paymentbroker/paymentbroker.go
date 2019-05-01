@@ -241,7 +241,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// fetching the channel so we return more helpful errors in the event of
 		// undefined address
 		if len(redeemerConditionParams) > 0 {
-			if err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
+			if err := checkCondition(vmctx, nil, condition, redeemerConditionParams); err != nil {
 				return err
 			}
 		}
@@ -262,7 +262,13 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// If we didn't have any condition params earlier, check for a cached
 		// condition and check condition with it
 		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
-			if err := checkCondition(vmctx, condition, channel.Condition.Params); err != nil {
+			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
+				return err
+			}
+		} else {
+			// Otherwise, check condition again with the provided condition params to
+			// cache the new condition params on the payment channel
+			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
 				return err
 			}
 		}
@@ -277,15 +283,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// channel has been cancelled.
 		channel.Eol = channel.AgreedEol
 
-		// Mark the payment channel as redeemed and set the condition
+		// Mark the payment channel as redeemed
 		channel.Redeemed = true
-		if condition == nil {
-			channel.Condition = nil
-		} else {
-			newCondition := *condition
-			newCondition.Params = append(newCondition.Params, redeemerConditionParams...)
-			channel.Condition = &newCondition
-		}
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
@@ -327,7 +326,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		// fetching the channel so we return more helpful errors in the event of
 		// undefined address
 		if len(redeemerConditionParams) > 0 {
-			if err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
+			if err := checkCondition(vmctx, nil, condition, redeemerConditionParams); err != nil {
 				return err
 			}
 		}
@@ -348,7 +347,13 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		// If we didn't have any condition params earlier, check for a cached
 		// condition and check condition with it
 		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
-			if err := checkCondition(vmctx, condition, channel.Condition.Params); err != nil {
+			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
+				return err
+			}
+		} else {
+			// Otherwise, check condition again with the provided condition params to
+			// cache the new condition params on the payment channel
+			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
 				return err
 			}
 		}
@@ -795,13 +800,23 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
 // to the actor and method specified in the condition, and returns an error if one exists.
-func checkCondition(vmctx exec.VMContext, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
 	if condition == nil {
+		if channel != nil {
+			channel.Condition = nil
+		}
 		return nil
 	}
 
 	params := append(condition.Params[:0:0], condition.Params...)
 	params = append(params, redeemerSuppliedParams...)
+
+	if channel != nil {
+		newCachedCondition := *condition
+		newCachedCondition.Params = params
+		channel.Condition = &newCachedCondition
+	}
+
 	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
 	if err != nil {
 		if errors.IsFault(err) {
