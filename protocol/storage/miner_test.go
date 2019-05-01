@@ -330,7 +330,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 	cidGetter := types.NewCidForTestGetter()
 	proposalCid := cidGetter()
-	sectorId := uint64(777)
+	sectorID := uint64(777)
 
 	// Simulate successful sealing and posting a commitSector to chain
 	msgCid := cidGetter()
@@ -340,10 +340,10 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 	t.Run("On successful commitment", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
 
 		piece := &sectorbuilder.PieceInfo{Ref: proposal.PieceRef, Size: 10999, InclusionProof: pip}
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
@@ -352,16 +352,16 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
 		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
-		assert.Equal(t, sectorId, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
+		assert.Equal(t, sectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, &msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, pip, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
 	})
 
 	t.Run("Committing doesn't fail when piece info is missing", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
 
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
@@ -376,9 +376,9 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 	t.Run("Committing doesn't fail when deal isn't found", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorId)
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
 
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
+		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
