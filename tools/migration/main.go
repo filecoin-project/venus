@@ -26,7 +26,7 @@ REQUIRED ARGUMENTS
 	--old-repo
 		The symlink location of this node's filecoin home directory. This is required even for the
 		'describe' command, as its repo version helps determine which migration to run. This
-		must be a symlink or migration will not proceed.  The symlink will be followed.
+		must be a symbolic link or migration will not proceed.
 
 OPTIONS
 	-h, --help

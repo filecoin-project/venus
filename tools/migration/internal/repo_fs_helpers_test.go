@@ -67,8 +67,8 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 		// this test fails because the index restarts, due to the timestamp
 		// updating, which is correct behavior. Programmatically proving it restarts
 		// in this test was more trouble than it was worth.
-		repos := []string{}
-		for i := 1; i < 50; i++ {
+		var repos []string
+		for i := 1; i < 10; i++ {
 			result, err := CloneRepo(linkedRepoPath)
 			require.NoError(t, err)
 			repos = append(repos, result)
@@ -84,13 +84,10 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 	})
 }
 
-func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
+func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	oldRepo := requireMakeTempDir(t, "")
-	// put something in each repo dir so we know which is which
-	_, err := os.Create(path.Join(oldRepo, "oldRepoFile"))
-	require.NoError(t, err)
 
 	linkedRepoPath := oldRepo + "something"
 	require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
@@ -103,20 +100,12 @@ func TestRepoFSWrangler_InstallNewRepo(t *testing.T) {
 	_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
 	require.NoError(t, err)
 
-	archivedRepo, err := InstallNewRepo(linkedRepoPath, newRepoPath)
-	require.NoError(t, err)
+	require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
 
-	// check that the archive is there
-	dir, err := os.Open(archivedRepo)
+	// check that the new repo is at the old link location.
+	dir, err := os.Open(newRepoPath)
 	require.NoError(t, err)
 	contents, err := dir.Readdirnames(0)
-	require.NoError(t, err)
-	assert.Contains(t, contents, "oldRepoFile")
-
-	// check that the new repo is at the old location.
-	dir, err = os.Open(newRepoPath)
-	require.NoError(t, err)
-	contents, err = dir.Readdirnames(0)
 	require.NoError(t, err)
 	assert.Contains(t, contents, "newRepoFile")
 }
