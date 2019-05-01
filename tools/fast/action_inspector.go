@@ -3,13 +3,30 @@ package fast
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/plumbing/inspector"
 )
 
+// InspectAll runs the `inspect all` command against the filecoin process
+func (f *Filecoin) InspectAll(ctx context.Context, options ...ActionOption) (*commands.AllInspectorInfo, error) {
+	var out commands.AllInspectorInfo
+
+	args := []string{"go-filecoin", "inspect", "all"}
+
+	for _, option := range options {
+		args = append(args, option()...)
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
 // InspectRuntime runs the `inspect runtime` command against the filecoin process
-func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) (*inspector.RuntimeInfo, error) {
-	var out inspector.RuntimeInfo
+func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) (*commands.RuntimeInfo, error) {
+	var out commands.RuntimeInfo
 
 	args := []string{"go-filecoin", "inspect", "runtime"}
 
@@ -25,8 +42,8 @@ func (f *Filecoin) InspectRuntime(ctx context.Context, options ...ActionOption) 
 }
 
 // InspectDisk runs the `inspect disk` command against the filecoin process
-func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*inspector.DiskInfo, error) {
-	var out inspector.DiskInfo
+func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*commands.DiskInfo, error) {
+	var out commands.DiskInfo
 
 	args := []string{"go-filecoin", "inspect", "disk"}
 
@@ -42,8 +59,8 @@ func (f *Filecoin) InspectDisk(ctx context.Context, options ...ActionOption) (*i
 }
 
 // InspectMemory runs the `inspect memory` command against the filecoin process
-func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (*inspector.MemoryInfo, error) {
-	var out inspector.MemoryInfo
+func (f *Filecoin) InspectMemory(ctx context.Context, options ...ActionOption) (*commands.MemoryInfo, error) {
+	var out commands.MemoryInfo
 
 	args := []string{"go-filecoin", "inspect", "memory"}
 

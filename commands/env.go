@@ -18,6 +18,7 @@ type Env struct {
 	porcelainAPI   *porcelain.API
 	retrievalAPI   *retrieval.API
 	storageAPI     *storage.API
+	inspectorAPI   *Inspector
 }
 
 var _ cmds.Environment = (*Env)(nil)
@@ -49,4 +50,9 @@ func GetRetrievalAPI(env cmds.Environment) *retrieval.API {
 func GetStorageAPI(env cmds.Environment) *storage.API {
 	ce := env.(*Env)
 	return ce.storageAPI
+}
+
+func GetInspectorAPI(env cmds.Environment) *Inspector {
+	ce := env.(*Env)
+	return ce.inspectorAPI
 }

@@ -135,6 +135,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		// TODO: should this be the passed in context?  Issue 2641
 		blockMiningAPI: nd.BlockMiningAPI,
 		ctx:            context.Background(),
+		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
 		retrievalAPI:   nd.RetrievalAPI,
 		storageAPI:     nd.StorageAPI,
