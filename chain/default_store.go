@@ -397,13 +397,18 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 	return store.head.Height()
 }
 
-// ActorFromLatestState gets the latest state and retrieves an actor from it.
-func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+// LatestState gets the latest state from the state Store.
+func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
 	stateCid, err := store.GetTipSetStateRoot(store.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, store.stateStore, stateCid, builtin.Actors)
+	return state.LoadStateTree(ctx, store.stateStore, stateCid, builtin.Actors)
+}
+
+// ActorFromLatestState gets the latest state and retrieves an actor from it.
+func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	st, err := store.LatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
