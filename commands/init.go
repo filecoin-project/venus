@@ -34,6 +34,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(GenesisFile, "path of file or HTTP(S) URL containing archive of genesis block DAG data"),
 		cmdkit.StringOption(PeerKeyFile, "path of file containing key to use for new node's libp2p identity"),
 		cmdkit.StringOption(WithMiner, "when set, creates a custom genesis block with a pre generated miner account, requires running the daemon using dev mode (--dev)"),
+		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
 		cmdkit.BoolOption(DevnetTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters."),
@@ -50,7 +51,10 @@ var initCmd = &cmds.Command{
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
-		repoDir = paths.GetRepoPath(repoDir)
+		repoDir, err = paths.GetRepoPath(repoDir)
+		if err != nil {
+			return err
+		}
 		rep, err := repo.CreateRepo(repoDir, newConfig)
 		if err != nil {
 			return err
@@ -80,6 +84,10 @@ var initCmd = &cmds.Command{
 
 func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 	newConfig := config.NewDefaultConfig()
+
+	if dir, ok := options[OptionSectorDir].(string); ok {
+		newConfig.SectorBase.RootDir = dir
+	}
 
 	if m, ok := options[WithMiner].(string); ok {
 		var err error

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -310,6 +310,18 @@ func TestSectorBuilder(t *testing.T) {
 		case val := <-h.SectorBuilder.SectorSealResults():
 			require.NoError(t, val.SealingErr)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
+
+			sres, serr := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
+				CommD:      val.SealingResult.CommD,
+				CommR:      val.SealingResult.CommR,
+				CommRStar:  val.SealingResult.CommRStar,
+				Proof:      val.SealingResult.Proof,
+				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
+				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				SectorSize: types.OneKiBSectorSize,
+			})
+			require.NoError(t, serr, "seal proof-verification produced an error")
+			require.True(t, sres.IsValid, "seal proof was not valid")
 
 			// TODO: This should be generates from some standard source of
 			// entropy, e.g. the blockchain

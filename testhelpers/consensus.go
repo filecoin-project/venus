@@ -80,8 +80,8 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
-	postProof := MakeRandomPoSTProofForTest()
-	ticket, _ := consensus.CreateTicket(postProof, minerPubKey, signer)
+	poStProof := MakeRandomPoSTProofForTest()
+	ticket, _ := consensus.CreateTicket(poStProof, minerPubKey, signer)
 
 	return &types.Block{
 		Miner:        minerAddr,
@@ -91,19 +91,20 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		Height:       types.Uint64(height),
 		Nonce:        types.Uint64(height),
 		StateRoot:    stateRootCid,
-		Proof:        postProof,
+		Proof:        poStProof,
 	}
 }
 
 // MakeRandomPoSTProofForTest creates a random proof.
-func MakeRandomPoSTProofForTest() types.PoStProof {
-	p := MakeRandomBytes(192)
+func MakeRandomPoSTProofForTest() []byte {
+	proofSize := types.OnePoStProofPartition.ProofLen()
+	p := MakeRandomBytes(proofSize)
 	p[0] = 42
-	var postProof types.PoStProof
+	poStProof := make([]byte, proofSize)
 	for idx, elem := range p {
-		postProof[idx] = elem
+		poStProof[idx] = elem
 	}
-	return postProof
+	return poStProof
 }
 
 // TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.

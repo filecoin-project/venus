@@ -98,6 +98,7 @@ type TestDaemon struct {
 	cmdAddr          string
 	swarmAddr        string
 	repoDir          string
+	sectorDir        string
 	genesisFile      string
 	keyFiles         []string
 	withMiner        string
@@ -755,14 +756,20 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	// Ensure we have the actual binary
 	filecoinBin := MustGetFilecoinBinary()
 
-	dir, err := ioutil.TempDir("", "go-fil-test")
+	repoDir, err := ioutil.TempDir("", "go-fil-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	td := &TestDaemon{
 		test:        t,
-		repoDir:     dir,
+		repoDir:     repoDir,
+		sectorDir:   sectorDir,
 		init:        true, // we want to init unless told otherwise
 		firstRun:    true,
 		cmdTimeout:  DefaultDaemonCmdTimeout,
@@ -776,8 +783,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
 
+	sectorDirFlag := fmt.Sprintf("--sectordir=%s", td.sectorDir)
+
 	// build command options
-	initopts := []string{repoDirFlag}
+	initopts := []string{repoDirFlag, sectorDirFlag}
 
 	if td.genesisFile != "" {
 		initopts = append(initopts, fmt.Sprintf("--genesisfile=%s", td.genesisFile))

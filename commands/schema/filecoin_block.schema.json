@@ -48,10 +48,10 @@
           "type": "string"
         },
         "proof": {
-          "items": {
-            "type": "integer"
-          },
-          "type": "array"
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "reward": {
           "type": "string"

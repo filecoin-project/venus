@@ -28,6 +28,9 @@ const (
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
 
+	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
+	OptionSectorDir = "sectordir"
+
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
 
@@ -270,7 +273,10 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir = paths.GetRepoPath(repoDir)
+		repoDir, err = paths.GetRepoPath(repoDir)
+		if err != nil {
+			return "", err
+		}
 		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")

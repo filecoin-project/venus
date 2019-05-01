@@ -272,7 +272,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			commD := make([]byte, 32)
 			commR := make([]byte, 32)
 			commRStar := make([]byte, 32)
-			sealProof := make([]byte, types.SealBytesLen)
+			sealProof := make([]byte, types.TwoPoRepProofPartitions.ProofLen())
 			if _, err := pnrg.Read(commD[:]); err != nil {
 				return nil, err
 			}

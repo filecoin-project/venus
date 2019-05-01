@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/paths"
 )
 
 // MemRepo is an in-memory implementation of the Repo interface.
@@ -102,4 +103,9 @@ func (mr *MemRepo) SetAPIAddr(addr string) error {
 // APIAddr reads the address of the running API from memory.
 func (mr *MemRepo) APIAddr() (string, error) {
 	return mr.apiAddress, nil
+}
+
+// Path returns the default path.
+func (mr *MemRepo) Path() (string, error) {
+	return paths.GetRepoPath("")
 }

@@ -52,6 +52,10 @@ const (
 	Boolean
 	// ProofsMode is an enumeration of possible modes of proof operation
 	ProofsMode
+	// PoRepProof is a dynamic length array of the PoRep proof-bytes
+	PoRepProof
+	// PoStProof is a dynamic length array of the PoSt proof-bytes
+	PoStProof
 	// Predicate is subset of a message used to ask an actor about a condition
 	Predicate
 	// Parameters is a slice of individually encodable parameters
@@ -92,6 +96,10 @@ func (t Type) String() string {
 		return "bool"
 	case ProofsMode:
 		return "types.ProofsMode"
+	case PoRepProof:
+		return "types.PoRepProof"
+	case PoStProof:
+		return "types.PoStProof"
 	case Predicate:
 		return "*types.Predicate"
 	case Parameters:
@@ -141,6 +149,10 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(bool))
 	case ProofsMode:
 		return fmt.Sprint(av.Val.(types.ProofsMode))
+	case PoRepProof:
+		return fmt.Sprint(av.Val.(types.PoRepProof))
+	case PoStProof:
+		return fmt.Sprint(av.Val.(types.PoStProof))
 	case Predicate:
 		return fmt.Sprint(av.Val.(*types.Predicate))
 	case Parameters:
@@ -270,6 +282,18 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte{byte(v)}, nil
+	case PoRepProof:
+		b, ok := av.Val.(types.PoRepProof)
+		if !ok {
+			return nil, &typeError{types.PoRepProof{}, av.Val}
+		}
+		return b, nil
+	case PoStProof:
+		b, ok := av.Val.(types.PoStProof)
+		if !ok {
+			return nil, &typeError{types.PoStProof{}, av.Val}
+		}
+		return b, nil
 	case Predicate:
 		p, ok := av.Val.(*types.Predicate)
 		if !ok {
@@ -329,6 +353,10 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Boolean, Val: v})
 		case types.ProofsMode:
 			out = append(out, &Value{Type: ProofsMode, Val: v})
+		case types.PoRepProof:
+			out = append(out, &Value{Type: PoRepProof, Val: v})
+		case types.PoStProof:
+			out = append(out, &Value{Type: PoStProof, Val: v})
 		case *types.Predicate:
 			out = append(out, &Value{Type: Predicate, Val: v})
 		case []interface{}:
@@ -459,6 +487,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  types.ProofsMode(int(data[0])),
 		}, nil
+	case PoRepProof:
+		return &Value{
+			Type: t,
+			Val:  append(types.PoRepProof{}, data[:]...),
+		}, nil
+	case PoStProof:
+		return &Value{
+			Type: t,
+			Val:  append(types.PoStProof{}, data[:]...),
+		}, nil
 	case Predicate:
 		var predicate *types.Predicate
 		if err := cbor.DecodeInto(data, &predicate); err != nil {
@@ -500,6 +538,8 @@ var typeTable = map[Type]reflect.Type{
 	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
 	Boolean:        reflect.TypeOf(false),
 	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
+	PoRepProof:     reflect.TypeOf(types.PoRepProof{}),
+	PoStProof:      reflect.TypeOf(types.PoStProof{}),
 	Predicate:      reflect.TypeOf(&types.Predicate{}),
 	Parameters:     reflect.TypeOf([]interface{}{}),
 }

@@ -32,7 +32,7 @@ func AddressToProverID(addr address.Address) [31]byte {
 	return prid
 }
 
-// SectorIDToBytes creates a prover id by padding an address hash to 31 bytes
+// SectorIDToBytes encodes the uint64 sector id as a fixed length byte array.
 func SectorIDToBytes(sectorID uint64) [31]byte {
 	slice := make([]byte, 31)
 	binary.LittleEndian.PutUint64(slice, sectorID)
