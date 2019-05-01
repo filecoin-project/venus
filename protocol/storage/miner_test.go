@@ -212,117 +212,49 @@ func TestReceiveStorageProposal(t *testing.T) {
 	})
 }
 
-func TestDealsAwaitingSeal(t *testing.T) {
+func TestDealsAwaitingSealPersistence(t *testing.T) {
 	tf.UnitTest(t)
 
 	newCid := types.NewCidForTestGetter()
-	cid0 := newCid()
-	cid1 := newCid()
-	cid2 := newCid()
+	dealCid := newCid()
 
 	wantSectorID := uint64(42)
-	wantSector := &sectorbuilder.SealedSectorMetadata{SectorID: wantSectorID}
-	someOtherSectorID := uint64(100)
-
-	wantMessage := "boom"
 
 	t.Run("saveDealsAwaitingSeal saves, loadDealsAwaitingSeal loads", func(t *testing.T) {
 		miner := &Miner{
-			dealsAwaitingSeal: &dealsAwaitingSealStruct{
-				SectorsToDeals:    make(map[uint64][]cid.Cid),
-				SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-				FailedSectors:     make(map[uint64]string),
-			},
+			dealsAwaitingSeal:   newDealsAwaitingSeal(),
 			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsDatastore(),
 		}
 
-		miner.dealsAwaitingSeal.add(wantSectorID, cid0)
+		miner.dealsAwaitingSeal.add(wantSectorID, dealCid)
 
 		require.NoError(t, miner.saveDealsAwaitingSeal())
-		miner.dealsAwaitingSeal = &dealsAwaitingSealStruct{}
+		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
 		require.NoError(t, miner.loadDealsAwaitingSeal())
 
-		assert.Equal(t, cid0, miner.dealsAwaitingSeal.SectorsToDeals[42][0])
+		assert.Equal(t, dealCid, miner.dealsAwaitingSeal.SectorsToDeals[42][0])
 	})
 
-	t.Run("add before success", func(t *testing.T) {
-		dealsAwaitingSeal := &dealsAwaitingSealStruct{
-			SectorsToDeals:    make(map[uint64][]cid.Cid),
-			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-			FailedSectors:     make(map[uint64]string),
-		}
-		gotCids := []cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
-			assert.Equal(t, sector, wantSector)
-			gotCids = append(gotCids, dealCid)
+	t.Run("saves successful sectors", func(t *testing.T) {
+		miner := &Miner{
+			dealsAwaitingSeal:   newDealsAwaitingSeal(),
+			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsDatastore(),
 		}
 
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1)
-		dealsAwaitingSeal.add(someOtherSectorID, cid2)
-		dealsAwaitingSeal.success(wantSector)
+		miner.dealsAwaitingSeal.add(wantSectorID, dealCid)
+		sector := testSectorMetadata(newCid())
+		msgCid := newCid()
 
-		assert.Len(t, gotCids, 2, "onSuccess should've been called twice")
-	})
+		miner.dealsAwaitingSeal.success(sector, &msgCid)
 
-	t.Run("add after success", func(t *testing.T) {
-		dealsAwaitingSeal := &dealsAwaitingSealStruct{
-			SectorsToDeals:    make(map[uint64][]cid.Cid),
-			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-			FailedSectors:     make(map[uint64]string),
-		}
-		gotCids := []cid.Cid{}
-		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
-			assert.Equal(t, sector, wantSector)
-			gotCids = append(gotCids, dealCid)
-		}
+		require.NoError(t, miner.saveDealsAwaitingSeal())
+		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
+		require.NoError(t, miner.loadDealsAwaitingSeal())
 
-		dealsAwaitingSeal.success(wantSector)
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1) // Shouldn't trigger a call, see add().
-		dealsAwaitingSeal.add(someOtherSectorID, cid2)
-
-		assert.Len(t, gotCids, 1, "onSuccess should've been called once")
-	})
-
-	t.Run("add before fail", func(t *testing.T) {
-		dealsAwaitingSeal := &dealsAwaitingSealStruct{
-			SectorsToDeals:    make(map[uint64][]cid.Cid),
-			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-			FailedSectors:     make(map[uint64]string),
-		}
-		gotCids := []cid.Cid{}
-		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
-			assert.Equal(t, message, wantMessage)
-			gotCids = append(gotCids, dealCid)
-		}
-
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1)
-		dealsAwaitingSeal.fail(wantSectorID, wantMessage)
-		dealsAwaitingSeal.fail(someOtherSectorID, "some message")
-
-		assert.Len(t, gotCids, 2, "onFail should've been called twice")
-	})
-
-	t.Run("add after fail", func(t *testing.T) {
-		dealsAwaitingSeal := &dealsAwaitingSealStruct{
-			SectorsToDeals:    make(map[uint64][]cid.Cid),
-			SuccessfulSectors: make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-			FailedSectors:     make(map[uint64]string),
-		}
-		gotCids := []cid.Cid{}
-		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
-			assert.Equal(t, message, wantMessage)
-			gotCids = append(gotCids, dealCid)
-		}
-
-		dealsAwaitingSeal.fail(wantSectorID, wantMessage)
-		dealsAwaitingSeal.fail(someOtherSectorID, "some message")
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1) // Shouldn't trigger a call, see add().
-
-		assert.Len(t, gotCids, 1, "onFail should've been called once")
+		savedSector, ok := miner.dealsAwaitingSeal.SuccessfulSectors[sector.SectorID]
+		require.True(t, ok)
+		assert.Equal(t, sector, savedSector.Metadata)
+		assert.Equal(t, msgCid, *savedSector.CommitMessage)
 	})
 }
 
@@ -331,20 +263,13 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 	cidGetter := types.NewCidForTestGetter()
 	proposalCid := cidGetter()
-	sectorID := uint64(777)
-
-	// Simulate successful sealing and posting a commitSector to chain
 	msgCid := cidGetter()
-	var commD types.CommD
-	copy(commD[:], []byte{9, 9, 9, 9})
-	pip := []byte{3, 3, 3, 3, 3}
+
+	sector := testSectorMetadata(proposalCid)
 
 	t.Run("On successful commitment", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
-
-		piece := &sectorbuilder.PieceInfo{Ref: proposal.PieceRef, Size: 10999, InclusionProof: pip}
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
@@ -353,35 +278,17 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
 		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
-		assert.Equal(t, sectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
+		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, &msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
-		assert.Equal(t, pip, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
+		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
 	})
 
-	t.Run("Committing doesn't fail when piece info is missing", func(t *testing.T) {
+	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
+		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
-
-		miner.OnCommitmentSent(sector, msgCid, nil)
-
-		// retrieve deal response
-		dealResponse := miner.Query(proposal.Proposal.PieceRef)
-
-		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
-
-		// expect proof to be nil because it wasn't provided
-		assert.Nil(t, dealResponse.ProofInfo.PieceInclusionProof)
-	})
-
-	t.Run("Committing doesn't fail when deal isn't found", func(t *testing.T) {
-		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sectorID)
-
-		sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{}}
-
-		miner.OnCommitmentSent(sector, msgCid, nil)
+		emptySector := &sectorbuilder.SealedSectorMetadata{SectorID: sector.SectorID}
+		miner.OnCommitmentSent(emptySector, msgCid, nil)
 
 		// retrieve deal response
 		dealResponse := miner.Query(proposal.Proposal.PieceRef)
@@ -529,8 +436,8 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	// give the miner some place to store the deal
 	miner.dealsAwaitingSealDs = repo.NewInMemoryRepo().DealsDs
 
-	// create the dealsAwaitingSealStruct to manage the deal prior to sealing
-	require.NoError(t, miner.loadDealsAwaitingSeal())
+	// create the dealsAwaitingSeal to manage the deal prior to sealing
+	miner.loadDealsAwaitingSeal()
 
 	// wire dealsAwaitingSeal with the actual commit success functionality
 	miner.dealsAwaitingSeal.onSuccess = miner.onCommitSuccess
@@ -549,7 +456,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	}
 
 	// Simulates miner.acceptProposal without going to the network to fetch the data by storing the deal.
-	// Mapping the proposalCid to a sectorId simulates staging the sector.
+	// Mapping the proposalCid to a sectorID simulates staging the sector.
 	require.NoError(t, porcelainAPI.DealPut(storageDeal))
 	miner.dealsAwaitingSeal.add(sectorID, proposalCid)
 
@@ -581,6 +488,18 @@ func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, 
 	}
 	return vouchers
 
+}
+
+func testSectorMetadata(pieceRef cid.Cid) *sectorbuilder.SealedSectorMetadata {
+	sectorID := uint64(777)
+
+	// Simulate successful sealing and posting a commitSector to chain
+	var commD types.CommD
+	copy(commD[:], []byte{9, 9, 9, 9})
+	pip := []byte{3, 3, 3, 3, 3}
+
+	piece := &sectorbuilder.PieceInfo{Ref: pieceRef, Size: 10999, InclusionProof: pip}
+	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
 }
 
 func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
