@@ -69,6 +69,7 @@ require (
 	github.com/multiformats/go-multistream v0.0.1
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/otiai10/copy v1.0.1
 	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/polydawn/refmt v0.0.0-20190221155625-df39d6c2d992
