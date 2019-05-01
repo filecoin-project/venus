@@ -11,6 +11,7 @@ import (
 	host "github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -90,11 +91,17 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s backing off", &hello.GenesisHash, h.genesis, from)
+		if swrm, ok := h.host.Network().(*swarm.Swarm); ok {
+			swrm.Backoff().AddBackoff(from)
+		}
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Warningf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Warningf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s backing off", hello.CommitSha, h.commitSha, from)
+		if swrm, ok := h.host.Network().(*swarm.Swarm); ok {
+			swrm.Backoff().AddBackoff(from)
+		}
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
