@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"github.com/filecoin-project/go-filecoin/types"
 	"io"
 	"strings"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	sb "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
 

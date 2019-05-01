@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
-	cmds "github.com/ipfs/go-ipfs-cmds"
-
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
 )
 
 var protocolCmd = &cmds.Command{
@@ -35,7 +35,9 @@ var protocolCmd = &cmds.Command{
 				sectorSize = types.TwoHundredFiftySixMiBSectorSize
 			}
 
-			_, err = fmt.Fprintf(w, "\t%d bytes\n", sectorSize.Uint64())
+			maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize)
+
+			_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorSize.Uint64())), readableBytesAmount(float64(maxUserBytes.Uint64())))
 			if err != nil {
 				return err
 			}
@@ -43,4 +45,16 @@ var protocolCmd = &cmds.Command{
 			return nil
 		}),
 	},
+}
+
+func readableBytesAmount(amt float64) string {
+	unit := 0
+	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
+
+	for amt >= 1024 {
+		amt /= 1024
+		unit++
+	}
+
+	return fmt.Sprintf("%.2f %s", amt, units[unit])
 }
