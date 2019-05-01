@@ -195,7 +195,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	})
 }
 
-func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
+func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 	tf.UnitTest(t)
 
 	addrGetter := address.NewForTestGetter()
@@ -228,14 +228,14 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		assert.Equal(t, true, channel.Redeemed)
 	})
 
-	t.Run("Redeem should set cached conditions on success", func(t *testing.T) {
+	t.Run("Redeem should set cached condition on success", func(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-		// Expect that the conditions are nil on init
+		// Expect that the condition is nil on init
 		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
-		assert.Nil(t, channel.Conditions)
+		assert.Nil(t, channel.Condition)
 
 		// Successfully redeem the payment channel
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -243,49 +243,49 @@ func TestPaymentBrokerRedeemSetsConditionsAndRedeemed(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
-		// Expect that the conditions are now set and correct
+		// Expect that the condition is now set and correct
 		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
-		assert.NotNil(t, channel.Conditions)
-		assert.Equal(t, toAddress, channel.Conditions.To)
-		assert.Equal(t, method, channel.Conditions.Method)
-		assert.Contains(t, channel.Conditions.Params, addrParam.Bytes())
-		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
-		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, blockHeightParam.Bytes())
 	})
 
-	t.Run("Redeem should set cached conditions back to nil when no condition is provided", func(t *testing.T) {
+	t.Run("Redeem should set cached condition back to nil when no condition is provided", func(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-		// Successfully redeem the payment channel with conditions
+		// Successfully redeem the payment channel with condition
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
-		// Expect that the conditions are set and correct
+		// Expect that the condition is set and correct
 		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 		channel := sys.retrieveChannel(paymentBroker)
-		assert.NotNil(t, channel.Conditions)
-		assert.Equal(t, toAddress, channel.Conditions.To)
-		assert.Equal(t, method, channel.Conditions.Method)
-		assert.Contains(t, channel.Conditions.Params, addrParam.Bytes())
-		assert.Contains(t, channel.Conditions.Params, sectorIdParam)
-		assert.Contains(t, channel.Conditions.Params, blockHeightParam.Bytes())
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, blockHeightParam.Bytes())
 
-		// Successfully redeem the payment channel again without conditions
+		// Successfully redeem the payment channel again without condition
 		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
-		// Expect that the conditions are now nil
+		// Expect that the condition is now nil
 		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
 		channel = sys.retrieveChannel(paymentBroker)
-		assert.Nil(t, channel.Conditions)
+		assert.Nil(t, channel.Condition)
 	})
 
-	t.Run("Redeem uses cached conditions in subsequent calls", func(t *testing.T) {
+	t.Run("Redeem uses cached condition in subsequent calls", func(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 

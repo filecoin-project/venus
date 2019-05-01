@@ -82,9 +82,9 @@ type PaymentChannel struct {
 	// payer and payee upon initialization or extension
 	AgreedEol *types.BlockHeight `json:"agreed_eol"`
 
-	// Conditions are the set of conditions for redeeming or closing the payment
+	// Condition are the set of conditions for redeeming or closing the payment
 	// channel
-	Conditions *types.Predicate `json:"conditions"`
+	Condition *types.Predicate `json:"condition"`
 
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
@@ -264,14 +264,14 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// channel has been cancelled.
 		channel.Eol = channel.AgreedEol
 
-		// Mark the payment channel as redeemed and set the conditions
+		// Mark the payment channel as redeemed and set the condition
 		channel.Redeemed = true
 		if condition == nil {
-			channel.Conditions = nil
+			channel.Condition = nil
 		} else {
-			newConditions := *condition
-			newConditions.Params = append(newConditions.Params, redeemerConditionParams...)
-			channel.Conditions = &newConditions
+			newCondition := *condition
+			newCondition.Params = append(newCondition.Params, redeemerConditionParams...)
+			channel.Condition = &newCondition
 		}
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
@@ -796,12 +796,12 @@ func checkCondition(vmctx exec.VMContext, chid *types.ChannelID, payerAddress ad
 			}
 
 			if channel.Redeemed {
-				cachedCondition = channel.Conditions
+				cachedCondition = channel.Condition
 			}
 			return nil
 		})
 		if err != nil {
-			return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to load cached conditions")
+			return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to load cached condition")
 		}
 		if cachedCondition != nil {
 			redeemerSuppliedParams = cachedCondition.Params
