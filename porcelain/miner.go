@@ -282,14 +282,15 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 	return usedGas, nil
 }
 
-// mgoaAPI is the subset of the plumbing.API that MinerGetOwnerAddress uses.
-type mgoaAPI interface {
+// minerQueryAndDeserialize is the subset of the plumbing.API that provides
+// support for sending query messages and getting method signatures.
+type minerQueryAndDeserialize interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
-func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (address.Address, error) {
+func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
 	if err != nil {
 		return address.Undef, err
@@ -301,7 +302,7 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.
-func queryAndDeserialize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address, method string, params ...interface{}) (*abi.Value, error) {
+func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, params ...interface{}) (*abi.Value, error) {
 	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, params...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "'%s' query message failed", method)
@@ -321,7 +322,7 @@ func queryAndDeserialize(ctx context.Context, plumbing mgoaAPI, minerAddr addres
 }
 
 // MinerGetSectorSize queries for the sector size of the given miner.
-func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (*types.BytesAmount, error) {
+func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (*types.BytesAmount, error) {
 	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getSectorSize")
 	if err != nil {
 		return nil, errors.Wrap(err, "query and deserialize failed")
@@ -337,7 +338,7 @@ func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address
 
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
-func MinerGetLastCommittedSectorID(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (uint64, error) {
+func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {
 	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getLastUsedSectorID")
 	if err != nil {
 		return 0, errors.Wrap(err, "query and deserialize failed")
@@ -352,7 +353,7 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing mgoaAPI, minerA
 }
 
 // MinerGetKey queries for the public key of the given miner
-func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
+func MinerGetKey(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) ([]byte, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
 	if err != nil {
 		return []byte{}, err
