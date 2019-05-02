@@ -85,6 +85,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 	var hello Message
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
 		log.Warningf("bad hello message from peer %s: %s", from, err)
+		s.Conn().Close()
 		return
 	}
 
