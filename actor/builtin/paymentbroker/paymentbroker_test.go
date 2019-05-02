@@ -291,13 +291,13 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 		// Redeem without params and expect a panic
 		condition := &types.Predicate{To: toAddress, Method: method}
-		require.Panics(t, func() {
-			sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
-		})
+		appResult, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
 
 		// Successfully redeem the payment channel with params
 		condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -580,13 +580,13 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 
 	// Close without params and expect a panic
 	condition := &types.Predicate{To: toAddress, Method: method}
-	require.Panics(t, func() {
-		sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
-	})
+	result, err := sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
+	require.NoError(t, err)
+	require.Error(t, result.ExecutionError)
 
 	// Successfully redeem the payment channel with params
 	condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	result, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
