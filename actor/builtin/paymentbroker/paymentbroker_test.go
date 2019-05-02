@@ -293,6 +293,41 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		assert.Nil(t, channel.Condition)
 	})
 
+	t.Run("Redeem should update the cached condition with new params when provided", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+
+		// Successfully redeem the payment channel with condition
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is set and correct
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+
+		// Successfully redeem the payment channel again without condition
+		newBlockHeightParam := types.NewBlockHeight(52)
+		newRedeemerParams := []interface{}{newBlockHeightParam}
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition, newRedeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is updated with the new redeemer params
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, newBlockHeightParam.Bytes())
+	})
+
 	t.Run("Redeem uses cached condition in subsequent calls", func(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
