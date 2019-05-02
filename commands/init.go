@@ -55,10 +55,15 @@ var initCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		rep, err := repo.CreateRepo(repoDir, newConfig)
+
+		if err := repo.InitFSRepo(repoDir, newConfig); err != nil {
+			return err
+		}
+		rep, err := repo.OpenFSRepo(repoDir)
 		if err != nil {
 			return err
 		}
+
 		// The only error Close can return is that the repo has already been closed
 		defer rep.Close() // nolint: errcheck
 
