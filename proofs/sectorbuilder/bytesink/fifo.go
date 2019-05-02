@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Not safe for concurrent access, as writes to underlying pipe are atomic only
+// FifoByteSink is not safe for concurrent access, as writes to underlying pipe are atomic only
 // if len(buf) is less than the OS-specific PIPE_BUF value.
 type FifoByteSink struct {
 	file *os.File
@@ -62,7 +62,7 @@ func (s *FifoByteSink) Close() (retErr error) {
 	return
 }
 
-// Id produces a string-identifier for this byte sink. For now, this is just the
+// ID produces a string-identifier for this byte sink. For now, this is just the
 // path of the FIFO file. This string may get more structured in the future.
 func (s *FifoByteSink) ID() string {
 	return s.path

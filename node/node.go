@@ -838,7 +838,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
-					_, err := node.PorcelainAPI.MessageSend(
+					msgCid, err := node.PorcelainAPI.MessageSend(
 						node.miningCtx,
 						minerOwnerAddr,
 						minerAddr,
@@ -857,7 +857,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentAddedToChain(val, nil)
+					node.StorageMiner.OnCommitmentSent(val, msgCid, nil)
 				}
 			case <-node.miningCtx.Done():
 				return
@@ -938,14 +938,31 @@ func initSectorBuilderForNode(ctx context.Context, node *Node, proofsMode types.
 	// metadata in the staging directory, it should be in its own directory.
 	//
 	// Tracked here: https://github.com/filecoin-project/rust-fil-proofs/issues/402
-	sectorDir := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir)
+	repoPath, err := node.Repo.Path()
+	if err != nil {
+		return nil, err
+	}
+	sectorDir, err := paths.GetSectorPath(node.Repo.Config().SectorBase.RootDir, repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	stagingDir, err := paths.StagingDir(sectorDir)
+	if err != nil {
+		return nil, err
+	}
+
+	sealedDir, err := paths.SealedDir(sectorDir)
+	if err != nil {
+		return nil, err
+	}
 	cfg := sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     node.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
-		MetadataDir:      paths.StagingDir(sectorDir),
+		MetadataDir:      stagingDir,
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  paths.SealedDir(sectorDir),
-		StagedSectorDir:  paths.StagingDir(sectorDir),
+		SealedSectorDir:  sealedDir,
+		StagedSectorDir:  stagingDir,
 		SectorClass:      sectorClass,
 	}
 
