@@ -298,24 +298,36 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 	return address.NewFromBytes(res[0])
 }
 
-// MinerGetSectorSize queries for the sector size of the given miner.
-func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getSectorSize")
+// queryAndDeserialize is a convenience method. It sends a query message to a
+// miner and, based on the method return-type, deserializes to the appropriate
+// ABI type.
+func queryAndDeserialize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address, method string, params ...interface{}) (*abi.Value, error) {
+	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, params...)
 	if err != nil {
-		return nil, errors.Wrap(err, "'getSectorSize' query message failed")
+		return nil, errors.Wrapf(err, "'%s' query message failed", method)
 	}
 
-	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, "getSectorSize")
+	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, method)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to acquire 'getSectorSize' signature")
+		return nil, errors.Wrapf(err, "failed to acquire '%s' signature", method)
 	}
 
-	sectorSizeVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	abiValue, err := abi.Deserialize(rets[0], methodSignature.Return[0])
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to deserialize returned value")
 	}
 
-	sectorSize, ok := sectorSizeVal.Val.(*types.BytesAmount)
+	return abiValue, nil
+}
+
+// MinerGetSectorSize queries for the sector size of the given miner.
+func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (*types.BytesAmount, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getSectorSize")
+	if err != nil {
+		return nil, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	sectorSize, ok := abiVal.Val.(*types.BytesAmount)
 	if !ok {
 		return nil, errors.New("failed to convert returned ABI value")
 	}
@@ -326,22 +338,12 @@ func MinerGetSectorSize(ctx context.Context, plumbing mgoaAPI, minerAddr address
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
 func MinerGetLastCommittedSectorID(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (uint64, error) {
-	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, "getLastUsedSectorID")
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getLastUsedSectorID")
 	if err != nil {
-		return 0, errors.Wrap(err, "'getLastUsedSectorID' query message failed")
+		return 0, errors.Wrap(err, "query and deserialize failed")
 	}
 
-	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, "getLastUsedSectorID")
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to acquire 'getLastUsedSectorID' signature")
-	}
-
-	lastUsedSectorIDVal, err := abi.Deserialize(rets[0], methodSignature.Return[0])
-	if err != nil {
-		return 0, errors.Wrap(err, "failed to deserialize returned value")
-	}
-
-	lastUsedSectorID, ok := lastUsedSectorIDVal.Val.(uint64)
+	lastUsedSectorID, ok := abiVal.Val.(uint64)
 	if !ok {
 		return 0, errors.New("failed to convert returned ABI value")
 	}
