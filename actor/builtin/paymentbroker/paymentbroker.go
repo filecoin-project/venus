@@ -248,14 +248,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
-			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
-				return err
-			}
-		} else {
-			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
-				return err
-			}
+		if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
+			return err
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
@@ -320,14 +314,8 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		if channel.Redeemed && channel.Condition != nil && len(redeemerConditionParams) == 0 {
-			if err := checkCondition(vmctx, channel, condition, channel.Condition.Params); err != nil {
-				return err
-			}
-		} else {
-			if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
-				return err
-			}
+		if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
+			return err
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
@@ -780,16 +768,16 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *ty
 		return nil
 	}
 
-	params := append(condition.Params[:0:0], condition.Params...)
-	params = append(params, redeemerSuppliedParams...)
+	if !channel.Redeemed || channel.Condition == nil || len(redeemerSuppliedParams) > 0 {
+		newParams := condition.Params
+		newParams = append(newParams, redeemerSuppliedParams...)
 
-	if channel != nil {
 		newCachedCondition := *condition
-		newCachedCondition.Params = params
+		newCachedCondition.Params = newParams
 		channel.Condition = &newCachedCondition
 	}
 
-	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
+	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
 	if err != nil {
 		if errors.IsFault(err) {
 			return err
