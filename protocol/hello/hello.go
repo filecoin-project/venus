@@ -14,8 +14,13 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var versionErrCt = metrics.NewInt64Counter("hello_version_error", "Number of errors encountered in hello protocol due to incorrect version")
+var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
+var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
 
 func init() {
 	cbor.RegisterCborType(Message{})
@@ -84,17 +89,21 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	var hello Message
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
-		log.Warningf("bad hello message from peer %s: %s", from, err)
+		log.Debugf("bad hello message from peer %s: %s", from, err)
+		helloMsgErrCt.Inc(context.TODO(), 1)
+		s.Conn().Close() // nolint: errcheck
 		return
 	}
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		genesisErrCt.Inc(context.TODO(), 1)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Warningf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		versionErrCt.Inc(context.TODO(), 1)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
