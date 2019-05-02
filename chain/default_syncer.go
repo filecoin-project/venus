@@ -110,7 +110,10 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // that interacts with the network. It does NOT add tipsets to the chainStore..
 func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) ([]types.TipSet, error) {
 	var chain []types.TipSet
-	defer logSyncer.Info("chain fetch from network complete")
+	var count uint64
+	fetchedHead := tipsetCids
+	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
+
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
@@ -139,9 +142,9 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 
-		height, _ := ts.Height()
-		if len(chain)%500 == 0 {
-			logSyncer.Infof("syncing the chain, currently at block height %d", height)
+		count++
+		if count%500 == 0 {
+			logSyncer.Infof("fetching the chain, %d blocks fetched", count)
 		}
 
 		// Update values to traverse next tipset
@@ -326,7 +329,7 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
 func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error {
-	logSyncer.Debugf("trying to sync %v", tipsetCids)
+	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tipsetCids)
 
 	// This lock could last a long time as we fetch all the blocks needed to block the chain.
 	// This is justified because the app is pretty useless until it is synced.
@@ -356,12 +359,6 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	}
 	parent := parentTsas.TipSet
 
-	// used for logging
-	highestBlock, err := chain[len(chain)-1].Height()
-	if err != nil {
-		return err
-	}
-
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
 	for i, ts := range chain {
@@ -389,8 +386,8 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 			syncer.badTipSets.AddChain(chain[i:])
 			return err
 		}
-		if (i % 500) == 0 {
-			logSyncer.Infof("processing block %d of %v", i, highestBlock)
+		if i%500 == 0 {
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), tipsetCids.String())
 		}
 		parent = ts
 	}
