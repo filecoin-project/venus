@@ -762,9 +762,7 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 // to the actor and method specified in the condition, and returns an error if one exists.
 func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
 	if condition == nil {
-		if channel != nil {
-			channel.Condition = nil
-		}
+		channel.Condition = nil
 		return nil
 	}
 
