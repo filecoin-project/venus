@@ -1,6 +1,13 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -17,7 +24,7 @@ type Migration interface {
 	//      contain a copy of the old repo.
 	Migrate(newRepoPath string) error
 
-	Versions() (from string, to string)
+	Versions() (from, to uint)
 
 	// Validate performs validation operations, using oldRepo for comparison.
 	// Validation requirements will be different for every migration.
@@ -30,7 +37,6 @@ type Migration interface {
 	//      read-only by this process
 	//  A successful validation returns nil.
 	Validate(oldRepoPath, newRepoPath string) error
-
 }
 
 // MigrationRunner represents a migration command
@@ -56,15 +62,48 @@ func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRu
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
 	// detect current version of old repo
-	_, err := repo.OpenFSRepo(m.oldRepoOpt)
+	repoVersion, err := m.loadVersion()
 	if err != nil {
 		return err
 	}
-
+	if repoVersion == repo.Version {
+		return errors.New("binary version = repo version; migration not run")
+	}
 	// iterate over migrations provided by the Provider.
+	for _, mig := range m.MigrationsProvider() {
+		from, to := mig.Versions()
 		// look for a migration that upgrades the old repo by 1 version
-		// if there is one,
-			// perform the migration command
+		if from == repoVersion && to == from+1 {
+			// if there is one, perform the migration command
+			newRepoPath, err := getNewRepoPath(m.oldRepoOpt, "")
+
+			if err != nil {
+				return err
+			}
+
+			if err = mig.Migrate(newRepoPath); err != nil {
+				return err
+			}
+			return m.logger.Close()
+		}
+	}
 	// else exit with error
+	m.logger.Error(fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1))
 	return m.logger.Close()
+}
+
+// Shamelessly lifted from FSRepo
+func (m *MigrationRunner) loadVersion() (uint, error) {
+	// TODO: limited file reading, to avoid attack vector
+	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, "version"))
+	if err != nil {
+		return 0, err
+	}
+
+	version, err := strconv.Atoi(strings.Trim(string(file), "\n"))
+	if err != nil {
+		return 0, errors.New("corrupt version file: version is not an integer")
+	}
+
+	return uint(version), nil
 }
