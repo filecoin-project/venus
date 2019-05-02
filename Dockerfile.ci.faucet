@@ -2,7 +2,7 @@ FROM busybox:1-glibc
 MAINTAINER Filecoin Dev Team
 
 # Get the binary, entrypoint script, and TLS CAs from the build container.
-COPY tools/faucet /usr/local/bin/faucet
+COPY tools/faucet/faucet /usr/local/bin/faucet
 COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=filecoin:all /tmp/tini /sbin/tini
 COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
