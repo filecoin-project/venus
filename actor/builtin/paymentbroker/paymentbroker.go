@@ -782,7 +782,7 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *ty
 		if errors.IsFault(err) {
 			return err
 		}
-		return errors.RevertErrorWrap(err, "failed to validate voucher condition")
+		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
 	}
 	return nil
 }
