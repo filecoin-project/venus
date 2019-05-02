@@ -9,9 +9,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
+// USAGE is the usage of the migration tool
 const USAGE = `
 USAGE
-	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [--new-repo=<newrepo-prefix] [-h|--help] [-v|--verbose]
+	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [-h|--help] [-v|--verbose]
 
 COMMANDS
 	describe
@@ -24,35 +25,29 @@ COMMANDS
 
 REQUIRED ARGUMENTS
 	--old-repo
-		The location of this node's filecoin home directory. This is required even for the
-		'describe' command, as the its repo version helps determine which migration to run.
+		The symlink location of this node's filecoin home directory. This is required even for the
+		'describe' command, as its repo version helps determine which migration to run. This
+		must be a symbolic link or migration will not proceed.
 
 OPTIONS
 	-h, --help
 		This message
 	-v --verbose
 		Print diagnostic messages to stdout
-	--new-repo
-		The prefix for the migrated repo. A directory prefixed with this 
-		path will be created to hold the copy of the old repo for migration, named 
-		with a timestamp and migration versions. 
-
-		Provide this if you want the migrated repo to be in a different directory, on a 
-        different device, or you just prefer a different naming scheme.
-
-		Ensure the parent directory exists; go-filecoin-migrate will not create tree
-        structure.
 
 EXAMPLES
 	for a migration from version 1 to 2:
 	go-filecoin-migrate migrate --old-repo=~/.filecoin
 		Migrates then installs the repo. Migrated repo will be in ~/.filecoin_1_2_<timestamp>
+		and symlinked to ~/.filecoin
 
 	go-filecoin-migrate migrate --old-repo=/opt/filecoin
 		Migrates then installs the repo. Migrated repo will be in /opt/filecoin_1_2_<timestamp> 
+		and symlinked to /opt/filecoin
 
-	go-filecoin-migrate build-only --old-repo=/opt/filecoin --new-repo=/tmp/somedir
-		Runs migration steps only. Migrated repo will be in /tmp/somedir_1_2_<timestamp>
+	go-filecoin-migrate build-only --old-repo=/opt/filecoin 
+		Runs migration steps only. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
+		and symlinked to /opt/filecoin
 `
 
 func main() { // nolint: deadcode
@@ -71,8 +66,7 @@ func main() { // nolint: deadcode
 			exitErr(fmt.Sprintf("Error: --old-repo is required\n%s\n", USAGE))
 		}
 
-		newRepoPrefixOpt, _ := findOpt("new-repo", os.Args)
-		runner := internal.NewMigrationRunner(getVerbose(), command, oldRepoOpt, newRepoPrefixOpt)
+		runner := internal.NewMigrationRunner(getVerbose(), command, oldRepoOpt)
 		if err := runner.Run(); err != nil {
 			exitErr(err.Error())
 		}

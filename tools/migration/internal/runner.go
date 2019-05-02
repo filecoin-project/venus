@@ -1,9 +1,5 @@
 package internal
 
-import (
-	"os"
-)
-
 // Migration is the interface to all repo migration versions.
 type Migration interface {
 	// Migrate performs all migration steps for the Migration that implements the interface.
@@ -30,38 +26,25 @@ type Migration interface {
 	Validate(oldRepoPath, newRepoPath string) error
 }
 
-// RepoWrangler is a helper that manages filesystem operations and figures out what the correct paths
-// are for everything.
-type RepoWrangler interface {
-	// GetOldRepo opens and returns the old repo with read-only access
-	GetOldRepo() (*os.File, error)
-	// MakeNewRepo creates and returns the new repo dir with read/write permissions
-	MakeNewRepo() (*os.File, error)
-	// GetOldRepoPath returns the full path of the old repo
-	GetOldRepoPath() string
-	// GetNewRepoPath returns the full path of the old repo
-	GetNewRepoPath() string
-}
-
+// MigrationRunner represent a migration command
 type MigrationRunner struct {
-	verbose bool
-	command string
-	helper  RepoWrangler
+	verbose    bool
+	command    string
+	oldRepoOpt string
 }
 
-func NewMigrationRunner(verb bool, command, oldRepoOpt, newRepoPrefixOpt string) *MigrationRunner {
+// NewMigrationRunner builds a MirgrationRunner for the given command and repo options
+func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
 	// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
-	oldVersion := "1"
-	newVersion := "2"
 
-	helper := NewRepoFSWrangler(oldRepoOpt, newRepoPrefixOpt, oldVersion, newVersion)
 	return &MigrationRunner{
-		verbose: verb,
-		command: command,
-		helper:  helper,
+		verbose:    verb,
+		command:    command,
+		oldRepoOpt: oldRepoOpt,
 	}
 }
 
+// Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
 	return nil

@@ -22,8 +22,6 @@ func (w *tlogWriter) Logf(format string, args ...interface{}) {
 func TestLogWriter(t *testing.T) {
 	tf.UnitTest(t)
 
-	require := require.New(t)
-
 	input := []string{
 		"line1\n",
 		"line2\n",
@@ -37,10 +35,10 @@ func TestLogWriter(t *testing.T) {
 
 	for _, line := range input {
 		_, err := lw.Write([]byte(fmt.Sprintf("%s", line)))
-		require.NoError(err)
+		require.NoError(t, err)
 	}
 
-	lw.Close()
+	require.NoError(t, lw.Close())
 
-	require.Equal(strings.Join(input, ""), out.buf.String())
+	require.Equal(t, strings.Join(input, ""), out.buf.String())
 }
