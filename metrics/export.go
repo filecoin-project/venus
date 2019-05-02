@@ -62,6 +62,8 @@ func RegisterPrometheusEndpoint(cfg *config.MetricsConfig) error {
 	return nil
 }
 
+// RegisterJaeger registers the jaeger endpoint with opencensus and names the
+// tracer `name`.
 func RegisterJaeger(name string, cfg *config.TraceConfig) error {
 	if !cfg.JaegerTracingEnabled {
 		return nil
