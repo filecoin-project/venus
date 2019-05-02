@@ -34,7 +34,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		// Note this will break if the version file name changes
 		assert.NoError(t, ioutil.WriteFile(filepath.Join(repodir, "version"), []byte("0"), 0644))
 
-		runner := NewMigrationRunner(false, "describe", "/home/filecoin-symlink")
+		runner := NewMigrationRunner(false, "describe", repodir)
 		runner.MigrationsProvider = testMigrationsProvider1
 		migrations := runner.MigrationsProvider()
 		assert.NotEmpty(t, migrations)
@@ -51,9 +51,9 @@ func testMigrationsProvider1() []Migration {
 	}
 }
 
-func testMigrationsProvider2() []Migration {
-	return []Migration{ &TestMigValidationFails{} }
-}
+//func testMigrationsProvider2() []Migration {
+//	return []Migration{&TestMigValidationFails{}}
+//}
 
 type TestMigration01 struct {
 }
@@ -65,8 +65,8 @@ func (m *TestMigration01) Describe() string {
 func (m *TestMigration01) Migrate(newRepoPath string) error {
 	return nil
 }
-func (m *TestMigration01) Versions() (from, to string) {
-	return "0", "1"
+func (m *TestMigration01) Versions() (from, to uint) {
+	return 0, 1
 }
 
 func (m *TestMigration01) Validate(oldRepoPath, newRepoPath string) error {
@@ -76,8 +76,8 @@ func (m *TestMigration01) Validate(oldRepoPath, newRepoPath string) error {
 type TestMigMigrationFails struct {
 }
 
-func (m *TestMigMigrationFails) Versions() (from, to string) {
-	return "1", "2"
+func (m *TestMigMigrationFails) Versions() (from, to uint) {
+	return 1, 2
 }
 
 func (m *TestMigMigrationFails) Describe() string {
@@ -95,8 +95,8 @@ func (m *TestMigMigrationFails) Validate(oldRepoPath, newRepoPath string) error 
 type TestMigValidationFails struct {
 }
 
-func (m *TestMigValidationFails) Versions() (from, to string) {
-	return "0", "1"
+func (m *TestMigValidationFails) Versions() (from, to uint) {
+	return 0, 1
 }
 
 func (m *TestMigValidationFails) Describe() string {

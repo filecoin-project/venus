@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 )
 
 // RequireMakeTempDir ensures that a temporary directory is created
