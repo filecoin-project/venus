@@ -190,6 +190,8 @@ github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NH
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/ipfs/bbloom v0.0.1 h1:s7KkiBPfxCeDVo47KySjK0ACPc5GJRUxFpdyWEuDjhw=
 github.com/ipfs/bbloom v0.0.1/go.mod h1:oqo8CVWsJFMOZqTglBG4wydCE4IQA/G2/SEofB0rjUI=
+github.com/ipfs/fs-repo-migrations v0.0.0-20190319005701-46ecb9d16dbc h1:i+th9i3B0AwjsxUOtZoIQoc/+szlv0zrII4b4ZXzkaY=
+github.com/ipfs/fs-repo-migrations v0.0.0-20190319005701-46ecb9d16dbc/go.mod h1:IFlYMvj9IpEw7kcDGS71WsDt5UAyekoQTm3tMGTWv+4=
 github.com/ipfs/go-bitswap v0.0.1 h1:Xx1ma7TWy9ISOx5zFq5YVQyrTHzUP4GkRPMsZokHxAg=
 github.com/ipfs/go-bitswap v0.0.1/go.mod h1:z+tP3h+HTJ810n1R5yMy2ccKFffJ2F6Vqm/5Bf7vs2c=
 github.com/ipfs/go-bitswap v0.0.2 h1:zlYqGWXAGuroihkjc7eAKqepwlJOcGm3ZwmFWnPUKks=

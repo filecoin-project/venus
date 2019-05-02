@@ -37,6 +37,7 @@ type Migration interface {
 	//      read-only by this process
 	//  A successful validation returns nil.
 	Validate(oldRepoPath, newRepoPath string) error
+
 }
 
 // MigrationRunner represent a migration command

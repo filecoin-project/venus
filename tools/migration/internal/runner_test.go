@@ -18,6 +18,7 @@ import (
 
 func TestMigrationRunner_Run(t *testing.T) {
 	tf.UnitTest(t)
+	
 	// setup logger
 	dummyLogFile, err := ioutil.TempFile("", "logfile")
 	require.NoError(t, err)
@@ -126,6 +127,16 @@ func testProviderValidationFails() []Migration {
 
 func testProviderMigrationFails() []Migration {
 	return []Migration{&TestMigMigrationFails{}}
+
+func testMigrationsProvider1() []Migration {
+	return []Migration{
+		&TestMigration01{},
+		&TestMigMigrationFails{},
+	}
+}
+
+func testMigrationsProvider2() []Migration {
+	return []Migration{ &TestMigValidationFails{} }
 }
 
 type TestMigration01 struct {
@@ -138,6 +149,7 @@ func (m *TestMigration01) Describe() string {
 func (m *TestMigration01) Migrate(newRepoPath string) error {
 	return nil
 }
+
 func (m *TestMigration01) Versions() (from, to uint) {
 	return 0, 1
 }
@@ -146,8 +158,7 @@ func (m *TestMigration01) Validate(oldRepoPath, newRepoPath string) error {
 	return nil
 }
 
-type TestMigMigrationFails struct {
-}
+type TestMigMigrationFails struct {}
 
 func (m *TestMigMigrationFails) Versions() (from, to uint) {
 	return 0, 1
@@ -163,23 +174,4 @@ func (m *TestMigMigrationFails) Migrate(newRepoPath string) error {
 
 func (m *TestMigMigrationFails) Validate(oldRepoPath, newRepoPath string) error {
 	return nil
-}
-
-type TestMigValidationFails struct {
-}
-
-func (m *TestMigValidationFails) Versions() (from, to uint) {
-	return 0, 1
-}
-
-func (m *TestMigValidationFails) Describe() string {
-	return "the migration that doesn't do anything"
-}
-
-func (m *TestMigValidationFails) Migrate(newRepoPath string) error {
-	return nil
-}
-
-func (m *TestMigValidationFails) Validate(oldRepoPath, newRepoPath string) error {
-	return errors.New("validation has failed")
 }
