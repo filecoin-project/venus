@@ -124,7 +124,7 @@ Prints out information about your filecoin nodes environment.
 	},
 }
 
-// New returns a `Inspector` used to inspect the go-filecoin node.
+// NewInspectorAPI returns a `Inspector` used to inspect the go-filecoin node.
 func NewInspectorAPI(r repo.Repo) *Inspector {
 	return &Inspector{
 		repo: r,
