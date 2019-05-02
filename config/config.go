@@ -151,6 +151,7 @@ func newDefaultHeartbeatConfig() *HeartbeatConfig {
 	}
 }
 
+// ObservabilityConfig is a container for configuration related to observables.
 type ObservabilityConfig struct {
 	Metrics *MetricsConfig `json:"metrics"`
 	Tracing *TraceConfig   `json:"tracing"`
@@ -181,6 +182,8 @@ func newDefaultMetricsConfig() *MetricsConfig {
 	}
 }
 
+// TraceConfig holds all configuration options related to enabling and exporting
+// filecoin node traces.
 type TraceConfig struct {
 	// JaegerTracingEnabled will enable exporting traces to jaeger when true.
 	JaegerTracingEnabled bool `json:"jaegerTracingEnabled"`
