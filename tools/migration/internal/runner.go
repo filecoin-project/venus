@@ -39,6 +39,7 @@ type Migration interface {
 	Validate(oldRepoPath, newRepoPath string) error
 }
 
+// MigrationRunner represent a migration command
 type MigrationRunner struct {
 	// verbose controls the amount of output.
 	verbose bool
@@ -58,6 +59,7 @@ type MigrationRunner struct {
 	RepoVersionGetter func() uint
 }
 
+// NewMigrationRunner builds a MirgrationRunner for the given command and repo options
 func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
 	return &MigrationRunner{
 		verbose:            verb,
@@ -73,6 +75,7 @@ func DefaultVersionGetter() uint {
 	return repo.Version
 }
 
+// Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
 	repoVersion, err := m.loadVersion()

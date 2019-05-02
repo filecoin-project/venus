@@ -21,7 +21,10 @@ func init() {
 		lineBreak = "\r\n"
 	}
 	// We build with go modules.
-	os.Setenv("GO111MODULE", "on")
+	if err := os.Setenv("GO111MODULE", "on"); err != nil {
+		fmt.Println("Failed to set GO111MODULE env")
+		os.Exit(1)
+	}
 }
 
 // command is a structure representing a shell command to be run in the

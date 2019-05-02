@@ -100,14 +100,17 @@ func NewTestMessagePoolAPI(h uint64) *TestMessagePoolAPI {
 	return &TestMessagePoolAPI{Height: h}
 }
 
+// MockMessagePoolValidator is a mock validator
 type MockMessagePoolValidator struct {
 	Valid bool
 }
 
+// NewMockMessagePoolValidator creates a MockMessagePoolValidator
 func NewMockMessagePoolValidator() *MockMessagePoolValidator {
 	return &MockMessagePoolValidator{Valid: true}
 }
 
+// Validate returns true if the mock validator is set to validate the message
 func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
 	if v.Valid {
 		return nil

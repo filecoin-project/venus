@@ -151,7 +151,7 @@ func (a *API) MinerPreviewSetPrice(
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
 }
 
-// ProtocolParams fetches the current protocol configuration parameters.
+// ProtocolParameters fetches the current protocol configuration parameters.
 func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
 	return ProtocolParameters(ctx, a)
 }

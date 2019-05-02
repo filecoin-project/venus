@@ -13,6 +13,9 @@ linters:
     - structcheck
     - deadcode
 
+issues:
+  exclude-use-default: false
+
 linters-settings:
   goconst:
     min-occurrences: 6
