@@ -248,12 +248,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
-			return err
-		}
-
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -314,12 +310,8 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		if err := checkCondition(vmctx, channel, condition, redeemerConditionParams); err != nil {
-			return err
-		}
-
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -600,7 +592,11 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 	return channelsBytes, 0, nil
 }
 
-func updateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight) error {
+func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+	if err := checkCondition(ctx, channel, condition, redeemerSuppliedParams); err != nil {
+		return err
+	}
+
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
