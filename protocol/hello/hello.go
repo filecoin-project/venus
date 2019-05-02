@@ -91,7 +91,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
 		log.Debugf("bad hello message from peer %s: %s", from, err)
 		helloMsgErrCt.Inc(context.TODO(), 1)
-		s.Conn().Close()
+		s.Conn().Close() // nolint: errcheck
 		return
 	}
 
