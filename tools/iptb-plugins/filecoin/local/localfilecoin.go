@@ -549,7 +549,7 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 /** Config Interface **/
 
-// GetConfig returns the nodes config.
+// Config returns the nodes config.
 func (l *Localfilecoin) Config() (interface{}, error) {
 	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }

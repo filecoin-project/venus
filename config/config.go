@@ -169,7 +169,7 @@ func newDefaultMetricsConfig() *MetricsConfig {
 	}
 }
 
-// MetricsConfig holds all configuration options related to nodes message pool (mpool).
+// MessagePoolConfig holds all configuration options related to nodes message pool (mpool).
 type MessagePoolConfig struct {
 	// MaxPoolSize is the maximum number of pending messages will will allow in the message pool at any time
 	MaxPoolSize int `json:"maxPoolSize"`
