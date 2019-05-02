@@ -38,7 +38,9 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 
 		testDir, err := ioutil.TempDir(".", "environmentTest")
 		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		defer func() {
+			require.NoError(t, os.RemoveAll(testDir))
+		}()
 
 		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
 		localenv := env.(*EnvironmentMemoryGenesis)
@@ -61,7 +63,9 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 
 		testDir, err := ioutil.TempDir(".", "environmentTest")
 		require.NoError(t, err)
-		defer os.RemoveAll(testDir)
+		defer func() {
+			require.NoError(t, os.RemoveAll(testDir))
+		}()
 
 		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
 		require.NoError(t, err)

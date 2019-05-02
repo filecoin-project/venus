@@ -60,6 +60,7 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 	return nil
 }
 
+// OpenRepo opens repoPath
 func OpenRepo(repoPath string) (*os.File, error) {
 	return os.Open(repoPath)
 }

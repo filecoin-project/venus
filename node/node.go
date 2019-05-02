@@ -838,7 +838,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
-					_, err := node.PorcelainAPI.MessageSend(
+					msgCid, err := node.PorcelainAPI.MessageSend(
 						node.miningCtx,
 						minerOwnerAddr,
 						minerAddr,
@@ -857,7 +857,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentAddedToChain(val, nil)
+					node.StorageMiner.OnCommitmentSent(val, msgCid, nil)
 				}
 			case <-node.miningCtx.Done():
 				return

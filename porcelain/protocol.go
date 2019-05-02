@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// ProtocolParams TODO(rosa)
 type ProtocolParams struct {
 	AutoSealInterval uint
 	SectorSizes      []uint64
@@ -21,6 +22,7 @@ type protocolParamsPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
+// ProtocolParameters TODO(rosa)
 func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*ProtocolParams, error) {
 	autoSealIntervalInterface, err := plumbing.ConfigGet("mining.autoSealIntervalSeconds")
 	if err != nil {
