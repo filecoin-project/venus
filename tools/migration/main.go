@@ -6,8 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
+
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
+
+const defaultLogFilePath = "~/.filecoin-migration-logs"
 
 // USAGE is the usage of the migration tool
 const USAGE = `
@@ -34,6 +38,8 @@ OPTIONS
 		This message
 	-v --verbose
 		Print diagnostic messages to stdout
+        --log-file
+                The path of the file for writing detailed log output
 
 EXAMPLES
 	for a migration from version 1 to 2:
@@ -60,13 +66,18 @@ func main() { // nolint: deadcode
 	case "-h", "--help":
 		showUsageAndExit(0)
 	case "describe", "buildonly", "migrate", "install":
-		oldRepoOpt, found := findOpt("old-repo", os.Args)
+		logFile, err := openLogFile()
+		if err != nil {
+			exitErr(err.Error())
+		}
+		logger := internal.NewLogger(logFile, getVerbose())
 
+		oldRepoOpt, found := findOpt("old-repo", os.Args)
 		if found == false {
 			exitErr(fmt.Sprintf("Error: --old-repo is required\n%s\n", USAGE))
 		}
 
-		runner := internal.NewMigrationRunner(getVerbose(), command, oldRepoOpt)
+		runner := internal.NewMigrationRunner(logger, command, oldRepoOpt)
 		if err := runner.Run(); err != nil {
 			exitErr(err.Error())
 		}
@@ -95,6 +106,22 @@ func getVerbose() bool {
 	}
 	_, res := findOpt("--verbose", os.Args)
 	return res
+}
+
+func openLogFile() (*os.File, error) {
+	path, err := getLogFilePath()
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE, 0644)
+}
+
+func getLogFilePath() (string, error) {
+	if logPath, found := findOpt("--log-file", os.Args); found {
+		return logPath, nil
+	}
+
+	return homedir.Expand(defaultLogFilePath)
 }
 
 // findOpt fetches option values.

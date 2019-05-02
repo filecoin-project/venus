@@ -41,8 +41,8 @@ type Migration interface {
 
 // MigrationRunner represent a migration command
 type MigrationRunner struct {
-	// verbose controls the amount of output.
-	verbose bool
+	// logger controls migration logging
+	logger *Logger
 
 	// command is the migration command to run, passed from the CLI
 	command string
@@ -60,9 +60,9 @@ type MigrationRunner struct {
 }
 
 // NewMigrationRunner builds a MirgrationRunner for the given command and repo options
-func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
+func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRunner {
 	return &MigrationRunner{
-		verbose:            verb,
+		logger:             logger,
 		command:            command,
 		oldRepoOpt:         oldRepoOpt,
 		MigrationsProvider: DefaultMigrationsProvider,
@@ -76,8 +76,16 @@ func DefaultVersionGetter() uint {
 }
 
 // Run executes the MigrationRunner
-func (m *MigrationRunner) Run() error {
-	// TODO: Issue #2595 Implement first repo migration
+func (m *MigrationRunner) Run() err error {
+	defer func() {
+		if logErr := m.logger.Close(); logErr != nil {
+			if err != nil {
+				err = errors.Wrapf(err, "error closing logger while returning run error: %s", logErr.Error())
+			} else {
+				err = logErr
+			}
+		}
+	}()
 	repoVersion, err := m.loadVersion()
 	if err != nil {
 		return err
