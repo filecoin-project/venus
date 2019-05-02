@@ -51,7 +51,7 @@ func readableBytesAmount(amt float64) string {
 	unit := 0
 	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"}
 
-	for amt >= 1024 {
+	for amt >= 1024 && unit < len(units)-1 {
 		amt /= 1024
 		unit++
 	}
