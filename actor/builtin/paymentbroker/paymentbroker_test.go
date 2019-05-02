@@ -281,9 +281,6 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		assert.NotNil(t, channel.Condition)
 		assert.Equal(t, toAddress, channel.Condition.To)
 		assert.Equal(t, method, channel.Condition.Method)
-		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
-		assert.Contains(t, channel.Condition.Params, sectorIdParam)
-		assert.Contains(t, channel.Condition.Params, blockHeightParam.Bytes())
 
 		// Successfully redeem the payment channel again without condition
 		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
