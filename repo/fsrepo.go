@@ -496,11 +496,6 @@ func (r *FSRepo) APIAddr() (string, error) {
 	return apiAddrFromFile(filepath.Join(filepath.Clean(r.path), apiFile))
 }
 
-// Path returns the path of fsrepo.
-func (r *FSRepo) Path() string {
-	return filepath.Clean(r.repoPath)
-}
-
 func badgerOptions() *badgerds.Options {
 	result := &badgerds.DefaultOptions
 	result.Truncate = true

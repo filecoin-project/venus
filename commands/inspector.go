@@ -212,7 +212,12 @@ func (g *Inspector) Disk() (*DiskInfo, error) {
 		}, nil
 	}
 
-	dinfo, err := sysi.DiskUsage(fsr.Path())
+	p, err := fsr.Path()
+	if err != nil {
+		return nil, err
+	}
+
+	dinfo, err := sysi.DiskUsage(p)
 	if err != nil {
 		return nil, err
 	}
