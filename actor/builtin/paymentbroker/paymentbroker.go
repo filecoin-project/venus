@@ -766,6 +766,8 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *ty
 		return nil
 	}
 
+	// If new params have been provided or we don't yet have a cached condition,
+	// cache the provided params and condition on the payment channel.
 	if !channel.Redeemed || channel.Condition == nil || len(redeemerSuppliedParams) > 0 {
 		newParams := condition.Params
 		newParams = append(newParams, redeemerSuppliedParams...)
