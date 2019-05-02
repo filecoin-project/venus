@@ -141,7 +141,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 	case "describe":
 		m.logger.Print(mig.Describe())
 	case "migrate":
-		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
+		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt, to); err != nil {
 			return errors.Wrap(err, "clone repo failed")
 		}
 		m.logger.Printf("new repo will be at %s", m.newRepoPath)
@@ -156,7 +156,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 			return errors.Wrap(err, "installation failed")
 		}
 	case "buildonly":
-		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
+		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt, to); err != nil {
 			return err
 		}
 		m.logger.Printf("new repo will be at %s", m.newRepoPath)

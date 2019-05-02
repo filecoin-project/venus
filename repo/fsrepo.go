@@ -33,9 +33,6 @@ const (
 	dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
-
-	// DefaultRepoDir is the default directory of the filecoin repo
-	DefaultRepoDir = "repo"
 )
 
 var log = logging.Logger("repo")
@@ -62,9 +59,44 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// InitFSRepo initializes a new repo at a target path, establishing a provided configuration.
-// The target path must not exist, or must reference an empty, writable directory.
-func InitFSRepo(targetPath string, cfg *config.Config) error {
+// InitFSRepo initializes a new repo at the target path with the provided configuration.
+// The successful result creates a symlink at targetPath pointing to a sibling directory
+// named with a timestamp and repo version number.
+// The link path must be empty prior. If the computed actual directory exists, it must be empty.
+func InitFSRepo(targetPath string, version uint, cfg *config.Config) error {
+	linkPath, err := homedir.Expand(targetPath)
+	if err != nil {
+		return err
+	}
+
+	container, basename := filepath.Split(linkPath)
+	if container == "" { // path contained no separator
+		container = "./"
+	}
+
+	dirpath := container + MakeRepoDirName(basename, time.Now(), version, 0)
+
+	exists, err := fileExists(linkPath)
+	if err != nil {
+		return errors.Wrapf(err, "error inspecting repo symlink path %s", linkPath)
+	} else if exists {
+		return errors.Errorf("refusing to init repo symlink at %s, file exists", linkPath)
+	}
+
+	// Create the actual directory and then the link to it.
+	if err = InitFSRepoDirect(dirpath, version, cfg); err != nil {
+		return err
+	}
+	if err = os.Symlink(dirpath, linkPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// InitFSRepoDirect initializes a new repo at a target path, establishing a provided configuration.
+// The target path must not exist, or must reference an empty, read/writable directory.
+func InitFSRepoDirect(targetPath string, version uint, cfg *config.Config) error {
 	repoPath, err := homedir.Expand(targetPath)
 	if err != nil {
 		return err
@@ -82,7 +114,7 @@ func InitFSRepo(targetPath string, cfg *config.Config) error {
 		return fmt.Errorf("refusing to initialize repo in non-empty directory %s", repoPath)
 	}
 
-	if err := WriteVersion(repoPath, Version); err != nil {
+	if err := WriteVersion(repoPath, version); err != nil {
 		return errors.Wrap(err, "initializing repo version failed")
 	}
 
@@ -92,8 +124,10 @@ func InitFSRepo(targetPath string, cfg *config.Config) error {
 	return nil
 }
 
-// OpenFSRepo opens an already initialized fsrepo at the given path
-func OpenFSRepo(repoPath string) (*FSRepo, error) {
+// OpenFSRepo opens an initialized fsrepo, expecting a specific version.
+// The provided path may be to a directory, or a symbolic link pointing at a directory, which
+// will be resolved just once at open.
+func OpenFSRepo(repoPath string, version uint) (*FSRepo, error) {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
 		return nil, err
@@ -108,7 +142,23 @@ func OpenFSRepo(repoPath string) (*FSRepo, error) {
 		return nil, errors.Errorf("no repo found at %s; run: 'go-filecoin init [--repodir=%s]'", repoPath, repoPath)
 	}
 
-	r := &FSRepo{path: repoPath}
+	info, err := os.Stat(repoPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to stat repo link %s", repoPath)
+	}
+
+	// Resolve path if it's a symlink.
+	var actualPath string
+	if info.IsDir() {
+		actualPath = repoPath
+	} else {
+		actualPath, err = os.Readlink(repoPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to follow repo symlink %s", repoPath)
+		}
+	}
+
+	r := &FSRepo{path: actualPath, version: version}
 
 	r.lockfile, err = lockfile.Lock(r.path, lockFile)
 	if err != nil {
@@ -123,21 +173,36 @@ func OpenFSRepo(repoPath string) (*FSRepo, error) {
 	return r, nil
 }
 
+// MakeRepoDirName constructs a name for a concrete repo directory, which includes its
+// version number and a timestamp. The name will begin with prefix and, if uniqueifier is
+// non-zero, end with that (intended as an ordinal for finding a free name).
+// E.g. ".filecoin-20190102-140425-012-1
+// This is exported for use by migrations.
+func MakeRepoDirName(prefix string, ts time.Time, version uint, uniqueifier uint) string {
+	name := strings.Join([]string{
+		prefix,
+		ts.Format("20060102-150405"),
+		fmt.Sprintf("v%03d", version),
+	}, "-")
+	if uniqueifier != 0 {
+		name = name + fmt.Sprintf("-%d", uniqueifier)
+	}
+	return name
+}
+
 func (r *FSRepo) loadFromDisk() error {
-	localVersion, err := r.loadVersion()
+	localVersion, err := r.readVersion()
 	if err != nil {
-		return errors.Wrap(err, "failed to load version")
+		return errors.Wrap(err, "failed to read version")
 	}
 
-	if localVersion < Version {
+	if localVersion < r.version {
 		return fmt.Errorf("out of date repo version, got %d expected %d. Migrate with tools/migration/go-filecoin-migrate", localVersion, Version)
 	}
 
-	if localVersion > Version {
+	if localVersion > r.version {
 		return fmt.Errorf("binary needs update to handle repo version, got %d expected %d. Update binary to latest release", localVersion, Version)
 	}
-
-	r.version = localVersion
 
 	if err := r.loadConfig(); err != nil {
 		return errors.Wrap(err, "failed to load config file")
@@ -198,7 +263,10 @@ func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 // time of snapshot to the filename.
 func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
 	snapshotFile := filepath.Join(r.path, snapshotStorePrefix, genSnapshotFileName())
-	if fileExists(snapshotFile) {
+	exists, err := fileExists(snapshotFile)
+	if err != nil {
+		return errors.Wrap(err, "error checking snapshot file")
+	} else if exists {
 		// this should never happen
 		return fmt.Errorf("file already exists: %s", snapshotFile)
 	}
@@ -299,14 +367,14 @@ func (r *FSRepo) loadConfig() error {
 	return nil
 }
 
-func (r *FSRepo) loadVersion() (uint, error) {
-	// TODO: limited file reading, to avoid attack vector
-	file, err := ioutil.ReadFile(filepath.Join(r.path, versionFilename))
+// readVersion reads the repo's version file (but does not change r.version).
+func (r *FSRepo) readVersion() (uint, error) {
+	content, err := ReadVersion(r.path)
 	if err != nil {
 		return 0, err
 	}
 
-	version, err := strconv.Atoi(strings.Trim(string(file), "\n"))
+	version, err := strconv.Atoi(content)
 	if err != nil {
 		return 0, errors.New("corrupt version file: version is not an integer")
 	}
@@ -381,10 +449,23 @@ func WriteVersion(p string, version uint) error {
 	return ioutil.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
 }
 
+// ReadVersion returns the unparsed (string) version
+// from the version file in the specified repo.
+func ReadVersion(repoPath string) (string, error) {
+	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
+	if err != nil {
+		return "", err
+	}
+	return strings.Trim(string(file), "\n"), nil
+}
+
 func initConfig(p string, cfg *config.Config) error {
 	configFile := filepath.Join(p, configFilename)
-	if fileExists(configFile) {
-		return fmt.Errorf("file already exists: %s", configFile)
+	exists, err := fileExists(configFile)
+	if err != nil {
+		return errors.Wrap(err, "error inspecting config file")
+	} else if exists {
+		return fmt.Errorf("config file already exists: %s", configFile)
 	}
 
 	if err := cfg.WriteFile(configFile); err != nil {
@@ -434,12 +515,15 @@ func isEmptyDir(path string) (bool, error) {
 	return len(infos) == 0, nil
 }
 
-func fileExists(file string) bool {
+func fileExists(file string) (bool, error) {
 	_, err := os.Stat(file)
-	if os.IsNotExist(err) {
-		return false
+	if err == nil {
+		return true, nil
 	}
-	return err == nil
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 // SetAPIAddr writes the address to the API file. SetAPIAddr expects parameter
@@ -505,14 +589,4 @@ func badgerOptions() *badgerds.Options {
 	result := &badgerds.DefaultOptions
 	result.Truncate = true
 	return result
-}
-
-// ReadVersion returns the unparsed (string) version
-// from the version file in the specified repo.
-func ReadVersion(repoPath string) (string, error) {
-	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
-	if err != nil {
-		return "", err
-	}
-	return strings.Trim(string(file), "\n"), nil
 }

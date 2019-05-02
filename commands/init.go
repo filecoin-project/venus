@@ -10,10 +10,10 @@ import (
 	"os"
 
 	"github.com/ipfs/go-car"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
-	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-crypto"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -48,18 +48,18 @@ var initCmd = &cmds.Command{
 		}
 
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
-			return err
-		}
 		repoDir, err = paths.GetRepoPath(repoDir)
 		if err != nil {
 			return err
 		}
 
-		if err := repo.InitFSRepo(repoDir, newConfig); err != nil {
+		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
-		rep, err := repo.OpenFSRepo(repoDir)
+		if err := repo.InitFSRepo(repoDir, repo.Version, newConfig); err != nil {
+			return err
+		}
+		rep, err := repo.OpenFSRepo(repoDir, repo.Version)
 		if err != nil {
 			return err
 		}

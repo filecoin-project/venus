@@ -124,7 +124,7 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return repo.OpenFSRepo(repoDir)
+	return repo.OpenFSRepo(repoDir, repo.Version)
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
