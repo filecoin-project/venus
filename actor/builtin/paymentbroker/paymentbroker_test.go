@@ -838,7 +838,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
 	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -863,7 +863,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	payerParams := []interface{}{toAddress, sectorIdParam}
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
 	// Redeem the payment channel with bad params and expect invalid condition error
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
