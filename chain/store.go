@@ -32,7 +32,7 @@ type ReadStore interface {
 	// provided tipset key if in the store and an error if it does not
 	// exist.
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
-	
+
 	// GetTipSet retrieves the state at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
