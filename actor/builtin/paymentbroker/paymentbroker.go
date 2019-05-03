@@ -82,9 +82,18 @@ type PaymentChannel struct {
 	// payer and payee upon initialization or extension
 	AgreedEol *types.BlockHeight `json:"agreed_eol"`
 
+	// Condition are the set of conditions for redeeming or closing the payment
+	// channel
+	Condition *types.Predicate `json:"condition"`
+
 	// Eol is the actual expiration for the payment channel which can differ from
 	// AgreedEol when the payment channel is in dispute
 	Eol *types.BlockHeight `json:"eol"`
+
+	// Redeemed is a flag indicating whether or not Redeem has been called on the
+	// payment channel yet. This is necessary because AmountRedeemed can still be
+	// zero in the event of a zero-value voucher
+	Redeemed bool `json:"redeemed"`
 }
 
 // Actor provides a mechanism for off chain payments.
@@ -222,16 +231,10 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	if errCode, err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
-		return errCode, err
-	}
-
 	ctx := context.Background()
 	storage := vmctx.Storage()
 
 	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		var channel *PaymentChannel
-
 		chInt, err := byChannelID.Find(ctx, chid.KeyString())
 		if err != nil {
 			if err == hamt.ErrNotFound {
@@ -246,7 +249,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -254,6 +257,9 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 		// Reset the EOL to the originally agreed upon EOL in the event that the
 		// channel has been cancelled.
 		channel.Eol = channel.AgreedEol
+
+		// Mark the payment channel as redeemed
+		channel.Redeemed = true
 
 		return byChannelID.Set(ctx, chid.KeyString(), channel)
 	})
@@ -287,10 +293,6 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		return errors.CodeError(Errors[ErrInvalidSignature]), Errors[ErrInvalidSignature]
 	}
 
-	if errCode, err := checkCondition(vmctx, condition, redeemerConditionParams); err != nil {
-		return errCode, err
-	}
-
 	ctx := context.Background()
 	storage := vmctx.Storage()
 
@@ -309,7 +311,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		}
 
 		// validate the amount can be sent to the target and send payment to that address.
-		err = updateChannel(vmctx, vmctx.Message().From, channel, amt, validAt)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -590,7 +592,11 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 	return channelsBytes, 0, nil
 }
 
-func updateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight) error {
+func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+	if err := checkCondition(ctx, channel, condition, redeemerSuppliedParams); err != nil {
+		return err
+	}
+
 	if target != channel.Target {
 		return Errors[ErrWrongTarget]
 	}
@@ -750,18 +756,29 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
 // to the actor and method specified in the condition, and returns an error if one exists.
-func checkCondition(vmctx exec.VMContext, condition *types.Predicate, redeemerSuppliedParams []interface{}) (uint8, error) {
+func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
 	if condition == nil {
-		return 0, nil
+		channel.Condition = nil
+		return nil
 	}
-	params := append(condition.Params[:0:0], condition.Params...)
-	params = append(params, redeemerSuppliedParams...)
-	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), params)
+
+	// If new params have been provided or we don't yet have a cached condition,
+	// cache the provided params and condition on the payment channel.
+	if !channel.Redeemed || channel.Condition == nil || len(redeemerSuppliedParams) > 0 {
+		newParams := condition.Params
+		newParams = append(newParams, redeemerSuppliedParams...)
+
+		newCachedCondition := *condition
+		newCachedCondition.Params = newParams
+		channel.Condition = &newCachedCondition
+	}
+
+	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
 	if err != nil {
 		if errors.IsFault(err) {
-			return errors.CodeError(err), err
+			return err
 		}
-		return ErrConditionInvalid, errors.RevertErrorWrap(err, "failed to validate voucher condition")
+		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
 	}
-	return 0, nil
+	return nil
 }

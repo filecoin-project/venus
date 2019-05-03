@@ -31,6 +31,10 @@ func EncodeValues(vals []*Value) ([]byte, error) {
 // DecodeValues decodes an array of abi values from the given buffer, using the
 // provided type information.
 func DecodeValues(data []byte, types []Type) ([]*Value, error) {
+	if len(types) > 0 && len(data) == 0 {
+		return nil, fmt.Errorf("expected %d parameters, but got 0", len(types))
+	}
+
 	if len(data) == 0 {
 		return nil, nil
 	}
