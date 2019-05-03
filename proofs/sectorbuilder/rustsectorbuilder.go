@@ -285,6 +285,17 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 			return nil, errors.Wrap(err, "failed to marshal from string to cid")
 		}
 
+		// TODO: These piece inclusion proofs are fake, remove this when proofs are available
+		// The fake proof uses the piece cid as a fake CommP and concatenates CommP with CommD
+		// see https://github.com/filecoin-project/go-filecoin/issues/2629
+		for _, pieceInfo := range ps {
+			var commP types.CommP
+			copy(commP[:], pieceInfo.Ref.Bytes())
+			pieceInfo.InclusionProof = []byte{}
+			pieceInfo.InclusionProof = append(pieceInfo.InclusionProof, commP[:]...)
+			pieceInfo.InclusionProof = append(pieceInfo.InclusionProof, commD[:]...)
+		}
+
 		return &SealedSectorMetadata{
 			CommD:     commD,
 			CommR:     commR,

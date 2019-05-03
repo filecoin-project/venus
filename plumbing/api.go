@@ -339,6 +339,7 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 	return api.dag.ImportData(ctx, data)
 }
 
+// BitswapGetStats returns bitswaps stats.
 func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
 	return api.bitswap.(*bitswap.Bitswap).Stat()
 }

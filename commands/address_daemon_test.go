@@ -134,7 +134,9 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 
 	wf, err := os.Create("walletFileTest")
 	require.NoError(t, err)
-	defer os.Remove("walletFileTest")
+	defer func() {
+		require.NoError(t, os.Remove("walletFileTest"))
+	}()
 	_, err = wf.WriteString(ki)
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())

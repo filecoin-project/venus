@@ -8,8 +8,13 @@ import "fmt"
 type SectorSize int
 
 const (
+	// UnknownSectorSize sector size
 	UnknownSectorSize = SectorSize(iota)
-	OneKiBSectorSize
+
+	// OneKiBSectorSize indicates a sector which, after sealing, contains 1024 bytes.
+	OneKiBSectorSize = SectorSize(iota)
+
+	// TwoHundredFiftySixMiBSectorSize indicates a sector which, after sealing, contains 256MiB.
 	TwoHundredFiftySixMiBSectorSize
 )
 

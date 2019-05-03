@@ -38,6 +38,9 @@ var errTimeout = errors.New("timeout")
 // DefaultFilecoinBinary is the name or full path of the binary that will be used
 var DefaultFilecoinBinary = "go-filecoin"
 
+// DefaultSectorsPath is the name of the sector path relative to the repo path
+var DefaultSectorsPath = "sectors"
+
 // DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
 var DefaultLogLevel = "3"
 
@@ -53,6 +56,9 @@ var (
 
 	// AttrLogJSON is the key used to set the node to output json logs
 	AttrLogJSON = "logJSON"
+
+	// AttrSectorsPath is the key used to set the sectors path
+	AttrSectorsPath = "sectorsPath"
 )
 
 // Localfilecoin represents a filecoin node
@@ -61,9 +67,10 @@ type Localfilecoin struct {
 	peerid  cid.Cid
 	apiaddr multiaddr.Multiaddr
 
-	binPath  string
-	logLevel string
-	logJSON  string
+	binPath     string
+	sectorsPath string
+	logLevel    string
+	logJSON     string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -73,9 +80,10 @@ func init() {
 		var (
 			err error
 
-			binPath  = ""
-			logLevel = DefaultLogLevel
-			logJSON  = DefaultLogJSON
+			binPath     = ""
+			sectorsPath = filepath.Join(dir, DefaultSectorsPath)
+			logLevel    = DefaultLogLevel
+			logJSON     = DefaultLogJSON
 		)
 
 		if v, ok := attrs[AttrFilecoinBinary]; ok {
@@ -88,6 +96,10 @@ func init() {
 
 		if v, ok := attrs[AttrLogJSON]; ok {
 			logJSON = v
+		}
+
+		if v, ok := attrs[AttrSectorsPath]; ok {
+			sectorsPath = v
 		}
 
 		if len(binPath) == 0 {
@@ -109,11 +121,16 @@ func init() {
 			return nil, err
 		}
 
+		if err := os.Mkdir(sectorsPath, 0755); err != nil {
+			return nil, err
+		}
+
 		return &Localfilecoin{
-			dir:      dir,
-			binPath:  dst,
-			logLevel: logLevel,
-			logJSON:  logJSON,
+			dir:         dir,
+			binPath:     dst,
+			sectorsPath: sectorsPath,
+			logLevel:    logLevel,
+			logJSON:     logJSON,
 		}, nil
 	}
 }
@@ -141,6 +158,18 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	if err := lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
+	}
+
+	// only set sectors path to l.sectorsPath if init command does not set
+	isectorsPath, err := lcfg.Get("sectorbase.rootdir")
+	if err != nil {
+		return nil, err
+	}
+	lsectorsPath := isectorsPath.(string)
+	if lsectorsPath == "" {
+		if err := lcfg.Set("sectorbase.rootdir", l.sectorsPath); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := l.WriteConfig(lcfg); err != nil {
@@ -520,7 +549,7 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 /** Config Interface **/
 
-// GetConfig returns the nodes config.
+// Config returns the nodes config.
 func (l *Localfilecoin) Config() (interface{}, error) {
 	return config.ReadFile(filepath.Join(l.dir, "config.json"))
 }

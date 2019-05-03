@@ -124,11 +124,15 @@ type Deal struct {
 }
 
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
-// TODO: finalize parameters
 type ProofInfo struct {
+	// Sector id allows us to find the committed sector metadata on chain
 	SectorID uint64
-	CommR    []byte
-	CommD    []byte
+
+	// CommitmentMessage is the cid of the message that committed the sector. It's used to track when the sector goes on chain.
+	CommitmentMessage *cid.Cid
+
+	// PieceInclusionProof is a proof that a the piece is included within a sector
+	PieceInclusionProof []byte
 }
 
 // QueryRequest is used for making protocol api requests for deals

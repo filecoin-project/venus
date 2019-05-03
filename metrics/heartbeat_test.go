@@ -143,7 +143,9 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	// The handle method will run the assertions for the test
 	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(s net.Stream) {
-		defer s.Close()
+		defer func() {
+			require.NoError(t, s.Close())
+		}()
 
 		dec := json.NewDecoder(s)
 		var hb Heartbeat
