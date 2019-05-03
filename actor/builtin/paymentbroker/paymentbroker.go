@@ -420,7 +420,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			if channel.Condition == nil {
 				return errors.NewCodedRevertError(ErrConditionValid, "channel cannot be cancelled due to successful redeem")
 			} else {
-				err := checkCondition(vmctx, channel, channel.Condition, []interface{}{})
+				err := checkCondition(vmctx, channel)
 				if err == nil {
 					return errors.NewCodedRevertError(ErrConditionValid, "channel cannot be cancelled due to successful redeem")
 				}
@@ -609,7 +609,9 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 }
 
 func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
-	if err := checkCondition(ctx, channel, condition, redeemerSuppliedParams); err != nil {
+	cacheCondition(channel, condition, redeemerSuppliedParams)
+
+	if err := checkCondition(ctx, channel); err != nil {
 		return err
 	}
 
@@ -772,10 +774,27 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
 // to the actor and method specified in the condition, and returns an error if one exists.
-func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+func checkCondition(vmctx exec.VMContext, channel *PaymentChannel) error {
+	if channel.Condition == nil {
+		return nil
+	}
+
+	_, _, err := vmctx.Send(channel.Condition.To, channel.Condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
+	if err != nil {
+		if errors.IsFault(err) {
+			return err
+		}
+		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
+	}
+	return nil
+}
+
+// cacheCondition saves redeemer supplied conditions to the payment channel for
+// future use
+func cacheCondition(channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) {
 	if condition == nil {
 		channel.Condition = nil
-		return nil
+		return
 	}
 
 	// If new params have been provided or we don't yet have a cached condition,
@@ -788,13 +807,4 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *ty
 		newCachedCondition.Params = newParams
 		channel.Condition = &newCachedCondition
 	}
-
-	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
-	if err != nil {
-		if errors.IsFault(err) {
-			return err
-		}
-		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
-	}
-	return nil
 }
