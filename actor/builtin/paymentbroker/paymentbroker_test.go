@@ -854,6 +854,28 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	assert.Error(t, result.ExecutionError)
 }
 
+func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Attempts to Cancel and expects failure
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
+}
+
 func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *testing.T) {
 	tf.UnitTest(t)
 
