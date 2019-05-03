@@ -130,9 +130,6 @@ type Node struct {
 	AddNewlyMinedBlock newBlockFunc
 	blockTime          time.Duration
 	cancelMining       context.CancelFunc
-	GetAncestorsFunc   mining.GetAncestors
-	GetStateTreeFunc   mining.GetStateTree
-	GetWeightFunc      mining.GetWeight
 	MiningWorker       mining.Worker
 	MiningScheduler    mining.Scheduler
 	mining             struct {
@@ -469,11 +466,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
-
-	// set up mining worker funcs
-	nd.GetAncestorsFunc = nd.getAncestors
-	nd.GetStateTreeFunc = nd.getStateTree
-	nd.GetWeightFunc = nd.getWeight
 
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
