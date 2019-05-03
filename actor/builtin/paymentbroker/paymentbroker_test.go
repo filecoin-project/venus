@@ -368,11 +368,12 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-		// Redeem without params and expect a panic
+		// Redeem without params expects an invalid condition error
 		condition := &types.Predicate{To: toAddress, Method: method}
 		appResult, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
+		require.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 
 		// Successfully redeem the payment channel with params
 		condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
