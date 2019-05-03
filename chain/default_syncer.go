@@ -270,7 +270,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 		newChain = append(newChain, next)
 		if IsReorg(*headTipSet, newChain) {
-			logSyncer.Infof("reorg occurring while switching from %s to %s", (*headTipSet).String(), next.String())
+			logSyncer.Infof("reorg occurring while switching from %s to %s", headTipSet.String(), next.String())
 		}
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
