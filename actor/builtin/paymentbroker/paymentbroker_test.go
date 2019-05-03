@@ -870,7 +870,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	result, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
 	require.NoError(t, err)
 	require.Error(t, result.ExecutionError)
-	require.EqualValues(t, errors.CodeError(result.ExecutionError), ErrConditionInvalid)
+	require.EqualValues(t, ErrConditionInvalid, errors.CodeError(result.ExecutionError))
 
 	// Attempt to Cancel and expects success
 	pdata := core.MustConvertParams(sys.channelID)
