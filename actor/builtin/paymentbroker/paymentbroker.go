@@ -414,6 +414,20 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
+		if channel.Redeemed {
+			if channel.Condition == nil {
+				return errors.NewFaultError("Channel cannot be cancelled due to successful redeem")
+			} else {
+				err := checkCondition(vmctx, channel, channel.Condition, []interface{}{})
+				if err != nil && !errors.IsFault(err) {
+					return err
+				}
+				if err == nil {
+					return errors.NewFaultError("Channel cannot be cancelled due to successful redeem")
+				}
+			}
+		}
+
 		eol := vmctx.BlockHeight().Add(types.NewBlockHeight(CancelDelayBlockTime))
 
 		// eol can only be decreased
