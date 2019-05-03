@@ -862,16 +862,26 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	method := "paramsNotZero"
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{toAddress, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
 	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
-	// Redeem the payment channel with bad params and expect invalid condition error
+	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 	require.NoError(t, err)
-	require.Error(t, result.ExecutionError)
-	require.EqualValues(t, ErrConditionInvalid, errors.CodeError(result.ExecutionError))
+	require.NoError(t, result.ExecutionError)
+
+	// Expect that the redeemed flag is true and condition is set
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+	assert.Equal(t, true, channel.Redeemed)
+	assert.NotNil(t, channel.Condition)
+
+	// Change the condition to make it no longer valid
+	channel.Condition.Params = []interface{}{}
 
 	// Attempt to Cancel and expects success
 	pdata := core.MustConvertParams(sys.channelID)
