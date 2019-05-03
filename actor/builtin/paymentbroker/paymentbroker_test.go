@@ -146,7 +146,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
@@ -160,7 +161,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
@@ -174,7 +176,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
@@ -188,7 +191,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
@@ -202,7 +206,8 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 }
 
