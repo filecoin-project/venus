@@ -50,11 +50,8 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}
-	ts, err := p.chainReader.GetTipSet(headTs)
-	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get tipset")
-	}
-	h, err := (*ts).Height()
+
+	h, err := p.chainReader.BlockHeight()
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get base tipset height")
 	}

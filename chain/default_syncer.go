@@ -243,7 +243,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if err != nil {
 		return err
 	}
-	headParentCids, err := (*headTipSet).Parents()
+	headParentCids, err := headTipSet.Parents()
 	if err != nil {
 		return err
 	}

@@ -53,11 +53,8 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	if err != nil {
 		return nil, errors.Wrap(err, "could load tree for latest state root")
 	}
-	ts, err := q.chainReader.GetTipSet(headTs)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldnt get tipset")
-	}
-	h, err := (*ts).Height()
+
+	h, err := q.chainReader.BlockHeight()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get base tipset height")
 	}

@@ -1067,16 +1067,16 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
 
-func requireGetTsas(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) *chain.TipSetAndState {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) *types.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
+	return ts
+}
+
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) cid.Cid {
 	tssr, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
-	return &chain.TipSetAndState{
-		TipSet:          *ts,
-		TipSetStateRoot: tssr,
-	}
-
+	return tssr
 }
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {

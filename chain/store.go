@@ -48,6 +48,9 @@ type ReadStore interface {
 	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 
 	GenesisCid() cid.Cid
+
+	//returns the chain height of the head tipset
+	BlockHeight() (uint64, error)
 }
 
 // Store wraps the on-disk storage of a valid blockchain.  Callers can get and
