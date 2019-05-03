@@ -1,11 +1,16 @@
 package internal
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/repo"
 )
 
 // RequireMakeTempDir ensures that a temporary directory is created
@@ -19,4 +24,32 @@ func RequireMakeTempDir(t *testing.T, dirname string) string {
 // after creating a temporary directory.
 func RequireRmDir(t *testing.T, dirname string) {
 	require.NoError(t, os.RemoveAll(dirname))
+}
+
+// RequireSetupTestRepo sets up a repo dir with a symlink pointing to it.
+// Caller is responsible for deleting dir and symlink.
+func RequireSetupTestRepo(t *testing.T, repoVersion int) (repoDir, symLink string) {
+	repoDir = RequireMakeTempDir(t, "testrepo")
+	require.NoError(t, repo.InitFSRepo(repoDir, config.NewDefaultConfig()))
+
+	symLink = repoDir + "-reposymlink"
+	require.NoError(t, os.Symlink(repoDir, symLink))
+
+	RequireSetRepoVersion(t, repoVersion, repoDir)
+	return repoDir, symLink
+}
+
+// RequireSetRepoVersion sets the version for the given test repo.
+// even though the version is uint, using int allows us to test with invalid repoVersions
+// such as -1
+func RequireSetRepoVersion(t *testing.T, repoVersion int, repoDir string) {
+	verFile := repo.VersionFilename()
+	newVer := []byte(fmt.Sprintf("%d", repoVersion))
+	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, verFile), newVer, 0644))
+}
+
+// RequireGetRepoVersion gets the version for the given test repo
+func RequireGetRepoVersion(t *testing.T, repoDir string) uint {
+	//_ := repo.VersionFilename()
+	return 1
 }

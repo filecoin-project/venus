@@ -1,9 +1,9 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -24,6 +24,7 @@ type Migration interface {
 	//      contain a copy of the old repo.
 	Migrate(newRepoPath string) error
 
+	// Versions returns valid from and to migration versions for this migration.
 	Versions() (from, to uint)
 
 	// Validate performs validation operations, using oldRepo for comparison.
@@ -53,10 +54,6 @@ type MigrationRunner struct {
 	// MigrationsProvider is a dependency for fetching available migrations
 	// to allow unit tests to supply test migrations without creating test fixtures.
 	MigrationsProvider func() []Migration
-
-	// RepoVersionGetter is a dependency for getting a Repo Version,
-	// to allow the binary version of the repo to be mocked in testing.
-	RepoVersionGetter func() uint
 }
 
 // NewMigrationRunner builds a MigrationRunner for the given command and repo options
@@ -66,34 +63,40 @@ func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRu
 		command:    command,
 		oldRepoOpt: oldRepoOpt,
 		MigrationsProvider: DefaultMigrationsProvider,
-		RepoVersionGetter:  DefaultVersionGetter,
 	}
-}
-
-// DefaultVersionGetter fetches the Version constant from the repo package.
-func DefaultVersionGetter() uint {
-	return repo.Version
 }
 
 // Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
-	// TODO: Issue #2595 Implement first repo migration
-	// detect current version of old repo
-	repoVersion, err := m.loadVersion()
+	repoVersion, err := m.GetSourceRepoVersion()
 	if err != nil {
 		return err
 	}
-	if repoVersion == repo.Version {
-		return errors.New("binary version = repo version; migration not run")
+	if repoVersion == m.getTargetMigrationVersion() {
+		return fmt.Errorf("binary version %d = repo version %d; migration not run", repoVersion, m.getTargetMigrationVersion())
 	}
+
 	for _, mig := range m.MigrationsProvider() {
 		from, to := mig.Versions()
-		if from == repoVersion && to == from+1 {
+		if to != from+1 {
+			log.Printf("Refusing multi-version migration from %d to %d", from, to)
+			continue
+		}
+		if from == repoVersion {
 			newRepoPath, err := CloneRepo(m.oldRepoOpt)
 			if err != nil {
 				return err
 			}
+			return m.runCommand(mig, to, newRepoPath)
+		}
+	}
+	// else exit with error
+	m.logger.Error(fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1))
+	return m.logger.Close()
+}
 
+func (m *MigrationRunner) runCommand(mig Migration, to uint, newRepoPath string) error {
+	var err error
 			switch m.command {
 			case "migrate":
 				if err = mig.Migrate(newRepoPath); err != nil {
@@ -120,14 +123,11 @@ func (m *MigrationRunner) Run() error {
 			return m.logger.Close()
 		}
 	}
-	// else exit with error
-	m.logger.Error(fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1))
-	return m.logger.Close()
 }
 
 // Shamelessly lifted from FSRepo, with version checking added.
-func (m *MigrationRunner) loadVersion() (uint, error) {
-	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, "version"))
+func (m *MigrationRunner) GetSourceRepoVersion() (uint, error) {
+	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, repo.VersionFilename()))
 	if err != nil {
 		return 0, err
 	}
@@ -154,4 +154,16 @@ func (m *MigrationRunner) validateAndUpdateVersion(toVersion uint, newRepoPath s
 		return err
 	}
 	return nil
+}
+
+func (m *MigrationRunner) getTargetMigrationVersion() uint {
+	targetVersion := uint(0)
+	migrations := m.MigrationsProvider()
+	for _, mig := range migrations {
+		_, to := mig.Versions()
+		if to > targetVersion {
+			targetVersion = to
+		}
+	}
+	return targetVersion
 }

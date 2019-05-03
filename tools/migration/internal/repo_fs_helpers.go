@@ -30,7 +30,7 @@ func CloneRepo(oldRepoLink string) (string, error) {
 		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
 	}
 
-	newRepoPath, err := getNewRepoPath(oldRepoLink, "")
+	newRepoPath, err := getNewRepoPath(oldRepoLink)
 	if err != nil {
 		return "", err
 	}
@@ -74,20 +74,13 @@ func OpenRepo(repoPath string) (*os.File, error) {
 //     error
 // Example output:
 //     /Users/davonte/.filecoin-20190806-150455-001
-func getNewRepoPath(oldPath, newRepoOpt string) (string, error) {
-	var newRepoPrefix string
-	if newRepoOpt != "" {
-		newRepoPrefix = newRepoOpt
-	} else {
-		newRepoPrefix = oldPath
-	}
-
+func getNewRepoPath(oldPath string) (string, error) {
 	// unlikely to see a name collision but make sure; making it loop up to 1000
 	// ensures that even if there are 1000 calls/sec then the timestamp will change
 	// anyway.
 	var newpath string
 	for i := 1; i < 1000; i++ {
-		newpath = strings.Join([]string{newRepoPrefix, NowString(), fmt.Sprintf("%03d", i)}, "-")
+		newpath = strings.Join([]string{oldPath, NowString(), fmt.Sprintf("%03d", i)}, "-")
 		if _, err := os.Stat(newpath); os.IsNotExist(err) {
 			return newpath, nil
 		}

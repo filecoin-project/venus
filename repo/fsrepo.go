@@ -505,3 +505,8 @@ func badgerOptions() *badgerds.Options {
 	result.Truncate = true
 	return result
 }
+
+// VersionFilename returns the version filename for the repo
+func VersionFilename() string {
+	return versionFilename
+}

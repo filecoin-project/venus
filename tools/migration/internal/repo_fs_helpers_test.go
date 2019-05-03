@@ -67,7 +67,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 		// updating, which is correct behavior. Programmatically proving it restarts
 		// in this test was more trouble than it was worth.
 		var repos []string
-		for i := 1; i < 10; i++ {
+		for i := 1; i < 5; i++ {
 			result, err := CloneRepo(linkedRepoPath)
 			require.NoError(t, err)
 			repos = append(repos, result)

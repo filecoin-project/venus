@@ -3,14 +3,12 @@ package internal_test
 import (
 	"errors"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/repo"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
@@ -25,12 +23,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 		require.NoError(t, os.Remove(dummyLogFile.Name()))
 	}()
 
-	repoTmpDir := RequireMakeTempDir(t, "testrepo")
-	defer RequireRmDir(t, repoTmpDir)
-	require.NoError(t, repo.InitFSRepo(repoTmpDir, config.NewDefaultConfig()))
-
-	repoDir := repoTmpDir + "-reposymlink"
-	require.NoError(t, os.Symlink(repoTmpDir, repoDir))
+	repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
+	defer RequireRmDir(t, repoDir)
+	defer RequireRmDir(t, repoSymlink)
 
 	t.Run("returns error if repo not found", func(t *testing.T) {
 		runner := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink")
@@ -38,68 +33,22 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("Can set MigrationsProvider", func(t *testing.T) {
-		runner := NewMigrationRunner(false, "describe", repoDir)
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
 		runner.MigrationsProvider = testProviderPasses
-
-		// set version to 0.
-		// Note this will break if the version file name changes
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("0"), 0644))
 
 		migrations := runner.MigrationsProvider()
 		assert.NotEmpty(t, migrations)
 		assert.NoError(t, runner.Run())
 	})
 
-	t.Run("successful migration writes the new version to the repo", func(t *testing.T) {
-
-	})
-
-	t.Run("Returns error and does not not run the migration if the repo is already up to date", func(t *testing.T) {
-		runner := NewMigrationRunner(false, "describe", repoDir)
-		runner.MigrationsProvider = testProviderPasses
-
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("1"), 0644))
-		assert.EqualError(t, runner.Run(), "binary version = repo version; migration not run")
-	})
-
-	t.Run("Runs the right migration version", func(t *testing.T) {
-		runner := NewMigrationRunner(false, "describe", repoDir)
-		runner.MigrationsProvider = testProviderValidationFails
-
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("1"), 0644))
-		assert.EqualError(t, runner.Run(), "binary version = repo version; migration not run")
-	})
-
-	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
-		runner := NewMigrationRunner(false, "describe", repoDir)
-		runner.MigrationsProvider = testProviderPasses
-
-		// set version to something unreasonable
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("99"), 0644))
-		assert.EqualError(t, runner.Run(), "did not find valid repo migration for version 99 to version 100")
-	})
-
-	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
-		runner := NewMigrationRunner(false, "describe", repoDir)
-		runner.MigrationsProvider = testProviderPasses
-
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("-1"), 0644))
-		assert.EqualError(t, runner.Run(), "repo version out of range: -1")
-
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("32767"), 0644))
-		assert.EqualError(t, runner.Run(), "repo version out of range: 32767")
-	})
-
 	t.Run("Returns error when Migration fails", func(t *testing.T) {
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("0"), 0644))
-		runner := NewMigrationRunner(false, "migrate", repoDir)
+		runner := NewMigrationRunner(false, "migrate", repoSymlink)
 		runner.MigrationsProvider = testProviderMigrationFails
 		assert.EqualError(t, runner.Run(), "migration has failed")
 	})
 
 	t.Run("Returns error when Validation fails", func(t *testing.T) {
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("0"), 0644))
-		runner := NewMigrationRunner(false, "migrate", repoDir)
+		runner := NewMigrationRunner(false, "migrate", repoSymlink)
 		runner.MigrationsProvider = testProviderValidationFails
 		assert.EqualError(t, runner.Run(), "validation has failed")
 	})
@@ -108,8 +57,58 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	})
 
-	t.Run("Returns error if version file does not contain an integer string", func(t *testing.T) {
+	t.Run("successful migration writes the new version to the repo", func(t *testing.T) {
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderPasses
 
+		migrations := runner.MigrationsProvider()
+		assert.NotEmpty(t, migrations)
+		assert.NoError(t, runner.Run())
+
+	})
+
+	t.Run("Returns error and does not not run the migration if the repo is already up to date", func(t *testing.T) {
+		RequireSetRepoVersion(t, 1, repoDir)
+
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderPasses
+		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
+	})
+
+	t.Run("Runs the right migration version", func(t *testing.T) {
+		RequireSetRepoVersion(t, 1, repoDir)
+
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderValidationFails
+		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
+	})
+
+	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
+		RequireSetRepoVersion(t, 199, repoDir)
+
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderPasses
+		assert.EqualError(t, runner.Run(), "did not find valid repo migration for version 199")
+	})
+
+	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderPasses
+
+		RequireSetRepoVersion(t, -1, repoDir)
+		assert.EqualError(t, runner.Run(), "repo version out of range: -1")
+
+		RequireSetRepoVersion(t, 32767, repoDir)
+		assert.EqualError(t, runner.Run(), "repo version out of range: 32767")
+	})
+
+	t.Run("Returns error if version file does not contain an integer string", func(t *testing.T) {
+		runner := NewMigrationRunner(false, "describe", repoSymlink)
+		runner.MigrationsProvider = testProviderPasses
+
+		// TODO: Handle this more gracefully
+		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, repo.VersionFilename()), []byte("foo"), 0644))
+		assert.EqualError(t, runner.Run(), "strconv.Atoi: parsing \"foo\": invalid syntax")
 	})
 }
 
