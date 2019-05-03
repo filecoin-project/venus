@@ -659,10 +659,11 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
 
 	// Close without params and expect a panic
-	condition := &types.Predicate{To: toAddress, Method: method}
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 	result, err := sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
 	require.NoError(t, err)
 	require.Error(t, result.ExecutionError)
+	require.EqualValues(t, errors.CodeError(result.ExecutionError), ErrConditionInvalid)
 
 	// Successfully redeem the payment channel with params
 	condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -671,7 +672,7 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 	require.NoError(t, result.ExecutionError)
 
 	// Close again without params and expect no error
-	result, err = sys.ApplyCloseMessage(sys.target, 200, 0)
+	result, err = sys.applySignatureMessage(sys.target, 200, sys.defaultValidAt, 0, "close", 0, condition)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 }
