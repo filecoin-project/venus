@@ -77,11 +77,11 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	ts, err := chainReader.GetTipSet(firstExtraRandomnessAncestorsCids)
+	lookBackTS, err := chainReader.GetTipSet(firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
 	}
-	iterator = IterAncestors(ctx, chainReader, *ts)
+	iterator = IterAncestors(ctx, chainReader, *lookBackTS)
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
