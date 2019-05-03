@@ -9,9 +9,11 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -108,9 +110,16 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // blocks that do not form a tipset, or if any tipset has already been recorded
 // as the head of an invalid chain.  collectChain is the entrypoint to the code
 // that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) ([]types.TipSet, error) {
+func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) (ts []types.TipSet, err error) {
+	ctx, span := trace.StartSpan(ctx, "DefaultSyncer.collectChain")
+	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
 	var chain []types.TipSet
-	defer logSyncer.Info("chain synced")
+	var count uint64
+	fetchedHead := tipsetCids
+	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
+
 	for {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
@@ -139,9 +148,9 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 
-		height, _ := ts.Height()
-		if len(chain)%500 == 0 {
-			logSyncer.Infof("syncing the chain, currently at block height %d", height)
+		count++
+		if count%500 == 0 {
+			logSyncer.Infof("fetching the chain, %d blocks fetched", count)
 		}
 
 		// Update values to traverse next tipset
@@ -325,8 +334,11 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error {
-	logSyncer.Debugf("trying to sync %v\n", tipsetCids)
+func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) (err error) {
+	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tipsetCids)
+	ctx, span := trace.StartSpan(ctx, "DefaultSyncer.HandleNewTipset")
+	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	// This lock could last a long time as we fetch all the blocks needed to block the chain.
 	// This is justified because the app is pretty useless until it is synced.
@@ -382,6 +394,9 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 			// so we don't really lose anything with this simplification.
 			syncer.badTipSets.AddChain(chain[i:])
 			return err
+		}
+		if i%500 == 0 {
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), tipsetCids.String())
 		}
 		parent = ts
 	}

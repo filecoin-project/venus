@@ -39,7 +39,7 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
 - [Sector builder & proofs](#sector-builder--proofs)
   - [Building and distribution.](#building-and-distribution)
   - [Groth parameters](#groth-parameters)
-  - [Sector size configuration](#sector-size-configuration)
+  - [Proof mode configuration](#proof-mode-configuration)
 - [Networking](#networking)
 - [Filesystem storage](#filesystem-storage)
   - [JSON Config](#json-config)
@@ -50,10 +50,14 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
       - [Unit Tests (`-unit`)](#unit-tests--unit)
       - [Integration Tests (`-integration`)](#integration-tests--integration)
       - [Functional Tests (`-functional`)](#functional-tests--functional)
+      - [Sector Builder Tests (`-sectorbuilder`)](#sector-builder-tests--sectorbuilder)
 - [Dependencies](#dependencies)
 - [Patterns](#patterns)
   - [Plumbing and porcelain](#plumbing-and-porcelain)
   - [Consumer-defined interfaces](#consumer-defined-interfaces)
+  - [Observability](#observability)
+    - [Metrics](#metrics)
+    - [Tracing](#tracing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -636,3 +640,20 @@ Our implementation of [plumbing and porcelain](#plumbing-and-porcelain) embraces
 
 This idiom is unfortunately hidden away in a [wiki page about code review](https://github.com/golang/go/wiki/CodeReviewComments#interfaces).
 See also Dave Cheney on [SOLID Go Design](https://dave.cheney.net/2016/08/20/solid-go-design).
+
+### Observability
+
+go-filecoin uses [Opencensus-go](https://github.com/census-instrumentation/opencensus-go) for stats collection and distributed tracing instrumentation.
+Stats are exported for consumption via [Prometheus](https://prometheus.io/) and traces are exported for consumption via [Jaeger](https://www.jaegertracing.io/docs/1.11/).
+
+#### Metrics
+
+go-filecoin can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+To view metrics from your filecoin node using the default configuration options set the `prometheusEnabled` value to `true`, start the filecoin daemon, then visit `localhost:9400/metrics` in your web-browser. 
+
+#### Tracing
+
+go-filecoin can be configured to collect and export traces to Jaeger via the `TraceConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+To collect traces from your filecoin node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the filecoin daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.

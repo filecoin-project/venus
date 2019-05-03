@@ -26,23 +26,27 @@ type Migration interface {
 	Validate(oldRepoPath, newRepoPath string) error
 }
 
+// MigrationRunner represent a migration command
 type MigrationRunner struct {
-	verbose    bool
+	logger     *Logger
 	command    string
 	oldRepoOpt string
 }
 
-func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
+// NewMigrationRunner builds a MirgrationRunner for the given command and repo options
+func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRunner {
 	// TODO: Issue #2585 Implement repo migration version detection and upgrade decisioning
 
 	return &MigrationRunner{
-		verbose:    verb,
+		logger:     logger,
 		command:    command,
 		oldRepoOpt: oldRepoOpt,
 	}
 }
 
+// Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
-	return nil
+
+	return m.logger.Close()
 }

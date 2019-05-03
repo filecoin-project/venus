@@ -13,7 +13,7 @@ import (
 // ErrPingSelf is returned if the pinger is instructed to ping itself.
 var ErrPingSelf = errors.New("cannot ping self")
 
-// This struct wraps a libp2p ping service.  It exists to serve more helpful
+// Pinger wraps a libp2p ping service.  It exists to serve more helpful
 // error messages in the case a node is pinging itself.
 type Pinger struct {
 	*ping.PingService

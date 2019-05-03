@@ -483,8 +483,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
-	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Metrics); err != nil {
+	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Observability.Metrics); err != nil {
 		return errors.Wrap(err, "failed to setup metrics")
+	}
+
+	if err := metrics.RegisterJaeger(node.host.ID().Pretty(), node.Repo.Config().Observability.Tracing); err != nil {
+		return errors.Wrap(err, "failed to setup tracing")
 	}
 
 	var err error
@@ -838,7 +842,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 					val := result.SealingResult
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
-					_, err := node.PorcelainAPI.MessageSend(
+					msgCid, err := node.PorcelainAPI.MessageSend(
 						node.miningCtx,
 						minerOwnerAddr,
 						minerAddr,
@@ -857,7 +861,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentAddedToChain(val, nil)
+					node.StorageMiner.OnCommitmentSent(val, msgCid, nil)
 				}
 			case <-node.miningCtx.Done():
 				return
