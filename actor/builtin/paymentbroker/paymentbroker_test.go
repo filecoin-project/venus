@@ -852,6 +852,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrConditionValid, errors.CodeError(result.ExecutionError))
 }
 
 func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing.T) {
@@ -874,6 +875,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrConditionValid, errors.CodeError(result.ExecutionError))
 }
 
 func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *testing.T) {
