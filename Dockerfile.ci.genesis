@@ -2,7 +2,7 @@ FROM busybox:1-glibc
 MAINTAINER Filecoin Dev Team
 
 # Get the binary, entrypoint script, and TLS CAs from the build container.
-COPY tools/genesis-file-server /usr/local/bin/genesis-file-server
+COPY tools/genesis-file-server/genesis-file-server /usr/local/bin/genesis-file-server
 COPY fixtures/* /data/
 COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=filecoin:all /tmp/tini /sbin/tini
