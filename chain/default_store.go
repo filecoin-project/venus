@@ -235,11 +235,13 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 func (store *DefaultStore) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error) {
 	return store.tipIndex.GetTipSet(tsKey.String())
 }
+
 // GetTipSetStateRoot returns the state of the tipset whose block
 // cids correspond to the input sorted cid set.
 func (store *DefaultStore) GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(tsKey.String())
 }
+
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset referenced in the input key.
 func (store *DefaultStore) HasTipSetAndState(ctx context.Context, tsKey string) bool {

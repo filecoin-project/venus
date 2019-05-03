@@ -30,7 +30,6 @@ type chainState interface {
 	GetHead() types.SortedCidSet
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
-
 }
 
 // BlockClock defines a interface to a struct that can give the current block height.

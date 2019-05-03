@@ -86,20 +86,21 @@ func (ti *TipIndex) Get(tsKey string) (*TipSetAndState, error) {
 	return tsas, nil
 }
 
-func (ti *TipIndex) GetTipSet(tsKey string) (*types.TipSet,error){
-	tsas,err:=ti.Get(tsKey)
-	if err!=nil{
-		return nil,err
+func (ti *TipIndex) GetTipSet(tsKey string) (*types.TipSet, error) {
+	tsas, err := ti.Get(tsKey)
+	if err != nil {
+		return nil, err
 	}
-	return &(tsas.TipSet),nil
+	return &(tsas.TipSet), nil
 }
-func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid,error){
-	tsas,err:=ti.Get(tsKey)
-	if err!=nil{
-		return cid.Cid{},err
+func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid, error) {
+	tsas, err := ti.Get(tsKey)
+	if err != nil {
+		return cid.Cid{}, err
 	}
-	return tsas.TipSetStateRoot,nil
+	return tsas.TipSetStateRoot, nil
 }
+
 // Has returns true iff the tipset with the input ID is stored in
 // the TipIndex.
 func (ti *TipIndex) Has(tsKey string) bool {

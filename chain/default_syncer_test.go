@@ -1072,11 +1072,11 @@ func requireGetTsas(ctx context.Context, t *testing.T, chainStore chain.Store, k
 	require.NoError(t, err)
 	tssr, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
-	  return &chain.TipSetAndState{
-		TipSet:		*ts,
-		TipSetStateRoot:	tssr,
+	return &chain.TipSetAndState{
+		TipSet:          *ts,
+		TipSetStateRoot: tssr,
 	}
-	
+
 }
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
