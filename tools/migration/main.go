@@ -16,7 +16,7 @@ const defaultLogFilePath = "~/.filecoin-migration-logs"
 // USAGE is the usage of the migration tool
 const USAGE = `
 USAGE
-	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repodir> [-h|--help] [-v|--verbose]
+	go-filecoin-migrate (describe|buildonly|migrate|install) --old-repo=<repodir> [-h|--help] [-v|--verbose]
 
 COMMANDS
 	describe
