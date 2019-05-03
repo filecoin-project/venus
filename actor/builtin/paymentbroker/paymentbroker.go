@@ -40,6 +40,8 @@ const (
 	ErrTooEarly = 43
 	//ErrConditionInvalid indicates that the condition attached to a voucher did not execute successfully
 	ErrConditionInvalid = 44
+	//ErrConditionValid indicates that the condition attached to a voucher did execute successfully and therefore can't be cancelled
+	ErrConditionValid = 45
 )
 
 // CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
@@ -416,14 +418,14 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 
 		if channel.Redeemed {
 			if channel.Condition == nil {
-				return errors.NewFaultError("Channel cannot be cancelled due to successful redeem")
+				return errors.NewCodedRevertError(ErrConditionValid, "channel cannot be cancelled due to successful redeem")
 			} else {
 				err := checkCondition(vmctx, channel, channel.Condition, []interface{}{})
-				if err != nil && !errors.IsFault(err) {
-					return err
-				}
 				if err == nil {
-					return errors.NewFaultError("Channel cannot be cancelled due to successful redeem")
+					return errors.NewCodedRevertError(ErrConditionValid, "channel cannot be cancelled due to successful redeem")
+				}
+				if !errors.ShouldRevert(err) {
+					return err
 				}
 			}
 		}

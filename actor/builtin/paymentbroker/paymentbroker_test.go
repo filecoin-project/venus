@@ -849,8 +849,9 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	// Attempts to Cancel and expects failure
 	pdata := core.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
-	_, err = sys.ApplyMessage(msg, 100)
-	assert.Error(t, err)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
 }
 
 func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *testing.T) {
