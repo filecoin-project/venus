@@ -52,8 +52,8 @@ func TestOptions(t *testing.T) {
 
 	t.Run("accepts --verbose or -v with valid command", func(t *testing.T) {
 		repoDir, symlink := internal.RequireSetupTestRepo(t, 0)
-		defer internal.RequireRmDir(t, repoDir)
-		defer internal.RequireRmDir(t, symlink)
+		defer internal.RequireRemove(t, repoDir)
+		defer internal.RequireRemove(t, symlink)
 
 		// TODO: this will break once there is a valid migration, but we can't mock migrations
 		//       here because we're running the CLI.

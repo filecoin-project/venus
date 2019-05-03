@@ -43,7 +43,7 @@ type Migration interface {
 // MigrationRunner represents a migration command
 type MigrationRunner struct {
 	// logger logs to stdout/err and a logfile.
-	logger     *Logger
+	logger *Logger
 
 	// command is the migration command to run, passed from the CLI
 	command string
@@ -59,9 +59,9 @@ type MigrationRunner struct {
 // NewMigrationRunner builds a MigrationRunner for the given command and repo options
 func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRunner {
 	return &MigrationRunner{
-		logger:     logger,
-		command:    command,
-		oldRepoOpt: oldRepoOpt,
+		logger:             logger,
+		command:            command,
+		oldRepoOpt:         oldRepoOpt,
 		MigrationsProvider: DefaultMigrationsProvider,
 	}
 }
@@ -97,35 +97,34 @@ func (m *MigrationRunner) Run() error {
 
 func (m *MigrationRunner) runCommand(mig Migration, to uint, newRepoPath string) error {
 	var err error
-			switch m.command {
-			case "migrate":
-				if err = mig.Migrate(newRepoPath); err != nil {
-					return err
-				}
-				if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
-					return err
-				}
-				if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
-					return err
-				}
-			case "buildonly":
-				if err = mig.Migrate(newRepoPath); err != nil {
-					return err
-				}
-			case "install":
-				if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
-					return err
-				}
-				if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
-					return err
-				}
-			}
-			return m.logger.Close()
+	switch m.command {
+	case "migrate":
+		if err = mig.Migrate(newRepoPath); err != nil {
+			return err
+		}
+		if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
+			return err
+		}
+		if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
+			return err
+		}
+	case "buildonly":
+		if err = mig.Migrate(newRepoPath); err != nil {
+			return err
+		}
+	case "install":
+		if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
+			return err
+		}
+		if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
+			return err
 		}
 	}
+	return m.logger.Close()
 }
 
-// Shamelessly lifted from FSRepo, with version checking added.
+// GetSourceRepoVersion opens the repo version file and gets the version,
+// with version checking added.
 func (m *MigrationRunner) GetSourceRepoVersion() (uint, error) {
 	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, repo.VersionFilename()))
 	if err != nil {

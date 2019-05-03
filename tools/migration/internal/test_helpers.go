@@ -20,10 +20,19 @@ func RequireMakeTempDir(t *testing.T, dirname string) string {
 	return newdir
 }
 
-// RequireRmDir ensures that the error condition is checked when we clean up
+// RequireRemove ensures that the error condition is checked when we clean up
 // after creating a temporary directory.
-func RequireRmDir(t *testing.T, dirname string) {
-	require.NoError(t, os.RemoveAll(dirname))
+func RequireRemove(t *testing.T, path string) {
+	require.NoError(t, os.RemoveAll(path))
+}
+
+// RequireOpenTempFile is a shortcut for opening a given temp file with a given
+// suffix, then returning both a filename and a file pointer.
+func RequireOpenTempFile(t *testing.T, suffix string) (*os.File, string) {
+	file, err := ioutil.TempFile("", suffix)
+	require.NoError(t, err)
+	name := file.Name()
+	return file, name
 }
 
 // RequireSetupTestRepo sets up a repo dir with a symlink pointing to it.
