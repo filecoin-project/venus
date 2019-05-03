@@ -40,23 +40,41 @@ type Migration interface {
 }
 
 type MigrationRunner struct {
-	verbose            bool
-	command            string
-	oldRepoOpt         string
+	// verbose controls the amount of output.
+	verbose bool
+
+	// command is the migration command to run, passed from the CLI
+	command string
+
+	// oldRepoOpt is the option passed  from the CLI.
+	oldRepoOpt string
+
+	// MigrationsProvider is a dependency for fetching available migrations
+	// to allow unit tests to supply test migrations without creating test fixtures.
 	MigrationsProvider func() []Migration
+
+	// RepoVersionGetter is a dependency for getting a Repo Version,
+	// to allow the binary version of the repo to be mocked in testing.
+	RepoVersionGetter func() uint
 }
 
 func NewMigrationRunner(verb bool, command, oldRepoOpt string) *MigrationRunner {
 	return &MigrationRunner{
-		verbose:    verb,
-		command:    command,
-		oldRepoOpt: oldRepoOpt,
+		verbose:            verb,
+		command:            command,
+		oldRepoOpt:         oldRepoOpt,
+		MigrationsProvider: DefaultMigrationsProvider,
+		RepoVersionGetter:  DefaultVersionGetter,
 	}
+}
+
+// DefaultVersionGetter fetches the Version constant from the repo package.
+func DefaultVersionGetter() uint {
+	return repo.Version
 }
 
 func (m *MigrationRunner) Run() error {
 	// TODO: Issue #2595 Implement first repo migration
-	// detect current version of old repo
 	repoVersion, err := m.loadVersion()
 	if err != nil {
 		return err
@@ -64,40 +82,70 @@ func (m *MigrationRunner) Run() error {
 	if repoVersion == repo.Version {
 		return errors.New("binary version = repo version; migration not run")
 	}
-	// iterate over migrations provided by the Provider.
 	for _, mig := range m.MigrationsProvider() {
 		from, to := mig.Versions()
-		// look for a migration that upgrades the old repo by 1 version
 		if from == repoVersion && to == from+1 {
-			// if there is one, perform the migration command
-			newRepoPath, err := getNewRepoPath(m.oldRepoOpt, "")
-
+			newRepoPath, err := CloneRepo(m.oldRepoOpt)
 			if err != nil {
 				return err
 			}
 
-			if err = mig.Migrate(newRepoPath); err != nil {
-				return err
+			switch m.command {
+			case "migrate":
+				if err = mig.Migrate(newRepoPath); err != nil {
+					return err
+				}
+				if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
+					return err
+				}
+				if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
+					return err
+				}
+			case "buildonly":
+				if err = mig.Migrate(newRepoPath); err != nil {
+					return err
+				}
+			case "install":
+				if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
+					return err
+				}
+				if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
 	}
-	// else exit with error
 	return fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1)
 }
 
-// Shamelessly lifted from FSRepo
+// Shamelessly lifted from FSRepo, with version checking added.
 func (m *MigrationRunner) loadVersion() (uint, error) {
-	// TODO: limited file reading, to avoid attack vector
 	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, "version"))
 	if err != nil {
 		return 0, err
 	}
 
-	version, err := strconv.Atoi(strings.Trim(string(file), "\n"))
+	strVersion := strings.Trim(string(file), "\n")
+	version, err := strconv.Atoi(strVersion)
 	if err != nil {
-		return 0, errors.New("corrupt version file: version is not an integer")
+		return 0, err
+	}
+
+	if version < 0 || version > 10000 {
+		return 0, fmt.Errorf("repo version out of range: %s", strVersion)
 	}
 
 	return uint(version), nil
+}
+
+func (m *MigrationRunner) validateAndUpdateVersion(toVersion uint, newRepoPath string, mig Migration) error {
+	if err := mig.Validate(m.oldRepoOpt, newRepoPath); err != nil {
+		return err
+	}
+	toVersionStr := fmt.Sprintf("%d", toVersion)
+	if err := ioutil.WriteFile(filepath.Join(newRepoPath, "version"), []byte(toVersionStr), 0644); err != nil {
+		return err
+	}
+	return nil
 }
