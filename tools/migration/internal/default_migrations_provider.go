@@ -1,5 +1,9 @@
 package internal
 
+import (
+	"github.com/filecoin-project/go-filecoin/tools/migration/migrations/repo01"
+)
+
 // DefaultMigrationsProvider provides a list of migrations available for migrating
 // in production.
 // To add a migration:
@@ -10,5 +14,5 @@ package internal
 //
 // See runner_test for examples.
 func DefaultMigrationsProvider() []Migration {
-	return []Migration{}
+	return []Migration{&repo01.Migration{}}
 }

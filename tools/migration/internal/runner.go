@@ -1,12 +1,13 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -77,16 +78,7 @@ func DefaultVersionGetter() uint {
 }
 
 // Run executes the MigrationRunner
-func (m *MigrationRunner) Run() err error {
-	defer func() {
-		if logErr := m.logger.Close(); logErr != nil {
-			if err != nil {
-				err = errors.Wrapf(err, "error closing logger while returning run error: %s", logErr.Error())
-			} else {
-				err = logErr
-			}
-		}
-	}()
+func (m *MigrationRunner) Run() error {
 	repoVersion, err := m.loadVersion()
 	if err != nil {
 		return err
@@ -129,6 +121,10 @@ func (m *MigrationRunner) Run() err error {
 		}
 	}
 	return fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1)
+}
+
+func (m *MigrationRunner) Close() error {
+	return m.logger.Close()
 }
 
 // Shamelessly lifted from FSRepo, with version checking added.
