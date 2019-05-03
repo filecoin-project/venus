@@ -47,20 +47,20 @@ func NewBlockChainFacade(chainReader chain.ReadStore, cst *hamt.CborIpldStore) *
 
 // Head returns the head tipset
 func (chn *BlockChainFacade) Head() (*types.TipSet, error) {
-	ts, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
+	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return &ts.TipSet, nil
+	return ts, nil
 }
 
 // Ls returns a channel of tipsets from head to genesis
 func (chn *BlockChainFacade) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
-	tsas, err := chn.reader.GetTipSetAndState(chn.reader.GetHead())
+	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return chain.IterAncestors(ctx, chn.reader, tsas.TipSet), nil
+	return chain.IterAncestors(ctx, chn.reader, *ts), nil
 }
 
 // GetBlock gets a block by CID
@@ -132,10 +132,10 @@ func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr ad
 // getExecutable returns the builtin actor code from the latest state on the chain
 func (chn *BlockChainFacade) getLatestState(ctx context.Context) (state.Tree, error) {
 	head := chn.reader.GetHead()
-	tsas, err := chn.reader.GetTipSetAndState(head)
+	tssr, err := chn.reader.GetTipSetStateRoot(head)
 	if err != nil {
 		return nil, err
 	}
 
-	return state.LoadStateTree(ctx, chn.cst, tsas.TipSetStateRoot, builtin.Actors)
+	return state.LoadStateTree(ctx, chn.cst, tssr, builtin.Actors)
 }

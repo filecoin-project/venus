@@ -75,9 +75,9 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain chain.Store, pKey strin
 }
 
 func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
-	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
-	return headTipSetAndState.TipSet
+	return *headTipSet
 }
 
 /* Putting and getting tipsets into and from the store. */

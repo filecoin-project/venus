@@ -45,15 +45,19 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	}
 
 	headTs := q.chainReader.GetHead()
-	tsas, err := q.chainReader.GetTipSetAndState(headTs)
+	tssr, err := q.chainReader.GetTipSetStateRoot(headTs)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get latest state root")
 	}
-	st, err := state.LoadStateTree(ctx, q.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, q.cst, tssr, builtin.Actors)
 	if err != nil {
 		return nil, errors.Wrap(err, "could load tree for latest state root")
 	}
-	h, err := tsas.TipSet.Height()
+	ts, err := q.chainReader.GetTipSet(headTs)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldnt get tipset")
+	}
+	h, err := (*ts).Height()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get base tipset height")
 	}

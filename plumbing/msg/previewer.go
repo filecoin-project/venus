@@ -42,15 +42,19 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	headTs := p.chainReader.GetHead()
-	tsas, err := p.chainReader.GetTipSetAndState(headTs)
+	tssr, err := p.chainReader.GetTipSetStateRoot(headTs)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get latest state root")
 	}
-	st, err := state.LoadStateTree(ctx, p.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, p.cst, tssr, builtin.Actors)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}
-	h, err := tsas.TipSet.Height()
+	ts, err := p.chainReader.GetTipSet(headTs)
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get tipset")
+	}
+	h, err := (*ts).Height()
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get base tipset height")
 	}

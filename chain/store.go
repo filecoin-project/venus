@@ -28,10 +28,15 @@ type ReadStore interface {
 	// Stop stops all activities and cleans up.
 	Stop()
 
-	// GetTipSet retrieves the tipindex value (tipset, state) at the
+	// GetTipSet retrieves the tipset at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
-	GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error)
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	// GetTipSet retrieves the state at the
+	// provided tipset key if in the store and an error if it does not
+	// exist.
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+
 	// GetBlock gets a block by cid.
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
