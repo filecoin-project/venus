@@ -13,25 +13,33 @@ import (
 
 const defaultLogFilePath = "~/.filecoin-migration-logs"
 
-// USAGE is the usage of the migration tool
+// USAGE is the usage documentation for the migration tool
 const USAGE = `
 USAGE
-	go-filecoin-migrate (describe|buildonly|migrate|install) --old-repo=<repodir> [-h|--help] [-v|--verbose]
+	go-filecoin-migrate -h|--help
+	go-filecoin-migrate (describe|buildonly|migrate) --old-repo=<repolink> [-h|--help] [-v|--verbose]
+	go-filecoin-migrate install --old-repo=<repolink> --new-repo=<migrated-repo> [-v|--verbose]
 
 COMMANDS
 	describe
 		prints a description of what the current migration will do
 	buildonly
-		runs the migration, but does not install the newly migrated repo
+		runs the migration, but does not validate install the newly migrated repo
 	migrate
 		runs the migration, runs validation tests on the migrated repo, then
 		installs the newly migrated repo
+	install
+		validates and installs a newly migrated repo
 
 REQUIRED ARGUMENTS
 	--old-repo
 		The symlink location of this node's filecoin home directory. This is required even for the
 		'describe' command, as its repo version helps determine which migration to run. This
 		must be a symbolic link or migration will not proceed.
+
+	--new-repo
+		the location of a newly migrated repo. This is required only for the install command and
+		otherwise ignored.
 
 OPTIONS
 	-h, --help
@@ -73,11 +81,19 @@ func main() { // nolint: deadcode
 		logger := internal.NewLogger(logFile, getVerbose())
 
 		oldRepoOpt, found := findOpt("old-repo", os.Args)
-		if found == false {
+		if !found {
 			exitErr(fmt.Sprintf("Error: --old-repo is required\n%s\n", USAGE))
 		}
 
-		runner := internal.NewMigrationRunner(logger, command, oldRepoOpt)
+		var newRepoOpt string
+		if command == "install" {
+			newRepoOpt, found = findOpt("new-repo", os.Args)
+			if !found {
+				exitErr(fmt.Sprintf("Error: --new-repo is required for 'install'\n%s\n", USAGE))
+			}
+		}
+
+		runner := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
 		if err := runner.Run(); err != nil {
 			exitErr(err.Error())
 		}

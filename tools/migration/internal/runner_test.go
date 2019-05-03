@@ -21,60 +21,24 @@ func TestMigrationRunner_Run(t *testing.T) {
 	defer RequireRemove(t, repoDir)
 	defer RequireRemove(t, repoSymlink)
 
-	t.Run("returns error if repo not found", func(t *testing.T) {
+	t.Run("valid command returns error if repo not found", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink")
+		runner := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink", "doesnt/matter")
 		assert.Error(t, runner.Run(), "no filecoin repo found in /home/filecoin-symlink.")
 	})
 
-	t.Run("Can set MigrationsProvider", func(t *testing.T) {
+	t.Run("can set MigrationsProvider", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		runner.MigrationsProvider = testProviderPasses
 
 		migrations := runner.MigrationsProvider()
 		assert.NotEmpty(t, migrations)
 		assert.NoError(t, runner.Run())
-	})
-
-	t.Run("Returns error when Migration fails", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
-		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "migrate", repoSymlink)
-		runner.MigrationsProvider = testProviderMigrationFails
-		assert.EqualError(t, runner.Run(), "migration has failed")
-	})
-
-	t.Run("Returns error when Validation fails", func(t *testing.T) {
-		dummyLogFile, err := ioutil.TempFile("", "logfile")
-		require.NoError(t, err)
-		logger := NewLogger(dummyLogFile, false)
-		defer RequireRemove(t, dummyLogFile.Name())
-		runner := NewMigrationRunner(logger, "migrate", repoSymlink)
-		runner.MigrationsProvider = testProviderValidationFails
-		assert.EqualError(t, runner.Run(), "validation has failed")
-	})
-
-	t.Run("Subsequent calls to Migrate migrate subsequent migrations", func(t *testing.T) {
-
-	})
-
-	t.Run("successful migration writes the new version to the repo", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
-		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
-		runner.MigrationsProvider = testProviderPasses
-
-		migrations := runner.MigrationsProvider()
-		assert.NotEmpty(t, migrations)
-		assert.NoError(t, runner.Run())
-
 	})
 
 	t.Run("Returns error and does not not run the migration if the repo is already up to date", func(t *testing.T) {
@@ -83,7 +47,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		runner.MigrationsProvider = testProviderPasses
 		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
 	})
@@ -94,28 +58,28 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		runner.MigrationsProvider = testProviderValidationFails
 		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
 	})
 
 	// TODO: fix this test
-	//t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
-	//	RequireSetRepoVersion(t, 199, repoDir)
-	//
-	//	dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-	//	defer RequireRemove(t, dummyLogPath)
-	//	logger := NewLogger(dummyLogFile, false)
-	//	runner := NewMigrationRunner(logger, "describe", repoSymlink)
-	//	runner.MigrationsProvider = testProviderPasses
-	//	assert.EqualError(t, runner.Run(), "did not find valid repo migration for version 199")
-	//})
+	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
+		RequireSetRepoVersion(t, 199, repoDir)
+
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
+		logger := NewLogger(dummyLogFile, false)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner.MigrationsProvider = testProviderPasses
+		assert.EqualError(t, runner.Run(), "migration check failed: did not find valid repo migration for version 199")
+	})
 
 	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		runner.MigrationsProvider = testProviderPasses
 
 		RequireSetRepoVersion(t, -1, repoDir)
@@ -129,19 +93,26 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		runner.MigrationsProvider = testProviderPasses
 
 		// TODO: Handle this more gracefully
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, repo.VersionFilename()), []byte("foo"), 0644))
 		assert.EqualError(t, runner.Run(), "strconv.Atoi: parsing \"foo\": invalid syntax")
 	})
+
+	t.Run("describe does not create a new repo", func(t *testing.T) {
+
+	})
+
+	t.Run("run fails if there is more than 1 applicable migration", func(t *testing.T) {
+
+	})
+
 }
 
 func testProviderPasses() []Migration {
-	return []Migration{
-		&TestMigration01{},
-	}
+	return []Migration{&TestMigration01{}}
 }
 
 func testProviderValidationFails() []Migration {

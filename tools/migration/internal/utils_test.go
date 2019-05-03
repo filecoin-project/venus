@@ -14,3 +14,7 @@ func TestNowString(t *testing.T) {
 	rg, _ := regexp.Compile("^[0-9]{8}-[0-9]{6}$")
 	assert.Regexp(t, rg, adateStr)
 }
+
+func SomeTestHelper() string {
+	return "helper"
+}

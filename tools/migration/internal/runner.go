@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -48,8 +49,13 @@ type MigrationRunner struct {
 	// command is the migration command to run, passed from the CLI
 	command string
 
-	// oldRepoOpt is the option passed  from the CLI.
+	// oldRepoOpt is the value of --old-repo passed  from the CLI
 	oldRepoOpt string
+
+	// newRepoOpt is value of --new-repo passed from the CLI
+	// required for 'install' command
+	// blank for 'describe', 'buildonly' and 'migrate' commands
+	newRepoOpt string
 
 	// MigrationsProvider is a dependency for fetching available migrations
 	// to allow unit tests to supply test migrations without creating test fixtures.
@@ -57,11 +63,12 @@ type MigrationRunner struct {
 }
 
 // NewMigrationRunner builds a MigrationRunner for the given command and repo options
-func NewMigrationRunner(logger *Logger, command, oldRepoOpt string) *MigrationRunner {
+func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) *MigrationRunner {
 	return &MigrationRunner{
 		logger:             logger,
 		command:            command,
 		oldRepoOpt:         oldRepoOpt,
+		newRepoOpt:         newRepoOpt,
 		MigrationsProvider: DefaultMigrationsProvider,
 	}
 }
@@ -76,51 +83,52 @@ func (m *MigrationRunner) Run() error {
 		return fmt.Errorf("binary version %d = repo version %d; migration not run", repoVersion, m.getTargetMigrationVersion())
 	}
 
-	for _, mig := range m.MigrationsProvider() {
-		from, to := mig.Versions()
-		if to != from+1 {
-			log.Printf("Refusing multi-version migration from %d to %d", from, to)
-			continue
-		}
-		if from == repoVersion {
-			newRepoPath, err := CloneRepo(m.oldRepoOpt)
-			if err != nil {
-				return err
-			}
-			return m.runCommand(mig, to, newRepoPath)
-		}
+	var mig Migration
+	if mig, err = m.getValidMigration(repoVersion); err != nil {
+		return fmt.Errorf("migration check failed: %s", err.Error())
 	}
-	// else exit with error
-	m.logger.Error(fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1))
-	return m.logger.Close()
+	return m.runCommand(mig)
 }
 
-func (m *MigrationRunner) runCommand(mig Migration, to uint, newRepoPath string) error {
+func (m *MigrationRunner) runCommand(mig Migration) error {
 	var err error
+
+	_, to := mig.Versions()
+
 	switch m.command {
+	case "describe":
+		m.logger.Print(mig.Describe())
 	case "migrate":
-		if err = mig.Migrate(newRepoPath); err != nil {
+		newRepoPath, err := CloneRepo(m.oldRepoOpt)
+		if err != nil {
 			return err
+		}
+		if err = mig.Migrate(newRepoPath); err != nil {
+			return errors.New("migration failed: " + err.Error())
 		}
 		if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
-			return err
+			return errors.New("validation failed: " + err.Error())
 		}
 		if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
-			return err
+			return errors.New("installation failed: " + err.Error())
 		}
 	case "buildonly":
-		if err = mig.Migrate(newRepoPath); err != nil {
+		newRepoPath, err := CloneRepo(m.oldRepoOpt)
+		if err != nil {
 			return err
+		}
+		if err = mig.Migrate(newRepoPath); err != nil {
+			return errors.New("migration failed: " + err.Error())
 		}
 	case "install":
-		if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
-			return err
+		if err = m.validateAndUpdateVersion(to, m.newRepoOpt, mig); err != nil {
+			return errors.New("validation failed: " + err.Error())
 		}
-		if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
-			return err
+		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoOpt); err != nil {
+			return errors.New("installation failed: " + err.Error())
 		}
 	}
-	return m.logger.Close()
+	return nil
 }
 
 // GetSourceRepoVersion opens the repo version file and gets the version,
@@ -165,4 +173,25 @@ func (m *MigrationRunner) getTargetMigrationVersion() uint {
 		}
 	}
 	return targetVersion
+}
+
+func (m *MigrationRunner) getValidMigration(repoVersion uint) (mig Migration, err error) {
+	var applicableMigs []Migration
+	for _, mig := range m.MigrationsProvider() {
+		from, to := mig.Versions()
+		if to != from+1 {
+			log.Printf("Refusing multi-version migration from %d to %d", from, to)
+			continue
+		}
+		if from == repoVersion {
+			applicableMigs = append(applicableMigs, mig)
+		}
+	}
+	if len(applicableMigs) > 1 {
+		return nil, errors.New("found >1 available migration; cannot proceed")
+	}
+	if len(applicableMigs) == 0 {
+		return nil, fmt.Errorf("did not find valid repo migration for version %d", repoVersion)
+	}
+	return applicableMigs[0], nil
 }
