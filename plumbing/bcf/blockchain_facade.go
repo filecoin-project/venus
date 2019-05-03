@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -17,12 +17,24 @@ import (
 	"github.com/pkg/errors"
 )
 
+type bcfChainReader interface {
+	ActorFromLatestState(context.Context, address.Address) (*actor.Actor, error)
+	GenesisCid() cid.Cid
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSetAndState(types.SortedCidSet) (*chain.TipSetAndState, error)
+	HeadEvents() *pubsub.PubSub
+	LatestState(ctx context.Context) (state.Tree, error)
+	Load(ctx context.Context) error
+	Stop()
+}
+
 // BlockChainFacade is a facade pattern for the chain core api. It provides a
 // simple, unified interface to the complex set of calls in chain, state, exec,
 // and sampling for use in protocols and commands.
 type BlockChainFacade struct {
 	// To get the head tipset state root.
-	reader chain.ReadStore
+	reader bcfChainReader
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 }
@@ -38,7 +50,7 @@ var (
 )
 
 // NewBlockChainFacade returns a new BlockChainFacade.
-func NewBlockChainFacade(chainReader chain.ReadStore, cst *hamt.CborIpldStore) *BlockChainFacade {
+func NewBlockChainFacade(chainReader bcfChainReader, cst *hamt.CborIpldStore) *BlockChainFacade {
 	return &BlockChainFacade{
 		reader: chainReader,
 		cst:    cst,
@@ -80,7 +92,7 @@ func (chn *BlockChainFacade) SampleRandomness(ctx context.Context, sampleHeight 
 
 // GetActor returns an actor from the latest state on the chain
 func (chn *BlockChainFacade) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	st, err := chn.getLatestState(ctx)
+	st, err := chn.reader.LatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +101,7 @@ func (chn *BlockChainFacade) GetActor(ctx context.Context, addr address.Address)
 
 // LsActors returns a channel with actors from the latest state on the chain
 func (chn *BlockChainFacade) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := chn.getLatestState(ctx)
+	st, err := chn.reader.LatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +123,7 @@ func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr ad
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chn.getLatestState(ctx)
+	st, err := chn.reader.LatestState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -127,15 +139,4 @@ func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr ad
 	}
 
 	return export, nil
-}
-
-// getExecutable returns the builtin actor code from the latest state on the chain
-func (chn *BlockChainFacade) getLatestState(ctx context.Context) (state.Tree, error) {
-	head := chn.reader.GetHead()
-	stateCid, err := chn.reader.GetTipSetStateRoot(head)
-	if err != nil {
-		return nil, err
-	}
-
-	return state.LoadStateTree(ctx, chn.cst, stateCid, builtin.Actors)
 }
