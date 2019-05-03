@@ -8,9 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -19,13 +17,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
+// Abstracts over a store of blockchain state.
+type queryerChainState interface {
+	BlockHeight() (uint64, error)
+	LatestState(ctx context.Context) (state.Tree, error)
+}
+
 // Queryer knows how to send read-only messages for querying actor state.
 type Queryer struct {
 	// For getting the default address. Lame.
 	repo   repo.Repo
 	wallet *wallet.Wallet
 	// To get the head tipset state root.
-	chainReader chain.ReadStore
+	chainReader queryerChainState
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 	// For vm storage.
@@ -33,7 +37,7 @@ type Queryer struct {
 }
 
 // NewQueryer constructs a Queryer.
-func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
+func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader queryerChainState, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
 	return &Queryer{repo, wallet, chainReader, cst, bs}
 }
 
@@ -44,16 +48,10 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 		return nil, errors.Wrap(err, "couldnt encode message params")
 	}
 
-	headTs := q.chainReader.GetHead()
-	stateCid, err := q.chainReader.GetTipSetStateRoot(headTs)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldnt get latest state root")
-	}
-	st, err := state.LoadStateTree(ctx, q.cst, stateCid, builtin.Actors)
+	st, err := q.chainReader.LatestState(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could load tree for latest state root")
 	}
-
 	h, err := q.chainReader.BlockHeight()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get base tipset height")
