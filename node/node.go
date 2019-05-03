@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	ps "github.com/cskr/pubsub"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -36,6 +37,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -81,13 +83,26 @@ var (
 
 type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
+type chainReader interface {
+	ActorFromLatestState(context.Context, address.Address) (*actor.Actor, error)
+	BlockHeight() (uint64, error)
+	GenesisCid() cid.Cid
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSetAndState(types.SortedCidSet) (*chain.TipSetAndState, error)
+	HeadEvents() *ps.PubSub
+	LatestState(context.Context) (state.Tree, error)
+	Load(context.Context) error
+	Stop()
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
 	Consensus   consensus.Protocol
-	ChainReader chain.ReadStore
+	ChainReader chainReader
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
