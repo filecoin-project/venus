@@ -38,7 +38,6 @@ type Migration interface {
 	//      read-only by this process
 	//  A successful validation returns nil.
 	Validate(oldRepoPath, newRepoPath string) error
-
 }
 
 // MigrationRunner represent a migration command
@@ -123,6 +122,8 @@ func (m *MigrationRunner) Run() error {
 	return fmt.Errorf("did not find valid repo migration for version %d to version %d", repoVersion, repoVersion+1)
 }
 
+// Close does any necessary cleanup after a migration is run.  Currently it just
+// closes the log file.
 func (m *MigrationRunner) Close() error {
 	return m.logger.Close()
 }

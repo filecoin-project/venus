@@ -20,12 +20,12 @@ func testSetupLogger(t *testing.T) (*Logger, func()) {
 	dummyLogFile, err := ioutil.TempFile("", "logfile")
 	require.NoError(t, err)
 	logger := NewLogger(dummyLogFile, false)
-	return logger, func() {require.NoError(t, os.Remove(dummyLogFile.Name()))}
+	return logger, func() { require.NoError(t, os.Remove(dummyLogFile.Name())) }
 }
 
 func TestMigrationRunner_Run(t *testing.T) {
 	tf.UnitTest(t)
-	
+
 	repoTmpDir := RequireMakeTempDir(t, "testrepo")
 	defer RequireRmDir(t, repoTmpDir)
 	require.NoError(t, repo.InitFSRepo(repoTmpDir, config.NewDefaultConfig()))
@@ -37,15 +37,15 @@ func TestMigrationRunner_Run(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
 		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink")
-		defer runner.Close()
+		defer func() { require.NoError(t, runner.Close()) }()
 		assert.Error(t, runner.Run(), "no filecoin repo found in /home/filecoin-symlink.")
 	})
 
 	t.Run("Can set MigrationsProvider", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderPasses
 
 		// set version to 0.
@@ -63,9 +63,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	t.Run("Returns error and does not not run the migration if the repo is already up to date", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderPasses
 
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("1"), 0644))
@@ -74,9 +74,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	t.Run("Runs the right migration version", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderValidationFails
 
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("1"), 0644))
@@ -85,9 +85,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderPasses
 
 		// set version to something unreasonable
@@ -97,9 +97,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		runner := NewMigrationRunner(logger, "describe", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderPasses
 
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("-1"), 0644))
@@ -111,20 +111,20 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 	t.Run("Returns error when Migration fails", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("0"), 0644))
 		runner := NewMigrationRunner(logger, "migrate", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderMigrationFails
 		assert.EqualError(t, runner.Run(), "migration has failed")
 	})
 
 	t.Run("Returns error when Validation fails", func(t *testing.T) {
 		logger, cleanup := testSetupLogger(t)
-		defer cleanup()		
+		defer cleanup()
 		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("0"), 0644))
 		runner := NewMigrationRunner(logger, "migrate", repoDir)
-		defer runner.Close()		
+		defer func() { require.NoError(t, runner.Close()) }()
 		runner.MigrationsProvider = testProviderValidationFails
 		assert.EqualError(t, runner.Run(), "validation has failed")
 	})
@@ -148,11 +148,10 @@ func testProviderValidationFails() []Migration {
 	return []Migration{&TestMigValidationFails{}}
 }
 
-
 func testProviderMigrationFails() []Migration {
 	return []Migration{&TestMigMigrationFails{}}
 }
-	
+
 type TestMigration01 struct{}
 
 func (m *TestMigration01) Describe() string {
@@ -206,4 +205,3 @@ func (m *TestMigValidationFails) Migrate(newRepoPath string) error {
 func (m *TestMigValidationFails) Validate(oldRepoPath, newRepoPath string) error {
 	return errors.New("validation has failed")
 }
-	
