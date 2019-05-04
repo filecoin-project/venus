@@ -95,7 +95,7 @@ func (ti *TipIndex) GetTipSet(tsKey string) (*types.TipSet, error) {
 	return &(tsas.TipSet), nil
 }
 
-// GetTipSetStateRoot returns the tipsetStateRoot func (ti *TipIndex) Get(tsKey string).
+// GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipIndex) Get(tsKey string).
 func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
