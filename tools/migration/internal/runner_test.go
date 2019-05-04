@@ -125,15 +125,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 
 		runner.MigrationsProvider = func() []Migration {
-			migration01 := TestMigration{
-				describeFunc: func() string { return "the migration that doesn't do anything" },
-				versionsFunc: func() (uint, uint) { return 0, 1 },
-				migrateFunc:  func(string) error { return nil },
-				validateFunc: func(string, string) error { return nil },
-			}
 			return []Migration{
-				&migration01,
-				&migration01,
+				&TestMigDoesNothing,
+				&TestMigDoesNothing,
 			}
 		}
 		assert.EqualError(t, runner.Run(), "migration check failed: found >1 available migration; cannot proceed")
@@ -146,14 +140,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 
 		runner.MigrationsProvider = func() []Migration {
-			migration01 := TestMigration{
-				describeFunc: func() string { return "the migration that doesn't do anything" },
-				versionsFunc: func() (uint, uint) { return 0, 1 },
-				migrateFunc:  func(string) error { return nil },
-				validateFunc: func(string, string) error { return nil },
-			}
 			return []Migration{
-				&migration01,
+				&TestMigDoesNothing,
 				&TestMigMultiversion,
 			}
 		}
@@ -207,7 +195,7 @@ func (m *TestMigration) Validate(oldRepoPath, newRepoPath string) error {
 }
 
 var TestMigFailsValidation = TestMigration{
-	describeFunc: func() string { return "migration fails validation" },
+	describeFunc: func() string { return "migration fails validation step" },
 	versionsFunc: func() (uint, uint) { return 0, 1 },
 	migrateFunc:  func(string) error { return nil },
 	validateFunc: func(string, string) error { return errors.New("validation has failed") },
