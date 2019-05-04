@@ -1,7 +1,6 @@
 package internal_test
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,7 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 	defer RequireRemove(t, repoDir)
 	defer RequireRemove(t, repoSymlink)
 
-	t.Run("Returns error when Migration fails", func(t *testing.T) {
+	t.Run("returns error when migration step fails", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
@@ -27,30 +26,26 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		assert.EqualError(t, runner.Run(), "migration failed: migration has failed")
 	})
 
-	t.Run("Returns error when Validation fails", func(t *testing.T) {
-		dummyLogFile, err := ioutil.TempFile("", "logfile")
-		require.NoError(t, err)
+	t.Run("returns error when validation step fails", func(t *testing.T) {
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		defer RequireRemove(t, dummyLogFile.Name())
 		runner := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		runner.MigrationsProvider = testProviderValidationFails
 		assert.EqualError(t, runner.Run(), "validation failed: validation has failed")
 	})
 
-	t.Run("Subsequent calls to Migrate migrate subsequent migrations", func(t *testing.T) {
-
-	})
-
-	t.Run("successful migration writes the new version to the repo", func(t *testing.T) {
+	t.Run("writes the new version to the repo", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		runner.MigrationsProvider = testProviderPasses
 
-		migrations := runner.MigrationsProvider()
-		assert.NotEmpty(t, migrations)
 		assert.NoError(t, runner.Run())
 
+		version, err := runner.GetNewRepoVersion()
+		require.NoError(t, err)
+		assert.Equal(t, uint(1), version)
 	})
 }

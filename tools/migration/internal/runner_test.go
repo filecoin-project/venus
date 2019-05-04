@@ -1,8 +1,11 @@
 package internal_test
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
+	"log"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -63,7 +66,6 @@ func TestMigrationRunner_Run(t *testing.T) {
 		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
 	})
 
-	// TODO: fix this test
 	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
 		RequireSetRepoVersion(t, 199, repoDir)
 
@@ -102,79 +104,132 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("describe does not create a new repo", func(t *testing.T) {
+		RequireSetRepoVersion(t, 0, repoSymlink)
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
+		logger := NewLogger(dummyLogFile, false)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 
+		runner.MigrationsProvider = testProviderPasses
+
+		require.NoError(t, runner.Run())
+		version, err := runner.GetNewRepoVersion()
+		assert.EqualError(t, err, "new repo not found")
+		assert.Equal(t, uint(0), version)
 	})
 
 	t.Run("run fails if there is more than 1 applicable migration", func(t *testing.T) {
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
+		logger := NewLogger(dummyLogFile, false)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
 
+		runner.MigrationsProvider = func() []Migration {
+			migration01 := TestMigration{
+				describeFunc: func() string { return "the migration that doesn't do anything" },
+				versionsFunc: func() (uint, uint) { return 0, 1 },
+				migrateFunc:  func(string) error { return nil },
+				validateFunc: func(string, string) error { return nil },
+			}
+			return []Migration{
+				&migration01,
+				&migration01,
+			}
+		}
+		assert.EqualError(t, runner.Run(), "migration check failed: found >1 available migration; cannot proceed")
 	})
 
+	t.Run("run skips multiversion", func(t *testing.T) {
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
+		logger := NewLogger(dummyLogFile, false)
+		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+
+		runner.MigrationsProvider = func() []Migration {
+			migration01 := TestMigration{
+				describeFunc: func() string { return "the migration that doesn't do anything" },
+				versionsFunc: func() (uint, uint) { return 0, 1 },
+				migrateFunc:  func(string) error { return nil },
+				validateFunc: func(string, string) error { return nil },
+			}
+			return []Migration{
+				&migration01,
+				&TestMigMultiversion,
+			}
+		}
+		output := captureOutput(func() {
+			_ = runner.Run()
+		})
+		assert.Contains(t, output, "Refusing multi-version migration from 1 to 3")
+	})
+}
+
+func captureOutput(f func()) string {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	f()
+	log.SetOutput(os.Stderr)
+	return buf.String()
 }
 
 func testProviderPasses() []Migration {
-	return []Migration{&TestMigration01{}}
+	return []Migration{&TestMigDoesNothing}
 }
 
 func testProviderValidationFails() []Migration {
-	return []Migration{&TestMigValidationFails{}}
+	return []Migration{&TestMigFailsValidation}
 }
 
 func testProviderMigrationFails() []Migration {
-	return []Migration{&TestMigMigrationFails{}}
+	return []Migration{&TestMigFailsMigration}
 }
 
-type TestMigration01 struct {
+type TestMigration struct {
+	describeFunc func() string
+	migrateFunc  func(string) error
+	versionsFunc func() (uint, uint)
+	validateFunc func(string, string) error
 }
 
-func (m *TestMigration01) Describe() string {
-	return "the migration that doesn't do anything"
+func (m *TestMigration) Describe() string {
+	return m.describeFunc()
 }
 
-func (m *TestMigration01) Migrate(newRepoPath string) error {
-	return nil
+func (m *TestMigration) Migrate(newRepoPath string) error {
+	return m.migrateFunc(newRepoPath)
 }
-func (m *TestMigration01) Versions() (from, to uint) {
-	return 0, 1
-}
-
-func (m *TestMigration01) Validate(oldRepoPath, newRepoPath string) error {
-	return nil
+func (m *TestMigration) Versions() (from, to uint) {
+	return m.versionsFunc()
 }
 
-type TestMigMigrationFails struct {
+func (m *TestMigration) Validate(oldRepoPath, newRepoPath string) error {
+	return m.validateFunc(oldRepoPath, newRepoPath)
 }
 
-func (m *TestMigMigrationFails) Versions() (from, to uint) {
-	return 0, 1
+var TestMigFailsValidation = TestMigration{
+	describeFunc: func() string { return "migration fails validation" },
+	versionsFunc: func() (uint, uint) { return 0, 1 },
+	migrateFunc:  func(string) error { return nil },
+	validateFunc: func(string, string) error { return errors.New("validation has failed") },
 }
 
-func (m *TestMigMigrationFails) Describe() string {
-	return "the migration that doesn't do anything"
+var TestMigDoesNothing = TestMigration{
+	describeFunc: func() string { return "the migration that doesn't do anything" },
+	versionsFunc: func() (uint, uint) { return 0, 1 },
+	migrateFunc:  func(string) error { return nil },
+	validateFunc: func(string, string) error { return nil },
 }
 
-func (m *TestMigMigrationFails) Migrate(newRepoPath string) error {
-	return errors.New("migration has failed")
+var TestMigFailsMigration = TestMigration{
+	describeFunc: func() string { return "migration fails migration step" },
+	versionsFunc: func() (uint, uint) { return 0, 1 },
+	migrateFunc:  func(string) error { return errors.New("migration has failed") },
+	validateFunc: func(string, string) error { return nil },
 }
 
-func (m *TestMigMigrationFails) Validate(oldRepoPath, newRepoPath string) error {
-	return nil
-}
-
-type TestMigValidationFails struct {
-}
-
-func (m *TestMigValidationFails) Versions() (from, to uint) {
-	return 0, 1
-}
-
-func (m *TestMigValidationFails) Describe() string {
-	return "the migration that doesn't do anything"
-}
-
-func (m *TestMigValidationFails) Migrate(newRepoPath string) error {
-	return nil
-}
-
-func (m *TestMigValidationFails) Validate(oldRepoPath, newRepoPath string) error {
-	return errors.New("validation has failed")
+var TestMigMultiversion = TestMigration{
+	describeFunc: func() string { return "the migration that skips a version" },
+	versionsFunc: func() (uint, uint) { return 1, 3 },
+	migrateFunc:  func(string) error { return nil },
+	validateFunc: func(string, string) error { return nil },
 }

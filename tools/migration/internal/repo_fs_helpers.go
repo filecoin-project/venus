@@ -60,15 +60,10 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 	return nil
 }
 
-// OpenRepo opens repoPath
-func OpenRepo(repoPath string) (*os.File, error) {
-	return os.Open(repoPath)
-}
-
 // getNewRepoPath generates a new repo path for a migration.
 // Params:
 //     oldPath:  the actual old repo path
-//     newRepoOpt:  whatever was passed in by the CLI (can be blank)
+//     newRepoPath:  whatever was passed in by the CLI (can be blank)
 // Returns:
 //     a path generated using the above information plus tmp_<timestamp>.
 //     error

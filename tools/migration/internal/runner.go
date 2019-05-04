@@ -52,10 +52,8 @@ type MigrationRunner struct {
 	// oldRepoOpt is the value of --old-repo passed  from the CLI
 	oldRepoOpt string
 
-	// newRepoOpt is value of --new-repo passed from the CLI
-	// required for 'install' command
-	// blank for 'describe', 'buildonly' and 'migrate' commands
-	newRepoOpt string
+	// newRepoPath is where the to-be-migrated/migrated repo is located
+	newRepoPath string
 
 	// MigrationsProvider is a dependency for fetching available migrations
 	// to allow unit tests to supply test migrations without creating test fixtures.
@@ -68,14 +66,14 @@ func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) 
 		logger:             logger,
 		command:            command,
 		oldRepoOpt:         oldRepoOpt,
-		newRepoOpt:         newRepoOpt,
+		newRepoPath:        newRepoOpt,
 		MigrationsProvider: DefaultMigrationsProvider,
 	}
 }
 
 // Run executes the MigrationRunner
 func (m *MigrationRunner) Run() error {
-	repoVersion, err := m.GetSourceRepoVersion()
+	repoVersion, err := m.repoVersion(m.oldRepoOpt)
 	if err != nil {
 		return err
 	}
@@ -99,42 +97,56 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 	case "describe":
 		m.logger.Print(mig.Describe())
 	case "migrate":
-		newRepoPath, err := CloneRepo(m.oldRepoOpt)
-		if err != nil {
+		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
 			return err
 		}
-		if err = mig.Migrate(newRepoPath); err != nil {
+		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
+
+		if err = mig.Migrate(m.newRepoPath); err != nil {
 			return errors.New("migration failed: " + err.Error())
 		}
-		if err = m.validateAndUpdateVersion(to, newRepoPath, mig); err != nil {
+		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
 			return errors.New("validation failed: " + err.Error())
 		}
-		if err = InstallNewRepo(m.oldRepoOpt, newRepoPath); err != nil {
+		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoPath); err != nil {
 			return errors.New("installation failed: " + err.Error())
 		}
 	case "buildonly":
-		newRepoPath, err := CloneRepo(m.oldRepoOpt)
-		if err != nil {
+		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
 			return err
 		}
-		if err = mig.Migrate(newRepoPath); err != nil {
+		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
+
+		if err = mig.Migrate(m.newRepoPath); err != nil {
 			return errors.New("migration failed: " + err.Error())
 		}
 	case "install":
-		if err = m.validateAndUpdateVersion(to, m.newRepoOpt, mig); err != nil {
+		if m.newRepoPath == "" {
+			return errors.New("installation failed: new repo is missing")
+		}
+		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
 			return errors.New("validation failed: " + err.Error())
 		}
-		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoOpt); err != nil {
+		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoPath); err != nil {
 			return errors.New("installation failed: " + err.Error())
 		}
 	}
 	return nil
 }
 
-// GetSourceRepoVersion opens the repo version file and gets the version,
-// with version checking added.
-func (m *MigrationRunner) GetSourceRepoVersion() (uint, error) {
-	file, err := ioutil.ReadFile(filepath.Join(m.oldRepoOpt, repo.VersionFilename()))
+// GetNewRepoVersion opens the version file in the new repo and returns
+// the parsed version number
+func (m *MigrationRunner) GetNewRepoVersion() (uint, error) {
+	if m.newRepoPath == "" {
+		return 0, errors.New("new repo not found")
+	}
+	return m.repoVersion(m.newRepoPath)
+}
+
+// repoVersion opens the version file for the given version,
+// gets the version and validates it
+func (m *MigrationRunner) repoVersion(repoPath string) (uint, error) {
+	file, err := ioutil.ReadFile(filepath.Join(repoPath, repo.VersionFilename()))
 	if err != nil {
 		return 0, err
 	}

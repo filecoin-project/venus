@@ -56,9 +56,3 @@ func RequireSetRepoVersion(t *testing.T, repoVersion int, repoDir string) {
 	newVer := []byte(fmt.Sprintf("%d", repoVersion))
 	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, verFile), newVer, 0644))
 }
-
-// RequireGetRepoVersion gets the version for the given test repo
-func RequireGetRepoVersion(t *testing.T, repoDir string) uint {
-	//_ := repo.VersionFilename()
-	return 1
-}
