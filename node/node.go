@@ -483,8 +483,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 // Start boots up the node.
 func (node *Node) Start(ctx context.Context) error {
-	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Metrics); err != nil {
+	if err := metrics.RegisterPrometheusEndpoint(node.Repo.Config().Observability.Metrics); err != nil {
 		return errors.Wrap(err, "failed to setup metrics")
+	}
+
+	if err := metrics.RegisterJaeger(node.host.ID().Pretty(), node.Repo.Config().Observability.Tracing); err != nil {
+		return errors.Wrap(err, "failed to setup tracing")
 	}
 
 	var err error
