@@ -534,8 +534,8 @@ func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Conte
 func TestMinerGetLastCommittedSectorID(t *testing.T) {
 	tf.UnitTest(t)
 
-	lastCommittedSectorId, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, address.TestAddress2)
+	lastCommittedSectorID, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, address.TestAddress2)
 	require.NoError(t, err)
 
-	assert.Equal(t, int(lastCommittedSectorId), 5432)
+	assert.Equal(t, int(lastCommittedSectorID), 5432)
 }
