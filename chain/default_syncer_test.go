@@ -1075,6 +1075,6 @@ func requireGetTsas(ctx context.Context, t *testing.T, chain chain.Store, key ty
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 	return consensus.MakeGenesisFunc(
-		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)(cst, bs)
 }

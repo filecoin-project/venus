@@ -68,7 +68,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector/3))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector.Uint64()/3))
 				if err != nil {
 					errs <- err
 				} else {
@@ -150,7 +150,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 5
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector.Uint64()))
 				if err != nil {
 					errs <- err
 				} else {
@@ -187,7 +187,7 @@ func TestSectorBuilder(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
 
-		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector.Uint64())
 		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
 		require.NoError(t, err)
 
@@ -244,7 +244,7 @@ func TestSectorBuilder(t *testing.T) {
 		sectorIDSet := sync.Map{}
 
 		// SectorBuilder begins polling for SectorIDA seal-status
-		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector-10))
+		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector.Uint64()-10))
 		require.NoError(t, errA)
 		sectorIDSet.Store(sectorIDA, true)
 
@@ -260,7 +260,7 @@ func TestSectorBuilder(t *testing.T) {
 
 		// second SectorBuilder begins polling for SectorIDB seal-status in
 		// addition to SectorIDA
-		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, hB.MaxBytesPerSector-50))
+		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, hB.MaxBytesPerSector.Uint64()-50))
 		require.NoError(t, errB)
 		sectorIDSet.Store(sectorIDB, true)
 
@@ -301,7 +301,7 @@ func TestSectorBuilder(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
 
-		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector.Uint64())
 		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
 		require.NoError(t, err)
 
@@ -341,7 +341,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, gerr)
 
 			// verify the proof-of-spacetime
-			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoSTRequest{
+			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoStRequest{
 				ChallengeSeed: challengeSeed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,
