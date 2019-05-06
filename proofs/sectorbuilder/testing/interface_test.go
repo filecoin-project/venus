@@ -239,7 +239,6 @@ func TestSectorBuilder(t *testing.T) {
 		}
 
 		hA := NewBuilder(t).StagingDir(stagingDir).SealedDir(sealedDir).Build()
-		defer hA.Close()
 
 		// holds id of each sector we expect to see sealed
 		sectorIDSet := sync.Map{}
@@ -248,6 +247,11 @@ func TestSectorBuilder(t *testing.T) {
 		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector-10))
 		require.NoError(t, errA)
 		sectorIDSet.Store(sectorIDA, true)
+
+		// destroy the first sector builder, which releases the metadata
+		// database lock and allows a new sector builder to be created using the
+		// same sectors dir
+		hA.Close()
 
 		// create new SectorBuilder which should start with a poller pre-seeded
 		// with state from previous SectorBuilder
