@@ -392,7 +392,10 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 // Cancel can be used to end an off chain payment early. It lowers the EOL of
 // the payment channel to 1 blocktime from now and allows a caller to reclaim
 // their payments. In the time before the channel is closed, a target can
-// potentially dispute a closer.
+// potentially dispute a closer. Cancel will only succeed if the target has not
+// successfully redeemed a voucher or if the target has successfully redeemed
+// the channel with a conditional voucher and the condition is no longer valid
+// due to changes in chain state.
 func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -416,8 +419,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
-		// If the payment channel has been successfully redeemed, check if it's
-		// valid and fail to prevent abuse
+		// Check if channel has already been redeemed and re-run condition if necessary
 		if channel.Redeemed {
 			// If it doesn't have a condition, it's valid, so throw an error
 			if channel.Condition == nil {
