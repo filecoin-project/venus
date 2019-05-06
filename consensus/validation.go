@@ -8,10 +8,25 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+var errNegativeValueCt *metrics.Int64Counter
+var errGasAboveBlockLimitCt *metrics.Int64Counter
+var errInsufficientGasCt *metrics.Int64Counter
+var errNonceTooLowCt *metrics.Int64Counter
+var errNonceTooHighCt *metrics.Int64Counter
+
+func init() {
+	errNegativeValueCt = metrics.NewInt64Counter("consensus/msg_negative_value_err", "Number of negative valuedmessage")
+	errGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gas_above_blk_limit_err", "Number of messages with gas above block limit")
+	errInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Number of messages with insufficient gas")
+	errNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Number of messages with nonce too low")
+	errNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Number of messages with nonce too high")
+}
 
 // SignedMessageValidator validates incoming signed messages.
 type SignedMessageValidator interface {
@@ -60,28 +75,33 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 	}
 
 	if msg.Value.IsNegative() {
-		log.Infof("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
+		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
+		errNegativeValueCt.Inc(ctx, 1)
 		return errNegativeValue
 	}
 
 	if msg.GasLimit > types.BlockGasLimit {
-		log.Infof("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
+		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
+		errGasAboveBlockLimitCt.Inc(ctx, 1)
 		return errGasAboveBlockLimit
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Infof("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
+		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
+		errInsufficientGasCt.Inc(ctx, 1)
 		return errInsufficientGas
 	}
 
 	if msg.Nonce < fromActor.Nonce {
-		log.Infof("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		errNonceTooLowCt.Inc(ctx, 1)
 		return errNonceTooLow
 	}
 
 	if !v.allowHighNonce && msg.Nonce > fromActor.Nonce {
-		log.Infof("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
 	}
 
