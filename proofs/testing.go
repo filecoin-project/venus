@@ -13,7 +13,7 @@ func NewFakeVerifier(isValid bool, err error) FakeVerifier {
 
 // VerifyPoST returns the valid of verifyPostValid and verifyPostError.
 // It fulfils a requirement for the Verifier interface
-func (fp FakeVerifier) VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+func (fp FakeVerifier) VerifyPoST(VerifyPoStRequest) (VerifyPoSTResponse, error) {
 	return VerifyPoSTResponse{IsValid: fp.verifyPostValid}, fp.verifyPostError
 }
 

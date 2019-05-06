@@ -40,6 +40,8 @@ const (
 	ErrTooEarly = 43
 	//ErrConditionInvalid indicates that the condition attached to a voucher did not execute successfully
 	ErrConditionInvalid = 44
+	//ErrInvalidCancel indicates that the condition attached to a voucher did execute successfully and therefore can't be cancelled
+	ErrInvalidCancel = 45
 )
 
 // CancelDelayBlockTime is the number of rounds given to the target to respond after the channel
@@ -390,7 +392,10 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 // Cancel can be used to end an off chain payment early. It lowers the EOL of
 // the payment channel to 1 blocktime from now and allows a caller to reclaim
 // their payments. In the time before the channel is closed, a target can
-// potentially dispute a closer.
+// potentially dispute a closer. Cancel will only succeed if the target has not
+// successfully redeemed a voucher or if the target has successfully redeemed
+// the channel with a conditional voucher and the condition is no longer valid
+// due to changes in chain state.
 func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -412,6 +417,25 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 		channel, ok := chInt.(*PaymentChannel)
 		if !ok {
 			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
+		}
+
+		// Check if channel has already been redeemed and re-run condition if necessary
+		if channel.Redeemed {
+			// If it doesn't have a condition, it's valid, so throw an error
+			if channel.Condition == nil {
+				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
+			}
+			// Otherwise, check the condition on the payment channel
+			err := checkCondition(vmctx, channel)
+			// If we receive no error, the condition is valid, so we fail
+			if err == nil {
+				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
+			}
+			// If there's a non-revert error, we have bigger problem, so raise the
+			// error
+			if !errors.ShouldRevert(err) {
+				return err
+			}
 		}
 
 		eol := vmctx.BlockHeight().Add(types.NewBlockHeight(CancelDelayBlockTime))
@@ -593,7 +617,9 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 }
 
 func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
-	if err := checkCondition(ctx, channel, condition, redeemerSuppliedParams); err != nil {
+	cacheCondition(channel, condition, redeemerSuppliedParams)
+
+	if err := checkCondition(ctx, channel); err != nil {
 		return err
 	}
 
@@ -756,10 +782,27 @@ func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
 // to the actor and method specified in the condition, and returns an error if one exists.
-func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+func checkCondition(vmctx exec.VMContext, channel *PaymentChannel) error {
+	if channel.Condition == nil {
+		return nil
+	}
+
+	_, _, err := vmctx.Send(channel.Condition.To, channel.Condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
+	if err != nil {
+		if errors.IsFault(err) {
+			return err
+		}
+		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
+	}
+	return nil
+}
+
+// cacheCondition saves redeemer supplied conditions to the payment channel for
+// future use
+func cacheCondition(channel *PaymentChannel, condition *types.Predicate, redeemerSuppliedParams []interface{}) {
 	if condition == nil {
 		channel.Condition = nil
-		return nil
+		return
 	}
 
 	// If new params have been provided or we don't yet have a cached condition,
@@ -772,13 +815,4 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel, condition *ty
 		newCachedCondition.Params = newParams
 		channel.Condition = &newCachedCondition
 	}
-
-	_, _, err := vmctx.Send(condition.To, condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
-	if err != nil {
-		if errors.IsFault(err) {
-			return err
-		}
-		return errors.NewCodedRevertErrorf(ErrConditionInvalid, "failed to validate voucher condition: %s", err)
-	}
-	return nil
 }

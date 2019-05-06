@@ -3,20 +3,23 @@ package porcelain_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
-
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-leb128"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-peer"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
@@ -424,6 +427,17 @@ func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to
 	return [][]byte{address.TestAddress.Bytes()}, nil
 }
 
+func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "getSectorSize" {
+		return &exec.FunctionSignature{
+			Params: nil,
+			Return: []abi.Type{abi.BytesAmount},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported method: %s", method)
+}
+
 func TestMinerGetOwnerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -482,4 +496,46 @@ func requirePeerID() peer.ID {
 		panic("Could not create peer id")
 	}
 	return id
+}
+
+type minerGetSectorSizePlumbing struct{}
+
+func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{types.NewBytesAmount(1234).Bytes()}, nil
+}
+func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	return &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.BytesAmount},
+	}, nil
+}
+
+func TestMinerGetSectorSize(t *testing.T) {
+	tf.UnitTest(t)
+
+	sectorSize, err := MinerGetSectorSize(context.Background(), &minerGetSectorSizePlumbing{}, address.TestAddress2)
+	require.NoError(t, err)
+
+	assert.Equal(t, int(sectorSize.Uint64()), 1234)
+}
+
+type minerGetLastCommittedSectorIDPlumbing struct{}
+
+func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{leb128.FromUInt64(5432)}, nil
+}
+func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	return &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
+	}, nil
+}
+
+func TestMinerGetLastCommittedSectorID(t *testing.T) {
+	tf.UnitTest(t)
+
+	lastCommittedSectorID, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, address.TestAddress2)
+	require.NoError(t, err)
+
+	assert.Equal(t, int(lastCommittedSectorID), 5432)
 }

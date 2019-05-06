@@ -59,7 +59,7 @@ func RequireNewAccountActor(t *testing.T, value *types.AttoFIL) *actor.Actor {
 func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
 	storage := vms.NewStorage(addr, act)
-	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
+	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll, types.OneKiBSectorSize)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
 	require.NoError(t, err)
 	require.NoError(t, storage.Flush())

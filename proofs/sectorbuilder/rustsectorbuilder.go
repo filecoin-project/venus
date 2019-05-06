@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"runtime"
 	"time"
 	"unsafe"
 
@@ -138,10 +137,6 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	}
 
 	sb.sealStatusPoller = newSealStatusPoller(stagedSectorIDs, sb.sectorSealResults, sb.findSealedSectorMetadata)
-
-	runtime.SetFinalizer(sb, func(o *RustSectorBuilder) {
-		o.destroy()
-	})
 
 	return sb, nil
 }
@@ -361,9 +356,13 @@ func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 	return sb.sectorSealResults
 }
 
-// Close shuts down the RustSectorBuilder's poller.
+// Close closes the sector builder and deallocates its (Rust) memory, rendering
+// it unusable for I/O.
 func (sb *RustSectorBuilder) Close() error {
 	sb.sealStatusPoller.stop()
+	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
+	sb.ptr = nil
+
 	return nil
 }
 
@@ -401,10 +400,4 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 		Proofs: proofs,
 		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
 	}, nil
-}
-
-func (sb *RustSectorBuilder) destroy() {
-	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
-
-	sb.ptr = nil
 }

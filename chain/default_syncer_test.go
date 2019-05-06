@@ -1081,6 +1081,6 @@ func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore cha
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 	return consensus.MakeGenesisFunc(
-		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)(cst, bs)
 }
