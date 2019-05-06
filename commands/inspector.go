@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"runtime"
 
@@ -53,6 +55,19 @@ Prints out information about filecoin process and its environment.
 		allInfo.FilecoinVersion = GetInspectorAPI(env).FilecoinVersion()
 		return cmds.EmitOnce(res, allInfo)
 	},
+	Type: AllInspectorInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *AllInspectorInfo) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
+	},
 }
 
 var runtimeInspectCmd = &cmds.Command{
@@ -65,6 +80,19 @@ Prints out information about the golang runtime.
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := GetInspectorAPI(env).Runtime()
 		return cmds.EmitOnce(res, out)
+	},
+	Type: RuntimeInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *RuntimeInfo) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
 	},
 }
 
@@ -82,6 +110,19 @@ Prints out information about the filesystem.
 		}
 		return cmds.EmitOnce(res, out)
 	},
+	Type: DiskInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *DiskInfo) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
+	},
 }
 
 var memoryInspectCmd = &cmds.Command{
@@ -98,6 +139,19 @@ Prints out information about memory usage.
 		}
 		return cmds.EmitOnce(res, out)
 	},
+	Type: MemoryInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *MemoryInfo) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
+	},
 }
 
 var configInspectCmd = &cmds.Command{
@@ -111,6 +165,19 @@ Prints out information about your filecoin nodes config.
 		out := GetInspectorAPI(env).Config()
 		return cmds.EmitOnce(res, out)
 	},
+	Type: config.Config{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *config.Config) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
+	},
 }
 
 var envInspectCmd = &cmds.Command{
@@ -123,6 +190,19 @@ Prints out information about your filecoin nodes environment.
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := GetInspectorAPI(env).Environment()
 		return cmds.EmitOnce(res, out)
+	},
+	Type: EnvironmentInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *EnvironmentInfo) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+
+			_, err = w.Write(marshaled)
+			return err
+		}),
 	},
 }
 
