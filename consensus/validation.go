@@ -60,28 +60,28 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 	}
 
 	if msg.Value.IsNegative() {
-		log.Info("Cannot transfer negative value", fromActor, msg.Value)
+		log.Infof("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
 		return errNegativeValue
 	}
 
 	if msg.GasLimit > types.BlockGasLimit {
-		log.Info("Message gas limit above block limit", fromActor, msg, types.BlockGasLimit)
+		log.Infof("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
 		return errGasAboveBlockLimit
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)
+		log.Infof("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
 		return errInsufficientGas
 	}
 
 	if msg.Nonce < fromActor.Nonce {
-		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Infof("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
 		return errNonceTooLow
 	}
 
 	if !v.allowHighNonce && msg.Nonce > fromActor.Nonce {
-		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Infof("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
 		return errNonceTooHigh
 	}
 
