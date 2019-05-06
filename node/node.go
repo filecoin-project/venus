@@ -1096,11 +1096,11 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
 func (node *Node) getStateFromKey(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
-	tssr, err := node.ChainReader.GetTipSetStateRoot(tsKey)
+	stateCid, err := node.ChainReader.GetTipSetStateRoot(tsKey)
 	if err != nil {
 		return nil, err
 	}
-	return state.LoadStateTree(ctx, node.CborStore(), tssr, builtin.Actors)
+	return state.LoadStateTree(ctx, node.CborStore(), stateCid, builtin.Actors)
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.

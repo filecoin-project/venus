@@ -42,11 +42,11 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	headTs := p.chainReader.GetHead()
-	tssr, err := p.chainReader.GetTipSetStateRoot(headTs)
+	stateCid, err := p.chainReader.GetTipSetStateRoot(headTs)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get latest state root")
 	}
-	st, err := state.LoadStateTree(ctx, p.cst, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, p.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}

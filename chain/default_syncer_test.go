@@ -1074,9 +1074,9 @@ func requireGetTipSet(ctx context.Context, t *testing.T, chainStore chain.Store,
 }
 
 func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) cid.Cid {
-	tssr, err := chainStore.GetTipSetStateRoot(key)
+	stateCid, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
-	return tssr
+	return stateCid
 }
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {

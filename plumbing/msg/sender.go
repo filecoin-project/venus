@@ -28,7 +28,6 @@ const Topic = "/fil/msgs"
 // Abstracts over a store of blockchain state.
 type chainState interface {
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 }
 
@@ -97,11 +96,11 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	defer s.l.Unlock()
 
 	headTs := s.chainState.GetHead()
-	tssr, err := s.chainState.GetTipSetStateRoot(headTs)
+	stateCid, err := s.chainState.GetTipSetStateRoot(headTs)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "couldnt get latest state root")
 	}
-	st, err := state.LoadStateTree(ctx, s.cst, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, s.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
 	}

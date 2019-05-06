@@ -45,11 +45,11 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 	}
 
 	headTs := q.chainReader.GetHead()
-	tssr, err := q.chainReader.GetTipSetStateRoot(headTs)
+	stateCid, err := q.chainReader.GetTipSetStateRoot(headTs)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get latest state root")
 	}
-	st, err := state.LoadStateTree(ctx, q.cst, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, q.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, errors.Wrap(err, "could load tree for latest state root")
 	}

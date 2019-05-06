@@ -399,11 +399,11 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 
 // ActorFromLatestState gets the latest state and retrieves an actor from it.
 func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	tssr, err := store.GetTipSetStateRoot(store.GetHead())
+	stateCid, err := store.GetTipSetStateRoot(store.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, store.stateStore, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, store.stateStore, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}

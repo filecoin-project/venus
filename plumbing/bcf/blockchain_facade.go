@@ -132,10 +132,10 @@ func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr ad
 // getExecutable returns the builtin actor code from the latest state on the chain
 func (chn *BlockChainFacade) getLatestState(ctx context.Context) (state.Tree, error) {
 	head := chn.reader.GetHead()
-	tssr, err := chn.reader.GetTipSetStateRoot(head)
+	stateCid, err := chn.reader.GetTipSetStateRoot(head)
 	if err != nil {
 		return nil, err
 	}
 
-	return state.LoadStateTree(ctx, chn.cst, tssr, builtin.Actors)
+	return state.LoadStateTree(ctx, chn.cst, stateCid, builtin.Actors)
 }

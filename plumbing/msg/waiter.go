@@ -186,11 +186,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tssr, err := w.chainReader.GetTipSetStateRoot(ids)
+	stateCid, err := w.chainReader.GetTipSetStateRoot(ids)
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, w.cst, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, w.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}

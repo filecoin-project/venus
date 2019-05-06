@@ -168,11 +168,11 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.Sorted
 	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
-	tssr, err := syncer.chainStore.GetTipSetStateRoot(tsKey)
+	stateCid, err := syncer.chainStore.GetTipSetStateRoot(tsKey)
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, syncer.stateStore, tssr, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, syncer.stateStore, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
