@@ -180,6 +180,10 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 	return address.TestAddress, nil
 }
 
+func (ctp *clientTestAPI) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
+	return types.OneKiBSectorSize, nil
+}
+
 func (ctp *clientTestAPI) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	id, err := peer.IDB58Decode("QmWbMozPyW6Ecagtxq7SXBXXLY5BNdP1GwHB2WoZCKMvcb")
 	require.NoError(ctp.testing, err, "Could not create peer id")

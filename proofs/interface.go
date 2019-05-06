@@ -12,16 +12,16 @@ type VerifySealRequest struct {
 	Proof      types.PoRepProof // returned from seal
 	ProverID   [31]byte         // uniquely identifies miner
 	SectorID   [31]byte         // uniquely identifies sector
-	SectorSize types.SectorSize
+	SectorSize *types.BytesAmount
 }
 
-// VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
-type VerifyPoSTRequest struct {
+// VerifyPoStRequest represents a request to generate verify a proof-of-spacetime.
+type VerifyPoStRequest struct {
 	ChallengeSeed types.PoStChallengeSeed
 	SortedCommRs  SortedCommRs
 	Faults        []uint64
 	Proofs        []types.PoStProof
-	SectorSize    types.SectorSize
+	SectorSize    *types.BytesAmount
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
@@ -36,6 +36,6 @@ type VerifySealResponse struct {
 
 // Verifier provides an interface to the proving subsystem.
 type Verifier interface {
-	VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error)
+	VerifyPoST(VerifyPoStRequest) (VerifyPoSTResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
 }
