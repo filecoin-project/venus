@@ -86,25 +86,39 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
-	oldRepo := RequireMakeTempDir(t, "")
+	t.Run("works", func(t *testing.T) {
+		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
+		defer RequireRemove(t, linkedRepoPath)
+		defer RequireRemove(t, oldRepo)
 
-	linkedRepoPath := oldRepo + "something"
-	require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-	defer RequireRemove(t, linkedRepoPath)
+		newRepoPath, err := CloneRepo(linkedRepoPath)
+		require.NoError(t, err)
+		require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
 
-	newRepoPath, err := CloneRepo(linkedRepoPath)
-	require.NoError(t, err)
+		// put something in each repo dir so we know which is which
+		_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
+		require.NoError(t, err)
 
-	// put something in each repo dir so we know which is which
-	_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
-	require.NoError(t, err)
+		// check that the new repo is at the old link location.
+		dir, err := os.Open(newRepoPath)
+		require.NoError(t, err)
+		contents, err := dir.Readdirnames(0)
+		require.NoError(t, err)
+		assert.Contains(t, contents, "newRepoFile")
+	})
 
-	require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
+	t.Run("returns error and leaves symlink if new repo does not exist", func(t *testing.T) {
+		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
+		defer RequireRemove(t, linkedRepoPath)
+		defer RequireRemove(t, oldRepo)
 
-	// check that the new repo is at the old link location.
-	dir, err := os.Open(newRepoPath)
-	require.NoError(t, err)
-	contents, err := dir.Readdirnames(0)
-	require.NoError(t, err)
-	assert.Contains(t, contents, "newRepoFile")
+		_, err := CloneRepo(linkedRepoPath)
+		require.NoError(t, err)
+
+		err = InstallNewRepo(linkedRepoPath, "/tmp/nonexistentfile")
+		assert.EqualError(t, err, "stat /tmp/nonexistentfile: no such file or directory")
+		target, err := os.Readlink(linkedRepoPath)
+		assert.NoError(t, err)
+		assert.Equal(t, oldRepo, target)
+	})
 }

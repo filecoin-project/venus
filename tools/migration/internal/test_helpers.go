@@ -1,12 +1,15 @@
 package internal
 
 import (
-	"fmt"
+	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -35,6 +38,14 @@ func RequireOpenTempFile(t *testing.T, suffix string) (*os.File, string) {
 	return file, name
 }
 
+// AssertLogged asserts that a given string is contained in the given log file.
+func AssertLogged(t *testing.T, logFile *os.File, subStr string) {
+	out, err := ioutil.ReadFile(logFile.Name())
+	require.NoError(t, err)
+	outStr := string(out)
+	assert.Contains(t, outStr, subStr)
+}
+
 // RequireSetupTestRepo sets up a repo dir with a symlink pointing to it.
 // Caller is responsible for deleting dir and symlink.
 func RequireSetupTestRepo(t *testing.T, repoVersion int) (repoDir, symLink string) {
@@ -44,15 +55,23 @@ func RequireSetupTestRepo(t *testing.T, repoVersion int) (repoDir, symLink strin
 	symLink = repoDir + "-reposymlink"
 	require.NoError(t, os.Symlink(repoDir, symLink))
 
-	RequireSetRepoVersion(t, repoVersion, repoDir)
+	RequireSetRepoVersion(t, strconv.Itoa(repoVersion), repoDir)
 	return repoDir, symLink
 }
 
 // RequireSetRepoVersion sets the version for the given test repo.
-// even though the version is uint, using int allows us to test with invalid repoVersions
-// such as -1
-func RequireSetRepoVersion(t *testing.T, repoVersion int, repoDir string) {
+// This is here so that corrupt version strings can be tested.
+func RequireSetRepoVersion(t *testing.T, repoVersion string, repoDir string) {
 	verFile := repo.VersionFilename()
-	newVer := []byte(fmt.Sprintf("%d", repoVersion))
+	newVer := []byte(repoVersion)
 	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, verFile), newVer, 0644))
+}
+
+// CaptureOutput puts log content into
+func CaptureOutput(f func()) string {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	f()
+	log.SetOutput(os.Stderr)
+	return buf.String()
 }

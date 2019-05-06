@@ -7,7 +7,8 @@ import (
 	"log"
 	"path/filepath"
 	"strconv"
-	"strings"
+
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -49,10 +50,12 @@ type MigrationRunner struct {
 	// command is the migration command to run, passed from the CLI
 	command string
 
-	// oldRepoOpt is the value of --old-repo passed  from the CLI
+	// oldRepoOpt is the value of --old-repo passed  from the CLI,
+	// expanded homedir where needed
 	oldRepoOpt string
 
-	// newRepoPath is where the to-be-migrated/migrated repo is located
+	// newRepoPath is where the to-be-migrated/migrated repo is located,
+	// expanded homedir where needed
 	newRepoPath string
 
 	// MigrationsProvider is a dependency for fetching available migrations
@@ -61,14 +64,23 @@ type MigrationRunner struct {
 }
 
 // NewMigrationRunner builds a MigrationRunner for the given command and repo options
-func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) *MigrationRunner {
+// Returns an error if homepath expansion fails for oldRepoOpt or newRepoOpt
+func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) (*MigrationRunner, error) {
+	oldPath, err := homedir.Expand(oldRepoOpt)
+	if err != nil {
+		return nil, err
+	}
+	newPath, err := homedir.Expand(newRepoOpt)
+	if err != nil {
+		return nil, err
+	}
 	return &MigrationRunner{
 		logger:             logger,
 		command:            command,
-		oldRepoOpt:         oldRepoOpt,
-		newRepoPath:        newRepoOpt,
+		oldRepoOpt:         oldPath,
+		newRepoPath:        newPath,
 		MigrationsProvider: DefaultMigrationsProvider,
-	}
+	}, nil
 }
 
 // Run executes the MigrationRunner
@@ -78,7 +90,8 @@ func (m *MigrationRunner) Run() error {
 		return err
 	}
 	if repoVersion == m.getTargetMigrationVersion() {
-		return fmt.Errorf("binary version %d = repo version %d; migration not run", repoVersion, m.getTargetMigrationVersion())
+		m.logger.Print(fmt.Sprintf("Repo up-to-date: binary version %d = repo version %d", repoVersion, m.getTargetMigrationVersion()))
+		return nil
 	}
 
 	var mig Migration
@@ -88,6 +101,7 @@ func (m *MigrationRunner) Run() error {
 	return m.runCommand(mig)
 }
 
+// runCommand runs the migration command set in the Migration runner.
 func (m *MigrationRunner) runCommand(mig Migration) error {
 	var err error
 
@@ -120,13 +134,14 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		if err = mig.Migrate(m.newRepoPath); err != nil {
 			return errors.New("migration failed: " + err.Error())
 		}
+		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
+			return errors.New("validation failed: " + err.Error())
+		}
 	case "install":
 		if m.newRepoPath == "" {
 			return errors.New("installation failed: new repo is missing")
 		}
-		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
-			return errors.New("validation failed: " + err.Error())
-		}
+
 		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoPath); err != nil {
 			return errors.New("installation failed: " + err.Error())
 		}
@@ -146,12 +161,11 @@ func (m *MigrationRunner) GetNewRepoVersion() (uint, error) {
 // repoVersion opens the version file for the given version,
 // gets the version and validates it
 func (m *MigrationRunner) repoVersion(repoPath string) (uint, error) {
-	file, err := ioutil.ReadFile(filepath.Join(repoPath, repo.VersionFilename()))
+	strVersion, err := repo.GetVersionForRepo(repoPath)
 	if err != nil {
 		return 0, err
 	}
 
-	strVersion := strings.Trim(string(file), "\n")
 	version, err := strconv.Atoi(strVersion)
 	if err != nil {
 		return 0, err
@@ -164,17 +178,20 @@ func (m *MigrationRunner) repoVersion(repoPath string) (uint, error) {
 	return uint(version), nil
 }
 
+// validateAndUpdateVersion calls the migration's validate function and then bumps
+// the version number in the new repo.
 func (m *MigrationRunner) validateAndUpdateVersion(toVersion uint, newRepoPath string, mig Migration) error {
 	if err := mig.Validate(m.oldRepoOpt, newRepoPath); err != nil {
 		return err
 	}
-	toVersionStr := fmt.Sprintf("%d", toVersion)
+	toVersionStr := strconv.FormatUint(uint64(toVersion), 10)
 	if err := ioutil.WriteFile(filepath.Join(newRepoPath, "version"), []byte(toVersionStr), 0644); err != nil {
 		return err
 	}
 	return nil
 }
 
+// getTargetMigrationVersion returns the maximum resulting version of any migration available from the provider.
 func (m *MigrationRunner) getTargetMigrationVersion() uint {
 	targetVersion := uint(0)
 	migrations := m.MigrationsProvider()
@@ -187,6 +204,9 @@ func (m *MigrationRunner) getTargetMigrationVersion() uint {
 	return targetVersion
 }
 
+// getValidMigration finds the list of migrations in the MigrationsProvder
+// that is valid for this repo.
+// returns: an error if >1 valid migration is found
 func (m *MigrationRunner) getValidMigration(repoVersion uint) (mig Migration, err error) {
 	var applicableMigs []Migration
 	for _, mig := range m.MigrationsProvider() {

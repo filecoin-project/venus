@@ -506,6 +506,16 @@ func badgerOptions() *badgerds.Options {
 	return result
 }
 
+// GetVersionForRepo returns the unparsed (string) version
+// from the version file in the specified repo.
+func GetVersionForRepo(repoPath string) (string, error) {
+	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
+	if err != nil {
+		return "", err
+	}
+	return strings.Trim(string(file), "\n"), nil
+}
+
 // VersionFilename returns the version filename for the repo
 func VersionFilename() string {
 	return versionFilename

@@ -1,11 +1,8 @@
 package internal_test
 
 import (
-	"bytes"
 	"errors"
 	"io/ioutil"
-	"log"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -28,7 +25,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink", "doesnt/matter")
+		runner, err := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink", "doesnt/matter")
+		require.NoError(t, err)
 		assert.Error(t, runner.Run(), "no filecoin repo found in /home/filecoin-symlink.")
 	})
 
@@ -36,7 +34,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
 		migrations := runner.MigrationsProvider()
@@ -44,35 +43,27 @@ func TestMigrationRunner_Run(t *testing.T) {
 		assert.NoError(t, runner.Run())
 	})
 
-	t.Run("Returns error and does not not run the migration if the repo is already up to date", func(t *testing.T) {
-		RequireSetRepoVersion(t, 1, repoDir)
+	t.Run("Does not not run the migration if the repo is already up to date", func(t *testing.T) {
+		RequireSetRepoVersion(t, "1", repoDir)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
-		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
-	})
-
-	t.Run("Runs the right migration version", func(t *testing.T) {
-		RequireSetRepoVersion(t, 1, repoDir)
-
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
-		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
-		runner.MigrationsProvider = testProviderValidationFails
-		assert.EqualError(t, runner.Run(), "binary version 1 = repo version 1; migration not run")
+		assert.NoError(t, runner.Run())
+		AssertLogged(t, dummyLogFile, "Repo up-to-date: binary version 1 = repo version 1")
 	})
 
 	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
-		RequireSetRepoVersion(t, 199, repoDir)
+		RequireSetRepoVersion(t, "199", repoDir)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 		assert.EqualError(t, runner.Run(), "migration check failed: did not find valid repo migration for version 199")
 	})
@@ -81,13 +72,14 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		RequireSetRepoVersion(t, -1, repoDir)
+		RequireSetRepoVersion(t, "-1", repoDir)
 		assert.EqualError(t, runner.Run(), "repo version out of range: -1")
 
-		RequireSetRepoVersion(t, 32767, repoDir)
+		RequireSetRepoVersion(t, "32767", repoDir)
 		assert.EqualError(t, runner.Run(), "repo version out of range: 32767")
 	})
 
@@ -95,7 +87,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
 		// TODO: Handle this more gracefully
@@ -104,11 +97,12 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("describe does not create a new repo", func(t *testing.T) {
-		RequireSetRepoVersion(t, 0, repoSymlink)
+		RequireSetRepoVersion(t, "0", repoSymlink)
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 
 		runner.MigrationsProvider = testProviderPasses
 
@@ -122,7 +116,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 
 		runner.MigrationsProvider = func() []Migration {
 			return []Migration{
@@ -137,7 +132,8 @@ func TestMigrationRunner_Run(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		require.NoError(t, err)
 
 		runner.MigrationsProvider = func() []Migration {
 			return []Migration{
@@ -145,19 +141,11 @@ func TestMigrationRunner_Run(t *testing.T) {
 				&TestMigMultiversion,
 			}
 		}
-		output := captureOutput(func() {
+		output := CaptureOutput(func() {
 			_ = runner.Run()
 		})
 		assert.Contains(t, output, "Refusing multi-version migration from 1 to 3")
 	})
-}
-
-func captureOutput(f func()) string {
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	f()
-	log.SetOutput(os.Stderr)
-	return buf.String()
 }
 
 func testProviderPasses() []Migration {

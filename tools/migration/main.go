@@ -69,7 +69,8 @@ func main() { // nolint: deadcode
 		showUsageAndExit(1)
 	}
 
-	command := getCommand()
+	command := os.Args[1]
+
 	switch command {
 	case "-h", "--help":
 		showUsageAndExit(0)
@@ -78,7 +79,9 @@ func main() { // nolint: deadcode
 		if err != nil {
 			exitErr(err.Error())
 		}
+
 		logger := internal.NewLogger(logFile, getVerbose())
+		logger.Print("something, anything")
 
 		oldRepoOpt, found := findOpt("old-repo", os.Args)
 		if !found {
@@ -93,7 +96,10 @@ func main() { // nolint: deadcode
 			}
 		}
 
-		runner := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
+		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
+		if err != nil {
+			exitErr(err.Error())
+		}
 		if err := runner.Run(); err != nil {
 			exitErr(err.Error())
 		}
@@ -102,20 +108,20 @@ func main() { // nolint: deadcode
 	}
 }
 
+// exitError exits(1) the executable with the given error String
 func exitErr(errstr string) {
 	log.New(os.Stderr, "", 0).Println(errstr)
 	os.Exit(1)
 }
 
+// showUsageAndExit prints out USAGE and exits with the given code.
 func showUsageAndExit(code int) {
 	fmt.Println(USAGE)
 	os.Exit(code)
 }
 
-func getCommand() string {
-	return os.Args[1]
-}
-
+// getVerbose parses os.Args looking for -v or --verbose.
+// returns whether it was found.
 func getVerbose() bool {
 	if _, found := findOpt("-v", os.Args); found {
 		return true
@@ -124,6 +130,7 @@ func getVerbose() bool {
 	return res
 }
 
+// openLogFile opens the log file from getLogFilePath
 func openLogFile() (*os.File, error) {
 	path, err := getLogFilePath()
 	if err != nil {
@@ -132,6 +139,7 @@ func openLogFile() (*os.File, error) {
 	return os.OpenFile(path, os.O_APPEND|os.O_CREATE, 0644)
 }
 
+// getLogFilePath returns the path of the logfile.
 func getLogFilePath() (string, error) {
 	if logPath, found := findOpt("--log-file", os.Args); found {
 		return logPath, nil

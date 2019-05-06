@@ -21,7 +21,8 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderMigrationFails
 		assert.EqualError(t, runner.Run(), "migration failed: migration has failed")
 	})
@@ -30,16 +31,18 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderValidationFails
 		assert.EqualError(t, runner.Run(), "validation failed: validation has failed")
 	})
 
-	t.Run("writes the new version to the repo", func(t *testing.T) {
+	t.Run("writes the new version to the repo and leaves old repo untouched", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
+		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
 		assert.NoError(t, runner.Run())

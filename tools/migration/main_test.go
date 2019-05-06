@@ -55,14 +55,12 @@ func TestOptions(t *testing.T) {
 		defer internal.RequireRemove(t, repoDir)
 		defer internal.RequireRemove(t, symlink)
 
-		// TODO: this will break once there is a valid migration, but we can't mock migrations
-		//       here because we're running the CLI.
 		out, err := exec.Command(command, "describe", "--old-repo="+symlink, "--verbose").CombinedOutput()
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "binary version 0 = repo version 0; migration not run\n", string(out))
 
 		_, err = exec.Command(command, "describe", "--old-repo="+symlink, "-v").CombinedOutput()
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "binary version 0 = repo version 0; migration not run\n", string(out))
 	})
 
