@@ -271,9 +271,9 @@ func requireTsAdded(t *testing.T, chain chain.Store, ts types.TipSet) {
 	h, err := ts.Height()
 	require.NoError(t, err)
 	// Tip Index correctly updated
-	gotTsas, err := chain.GetTipSetAndState(ts.ToSortedCidSet())
+	gotTs, err := chain.GetTipSet(ts.ToSortedCidSet())
 	require.NoError(t, err)
-	require.Equal(t, ts, gotTsas.TipSet)
+	require.Equal(t, ts, *gotTs)
 	parent, err := ts.Parents()
 	require.NoError(t, err)
 	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
@@ -291,9 +291,9 @@ func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 	h, err := ts.Height()
 	assert.NoError(t, err)
 	// Tip Index correctly updated
-	gotTsas, err := chainStore.GetTipSetAndState(ts.ToSortedCidSet())
+	gotTs, err := chainStore.GetTipSet(ts.ToSortedCidSet())
 	assert.NoError(t, err)
-	assert.Equal(t, ts, gotTsas.TipSet)
+	assert.Equal(t, ts, *gotTs)
 	parent, err := ts.Parents()
 	assert.NoError(t, err)
 	childTsasSlice, err := chainStore.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
@@ -309,7 +309,7 @@ func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 func assertNoAdd(t *testing.T, chainStore chain.Store, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
-	_, err := chainStore.GetTipSetAndState(cids)
+	_, err := chainStore.GetTipSet(cids)
 	assert.Error(t, err)
 	// Blocks exist in store
 	for _, c := range cids.ToSlice() {
@@ -322,9 +322,9 @@ func requireHead(t *testing.T, chain chain.Store, head types.TipSet) {
 }
 
 func assertHead(t *testing.T, chain chain.Store, head types.TipSet) {
-	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	assert.NoError(t, err)
-	assert.Equal(t, head, headTipSetAndState.TipSet)
+	assert.Equal(t, head, *headTipSet)
 }
 
 func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.SortedCidSet {
@@ -1067,10 +1067,16 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
 
-func requireGetTsas(ctx context.Context, t *testing.T, chain chain.Store, key types.SortedCidSet) *chain.TipSetAndState {
-	tsas, err := chain.GetTipSetAndState(key)
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) *types.TipSet {
+	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
-	return tsas
+	return ts
+}
+
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) cid.Cid {
+	stateCid, err := chainStore.GetTipSetStateRoot(key)
+	require.NoError(t, err)
+	return stateCid
 }
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {

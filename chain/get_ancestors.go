@@ -16,12 +16,12 @@ import (
 // height `descendantBlockHeight` in the heaviest chain.
 func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 	head := chainReader.GetHead()
-	headTipSetAndState, err := chainReader.GetTipSetAndState(head)
+	headTipSet, err := chainReader.GetTipSet(head)
 	if err != nil {
 		return nil, err
 	}
 	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	return GetRecentAncestors(ctx, headTipSetAndState.TipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	return GetRecentAncestors(ctx, *headTipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
 }
 
 // GetRecentAncestors returns the ancestors of base as a slice of TipSets.
@@ -77,11 +77,11 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	tsas, err := chainReader.GetTipSetAndState(firstExtraRandomnessAncestorsCids)
+	lookBackTS, err := chainReader.GetTipSet(firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
 	}
-	iterator = IterAncestors(ctx, chainReader, tsas.TipSet)
+	iterator = IterAncestors(ctx, chainReader, *lookBackTS)
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
