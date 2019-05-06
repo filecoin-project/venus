@@ -424,18 +424,17 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 			// If it doesn't have a condition, it's valid, so throw an error
 			if channel.Condition == nil {
 				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
-			} else {
-				// Otherwise, check the condition on the payment channel
-				err := checkCondition(vmctx, channel)
-				// If we receive no error, the condition is valid, so we fail
-				if err == nil {
-					return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
-				}
-				// If there's a non-revert error, we have bigger problem, so raise the
-				// error
-				if !errors.ShouldRevert(err) {
-					return err
-				}
+			}
+			// Otherwise, check the condition on the payment channel
+			err := checkCondition(vmctx, channel)
+			// If we receive no error, the condition is valid, so we fail
+			if err == nil {
+				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
+			}
+			// If there's a non-revert error, we have bigger problem, so raise the
+			// error
+			if !errors.ShouldRevert(err) {
+				return err
 			}
 		}
 
