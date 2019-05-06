@@ -67,9 +67,9 @@ func TestWait(t *testing.T) {
 func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
+	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}})
+	chainWithMsgs := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
 	th.RequirePutTsas(ctx, t, chainStore, &chain.TipSetAndState{
@@ -88,9 +88,9 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
 	m3, m4 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
+	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m3, m4}})
+	chainWithMsgs := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, t, waiter, m3, false, nil)
@@ -120,9 +120,9 @@ func TestWaitError(t *testing.T) {
 func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
+	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chain := core.NewChainWithMessages(cst, headTipSetAndState.TipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	chain := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
 	err = chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(t, err)
@@ -144,7 +144,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)
 	cst, chainStore, waiter := setupTestWithGif(t, testGen)
 
@@ -158,9 +158,9 @@ func TestWaitConflicting(t *testing.T) {
 	require.NoError(t, err)
 
 	head := chainStore.GetHead()
-	headTipSetAndState, err := chainStore.GetTipSetAndState(head)
+	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	baseTS := headTipSetAndState.TipSet
+	baseTS := *headTipSet
 	require.Equal(t, 1, len(baseTS))
 	baseBlock := baseTS.ToSlice()[0]
 

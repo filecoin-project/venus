@@ -825,6 +825,95 @@ func TestPaymentBrokerCancel(t *testing.T) {
 	assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
 }
 
+func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Attempts to Cancel and expects failure
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrInvalidCancel, errors.CodeError(result.ExecutionError))
+}
+
+func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Attempts to Cancel and expects failure
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrInvalidCancel, errors.CodeError(result.ExecutionError))
+}
+
+func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{toAddress, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Expect that the redeemed flag is true and condition is set
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+	assert.Equal(t, true, channel.Redeemed)
+	assert.NotNil(t, channel.Condition)
+
+	// Change the condition to make it no longer valid
+	channel.Condition.Params = []interface{}{}
+
+	// Attempt to Cancel and expects success
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	_, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+}
+
 func TestPaymentBrokerLs(t *testing.T) {
 	tf.UnitTest(t)
 

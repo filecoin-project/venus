@@ -230,10 +230,16 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 	return nil
 }
 
-// GetTipSetAndState returns the tipset and state of the tipset whose block
+// GetTipSet returns the tipset whose block
 // cids correspond to the input sorted cid set.
-func (store *DefaultStore) GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error) {
-	return store.tipIndex.Get(tsKey.String())
+func (store *DefaultStore) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error) {
+	return store.tipIndex.GetTipSet(tsKey.String())
+}
+
+// GetTipSetStateRoot returns the state of the tipset whose block
+// cids correspond to the input sorted cid set.
+func (store *DefaultStore) GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetStateRoot(tsKey.String())
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -393,11 +399,11 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 
 // ActorFromLatestState gets the latest state and retrieves an actor from it.
 func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	tsas, err := store.GetTipSetAndState(store.GetHead())
+	stateCid, err := store.GetTipSetStateRoot(store.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, store.stateStore, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}

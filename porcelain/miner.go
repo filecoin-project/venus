@@ -11,9 +11,11 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 	w "github.com/filecoin-project/go-filecoin/wallet"
@@ -280,13 +282,15 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 	return usedGas, nil
 }
 
-// mgoaAPI is the subset of the plumbing.API that MinerGetOwnerAddress uses.
-type mgoaAPI interface {
+// minerQueryAndDeserialize is the subset of the plumbing.API that provides
+// support for sending query messages and getting method signatures.
+type minerQueryAndDeserialize interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
-func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) (address.Address, error) {
+func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
 	if err != nil {
 		return address.Undef, err
@@ -295,8 +299,61 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing mgoaAPI, minerAddr addre
 	return address.NewFromBytes(res[0])
 }
 
+// queryAndDeserialize is a convenience method. It sends a query message to a
+// miner and, based on the method return-type, deserializes to the appropriate
+// ABI type.
+func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, params ...interface{}) (*abi.Value, error) {
+	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, params...)
+	if err != nil {
+		return nil, errors.Wrapf(err, "'%s' query message failed", method)
+	}
+
+	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, method)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to acquire '%s' signature", method)
+	}
+
+	abiValue, err := abi.Deserialize(rets[0], methodSignature.Return[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize returned value")
+	}
+
+	return abiValue, nil
+}
+
+// MinerGetSectorSize queries for the sector size of the given miner.
+func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (*types.BytesAmount, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getSectorSize")
+	if err != nil {
+		return nil, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	sectorSize, ok := abiVal.Val.(*types.BytesAmount)
+	if !ok {
+		return nil, errors.New("failed to convert returned ABI value")
+	}
+
+	return sectorSize, nil
+}
+
+// MinerGetLastCommittedSectorID queries for the id of the last sector committed
+// by the given miner.
+func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getLastUsedSectorID")
+	if err != nil {
+		return 0, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	lastUsedSectorID, ok := abiVal.Val.(uint64)
+	if !ok {
+		return 0, errors.New("failed to convert returned ABI value")
+	}
+
+	return lastUsedSectorID, nil
+}
+
 // MinerGetKey queries for the public key of the given miner
-func MinerGetKey(ctx context.Context, plumbing mgoaAPI, minerAddr address.Address) ([]byte, error) {
+func MinerGetKey(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) ([]byte, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
 	if err != nil {
 		return []byte{}, err

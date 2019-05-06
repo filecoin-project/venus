@@ -408,6 +408,10 @@ type minerTestPorcelain struct {
 	testing *testing.T
 }
 
+func (mtp *minerTestPorcelain) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
+	return types.OneKiBSectorSize, nil
+}
+
 func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 	bytes := make([]byte, 42)
 	if _, err := rand.Read(bytes); err != nil {

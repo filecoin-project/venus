@@ -212,9 +212,9 @@ func TestUpdateMessagePool(t *testing.T) {
 	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
 	assert.NoError(t, chainForTest.Load(ctx)) // load up head to get genesis block
 	head := chainForTest.GetHead()
-	headTipSetAndState, err := chainForTest.GetTipSetAndState(head)
+	headTipSet, err := chainForTest.GetTipSet(head)
 	require.NoError(t, err)
-	genTS := headTipSetAndState.TipSet
+	genTS := *headTipSet
 	m := types.NewSignedMsgs(4, mockSigner)
 	core.MustAdd(node.MsgPool, m[0], m[1])
 

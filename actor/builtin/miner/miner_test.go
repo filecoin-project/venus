@@ -40,7 +40,7 @@ func createTestMinerWith(pledge int64,
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createMiner", pdata)
 
 	result, err := th.ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	assert.NoError(t, err)
@@ -136,7 +136,7 @@ func TestGetKey(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL())
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL(), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},

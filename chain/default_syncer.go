@@ -168,11 +168,11 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.Sorted
 	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
-	tsas, err := syncer.chainStore.GetTipSetAndState(tsKey)
+	stateCid, err := syncer.chainStore.GetTipSetStateRoot(tsKey)
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, syncer.stateStore, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, syncer.stateStore, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
@@ -239,11 +239,11 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	if err != nil {
 		return err
 	}
-	headTipSetAndState, err := syncer.chainStore.GetTipSetAndState(head)
+	headTipSet, err := syncer.chainStore.GetTipSet(head)
 	if err != nil {
 		return err
 	}
-	headParentCids, err := headTipSetAndState.TipSet.Parents()
+	headParentCids, err := headTipSet.Parents()
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, headTipSetAndState.TipSet, nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, *headTipSet, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
@@ -269,8 +269,8 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 			return err
 		}
 		newChain = append(newChain, next)
-		if IsReorg(headTipSetAndState.TipSet, newChain) {
-			logSyncer.Infof("reorg occurring while switching from %s to %s", headTipSetAndState.TipSet.String(), next.String())
+		if IsReorg(*headTipSet, newChain) {
+			logSyncer.Infof("reorg occurring while switching from %s to %s", headTipSet.String(), next.String())
 		}
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
@@ -362,11 +362,11 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	if err != nil {
 		return err
 	}
-	parentTsas, err := syncer.chainStore.GetTipSetAndState(parentCids)
+	parentTs, err := syncer.chainStore.GetTipSet(parentCids)
 	if err != nil {
 		return err
 	}
-	parent := parentTsas.TipSet
+	parent := *parentTs
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.

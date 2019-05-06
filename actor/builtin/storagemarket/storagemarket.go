@@ -32,6 +32,8 @@ const (
 	ErrUnknownMiner = 34
 	// ErrInsufficientCollateral indicates the collateral is too low.
 	ErrInsufficientCollateral = 43
+	// ErrUnsupportedSectorSize indicates that the sector size is incompatible with the proofs mode.
+	ErrUnsupportedSectorSize = 44
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -39,6 +41,7 @@ var Errors = map[uint8]error{
 	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
 	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
 	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", MinimumCollateralPerSector),
+	ErrUnsupportedSectorSize:  errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
 }
 
 func init() {
@@ -122,6 +125,17 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		// TODO: #2530 - Add a sector size parameter to the Actor#CreateMiner
+		// method and accept the value from the CLI.
+		sectorSize := types.OneKiBSectorSize
+		if state.ProofsMode == types.LiveProofsMode {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		}
+
+		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
+			return nil, Errors[ErrUnsupportedSectorSize]
+		}
+
 		if pledge.Cmp(MinimumPledge) < 0 {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, Errors[ErrPledgeTooLow]
@@ -136,7 +150,7 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 			return nil, Errors[ErrInsufficientCollateral]
 		}
 
-		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
@@ -252,4 +266,14 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 // MinimumCollateral returns the minimum required amount of collateral for a given pledge
 func MinimumCollateral(sectors *big.Int) *types.AttoFIL {
 	return MinimumCollateralPerSector.MulBigInt(sectors)
+}
+
+// isSupportedSectorSize produces a boolean indicating whether or not the
+// provided sector size is valid given the network's proofs mode.
+func isSupportedSectorSize(mode types.ProofsMode, sectorSize *types.BytesAmount) bool {
+	if mode == types.TestProofsMode {
+		return sectorSize.Equal(types.OneKiBSectorSize)
+	} else {
+		return sectorSize.Equal(types.TwoHundredFiftySixMiBSectorSize)
+	}
 }

@@ -75,7 +75,7 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 }
 
 // VerifyPoST verifies that a proof-of-spacetime is valid.
-func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+func (rp *RustVerifier) VerifyPoST(req VerifyPoStRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
 	// validate verification request
@@ -132,8 +132,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 
 // GetMaxUserBytesPerStagedSector returns the number of user bytes that will fit
 // into a staged sector. Due to bit-padding, the number of user bytes that will
-// fit into the staged sector will be less than number of bytes reported in
-// types.SectorSize.
-func GetMaxUserBytesPerStagedSector(size types.SectorSize) (uint64, error) {
-	return uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(size.Uint64()))), nil
+// fit into the staged sector will be less than number of bytes in sectorSize.
+func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
+	return types.NewBytesAmount(uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
 }

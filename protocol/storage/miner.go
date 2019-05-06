@@ -82,6 +82,8 @@ type minerPorcelain interface {
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+
+	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -169,13 +171,14 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, err.Error())
 	}
 
-	sectorSize, err := sm.getSectorSize(ctx)
+	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
 	if err != nil {
-		return sm.proposalRejector(sm, p, "failed to get sector size")
+		return sm.proposalRejector(sm, p, "failed to get miner's sector size")
 	}
 
-	if sp.Size.GreaterThan(types.NewBytesAmount(sectorSize)) {
-		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %d bytes", sp.Size.String(), sectorSize))
+	maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize)
+	if sp.Size.GreaterThan(maxUserBytes) {
+		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
 	}
 
 	// Payment is valid, everything else checks out, let's accept this proposal
@@ -938,22 +941,4 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
 		log.Errorf("failed to write query response: %s", err)
 	}
-}
-
-func (sm *Miner) getSectorSize(ctx context.Context) (uint64, error) {
-	var proofsMode types.ProofsMode
-	values, err := sm.porcelainAPI.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
-	if err != nil {
-		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
-	}
-
-	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
-		return 0, errors.Wrap(err, "could not convert query message result to Mode")
-	}
-
-	sectorSizeEnum := types.OneKiBSectorSize
-	if proofsMode == types.LiveProofsMode {
-		sectorSizeEnum = types.TwoHundredFiftySixMiBSectorSize
-	}
-	return proofs.GetMaxUserBytesPerStagedSector(sectorSizeEnum)
 }
