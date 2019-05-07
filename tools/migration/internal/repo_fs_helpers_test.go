@@ -3,7 +3,6 @@ package internal_test
 import (
 	"fmt"
 	"os"
-	"path"
 	"regexp"
 	"testing"
 
@@ -95,16 +94,7 @@ func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
 
-		// put something in each repo dir so we know which is which
-		_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
-		require.NoError(t, err)
-
-		// check that the new repo is at the old link location.
-		dir, err := os.Open(newRepoPath)
-		require.NoError(t, err)
-		contents, err := dir.Readdirnames(0)
-		require.NoError(t, err)
-		assert.Contains(t, contents, "newRepoFile")
+		AssertInstalled(t, newRepoPath, oldRepo, linkedRepoPath)
 	})
 
 	t.Run("returns error and leaves symlink if new repo does not exist", func(t *testing.T) {
@@ -117,8 +107,6 @@ func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 
 		err = InstallNewRepo(linkedRepoPath, "/tmp/nonexistentfile")
 		assert.EqualError(t, err, "stat /tmp/nonexistentfile: no such file or directory")
-		target, err := os.Readlink(linkedRepoPath)
-		assert.NoError(t, err)
-		assert.Equal(t, oldRepo, target)
+		AssertNotInstalled(t, oldRepo, linkedRepoPath)
 	})
 }
