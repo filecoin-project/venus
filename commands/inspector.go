@@ -9,6 +9,7 @@ import (
 	sysi "github.com/whyrusleeping/go-sysinfo"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -49,6 +50,7 @@ Prints out information about filecoin process and its environment.
 		allInfo.Memory = mem
 		allInfo.Config = GetInspectorAPI(env).Config()
 		allInfo.Environment = GetInspectorAPI(env).Environment()
+		allInfo.FilecoinVersion = GetInspectorAPI(env).FilecoinVersion()
 		return cmds.EmitOnce(res, allInfo)
 	},
 }
@@ -138,11 +140,12 @@ type Inspector struct {
 
 // AllInspectorInfo contains all information the inspector can gather.
 type AllInspectorInfo struct {
-	Config      *config.Config
-	Runtime     *RuntimeInfo
-	Environment *EnvironmentInfo
-	Disk        *DiskInfo
-	Memory      *MemoryInfo
+	Config          *config.Config
+	Runtime         *RuntimeInfo
+	Environment     *EnvironmentInfo
+	Disk            *DiskInfo
+	Memory          *MemoryInfo
+	FilecoinVersion string
 }
 
 // RuntimeInfo contains information about the golang runtime.
@@ -244,4 +247,9 @@ func (g *Inspector) Memory() (*MemoryInfo, error) {
 // Config return the current config values of the filecoin node.
 func (g *Inspector) Config() *config.Config {
 	return g.repo.Config()
+}
+
+// FilecoinVersion returns the version of go-filecoin.
+func (g *Inspector) FilecoinVersion() string {
+	return flags.Commit
 }
