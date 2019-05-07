@@ -83,14 +83,12 @@ var (
 type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
 type chainReader interface {
-	BlockHeight() (uint64, error)
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
 	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
-	LatestState(context.Context) (state.Tree, error)
 	Load(context.Context) error
 	Stop()
 }
@@ -544,7 +542,7 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
 	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
-	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReadStore(), core.OutboxMaxAgeRounds)
+	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReader, core.OutboxMaxAgeRounds)
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
@@ -663,7 +661,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			if err := outboxPolicy.OnNewHeadTipset(ctx, head, newHead); err != nil {
 				log.Error("updating outbound message queue for new tipset", err)
 			}
-			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReadStore(), head, newHead); err != nil {
+			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReader, head, newHead); err != nil {
 				log.Error("updating message pool for new tipset", err)
 			}
 			head = newHead
@@ -1111,11 +1109,6 @@ func (node *Node) BlockService() bserv.BlockService {
 // CborStore returns the nodes cborStore.
 func (node *Node) CborStore() *hamt.CborIpldStore {
 	return node.cborStore
-}
-
-// ChainReadStore returns the node's chain store.
-func (node *Node) ChainReadStore() chain.ReadStore {
-	return node.ChainReader
 }
 
 // IsMining returns a boolean indicating whether the node is mining blocks.
