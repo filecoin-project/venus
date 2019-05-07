@@ -12,6 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
+var ErrNoCommonAncestor = errors.New("no common ancestor")
+
 // GetRecentAncestorsOfHeaviestChain returns the ancestors of a `TipSet` with
 // height `descendantBlockHeight` in the heaviest chain.
 func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
@@ -123,4 +126,44 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 		}
 	}
 	return ret, nil
+}
+
+// FindCommonAncestor returns the common ancestor of the two tipsets pointed to
+// by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
+// will be returned.
+func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, error) {
+	for !rightIter.Complete() && !leftIter.Complete() {
+		left := leftIter.Value()
+		right := rightIter.Value()
+
+		leftHeight, err := left.Height()
+		if err != nil {
+			return nil, err
+		}
+		rightHeight, err := right.Height()
+		if err != nil {
+			return nil, err
+		}
+
+		// Found common ancestor.
+		if left.Equals(right) {
+			return left, nil
+		}
+
+		// Update the pointers.  Pointers move back one tipset if they
+		// point to a tipset at the same height or higher than the
+		// other pointer's tipset.
+		if rightHeight >= leftHeight {
+			if err := rightIter.Next(); err != nil {
+				return nil, err
+			}
+		}
+
+		if leftHeight >= rightHeight {
+			if err := leftIter.Next(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return nil, ErrNoCommonAncestor
 }
