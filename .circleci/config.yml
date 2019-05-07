@@ -44,7 +44,7 @@ jobs:
       - update_submodules
       - rust_fil_proofs_checksum
       - restore_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v6-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -81,7 +81,7 @@ jobs:
           paths:
             - "~/filecoin-proof-parameters/"
       - save_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v6-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
           paths:
             - "~/go/pkg"
             - "~/go/src/gx"
@@ -134,8 +134,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -157,7 +157,7 @@ jobs:
           paths:
             - "/home/circleci/filecoin-proof-parameters/"
       - save_cache:
-          key: v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -166,7 +166,7 @@ jobs:
             - "/home/circleci/.rustup"
             - "/home/circleci/.cargo"
       - save_cache:
-          key: v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -193,8 +193,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -249,8 +249,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -282,8 +282,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -319,8 +319,8 @@ jobs:
       - rust_fil_proofs_checksum
       - restore_cache:
           keys:
-            - v5-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-            - v5-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+            - v6-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
