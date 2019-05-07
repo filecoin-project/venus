@@ -18,7 +18,7 @@ import (
 )
 
 // Abstracts over a store of blockchain state.
-type queryerChainState interface {
+type queryerChainReader interface {
 	BlockHeight() (uint64, error)
 	LatestState(ctx context.Context) (state.Tree, error)
 }
@@ -29,7 +29,7 @@ type Queryer struct {
 	repo   repo.Repo
 	wallet *wallet.Wallet
 	// To get the head tipset state root.
-	chainReader queryerChainState
+	chainReader queryerChainReader
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 	// For vm storage.
@@ -37,7 +37,7 @@ type Queryer struct {
 }
 
 // NewQueryer constructs a Queryer.
-func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader queryerChainState, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
+func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader queryerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
 	return &Queryer{repo, wallet, chainReader, cst, bs}
 }
 

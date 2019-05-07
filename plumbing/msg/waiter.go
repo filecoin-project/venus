@@ -23,7 +23,7 @@ import (
 var log = logging.Logger("messageimpl")
 
 // Abstracts over a store of blockchain state.
-type waiterChainState interface {
+type waiterChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
@@ -33,7 +33,7 @@ type waiterChainState interface {
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader waiterChainState
+	chainReader waiterChainReader
 	cst         *hamt.CborIpldStore
 	bs          bstore.Blockstore
 }
@@ -46,7 +46,7 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainState, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,

@@ -24,7 +24,7 @@ var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of er
 const Topic = "/fil/msgs"
 
 // Abstracts over a store of blockchain state.
-type senderChainState interface {
+type senderChainReader interface {
 	LatestState(ctx context.Context) (state.Tree, error)
 }
 
@@ -41,7 +41,7 @@ type Sender struct {
 	// Signs messages.
 	signer types.Signer
 	// Provides actor state
-	chainState senderChainState
+	chainState senderChainReader
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 	// Provides the current block height
@@ -60,7 +60,7 @@ type Sender struct {
 
 // NewSender returns a new Sender. There should be exactly one of these per node because
 // sending locks to reduce nonce collisions.
-func NewSender(signer types.Signer, chainReader senderChainState, cst *hamt.CborIpldStore, blockTimer BlockClock,
+func NewSender(signer types.Signer, chainReader senderChainReader, cst *hamt.CborIpldStore, blockTimer BlockClock,
 	msgQueue *core.MessageQueue, msgPool *core.MessagePool,
 	validator consensus.SignedMessageValidator, publish PublishFunc) *Sender {
 	return &Sender{

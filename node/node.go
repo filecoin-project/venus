@@ -82,7 +82,7 @@ var (
 
 type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
-type chainReader interface {
+type nodeChainReader interface {
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
@@ -99,7 +99,7 @@ type Node struct {
 	PeerHost host.Host
 
 	Consensus   consensus.Protocol
-	ChainReader chainReader
+	ChainReader nodeChainReader
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 

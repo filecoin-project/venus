@@ -17,7 +17,7 @@ import (
 )
 
 // Abstracts over a store of blockchain state.
-type previewerChainState interface {
+type previewerChainReader interface {
 	BlockHeight() (uint64, error)
 	LatestState(ctx context.Context) (state.Tree, error)
 }
@@ -26,7 +26,7 @@ type previewerChainState interface {
 type Previewer struct {
 	wallet *wallet.Wallet
 	// To get the head tipset state root.
-	chainReader previewerChainState
+	chainReader previewerChainReader
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 	// For vm storage.
@@ -34,7 +34,7 @@ type Previewer struct {
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(wallet *wallet.Wallet, chainReader previewerChainState, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
+func NewPreviewer(wallet *wallet.Wallet, chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
 	return &Previewer{wallet, chainReader, cst, bs}
 }
 
