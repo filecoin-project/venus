@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -21,9 +22,18 @@ import (
 
 var log = logging.Logger("messageimpl")
 
+// Abstracts over a store of blockchain state.
+type waiterChainState interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	HeadEvents() *pubsub.PubSub
+}
+
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader chain.ReadStore
+	chainReader waiterChainState
 	cst         *hamt.CborIpldStore
 	bs          bstore.Blockstore
 }
@@ -36,7 +46,7 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainState, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,
