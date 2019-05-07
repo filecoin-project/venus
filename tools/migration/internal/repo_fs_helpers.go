@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	rcopy "github.com/otiai10/copy"
 )
@@ -79,7 +80,11 @@ func makeNewRepoPath(oldPath string) (string, error) {
 	// anyway.
 	var newpath string
 	for i := 1; i < 1000; i++ {
-		newpath = strings.Join([]string{oldPath, NowString(), fmt.Sprintf("%03d", i)}, "-")
+
+		now := time.Now()
+		nowStr := now.Format("20060102-150405")
+
+		newpath = strings.Join([]string{oldPath, nowStr, fmt.Sprintf("%03d", i)}, "-")
 		if _, err := os.Stat(newpath); os.IsNotExist(err) {
 			return newpath, nil
 		}

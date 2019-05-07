@@ -115,6 +115,7 @@ func (m *MigrationRunner) Run() RunResult {
 			NewVersion: repoVersion,
 		}
 	}
+	// We just didn't find a migration that applies. This is fine.
 	if mig == nil {
 		return RunResult{
 			OldVersion: repoVersion,

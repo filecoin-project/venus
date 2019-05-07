@@ -146,7 +146,6 @@ func TestMigrationRunner_Run(t *testing.T) {
 				&TestMigMultiversion,
 			}
 		}
-
 		output := CaptureOutput(func() {
 			assert.NoError(t, runner.Run().Err)
 		})
