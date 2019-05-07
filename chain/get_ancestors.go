@@ -12,6 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+var errIterComplete = errors.New("unexpected complete iterator")
+
 // GetRecentAncestorsOfHeaviestChain returns the ancestors of a `TipSet` with
 // height `descendantBlockHeight` in the heaviest chain.
 func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
@@ -123,4 +125,74 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 		}
 	}
 	return ret, nil
+}
+
+// FindCommonAncestor returns the common ancestor of the two tipsets pointed to
+// by the input iterators.  If they share no common ancestor errIterComplete
+// will be returned.
+func FindCommonAncestor(oldIter, newIter *TipsetIterator) (types.TipSet, error) {
+	for {
+		old := oldIter.Value()
+		new := newIter.Value()
+
+		oldHeight, err := old.Height()
+		if err != nil {
+			return nil, err
+		}
+		newHeight, err := new.Height()
+		if err != nil {
+			return nil, err
+		}
+
+		// Found common ancestor.
+		if old.Equals(new) {
+			return old, nil
+		}
+
+		// Update one pointer. Each iteration will move the pointer at
+		// a higher chain height to the other pointer's height, or, if
+		// that height is a null block in the moving pointer's chain,
+		// it will move this pointer to the first available height lower
+		// than the other pointer.
+		if oldHeight < newHeight {
+			if err := iterToHeightOrLower(newIter, oldHeight); err != nil {
+				return nil, err
+			}
+		} else if newHeight < oldHeight {
+			if err := iterToHeightOrLower(oldIter, newHeight); err != nil {
+				return nil, err
+			}
+		} else { // move old down one when oldHeight == newHeight
+			if err := iterToHeightOrLower(oldIter, oldHeight-uint64(1)); err != nil {
+				return nil, err
+			}
+			if err := iterToHeightOrLower(newIter, newHeight-uint64(1)); err != nil {
+				return nil, err
+			}
+		}
+	}
+}
+
+// iterToHeightOrLower moves the provided tipset iterator back in the chain
+// until the iterator points to the first tipset in the chain with a height
+// less than or equal to endHeight.  If the iterator is complete before
+// reaching this height errIterComplete is returned.
+func iterToHeightOrLower(iter *TipsetIterator, endHeight uint64) error {
+	for {
+		if iter.Complete() {
+			return errIterComplete
+		}
+		ts := iter.Value()
+		height, err := ts.Height()
+		if err != nil {
+			return err
+		}
+		if height <= endHeight {
+			return nil
+		}
+		if err := iter.Next(); err != nil {
+			return err
+		}
+
+	}
 }
