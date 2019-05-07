@@ -65,7 +65,7 @@ type timingScheduler struct {
 	mineDelay time.Duration
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
-	pollHeadFunc func() (*types.TipSet, error)
+	pollHeadFunc func() (types.TipSet, error)
 
 	isStarted bool
 }
@@ -114,18 +114,18 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 				outCh <- NewOutput(nil, errors.New("cannot mine on unset (nil) head"))
 				return
 			}
-			if prevWon && prevBase.Equals(*base) {
+			if prevWon && prevBase.Equals(base) {
 				// Skip this round, this likely means that the new head has not propagated yet through the system.
 				// TODO: investigate if there is a better way to handle this situation.
 				continue
 			}
 
 			// Determine how many null blocks we should mine with.
-			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, *base)
+			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, base)
 
 			// Mine synchronously! Ignore all new tipsets.
-			prevWon = s.worker.Mine(miningCtx, *base, nullBlkCount, outCh)
-			prevBase = *base
+			prevWon = s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
+			prevBase = base
 		}
 	}()
 
@@ -164,7 +164,7 @@ func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, md time.Duration, f func() (*types.TipSet, error)) Scheduler {
+func NewScheduler(w Worker, md time.Duration, f func() (types.TipSet, error)) Scheduler {
 	return &timingScheduler{worker: w, mineDelay: md, pollHeadFunc: f}
 }
 
@@ -175,8 +175,8 @@ func NewScheduler(w Worker, md time.Duration, f func() (*types.TipSet, error)) S
 // Then the scheduler takes this polling function, and the worker and the
 // mining duration
 func MineOnce(ctx context.Context, w Worker, md time.Duration, ts types.TipSet) (Output, error) {
-	pollHeadFunc := func() (*types.TipSet, error) {
-		return &ts, nil
+	pollHeadFunc := func() (types.TipSet, error) {
+		return ts, nil
 	}
 	s := NewScheduler(w, md, pollHeadFunc)
 	subCtx, subCtxCancel := context.WithCancel(ctx)

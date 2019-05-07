@@ -26,7 +26,7 @@ var log = logging.Logger("messageimpl")
 type waiterChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 }
@@ -101,9 +101,9 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // findMessage looks for a message CID in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
-func (w *Waiter) findMessage(ctx context.Context, ts *types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
-	for iterator := chain.IterAncestors(ctx, w.chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
+	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
@@ -215,7 +215,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	ancestors, err := chain.GetRecentAncestors(ctx, *parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, err
 	}

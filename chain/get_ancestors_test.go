@@ -21,13 +21,13 @@ func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context
 
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore chain.Store, numBlocks int, dstP *DefaultSyncerTestParams) {
+func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore chain.Store, numBlocks uint, dstP *DefaultSyncerTestParams) {
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
 	mockSignerPubKey := ki[0].PublicKey()
 
-	for i := 0; i < numBlocks; i++ {
+	for i := uint(0); i < numBlocks; i++ {
 		fakeChildParams := th.FakeChildParams{
 			Parent:      link,
 			GenesisCid:  dstP.genCid,
@@ -54,7 +54,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
-	chainLen := 15
+	chainLen := uint(15)
 	requireGrowChain(ctx, t, blockSource, chainStore, chainLen-1, dstP)
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, chainStore, requireHeadTipset(t, chainStore))
@@ -75,7 +75,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
-	chainLen := 25
+	chainLen := uint(25)
 	requireGrowChain(ctx, t, blockSource, chainStore, chainLen-1, dstP)
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, chainStore, requireHeadTipset(t, chainStore))
@@ -97,7 +97,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
-	len1 := 30
+	len1 := uint(30)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 
 	// Now add 10 null blocks and 1 tipset.
@@ -128,7 +128,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now add 19 more tipsets.
-	len2 := 19
+	len2 := uint(19)
 	requireGrowChain(ctx, t, blockSource, chainStore, len2, dstP)
 
 	stopHeight := types.NewBlockHeight(uint64(35))
@@ -149,7 +149,7 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
-	chainLen := 25
+	chainLen := uint(25)
 	requireGrowChain(ctx, t, blockSource, chainStore, chainLen-1, dstP)
 	t.Run("happy path", func(t *testing.T) {
 		number := uint(10)
@@ -176,7 +176,7 @@ func TestGetRecentAncestors(t *testing.T) {
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
-	chainLen := 200
+	chainLen := uint(200)
 	requireGrowChain(ctx, t, blockSource, chainStore, chainLen-1, dstP)
 	head := requireHeadTipset(t, chainStore)
 	h, err := head.Height()
@@ -190,7 +190,7 @@ func TestGetRecentAncestors(t *testing.T) {
 	for i := 0; i < len(ancestors); i++ {
 		h, err := ancestors[i].Height()
 		assert.NoError(t, err)
-		assert.Equal(t, h, uint64(chainLen-1-i))
+		assert.Equal(t, h, uint64(chainLen-uint(1)-uint(i)))
 	}
 }
 
@@ -200,7 +200,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
-	chainLen := 100
+	chainLen := uint(100)
 	requireGrowChain(ctx, t, blockSource, chainStore, chainLen-1, dstP)
 	h, err := requireHeadTipset(t, chainStore).Height()
 	require.NoError(t, err)
@@ -210,7 +210,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	t.Run("more epochs than chainStore", func(t *testing.T) {
 		ancestors, err := chain.GetRecentAncestors(ctx, requireHeadTipset(t, chainStore), chainStore, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), lookback)
 		require.NoError(t, err)
-		assert.Equal(t, chainLen, len(ancestors))
+		assert.Equal(t, int(chainLen), len(ancestors))
 	})
 
 	t.Run("more epochs + lookback than chainStore", func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 		lookback = uint(50)
 		ancestors, err := chain.GetRecentAncestors(ctx, requireHeadTipset(t, chainStore), chainStore, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), lookback)
 		require.NoError(t, err)
-		assert.Equal(t, chainLen, len(ancestors))
+		assert.Equal(t, int(chainLen), len(ancestors))
 	})
 }
 
@@ -229,7 +229,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
-	len1 := 30
+	len1 := uint(30)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 
 	// Now add 10 null blocks and 1 tipset.
@@ -258,7 +258,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now add 19 more tipsets.
-	len2 := 19
+	len2 := uint(19)
 	requireGrowChain(ctx, t, blockSource, chainStore, len2, dstP)
 
 	epochs := uint64(28)
@@ -270,7 +270,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	require.NoError(t, err)
 
 	// We expect to see 20 blocks in the first 28 epochs and an additional 6 for the lookback parameter
-	assert.Equal(t, len2+int(lookback)+1, len(ancestors))
+	assert.Equal(t, int(len2+lookback)+1, len(ancestors))
 	lastBlockHeight, err := ancestors[len(ancestors)-1].Height()
 	require.NoError(t, err)
 	assert.Equal(t, uint64(25), lastBlockHeight)
@@ -281,7 +281,7 @@ func TestFindCommonAncestorSameChain(t *testing.T) {
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
-	len1 := 30
+	len1 := uint(30)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 	headTipSet := requireHeadTipset(t, chainStore)
 	headIterOne := chain.IterAncestors(ctx, chainStore, headTipSet)
@@ -296,7 +296,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 3 tipsets to the head of the chainStore.
-	len1 := 3
+	len1 := uint(3)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 	headTipSetCA := requireHeadTipset(t, chainStore)
 
@@ -324,7 +324,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 	require.NoError(t, err)
 
 	// grow the fork by 10 blocks
-	lenFork := 10
+	lenFork := uint(10)
 	requireGrowChain(ctx, t, blockSource, chainStore, lenFork, dstP)
 	headTipSetFork := requireHeadTipset(t, chainStore)
 	headIterFork := chain.IterAncestors(ctx, chainStore, headTipSetFork)
@@ -332,7 +332,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 	// go back and complete the original chain
 	err = chainStore.SetHead(ctx, headTipSetCA)
 	require.NoError(t, err)
-	lenMainChain := 14
+	lenMainChain := uint(14)
 	requireGrowChain(ctx, t, blockSource, chainStore, lenMainChain, dstP)
 	headTipSetMainChain := requireHeadTipset(t, chainStore)
 	headIterMainChain := chain.IterAncestors(ctx, chainStore, headTipSetMainChain)
@@ -347,12 +347,12 @@ func TestFindCommonAncestorNoFork(t *testing.T) {
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
-	len1 := 30
+	len1 := uint(30)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 	headTipSet1 := requireHeadTipset(t, chainStore)
 	headIterOne := chain.IterAncestors(ctx, chainStore, headTipSet1)
 	// Now add 19 more tipsets.
-	len2 := 19
+	len2 := uint(19)
 	requireGrowChain(ctx, t, blockSource, chainStore, len2, dstP)
 	headTipSet2 := requireHeadTipset(t, chainStore)
 	headIterTwo := chain.IterAncestors(ctx, chainStore, headTipSet2)
@@ -368,7 +368,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 10 tipsets to the head of the chainStore.
-	len1 := 10
+	len1 := uint(10)
 	requireGrowChain(ctx, t, blockSource, chainStore, len1, dstP)
 	expectedCA := requireHeadTipset(t, chainStore)
 
@@ -395,7 +395,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 	afterNullIter := chain.IterAncestors(ctx, chainStore, afterNullTS)
 
 	// grow the fork by 1 block on the other fork
-	len2 := 1
+	len2 := uint(1)
 	requireGrowChain(ctx, t, blockSource, chainStore, len2, dstP)
 	mainChainTS := requireHeadTipset(t, chainStore)
 	mainChainIter := chain.IterAncestors(ctx, chainStore, mainChainTS)

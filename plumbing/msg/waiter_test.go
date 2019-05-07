@@ -69,7 +69,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m1, m2}})
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
 	th.RequirePutTsas(ctx, t, chainStore, &chain.TipSetAndState{
@@ -90,7 +90,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m3, m4}})
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, t, waiter, m3, false, nil)
@@ -122,7 +122,7 @@ func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, c
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chain := core.NewChainWithMessages(cst, *headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	chain := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
 	err = chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(t, err)
@@ -160,7 +160,7 @@ func TestWaitConflicting(t *testing.T) {
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	baseTS := *headTipSet
+	baseTS := headTipSet
 	require.Equal(t, 1, len(baseTS))
 	baseBlock := baseTS.ToSlice()[0]
 

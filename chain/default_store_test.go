@@ -80,7 +80,7 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain chain.Store, pKey strin
 func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
-	return *headTipSet
+	return headTipSet
 }
 
 /* Putting and getting tipsets into and from the store. */
@@ -125,11 +125,11 @@ func TestGetByKey(t *testing.T) {
 
 	got4TS := requireGetTipSet(ctx, t, chain, dstP.link4.ToSortedCidSet())
 	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link4.ToSortedCidSet())
-	assert.Equal(t, dstP.genTS, *gotGTS)
-	assert.Equal(t, dstP.link1, *got1TS)
-	assert.Equal(t, dstP.link2, *got2TS)
-	assert.Equal(t, dstP.link3, *got3TS)
-	assert.Equal(t, dstP.link4, *got4TS)
+	assert.Equal(t, dstP.genTS, gotGTS)
+	assert.Equal(t, dstP.link1, got1TS)
+	assert.Equal(t, dstP.link2, got2TS)
+	assert.Equal(t, dstP.link3, got3TS)
+	assert.Equal(t, dstP.link4, got4TS)
 
 	assert.Equal(t, dstP.genStateRoot, gotGTSSR)
 	assert.Equal(t, dstP.link1State, got1TSSR)
@@ -389,7 +389,7 @@ func TestLoadAndReboot(t *testing.T) {
 	// Check that chain store has index
 	// Get a tipset and state by key
 	got2 := requireGetTipSet(ctx, t, rebootChain, dstP.link2.ToSortedCidSet())
-	assert.Equal(t, dstP.link2, *got2)
+	assert.Equal(t, dstP.link2, got2)
 
 	// Get another by parent key
 	got4 := requireGetTsasByParentAndHeight(t, rebootChain, dstP.link3.String(), uint64(6))
