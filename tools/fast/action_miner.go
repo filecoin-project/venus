@@ -2,19 +2,43 @@ package fast
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process
 func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *big.Int, options ...ActionOption) (address.Address, error) {
+	addr := address.Undef
+	if err := f.ConfigGet(ctx, "wallet.defaultAddress", &addr); err != nil {
+		return address.Undef, err
+	}
+
+	for i := 0; ; i++ {
+		balance, err := f.WalletBalance(ctx, addr)
+		if err != nil {
+			return address.Undef, err
+		}
+
+		if balance.GreaterThan(types.NewAttoFIL(collateral)) {
+			break
+		}
+
+		if i > 40 {
+			return address.Undef, errors.New("insufficient balance")
+		}
+		time.Sleep(1 * time.Second)
+	}
+
 	var out commands.MinerCreateResult
 
 	sPledge := fmt.Sprintf("%d", pledge)
