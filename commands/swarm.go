@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/net"
@@ -103,21 +104,20 @@ go-filecoin swarm connect /ip4/104.131.131.82/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUE
 		}
 
 		for result := range results {
-			if err := re.Emit(result); err != nil {
+			if result.Err != nil {
+				return result.Err
+			}
+			if err := re.Emit(result.PeerID); err != nil {
 				return err
 			}
 		}
 
 		return nil
 	},
-	Type: net.ConnectionResult{},
+	Type: peer.ID(""),
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result net.ConnectionResult) error {
-			if result.Err != nil {
-				fmt.Fprintf(w, "connect %s failed: %s\n", result.PeerID.Pretty(), result.Err) // nolint: errcheck
-			} else {
-				fmt.Fprintf(w, "connect %s success\n", result.PeerID.Pretty()) // nolint: errcheck
-			}
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result peer.ID) error {
+			fmt.Fprintf(w, "connect %s success\n", result.Pretty()) // nolint: errcheck
 			return nil
 		}),
 	},
