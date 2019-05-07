@@ -45,7 +45,7 @@ func TestOptions(t *testing.T) {
 
 	t.Run("error when calling with invalid command", func(t *testing.T) {
 		out, err := exec.Command(command, "foo", "--old-repo=something").CombinedOutput()
-		assert.Contains(t, string(out), "Error: Invalid command: foo")
+		assert.Contains(t, string(out), "Error: invalid command: foo")
 		assert.Contains(t, string(out), usage)
 		assert.Error(t, err)
 	})

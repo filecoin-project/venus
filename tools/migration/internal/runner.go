@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -112,7 +112,7 @@ func (m *MigrationRunner) Run() RunResult {
 	var mig Migration
 	if mig, err = m.getValidMigration(repoVersion); err != nil {
 		return RunResult{
-			Err:        fmt.Errorf("migration check failed: %s", err.Error()),
+			Err:        errors.Wrapf(err, "migration check failed"),
 			OldVersion: repoVersion,
 			NewVersion: repoVersion,
 		}
@@ -137,18 +137,18 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		m.logger.Print(mig.Describe())
 	case "migrate":
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
-			return errors.New("clone repo failed: " + err.Error())
+			return errors.Wrap(err, "clone repo failed")
 		}
 		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
 
 		if err = mig.Migrate(m.newRepoPath); err != nil {
-			return errors.New("migration failed: " + err.Error())
+			return errors.Wrap(err, "migration failed")
 		}
 		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
-			return errors.New("validation failed: " + err.Error())
+			return errors.Wrap(err, "validation failed")
 		}
 		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoPath); err != nil {
-			return errors.New("installation failed: " + err.Error())
+			return errors.Wrap(err, "installation failed")
 		}
 	case "buildonly":
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
@@ -157,10 +157,10 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
 
 		if err = mig.Migrate(m.newRepoPath); err != nil {
-			return errors.New("migration failed: " + err.Error())
+			return errors.Wrap(err, "migration failed")
 		}
 		if err = m.validateAndUpdateVersion(to, m.newRepoPath, mig); err != nil {
-			return errors.New("validation failed: " + err.Error())
+			return errors.Wrap(err, "validation failed")
 		}
 	case "install":
 		if m.newRepoPath == "" {
@@ -168,7 +168,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		}
 
 		if err = InstallNewRepo(m.oldRepoOpt, m.newRepoPath); err != nil {
-			return errors.New("installation failed: " + err.Error())
+			return errors.Wrap(err, "installation failed")
 		}
 	}
 	return nil
@@ -188,7 +188,7 @@ func (m *MigrationRunner) repoVersion(repoPath string) (uint, error) {
 	}
 
 	if version < 0 || version > 10000 {
-		return 0, fmt.Errorf("repo version out of range: %s", strVersion)
+		return 0, errors.Errorf("repo version out of range: %s", strVersion)
 	}
 
 	return uint(version), nil
@@ -239,7 +239,7 @@ func (m *MigrationRunner) getValidMigration(repoVersion uint) (mig Migration, er
 		return nil, errors.New("found >1 available migration; cannot proceed")
 	}
 	if len(applicableMigs) == 0 {
-		return nil, fmt.Errorf("did not find valid repo migration for version %d", repoVersion)
+		return nil, errors.Errorf("did not find valid repo migration for version %d", repoVersion)
 	}
 	return applicableMigs[0], nil
 }

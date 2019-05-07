@@ -88,14 +88,14 @@ func main() { // nolint: deadcode
 
 		oldRepoOpt, found := findOpt("old-repo", os.Args)
 		if !found {
-			exitErr(fmt.Sprintf("Error: --old-repo is required\n%s\n", USAGE))
+			exitErr(fmt.Sprintf("--old-repo is required\n%s\n", USAGE))
 		}
 
 		var newRepoOpt string
 		if command == "install" {
 			newRepoOpt, found = findOpt("new-repo", os.Args)
 			if !found {
-				exitErr(fmt.Sprintf("Error: --new-repo is required for 'install'\n%s\n", USAGE))
+				exitErr(fmt.Sprintf("--new-repo is required for 'install'\n%s\n", USAGE))
 			}
 		}
 
@@ -114,19 +114,19 @@ func main() { // nolint: deadcode
 			logger.Print(fmt.Sprintf("Repo has been migrated to version %d", runResult.NewVersion))
 		}
 	default:
-		exitErr(fmt.Sprintf("Error: Invalid command: %s\n%s\n", command, USAGE))
+		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
 	}
 }
 
 // exitError exits(1) the executable with the given error String
 func exitErr(errstr string) {
-	log.New(os.Stderr, "", 0).Println(errstr)
+	log.New(os.Stderr, "", 0).Println("Error: " + errstr)
 	os.Exit(1)
 }
 
 // showUsageAndExit prints out USAGE and exits with the given code.
 func showUsageAndExit(code int) {
-	fmt.Println(USAGE)
+	fmt.Print(USAGE)
 	os.Exit(code)
 }
 
