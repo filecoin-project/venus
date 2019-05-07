@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -115,24 +116,21 @@ func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
 }
 
-// IngestionValidatorAPI allows the validator to access latest state
-type ingestionValidatorAPI interface {
-	LatestState(context.Context) (state.Tree, error)
-}
+type actorGetter func(context.Context, address.Address) (*actor.Actor, error)
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
 type IngestionValidator struct {
-	api       ingestionValidatorAPI
-	cfg       *config.MessagePoolConfig
-	validator defaultMessageValidator
+	getActorFunc actorGetter
+	cfg          *config.MessagePoolConfig
+	validator    defaultMessageValidator
 }
 
 // NewIngestionValidator creates a new validator with an api
-func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolConfig) *IngestionValidator {
+func NewIngestionValidator(getActorFunc actorGetter, cfg *config.MessagePoolConfig) *IngestionValidator {
 	return &IngestionValidator{
-		api:       api,
-		cfg:       cfg,
-		validator: defaultMessageValidator{allowHighNonce: true},
+		getActorFunc: getActorFunc,
+		cfg:          cfg,
+		validator:    defaultMessageValidator{allowHighNonce: true},
 	}
 }
 
@@ -140,11 +138,7 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
 	// retrieve from actor
-	st, err := v.api.LatestState(ctx)
-	if err != nil {
-		return err
-	}
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromActor, err := v.getActorFunc(ctx, msg.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			fromActor = &actor.Actor{}

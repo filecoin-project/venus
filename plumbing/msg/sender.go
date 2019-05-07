@@ -5,16 +5,16 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,7 +25,8 @@ const Topic = "/fil/msgs"
 
 // Abstracts over a store of blockchain state.
 type senderChainReader interface {
-	LatestState(ctx context.Context) (state.Tree, error)
+	GetHead() types.SortedCidSet
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 }
 
 // BlockClock defines a interface to a struct that can give the current block height.
@@ -92,7 +93,7 @@ func (s *Sender) Send(ctx context.Context, from, to address.Address, value *type
 	s.l.Lock()
 	defer s.l.Unlock()
 
-	st, err := s.chainState.LatestState(ctx)
+	st, err := chain.LatestState(ctx, s.chainState, s.cst)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to load state from chain")
 	}

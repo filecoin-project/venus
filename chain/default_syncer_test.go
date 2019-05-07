@@ -190,7 +190,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo) (*chain.DefaultSyncer, *th.Te
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource) // note we use same cst for on and offline for tests
@@ -236,7 +236,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
@@ -929,7 +929,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(r.ChainDatastore(), calcGenBlk.Cid())
 
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), &th.TestView{}, calcGenBlk.Cid(), verifier)

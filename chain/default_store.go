@@ -9,16 +9,13 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -36,9 +33,6 @@ type DefaultStore struct {
 	// simplify checking the security guarantee that only tipsets of a
 	// validated chain are stored in the filecoin node's DefaultStore.
 	bsPriv bstore.Blockstore
-	// stateStore is the on disk storage used for loading states.  It can be
-	// shared with the rest of the filecoin node.
-	stateStore *hamt.CborIpldStore
 	// ds is the datastore backing bsPriv.  It is also accessed directly
 	// to set and get chain meta-data, specifically the tipset cidset to
 	// state root mapping, and the heaviest tipset cids.
@@ -67,11 +61,10 @@ type DefaultStore struct {
 var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
-func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid cid.Cid) *DefaultStore {
+func NewDefaultStore(ds repo.Datastore, genesisCid cid.Cid) *DefaultStore {
 	priv := bstore.NewBlockstore(ds)
 	return &DefaultStore{
 		bsPriv:     priv,
-		stateStore: stateStore,
 		ds:         ds,
 		headEvents: pubsub.New(128),
 		tipIndex:   NewTipIndex(),
@@ -393,15 +386,6 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 	defer store.mu.RUnlock()
 
 	return store.head.Height()
-}
-
-// LatestState gets the latest state from the state Store.
-func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
-	stateCid, err := store.GetTipSetStateRoot(store.GetHead())
-	if err != nil {
-		return nil, err
-	}
-	return state.LoadStateTree(ctx, store.stateStore, stateCid, builtin.Actors)
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

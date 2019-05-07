@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +25,6 @@ type bcfChainReader interface {
 	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
-	LatestState(ctx context.Context) (state.Tree, error)
 	Load(ctx context.Context) error
 	Stop()
 }
@@ -93,7 +92,7 @@ func (chn *BlockChainFacade) SampleRandomness(ctx context.Context, sampleHeight 
 
 // GetActor returns an actor from the latest state on the chain
 func (chn *BlockChainFacade) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	st, err := chn.reader.LatestState(ctx)
+	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +101,7 @@ func (chn *BlockChainFacade) GetActor(ctx context.Context, addr address.Address)
 
 // LsActors returns a channel with actors from the latest state on the chain
 func (chn *BlockChainFacade) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := chn.reader.LatestState(ctx)
+	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +123,7 @@ func (chn *BlockChainFacade) GetActorSignature(ctx context.Context, actorAddr ad
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chn.reader.LatestState(ctx)
+	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
 	if err != nil {
 		return nil, err
 	}

@@ -3,14 +3,15 @@ package msg
 import (
 	"context"
 
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -19,7 +20,8 @@ import (
 // Abstracts over a store of blockchain state.
 type previewerChainReader interface {
 	BlockHeight() (uint64, error)
-	LatestState(ctx context.Context) (state.Tree, error)
+	GetHead() types.SortedCidSet
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 }
 
 // Previewer calculates the amount of Gas needed for a command
@@ -45,7 +47,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt encode message params")
 	}
 
-	st, err := p.chainReader.LatestState(ctx)
+	st, err := chain.LatestState(ctx, p.chainReader, p.cst)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}

@@ -391,7 +391,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
+	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -410,9 +410,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
 	}
 
+	chainFacade := bcf.NewBlockChainFacade(chainStore, &cstOffline)
+
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainStore, nc.Repo.Config().Mpool))
+	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainFacade.GetActor, nc.Repo.Config().Mpool))
 	outbox := core.NewMessageQueue()
 
 	// Set up libp2p pubsub
@@ -428,7 +430,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:      bswap,
-		Chain:        bcf.NewBlockChainFacade(chainStore, &cstOffline),
+		Chain:        chainFacade,
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
