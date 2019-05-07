@@ -83,22 +83,47 @@ func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) 
 	}, nil
 }
 
+// RunResult stores the needed results of calling Run()
+type RunResult struct {
+	// full path to new repo (migrated or not).
+	// This is blank unless repo was cloned -- if it errors out to early or for "describe"
+	NewRepoPath string
+
+	// Old version and new version. If no applicable migration is found, these will be equal
+	OldVersion, NewVersion uint
+
+	// Any errors encountered by Run
+	Err error
+}
+
 // Run executes the MigrationRunner
-func (m *MigrationRunner) Run() error {
+func (m *MigrationRunner) Run() RunResult {
 	repoVersion, err := m.repoVersion(m.oldRepoOpt)
 	if err != nil {
-		return err
+		return RunResult{Err: err}
 	}
-	if repoVersion == m.getTargetMigrationVersion() {
+
+	targetVersion := m.getTargetMigrationVersion()
+	if repoVersion == targetVersion {
 		m.logger.Print(fmt.Sprintf("Repo up-to-date: binary version %d = repo version %d", repoVersion, m.getTargetMigrationVersion()))
-		return nil
+		return RunResult{OldVersion: repoVersion, NewVersion: repoVersion}
 	}
 
 	var mig Migration
 	if mig, err = m.getValidMigration(repoVersion); err != nil {
-		return fmt.Errorf("migration check failed: %s", err.Error())
+		return RunResult{
+			Err:        fmt.Errorf("migration check failed: %s", err.Error()),
+			OldVersion: repoVersion,
+			NewVersion: repoVersion,
+		}
 	}
-	return m.runCommand(mig)
+	err = m.runCommand(mig)
+	return RunResult{
+		Err:         err,
+		OldVersion:  repoVersion,
+		NewVersion:  targetVersion,
+		NewRepoPath: m.newRepoPath,
+	}
 }
 
 // runCommand runs the migration command set in the Migration runner.
@@ -112,7 +137,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		m.logger.Print(mig.Describe())
 	case "migrate":
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
-			return err
+			return errors.New("clone repo failed: " + err.Error())
 		}
 		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
 
@@ -147,20 +172,6 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		}
 	}
 	return nil
-}
-
-// GetNewRepoVersion opens the version file in the new repo and returns
-// the parsed version number
-func (m *MigrationRunner) GetNewRepoVersion() (uint, error) {
-	if m.newRepoPath == "" {
-		return 0, errors.New("new repo not found")
-	}
-	return m.repoVersion(m.newRepoPath)
-}
-
-// GetNewRepopath returns the value of the new repo path
-func (m *MigrationRunner) GetNewRepopath() string {
-	return m.newRepoPath
 }
 
 // repoVersion opens the version file for the given version,

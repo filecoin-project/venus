@@ -24,7 +24,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink", "doesnt/matter")
 		require.NoError(t, err)
-		assert.Error(t, runner.Run(), "no filecoin repo found in /home/filecoin-symlink.")
+		assert.Error(t, runner.Run().Err, "no filecoin repo found in /home/filecoin-symlink.")
 	})
 
 	t.Run("can set MigrationsProvider", func(t *testing.T) {
@@ -37,7 +37,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 		migrations := runner.MigrationsProvider()
 		assert.NotEmpty(t, migrations)
-		assert.NoError(t, runner.Run())
+		assert.NoError(t, runner.Run().Err)
 	})
 
 	t.Run("Does not not run the migration if the repo is already up to date", func(t *testing.T) {
@@ -49,7 +49,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
-		assert.NoError(t, runner.Run())
+		assert.NoError(t, runner.Run().Err)
 		AssertLogged(t, dummyLogFile, "Repo up-to-date: binary version 1 = repo version 1")
 	})
 
@@ -62,7 +62,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
-		assert.EqualError(t, runner.Run(), "migration check failed: did not find valid repo migration for version 199")
+		assert.EqualError(t, runner.Run().Err, "migration check failed: did not find valid repo migration for version 199")
 	})
 
 	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
@@ -74,10 +74,10 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner.MigrationsProvider = testProviderPasses
 
 		RequireSetRepoVersion(t, "-1", repoDir)
-		assert.EqualError(t, runner.Run(), "repo version out of range: -1")
+		assert.EqualError(t, runner.Run().Err, "repo version out of range: -1")
 
 		RequireSetRepoVersion(t, "32767", repoDir)
-		assert.EqualError(t, runner.Run(), "repo version out of range: 32767")
+		assert.EqualError(t, runner.Run().Err, "repo version out of range: 32767")
 	})
 
 	t.Run("Returns error if version file does not contain an integer string", func(t *testing.T) {
@@ -90,10 +90,10 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 		// TODO: Handle this more gracefully
 		RequireSetRepoVersion(t, "foo", repoDir)
-		assert.EqualError(t, runner.Run(), "strconv.Atoi: parsing \"foo\": invalid syntax")
+		assert.EqualError(t, runner.Run().Err, "strconv.Atoi: parsing \"foo\": invalid syntax")
 	})
 
-	t.Run("describe does not create a new repo", func(t *testing.T) {
+	t.Run("describe does not clone repo", func(t *testing.T) {
 		RequireSetRepoVersion(t, "0", repoSymlink)
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
@@ -103,10 +103,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 
 		runner.MigrationsProvider = testProviderPasses
 
-		require.NoError(t, runner.Run())
-		version, err := runner.GetNewRepoVersion()
-		assert.EqualError(t, err, "new repo not found")
-		assert.Equal(t, uint(0), version)
+		runResult := runner.Run()
+		require.NoError(t, runResult.Err)
+		assert.Equal(t, "", runResult.NewRepoPath)
 	})
 
 	t.Run("run fails if there is more than 1 applicable migration", func(t *testing.T) {
@@ -122,7 +121,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 				&TestMigDoesNothing,
 			}
 		}
-		assert.EqualError(t, runner.Run(), "migration check failed: found >1 available migration; cannot proceed")
+		assert.EqualError(t, runner.Run().Err, "migration check failed: found >1 available migration; cannot proceed")
 	})
 
 	t.Run("run skips multiversion", func(t *testing.T) {

@@ -171,7 +171,7 @@ func InitFSRepo(repoPath string, cfg *config.Config) error {
 		return fmt.Errorf("repo already initialized")
 	}
 
-	if err := initVersion(repoPath, Version); err != nil {
+	if err := WriteVersion(repoPath, Version); err != nil {
 		return errors.Wrap(err, "initializing repo version failed")
 	}
 
@@ -392,7 +392,8 @@ func (r *FSRepo) openDealsDatastore() error {
 	return nil
 }
 
-func initVersion(p string, version uint) error {
+// WriteVersion writes the given version to the repo version file.
+func WriteVersion(p string, version uint) error {
 	return ioutil.WriteFile(filepath.Join(p, versionFilename), []byte(strconv.Itoa(int(version))), 0644)
 }
 
@@ -506,17 +507,12 @@ func badgerOptions() *badgerds.Options {
 	return result
 }
 
-// GetVersionForRepo returns the unparsed (string) version
+// ReadVersion returns the unparsed (string) version
 // from the version file in the specified repo.
-func GetVersionForRepo(repoPath string) (string, error) {
+func ReadVersion(repoPath string) (string, error) {
 	file, err := ioutil.ReadFile(filepath.Join(repoPath, versionFilename))
 	if err != nil {
 		return "", err
 	}
 	return strings.Trim(string(file), "\n"), nil
-}
-
-// VersionFilename returns the version filename for the repo
-func VersionFilename() string {
-	return versionFilename
 }

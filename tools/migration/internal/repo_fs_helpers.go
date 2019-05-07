@@ -30,7 +30,7 @@ func CloneRepo(oldRepoLink string) (string, error) {
 		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
 	}
 
-	newRepoPath, err := getNewRepoPath(oldRepoLink)
+	newRepoPath, err := makeNewRepoPath(oldRepoLink)
 	if err != nil {
 		return "", err
 	}
@@ -65,16 +65,15 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 	return nil
 }
 
-// getNewRepoPath generates a new repo path for a migration.
+// makeNewRepoPath generates a new repo path for a migration.
 // Params:
 //     oldPath:  the actual old repo path
-//     newRepoPath:  whatever was passed in by the CLI (can be blank)
 // Returns:
 //     a path generated using the above information plus tmp_<timestamp>.
 //     error
 // Example output:
 //     /Users/davonte/.filecoin-20190806-150455-001
-func getNewRepoPath(oldPath string) (string, error) {
+func makeNewRepoPath(oldPath string) (string, error) {
 	// unlikely to see a name collision but make sure; making it loop up to 1000
 	// ensures that even if there are 1000 calls/sec then the timestamp will change
 	// anyway.

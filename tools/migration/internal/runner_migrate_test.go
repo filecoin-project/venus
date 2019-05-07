@@ -24,7 +24,9 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderMigrationFails
-		assert.EqualError(t, runner.Run(), "migration failed: migration has failed")
+		runResult := runner.Run()
+
+		assert.EqualError(t, runResult.Err, "migration failed: migration has failed")
 	})
 
 	t.Run("returns error when validation step fails", func(t *testing.T) {
@@ -34,7 +36,8 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderValidationFails
-		assert.EqualError(t, runner.Run(), "validation failed: validation has failed")
+		runResult := runner.Run()
+		assert.EqualError(t, runResult.Err, "validation failed: validation has failed")
 	})
 
 	t.Run("on success bumps version and installs new repo at symlink", func(t *testing.T) {
@@ -45,9 +48,10 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		assert.NoError(t, runner.Run())
-		AssertBumpedVersion(t, runner.GetNewRepopath(), repoDir, 0)
-		AssertInstalled(t, runner.GetNewRepopath(), repoDir, repoSymlink)
+		runResult := runner.Run()
+		assert.NoError(t, runResult.Err)
+		AssertBumpedVersion(t, runResult.NewRepoPath, repoDir, 0)
+		AssertInstalled(t, runResult.NewRepoPath, repoDir, repoSymlink)
 	})
 
 }

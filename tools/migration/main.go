@@ -103,8 +103,15 @@ func main() { // nolint: deadcode
 		if err != nil {
 			exitErr(err.Error())
 		}
-		if err := runner.Run(); err != nil {
-			exitErr(err.Error())
+		runResult := runner.Run()
+		if runResult.Err != nil {
+			exitErr(runResult.Err.Error())
+		}
+		if runResult.NewRepoPath != "" {
+			logger.Print(fmt.Sprintf("New repo location: %s", runResult.NewRepoPath))
+		}
+		if runResult.NewVersion != runResult.OldVersion {
+			logger.Print(fmt.Sprintf("Repo has been migrated to version %d", runResult.NewVersion))
 		}
 	default:
 		exitErr(fmt.Sprintf("Error: Invalid command: %s\n%s\n", command, USAGE))

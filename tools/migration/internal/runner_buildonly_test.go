@@ -1,6 +1,7 @@
 package internal_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 	defer RequireRemove(t, repoDir)
 	defer RequireRemove(t, repoSymlink)
 
-	t.Run("clones repo, updates the version on success", func(t *testing.T) {
+	t.Run("clones repo", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
@@ -25,11 +26,11 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		assert.NoError(t, runner.Run())
-
-		version, err := runner.GetNewRepoVersion()
+		runResult := runner.Run()
+		assert.NoError(t, runResult.Err)
+		stat, err := os.Stat(runResult.NewRepoPath)
 		require.NoError(t, err)
-		assert.Equal(t, uint(1), version)
+		assert.True(t, stat.IsDir())
 	})
 
 	t.Run("writes the new version to the new repo, does not install", func(t *testing.T) {
@@ -39,9 +40,12 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 		runner, err := NewMigrationRunner(logger, "buildonly", repoSymlink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
-		assert.NoError(t, runner.Run())
 
-		AssertBumpedVersion(t, runner.GetNewRepopath(), repoDir, 0)
+		runResult := runner.Run()
+		assert.NoError(t, runResult.Err)
+
+		AssertBumpedVersion(t, runResult.NewRepoPath, repoDir, 0)
+		assert.Equal(t, uint(1), runResult.NewVersion)
 		AssertNotInstalled(t, repoDir, repoSymlink)
 	})
 }
