@@ -137,7 +137,8 @@ type State struct {
 	ProvingPeriodStart *types.BlockHeight
 	LastPoSt           *types.BlockHeight
 
-	Power *big.Int
+	// The amount of space committed to the network by this miner.
+	Power *types.BytesAmount
 
 	// SectorSize is the amount of space in each sector committed to the network
 	// by this miner.
@@ -158,7 +159,7 @@ func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, c
 		PledgeSectors:     pledge,
 		Collateral:        collateral,
 		SectorCommitments: make(map[string]types.Commitments),
-		Power:             big.NewInt(0),
+		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
 	}
@@ -235,7 +236,7 @@ var minerExports = exec.Exports{
 	},
 	"getPower": &exec.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProofs},
@@ -536,11 +537,11 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			return nil, Errors[ErrSectorCommitted]
 		}
 
-		if state.Power.Cmp(big.NewInt(0)) == 0 {
+		if state.Power.Equal(types.NewBytesAmount(0)) {
 			state.ProvingPeriodStart = ctx.BlockHeight()
 		}
-		inc := big.NewInt(1)
-		state.Power = state.Power.Add(state.Power, inc)
+		inc := state.SectorSize
+		state.Power = state.Power.Add(inc)
 		comms := types.Commitments{
 			CommD:     types.CommD{},
 			CommR:     types.CommR{},
@@ -701,7 +702,7 @@ func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
 }
 
 // GetPower returns the amount of proven sectors for this miner.
-func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
+func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -714,9 +715,9 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 		return nil, errors.CodeError(err), err
 	}
 
-	power, ok := ret.(*big.Int)
+	power, ok := ret.(*types.BytesAmount)
 	if !ok {
-		return nil, 1, errors.NewFaultErrorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, errors.NewFaultErrorf("expected *types.BytesAmount to be returned, but got %T instead", ret)
 	}
 
 	return power, 0, nil

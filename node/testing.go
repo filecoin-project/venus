@@ -229,9 +229,9 @@ var TestGenCfg = &gengen.GenesisCfg{
 	Keys: 2,
 	Miners: []gengen.Miner{
 		{
-			Owner:  0,
-			Power:  100,
-			PeerID: mustPeerID(PeerKeys[0]).Pretty(),
+			Owner:               0,
+			NumCommittedSectors: 100,
+			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
 		},
 	},
 	PreAlloc: []string{

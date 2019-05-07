@@ -454,12 +454,12 @@ var testConfig = &gengen.GenesisCfg{
 	},
 	Miners: []gengen.Miner{
 		{
-			Owner: 0,
-			Power: 3,
+			Owner:               0,
+			NumCommittedSectors: 3,
 		},
 		{
-			Owner: 1,
-			Power: 3,
+			Owner:               1,
+			NumCommittedSectors: 3,
 		},
 	},
 }

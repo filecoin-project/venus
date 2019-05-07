@@ -448,7 +448,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		total := big.NewInt(0).SetBytes(bytes[0])
+		total := types.NewBytesAmountFromBytes(bytes[0])
 
 		str := fmt.Sprintf("%d / %d", power, total) // nolint: govet
 		return re.Emit(str)

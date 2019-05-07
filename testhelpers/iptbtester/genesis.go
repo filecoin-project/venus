@@ -35,8 +35,8 @@ func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 		},
 		Miners: []gengen.Miner{
 			{
-				Owner: 0,
-				Power: 1,
+				Owner:               0,
+				NumCommittedSectors: 1,
 			},
 		},
 	}

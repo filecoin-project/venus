@@ -19,13 +19,13 @@ type TestView struct{}
 var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // HasPower always returns true.

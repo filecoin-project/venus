@@ -219,8 +219,8 @@ func (e *EnvironmentMemoryGenesis) buildGenesis(funds *big.Int) error {
 		},
 		Miners: []gengen.Miner{
 			{
-				Owner: 0,
-				Power: 1,
+				Owner:               0,
+				NumCommittedSectors: 1,
 			},
 		},
 		ProofsMode: e.proofsMode,

@@ -32,7 +32,7 @@ func TestNewExpected(t *testing.T) {
 
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore, verifier := setupCborBlockstoreProofs()
-		ptv := testhelpers.NewTestPowerTableView(1, 5)
+		ptv := testhelpers.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
 		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), verifier)
 		assert.NotNil(t, exp)
 	})
@@ -44,7 +44,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 	ctx := context.Background()
 	cistore, bstore, verifier := setupCborBlockstoreProofs()
-	ptv := testhelpers.NewTestPowerTableView(1, 5)
+	ptv := testhelpers.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
 
 	t.Run("NewValidTipSet returns a tipset + nil (no errors) when valid blocks", func(t *testing.T) {
 
@@ -145,8 +145,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 
-		minerPower := uint64(1)
-		totalPower := uint64(1)
+		minerPower := types.NewBytesAmount(1)
+		totalPower := types.NewBytesAmount(1)
 
 		ptv := testhelpers.NewTestPowerTableView(minerPower, totalPower)
 		exp := consensus.NewExpected(cistore, bstore, testhelpers.NewTestProcessor(), ptv, genesisBlock.Cid(), verifier)
@@ -169,7 +169,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 
-		ptv := NewFailingMinerTestPowerTableView(1, 5)
+		ptv := NewFailingMinerTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), ptv, types.SomeCid(), verifier)
 
 		pTipSet, err := exp.NewValidTipSet(ctx, []*types.Block{genesisBlock})
@@ -218,7 +218,7 @@ func TestIsWinningTicket(t *testing.T) {
 		var st state.Tree
 
 		for _, c := range cases {
-			ptv := testhelpers.NewTestPowerTableView(c.myPower, c.totalPower)
+			ptv := testhelpers.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 			ticket := [65]byte{}
 			ticket[0] = c.ticket
 			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)

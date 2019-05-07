@@ -40,10 +40,16 @@ type Miner struct {
 	// PeerID is the peer ID to set as the miners owner
 	PeerID string
 
-	// Power is the amount of power this miner should start off with
+	// NumCommittedSectors is the number of sectors that this miner has
+	// committed to the network.
+	//
+	// TODO: This struct needs a field which represents the size of sectors
+	// that this miner has committed. For now, sector size is configured by
+	// the StorageMarketActor's ProofsMode.
+	//
 	// TODO: this will get more complicated when we actually have to
-	// prove real files
-	Power uint64
+	// prove real files.
+	NumCommittedSectors uint64
 }
 
 // GenesisCfg is
@@ -83,8 +89,8 @@ type RenderedMinerInfo struct {
 	// Address is the address generated on-chain for the miner
 	Address address.Address
 
-	// Power is the amount of storage power this miner was created with
-	Power uint64
+	// NumCommittedSectors is the amount of storage power this miner was created with
+	Power *types.BytesAmount
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that
@@ -260,11 +266,11 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
-			Power:   m.Power,
+			Power:   types.NewBytesAmount(m.NumCommittedSectors),
 		})
 
 		// commit sector to add power
-		for i := uint64(0); i < m.Power; i++ {
+		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
 			// which is initialized to 0 and incremented (for the first sector) to 1
 			sectorID := i + 1

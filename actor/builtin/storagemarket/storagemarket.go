@@ -57,9 +57,9 @@ type Actor struct{}
 type State struct {
 	Miners cid.Cid `refmt:",omitempty"`
 
-	// TotalCommitedStorage is the number of sectors that are currently committed
-	// in the whole network.
-	TotalCommittedStorage *big.Int
+	// TODO: Determine correct unit of measure. Could be denominated in the
+	// smallest sector size supported by the network.
+	TotalCommittedStorage *types.BytesAmount
 
 	ProofsMode types.ProofsMode
 }
@@ -74,7 +74,7 @@ func (sma *Actor) InitializeState(storage exec.Storage, proofsModeInterface inte
 	proofsMode := proofsModeInterface.(types.ProofsMode)
 
 	initStorage := &State{
-		TotalCommittedStorage: big.NewInt(0),
+		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            proofsMode,
 	}
 	stateBytes, err := cbor.DumpObject(initStorage)
@@ -103,12 +103,12 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
 	},
 	"getTotalStorage": &exec.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 	"getProofsMode": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -185,7 +185,7 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 // UpdatePower is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing or willful removal). The delta is in number of sectors.
-func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, error) {
+func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -208,7 +208,7 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, erro
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with address: %s", miner)
 		}
 
-		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(state.TotalCommittedStorage, delta)
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(delta)
 
 		return nil, nil
 	})
@@ -220,7 +220,7 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, erro
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error) {
+func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -233,12 +233,12 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error)
 		return nil, errors.CodeError(err), err
 	}
 
-	count, ok := ret.(*big.Int)
+	amt, ok := ret.(*types.BytesAmount)
 	if !ok {
 		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
-	return count, 0, nil
+	return amt, 0, nil
 }
 
 // GetSectorSize returns the sector size of the block chain

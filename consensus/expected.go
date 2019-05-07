@@ -167,7 +167,7 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 	if err != nil {
 		return uint64(0), err
 	}
-	floatTotalBytes := new(big.Float).SetInt64(int64(totalBytes))
+	floatTotalBytes := new(big.Float).SetInt64(int64(totalBytes.Uint64()))
 	floatECV := new(big.Float).SetInt64(int64(ECV))
 	floatECPrM := new(big.Float).SetInt64(int64(ECPrM))
 	for _, blk := range ts.ToSlice() {
@@ -175,10 +175,10 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 		if err != nil {
 			return uint64(0), err
 		}
-		floatOwnBytes := new(big.Float).SetInt64(int64(minerBytes))
+		floatOwnBytes := new(big.Float).SetUint64(minerBytes.Uint64())
 		wBlk := new(big.Float)
 		wBlk.Quo(floatOwnBytes, floatTotalBytes)
-		wBlk.Mul(wBlk, floatECPrM) // Power addition
+		wBlk.Mul(wBlk, floatECPrM) // NumCommittedSectors addition
 		wBlk.Add(wBlk, floatECV)   // Constant addition
 		w.Add(w, wBlk)
 	}
@@ -322,12 +322,12 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 
 // CompareTicketPower abstracts the actual comparison logic so it can be used by some test
 // helpers
-func CompareTicketPower(ticket types.Signature, minerPower uint64, totalPower uint64) bool {
+func CompareTicketPower(ticket types.Signature, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
 	lhs := &big.Int{}
 	lhs.SetBytes(ticket)
-	lhs.Mul(lhs, big.NewInt(int64(totalPower)))
+	lhs.Mul(lhs, (&big.Int{}).SetUint64(totalPower.Uint64()))
 	rhs := &big.Int{}
-	rhs.Mul(big.NewInt(int64(minerPower)), ticketDomain)
+	rhs.Mul((&big.Int{}).SetUint64(minerPower.Uint64()), ticketDomain)
 	return lhs.Cmp(rhs) < 0
 }
 
