@@ -2,14 +2,11 @@ package internal_test
 
 import (
 	"errors"
-	"io/ioutil"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/repo"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	. "github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
@@ -92,7 +89,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 		runner.MigrationsProvider = testProviderPasses
 
 		// TODO: Handle this more gracefully
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, repo.VersionFilename()), []byte("foo"), 0644))
+		RequireSetRepoVersion(t, "foo", repoDir)
 		assert.EqualError(t, runner.Run(), "strconv.Atoi: parsing \"foo\": invalid syntax")
 	})
 
@@ -145,6 +142,9 @@ func TestMigrationRunner_Run(t *testing.T) {
 			_ = runner.Run()
 		})
 		assert.Contains(t, output, "Refusing multi-version migration from 1 to 3")
+	})
+
+	t.Run("newRepoOpt is ignored for commands other than install", func(t *testing.T) {
 	})
 }
 

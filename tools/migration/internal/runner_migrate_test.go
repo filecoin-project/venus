@@ -37,7 +37,7 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		assert.EqualError(t, runner.Run(), "validation failed: validation has failed")
 	})
 
-	t.Run("writes the new version to the repo and leaves old repo untouched", func(t *testing.T) {
+	t.Run("on success bumps version and installs new repo at symlink", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
 		defer RequireRemove(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
@@ -46,9 +46,8 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 		runner.MigrationsProvider = testProviderPasses
 
 		assert.NoError(t, runner.Run())
-
-		version, err := runner.GetNewRepoVersion()
-		require.NoError(t, err)
-		assert.Equal(t, uint(1), version)
+		AssertBumpedVersion(t, runner.GetNewRepopath(), repoDir, 0)
+		AssertInstalled(t, runner.GetNewRepopath(), repoDir, repoSymlink)
 	})
+
 }

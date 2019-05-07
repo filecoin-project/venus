@@ -24,12 +24,12 @@ COMMANDS
 	describe
 		prints a description of what the current migration will do
 	buildonly
-		runs the migration, but does not validate install the newly migrated repo
+		runs the migration and validations, but does not install the newly migrated repo
+		at the --old-repo symlink
 	migrate
-		runs the migration, runs validation tests on the migrated repo, then
-		installs the newly migrated repo
+		runs migration, validations, and installs newly migrated repo at --old-repo symlink
 	install
-		validates and installs a newly migrated repo
+		installs a newly migrated repo
 
 REQUIRED ARGUMENTS
 	--old-repo
@@ -62,6 +62,9 @@ EXAMPLES
 	go-filecoin-migrate build-only --old-repo=/opt/filecoin 
 		Runs migration steps only. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
 		and symlinked to /opt/filecoin
+
+	go-filecoin-migrate install --old-repo=/opt/filecoin --new-repo=/opt/filecoin-123445566860 --verbose
+		Installs a 
 `
 
 func main() { // nolint: deadcode

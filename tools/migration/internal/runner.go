@@ -158,10 +158,15 @@ func (m *MigrationRunner) GetNewRepoVersion() (uint, error) {
 	return m.repoVersion(m.newRepoPath)
 }
 
+// GetNewRepopath returns the value of the new repo path
+func (m *MigrationRunner) GetNewRepopath() string {
+	return m.newRepoPath
+}
+
 // repoVersion opens the version file for the given version,
 // gets the version and validates it
 func (m *MigrationRunner) repoVersion(repoPath string) (uint, error) {
-	strVersion, err := repo.GetVersionForRepo(repoPath)
+	strVersion, err := repo.ReadVersion(repoPath)
 	if err != nil {
 		return 0, err
 	}

@@ -60,11 +60,11 @@ func RequireSetupTestRepo(t *testing.T, repoVersion int) (repoDir, symLink strin
 }
 
 // RequireSetRepoVersion sets the version for the given test repo.
-// This is here so that corrupt version strings can be tested.
+// This is here so that corrupt version strings can be tested. It will break
+// if the version file is ever renamed.
 func RequireSetRepoVersion(t *testing.T, repoVersion string, repoDir string) {
-	verFile := repo.VersionFilename()
 	newVer := []byte(repoVersion)
-	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, verFile), newVer, 0644))
+	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), newVer, 0644))
 }
 
 // CaptureOutput puts log content into
@@ -74,4 +74,38 @@ func CaptureOutput(f func()) string {
 	f()
 	log.SetOutput(os.Stderr)
 	return buf.String()
+}
+
+// AssertNotInstalled verifies that repoLink still points to oldRepoDir
+func AssertNotInstalled(t *testing.T, oldRepoDir, repoLink string) {
+	newRepoTarget, err := os.Readlink(repoLink)
+	require.NoError(t, err)
+	assert.Equal(t, newRepoTarget, oldRepoDir)
+}
+
+// AssertInstalled verifies that the repoLink points to newRepoDir, and that
+// oldRepoDir is still there
+func AssertInstalled(t *testing.T, newRepoDir, oldRepoDir, repoLink string) {
+	newRepoTarget, err := os.Readlink(repoLink)
+	require.NoError(t, err)
+	assert.Equal(t, newRepoTarget, newRepoDir)
+	oldRepoStat, err := os.Stat(oldRepoDir)
+	require.NoError(t, err)
+	assert.True(t, oldRepoStat.IsDir())
+}
+
+// AssertRepoVersion verifies that the version in repoPath is equal to versionStr
+func AssertRepoVersion(t *testing.T, versionStr, repoPath string) {
+	repoVersion, err := repo.ReadVersion(repoPath)
+	require.NoError(t, err)
+	assert.Equal(t, repoVersion, versionStr)
+}
+
+// AssertBumpedVersion checks that the version oldRepoDir is as expected,
+// that the version in newRepoDir is updated by 1
+func AssertBumpedVersion(t *testing.T, newRepoDir, oldRepoDir string, oldVersion uint64) {
+	oldVersionStr := strconv.FormatUint(oldVersion, 10)
+	AssertRepoVersion(t, oldVersionStr, oldRepoDir)
+	newVersionStr := strconv.FormatUint(oldVersion+1, 10)
+	AssertRepoVersion(t, newVersionStr, newRepoDir)
 }

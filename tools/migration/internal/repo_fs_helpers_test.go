@@ -86,7 +86,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("works", func(t *testing.T) {
+	t.Run("swaps out the symlink", func(t *testing.T) {
 		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
 		defer RequireRemove(t, linkedRepoPath)
 		defer RequireRemove(t, oldRepo)

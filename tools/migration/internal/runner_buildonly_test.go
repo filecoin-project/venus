@@ -31,4 +31,17 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, uint(1), version)
 	})
+
+	t.Run("writes the new version to the new repo, does not install", func(t *testing.T) {
+		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
+		defer RequireRemove(t, dummyLogPath)
+		logger := NewLogger(dummyLogFile, false)
+		runner, err := NewMigrationRunner(logger, "buildonly", repoSymlink, "")
+		require.NoError(t, err)
+		runner.MigrationsProvider = testProviderPasses
+		assert.NoError(t, runner.Run())
+
+		AssertBumpedVersion(t, runner.GetNewRepopath(), repoDir, 0)
+		AssertNotInstalled(t, repoDir, repoSymlink)
+	})
 }

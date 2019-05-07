@@ -47,6 +47,7 @@ func TestMigrationRunner_RunInstall(t *testing.T) {
 		runner.MigrationsProvider = testProviderPasses
 
 		assert.EqualError(t, runner.Run(), "installation failed: stat /tmp/nonexistent: no such file or directory")
+		AssertNotInstalled(t, repoDir, repoSymlink)
 	})
 
 }
