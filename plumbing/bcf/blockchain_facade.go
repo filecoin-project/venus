@@ -19,10 +19,12 @@ import (
 
 type bcfChainReader interface {
 	ActorFromLatestState(context.Context, address.Address) (*actor.Actor, error)
+	BlockHeight() (uint64, error)
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSetAndState(types.SortedCidSet) (*chain.TipSetAndState, error)
+	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 	LatestState(ctx context.Context) (state.Tree, error)
 	Load(ctx context.Context) error

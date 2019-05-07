@@ -89,7 +89,8 @@ type chainReader interface {
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSetAndState(types.SortedCidSet) (*chain.TipSetAndState, error)
+	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	LatestState(context.Context) (state.Tree, error)
 	Load(context.Context) error
