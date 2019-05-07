@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -48,23 +47,15 @@ func AssertLogged(t *testing.T, logFile *os.File, subStr string) {
 
 // RequireSetupTestRepo sets up a repo dir with a symlink pointing to it.
 // Caller is responsible for deleting dir and symlink.
-func RequireSetupTestRepo(t *testing.T, repoVersion int) (repoDir, symLink string) {
+func RequireSetupTestRepo(t *testing.T, repoVersion uint) (repoDir, symLink string) {
 	repoDir = RequireMakeTempDir(t, "testrepo")
 	require.NoError(t, repo.InitFSRepo(repoDir, config.NewDefaultConfig()))
 
 	symLink = repoDir + "-reposymlink"
 	require.NoError(t, os.Symlink(repoDir, symLink))
 
-	RequireSetRepoVersion(t, strconv.Itoa(repoVersion), repoDir)
+	require.NoError(t, repo.WriteVersion(repoDir, repoVersion))
 	return repoDir, symLink
-}
-
-// RequireSetRepoVersion sets the version for the given test repo.
-// This is here so that corrupt version strings can be tested. It will break
-// if the version file is ever renamed.
-func RequireSetRepoVersion(t *testing.T, repoVersion string, repoDir string) {
-	newVer := []byte(repoVersion)
-	require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), newVer, 0644))
 }
 
 // CaptureOutput puts log content into

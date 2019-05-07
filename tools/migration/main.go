@@ -118,7 +118,7 @@ func main() { // nolint: deadcode
 	}
 }
 
-// exitError exits(1) the executable with the given error String
+// exitError exit(1)s the executable with the given error String
 func exitErr(errstr string) {
 	log.New(os.Stderr, "", 0).Println("Error: " + errstr)
 	os.Exit(1)
