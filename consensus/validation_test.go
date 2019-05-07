@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/state"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -117,8 +118,8 @@ func TestIngestionValidator(t *testing.T) {
 	bob := addresses[1]
 	act := newActor(t, 1000, 53)
 	api := NewMockIngestionValidatorAPI()
-	api.ActorAddr = alice
-	api.Actor = act
+	err := api.State.SetActor(context.Background(), alice, act)
+	require.NoError(t, err)
 
 	mpoolCfg := config.NewDefaultConfig().Mpool
 	validator := consensus.NewIngestionValidator(api, mpoolCfg)
@@ -172,19 +173,17 @@ func attoFil(v int) *types.AttoFIL {
 
 // FakeIngestionValidatorAPI provides a latest state
 type FakeIngestionValidatorAPI struct {
-	ActorAddr address.Address
-	Actor     *actor.Actor
+	State state.Tree
 }
 
 // NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
 func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
-	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
+	return &FakeIngestionValidatorAPI{
+		State: state.NewEmptyStateTree(nil),
+	}
 }
 
 // LatestState will be a state tree that only contains the test actor
-func (api *FakeIngestionValidatorAPI) ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error) {
-	if address == api.ActorAddr {
-		return api.Actor, nil
-	}
-	return &actor.Actor{}, nil
+func (api *FakeIngestionValidatorAPI) LatestState(ctx context.Context) (state.Tree, error) {
+	return api.State, nil
 }

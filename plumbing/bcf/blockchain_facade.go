@@ -18,7 +18,6 @@ import (
 )
 
 type bcfChainReader interface {
-	ActorFromLatestState(context.Context, address.Address) (*actor.Actor, error)
 	BlockHeight() (uint64, error)
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
