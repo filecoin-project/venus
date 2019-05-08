@@ -84,7 +84,7 @@ A full list of [all 273 PRs in this release](https://github.com/search?o=desc&q=
 
 ### Contributors
 
-❤️ Huge thank you to everyone that made this release possible! By alphabetical order, here are all the humans who contributed to this release:
+❤️ Huge thank you to everyone that made this release possible! By alphabetical order, here are all the humans who contributed to this release via the `go-filecoin`, `rust-fil-proofs`, and `specs` repos:
 
 * [@814556001](https://github.com/814556001) (1 comment)                                                                
 * [@a8159236](https://github.com/a8159236) (3 issues, 9 comments)                                                       
