@@ -283,7 +283,7 @@ that should not happen and that a dev should go look at.
 - Daemon tests (integration tests that run a node and send it commands):
   - Daemon tests should test integration, not comprehensive functionality
   - Daemon tests should validate that their responses conform to a JSON schema
-- Tests should be placed in a separate package from the package they are testing with a name that is the same as the tested package followed by `_test`. For example, a test of the `chain` package should live in a package named `chain_test`.
+- Tests should be placed in a separate package, and follow the naming pattern `$PACKAGE_test`. For example, a test of the chain package should live in a package named `chain_test`.
 
 #### Profiling
 
