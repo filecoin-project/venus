@@ -16,7 +16,7 @@ To clarify, we’ve added [wiki updates](https://github.com/filecoin-project/go-
 
 Where would you like the filecoin node to store client data? You can now choose! There are two ways to specify the location of the sector storage directory: the `sectorbase.rootdir` config entry, or the `--sectordir` option to `go-filecoin init`.
 
-If you don’t specify a location, data is stored by default in `$HOME/.filecoin_sectors`. 
+If you don’t specify a location, data is stored in `$HOME/.filecoin_sectors` by default.
 
 ### Features
 
