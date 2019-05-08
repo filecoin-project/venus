@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -26,6 +27,7 @@ var clientCmd = &cmds.Command{
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
+		"list-deals":           clientListDealsCmd,
 		"payments":             paymentsCmd,
 	},
 }
@@ -225,6 +227,49 @@ respectively.
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
 			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
 			return nil
+		}),
+	},
+}
+
+type clientListDealResult struct {
+	Miner       address.Address   `json:"minerAddress"`
+	ProposalCid cid.Cid           `json:"proposalCid"`
+	State       storagedeal.State `json:"state"`
+}
+
+var clientListDealsCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "List all deals made by this client",
+		ShortDescription: `
+Lists all recorded deals made by this client with miners on the network. This
+may include pending deals, active deals, finished deals and cancelled deals.
+`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		deals, err := GetPorcelainAPI(env).DealsLs()
+		if err != nil {
+			return err
+		}
+
+		for _, deal := range deals {
+			out := &clientListDealResult{
+				Miner:       deal.Miner,
+				ProposalCid: deal.Response.ProposalCid,
+				State:       deal.Response.State,
+			}
+			if err = re.Emit(out); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Type: clientListDealResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *clientListDealResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
 		}),
 	},
 }
