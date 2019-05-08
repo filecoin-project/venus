@@ -10,6 +10,7 @@ assignees: ''
 Please first see README for how to get help before filing a new bug report. 
 
 If you have a *QUESTION* about Filecoin, please ask on our forum at https://discuss.filecoin.io/
+
 -->
 
 **Describe the bug**
@@ -29,11 +30,11 @@ Steps to reproduce the behavior:
 **Screenshots**
 <!-- If applicable, add logging output or screenshots to help explain your problem. -->
 
-**Version information**
-<!-- please fill out this information below completely, it will help us solve your issue faster -->
-- Filecoin: <!-- go-filecoin inspect all -->
-- Rust: <!-- rustc --version -->
-- Cargo: <!-- cargo --version -->
+**Diagnostic information**
+<!-- Please fill out this information below completely. It will help us solve your issue faster. -->
+- Filecoin: <!-- Run `go-filecoin inspect all` and paste full contents here. -->
+- Rust: <!-- `rustc --version` -->
+- Cargo: <!-- `cargo --version` -->
 
 
 **Additional context**
