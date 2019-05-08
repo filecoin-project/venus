@@ -16,11 +16,13 @@ To clarify, we’ve added [wiki updates](https://github.com/filecoin-project/go-
 
 Where would you like the filecoin node to store client data? You can now choose! There are two ways to specify the location of the sector storage directory: the `sectorbase.rootdir` config entry, or the `--sectordir` option to `go-filecoin init`.
 
+If you don’t specify a location, data is stored by default in `$HOME/.filecoin_sectors`. 
+
 ### Features
 
 #### 🍄 Upgradeable repo
 
-In addition to sealed client data, Filecoin nodes also store other data on-disk such as configuration, blockchain blocks, deal state, and encryption keys. As development progresses, we need a way to safely change the type and schema of this data. In this release, we include an accepted [design](https://docs.google.com/document/d/1THzh1mrNCKYbdk1zP72xV8pfr1yQBe2n3ptrSAYyVI8/edit?usp=sharing) for filesystem repo migrations, and an initial layout for the migration tool. This paves the way for filecoin nodes to seamlessly update when running in production.
+In addition to sealed client data, Filecoin nodes also store other data on-disk such as configuration, blockchain blocks, deal state, and encryption keys. As development progresses, we need a way to safely change the type and schema of this data. In this release, we include an accepted [design](https://docs.google.com/document/d/1THzh1mrNCKYbdk1zP72xV8pfr1yQBe2n3ptrSAYyVI8/) for filesystem repo migrations, and an initial layout for the migration tool. This paves the way for filecoin nodes to seamlessly update when running in production.
 
 For more information, check out the help text:
 
@@ -30,7 +32,7 @@ tools/migration/go-filecoin-migrate --help
 
 #### 💎 Storage payments
 
-This release includes work towards storage protocol dispute resolution. Payment channels can now contain conditions that will query another actor before a voucher is redeemed. Payment channels can also be canceled by the payer triggering an early close if the target of the channel does not redeem a payment. These features can be used together with piece inclusion proofs (coming soon) to enforce proof of storage when storage clients pay storage miners.
+This release includes work towards storage protocol dispute resolution. Payment channels can now contain conditions that will query another actor before a voucher is redeemed. Payment channels can also be canceled by the payer. This will trigger an early close if the target of the channel does not redeem a payment. These features can be used together with piece inclusion proofs (coming soon) to enforce proof of storage when storage clients pay storage miners.
 
 #### 🐛 New debugging commands 
 
@@ -248,7 +250,7 @@ A full list of [all 273 PRs in this release](https://github.com/search?o=desc&q=
 Would you like to contribute to the Filecoin project and don’t know how? Here are a few places you can get started:
 
 - Check out the [Contributing Guidelines](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
-- Look for issues with the `good-first-issue` label in [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")
+- Look for issues with the `good-first-issue` label in [go-filecoin](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue") and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")
 - Join the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat), introduce yourself in #_fil-lobby, and let us know where you would like to contribute
 
 ### ⁉️ Do you have questions?
