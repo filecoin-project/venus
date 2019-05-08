@@ -383,6 +383,7 @@ jobs:
       - run:
           name: Install AWS CLI
           command: |
+            sudo apt-get update
             sudo apt-get install -y python-pip libyaml-dev python-dev jq
             sudo pip install awscli
       - run:
