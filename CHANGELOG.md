@@ -22,7 +22,7 @@ If you don’t specify a location, data is stored in `$HOME/.filecoin_sectors` b
 
 #### 🍄 Upgradeable repo
 
-In addition to sealed client data, Filecoin nodes also store other data on-disk such as configuration, blockchain blocks, deal state, and encryption keys. As development progresses, we need a way to safely change the type and schema of this data. In this release, we include an accepted [design](https://docs.google.com/document/d/1THzh1mrNCKYbdk1zP72xV8pfr1yQBe2n3ptrSAYyVI8/) for filesystem repo migrations, and an initial layout for the migration tool. This paves the way for filecoin nodes to seamlessly update when running in production.
+In addition to sealed client data, Filecoin nodes also store other data on-disk such as configuration data, blockchain blocks, deal state, and encryption keys. As development progresses, we need a way to safely change the type and schema of this data. In this release, we include an accepted [design](https://docs.google.com/document/d/1THzh1mrNCKYbdk1zP72xV8pfr1yQBe2n3ptrSAYyVI8/) for filesystem repo migrations, and an initial layout for the migration tool. This paves the way for filecoin nodes to seamlessly update when running in production.
 
 For more information, check out the help text:
 
