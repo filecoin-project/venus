@@ -307,6 +307,8 @@ func TestMinerSetPrice(t *testing.T) {
 }
 
 func TestMinerSetPriceRequiresMinerAddr(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	t.Parallel()
 
 	d1 := th.NewDaemon(t,
@@ -431,6 +433,8 @@ func TestMinerOwner(t *testing.T) {
 }
 
 func TestMinerOwnerRequiresMinerAddr(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
 		t.Fatal(err)
@@ -489,6 +493,8 @@ func TestMinerPower(t *testing.T) {
 }
 
 func TestMinerPowerRequiresMinerAddr(t *testing.T) {
+	tf.IntegrationTest(t)
+
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
 		t.Fatal(err)
