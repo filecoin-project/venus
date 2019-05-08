@@ -159,7 +159,6 @@ func TestMinerPledge(t *testing.T) {
 	})
 
 	t.Run("shows an error if the address is not a miner address", func(t *testing.T) {
-		t.Parallel()
 		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 		defer d.ShutdownSuccess()
 
@@ -309,8 +308,6 @@ func TestMinerSetPrice(t *testing.T) {
 func TestMinerSetPriceRequiresMinerAddr(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	t.Parallel()
-
 	d1 := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
 		th.KeyFile(fixtures.KeyFilePaths()[0]),
@@ -446,7 +443,6 @@ func TestMinerOwnerRequiresMinerAddr(t *testing.T) {
 
 	_ = fi.Close()
 
-	t.Parallel()
 	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer d.ShutdownSuccess()
 
@@ -506,7 +502,6 @@ func TestMinerPowerRequiresMinerAddr(t *testing.T) {
 
 	_ = fi.Close()
 
-	t.Parallel()
 	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer d.ShutdownSuccess()
 
