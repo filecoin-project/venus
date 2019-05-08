@@ -10,7 +10,6 @@ assignees: ''
 Please first see README for how to get help before filing a new bug report. 
 
 If you have a *QUESTION* about Filecoin, please ask on our forum at https://discuss.filecoin.io/
-
 -->
 
 **Describe the bug**
@@ -30,11 +29,23 @@ Steps to reproduce the behavior:
 **Screenshots**
 <!-- If applicable, add logging output or screenshots to help explain your problem. -->
 
-**Diagnostic information**
 <!-- Please fill out this information below completely. It will help us solve your issue faster. -->
-- Filecoin: <!-- Run `go-filecoin inspect all` and paste full contents here. -->
-- Rust: <!-- `rustc --version` -->
-- Cargo: <!-- `cargo --version` -->
+**Diagnostic information**
+<!-- If you are having issues running go-filecoin, please include the following: -->
+- Filecoin Inspect Ouput: <!-- go-filecoin inspect all -->
+- Current Head: <!--go-filecoin chain head -->
+- Connected Peers: <!-- go-filecoin swarm connect -->
+
+**Version information**
+<!-- If you are having issue building go-filecoin please include the following: -->
+- Go: <!-- go version -->
+- Rust: <!-- rustc --version -->
+- Cargo: <!-- cargo --version -->
+- Commit: <!--  git rev-parse HEAD -->
+- Go Env: <!-- go env -->
+- CC: <!-- $(go env | grep -E "^CC" |  sed -e 's/.*\=//' | sed -e 's/^"//' -e 's/"$//') --version -->
+
+
 
 
 **Additional context**
