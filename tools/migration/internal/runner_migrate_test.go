@@ -14,12 +14,12 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 	tf.UnitTest(t)
 
 	repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-	defer RequireRemove(t, repoDir)
-	defer RequireRemove(t, repoSymlink)
+	defer RequireRemoveAll(t, repoDir)
+	defer RequireRemoveAll(t, repoSymlink)
 
 	t.Run("returns error when migration step fails", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 
 	t.Run("returns error when validation step fails", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestMigrationRunner_RunMigrate(t *testing.T) {
 
 	t.Run("on success bumps version and installs new repo at symlink", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "migrate", repoSymlink, "")
 		require.NoError(t, err)

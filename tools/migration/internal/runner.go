@@ -84,10 +84,11 @@ func NewMigrationRunner(logger *Logger, command, oldRepoOpt, newRepoOpt string) 
 // RunResult stores the needed results of calling Run()
 type RunResult struct {
 	// full path to new repo (migrated or not).
-	// This is blank unless repo was cloned -- if it errors out to early or for "describe"
+	// This is blank unless repo was cloned -- if it errors out too early or for "describe"
 	NewRepoPath string
 
-	// Old version and new version. If no applicable migration is found, these will be equal
+	// Old version and new version. If no applicable migration is found, these will be equal,
+	// and if errors early they will = 0.
 	OldVersion, NewVersion uint
 
 	// Any errors encountered by Run
@@ -231,28 +232,29 @@ func (m *MigrationRunner) getTargetMigrationVersion() uint {
 	return targetVersion
 }
 
-// findMigration finds the list of migrations in the MigrationsProvder that is valid for this repo.
+// findMigration finds the list of migrations in the MigrationsProvder that is valid for
+//       upgrading current repoVersion
 // returns:
 //       nil + error if >1 valid migration is found, or
 //       the migration to run + nil error
-func (m *MigrationRunner) findMigration(targetVersion uint) (mig Migration, err error) {
+func (m *MigrationRunner) findMigration(repoVersion uint) (mig Migration, err error) {
 	var applicableMigs []Migration
 	for _, mig := range m.MigrationsProvider() {
 		from, to := mig.Versions()
 		if to != from+1 {
 			log.Printf("refusing multi-version migration from %d to %d", from, to)
-		} else if from == targetVersion {
+		} else if from == repoVersion {
 			applicableMigs = append(applicableMigs, mig)
 		} else {
 			log.Printf("skipping migration from %d to %d", from, to)
 		}
 	}
 	if len(applicableMigs) == 0 {
-		log.Print(fmt.Sprintf("did not find valid repo migration for version %d", targetVersion))
+		log.Print(fmt.Sprintf("did not find valid repo migration for version %d", repoVersion))
 		return nil, nil
 	}
 	if len(applicableMigs) > 1 {
-		return nil, errors.New("found >1 available migration; cannot proceed")
+		return nil, fmt.Errorf("found >1 available migration for %d; cannot proceed", repoVersion)
 	}
 	return applicableMigs[0], nil
 }

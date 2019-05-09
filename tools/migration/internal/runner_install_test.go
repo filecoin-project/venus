@@ -15,16 +15,16 @@ func TestMigrationRunner_RunInstall(t *testing.T) {
 
 	t.Run("swaps out symlink", func(t *testing.T) {
 		repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, repoDir)
-		defer RequireRemove(t, repoSymlink)
+		defer RequireRemoveAll(t, repoDir)
+		defer RequireRemoveAll(t, repoSymlink)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 
 		migratedDir, symlink := RequireSetupTestRepo(t, 1)
-		RequireRemove(t, symlink) // don't need it
-		defer RequireRemove(t, migratedDir)
+		RequireRemoveAll(t, symlink) // don't need it
+		defer RequireRemoveAll(t, migratedDir)
 
 		runner, err := NewMigrationRunner(logger, "install", repoSymlink, migratedDir)
 		require.NoError(t, err)
@@ -36,11 +36,11 @@ func TestMigrationRunner_RunInstall(t *testing.T) {
 
 	t.Run("returns error if new-repo option is not given", func(t *testing.T) {
 		repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, repoDir)
-		defer RequireRemove(t, repoSymlink)
+		defer RequireRemoveAll(t, repoDir)
+		defer RequireRemoveAll(t, repoSymlink)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "install", repoSymlink, "")
 		require.NoError(t, err)
@@ -52,11 +52,11 @@ func TestMigrationRunner_RunInstall(t *testing.T) {
 
 	t.Run("returns error if new-repo is not found, and does not remove symlink", func(t *testing.T) {
 		repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, repoDir)
-		defer RequireRemove(t, repoSymlink)
+		defer RequireRemoveAll(t, repoDir)
+		defer RequireRemoveAll(t, repoSymlink)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "install", repoSymlink, "/tmp/nonexistent")
 		require.NoError(t, err)
@@ -70,16 +70,16 @@ func TestMigrationRunner_RunInstall(t *testing.T) {
 
 	t.Run("returns error if new repo does not have expected version", func(t *testing.T) {
 		repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, repoDir)
-		defer RequireRemove(t, repoSymlink)
+		defer RequireRemoveAll(t, repoDir)
+		defer RequireRemoveAll(t, repoSymlink)
 
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 
 		migratedDir, symlink := RequireSetupTestRepo(t, 0)
-		RequireRemove(t, symlink) // don't need it
-		defer RequireRemove(t, migratedDir)
+		RequireRemoveAll(t, symlink) // don't need it
+		defer RequireRemoveAll(t, migratedDir)
 
 		runner, err := NewMigrationRunner(logger, "install", repoSymlink, migratedDir)
 		require.NoError(t, err)

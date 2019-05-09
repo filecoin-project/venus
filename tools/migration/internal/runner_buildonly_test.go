@@ -15,12 +15,12 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 	tf.UnitTest(t)
 
 	repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-	defer RequireRemove(t, repoDir)
-	defer RequireRemove(t, repoSymlink)
+	defer RequireRemoveAll(t, repoDir)
+	defer RequireRemoveAll(t, repoSymlink)
 
 	t.Run("clones repo", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "buildonly", repoSymlink, "")
 		require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestMigrationRunner_RunBuildonly(t *testing.T) {
 
 	t.Run("writes the new version to the new repo, does not install", func(t *testing.T) {
 		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemove(t, dummyLogPath)
+		defer RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "buildonly", repoSymlink, "")
 		require.NoError(t, err)

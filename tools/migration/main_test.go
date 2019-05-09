@@ -52,8 +52,8 @@ func TestOptions(t *testing.T) {
 
 	t.Run("accepts --verbose or -v with valid command", func(t *testing.T) {
 		repoDir, symlink := internal.RequireSetupTestRepo(t, 0)
-		defer internal.RequireRemove(t, repoDir)
-		defer internal.RequireRemove(t, symlink)
+		defer internal.RequireRemoveAll(t, repoDir)
+		defer internal.RequireRemoveAll(t, symlink)
 
 		out, err := exec.Command(command, "describe", "--old-repo="+symlink, "--verbose").CombinedOutput()
 		assert.NoError(t, err)

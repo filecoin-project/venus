@@ -18,15 +18,15 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 
 	t.Run("Creates the dir with the right permissions", func(t *testing.T) {
 		oldRepo := RequireMakeTempDir(t, "")
-		defer RequireRemove(t, oldRepo)
+		defer RequireRemoveAll(t, oldRepo)
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer RequireRemove(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		newRepoPath, err := CloneRepo(linkedRepoPath)
 		require.NoError(t, err)
-		defer RequireRemove(t, newRepoPath)
+		defer RequireRemoveAll(t, newRepoPath)
 
 		stat, err := os.Stat(newRepoPath)
 		require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 
 	t.Run("fails if the old repo does not point to a symbolic link", func(t *testing.T) {
 		oldRepo := RequireMakeTempDir(t, "")
-		defer RequireRemove(t, oldRepo)
+		defer RequireRemoveAll(t, oldRepo)
 
 		result, err := CloneRepo(oldRepo)
 		assert.Error(t, err, "old-repo must be a symbolic link.")
@@ -44,7 +44,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer RequireRemove(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		result, err = CloneRepo(linkedRepoPath)
 		assert.NoError(t, err)
@@ -53,11 +53,11 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 
 	t.Run("Increments the int on the end until a free filename is found", func(t *testing.T) {
 		oldRepo := RequireMakeTempDir(t, "")
-		defer RequireRemove(t, oldRepo)
+		defer RequireRemoveAll(t, oldRepo)
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer RequireRemove(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		// Call CloneRepo several times and ensure that the filename end
 		// is incremented, since these calls will happen in <1s.
@@ -76,7 +76,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 			assert.Regexp(t, regx, result)
 		}
 		for _, dir := range repos {
-			RequireRemove(t, dir)
+			RequireRemoveAll(t, dir)
 		}
 
 	})
@@ -87,8 +87,8 @@ func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 
 	t.Run("swaps out the symlink", func(t *testing.T) {
 		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, linkedRepoPath)
-		defer RequireRemove(t, oldRepo)
+		defer RequireRemoveAll(t, linkedRepoPath)
+		defer RequireRemoveAll(t, oldRepo)
 
 		newRepoPath, err := CloneRepo(linkedRepoPath)
 		require.NoError(t, err)
@@ -99,8 +99,8 @@ func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 
 	t.Run("returns error and leaves symlink if new repo does not exist", func(t *testing.T) {
 		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
-		defer RequireRemove(t, linkedRepoPath)
-		defer RequireRemove(t, oldRepo)
+		defer RequireRemoveAll(t, linkedRepoPath)
+		defer RequireRemoveAll(t, oldRepo)
 
 		_, err := CloneRepo(linkedRepoPath)
 		require.NoError(t, err)

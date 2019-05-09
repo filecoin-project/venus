@@ -22,9 +22,9 @@ func RequireMakeTempDir(t *testing.T, dirname string) string {
 	return newdir
 }
 
-// RequireRemove ensures that the error condition is checked when we clean up
+// RequireRemoveAll ensures that the error condition is checked when we clean up
 // after creating a temporary directory.
-func RequireRemove(t *testing.T, path string) {
+func RequireRemoveAll(t *testing.T, path string) {
 	require.NoError(t, os.RemoveAll(path))
 }
 
@@ -58,7 +58,8 @@ func RequireSetupTestRepo(t *testing.T, repoVersion uint) (repoDir, symLink stri
 	return repoDir, symLink
 }
 
-// CaptureOutput puts log content into
+// CaptureOutput redirects log content into a buffer and calls the function provided,
+// and returns buffer content.
 func CaptureOutput(f func()) string {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)

@@ -64,7 +64,8 @@ EXAMPLES
 		and symlinked to /opt/filecoin
 
 	go-filecoin-migrate install --old-repo=/opt/filecoin --new-repo=/opt/filecoin-123445566860 --verbose
-		Installs a 
+		swaps out the link at /opt/filecoin to point to /opt/filecoin-123445566860, as long as
+		/opt/filecoin is a symlink and /opt/filecoin-123445566860 has an up-to-date version.
 `
 
 func main() { // nolint: deadcode
@@ -84,7 +85,6 @@ func main() { // nolint: deadcode
 		}
 
 		logger := internal.NewLogger(logFile, getVerbose())
-		logger.Print("something, anything")
 
 		oldRepoOpt, found := findOpt("old-repo", os.Args)
 		if !found {
