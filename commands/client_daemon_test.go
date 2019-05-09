@@ -73,8 +73,11 @@ func TestListDeals(t *testing.T) {
 	"state": 2
 }`, fixtures.TestMiners[0], dealCid)
 
-	listDealsOutput := clientDaemon.RunSuccess("client", "list-deals").ReadStdoutTrimNewlines()
-	assert.Equal(t, expectedOutput, listDealsOutput)
+	listClientDealsOutput := clientDaemon.RunSuccess("client", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, expectedOutput, listClientDealsOutput)
+
+	listMinerDealsOutput := minerDaemon.RunSuccess("client", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, "", listMinerDealsOutput)
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {

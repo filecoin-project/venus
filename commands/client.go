@@ -246,7 +246,7 @@ may include pending deals, active deals, finished deals and cancelled deals.
 `,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		deals, err := GetPorcelainAPI(env).DealsLs()
+		deals, err := GetPorcelainAPI(env).DealClientLs()
 		if err != nil {
 			return err
 		}
