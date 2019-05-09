@@ -41,6 +41,11 @@ func (l *Logger) Print(msg string) {
 	l.logger.Print(msg)
 }
 
+// Printf logs and formats a string to the logging output.
+func (l *Logger) Printf(format string, v ...interface{}) {
+	l.logger.Printf(format, v...)
+}
+
 // Close closes the logfile backing the Logger.
 func (l *Logger) Close() error {
 	return l.closer.Close()
