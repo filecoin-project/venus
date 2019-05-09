@@ -2,9 +2,7 @@ package internal_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
 	"regexp"
 	"testing"
 
@@ -19,16 +17,16 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Creates the dir with the right permissions", func(t *testing.T) {
-		oldRepo := requireMakeTempDir(t, "")
-		defer requireRmDir(t, oldRepo)
+		oldRepo := RequireMakeTempDir(t, "")
+		defer RequireRemoveAll(t, oldRepo)
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer requireRmDir(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		newRepoPath, err := CloneRepo(linkedRepoPath)
 		require.NoError(t, err)
-		defer requireRmDir(t, newRepoPath)
+		defer RequireRemoveAll(t, newRepoPath)
 
 		stat, err := os.Stat(newRepoPath)
 		require.NoError(t, err)
@@ -37,8 +35,8 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 	})
 
 	t.Run("fails if the old repo does not point to a symbolic link", func(t *testing.T) {
-		oldRepo := requireMakeTempDir(t, "")
-		defer requireRmDir(t, oldRepo)
+		oldRepo := RequireMakeTempDir(t, "")
+		defer RequireRemoveAll(t, oldRepo)
 
 		result, err := CloneRepo(oldRepo)
 		assert.Error(t, err, "old-repo must be a symbolic link.")
@@ -46,7 +44,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer requireRmDir(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		result, err = CloneRepo(linkedRepoPath)
 		assert.NoError(t, err)
@@ -54,12 +52,12 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 	})
 
 	t.Run("Increments the int on the end until a free filename is found", func(t *testing.T) {
-		oldRepo := requireMakeTempDir(t, "")
-		defer requireRmDir(t, oldRepo)
+		oldRepo := RequireMakeTempDir(t, "")
+		defer RequireRemoveAll(t, oldRepo)
 
 		linkedRepoPath := oldRepo + "something"
 		require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-		defer requireRmDir(t, linkedRepoPath)
+		defer RequireRemoveAll(t, linkedRepoPath)
 
 		// Call CloneRepo several times and ensure that the filename end
 		// is incremented, since these calls will happen in <1s.
@@ -68,7 +66,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 		// updating, which is correct behavior. Programmatically proving it restarts
 		// in this test was more trouble than it was worth.
 		var repos []string
-		for i := 1; i < 10; i++ {
+		for i := 1; i < 5; i++ {
 			result, err := CloneRepo(linkedRepoPath)
 			require.NoError(t, err)
 			repos = append(repos, result)
@@ -78,7 +76,7 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 			assert.Regexp(t, regx, result)
 		}
 		for _, dir := range repos {
-			requireRmDir(t, dir)
+			RequireRemoveAll(t, dir)
 		}
 
 	})
@@ -87,36 +85,28 @@ func TestRepoMigrationHelper_CloneRepo(t *testing.T) {
 func TestRepoFSHelpers_InstallNewRepo(t *testing.T) {
 	tf.UnitTest(t)
 
-	oldRepo := requireMakeTempDir(t, "")
+	t.Run("swaps out the symlink", func(t *testing.T) {
+		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
+		defer RequireRemoveAll(t, linkedRepoPath)
+		defer RequireRemoveAll(t, oldRepo)
 
-	linkedRepoPath := oldRepo + "something"
-	require.NoError(t, os.Symlink(oldRepo, oldRepo+"something"))
-	defer requireRmDir(t, linkedRepoPath)
+		newRepoPath, err := CloneRepo(linkedRepoPath)
+		require.NoError(t, err)
+		require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
 
-	newRepoPath, err := CloneRepo(linkedRepoPath)
-	require.NoError(t, err)
+		AssertInstalled(t, newRepoPath, oldRepo, linkedRepoPath)
+	})
 
-	// put something in each repo dir so we know which is which
-	_, err = os.Create(path.Join(newRepoPath, "newRepoFile"))
-	require.NoError(t, err)
+	t.Run("returns error and leaves symlink if new repo does not exist", func(t *testing.T) {
+		oldRepo, linkedRepoPath := RequireSetupTestRepo(t, 0)
+		defer RequireRemoveAll(t, linkedRepoPath)
+		defer RequireRemoveAll(t, oldRepo)
 
-	require.NoError(t, InstallNewRepo(linkedRepoPath, newRepoPath))
+		_, err := CloneRepo(linkedRepoPath)
+		require.NoError(t, err)
 
-	// check that the new repo is at the old link location.
-	dir, err := os.Open(newRepoPath)
-	require.NoError(t, err)
-	contents, err := dir.Readdirnames(0)
-	require.NoError(t, err)
-	assert.Contains(t, contents, "newRepoFile")
-}
-
-func requireMakeTempDir(t *testing.T, dirname string) string {
-	newdir, err := ioutil.TempDir("", dirname)
-	require.NoError(t, err)
-	return newdir
-}
-
-// ensure that the error condition is checked when we clean up after creating tmpdirs.
-func requireRmDir(t *testing.T, dirname string) {
-	require.NoError(t, os.RemoveAll(dirname))
+		err = InstallNewRepo(linkedRepoPath, "/tmp/nonexistentfile")
+		assert.EqualError(t, err, "stat /tmp/nonexistentfile: no such file or directory")
+		AssertNotInstalled(t, oldRepo, linkedRepoPath)
+	})
 }
