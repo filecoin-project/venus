@@ -54,9 +54,19 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
+// DealClientLs returns a slice of deals placed as a client
+func (a *API) DealClientLs() ([]*storagedeal.Deal, error) {
+	return DealClientLs(a)
+}
+
 // DealGet returns a single deal matching a given cid or an error
 func (a *API) DealGet(proposalCid cid.Cid) (*storagedeal.Deal, error) {
 	return DealGet(a, proposalCid)
+}
+
+// DealMinerLs returns a slice of deals received as a miner
+func (a *API) DealMinerLs() ([]*storagedeal.Deal, error) {
+	return DealMinerLs(a)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
