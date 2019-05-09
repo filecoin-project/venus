@@ -254,7 +254,7 @@ func (m *MigrationRunner) findMigration(repoVersion uint) (mig Migration, err er
 		return nil, nil
 	}
 	if len(applicableMigs) > 1 {
-		return nil, fmt.Errorf("found >1 available migration for %d; cannot proceed", repoVersion)
+		return nil, fmt.Errorf("found >1 migration for version %d; cannot proceed", repoVersion)
 	}
 	return applicableMigs[0], nil
 }

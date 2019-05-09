@@ -128,7 +128,7 @@ func TestMigrationRunner_Run(t *testing.T) {
 				&TestMigDoesNothing,
 			}
 		}
-		assert.EqualError(t, runner.Run().Err, "migration check failed: found >1 available migration; cannot proceed")
+		assert.EqualError(t, runner.Run().Err, "migration check failed: found >1 migration for version 0; cannot proceed")
 	})
 
 	t.Run("run skips multiversion", func(t *testing.T) {
