@@ -53,7 +53,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	}
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 
-	log.Infof("Received new block from network cid: %s", blk.Cid().String())
+	log.Infof("Received new block from network cid: %s height: %d", blk.Cid().String(), blk.Height)
 	log.Debugf("Received new block from network: %s", blk)
 
 	err = node.Syncer.HandleNewTipset(ctx, types.NewSortedCidSet(blk.Cid()))
