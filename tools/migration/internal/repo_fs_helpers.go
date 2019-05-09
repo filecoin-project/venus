@@ -48,12 +48,11 @@ func CloneRepo(oldRepoLink string) (string, error) {
 // InstallNewRepo archives the old repo, and symlinks the new repo in its place.
 // returns any error.
 func InstallNewRepo(oldRepoLink, newRepoPath string) error {
-	var err error
 	if _, err := os.Readlink(oldRepoLink); err != nil {
 		return err
 	}
 
-	if _, err = os.Stat(newRepoPath); err != nil {
+	if _, err := os.Stat(newRepoPath); err != nil {
 		return err
 	}
 
