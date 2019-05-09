@@ -58,14 +58,48 @@ Prints out information about filecoin process and its environment.
 	Type: AllInspectorInfo{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *AllInspectorInfo) error {
-			marshaled, err := json.MarshalIndent(info, "", "\t")
+			sw := NewSilentWriter(w)
+
+			// Print Version
+			sw.Printf("Version:\t%s\n", info.FilecoinVersion)
+
+			// Print Runtime Info
+			sw.Printf("\nRuntime\n")
+			sw.Printf("OS:           \t%s\n", info.Runtime.OS)
+			sw.Printf("Arch:         \t%s\n", info.Runtime.Arch)
+			sw.Printf("Version:      \t%s\n", info.Runtime.Version)
+			sw.Printf("Compiler:     \t%s\n", info.Runtime.Compiler)
+			sw.Printf("NumProc:      \t%d\n", info.Runtime.NumProc)
+			sw.Printf("GoMaxProcs:   \t%d\n", info.Runtime.GoMaxProcs)
+			sw.Printf("NumGoRoutines:\t%d\n", info.Runtime.NumGoRoutines)
+			sw.Printf("NumCGoCalls:  \t%d\n", info.Runtime.NumCGoCalls)
+
+			// Print Disk Info
+			sw.Printf("\nDisk\n")
+			sw.Printf("Free:  \t%d\n", info.Disk.Free)
+			sw.Printf("Total: \t%d\n", info.Disk.Total)
+			sw.Printf("FSType:\t%s\n", info.Disk.FSType)
+
+			// Print Memory Info
+			sw.Printf("\nMemory\n")
+			sw.Printf("Swap:   \t%d\n", info.Memory.Swap)
+			sw.Printf("Virtual:\t%d\n", info.Memory.Virtual)
+
+			// Print Config Info
+			sw.Printf("\nConfig\n")
+			marshaled, err := json.MarshalIndent(info.Config, "", "\t")
 			if err != nil {
 				return err
 			}
-			marshaled = append(marshaled, byte('\n'))
+			sw.Printf("%s\n", marshaled)
 
-			_, err = w.Write(marshaled)
-			return err
+			// Print Environment Info
+			sw.Printf("\nEnvironment\n")
+			sw.Printf("FilAPI: \t%s\n", info.Environment.FilAPI)
+			sw.Printf("FilPath:\t%s\n", info.Environment.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.Environment.GoPath)
+
+			return sw.Error()
 		}),
 	},
 }
@@ -84,14 +118,16 @@ Prints out information about the golang runtime.
 	Type: RuntimeInfo{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *RuntimeInfo) error {
-			marshaled, err := json.MarshalIndent(info, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-
-			_, err = w.Write(marshaled)
-			return err
+			sw := NewSilentWriter(w)
+			sw.Printf("OS:           \t%s\n", info.OS)
+			sw.Printf("Arch:         \t%s\n", info.Arch)
+			sw.Printf("Version:      \t%s\n", info.Version)
+			sw.Printf("Compiler:     \t%s\n", info.Compiler)
+			sw.Printf("NumProc:      \t%d\n", info.NumProc)
+			sw.Printf("GoMaxProcs:   \t%d\n", info.GoMaxProcs)
+			sw.Printf("NumGoRoutines:\t%d\n", info.NumGoRoutines)
+			sw.Printf("NumCGoCalls:  \t%d\n", info.NumCGoCalls)
+			return sw.Error()
 		}),
 	},
 }
@@ -113,14 +149,11 @@ Prints out information about the filesystem.
 	Type: DiskInfo{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *DiskInfo) error {
-			marshaled, err := json.MarshalIndent(info, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-
-			_, err = w.Write(marshaled)
-			return err
+			sw := NewSilentWriter(w)
+			sw.Printf("Free:  \t%d\n", info.Free)
+			sw.Printf("Total: \t%d\n", info.Total)
+			sw.Printf("FSType:\t%s\n", info.FSType)
+			return sw.Error()
 		}),
 	},
 }
@@ -142,14 +175,10 @@ Prints out information about memory usage.
 	Type: MemoryInfo{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *MemoryInfo) error {
-			marshaled, err := json.MarshalIndent(info, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-
-			_, err = w.Write(marshaled)
-			return err
+			sw := NewSilentWriter(w)
+			sw.Printf("Swap:   \t%d\n", info.Swap)
+			sw.Printf("Virtual:\t%d\n", info.Virtual)
+			return sw.Error()
 		}),
 	},
 }
@@ -173,7 +202,6 @@ Prints out information about your filecoin nodes config.
 				return err
 			}
 			marshaled = append(marshaled, byte('\n'))
-
 			_, err = w.Write(marshaled)
 			return err
 		}),
@@ -194,14 +222,11 @@ Prints out information about your filecoin nodes environment.
 	Type: EnvironmentInfo{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *EnvironmentInfo) error {
-			marshaled, err := json.MarshalIndent(info, "", "\t")
-			if err != nil {
-				return err
-			}
-			marshaled = append(marshaled, byte('\n'))
-
-			_, err = w.Write(marshaled)
-			return err
+			sw := NewSilentWriter(w)
+			sw.Printf("FilAPI: \t%s\n", info.FilAPI)
+			sw.Printf("FilPath:\t%s\n", info.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.GoPath)
+			return sw.Error()
 		}),
 	},
 }
