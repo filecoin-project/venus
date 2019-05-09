@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 
@@ -28,22 +27,43 @@ var chainHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get heaviest tipset CIDs",
 	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		head, err := GetPorcelainAPI(env).ChainHead()
 		if err != nil {
 			return err
 		}
-		return re.Emit(head.ToSortedCidSet())
+		return re.Emit(head.ToSlice())
 	},
-	Type: []cid.Cid{},
+	Type: []types.Block{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res []cid.Cid) error {
-			for _, r := range res {
-				_, err := fmt.Fprintln(w, r.String())
-				if err != nil {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]types.Block) error {
+			showAll, _ := req.Options["long"].(bool)
+			blocks := *res
+
+			for _, block := range blocks {
+				var output strings.Builder
+				if showAll {
+					output.WriteString(block.Cid().String())
+					output.WriteString("\t")
+					output.WriteString(block.Miner.String())
+					output.WriteString("\t")
+					output.WriteString(block.StateRoot.String())
+					output.WriteString("\t")
+					output.WriteString(strconv.FormatUint(uint64(block.Height), 10))
+					output.WriteString("\t")
+					output.WriteString(strconv.Itoa(len(block.Messages)))
+				} else {
+					output.WriteString(block.Cid().String())
+				}
+
+				if _, err := fmt.Fprintln(w, output.String()); err != nil {
 					return err
 				}
 			}
+
 			return nil
 		}),
 	},
@@ -98,8 +118,7 @@ var chainLsCmd = &cmds.Command{
 					output.WriteString(block.Cid().String())
 				}
 
-				_, err := fmt.Fprintln(w, output.String())
-				if err != nil {
+				if _, err := fmt.Fprintln(w, output.String()); err != nil {
 					return err
 				}
 			}
