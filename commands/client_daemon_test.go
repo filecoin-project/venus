@@ -34,7 +34,7 @@ func TestListAsks(t *testing.T) {
 	assert.Equal(t, fixtures.TestMiners[0]+" 000 20 11", listAsksOutput)
 }
 
-func TestListDeals(t *testing.T) {
+func TestClientListDeals(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	clientDaemon := th.NewDaemon(t,
