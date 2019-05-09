@@ -12,6 +12,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/golang/mock v1.2.0 // indirect
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/golangci/golangci-lint v1.15.0
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.0.2
@@ -48,7 +49,8 @@ require (
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-host v0.0.1
 	github.com/libp2p/go-libp2p-interface-connmgr v0.0.1
-	github.com/libp2p/go-libp2p-kad-dht v0.0.10
+	github.com/libp2p/go-libp2p-kad-dht v0.0.8
+	github.com/libp2p/go-libp2p-kbucket v0.1.1 // indirect
 	github.com/libp2p/go-libp2p-metrics v0.0.1
 	github.com/libp2p/go-libp2p-net v0.0.2
 	github.com/libp2p/go-libp2p-peer v0.1.0
