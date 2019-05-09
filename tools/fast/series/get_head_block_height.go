@@ -14,10 +14,5 @@ func GetHeadBlockHeight(ctx context.Context, client *fast.Filecoin) (*types.Bloc
 		return nil, err
 	}
 
-	block, err := client.ShowBlock(ctx, tipset[0])
-	if err != nil {
-		return nil, err
-	}
-
-	return types.NewBlockHeight(uint64(block.Height)), nil
+	return types.NewBlockHeight(uint64(tipset[0].Height)), nil
 }

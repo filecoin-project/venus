@@ -24,8 +24,8 @@ func TestChainHead(t *testing.T) {
 
 	jsonResult := d.RunSuccess("chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
 
-	var cidsFromJSON []cid.Cid
-	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
+	var blocksFromJSON []types.Block
+	err := json.Unmarshal([]byte(jsonResult), &blocksFromJSON)
 	assert.NoError(t, err)
 
 	textResult := d.RunSuccess("chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
@@ -33,7 +33,7 @@ func TestChainHead(t *testing.T) {
 	textCid, err := cid.Decode(textResult)
 	require.NoError(t, err)
 
-	assert.Equal(t, textCid, cidsFromJSON[0])
+	assert.Equal(t, textCid.String(), blocksFromJSON[0].Cid().String())
 }
 
 func TestChainLs(t *testing.T) {
