@@ -1,9 +1,12 @@
 package porcelain
 
 import (
+	"context"
+
 	"github.com/ipfs/go-cid"
 	errors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
@@ -13,18 +16,21 @@ var (
 )
 
 type dealGetPlumbing interface {
-	DealsLs() ([]*storagedeal.Deal, error)
+	DealsLs(context.Context) (<-chan *strgdls.StorageDealLsResult, error)
 }
 
 // DealGet returns a single deal matching a given cid or an error
-func DealGet(plumbing dealGetPlumbing, dealCid cid.Cid) (*storagedeal.Deal, error) {
-	deals, err := plumbing.DealsLs()
+func DealGet(ctx context.Context, plumbing dealGetPlumbing, dealCid cid.Cid) (*storagedeal.Deal, error) {
+	dealCh, err := plumbing.DealsLs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, storageDeal := range deals {
-		if storageDeal.Response.ProposalCid == dealCid {
-			return storageDeal, nil
+	for deal := range dealCh {
+		if deal.Err != nil {
+			return nil, deal.Err
+		}
+		if deal.Deal.Response.ProposalCid == dealCid {
+			return &deal.Deal, nil
 		}
 	}
 	return nil, ErrDealNotFound
@@ -32,50 +38,56 @@ func DealGet(plumbing dealGetPlumbing, dealCid cid.Cid) (*storagedeal.Deal, erro
 
 type dealClientLsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
-	DealsLs() ([]*storagedeal.Deal, error)
+	DealsLs(context.Context) (<-chan *strgdls.StorageDealLsResult, error)
 }
 
-// DealClientLs returns a slice of deals placed as a client
-func DealClientLs(plumbing dealClientLsPlumbing) ([]*storagedeal.Deal, error) {
-	var results []*storagedeal.Deal
+// DealClientLs returns a channel with all deals placed as a client
+func DealClientLs(ctx context.Context, plumbing dealClientLsPlumbing) (<-chan *strgdls.StorageDealLsResult, error) {
+	results := make(chan *strgdls.StorageDealLsResult)
 
 	minerAddress, _ := plumbing.ConfigGet("mining.minerAddress")
 
-	deals, err := plumbing.DealsLs()
+	dealCh, err := plumbing.DealsLs(ctx)
 	if err != nil {
-		return results, err
+		return nil, err
 	}
 
-	for _, deal := range deals {
-		if deal.Miner != minerAddress {
-			results = append(results, deal)
+	go func() {
+		for deal := range dealCh {
+			if deal.Err != nil || deal.Deal.Miner != minerAddress {
+				results <- deal
+			}
 		}
-	}
+		close(results)
+	}()
 
 	return results, nil
 }
 
 type dealMinerLsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
-	DealsLs() ([]*storagedeal.Deal, error)
+	DealsLs(context.Context) (<-chan *strgdls.StorageDealLsResult, error)
 }
 
-// DealMinerLs returns a slice of deals received as a miner
-func DealMinerLs(plumbing dealMinerLsPlumbing) ([]*storagedeal.Deal, error) {
-	var results []*storagedeal.Deal
+// DealMinerLs returns a channel with all deals received as a miner
+func DealMinerLs(ctx context.Context, plumbing dealMinerLsPlumbing) (<-chan *strgdls.StorageDealLsResult, error) {
+	results := make(chan *strgdls.StorageDealLsResult)
 
 	minerAddress, _ := plumbing.ConfigGet("mining.minerAddress")
 
-	deals, err := plumbing.DealsLs()
+	dealCh, err := plumbing.DealsLs(ctx)
 	if err != nil {
 		return results, err
 	}
 
-	for _, deal := range deals {
-		if deal.Miner == minerAddress {
-			results = append(results, deal)
+	go func() {
+		for deal := range dealCh {
+			if deal.Err != nil || deal.Deal.Miner == minerAddress {
+				results <- deal
+			}
 		}
-	}
+		close(results)
+	}()
 
 	return results, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -54,19 +55,19 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
-// DealClientLs returns a slice of deals placed as a client
-func (a *API) DealClientLs() ([]*storagedeal.Deal, error) {
-	return DealClientLs(a)
+// DealClientLs returns a channel with all deals placed as a client
+func (a *API) DealClientLs(ctx context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
+	return DealClientLs(ctx, a)
 }
 
 // DealGet returns a single deal matching a given cid or an error
-func (a *API) DealGet(proposalCid cid.Cid) (*storagedeal.Deal, error) {
-	return DealGet(a, proposalCid)
+func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
+	return DealGet(ctx, a, proposalCid)
 }
 
-// DealMinerLs returns a slice of deals received as a miner
-func (a *API) DealMinerLs() ([]*storagedeal.Deal, error) {
-	return DealMinerLs(a)
+// DealMinerLs returns a channel with all deals received as a miner
+func (a *API) DealMinerLs(ctx context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
+	return DealMinerLs(ctx, a)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.

@@ -525,16 +525,7 @@ func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.
 	return signedProposal
 }
 
-func (mtp *minerTestPorcelain) DealsLs() ([]*storagedeal.Deal, error) {
-	var results []*storagedeal.Deal
-
-	for _, storageDeal := range mtp.deals {
-		results = append(results, storageDeal)
-	}
-	return results, nil
-}
-
-func (mtp *minerTestPorcelain) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+func (mtp *minerTestPorcelain) DealGet(_ context.Context, dealCid cid.Cid) (*storagedeal.Deal, error) {
 	storageDeal, ok := mtp.deals[dealCid]
 	if !ok {
 		return nil, porcelain.ErrDealNotFound

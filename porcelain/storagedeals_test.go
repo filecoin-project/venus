@@ -1,12 +1,14 @@
 package porcelain_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -17,8 +19,17 @@ type testDealLsPlumbing struct {
 	minerAddress address.Address
 }
 
-func (tdlp *testDealLsPlumbing) DealsLs() ([]*storagedeal.Deal, error) {
-	return tdlp.deals, nil
+func (tdlp *testDealLsPlumbing) DealsLs(ctx context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
+	dealCh := make(chan *strgdls.StorageDealLsResult)
+	go func() {
+		for _, deal := range tdlp.deals {
+			dealCh <- &strgdls.StorageDealLsResult{
+				Deal: *deal,
+			}
+		}
+		close(dealCh)
+	}()
+	return dealCh, nil
 }
 
 func (tdlp *testDealLsPlumbing) ConfigGet(path string) (interface{}, error) {
@@ -45,8 +56,13 @@ func TestDealClientLs(t *testing.T) {
 		minerAddress: ownAddress,
 	}
 
-	results, err := porcelain.DealClientLs(plumbing)
+	var results []*storagedeal.Deal
+	resultsCh, err := porcelain.DealClientLs(context.Background(), plumbing)
 	require.NoError(t, err)
+	for result := range resultsCh {
+		require.NoError(t, result.Err)
+		results = append(results, &result.Deal)
+	}
 	assert.Contains(t, results, clientDeal)
 	assert.NotContains(t, results, minerDeal)
 }
@@ -71,8 +87,13 @@ func TestDealMinerLs(t *testing.T) {
 		minerAddress: ownAddress,
 	}
 
-	results, err := porcelain.DealMinerLs(plumbing)
+	var results []*storagedeal.Deal
+	resultsCh, err := porcelain.DealMinerLs(context.Background(), plumbing)
 	require.NoError(t, err)
+	for result := range resultsCh {
+		require.NoError(t, result.Err)
+		results = append(results, &result.Deal)
+	}
 	assert.NotContains(t, results, clientDeal)
 	assert.Contains(t, results, minerDeal)
 }

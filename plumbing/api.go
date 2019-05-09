@@ -148,8 +148,8 @@ func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.B
 }
 
 // DealsLs a slice of all storagedeals in the local datastore and possibly an error
-func (api *API) DealsLs() ([]*storagedeal.Deal, error) {
-	return api.storagedeals.Ls()
+func (api *API) DealsLs(ctx context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
+	return api.storagedeals.Ls(ctx)
 }
 
 // DealPut puts a given deal in the datastore

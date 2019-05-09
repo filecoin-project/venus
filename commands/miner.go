@@ -449,16 +449,19 @@ may include pending deals, active deals, finished deals and rejected deals.
 `,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		deals, err := GetPorcelainAPI(env).DealMinerLs()
+		dealsCh, err := GetPorcelainAPI(env).DealMinerLs(req.Context)
 		if err != nil {
 			return err
 		}
 
-		for _, deal := range deals {
+		for deal := range dealsCh {
+			if deal.Err != nil {
+				return deal.Err
+			}
 			out := &minerListDealResult{
-				Miner:       deal.Miner,
-				ProposalCid: deal.Response.ProposalCid,
-				State:       deal.Response.State,
+				Miner:       deal.Deal.Miner,
+				ProposalCid: deal.Deal.Response.ProposalCid,
+				State:       deal.Deal.Response.State,
 			}
 			if err = re.Emit(out); err != nil {
 				return err

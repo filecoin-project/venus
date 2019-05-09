@@ -1,6 +1,8 @@
 package strgdls_test
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -19,6 +21,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 
 	addressMaker := address.NewForTestGetter()
 
+	ctx := context.Background()
 	store := strgdls.New(repo.NewInMemoryRepo().DealsDs)
 	minerAddr := addressMaker()
 	pieceRefCid, err := convert.ToCid("pieceRef")
@@ -73,10 +76,12 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	}
 
 	require.NoError(t, store.Put(storageDeal))
-	deals, err := store.Ls()
+	dealCh, err := store.Ls(ctx)
 	require.NoError(t, err)
 
-	retrievedDeal := deals[0]
+	dealChResult := <-dealCh
+	require.NoError(t, dealChResult.Err)
+	retrievedDeal := dealChResult.Deal
 
 	assert.Equal(t, minerAddr, retrievedDeal.Miner)
 

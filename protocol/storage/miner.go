@@ -76,8 +76,7 @@ type minerPorcelain interface {
 	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
-	DealsLs() ([]*storagedeal.Deal, error)
-	DealGet(cid.Cid) (*storagedeal.Deal, error)
+	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
@@ -379,7 +378,7 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 }
 
 func (sm *Miner) updateDealResponse(proposalCid cid.Cid, f func(*storagedeal.Response)) error {
-	storageDeal, err := sm.porcelainAPI.DealGet(proposalCid)
+	storageDeal, err := sm.porcelainAPI.DealGet(context.TODO(), proposalCid)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get retrive deal with proposal CID %s", proposalCid.String())
 	}
@@ -398,7 +397,7 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d, err := sm.porcelainAPI.DealGet(proposalCid)
+	d, err := sm.porcelainAPI.DealGet(context.TODO(), proposalCid)
 	if err != nil {
 		log.Errorf("could not retrieve deal with proposal CID %s: %s", proposalCid.String(), err)
 	}
@@ -557,7 +556,7 @@ func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSe
 
 // search the sector's piece info to find the one for the given deal's piece
 func (sm *Miner) findPieceInfo(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) (*sectorbuilder.PieceInfo, error) {
-	deal, err := sm.porcelainAPI.DealGet(dealCid)
+	deal, err := sm.porcelainAPI.DealGet(context.TODO(), dealCid)
 	if err == porcelain.ErrDealNotFound || deal.Response.State == storagedeal.Unknown {
 		return nil, errors.Wrapf(err, "Could not find deal with deal cid %s", dealCid)
 	}
@@ -833,7 +832,7 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChalle
 
 // Query responds to a query for the proposal referenced by the given cid
 func (sm *Miner) Query(c cid.Cid) *storagedeal.Response {
-	storageDeal, err := sm.porcelainAPI.DealGet(c)
+	storageDeal, err := sm.porcelainAPI.DealGet(context.TODO(), c)
 	if err != nil {
 		return &storagedeal.Response{
 			State:   storagedeal.Unknown,
