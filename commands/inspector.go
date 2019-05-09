@@ -85,6 +85,12 @@ Prints out information about filecoin process and its environment.
 			sw.Printf("Swap:   \t%d\n", info.Memory.Swap)
 			sw.Printf("Virtual:\t%d\n", info.Memory.Virtual)
 
+			// Print Environment Info
+			sw.Printf("\nEnvironment\n")
+			sw.Printf("FilAPI: \t%s\n", info.Environment.FilAPI)
+			sw.Printf("FilPath:\t%s\n", info.Environment.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.Environment.GoPath)
+
 			// Print Config Info
 			sw.Printf("\nConfig\n")
 			marshaled, err := json.MarshalIndent(info.Config, "", "\t")
@@ -92,12 +98,6 @@ Prints out information about filecoin process and its environment.
 				return err
 			}
 			sw.Printf("%s\n", marshaled)
-
-			// Print Environment Info
-			sw.Printf("\nEnvironment\n")
-			sw.Printf("FilAPI: \t%s\n", info.Environment.FilAPI)
-			sw.Printf("FilPath:\t%s\n", info.Environment.FilPath)
-			sw.Printf("GoPath: \t%s\n", info.Environment.GoPath)
 
 			return sw.Error()
 		}),
