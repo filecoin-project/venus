@@ -658,11 +658,16 @@ workflows:
             - integration_test_linux
             - functional_test_linux
           <<: *user_devnet_filter
+      - approve_deploy:
+          type: approval
+          requires:
+            - build_docker_img
+          <<: *user_devnet_filter
       - trigger_devnet_deploy:
           user_devnet: true
           network: "user"
           requires:
-            - build_docker_img
+            - approve_deploy
           <<: *user_devnet_filter
 
   build_test_devnet:
