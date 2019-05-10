@@ -52,7 +52,7 @@ func TestSelfDialRetrievalGoodError(t *testing.T) {
 	assert.Error(t, err)
 	var cmdOutBytes []byte
 	w := bytes.NewBuffer(cmdOutBytes)
-	env.GenesisMiner.DumpLastOutput(w)
+	env.GenesisMiner.DumpLastStdErr(w)
 	outputStr := string(w.Bytes())
 	expectedErrStr := "attempting to retrieve piece from self"
 	assert.Contains(t, outputStr, expectedErrStr)

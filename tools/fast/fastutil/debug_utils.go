@@ -54,3 +54,11 @@ func DumpOutputJSON(w io.Writer, output testbedi.Output) {
 	enc := json.NewEncoder(w)
 	_ = enc.Encode(jout) // nolint: errcheck
 }
+
+// DumpStdErr writes just the last stderr content of the output to the
+// writer buffer w in a human readable way
+func DumpStdErr(w io.Writer, output testbedi.Output) {
+	fmt.Fprintf(w, ">>>> start-dump\n") // nolint: errcheck
+	fmt.Fprintf(w, "---- stderr\n")     // nolint: errcheck
+	io.Copy(w, output.Stderr())         // nolint: errcheck
+}

@@ -183,6 +183,14 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 	}
 }
 
+// DumpLastStdErr writes all the stderr output of the last run command from
+// RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin as json.
+func (f *Filecoin) DumpLastStdErr(w io.Writer) {
+	if f.lastCmdOutput != nil {
+		fastutil.DumpStdErr(w, f.lastCmdOutput)
+	}
+}
+
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
 func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	if ctx == nil {
