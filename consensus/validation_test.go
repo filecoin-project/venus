@@ -116,15 +116,12 @@ func TestIngestionValidator(t *testing.T) {
 	alice := addresses[0]
 	bob := addresses[1]
 	act := newActor(t, 1000, 53)
-	actorGetter := func(ctx context.Context, a address.Address) (*actor.Actor, error) {
-		if a == alice {
-			return act, nil
-		}
-		return &actor.Actor{}, nil
-	}
+	api := NewMockIngestionValidatorAPI()
+	api.ActorAddr = alice
+	api.Actor = act
 
 	mpoolCfg := config.NewDefaultConfig().Mpool
-	validator := consensus.NewIngestionValidator(actorGetter, mpoolCfg)
+	validator := consensus.NewIngestionValidator(api, mpoolCfg)
 	ctx := context.Background()
 
 	t.Run("Validates extreme nonce gaps", func(t *testing.T) {
@@ -171,4 +168,23 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 func attoFil(v int) *types.AttoFIL {
 	val, _ := types.NewAttoFILFromString(fmt.Sprintf("%d", v), 10)
 	return val
+}
+
+// FakeIngestionValidatorAPI provides a latest state
+type FakeIngestionValidatorAPI struct {
+	ActorAddr address.Address
+	Actor     *actor.Actor
+}
+
+// NewMockIngestionValidatorAPI creates a new FakeIngestionValidatorAPI.
+func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
+	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
+}
+
+// GetActor
+func (api *FakeIngestionValidatorAPI) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
+	if a == api.ActorAddr {
+		return api.Actor, nil
+	}
+	return &actor.Actor{}, nil
 }

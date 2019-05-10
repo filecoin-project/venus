@@ -116,21 +116,24 @@ func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
 }
 
-type actorGetter func(context.Context, address.Address) (*actor.Actor, error)
+// IngestionValidatorAPI allows the validator to access latest state
+type ingestionValidatorAPI interface {
+	GetActor(context.Context, address.Address) (*actor.Actor, error)
+}
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
 type IngestionValidator struct {
-	getActorFunc actorGetter
-	cfg          *config.MessagePoolConfig
-	validator    defaultMessageValidator
+	api       ingestionValidatorAPI
+	cfg       *config.MessagePoolConfig
+	validator defaultMessageValidator
 }
 
 // NewIngestionValidator creates a new validator with an api
-func NewIngestionValidator(getActorFunc actorGetter, cfg *config.MessagePoolConfig) *IngestionValidator {
+func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolConfig) *IngestionValidator {
 	return &IngestionValidator{
-		getActorFunc: getActorFunc,
-		cfg:          cfg,
-		validator:    defaultMessageValidator{allowHighNonce: true},
+		api:       api,
+		cfg:       cfg,
+		validator: defaultMessageValidator{allowHighNonce: true},
 	}
 }
 
@@ -138,7 +141,7 @@ func NewIngestionValidator(getActorFunc actorGetter, cfg *config.MessagePoolConf
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
 	// retrieve from actor
-	fromActor, err := v.getActorFunc(ctx, msg.From)
+	fromActor, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			fromActor = &actor.Actor{}
