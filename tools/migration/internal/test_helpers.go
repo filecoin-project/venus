@@ -1,9 +1,7 @@
 package internal
 
 import (
-	"bytes"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"testing"
@@ -56,16 +54,6 @@ func RequireSetupTestRepo(t *testing.T, repoVersion uint) (repoDir, symLink stri
 
 	require.NoError(t, repo.WriteVersion(repoDir, repoVersion))
 	return repoDir, symLink
-}
-
-// CaptureOutput redirects log content into a buffer and calls the function provided,
-// and returns buffer content.
-func CaptureOutput(f func()) string {
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	f()
-	log.SetOutput(os.Stderr)
-	return buf.String()
 }
 
 // AssertNotInstalled verifies that repoLink still points to oldRepoDir
