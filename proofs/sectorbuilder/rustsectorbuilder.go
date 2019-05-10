@@ -30,10 +30,6 @@ var log = logging.Logger("sectorbuilder") // nolint: deadcode
 // be open and accepting data at any time.
 const MaxNumStagedSectors = 1
 
-// MaxTimeToWriteBytesToSink configures the maximum amount of time it should
-// take to copy user piece bytes from the provided Reader to the ByteSink.
-const MaxTimeToWriteBytesToSink = time.Second * 30
-
 // stagedSectorMetadata is a sector into which we write user piece-data before
 // sealing. Note: sectorID is unique across all staged and sealed sectors for a
 // miner.
@@ -145,9 +141,6 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 // of that sector.
 func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {
 	defer elapsed("AddPiece")()
-
-	ctx, cancel := context.WithTimeout(ctx, MaxTimeToWriteBytesToSink)
-	defer cancel()
 
 	sink, err := bytesink.NewFifo()
 	if err != nil {
