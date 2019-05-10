@@ -853,7 +853,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						continue
 					}
 
-					node.StorageMiner.OnCommitmentSent(val, msgCid, nil)
+					node.StorageMiner.OnCommitmentSent(ctx, val, msgCid, nil)
 				}
 			case <-node.miningCtx.Done():
 				return
