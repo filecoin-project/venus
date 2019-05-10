@@ -55,7 +55,7 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 }
 
 // DealGet returns a single deal matching a given cid or an error
-func (a *API) DealGet(proposalCid cid.Cid) *storagedeal.Deal {
+func (a *API) DealGet(proposalCid cid.Cid) (*storagedeal.Deal, error) {
 	return DealGet(a, proposalCid)
 }
 

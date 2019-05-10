@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -76,7 +77,7 @@ type minerPorcelain interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealsLs() ([]*storagedeal.Deal, error)
-	DealGet(cid.Cid) *storagedeal.Deal
+	DealGet(cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
@@ -382,12 +383,12 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 }
 
 func (sm *Miner) updateDealResponse(proposalCid cid.Cid, f func(*storagedeal.Response)) error {
-	storageDeal := sm.porcelainAPI.DealGet(proposalCid)
-	if storageDeal == nil {
+	storageDeal, err := sm.porcelainAPI.DealGet(proposalCid)
+	if err != nil {
 		return fmt.Errorf("failed to get retrive deal with proposal CID %s", proposalCid.String())
 	}
 	f(storageDeal.Response)
-	err := sm.porcelainAPI.DealPut(storageDeal)
+	err = sm.porcelainAPI.DealPut(storageDeal)
 	if err != nil {
 		return errors.Wrap(err, "failed to store updated deal response in datastore")
 	}
@@ -401,8 +402,8 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	d := sm.porcelainAPI.DealGet(proposalCid)
-	if d == nil {
+	d, err := sm.porcelainAPI.DealGet(proposalCid)
+	if err != nil {
 		log.Errorf("could not retrieve deal with proposal CID %s", proposalCid.String())
 	}
 	if d.Response.State != storagedeal.Accepted {
@@ -643,9 +644,12 @@ func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSe
 
 // search the sector's piece info to find the one for the given deal's piece
 func (sm *Miner) findPieceInfo(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) (*sectorbuilder.PieceInfo, error) {
-	deal := sm.porcelainAPI.DealGet(dealCid)
-	if deal == nil || deal.Response.State == storagedeal.Unknown {
+	deal, err := sm.porcelainAPI.DealGet(dealCid)
+	if err == porcelain.ErrDealNotFound || deal.Response.State == storagedeal.Unknown {
 		return nil, errors.Errorf("Could not find deal with deal cid %s", dealCid)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	for _, info := range sector.Pieces {
@@ -916,8 +920,8 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChalle
 
 // Query responds to a query for the proposal referenced by the given cid
 func (sm *Miner) Query(c cid.Cid) *storagedeal.Response {
-	storageDeal := sm.porcelainAPI.DealGet(c)
-	if storageDeal == nil {
+	storageDeal, err := sm.porcelainAPI.DealGet(c)
+	if err != nil {
 		return &storagedeal.Response{
 			State:   storagedeal.Unknown,
 			Message: "no such deal",

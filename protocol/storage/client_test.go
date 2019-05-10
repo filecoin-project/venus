@@ -106,7 +106,8 @@ func TestProposeDeal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Accepted, dealResponse.State)
 
-		retrievedDeal := testAPI.DealGet(dealResponse.ProposalCid)
+		retrievedDeal, err := testAPI.DealGet(dealResponse.ProposalCid)
+		require.NoError(t, err)
 
 		assert.Equal(t, retrievedDeal.Response, dealResponse)
 	})
@@ -240,8 +241,8 @@ func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
 	return results, nil
 }
 
-func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
-	return ctp.deals[dealCid]
+func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+	return ctp.deals[dealCid], nil
 }
 
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
