@@ -77,7 +77,7 @@ func DealMinerLs(ctx context.Context, plumbing dealMinerLsPlumbing) (<-chan *str
 
 	dealCh, err := plumbing.DealsLs(ctx)
 	if err != nil {
-		return results, err
+		return nil, err
 	}
 
 	go func() {
