@@ -43,8 +43,6 @@ type dealClientLsPlumbing interface {
 
 // DealClientLs returns a channel with all deals placed as a client
 func DealClientLs(ctx context.Context, plumbing dealClientLsPlumbing) (<-chan *strgdls.StorageDealLsResult, error) {
-	results := make(chan *strgdls.StorageDealLsResult)
-
 	minerAddress, _ := plumbing.ConfigGet("mining.minerAddress")
 
 	dealCh, err := plumbing.DealsLs(ctx)
@@ -52,16 +50,11 @@ func DealClientLs(ctx context.Context, plumbing dealClientLsPlumbing) (<-chan *s
 		return nil, err
 	}
 
-	go func() {
-		for deal := range dealCh {
-			if deal.Err != nil || deal.Deal.Miner != minerAddress {
-				results <- deal
-			}
-		}
-		close(results)
-	}()
+	outCh := filterDealChannel(dealCh, func(deal *storagedeal.Deal) bool {
+		return deal.Miner != minerAddress
+	})
 
-	return results, nil
+	return outCh, nil
 }
 
 type dealMinerLsPlumbing interface {
@@ -71,8 +64,6 @@ type dealMinerLsPlumbing interface {
 
 // DealMinerLs returns a channel with all deals received as a miner
 func DealMinerLs(ctx context.Context, plumbing dealMinerLsPlumbing) (<-chan *strgdls.StorageDealLsResult, error) {
-	results := make(chan *strgdls.StorageDealLsResult)
-
 	minerAddress, _ := plumbing.ConfigGet("mining.minerAddress")
 
 	dealCh, err := plumbing.DealsLs(ctx)
@@ -80,14 +71,24 @@ func DealMinerLs(ctx context.Context, plumbing dealMinerLsPlumbing) (<-chan *str
 		return nil, err
 	}
 
+	outCh := filterDealChannel(dealCh, func(deal *storagedeal.Deal) bool {
+		return deal.Miner == minerAddress
+	})
+
+	return outCh, nil
+}
+
+func filterDealChannel(dealCh <-chan *strgdls.StorageDealLsResult, filterFunc func(*storagedeal.Deal) bool) <-chan *strgdls.StorageDealLsResult {
+	outCh := make(chan *strgdls.StorageDealLsResult)
+
 	go func() {
 		for deal := range dealCh {
-			if deal.Err != nil || deal.Deal.Miner == minerAddress {
-				results <- deal
+			if deal.Err != nil || filterFunc(&deal.Deal) {
+				outCh <- deal
 			}
 		}
-		close(results)
+		close(outCh)
 	}()
 
-	return results, nil
+	return outCh
 }
