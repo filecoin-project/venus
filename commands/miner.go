@@ -436,6 +436,7 @@ Values will be output as a ratio where the first number is the miner power and s
 
 type minerListDealResult struct {
 	Miner       address.Address   `json:"minerAddress"`
+	PieceCid    cid.Cid           `json:"pieceCid"`
 	ProposalCid cid.Cid           `json:"proposalCid"`
 	State       storagedeal.State `json:"state"`
 }
@@ -460,6 +461,7 @@ may include pending deals, active deals, finished deals and rejected deals.
 			}
 			out := &minerListDealResult{
 				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
 				ProposalCid: deal.Deal.Response.ProposalCid,
 				State:       deal.Deal.Response.State,
 			}

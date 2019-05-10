@@ -67,6 +67,9 @@ func TestClientListDeals(t *testing.T) {
 
 	expectedOutput := fmt.Sprintf(`{
 	"minerAddress": "%s",
+	"pieceCid": {
+		"/": "QmbHmUVAkqZjQXgifDady7m5cYprX1fgtGaTYxUBBTX3At"
+	},
 	"proposalCid": {
 		"/": "%s"
 	},

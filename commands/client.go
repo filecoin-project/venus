@@ -233,6 +233,7 @@ respectively.
 
 type clientListDealResult struct {
 	Miner       address.Address   `json:"minerAddress"`
+	PieceCid    cid.Cid           `json:"pieceCid"`
 	ProposalCid cid.Cid           `json:"proposalCid"`
 	State       storagedeal.State `json:"state"`
 }
@@ -257,6 +258,7 @@ may include pending deals, active deals, finished deals and cancelled deals.
 			}
 			out := &clientListDealResult{
 				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
 				ProposalCid: deal.Deal.Response.ProposalCid,
 				State:       deal.Deal.Response.State,
 			}
