@@ -56,10 +56,10 @@ EXAMPLES
 		and symlinked to ~/.filecoin
 
 	go-filecoin-migrate migrate --old-repo=/opt/filecoin
-		Migrates then installs the repo. Migrated repo will be in /opt/filecoin_1_2_<timestamp> 
+		Migrates then installs the repo. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
 		and symlinked to /opt/filecoin
 
-	go-filecoin-migrate build-only --old-repo=/opt/filecoin 
+	go-filecoin-migrate build-only --old-repo=/opt/filecoin
 		Runs migration steps only. Migrated repo will be in /opt/filecoin_1_2_<timestamp>
 		and symlinked to /opt/filecoin
 
@@ -108,10 +108,10 @@ func main() { // nolint: deadcode
 			exitErr(runResult.Err.Error())
 		}
 		if runResult.NewRepoPath != "" {
-			logger.Print(fmt.Sprintf("New repo location: %s", runResult.NewRepoPath))
+			logger.Printf("New repo location: %s", runResult.NewRepoPath)
 		}
 		if runResult.NewVersion != runResult.OldVersion {
-			logger.Print(fmt.Sprintf("Repo has been migrated to version %d", runResult.NewVersion))
+			logger.Printf("Repo has been migrated to version %d", runResult.NewVersion)
 		}
 	default:
 		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
