@@ -216,7 +216,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(&response, miner, proposal); err != nil {
+	if err := smc.recordResponse(ctx, &response, miner, proposal); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
@@ -224,7 +224,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
+func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return errors.New("failed to get cid of proposal")
@@ -232,7 +232,7 @@ func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Addr
 	if !proposalCid.Equals(resp.ProposalCid) {
 		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
 	}
-	_, err = smc.api.DealGet(context.TODO(), proposalCid)
+	_, err = smc.api.DealGet(ctx, proposalCid)
 	if err == nil {
 		return fmt.Errorf("deal [%s] is already in progress", proposalCid.String())
 	}
@@ -260,8 +260,8 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Resp
 	}
 }
 
-func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
-	storageDeal, err := smc.api.DealGet(context.TODO(), c)
+func (smc *Client) minerForProposal(ctx context.Context, c cid.Cid) (address.Address, error) {
+	storageDeal, err := smc.api.DealGet(ctx, c)
 	if err != nil {
 		return address.Undef, errors.Wrapf(err, "failed to fetch deal: %s", c)
 	}
@@ -275,7 +275,7 @@ func (smc *Client) GetBlockTime() time.Duration {
 
 // QueryDeal queries an in-progress proposal.
 func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Response, error) {
-	mineraddr, err := smc.minerForProposal(proposalCid)
+	mineraddr, err := smc.minerForProposal(ctx, proposalCid)
 	if err != nil {
 		return nil, err
 	}
@@ -309,8 +309,8 @@ func (smc *Client) isMaybeDupDeal(ctx context.Context, p *storagedeal.Proposal) 
 }
 
 // LoadVouchersForDeal loads vouchers from disk for a given deal
-func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
-	storageDeal, err := smc.api.DealGet(context.TODO(), dealCid)
+func (smc *Client) LoadVouchersForDeal(ctx context.Context, dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
+	storageDeal, err := smc.api.DealGet(ctx, dealCid)
 	if err != nil {
 		return []*types.PaymentVoucher{}, errors.Wrapf(err, "could not retrieve deal with proposal CID %s", dealCid)
 	}
