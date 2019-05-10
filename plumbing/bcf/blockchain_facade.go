@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -19,14 +18,10 @@ import (
 
 type bcfChainReader interface {
 	BlockHeight() (uint64, error)
-	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
 	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
-	HeadEvents() *pubsub.PubSub
-	Load(ctx context.Context) error
-	Stop()
 }
 
 // BlockChainFacade is a facade pattern for the chain core api. It provides a
