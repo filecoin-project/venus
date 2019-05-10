@@ -151,14 +151,12 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	// call. The channel is buffered so that the goroutines can exit, which will
 	// close the pipe, which unblocks the CGO call.
 	errCh := make(chan error, 2)
-	defer close(errCh)
 
 	// sectorIDCh receives a value if the CGO call indicates that the client
 	// piece has successfully been added to a sector. The channel is buffered
 	// so that the goroutine can exit if a value is sent to errCh before the
 	// CGO call completes.
 	sectorIDCh := make(chan uint64, 1)
-	defer close(sectorIDCh)
 
 	// goroutine attempts to copy bytes from piece's reader to the sink
 	go func() {
