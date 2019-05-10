@@ -104,7 +104,7 @@ func (m *MigrationRunner) Run() RunResult {
 
 	targetVersion := m.getTargetMigrationVersion()
 	if repoVersion == targetVersion {
-		m.logger.Print(fmt.Sprintf("Repo up-to-date: binary version %d = repo version %d", repoVersion, m.getTargetMigrationVersion()))
+		m.logger.Printf("Repo up-to-date: binary version %d = repo version %d", repoVersion, m.getTargetMigrationVersion())
 		return RunResult{OldVersion: repoVersion, NewVersion: repoVersion}
 	}
 
@@ -145,7 +145,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
 			return errors.Wrap(err, "clone repo failed")
 		}
-		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
+		m.logger.Printf("new repo will be at %s", m.newRepoPath)
 
 		if err = mig.Migrate(m.newRepoPath); err != nil {
 			return errors.Wrap(err, "migration failed")
@@ -160,7 +160,7 @@ func (m *MigrationRunner) runCommand(mig Migration) error {
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt); err != nil {
 			return err
 		}
-		m.logger.Print(fmt.Sprintf("new repo will be at %s", m.newRepoPath))
+		m.logger.Printf("new repo will be at %s", m.newRepoPath)
 
 		if err = mig.Migrate(m.newRepoPath); err != nil {
 			return errors.Wrap(err, "migration failed")
@@ -250,7 +250,7 @@ func (m *MigrationRunner) findMigration(repoVersion uint) (mig Migration, err er
 		}
 	}
 	if len(applicableMigs) == 0 {
-		log.Print(fmt.Sprintf("did not find valid repo migration for version %d", repoVersion))
+		log.Printf("did not find valid repo migration for version %d", repoVersion)
 		return nil, nil
 	}
 	if len(applicableMigs) > 1 {
