@@ -183,12 +183,9 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 	}
 }
 
-// DumpLastStdErr writes all the stderr output of the last run command from
-// RunCmdWithStdin, RunCmdJSONWithStdin, or RunCmdLDJSONWithStdin as json.
-func (f *Filecoin) DumpLastStdErr(w io.Writer) {
-	if f.lastCmdOutput != nil {
-		fastutil.DumpStdErr(w, f.lastCmdOutput)
-	}
+// LastCmdStdErr is the standard error output from the last command run
+func (f *Filecoin) LastCmdStdErr() io.ReadCloser {
+	return f.lastCmdOutput.Stderr()
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
