@@ -41,6 +41,7 @@ func (store *Store) Ls(ctx context.Context) (<-chan *StorageDealLsResult, error)
 		return nil, errors.Wrap(err, "failed to query deals from datastore")
 	}
 	go func() {
+		defer close(out)
 		for entry := range results.Next() {
 			select {
 			case <-ctx.Done():
@@ -61,7 +62,6 @@ func (store *Store) Ls(ctx context.Context) (<-chan *StorageDealLsResult, error)
 				}
 			}
 		}
-		close(out)
 	}()
 
 	return out, nil

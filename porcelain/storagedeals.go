@@ -82,12 +82,12 @@ func filterDealChannel(dealCh <-chan *strgdls.StorageDealLsResult, filterFunc fu
 	outCh := make(chan *strgdls.StorageDealLsResult)
 
 	go func() {
+		defer close(outCh)
 		for deal := range dealCh {
 			if deal.Err != nil || filterFunc(&deal.Deal) {
 				outCh <- deal
 			}
 		}
-		close(outCh)
 	}()
 
 	return outCh
