@@ -4,15 +4,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type miningChainReader interface {
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+}
+
 // MiningAPI provides an interface to the block mining protocol.
 type MiningAPI struct {
 	addNewBlockFunc  func(context.Context, *types.Block) (err error)
-	chainReader      chain.ReadStore
+	chainReader      miningChainReader
 	mineDelay        time.Duration
 	startMiningFunc  func(context.Context) error
 	stopMiningFunc   func(context.Context)
@@ -22,7 +26,7 @@ type MiningAPI struct {
 // New creates a new MiningAPI instance with the provided deps
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
-	chainReader chain.ReadStore,
+	chainReader miningChainReader,
 	blockMineDelay time.Duration,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
