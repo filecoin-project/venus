@@ -26,6 +26,7 @@ var clientCmd = &cmds.Command{
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
+		"show-deal":            clientShowDealCmd,
 		"payments":             paymentsCmd,
 	},
 }
@@ -224,6 +225,48 @@ respectively.
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, ask *porcelain.Ask) error {
 			fmt.Fprintf(w, "%s %.3d %s %s\n", ask.Miner, ask.ID, ask.Price, ask.Expiry) // nolint: errcheck
+			return nil
+		}),
+	},
+}
+
+var clientShowDealCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show deal",
+		ShortDescription: `
+show deal
+`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("id", true, false, "CID of deal to query"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		propcid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		deal := GetPorcelainAPI(env).DealGet(propcid)
+		if err := re.Emit(deal); err != nil {
+			return err
+		}
+		return nil
+	},
+	Type: storagedeal.Deal{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *storagedeal.Deal) error {
+			emptyDeal := storagedeal.Deal{}
+			if *deal == emptyDeal {
+				return fmt.Errorf("deal not found: %s", req.Arguments[0])
+			}
+
+			fmt.Fprintf(w, "CID: %s\n", deal.Response.ProposalCid)            // nolint: errcheck
+			fmt.Fprintf(w, "State: %s\n", deal.Response.State)                // nolint: errcheck
+			fmt.Fprintf(w, "Miner: %s\n", deal.Miner.String())                // nolint: errcheck
+			fmt.Fprintf(w, "Duration: %d blocks\n", deal.Proposal.Duration)   // nolint: errcheck
+			fmt.Fprintf(w, "Size: %s bytes\n", deal.Proposal.Size)            // nolint: errcheck
+			fmt.Fprintf(w, "Total Price: %s FIL\n", deal.Proposal.TotalPrice) // nolint: errcheck
+
 			return nil
 		}),
 	},
