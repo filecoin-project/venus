@@ -271,7 +271,7 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	fastesting.AssertStdErrContains(t, miningNode, "attempting to make storage deal with self")
 }
 
-func TestShowDeal(t *testing.T) {
+func TestShowDealOld(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	minerDaemon := th.NewDaemon(t,
