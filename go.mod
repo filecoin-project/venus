@@ -3,6 +3,8 @@ module github.com/filecoin-project/go-filecoin
 go 1.12
 
 require (
+	contrib.go.opencensus.io/exporter/jaeger v0.1.0
+	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/cskr/pubsub v1.0.2
@@ -12,6 +14,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/golang/mock v1.2.0 // indirect
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/golangci/golangci-lint v1.15.0
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.0.2
@@ -19,7 +22,7 @@ require (
 	github.com/ipfs/go-blockservice v0.0.2
 	github.com/ipfs/go-car v0.0.1
 	github.com/ipfs/go-cid v0.0.1
-	github.com/ipfs/go-datastore v0.0.1
+	github.com/ipfs/go-datastore v0.0.4
 	github.com/ipfs/go-ds-badger v0.0.2
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-hamt-ipld v0.0.1
@@ -48,10 +51,11 @@ require (
 	github.com/libp2p/go-libp2p-crypto v0.0.1
 	github.com/libp2p/go-libp2p-host v0.0.1
 	github.com/libp2p/go-libp2p-interface-connmgr v0.0.1
-	github.com/libp2p/go-libp2p-kad-dht v0.0.4
+	github.com/libp2p/go-libp2p-kad-dht v0.0.8
+	github.com/libp2p/go-libp2p-kbucket v0.1.1 // indirect
 	github.com/libp2p/go-libp2p-metrics v0.0.1
 	github.com/libp2p/go-libp2p-net v0.0.2
-	github.com/libp2p/go-libp2p-peer v0.0.1
+	github.com/libp2p/go-libp2p-peer v0.1.0
 	github.com/libp2p/go-libp2p-peerstore v0.0.2
 	github.com/libp2p/go-libp2p-protocol v0.0.1
 	github.com/libp2p/go-libp2p-pubsub v0.0.1
@@ -69,6 +73,7 @@ require (
 	github.com/multiformats/go-multistream v0.0.1
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/otiai10/copy v1.0.1
 	github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95 // indirect
 	github.com/pkg/errors v0.8.1
@@ -81,7 +86,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0
-	go.opencensus.io v0.20.2
+	go.opencensus.io v0.21.0
 	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
