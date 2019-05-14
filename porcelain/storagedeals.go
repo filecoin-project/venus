@@ -27,5 +27,5 @@ func DealGet(plumbing strgdlsPlumbing, dealCid cid.Cid) (*storagedeal.Deal, erro
 			return storageDeal, nil
 		}
 	}
-	return nil, errors.New("deal not found")
+	return nil, ErrDealNotFound
 }
