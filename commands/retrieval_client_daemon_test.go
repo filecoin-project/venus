@@ -1,7 +1,6 @@
 package commands_test
 
 import (
-	"bytes"
 	"context"
 	"math/big"
 	"testing"
@@ -50,10 +49,5 @@ func TestSelfDialRetrievalGoodError(t *testing.T) {
 	// Genesis Miner fails on self dial when retrieving from itself.
 	_, err = env.GenesisMiner.RetrievalClientRetrievePiece(ctx, cid, minerAddr)
 	assert.Error(t, err)
-	var cmdOutBytes []byte
-	w := bytes.NewBuffer(cmdOutBytes)
-	env.GenesisMiner.DumpLastOutput(w)
-	outputStr := string(w.Bytes())
-	expectedErrStr := "attempting to retrieve piece from self"
-	assert.Contains(t, outputStr, expectedErrStr)
+	fastesting.AssertStdErrContains(t, env.GenesisMiner, "attempting to retrieve piece from self")
 }
