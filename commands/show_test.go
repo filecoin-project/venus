@@ -92,7 +92,7 @@ func TestShowDeal(t *testing.T) {
 
 		dealCid := splitOnSpace[len(splitOnSpace)-1]
 
-		showdeal := minerDaemon.RunSuccess("client", "show-deal", dealCid).ReadStdoutTrimNewlines()
+		showdeal := minerDaemon.RunSuccess("show", "deal", dealCid).ReadStdoutTrimNewlines()
 		assert.Contains(t, showdeal, fmt.Sprintf("CID: %s", dealCid))
 		assert.Contains(t, showdeal, fmt.Sprintf("Miner: %s", fixtures.TestMiners[0]))
 		assert.Contains(t, showdeal, "Duration: 5 blocks")
@@ -103,6 +103,6 @@ func TestShowDeal(t *testing.T) {
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
 		expected := fmt.Sprintf("deal not found: %s", addAskCid.String())
-		minerDaemon.RunFail(expected, "client", "show-deal", addAskCid.String()).ReadStdoutTrimNewlines()
+		minerDaemon.RunFail(expected, "show", "deal", addAskCid.String()).ReadStdoutTrimNewlines()
 	})
 }
