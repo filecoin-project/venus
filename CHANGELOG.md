@@ -1,5 +1,26 @@
 # go-filecoin changelog
 
+## go-filecoin 0.2.2
+
+We're happy to announce go-filecoin 0.2.2. This is a maintenance release with bug fixes and debugging improvements. After the 0.2.1 release, we found a bug in the dht ([#2753](https://github.com/filecoin-project/go-filecoin/issues/2753)) that caused some nodes to panic. This was fixed in [#2754](https://github.com/filecoin-project/go-filecoin/pull/2754) by bumping the [go-libp2p-kad-dht](https://github.com/libp2p/go-libp2p-kad-dht) version from 0.0.4 to 0.0.8.
+
+#### 🐞 Bug fixes
+
+- Update to go-libp2p-kad-dht@v0.0.8 | [go-filecoin #2754](https://github.com/filecoin-project/go-filecoin/pull/2754)
+- Fix output for set price | [go-filecoin #2727](https://github.com/filecoin-project/go-filecoin/pull/2727)
+
+#### 🌳 Features
+
+- Add an approval step to user devnet deploy | [go-filecoin #2765](https://github.com/filecoin-project/go-filecoin/pull/2765)
+- Log messages proper printing | [go-filecoin #2728](https://github.com/filecoin-project/go-filecoin/pull/2728)
+- Add filecoin version command to inspect output | [go-filecoin #2725](https://github.com/filecoin-project/go-filecoin/pull/2725)
+
+#### ☝🏽 Upgrade notice
+
+As a reminder, only the latest version of go-filecoin will connect to the user devnet until model for change work is complete. Users will need to upgrade to 0.2.2 to connect to the user devnet.
+
+---
+
 ## go-filecoin 0.2.1
 
 We're happy to announce go-filecoin 0.2.1. This release is heavy on behind-the-scenes upgrades, including support for filesystem repo migrations and storage disputes, a better message pool, proofs improvements, and a bump to libp2p version for more reliable relays. User-facing improvements such as new commands and options, better status messages, and lots of bugfixes are also included. Get pumped! 🎁

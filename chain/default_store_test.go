@@ -34,7 +34,7 @@ func initStoreTest(ctx context.Context, t *testing.T) {
 func newChainStore() chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	return chain.NewDefaultStore(ds, genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
@@ -362,7 +362,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	chainStore := chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	chainStore := chain.NewDefaultStore(ds, genCid)
 	requirePutTestChain(t, chainStore)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -370,7 +370,7 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore
-	rebootChain := chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	rebootChain := chain.NewDefaultStore(ds, genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -12,9 +13,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type recentAncestorsChainReader interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+}
+
 // GetRecentAncestorsOfHeaviestChain returns the ancestors of a `TipSet` with
 // height `descendantBlockHeight` in the heaviest chain.
-func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader recentAncestorsChainReader, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 	head := chainReader.GetHead()
 	headTipSet, err := chainReader.GetTipSet(head)
 	if err != nil {
@@ -48,7 +55,7 @@ func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStor
 // the length of provingPeriodAncestors may vary (more null blocks -> shorter length).  The
 // length of slice extraRandomnessAncestors is a constant (at least once the
 // chain is longer than lookback tipsets).
-func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader ReadStore, childBH, ancestorRoundsNeeded *types.BlockHeight, lookback uint) (ts []types.TipSet, err error) {
+func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader recentAncestorsChainReader, childBH, ancestorRoundsNeeded *types.BlockHeight, lookback uint) (ts []types.TipSet, err error) {
 	ctx, span := trace.StartSpan(ctx, "Chain.GetRecentAncestors")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
