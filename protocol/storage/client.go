@@ -249,7 +249,7 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Resp
 func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	storageDeal, err := smc.api.DealGet(c)
 	if err != nil {
-		return address.Undef, fmt.Errorf("no such proposal by cid: %s", c)
+		return address.Undef, errors.Wrapf(err, "no such proposal by cid: %s", c)
 	}
 	return storageDeal.Miner, nil
 }
@@ -298,7 +298,7 @@ func (smc *Client) isMaybeDupDeal(p *storagedeal.Proposal) bool {
 func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
 	storageDeal, err := smc.api.DealGet(dealCid)
 	if err != nil {
-		return []*types.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
+		return []*types.PaymentVoucher{}, errors.Wrapf(err, "could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
 }

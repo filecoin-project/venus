@@ -385,7 +385,7 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 func (sm *Miner) updateDealResponse(proposalCid cid.Cid, f func(*storagedeal.Response)) error {
 	storageDeal, err := sm.porcelainAPI.DealGet(proposalCid)
 	if err != nil {
-		return fmt.Errorf("failed to get retrive deal with proposal CID %s", proposalCid.String())
+		return errors.Wrapf(err, "failed to get retrive deal with proposal CID %s", proposalCid.String())
 	}
 	f(storageDeal.Response)
 	err = sm.porcelainAPI.DealPut(storageDeal)
@@ -646,7 +646,7 @@ func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSe
 func (sm *Miner) findPieceInfo(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) (*sectorbuilder.PieceInfo, error) {
 	deal, err := sm.porcelainAPI.DealGet(dealCid)
 	if err == porcelain.ErrDealNotFound || deal.Response.State == storagedeal.Unknown {
-		return nil, errors.Errorf("Could not find deal with deal cid %s", dealCid)
+		return nil, errors.Wrapf(err, "Could not find deal with deal cid %s", dealCid)
 	}
 	if err != nil {
 		return nil, err
