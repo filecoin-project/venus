@@ -183,6 +183,11 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 	}
 }
 
+// LastCmdStdErr is the standard error output from the last command run
+func (f *Filecoin) LastCmdStdErr() io.ReadCloser {
+	return f.lastCmdOutput.Stderr()
+}
+
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
 func (f *Filecoin) RunCmdWithStdin(ctx context.Context, stdin io.Reader, args ...string) (testbedi.Output, error) {
 	if ctx == nil {

@@ -221,6 +221,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		MustAdd(p, m[0], m[1])
 
 		parent := types.TipSet{}
+
 		blk := types.Block{Height: 0}
 		parent[blk.Cid()] = &blk
 
@@ -261,10 +262,14 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
 
-		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0], m[1]}})
+		parent := types.TipSet{}
+
+		blk := types.Block{Height: 0}
+		parent[blk.Cid()] = &blk
+		oldChain := NewChainWithMessages(store, parent, msgsSet{msgs{m[0], m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, types.TipSet{},
+		newChain := NewChainWithMessages(store, parent,
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[0]}},
@@ -287,10 +292,15 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		MustAdd(p, m[2], m[5])
 
-		oldChain := NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0]}, msgs{m[1]}})
+		parent := types.TipSet{}
+
+		blk := types.Block{Height: 0}
+		parent[blk.Cid()] = &blk
+
+		oldChain := NewChainWithMessages(store, parent, msgsSet{msgs{m[0]}, msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, types.TipSet{},
+		newChain := NewChainWithMessages(store, parent,
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}, msgs{m[0]}, msgs{}, msgs{}},
 			msgsSet{msgs{}, msgs{m[5], m[6]}},
@@ -387,14 +397,19 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(6, mockSigner)
 		MustAdd(p, m[3], m[5])
 
-		oldChain := NewChainWithMessages(store, types.TipSet{},
+		parent := types.TipSet{}
+
+		blk := types.Block{Height: 0}
+		parent[blk.Cid()] = &blk
+
+		oldChain := NewChainWithMessages(store, parent,
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := NewChainWithMessages(store, types.TipSet{},
+		newChain := NewChainWithMessages(store, parent,
 			msgsSet{msgs{m[0]}, msgs{m[1]}, msgs{m[2]}},
 		)
 		newTipSet := headOf(newChain)

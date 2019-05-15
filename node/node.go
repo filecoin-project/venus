@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	ps "github.com/cskr/pubsub"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -81,13 +82,24 @@ var (
 
 type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
+type nodeChainReader interface {
+	GenesisCid() cid.Cid
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	HeadEvents() *ps.PubSub
+	Load(context.Context) error
+	Stop()
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
 	Consensus   consensus.Protocol
-	ChainReader chain.ReadStore
+	ChainReader nodeChainReader
 	Syncer      chain.Syncer
 	PowerTable  consensus.PowerTableView
 
@@ -115,9 +127,6 @@ type Node struct {
 	AddNewlyMinedBlock newBlockFunc
 	blockTime          time.Duration
 	cancelMining       context.CancelFunc
-	GetAncestorsFunc   mining.GetAncestors
-	GetStateTreeFunc   mining.GetStateTree
-	GetWeightFunc      mining.GetWeight
 	MiningWorker       mining.Worker
 	MiningScheduler    mining.Scheduler
 	mining             struct {
@@ -382,7 +391,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), &cstOffline, genCid)
+	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -401,9 +410,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
 	}
 
+	chainFacade := bcf.NewBlockChainFacade(chainStore, &cstOffline)
+
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainStore, nc.Repo.Config().Mpool))
+	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainFacade, nc.Repo.Config().Mpool))
 	outbox := core.NewMessageQueue()
 
 	// Set up libp2p pubsub
@@ -419,7 +430,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:      bswap,
-		Chain:        bcf.NewBlockChainFacade(chainStore, &cstOffline),
+		Chain:        chainFacade,
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
@@ -454,11 +465,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
-
-	// set up mining worker funcs
-	nd.GetAncestorsFunc = nd.getAncestors
-	nd.GetStateTreeFunc = nd.getStateTree
-	nd.GetWeightFunc = nd.getWeight
 
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
@@ -538,7 +544,7 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
 	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
-	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReadStore(), core.OutboxMaxAgeRounds)
+	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReader, core.OutboxMaxAgeRounds)
 
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
@@ -657,7 +663,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			if err := outboxPolicy.OnNewHeadTipset(ctx, head, newHead); err != nil {
 				log.Error("updating outbound message queue for new tipset", err)
 			}
-			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReadStore(), head, newHead); err != nil {
+			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReader, head, newHead); err != nil {
 				log.Error("updating message pool for new tipset", err)
 			}
 			head = newHead
@@ -1105,11 +1111,6 @@ func (node *Node) BlockService() bserv.BlockService {
 // CborStore returns the nodes cborStore.
 func (node *Node) CborStore() *hamt.CborIpldStore {
 	return node.cborStore
-}
-
-// ChainReadStore returns the node's chain store.
-func (node *Node) ChainReadStore() chain.ReadStore {
-	return node.ChainReader
 }
 
 // IsMining returns a boolean indicating whether the node is mining blocks.
