@@ -248,7 +248,7 @@ func main() {
 	//
 	// ImportAndStore
 	// 7. Generated some random data and import it to genesis
-	// 8. Genesis propposes a storage deal with miner
+	// 8. Genesis proposes a storage deal with miner
 	//
 	// WaitForDealState
 	// 9. Query deal till posted

@@ -2,8 +2,9 @@ package fast
 
 import (
 	"context"
+	"github.com/ipfs/iptb/testbed/interfaces"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -19,4 +20,15 @@ func (f *Filecoin) ShowBlock(ctx context.Context, ref cid.Cid) (*types.Block, er
 	}
 
 	return &out, nil
+}
+
+// ShowDeal runs the `show deal` command against the filecoin process
+func (f *Filecoin) ShowDeal(ctx context.Context, ref cid.Cid) (*testbedi.Output, error) {
+	sRef := ref.String()
+
+	output, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "show", "deal", sRef)
+	if err != nil {
+		return nil, err
+	}
+	return &output, nil
 }
