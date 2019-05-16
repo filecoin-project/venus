@@ -225,6 +225,13 @@ func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Addr
 	if !proposalCid.Equals(resp.ProposalCid) {
 		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
 	}
+	_, err = smc.api.DealGet(proposalCid)
+	if err == nil {
+		return fmt.Errorf("deal [%s] is already in progress", proposalCid.String())
+	}
+	if err != porcelain.ErrDealNotFound {
+		return errors.Wrapf(err, "failed to check for existing deal: %s", proposalCid.String())
+	}
 
 	return smc.api.DealPut(&storagedeal.Deal{
 		Miner:    miner,
