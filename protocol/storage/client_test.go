@@ -242,7 +242,11 @@ func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
 }
 
 func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
-	return ctp.deals[dealCid], nil
+	deal, ok := ctp.deals[dealCid]
+	if ok {
+		return deal, nil
+	}
+	return nil, porcelain.ErrDealNotFound
 }
 
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
