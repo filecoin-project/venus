@@ -96,12 +96,12 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 	cid1 := newCid()
 	cid2 := newCid()
 
-	sectorId := uint64(42)
-	sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorId}
+	sectorID := uint64(42)
+	sector := &sectorbuilder.SealedSectorMetadata{SectorID: sectorID}
 	msgCid := newCid()
 
 	t.Run("success calls onSuccess for all deals", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 		unseenDealCids := map[cid.Cid]bool{cid1: true, cid2: true}
 
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
@@ -116,30 +116,30 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 	})
 
 	t.Run("success clears sector from sector to deals cache", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
 		dealsAwaitingSeal.success(sector, &msgCid)
 
 		// cleared SectorsToDeals for this sector
-		assert.Nil(t, dealsAwaitingSeal.SectorsToDeals[sectorId])
+		assert.Nil(t, dealsAwaitingSeal.SectorsToDeals[sectorID])
 	})
 
 	t.Run("success adds sector to successful sectors", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
 		dealsAwaitingSeal.success(sector, &msgCid)
 
-		sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorId]
+		sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorID]
 		require.True(t, ok)
 		assert.Equal(t, sector, sectorData.Metadata)
 	})
 
 	t.Run("success stores commit message cid with sector data", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
 		dealsAwaitingSeal.success(sector, &msgCid)
 
-		actualMsgCid, ok := dealsAwaitingSeal.commitMessageCid(sectorId)
+		actualMsgCid, ok := dealsAwaitingSeal.commitMessageCid(sectorID)
 		require.True(t, ok)
 		assert.Equal(t, msgCid, *actualMsgCid)
 	})
@@ -150,11 +150,11 @@ func TestDealsAwaitingSealFail(t *testing.T) {
 	cid1 := newCid()
 	cid2 := newCid()
 
-	sectorId := uint64(42)
+	sectorID := uint64(42)
 	errorMessage := "test error message"
 
 	t.Run("fail calls onFail with correct message for all deals", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 		unseenDealCids := map[cid.Cid]bool{cid1: true, cid2: true}
 
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
@@ -163,35 +163,35 @@ func TestDealsAwaitingSealFail(t *testing.T) {
 			delete(unseenDealCids, dealCid)
 		}
 
-		dealsAwaitingSeal.fail(sectorId, errorMessage)
+		dealsAwaitingSeal.fail(sectorID, errorMessage)
 
 		// called onSuccess for all deals
 		assert.Equal(t, 0, len(unseenDealCids))
 	})
 
 	t.Run("fail clears sector from sector to deals cache", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
-		dealsAwaitingSeal.fail(sectorId, errorMessage)
+		dealsAwaitingSeal.fail(sectorID, errorMessage)
 
 		// cleared SectorsToDeals for this sector
-		assert.Nil(t, dealsAwaitingSeal.SectorsToDeals[sectorId])
+		assert.Nil(t, dealsAwaitingSeal.SectorsToDeals[sectorID])
 	})
 
 	t.Run("fail adds error message to failure map", func(t *testing.T) {
-		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorId, cid1, cid2)
+		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
-		dealsAwaitingSeal.fail(sectorId, errorMessage)
+		dealsAwaitingSeal.fail(sectorID, errorMessage)
 
-		sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorId]
+		sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorID]
 		require.True(t, ok)
 		assert.Equal(t, errorMessage, sectorData.ErrorMessage)
 	})
 }
 
-func setupTestDealsAwaitingSeals(sectorId uint64, deals ...cid.Cid) *dealsAwaitingSeal {
+func setupTestDealsAwaitingSeals(sectorID uint64, deals ...cid.Cid) *dealsAwaitingSeal {
 	dealsAwaitingSeal := newDealsAwaitingSeal()
-	dealsAwaitingSeal.SectorsToDeals[sectorId] = deals
+	dealsAwaitingSeal.SectorsToDeals[sectorID] = deals
 	dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {}
 	dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {}
 	return dealsAwaitingSeal

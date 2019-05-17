@@ -508,7 +508,7 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 	return nil
 }
 
-// OnCommitmentAddedToChain is a callback, called when a sector seal message was posted to the chain.
+// OnCommitmentSent is a callback, called when a sector seal message was posted to the chain.
 func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, msgCid cid.Cid, err error) {
 	sectorID := sector.SectorID
 	log.Debug("Miner.OnCommitmentSent")

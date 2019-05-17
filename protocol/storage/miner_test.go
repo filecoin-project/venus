@@ -434,7 +434,8 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	miner.dealsAwaitingSealDs = repo.NewInMemoryRepo().DealsDs
 
 	// create the dealsAwaitingSeal to manage the deal prior to sealing
-	miner.loadDealsAwaitingSeal()
+	err := miner.loadDealsAwaitingSeal()
+	require.NoError(t, err)
 
 	// wire dealsAwaitingSeal with the actual commit success functionality
 	miner.dealsAwaitingSeal.onSuccess = miner.onCommitSuccess
