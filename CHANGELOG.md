@@ -101,7 +101,7 @@ We regularly write [design docs](https://github.com/filecoin-project/designdocs/
 
 ### Changelog
 
-A full list of [all 273 PRs in this release](https://github.com/search?o=desc&q=is%3Apr+merged%3A2019-02-14..2019-03-26+repo%3Afilecoin-project%2Fgo-filecoin+repo%3Afilecoin-project%2Frust-fil-proofs+repo%3Afilecoin-project%2Fspecs&s=created&type=Issues), including many bugfixes not listed here, can be found on Github.
+A full list of [all 177 PRs in this release](https://github.com/search?q=is%3Apr+merged%3A2019-03-26..2019-05-10+repo%3Afilecoin-project%2Fgo-filecoin+repo%3Afilecoin-project%2Frust-fil-proofs+repo%3Afilecoin-project%2Fspecs&type=Issues), including many bugfixes not listed here, can be found on Github.
 
 ### Contributors
 
