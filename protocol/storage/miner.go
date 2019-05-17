@@ -474,7 +474,7 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 
 	// Careful: this might update state to success or failure so it should go after
 	// updating state to Staged.
-	sm.dealsAwaitingSeal.add(sectorID, proposalCid)
+	sm.dealsAwaitingSeal.process(sectorID, proposalCid)
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("could not save deal awaiting seal: %s", err)
 	}

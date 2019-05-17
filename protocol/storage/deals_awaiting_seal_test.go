@@ -26,7 +26,7 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 
 	wantMessage := "boom"
 
-	t.Run("add before success", func(t *testing.T) {
+	t.Run("process before success", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
@@ -34,15 +34,15 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 			gotCids = append(gotCids, dealCid)
 		}
 
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1)
-		dealsAwaitingSeal.add(someOtherSectorID, cid2)
+		dealsAwaitingSeal.process(wantSectorID, cid0)
+		dealsAwaitingSeal.process(wantSectorID, cid1)
+		dealsAwaitingSeal.process(someOtherSectorID, cid2)
 		dealsAwaitingSeal.success(wantSector, commitSectorCid)
 
 		assert.Len(t, gotCids, 2, "onSuccess should've been called twice")
 	})
 
-	t.Run("add after success", func(t *testing.T) {
+	t.Run("process after success", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
@@ -51,14 +51,14 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 		}
 
 		dealsAwaitingSeal.success(wantSector, commitSectorCid)
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1) // Shouldn't trigger a call, see add().
-		dealsAwaitingSeal.add(someOtherSectorID, cid2)
+		dealsAwaitingSeal.process(wantSectorID, cid0)
+		dealsAwaitingSeal.process(wantSectorID, cid1) // Shouldn't trigger a call, see process().
+		dealsAwaitingSeal.process(someOtherSectorID, cid2)
 
 		assert.Len(t, gotCids, 1, "onSuccess should've been called once")
 	})
 
-	t.Run("add before fail", func(t *testing.T) {
+	t.Run("process before fail", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
@@ -66,15 +66,15 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 			gotCids = append(gotCids, dealCid)
 		}
 
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1)
+		dealsAwaitingSeal.process(wantSectorID, cid0)
+		dealsAwaitingSeal.process(wantSectorID, cid1)
 		dealsAwaitingSeal.fail(wantSectorID, wantMessage)
 		dealsAwaitingSeal.fail(someOtherSectorID, "some message")
 
 		assert.Len(t, gotCids, 2, "onFail should've been called twice")
 	})
 
-	t.Run("add after fail", func(t *testing.T) {
+	t.Run("process after fail", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
@@ -84,8 +84,8 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 
 		dealsAwaitingSeal.fail(wantSectorID, wantMessage)
 		dealsAwaitingSeal.fail(someOtherSectorID, "some message")
-		dealsAwaitingSeal.add(wantSectorID, cid0)
-		dealsAwaitingSeal.add(wantSectorID, cid1) // Shouldn't trigger a call, see add().
+		dealsAwaitingSeal.process(wantSectorID, cid0)
+		dealsAwaitingSeal.process(wantSectorID, cid1) // Shouldn't trigger a call, see process().
 
 		assert.Len(t, gotCids, 1, "onFail should've been called once")
 	})
