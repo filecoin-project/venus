@@ -8,12 +8,12 @@ import (
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/ipfs/go-ipfs-exchange-interface"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p-metrics"
-	"github.com/libp2p/go-libp2p-peer"
+	metrics "github.com/libp2p/go-libp2p-metrics"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 
@@ -165,6 +165,13 @@ func (api *API) DealsIterator() (*query.Results, error) {
 // DealPut puts a given deal in the datastore
 func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
 	return api.storagedeals.Put(storageDeal)
+}
+
+// DealHas checks if a deal is already present in the datastore corresponding to
+// given proposal
+// bool should be ignored in case of a non-nil error
+func (api *API) DealHas(storageProposal *storagedeal.Proposal) (bool, error) {
+	return api.storagedeals.Has(storageProposal)
 }
 
 // OutboxQueues lists addresses with non-empty outbox queues (in no particular order).

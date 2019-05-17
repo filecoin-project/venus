@@ -8,9 +8,9 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-protocol"
+	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	"github.com/multiformats/go-multistream"
 	"github.com/pkg/errors"
 
@@ -58,6 +58,7 @@ type clientPorcelainAPI interface {
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
+	DealHas(*storagedeal.Proposal) (bool, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
@@ -154,7 +155,12 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		MinerAddress: miner,
 	}
 
-	if smc.isMaybeDupDeal(ctx, proposal) && !allowDuplicates {
+	dealExists, err := smc.api.DealHas(proposal)
+	if err != nil {
+		return nil, err
+	}
+
+	if dealExists && !allowDuplicates {
 		return nil, Errors[ErrDuplicateDeal]
 	}
 

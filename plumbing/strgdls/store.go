@@ -32,6 +32,11 @@ func (store *Store) Iterator() (*query.Results, error) {
 	return &results, nil
 }
 
+// Ls returns a slice of deals matching the given query, with a possible error
+func (store *Store) Ls() ([]*storagedeal.Deal, error) {
+	return store.lsWithPrefix("/" + StorageDealPrefix)
+}
+
 // Put puts the deal into the datastore
 func (store *Store) Put(storageDeal *storagedeal.Deal) error {
 	proposalCid := storageDeal.Response.ProposalCid
@@ -47,4 +52,46 @@ func (store *Store) Put(storageDeal *storagedeal.Deal) error {
 	}
 
 	return nil
+}
+
+// Has checks if a deal is already present in the datastore corresponding to
+// given proposal
+// bool should be ignored in case of a non-nil error
+func (store *Store) Has(storageProposal *storagedeal.Proposal) (bool, error) {
+	key := datastore.KeyWithNamespaces([]string{StorageDealPrefix, storageProposal.PieceRef.String()})
+	exists, err := store.dealsDs.Has(key)
+	if err != nil || exists == false {
+		return false, err
+	}
+
+	deals, err := store.lsWithPrefix("/" + key.String())
+	if err != nil {
+		return false, err
+	}
+
+	for _, d := range deals {
+		if d.Miner == storageProposal.MinerAddress {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (store *Store) lsWithPrefix(prefix string) ([]*storagedeal.Deal, error) {
+	var deals []*storagedeal.Deal
+
+	results, err := store.dealsDs.Query(query.Query{Prefix: prefix})
+	if err != nil {
+		return deals, errors.Wrap(err, "failed to query deals from datastore")
+	}
+	for entry := range results.Next() {
+		var storageDeal storagedeal.Deal
+		if err := cbor.DecodeInto(entry.Value, &storageDeal); err != nil {
+			return deals, errors.Wrap(err, "failed to unmarshal deals from datastore")
+		}
+		deals = append(deals, &storageDeal)
+	}
+
+	return deals, nil
 }
