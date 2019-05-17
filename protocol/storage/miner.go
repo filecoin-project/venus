@@ -404,7 +404,7 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 
 	d, err := sm.porcelainAPI.DealGet(proposalCid)
 	if err != nil {
-		log.Errorf("could not retrieve deal with proposal CID %s", proposalCid.String())
+		log.Errorf("could not retrieve deal with proposal CID %s: %s", proposalCid.String(), err)
 	}
 	if d.Response.State != storagedeal.Accepted {
 		// TODO: handle resumption of deal processing across miner restarts
