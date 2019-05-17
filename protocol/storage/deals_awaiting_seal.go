@@ -14,10 +14,17 @@ func init() {
 
 // sectorInfo combines sector Metadata from rust proofs with go-filecoin specific data
 type sectorInfo struct {
-	Metadata         *sectorbuilder.SealedSectorMetadata
+	// Metadata contains information about the sealed sector needed to verify the seal
+	Metadata *sectorbuilder.SealedSectorMetadata
+
+	// CommitMessageCid is the cid of the commitSector message sent for sealed sector. It allows the client to coordinate on timing.
 	CommitMessageCid cid.Cid
-	Succeeded        bool
-	ErrorMessage     string
+
+	// Succeeded indicates whether sealing was and committing was successful
+	Succeeded bool
+
+	// ErrorMessage indicate what went wrong if sealing or committing was not successful
+	ErrorMessage string
 }
 
 // dealsAwaitingSeal is a container for keeping track of which sectors have
