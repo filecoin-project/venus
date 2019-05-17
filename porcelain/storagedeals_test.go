@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type testDealLsPlumbing struct {
@@ -34,6 +35,26 @@ func (tdlp *testDealLsPlumbing) DealsLs(ctx context.Context) (<-chan *strgdls.St
 
 func (tdlp *testDealLsPlumbing) ConfigGet(path string) (interface{}, error) {
 	return tdlp.minerAddress, nil
+}
+
+func TestDealGet(t *testing.T) {
+	tf.UnitTest(t)
+
+	cidGetter := types.NewCidForTestGetter()
+	dealCid := cidGetter()
+	expectedDeal := &storagedeal.Deal{
+		Response: &storagedeal.Response{
+			ProposalCid: dealCid,
+		},
+	}
+
+	plumbing := &testDealLsPlumbing{
+		deals: []*storagedeal.Deal{expectedDeal},
+	}
+
+	resultDeal := porcelain.DealGet(context.Background(), plumbing, dealCid)
+	assert.NotNil(t, resultDeal)
+	assert.Equal(t, expectedDeal, resultDeal)
 }
 
 func TestDealClientLs(t *testing.T) {
