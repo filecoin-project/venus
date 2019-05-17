@@ -110,6 +110,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
 
+	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
+	var commP types.CommP
+	copy(commP[:], data.Bytes())
+
 	sectorSize, err := smc.api.MinerGetSectorSize(ctxSetup, miner)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get sector size")
@@ -174,6 +178,8 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		To:              minerOwner,
 		Value:           *price.MulBigInt(big.NewInt(int64(size * duration))),
 		Duration:        duration,
+		MinerAddress:    miner,
+		CommP:           commP,
 		PaymentInterval: VoucherInterval,
 		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
 		GasPrice:        *types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),

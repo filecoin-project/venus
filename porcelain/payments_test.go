@@ -55,11 +55,12 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 		},
 		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			voucher := &types.PaymentVoucher{
-				Channel: *channelID,
-				Payer:   payer,
-				Target:  target,
-				Amount:  *params[1].(*types.AttoFIL),
-				ValidAt: *params[2].(*types.BlockHeight),
+				Channel:   *channelID,
+				Payer:     payer,
+				Target:    target,
+				Amount:    *params[1].(*types.AttoFIL),
+				ValidAt:   *params[2].(*types.BlockHeight),
+				Condition: params[3].(*types.Predicate),
 			}
 			voucherBytes, err := actor.MarshalStorage(voucher)
 			if err != nil {
@@ -94,12 +95,17 @@ func validPaymentsConfig() CreatePaymentsParams {
 	addresses := address.NewForTestGetter()
 	from := addresses()
 	to := addresses()
+	minerAddress := addresses()
+	var commP types.CommP
+	copy(commP[:], []byte("commitment"))
 
 	return CreatePaymentsParams{
 		From:            from,
 		To:              to,
 		Value:           *types.NewAttoFILFromFIL(93),
 		Duration:        50,
+		MinerAddress:    minerAddress,
+		CommP:           commP,
 		PaymentInterval: paymentInterval,
 		ChannelExpiry:   *types.NewBlockHeight(500),
 		GasPrice:        *types.NewAttoFILFromFIL(3),
@@ -140,17 +146,66 @@ func TestCreatePayments(t *testing.T) {
 			assert.Equal(t, *types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
 			assert.Equal(t, *expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
 
-			// voucher signature should be what is returned by SignBytes
+			// assert all vouchers other than the last have a valid condition
+			assert.NotNil(t, voucher.Condition)
+			assert.Equal(t, config.MinerAddress, voucher.Condition.To)
+			assert.Equal(t, "verifyPieceInclusion", voucher.Condition.Method)
+			assert.Equal(t, config.CommP[:], voucher.Condition.Params[0])
 
+			// voucher signature should be what is returned by SignBytes
 			sig := types.Signature([]byte("signature"))
 			assert.Equal(t, sig, voucher.Signature)
 		}
 
-		// last payment should be for the full amount
+		// last payment should be for the full amount and have no condition
 		assert.Equal(t, *types.NewChannelID(channelID), paymentResponse.Vouchers[9].Channel)
 		assert.Equal(t, config.From, paymentResponse.Vouchers[9].Payer)
 		assert.Equal(t, config.To, paymentResponse.Vouchers[9].Target)
 		assert.Equal(t, config.Value, paymentResponse.Vouchers[9].Amount)
+		assert.Nil(t, paymentResponse.Vouchers[9].Condition)
+	})
+
+	t.Run("Payments constructed correctly when paymentInterval does not divide duration", func(t *testing.T) {
+		config := validPaymentsConfig()
+
+		// lower duration by two blocks
+		config.Duration = 48
+
+		paymentResponse, err := CreatePayments(context.Background(), successPlumbing, config)
+		require.NoError(t, err)
+
+		// Value*PaymentInterval/Duration = 93 * 5 / 48 = 9.6875
+		expectedValuePerPayment, ok := types.NewAttoFILFromFILString("9.6875")
+		require.True(t, ok)
+
+		for i := 0; i < 9; i++ {
+			voucher := paymentResponse.Vouchers[i]
+			assert.Equal(t, *types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
+			assert.Equal(t, *expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
+
+			// assert all vouchers other than the last have a valid condition
+			assert.NotNil(t, voucher.Condition)
+		}
+
+		// last payment should be for the full amount and have no condition
+		assert.Equal(t, config.Value, paymentResponse.Vouchers[9].Amount)
+		assert.Nil(t, paymentResponse.Vouchers[9].Condition)
+	})
+
+	t.Run("Payments constructed correctly when duration < paymentInterval", func(t *testing.T) {
+		config := validPaymentsConfig()
+
+		// lower duration below payment interval (5)
+		config.Duration = 3
+
+		paymentResponse, err := CreatePayments(context.Background(), successPlumbing, config)
+		require.NoError(t, err)
+
+		require.Len(t, paymentResponse.Vouchers, 1)
+
+		// last payment should be for the full amount and have no condition
+		assert.Equal(t, config.Value, paymentResponse.Vouchers[0].Amount)
+		assert.Nil(t, paymentResponse.Vouchers[0].Condition)
 	})
 
 	t.Run("Validates from", func(t *testing.T) {
