@@ -245,7 +245,7 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 		sector := testSectorMetadata(newCid())
 		msgCid := newCid()
 
-		miner.dealsAwaitingSeal.success(sector, &msgCid)
+		miner.dealsAwaitingSeal.success(sector, msgCid)
 
 		require.NoError(t, miner.saveDealsAwaitingSeal())
 		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
@@ -276,7 +276,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
 		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
-		assert.Equal(t, &msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
+		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
 	})
 

@@ -37,7 +37,7 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 		dealsAwaitingSeal.add(wantSectorID, cid0)
 		dealsAwaitingSeal.add(wantSectorID, cid1)
 		dealsAwaitingSeal.add(someOtherSectorID, cid2)
-		dealsAwaitingSeal.success(wantSector, &commitSectorCid)
+		dealsAwaitingSeal.success(wantSector, commitSectorCid)
 
 		assert.Len(t, gotCids, 2, "onSuccess should've been called twice")
 	})
@@ -50,7 +50,7 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 			gotCids = append(gotCids, dealCid)
 		}
 
-		dealsAwaitingSeal.success(wantSector, &commitSectorCid)
+		dealsAwaitingSeal.success(wantSector, commitSectorCid)
 		dealsAwaitingSeal.add(wantSectorID, cid0)
 		dealsAwaitingSeal.add(wantSectorID, cid1) // Shouldn't trigger a call, see add().
 		dealsAwaitingSeal.add(someOtherSectorID, cid2)
@@ -109,7 +109,7 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 			delete(unseenDealCids, dealCid)
 		}
 
-		dealsAwaitingSeal.success(sector, &msgCid)
+		dealsAwaitingSeal.success(sector, msgCid)
 
 		// called onSuccess for all deals
 		assert.Equal(t, 0, len(unseenDealCids))
@@ -118,7 +118,7 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 	t.Run("success clears sector from sector to deals cache", func(t *testing.T) {
 		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
-		dealsAwaitingSeal.success(sector, &msgCid)
+		dealsAwaitingSeal.success(sector, msgCid)
 
 		// cleared SectorsToDeals for this sector
 		assert.Nil(t, dealsAwaitingSeal.SectorsToDeals[sectorID])
@@ -127,7 +127,7 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 	t.Run("success adds sector to successful sectors", func(t *testing.T) {
 		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
-		dealsAwaitingSeal.success(sector, &msgCid)
+		dealsAwaitingSeal.success(sector, msgCid)
 
 		sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorID]
 		require.True(t, ok)
@@ -137,11 +137,11 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 	t.Run("success stores commit message cid with sector data", func(t *testing.T) {
 		dealsAwaitingSeal := setupTestDealsAwaitingSeals(sectorID, cid1, cid2)
 
-		dealsAwaitingSeal.success(sector, &msgCid)
+		dealsAwaitingSeal.success(sector, msgCid)
 
 		actualMsgCid, ok := dealsAwaitingSeal.commitMessageCid(sectorID)
 		require.True(t, ok)
-		assert.Equal(t, msgCid, *actualMsgCid)
+		assert.Equal(t, msgCid, actualMsgCid)
 	})
 }
 

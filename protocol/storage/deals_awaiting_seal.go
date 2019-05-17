@@ -15,7 +15,7 @@ func init() {
 // sectorInfo combines sector Metadata from rust proofs with go-filecoin specific data
 type sectorInfo struct {
 	Metadata         *sectorbuilder.SealedSectorMetadata
-	CommitMessageCid *cid.Cid
+	CommitMessageCid cid.Cid
 	Succeeded        bool
 	ErrorMessage     string
 }
@@ -77,14 +77,14 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) add(sectorID uint64, dealCid cid.Cid
 	delete(dealsAwaitingSeal.SealedSectors, sectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) success(sector *sectorbuilder.SealedSectorMetadata, commitMessage *cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) success(sector *sectorbuilder.SealedSectorMetadata, commitMessageCID cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
 	dealsAwaitingSeal.SealedSectors[sector.SectorID] = &sectorInfo{
 		Succeeded:        true,
 		Metadata:         sector,
-		CommitMessageCid: commitMessage,
+		CommitMessageCid: commitMessageCID,
 	}
 
 	for _, dealCid := range dealsAwaitingSeal.SectorsToDeals[sector.SectorID] {
@@ -108,10 +108,10 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) fail(sectorID uint64, message string
 	delete(dealsAwaitingSeal.SectorsToDeals, sectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) commitMessageCid(sectorID uint64) (*cid.Cid, bool) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) commitMessageCid(sectorID uint64) (cid.Cid, bool) {
 	sectorData, ok := dealsAwaitingSeal.SealedSectors[sectorID]
 	if !ok {
-		return nil, false
+		return cid.Undef, false
 	}
-	return sectorData.CommitMessageCid, sectorData.CommitMessageCid != nil
+	return sectorData.CommitMessageCid, sectorData.CommitMessageCid != cid.Undef
 }
