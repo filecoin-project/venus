@@ -33,6 +33,9 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 			assert.Equal(t, sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}
+		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
+			require.Fail(t, "onFail should not have been called")
+		}
 
 		dealsAwaitingSeal.process(wantSectorID, cid0)
 		dealsAwaitingSeal.process(wantSectorID, cid1)
@@ -49,6 +52,9 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 			assert.Equal(t, sector, wantSector)
 			gotCids = append(gotCids, dealCid)
 		}
+		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
+			require.Fail(t, "onFail should not have been called")
+		}
 
 		dealsAwaitingSeal.success(wantSector, commitSectorCid)
 		dealsAwaitingSeal.process(wantSectorID, cid0)
@@ -61,6 +67,9 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 	t.Run("process before fail", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
+			require.Fail(t, "onSuccess should not have been called")
+		}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(t, message, wantMessage)
 			gotCids = append(gotCids, dealCid)
@@ -77,6 +86,9 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 	t.Run("process after fail", func(t *testing.T) {
 		dealsAwaitingSeal := newDealsAwaitingSeal()
 		gotCids := []cid.Cid{}
+		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
+			require.Fail(t, "onSuccess should not have been called")
+		}
 		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
 			assert.Equal(t, message, wantMessage)
 			gotCids = append(gotCids, dealCid)
@@ -107,6 +119,9 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 		dealsAwaitingSeal.onSuccess = func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) {
 			require.True(t, unseenDealCids[dealCid])
 			delete(unseenDealCids, dealCid)
+		}
+		dealsAwaitingSeal.onFail = func(dealCid cid.Cid, message string) {
+			require.Fail(t, "onFail should not have been called")
 		}
 
 		dealsAwaitingSeal.success(sector, msgCid)
