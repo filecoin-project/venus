@@ -83,35 +83,36 @@ func main() { // nolint: deadcode
 		if err != nil {
 			exitErr(err.Error())
 		}
-
 		logger := internal.NewLogger(logFile, getVerbose())
-
 		oldRepoOpt, found := findOpt("old-repo", os.Args)
 		if !found {
-			exitErr(fmt.Sprintf("--old-repo is required\n%s\n", USAGE))
+			exitErrCloseLogger(fmt.Sprintf("--old-repo is required\n%s\n", USAGE), logger)
 		}
-
 		var newRepoOpt string
 		if command == "install" {
 			newRepoOpt, found = findOpt("new-repo", os.Args)
 			if !found {
-				exitErr(fmt.Sprintf("--new-repo is required for 'install'\n%s\n", USAGE))
+				exitErrCloseLogger(fmt.Sprintf("--new-repo is required for 'install'\n%s\n", USAGE), logger)
 			}
 		}
 
 		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
 		if err != nil {
-			exitErr(err.Error())
+			exitErrCloseLogger(err.Error(), logger)
 		}
 		runResult := runner.Run()
 		if runResult.Err != nil {
-			exitErr(runResult.Err.Error())
+			exitErrCloseLogger(runResult.Err.Error(), logger)
 		}
 		if runResult.NewRepoPath != "" {
 			logger.Printf("New repo location: %s", runResult.NewRepoPath)
 		}
 		if runResult.NewVersion != runResult.OldVersion {
 			logger.Printf("Repo has been migrated to version %d", runResult.NewVersion)
+		}
+		err = logger.Close()
+		if err != nil {
+			exitErr(err.Error())
 		}
 	default:
 		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
@@ -122,6 +123,15 @@ func main() { // nolint: deadcode
 func exitErr(errstr string) {
 	log.New(os.Stderr, "", 0).Println("Error: " + errstr)
 	os.Exit(1)
+}
+
+// exitErrorCloseLogger closes the logger and calls exitError
+func exitErrCloseLogger(errstr string, logger *internal.Logger) {
+	err := logger.Close()
+	if err != nil {
+		errstr = fmt.Sprintf("%s. Error closing logfile when reporting this error %s", errstr, err.Error())
+	}
+	exitErr(errstr)
 }
 
 // showUsageAndExit prints out USAGE and exits with the given code.
@@ -146,7 +156,7 @@ func openLogFile() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return os.OpenFile(path, os.O_APPEND|os.O_CREATE, 0644)
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 }
 
 // getLogFilePath returns the path of the logfile.

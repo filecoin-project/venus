@@ -181,9 +181,9 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
 }
 
-// LatestState will be a state tree that only contains the test actor
-func (api *FakeIngestionValidatorAPI) ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error) {
-	if address == api.ActorAddr {
+// GetActor
+func (api *FakeIngestionValidatorAPI) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
+	if a == api.ActorAddr {
 		return api.Actor, nil
 	}
 	return &actor.Actor{}, nil
