@@ -31,7 +31,7 @@ type sectorInfo struct {
 // pieces from which deals. We need it to accommodate a race condition where
 // a sector commit message is added to chain before we can process the sector/deal
 // book-keeping. It effectively caches success and failure results for sectors
-// for tardy process() calls.
+// for tardy attachDealToSector() calls.
 type dealsAwaitingSeal struct {
 	l sync.Mutex
 	// Maps from sector id to the deal cids with pieces in the sector.
@@ -53,16 +53,16 @@ func newDealsAwaitingSeal() *dealsAwaitingSeal {
 	}
 }
 
-// process checks the list of sealed sectors to see if a sector has been sealed. If sealing of this sector is done,
-// onSuccess or onFailure will be called immediately, otherwise, process it to SectorsToDeals so we can respond
+// attachDealToSector checks the list of sealed sectors to see if a sector has been sealed. If sealing of this sector is done,
+// onSuccess or onFailure will be called immediately, otherwise, add it to SectorsToDeals so we can respond
 // when sealing completes.
-func (dealsAwaitingSeal *dealsAwaitingSeal) process(sectorID uint64, dealCid cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) attachDealToSector(sectorID uint64, dealCid cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
 	sector, ok := dealsAwaitingSeal.SealedSectors[sectorID]
 
-	// if sector sealing hasn't succeed or failed yet, just process to SectorToDeals and exit
+	// if sector sealing hasn't succeed or failed yet, just add to SectorToDeals and exit
 	if !ok {
 		deals, ok := dealsAwaitingSeal.SectorsToDeals[sectorID]
 		if ok {
@@ -81,7 +81,7 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) process(sectorID uint64, dealCid cid
 	}
 
 	// Don't keep references to sectors around forever. Assume that at most
-	// one success-before-process call will happen (eg, in a test). Sector sealing
+	// one onSealSuccess-before-attachDealToSector call will happen (eg, in a test). Sector sealing
 	// outside of tests is so slow that it shouldn't happen in practice.
 	// So now that it has happened once, clean it up. If we wanted to keep
 	// the state around for longer for some reason we need to limit how many
@@ -90,7 +90,7 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) process(sectorID uint64, dealCid cid
 	delete(dealsAwaitingSeal.SealedSectors, sectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) success(sector *sectorbuilder.SealedSectorMetadata, commitMessageCID cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) onSealSuccess(sector *sectorbuilder.SealedSectorMetadata, commitMessageCID cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -106,7 +106,7 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) success(sector *sectorbuilder.Sealed
 	delete(dealsAwaitingSeal.SectorsToDeals, sector.SectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) fail(sectorID uint64, message string) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) onSealFail(sectorID uint64, message string) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 

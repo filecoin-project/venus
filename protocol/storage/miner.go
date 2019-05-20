@@ -474,7 +474,7 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 
 	// Careful: this might update state to success or failure so it should go after
 	// updating state to Staged.
-	sm.dealsAwaitingSeal.process(sectorID, proposalCid)
+	sm.dealsAwaitingSeal.attachDealToSector(sectorID, proposalCid)
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("could not save deal awaiting seal: %s", err)
 	}
@@ -516,13 +516,13 @@ func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, ms
 	if err != nil {
 		log.Errorf("failed sealing sector: %d: %s:", sectorID, err)
 		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
-		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
+		sm.dealsAwaitingSeal.onSealFail(sector.SectorID, errMsg)
 	} else {
-		sm.dealsAwaitingSeal.success(sector, msgCid)
+		sm.dealsAwaitingSeal.onSealSuccess(sector, msgCid)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("failed persisting deals awaiting seal: %s", err)
-		sm.dealsAwaitingSeal.fail(sector.SectorID, "failed persisting deals awaiting seal")
+		sm.dealsAwaitingSeal.onSealFail(sector.SectorID, "failed persisting deals awaiting seal")
 	}
 }
 
