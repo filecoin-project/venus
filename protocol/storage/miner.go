@@ -59,7 +59,7 @@ type Miner struct {
 	postInProcessLk sync.Mutex
 	postInProcess   *types.BlockHeight
 
-	dealsAwaitingSeal *dealsAwaitingSealStruct
+	dealsAwaitingSeal *dealsAwaitingSeal
 
 	porcelainAPI minerPorcelain
 	node         node
@@ -104,10 +104,6 @@ type generatePostInput struct {
 	commR     types.CommR
 	commRStar types.CommRStar
 	sectorID  uint64
-}
-
-func init() {
-	cbor.RegisterCborType(dealsAwaitingSealStruct{})
 }
 
 // NewMiner is
@@ -457,9 +453,9 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	// There is a race here that requires us to use dealsAwaitingSeal below. If the
 	// sector gets sealed and OnCommitmentSent is called right after
 	// AddPiece returns but before we record the sector/deal mapping we might
-	// miss it. Hence, dealsAwaitingSealStruct. I'm told that sealing in practice is
+	// miss it. Hence, dealsAwaitingSeal. I'm told that sealing in practice is
 	// so slow that the race only exists in tests, but tests were flaky so
-	// we fixed it with dealsAwaitingSealStruct.
+	// we fixed it with dealsAwaitingSeal.
 	//
 	// Also, this pattern of not being able to set up book-keeping ahead of
 	// the call is inelegant.
@@ -478,39 +474,14 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 
 	// Careful: this might update state to success or failure so it should go after
 	// updating state to Staged.
-	sm.dealsAwaitingSeal.add(sectorID, proposalCid)
+	sm.dealsAwaitingSeal.attachDealToSector(sectorID, proposalCid)
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("could not save deal awaiting seal: %s", err)
 	}
 }
 
-// dealsAwaitingSealStruct is a container for keeping track of which sectors have
-// pieces from which deals. We need it to accommodate a race condition where
-// a sector commit message is added to chain before we can add the sector/deal
-// book-keeping. It effectively caches success and failure results for sectors
-// for tardy add() calls.
-type dealsAwaitingSealStruct struct {
-	l sync.Mutex
-	// Maps from sector id to the deal cids with pieces in the sector.
-	SectorsToDeals map[uint64][]cid.Cid
-	// Maps from sector id to sector.
-	SuccessfulSectors map[uint64]*sectorbuilder.SealedSectorMetadata
-	// Maps from sector id to seal failure error string.
-	FailedSectors map[uint64]string
-	// Maps from sector id to the sector's commitSector message CID
-	CommitmentMessages map[uint64]cid.Cid
-
-	onSuccess func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata)
-	onFail    func(dealCid cid.Cid, message string)
-}
-
 func (sm *Miner) loadDealsAwaitingSeal() error {
-	sm.dealsAwaitingSeal = &dealsAwaitingSealStruct{
-		SectorsToDeals:     make(map[uint64][]cid.Cid),
-		SuccessfulSectors:  make(map[uint64]*sectorbuilder.SealedSectorMetadata),
-		FailedSectors:      make(map[uint64]string),
-		CommitmentMessages: make(map[uint64]cid.Cid),
-	}
+	sm.dealsAwaitingSeal = newDealsAwaitingSeal()
 
 	key := datastore.KeyWithNamespaces([]string{dealsAwatingSealDatastorePrefix})
 	result, notFound := sm.dealsAwaitingSealDs.Get(key)
@@ -537,66 +508,6 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 	return nil
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) addCommitmentMessageCid(sectorID uint64, msgCid cid.Cid) {
-	dealsAwaitingSeal.l.Lock()
-	defer dealsAwaitingSeal.l.Unlock()
-
-	dealsAwaitingSeal.CommitmentMessages[sectorID] = msgCid
-}
-
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) add(sectorID uint64, dealCid cid.Cid) {
-	dealsAwaitingSeal.l.Lock()
-	defer dealsAwaitingSeal.l.Unlock()
-
-	if sector, ok := dealsAwaitingSeal.SuccessfulSectors[sectorID]; ok {
-		dealsAwaitingSeal.onSuccess(dealCid, sector)
-		// Don't keep references to sectors around forever. Assume that at most
-		// one success-before-add call will happen (eg, in a test). Sector sealing
-		// outside of tests is so slow that it shouldn't happen in practice.
-		// So now that it has happened once, clean it up. If we wanted to keep
-		// the state around for longer for some reason we need to limit how many
-		// sectors we hang onto, eg keep a fixed-length slice of successes
-		// and failures and shift the oldest off and the newest on.
-		delete(dealsAwaitingSeal.SuccessfulSectors, sectorID)
-		delete(dealsAwaitingSeal.CommitmentMessages, sectorID)
-	} else if message, ok := dealsAwaitingSeal.FailedSectors[sectorID]; ok {
-		dealsAwaitingSeal.onFail(dealCid, message)
-		// Same as above.
-		delete(dealsAwaitingSeal.FailedSectors, sectorID)
-	} else {
-		deals, ok := dealsAwaitingSeal.SectorsToDeals[sectorID]
-		if ok {
-			dealsAwaitingSeal.SectorsToDeals[sectorID] = append(deals, dealCid)
-		} else {
-			dealsAwaitingSeal.SectorsToDeals[sectorID] = []cid.Cid{dealCid}
-		}
-	}
-}
-
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) success(sector *sectorbuilder.SealedSectorMetadata) {
-	dealsAwaitingSeal.l.Lock()
-	defer dealsAwaitingSeal.l.Unlock()
-
-	dealsAwaitingSeal.SuccessfulSectors[sector.SectorID] = sector
-
-	for _, dealCid := range dealsAwaitingSeal.SectorsToDeals[sector.SectorID] {
-		dealsAwaitingSeal.onSuccess(dealCid, sector)
-	}
-	delete(dealsAwaitingSeal.SectorsToDeals, sector.SectorID)
-}
-
-func (dealsAwaitingSeal *dealsAwaitingSealStruct) fail(sectorID uint64, message string) {
-	dealsAwaitingSeal.l.Lock()
-	defer dealsAwaitingSeal.l.Unlock()
-
-	dealsAwaitingSeal.FailedSectors[sectorID] = message
-
-	for _, dealCid := range dealsAwaitingSeal.SectorsToDeals[sectorID] {
-		dealsAwaitingSeal.onFail(dealCid, message)
-	}
-	delete(dealsAwaitingSeal.SectorsToDeals, sectorID)
-}
-
 // OnCommitmentSent is a callback, called when a sector seal message was posted to the chain.
 func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, msgCid cid.Cid, err error) {
 	sectorID := sector.SectorID
@@ -605,14 +516,13 @@ func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, ms
 	if err != nil {
 		log.Errorf("failed sealing sector: %d: %s:", sectorID, err)
 		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
-		sm.dealsAwaitingSeal.fail(sector.SectorID, errMsg)
+		sm.dealsAwaitingSeal.onSealFail(sector.SectorID, errMsg)
 	} else {
-		sm.dealsAwaitingSeal.addCommitmentMessageCid(sectorID, msgCid)
-		sm.dealsAwaitingSeal.success(sector)
+		sm.dealsAwaitingSeal.onSealSuccess(sector, msgCid)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("failed persisting deals awaiting seal: %s", err)
-		sm.dealsAwaitingSeal.fail(sector.SectorID, "failed persisting deals awaiting seal")
+		sm.dealsAwaitingSeal.onSealFail(sector.SectorID, "failed persisting deals awaiting seal")
 	}
 }
 
@@ -624,14 +534,17 @@ func (sm *Miner) onCommitSuccess(dealCid cid.Cid, sector *sectorbuilder.SealedSe
 	}
 
 	// failure to locate commitmentMessage should not block update
-	commitmentMessage := sm.dealsAwaitingSeal.CommitmentMessages[sector.SectorID]
+	commitMessageCid, ok := sm.dealsAwaitingSeal.commitMessageCid(sector.SectorID)
+	if !ok {
+		log.Errorf("commit succeeded, but could not find commit message cid.")
+	}
 
+	// update response
 	err = sm.updateDealResponse(dealCid, func(resp *storagedeal.Response) {
-
 		resp.State = storagedeal.Posted
 		resp.ProofInfo = &storagedeal.ProofInfo{
 			SectorID:          sector.SectorID,
-			CommitmentMessage: &commitmentMessage,
+			CommitmentMessage: commitMessageCid,
 		}
 		if pieceInfo != nil {
 			resp.ProofInfo.PieceInclusionProof = pieceInfo.InclusionProof
