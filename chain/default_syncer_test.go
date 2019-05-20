@@ -189,6 +189,40 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 	}
 }
 
+// requireChainOfLength generates a fake chain of given length for testing
+// relating to chain length
+func requireChainOfLength(t *testing.T, length int, con consensus.Protocol) types.SortedCidSet {
+	var err error
+	minerPower := uint64(25)
+	totalPower := uint64(100)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := mockSigner.PubKeys[0]
+
+	lastTipset := genTS
+	farFutureCids := []cid.Cid{genCid}
+	for i := 0; i < length; i++ {
+		fakeChildParams := th.FakeChildParams{
+			Parent:      lastTipset,
+			GenesisCid:  genCid,
+			StateRoot:   genStateRoot,
+			Consensus:   con,
+			MinerAddr:   minerAddress,
+			MinerPubKey: mockSignerPubKey,
+			Signer:      mockSigner,
+		}
+
+		linkBlk := th.RequireMkFakeChildWithCon(t, fakeChildParams)
+		linkBlk.Proof, linkBlk.Ticket, err = th.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
+		require.NoError(t, err)
+
+		lastTipset = th.RequireNewTipSet(t, linkBlk)
+		blockSource := th.NewTestFetcher()
+		_ = requirePutBlocks(t, blockSource, lastTipset.ToSlice()...)
+		farFutureCids = append(farFutureCids, linkBlk.Cid())
+	}
+	return types.NewSortedCidSet(farFutureCids...)
+}
+
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
 func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *th.TestFetcher) {
 	powerTable := &th.TestView{}
@@ -229,6 +263,25 @@ func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.De
 	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP)
 }
 
+// initSyncTestCaughtUp creates and returns the datastructures (consensus, chain
+// store, syncer, etc) needed to run tests. It also mutates the chain syncer to
+// use the caught up sync mode for easier testing of caught up mode behavior.
+func initSyncTestCaughtUp(t *testing.T, dstP *DefaultSyncerTestParams) (consensus.Protocol, *chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+	processor := th.NewTestProcessor()
+	powerTable := &th.TestView{}
+	r := repo.NewInMemoryRepo()
+	bs := bstore.NewBlockstore(r.Datastore())
+	cst := hamt.NewCborStore()
+	verifier := proofs.NewFakeVerifier(true, nil)
+	con := consensus.NewExpected(cst, bs, processor, powerTable, dstP.genCid, verifier)
+	requireSetTestChain(t, con, false)
+	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
+		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
+	}
+	sync, store, repo, tf := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, false)
+	return con, sync, store, repo, tf
+}
+
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
 func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, chain.Store, consensus.Protocol, *th.TestFetcher) {
@@ -246,7 +299,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	return sync, testchain, con, fetcher
 }
 
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, caughtUp bool) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -257,6 +310,9 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
+	if caughtUp {
+		syncer.SyncMode = chain.CaughtUp
+	}
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -582,6 +638,20 @@ func TestHeavierFork(t *testing.T) {
 	assertTsAdded(t, chainStore, forklink2)
 	assertTsAdded(t, chainStore, forklink3)
 	assertHead(t, chainStore, forklink3)
+}
+
+// Syncer errors if input blocks massively exceed the current block height in
+// caught up mode
+func TestFarFutureTipsetsAfterCaughtUp(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+
+	con, syncer, _, _, _ := initSyncTestCaughtUp(t)
+	ctx := context.Background()
+
+	farFutureChain := requireChainOfLength(t, chain.FinalityLimit, con)
+
+	err := syncer.HandleNewTipset(ctx, farFutureChain)
+	assert.Error(t, err, "test")
 }
 
 // Syncer errors if blocks don't form a tipset
