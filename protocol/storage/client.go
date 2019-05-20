@@ -256,7 +256,7 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Resp
 func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	storageDeal, err := smc.api.DealGet(c)
 	if err != nil {
-		return address.Undef, errors.Wrapf(err, "no such proposal by cid: %s", c)
+		return address.Undef, errors.Wrapf(err, "failed to fetch deal: %s", c)
 	}
 	return storageDeal.Miner, nil
 }
