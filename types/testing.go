@@ -236,11 +236,11 @@ func NewMsgs(n int) []*Message {
 // NewSignedMsgs returns n signed messages. The messages returned are unique to this invocation
 // but are not unique globally (ie, a second call to NewSignedMsgs will return the same
 // set of messages).
-func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
+func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 	var err error
 	newMsg := NewMessageForTestGetter()
 	smsgs := make([]*SignedMessage, n)
-	for i := 0; i < n; i++ {
+	for i := uint(0); i < n; i++ {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.Nonce = Uint64(i)

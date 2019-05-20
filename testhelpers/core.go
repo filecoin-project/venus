@@ -90,16 +90,6 @@ func RequireRandomPeerID(t *testing.T) peer.ID {
 	return pid
 }
 
-// TestMessagePoolAPI provides a simple BlockTimer interface implementation.
-type TestMessagePoolAPI struct {
-	Height uint64
-}
-
-// NewTestMessagePoolAPI creates a new TestMessagePoolAPI.
-func NewTestMessagePoolAPI(h uint64) *TestMessagePoolAPI {
-	return &TestMessagePoolAPI{Height: h}
-}
-
 // MockMessagePoolValidator is a mock validator
 type MockMessagePoolValidator struct {
 	Valid bool
@@ -116,11 +106,6 @@ func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.Sign
 		return nil
 	}
 	return errors.New("mock validation error")
-}
-
-// BlockHeight represents the height of the highest tipset.
-func (tbt *TestMessagePoolAPI) BlockHeight() (uint64, error) {
-	return tbt.Height, nil
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore

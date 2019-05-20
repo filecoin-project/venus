@@ -30,14 +30,14 @@ type Outbox struct {
 	// Maintains message queue in response to new tipsets.
 	policy QueuePolicy
 
-	chains chainProvider
+	chains outboxChainProvider
 	actors actorProvider
 
 	// Protects the "next nonce" calculation to avoid collisions.
 	nonceLock sync.Mutex
 }
 
-type chainProvider interface {
+type outboxChainProvider interface {
 	GetHead() types.SortedCidSet
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
 }
@@ -55,7 +55,7 @@ var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of er
 
 // NewOutbox creates a new outbox
 func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *MessageQueue,
-	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
+	publisher publisher, policy QueuePolicy, chains outboxChainProvider, actors actorProvider) *Outbox {
 	return &Outbox{
 		signer:    signer,
 		validator: validator,
@@ -151,7 +151,7 @@ func nextNonce(act *actor.Actor, queue *MessageQueue, address address.Address) (
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider chainProvider, key types.SortedCidSet) (uint64, error) {
+func tipsetHeight(provider outboxChainProvider, key types.SortedCidSet) (uint64, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err

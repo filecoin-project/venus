@@ -118,7 +118,7 @@ type Node struct {
 	HeaviestTipSetHandled func()
 
 	// Incoming messages for block mining.
-	MsgPool *core.MessagePool
+	Inbox *core.Inbox
 	// Messages sent and not yet mined.
 	Outbox *core.Outbox
 
@@ -426,9 +426,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
-	msgQueue := core.NewMessageQueue()
+	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
+	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
 
+	msgQueue := core.NewMessageQueue()
 	outboxPolicy := core.NewMessageQueuePolicy(chainStore, core.OutboxMaxAgeRounds)
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), core.Topic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
@@ -460,7 +461,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
-		MsgPool:      msgPool,
+		Inbox:        inbox,
 		OfflineMode:  nc.OfflineMode,
 		Outbox:       outbox,
 		PeerHost:     peerHost,
@@ -665,7 +666,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			if err := node.Outbox.HandleNewHead(ctx, head, newHead); err != nil {
 				log.Error("updating outbound message queue for new tipset", err)
 			}
-			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReader, head, newHead); err != nil {
+			if err := node.Inbox.HandleNewHead(ctx, head, newHead); err != nil {
 				log.Error("updating message pool for new tipset", err)
 			}
 			head = newHead
@@ -1053,7 +1054,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, err
 	}
 	return mining.NewDefaultWorker(
-		node.MsgPool, node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
+		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
 		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
 		node.Wallet, node.blockTime), nil
 }
