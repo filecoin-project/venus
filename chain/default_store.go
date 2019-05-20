@@ -19,6 +19,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// NewHeadTopic is the topic used to publish new heads.
+const NewHeadTopic = "new-head"
+
+// GenesisKey is the key at which the genesis Cid is written in the datastore.
+var GenesisKey = datastore.NewKey("/consensus/genesisCid")
+
 var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
@@ -56,9 +62,6 @@ type DefaultStore struct {
 	// Tracks tipsets by height/parentset for use by expected consensus.
 	tipIndex *TipIndex
 }
-
-// Ensure DefaultStore satisfies the Store interface at compile time.
-var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
 func NewDefaultStore(ds repo.Datastore, genesisCid cid.Cid) *DefaultStore {

@@ -176,8 +176,8 @@ func TestUpdateMessagePool(t *testing.T) {
 	// just makes sure it looks like it is hooked up correctly.
 	ctx := context.Background()
 	node := node.MakeNodesUnstarted(t, 1, true)[0]
-	chainForTest, ok := node.ChainReader.(chain.Store)
-	require.True(t, ok)
+	chainForTest := node.ChainReader
+	require.NotNil(t, chainForTest)
 
 	// Msg pool: [m0, m1],   Chain: gen -> b[m2, m3]
 	// to
