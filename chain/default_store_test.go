@@ -79,7 +79,7 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.DefaultStore, pK
 
 type requireHeadTipsetChainStore interface {
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 }
 
 func requireHeadTipset(t *testing.T, chain requireHeadTipsetChainStore) types.TipSet {

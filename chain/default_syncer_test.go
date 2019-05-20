@@ -1203,7 +1203,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 }
 
 type tipSetGetter interface {
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 }
 
 func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.SortedCidSet) *types.TipSet {
