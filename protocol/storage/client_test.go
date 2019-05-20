@@ -106,10 +106,44 @@ func TestProposeDeal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Accepted, dealResponse.State)
 
-		retrievedDeal := testAPI.DealGet(dealResponse.ProposalCid)
+		retrievedDeal, err := testAPI.DealGet(dealResponse.ProposalCid)
+		require.NoError(t, err)
 
 		assert.Equal(t, retrievedDeal.Response, dealResponse)
 	})
+}
+
+func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	addressCreator := address.NewForTestGetter()
+
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p, ok := request.(*storagedeal.SignedDealProposal)
+		require.True(t, ok)
+
+		pcid, err := convert.ToCid(p.Proposal)
+		require.NoError(t, err)
+		return &storagedeal.Response{
+			State:       storagedeal.Accepted,
+			Message:     "OK",
+			ProposalCid: pcid,
+		}, nil
+	})
+
+	testAPI := newTestClientAPI(t)
+	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
+
+	dataCid := types.SomeCid()
+	minerAddr := addressCreator()
+	askID := uint64(67)
+	duration := uint64(10000)
+	_, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
+	require.NoError(t, err)
+	_, err = client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
+	assert.Error(t, err)
 }
 
 type clientTestAPI struct {
@@ -240,8 +274,12 @@ func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
 	return results, nil
 }
 
-func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
-	return ctp.deals[dealCid]
+func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+	deal, ok := ctp.deals[dealCid]
+	if ok {
+		return deal, nil
+	}
+	return nil, porcelain.ErrDealNotFound
 }
 
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {

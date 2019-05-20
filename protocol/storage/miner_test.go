@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -616,12 +617,12 @@ func (mtp *minerTestPorcelain) DealsLs() ([]*storagedeal.Deal, error) {
 	return results, nil
 }
 
-func (mtp *minerTestPorcelain) DealGet(dealCid cid.Cid) *storagedeal.Deal {
+func (mtp *minerTestPorcelain) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
 	storageDeal, ok := mtp.deals[dealCid]
 	if !ok {
-		return nil
+		return nil, porcelain.ErrDealNotFound
 	}
-	return storageDeal
+	return storageDeal, nil
 }
 
 func (mtp *minerTestPorcelain) DealPut(storageDeal *storagedeal.Deal) error {
