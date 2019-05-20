@@ -285,7 +285,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		emptySector := &sectorbuilder.SealedSectorMetadata{SectorID: sector.SectorID}
-		miner.OnCommitmentSent(emptySector, msgCid, nil)
+		miner.OnCommitmentSent(context.Background(), emptySector, msgCid, nil)
 
 		// retrieve deal response
 		dealResponse := miner.Query(context.Background(), proposal.Proposal.PieceRef)

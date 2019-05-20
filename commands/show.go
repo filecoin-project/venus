@@ -83,7 +83,7 @@ var showDealCmd = &cmds.Command{
 			return err
 		}
 
-		deal, err := GetPorcelainAPI(env).DealGet(propcid)
+		deal, err := GetPorcelainAPI(env).DealGet(req.Context, propcid)
 		if err != nil {
 			return err
 		}

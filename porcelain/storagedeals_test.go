@@ -52,7 +52,8 @@ func TestDealGet(t *testing.T) {
 		deals: []*storagedeal.Deal{expectedDeal},
 	}
 
-	resultDeal := porcelain.DealGet(context.Background(), plumbing, dealCid)
+	resultDeal, err := porcelain.DealGet(context.Background(), plumbing, dealCid)
+	assert.NoError(t, err)
 	assert.NotNil(t, resultDeal)
 	assert.Equal(t, expectedDeal, resultDeal)
 }
