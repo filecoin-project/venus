@@ -229,13 +229,13 @@ func TestIsWinningTicket(t *testing.T) {
 
 	testCase := struct {
 		ticket     byte
-		myPower    int64
-		totalPower int64
+		myPower    uint64
+		totalPower uint64
 		wins       bool
 	}{0x00, 1, 5, true}
 
 	t.Run("IsWinningTicket returns false + error when we fail to get total power", func(t *testing.T) {
-		ptv1 := NewFailingTestPowerTableView(testCase.myPower, testCase.totalPower)
+		ptv1 := NewFailingTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [65]byte{}
 		ticket[0] = testCase.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, ticket[:], minerAddress)
@@ -245,7 +245,7 @@ func TestIsWinningTicket(t *testing.T) {
 	})
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
-		ptv2 := NewFailingMinerTestPowerTableView(testCase.myPower, testCase.totalPower)
+		ptv2 := NewFailingMinerTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [sha256.Size]byte{}
 		ticket[0] = testCase.ticket
 		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, ticket[:], minerAddress)
@@ -280,7 +280,7 @@ func TestCompareTicketPower(t *testing.T) {
 	for _, c := range cases {
 		ticket := [65]byte{}
 		ticket[0] = c.ticket
-		res := consensus.CompareTicketPower(ticket[:], c.myPower, c.totalPower)
+		res := consensus.CompareTicketPower(ticket[:], types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 		assert.Equal(t, c.wins, res, "%+v", c)
 	}
 }
@@ -333,17 +333,17 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, pr
 	return cis, bs, pv
 }
 
-type FailingTestPowerTableView struct{ minerPower, totalPower uint64 }
+type FailingTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
 
-func NewFailingTestPowerTableView(minerPower int64, totalPower int64) *FailingTestPowerTableView {
-	return &FailingTestPowerTableView{uint64(minerPower), uint64(totalPower)}
+func NewFailingTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingTestPowerTableView {
+	return &FailingTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
 }
 
-func (tv *FailingTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+func (tv *FailingTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	return tv.totalPower, errors.New("something went wrong with the total power")
 }
 
-func (tv *FailingTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (tv *FailingTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	return tv.minerPower, nil
 }
 
@@ -351,17 +351,17 @@ func (tv *FailingTestPowerTableView) HasPower(ctx context.Context, st state.Tree
 	return true
 }
 
-type FailingMinerTestPowerTableView struct{ minerPower, totalPower uint64 }
+type FailingMinerTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
 
-func NewFailingMinerTestPowerTableView(minerPower int64, totalPower int64) *FailingMinerTestPowerTableView {
-	return &FailingMinerTestPowerTableView{uint64(minerPower), uint64(totalPower)}
+func NewFailingMinerTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingMinerTestPowerTableView {
+	return &FailingMinerTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
 }
 
-func (tv *FailingMinerTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+func (tv *FailingMinerTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	return tv.totalPower, nil
 }
 
-func (tv *FailingMinerTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (tv *FailingMinerTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	return tv.minerPower, errors.New("something went wrong with the miner power")
 }
 
