@@ -2,13 +2,13 @@ package consensus
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
