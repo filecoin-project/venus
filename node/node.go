@@ -429,8 +429,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgQueue := core.NewMessageQueue()
 
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), core.Topic, msgPool)
-	actorProvider := newDefaultActorProvider(chainStore, &cstOffline)
-	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, chainStore, actorProvider)
+	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, chainStore, chainFacade)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:      bswap,

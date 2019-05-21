@@ -152,8 +152,8 @@ func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessag
 type fakeProvider struct {
 	head   types.SortedCidSet // Provided by GetHead and expected by others
 	tipset *types.TipSet      // Provided by GetTipset(head)
-	addr   address.Address    // Expected by GetActor
-	actor  *actor.Actor       // Provided by GetActor(head, addr)
+	addr   address.Address    // Expected by GetActorAt
+	actor  *actor.Actor       // Provided by GetActorAt(head, tipKey, addr)
 }
 
 func (p *fakeProvider) GetHead() types.SortedCidSet {
@@ -167,7 +167,7 @@ func (p *fakeProvider) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error
 	return p.tipset, nil
 }
 
-func (p *fakeProvider) GetActor(ctx context.Context, tsKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
+func (p *fakeProvider) GetActorAt(ctx context.Context, tsKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
 	if !tsKey.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -61,7 +62,7 @@ func (chn *BlockChainFacade) Head() (*types.TipSet, error) {
 	return ts, nil
 }
 
-// Ls returns a channel of tipsets from head to genesis
+// Ls returns an iterator over tipsets from head to genesis.
 func (chn *BlockChainFacade) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
 	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
@@ -85,13 +86,27 @@ func (chn *BlockChainFacade) SampleRandomness(ctx context.Context, sampleHeight 
 	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }
 
-// GetActor returns an actor from the latest state on the chain
+// GetActorAt returns an actor from the latest state on the chain
 func (chn *BlockChainFacade) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
+	return chn.GetActorAt(ctx, chn.reader.GetHead(), addr)
+}
+
+// GetActorAt returns an actor at a specified tipset key.
+func (chn *BlockChainFacade) GetActorAt(ctx context.Context, tipKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
+	stateCid, err := chn.reader.GetTipSetStateRoot(tipKey)
 	if err != nil {
 		return nil, err
 	}
-	return st.GetActor(ctx, addr)
+	tree, err := state.LoadStateTree(ctx, chn.cst, stateCid, builtin.Actors)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load latest state")
+	}
+
+	actr, err := tree.GetActor(ctx, addr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "no actor at address %s", addr)
+	}
+	return actr, nil
 }
 
 // LsActors returns a channel with actors from the latest state on the chain

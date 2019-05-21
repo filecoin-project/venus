@@ -41,8 +41,8 @@ type chainProvider interface {
 }
 
 type actorProvider interface {
-	// GetActor returns the actor state defined by the chain up to some tipset
-	GetActor(ctx context.Context, tipset types.SortedCidSet, addr address.Address) (*actor.Actor, error)
+	// GetActorAt returns the actor state defined by the chain up to some tipset
+	GetActorAt(ctx context.Context, tipset types.SortedCidSet, addr address.Address) (*actor.Actor, error)
 }
 
 type publisher interface {
@@ -84,14 +84,14 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *typ
 
 	head := ob.chains.GetHead()
 
-	fromActor, err := ob.actors.GetActor(ctx, head, from)
+	fromActor, err := ob.actors.GetActorAt(ctx, head, from)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "no GetActor at address %s", from)
+		return cid.Undef, errors.Wrapf(err, "no actor at address %s", from)
 	}
 
 	nonce, err := nextNonce(fromActor, ob.queue, from)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for GetActor %s", from)
+		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor at %s", from)
 	}
 
 	rawMsg := types.NewMessage(from, to, nonce, value, method, encodedParams)
@@ -123,8 +123,8 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *typ
 	return signed.Cid()
 }
 
-// nextNonce returns the next expected nonce value for an account GetActor. This is the larger
-// of the GetActor's nonce value, or one greater than the largest nonce from the GetActor found in the message queue.
+// nextNonce returns the next expected nonce value for an account actor. This is the larger
+// of the actor's nonce value, or one greater than the largest nonce from the actor found in the message queue.
 func nextNonce(act *actor.Actor, queue *MessageQueue, address address.Address) (uint64, error) {
 	actorNonce, err := actor.NextNonce(act)
 	if err != nil {
