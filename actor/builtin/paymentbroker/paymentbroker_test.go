@@ -117,13 +117,6 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	blockHeightParam := types.NewBlockHeight(43)
 	redeemerParams := []interface{}{blockHeightParam}
 
-	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
-
-	callRedeem := func(condition *types.Predicate, params []interface{}) (*consensus.ApplicationResult, error) {
-		return sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, params...)
-	}
-
 	// All the following tests attempt to call PBTestActor.ParamsNotZero with a condition.
 	// PBTestActor.ParamsNotZero takes 3 parameter: an Address, a uint64 sector id, and a BlockHeight
 	// If any of these are zero values the method throws an error indicating the condition is false.
@@ -131,67 +124,268 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	// height will be added as a redeemer supplied parameter to redeem.
 
 	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := callRedeem(condition, redeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 	})
 
 	t.Run("Redeem should fail if condition is _NOT_ met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		badAddressParam := address.Undef
 		badParams := []interface{}{badAddressParam, sectorIdParam}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
-		appResult, err := callRedeem(condition, redeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		badToAddress := addrGetter()
 
 		condition := &types.Predicate{To: badToAddress, Method: method, Params: payerParams}
-		appResult, err := callRedeem(condition, redeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor code not found")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		badMethod := "nonexistentMethod"
 
 		condition := &types.Predicate{To: toAddress, Method: badMethod, Params: payerParams}
-		appResult, err := callRedeem(condition, redeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: actor does not export method")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		badParams := []interface{}{}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
-		appResult, err := callRedeem(condition, redeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 	})
 
 	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		badRedeemerParams := []interface{}{}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := callRedeem(condition, badRedeemerParams)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, badRedeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid params")
+		assert.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
+	})
+}
+
+func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	t.Run("Redeem should set the redeemed flag to true on success", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Expect that the redeemed flag is false on init
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.Equal(t, false, channel.Redeemed)
+
+		// Successfully redeem the payment channel
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the redeemed flag is now true
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.Equal(t, true, channel.Redeemed)
+	})
+
+	t.Run("Redeem should set cached condition on success", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Expect that the condition is nil on init
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.Nil(t, channel.Condition)
+
+		// Successfully redeem the payment channel
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is now set and correct
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, blockHeightParam.Bytes())
+	})
+
+	t.Run("Redeem should set cached condition back to nil when no condition is provided", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Successfully redeem the payment channel with condition
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is set and correct
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+
+		// Successfully redeem the payment channel again without condition
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is now nil
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.Nil(t, channel.Condition)
+	})
+
+	t.Run("Redeem should update the cached condition with new params when initial redeem condition is nil", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+
+		// Successfully redeem the payment channel with no condition
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is nil
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.Nil(t, channel.Condition)
+
+		// Successfully redeem the payment channel again with a condition
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is updated with the new redeemer params
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, blockHeightParam.Bytes())
+	})
+
+	t.Run("Redeem should update the cached condition with new params when provided", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+
+		// Successfully redeem the payment channel with condition
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is set and correct
+		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel := sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+
+		// Successfully redeem the payment channel again with new redeemer params
+		newBlockHeightParam := types.NewBlockHeight(52)
+		newRedeemerParams := []interface{}{newBlockHeightParam}
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition, newRedeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Expect that the condition is updated with the new redeemer params
+		paymentBroker = state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+		channel = sys.retrieveChannel(paymentBroker)
+		assert.NotNil(t, channel.Condition)
+		assert.Equal(t, toAddress, channel.Condition.To)
+		assert.Equal(t, method, channel.Condition.Method)
+		assert.Contains(t, channel.Condition.Params, addrParam.Bytes())
+		assert.Contains(t, channel.Condition.Params, sectorIdParam)
+		assert.Contains(t, channel.Condition.Params, newBlockHeightParam.Bytes())
+	})
+
+	t.Run("Redeem uses cached condition in subsequent calls", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+		// Redeem without params expects an invalid condition error
+		condition := &types.Predicate{To: toAddress, Method: method}
+		appResult, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		require.NoError(t, err)
+		require.Error(t, appResult.ExecutionError)
+		require.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
+
+		// Successfully redeem the payment channel with params
+		condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+		appResult, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		require.NoError(t, err)
+		require.NoError(t, appResult.ExecutionError)
+
+		// Redeem again without params and expect no error
+		condition = &types.Predicate{To: toAddress, Method: method}
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		assert.NoError(t, err)
+		assert.NoError(t, appResult.ExecutionError)
 	})
 }
 
@@ -425,10 +619,10 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
 
-	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
-
 	t.Run("Close should succeed if condition is met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
@@ -437,6 +631,9 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 	})
 
 	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
+		sys := setup(t)
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
 
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
@@ -444,6 +641,40 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
 	})
+}
+
+func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Close without params and expect a panic
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
+	require.NoError(t, err)
+	require.Error(t, result.ExecutionError)
+	require.EqualValues(t, errors.CodeError(result.ExecutionError), ErrConditionInvalid)
+
+	// Successfully redeem the payment channel with params
+	condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Close again without params and expect no error
+	result, err = sys.applySignatureMessage(sys.target, 200, sys.defaultValidAt, 0, "close", 0, condition)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
 }
 
 func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
@@ -592,6 +823,95 @@ func TestPaymentBrokerCancel(t *testing.T) {
 
 	assert.Equal(t, types.NewBlockHeight(20000), channel.AgreedEol)
 	assert.Equal(t, types.NewBlockHeight(10100), channel.Eol)
+}
+
+func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	addrParam := addrGetter()
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{addrParam, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Attempts to Cancel and expects failure
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrInvalidCancel, errors.CodeError(result.ExecutionError))
+}
+
+func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Attempts to Cancel and expects failure
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	result, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
+	assert.Error(t, result.ExecutionError)
+	assert.EqualValues(t, ErrInvalidCancel, errors.CodeError(result.ExecutionError))
+}
+
+func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *testing.T) {
+	tf.UnitTest(t)
+
+	addrGetter := address.NewForTestGetter()
+	toAddress := addrGetter()
+	method := "paramsNotZero"
+	sectorIdParam := uint64(6)
+	payerParams := []interface{}{toAddress, sectorIdParam}
+	blockHeightParam := types.NewBlockHeight(43)
+	redeemerParams := []interface{}{blockHeightParam}
+
+	sys := setup(t)
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+
+	// Successfully redeem the payment channel with params
+	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	require.NoError(t, err)
+	require.NoError(t, result.ExecutionError)
+
+	// Expect that the redeemed flag is true and condition is set
+	paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
+	channel := sys.retrieveChannel(paymentBroker)
+	assert.Equal(t, true, channel.Redeemed)
+	assert.NotNil(t, channel.Condition)
+
+	// Change the condition to make it no longer valid
+	channel.Condition.Params = []interface{}{}
+
+	// Attempt to Cancel and expects success
+	pdata := core.MustConvertParams(sys.channelID)
+	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	_, err = sys.ApplyMessage(msg, 100)
+	assert.NoError(t, err)
 }
 
 func TestPaymentBrokerLs(t *testing.T) {

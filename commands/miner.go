@@ -278,7 +278,7 @@ This command waits for the ask to be mined.`,
 			_, err := fmt.Fprintf(w, `Set price for miner %s to %s.
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
-	`,
+`,
 				res.MinerSetPriceResponse.MinerAddr.String(),
 				res.MinerSetPriceResponse.Price.String(),
 				res.MinerSetPriceResponse.AddAskCid.String(),

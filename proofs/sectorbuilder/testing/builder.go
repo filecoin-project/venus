@@ -75,7 +75,7 @@ func (b *Builder) Build() Harness {
 		panic(err)
 	}
 
-	class := types.NewTestSectorClass()
+	class := types.NewSectorClass(types.OneKiBSectorSize)
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
@@ -88,7 +88,7 @@ func (b *Builder) Build() Harness {
 	})
 	require.NoError(b.t, err)
 
-	max, err := proofs.GetMaxUserBytesPerStagedSector(class.SectorSize())
+	max := proofs.GetMaxUserBytesPerStagedSector(class.SectorSize())
 	require.NoError(b.t, err)
 
 	return Harness{

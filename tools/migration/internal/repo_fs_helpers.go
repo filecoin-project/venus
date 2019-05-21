@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	rcopy "github.com/otiai10/copy"
 )
@@ -30,7 +31,7 @@ func CloneRepo(oldRepoLink string) (string, error) {
 		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
 	}
 
-	newRepoPath, err := getNewRepoPath(oldRepoLink, "")
+	newRepoPath, err := makeNewRepoPath(oldRepoLink)
 	if err != nil {
 		return "", err
 	}
@@ -51,6 +52,10 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 		return err
 	}
 
+	if _, err := os.Stat(newRepoPath); err != nil {
+		return err
+	}
+
 	if err := os.Remove(oldRepoLink); err != nil {
 		return err
 	}
@@ -60,34 +65,25 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 	return nil
 }
 
-// OpenRepo opens repoPath
-func OpenRepo(repoPath string) (*os.File, error) {
-	return os.Open(repoPath)
-}
-
-// getNewRepoPath generates a new repo path for a migration.
+// makeNewRepoPath generates a new repo path for a migration.
 // Params:
 //     oldPath:  the actual old repo path
-//     newRepoOpt:  whatever was passed in by the CLI (can be blank)
 // Returns:
 //     a path generated using the above information plus tmp_<timestamp>.
 //     error
 // Example output:
 //     /Users/davonte/.filecoin-20190806-150455-001
-func getNewRepoPath(oldPath, newRepoOpt string) (string, error) {
-	var newRepoPrefix string
-	if newRepoOpt != "" {
-		newRepoPrefix = newRepoOpt
-	} else {
-		newRepoPrefix = oldPath
-	}
-
+func makeNewRepoPath(oldPath string) (string, error) {
 	// unlikely to see a name collision but make sure; making it loop up to 1000
 	// ensures that even if there are 1000 calls/sec then the timestamp will change
 	// anyway.
 	var newpath string
 	for i := 1; i < 1000; i++ {
-		newpath = strings.Join([]string{newRepoPrefix, NowString(), fmt.Sprintf("%03d", i)}, "-")
+
+		now := time.Now()
+		nowStr := now.Format("20060102-150405")
+
+		newpath = strings.Join([]string{oldPath, nowStr, fmt.Sprintf("%03d", i)}, "-")
 		if _, err := os.Stat(newpath); os.IsNotExist(err) {
 			return newpath, nil
 		}

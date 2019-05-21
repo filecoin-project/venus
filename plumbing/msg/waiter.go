@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -21,9 +22,18 @@ import (
 
 var log = logging.Logger("messageimpl")
 
+// Abstracts over a store of blockchain state.
+type waiterChainReader interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	HeadEvents() *pubsub.PubSub
+}
+
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader chain.ReadStore
+	chainReader waiterChainReader
 	cst         *hamt.CborIpldStore
 	bs          bstore.Blockstore
 }
@@ -36,7 +46,7 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,
@@ -46,11 +56,11 @@ func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborI
 
 // Find searches the blockchain history for a message (but doesn't wait).
 func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool, error) {
-	headTipSetAndState, err := w.chainReader.GetTipSetAndState(w.chainReader.GetHead())
+	headTipSet, err := w.chainReader.GetTipSet(w.chainReader.GetHead())
 	if err != nil {
 		return nil, false, err
 	}
-	return w.findMessage(ctx, &headTipSetAndState.TipSet, msgCid)
+	return w.findMessage(ctx, headTipSet, msgCid)
 }
 
 // Wait invokes the callback when a message with the given cid appears on chain.
@@ -186,11 +196,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := w.chainReader.GetTipSetAndState(ids)
+	stateCid, err := w.chainReader.GetTipSetStateRoot(ids)
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, w.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, w.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +211,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	}
 	tsBlockHeight := types.NewBlockHeight(tsHeight)
 	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	ancestors, err := chain.GetRecentAncestors(ctx, tsas.TipSet, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	parentTs, err := w.chainReader.GetTipSet(ids)
+	if err != nil {
+		return nil, err
+	}
+	ancestors, err := chain.GetRecentAncestors(ctx, *parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, err
 	}

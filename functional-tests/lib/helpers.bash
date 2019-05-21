@@ -43,7 +43,10 @@ function finish {
   rm -f "${UNSEAL_PATH}"
   rm -rf "${CL_REPO_DIR}"
   rm -rf "${BOOTSTRAP_MN_REPO_DIR}"
-  rm -rf "${MN_REPO_DIR}"
+  rm -rf "${STORAGE_MN_REPO_DIR}"
+  rm -rf "${CL_SECTOR_DIR}"
+  rm -rf "${BOOTSTRAP_MN_SECTOR_DIR}"
+  rm -rf "${STORAGE_MN_SECTOR_DIR}"
 }
 
 function free_port {
@@ -59,8 +62,9 @@ function init_local_daemon {
   ./go-filecoin init \
     --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
     --repodir="$1" \
-    --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-    --genesisfile="$3"
+    --sectordir="$2" \
+    --cmdapiaddr=/ip4/127.0.0.1/tcp/"$3" \
+    --genesisfile="$4"
 }
 
 function init_devnet_daemon {

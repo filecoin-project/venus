@@ -29,24 +29,24 @@ Steps to reproduce the behavior:
 **Screenshots**
 <!-- If applicable, add logging output or screenshots to help explain your problem. -->
 
+<!-- Please fill out this information below completely. It will help us solve your issue faster. -->
+**Diagnostic information**
+<!-- If you are having issues running go-filecoin, please include the following: -->
+- Filecoin Inspect Ouput: <!-- go-filecoin inspect all -->
+- Current Head: <!--go-filecoin chain head -->
+- Connected Peers: <!-- go-filecoin swarm connect -->
+
 **Version information**
-<!-- please fill out this information below completely, it will help us solve your issue faster -->
-<!-- if you are trying to build go-filecoin -->
+<!-- If you are having issue building go-filecoin please include the following: -->
 - Go: <!-- go version -->
 - Rust: <!-- rustc --version -->
 - Cargo: <!-- cargo --version -->
 - Commit: <!--  git rev-parse HEAD -->
+- Go Env: <!-- go env -->
+- CC: <!-- $(go env | grep -E "^CC" |  sed -e 's/.*\=//' | sed -e 's/^"//' -e 's/"$//') --version -->
 
-_go env_
-```
-<!-- go env -->
-```
-_cc_
-```
-<!-- $(go env | grep -E "^CC" |  sed -e 's/.*\=//' | sed -e 's/^"//' -e 's/"$//') --version -->
-```
-<!-- if you are running go-filecoin -->
-- Version: <!-- go-filecoin version -->
+
+
 
 **Additional context**
 <!-- Add any other context about the problem here. -->
