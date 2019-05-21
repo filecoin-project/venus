@@ -116,12 +116,12 @@ func (z *BytesAmount) Mul(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Quo sets z to the quotient x/y for y != 0 and returns z.
-// If y == 0, a division-by-zero run-time panic occurs.
-func (z *BytesAmount) Quo(x, y *BytesAmount) *BytesAmount {
+// Quo returns the quotient z/y for y != 0. If y == 0, a division-by-zero
+// run-time panic occurs.
+func (z *BytesAmount) Quo(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
-	newVal.Quo(x.val, y.val)
+	newVal.Quo(z.val, y.val)
 	newZ := BytesAmount{val: newVal}
 	return &newZ
 }

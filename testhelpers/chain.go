@@ -183,7 +183,7 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmoun
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
 	var ticket types.Signature
 
-	quot := totalPower.Quo(totalPower, minerPower)
+	quot := totalPower.Quo(minerPower)
 	threshold := types.NewBytesAmount(100000).Mul(types.OneKiBSectorSize)
 
 	if quot.GreaterThan(threshold) {
