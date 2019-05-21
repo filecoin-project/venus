@@ -2,7 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 
 	"github.com/mitchellh/go-homedir"
@@ -242,15 +241,15 @@ func (m *MigrationRunner) findMigration(repoVersion uint) (mig Migration, err er
 	for _, mig := range m.MigrationsProvider() {
 		from, to := mig.Versions()
 		if to != from+1 {
-			log.Printf("refusing multi-version migration from %d to %d", from, to)
+			m.logger.Printf("refusing multi-version migration from %d to %d", from, to)
 		} else if from == repoVersion {
 			applicableMigs = append(applicableMigs, mig)
 		} else {
-			log.Printf("skipping migration from %d to %d", from, to)
+			m.logger.Printf("skipping migration from %d to %d", from, to)
 		}
 	}
 	if len(applicableMigs) == 0 {
-		log.Printf("did not find valid repo migration for version %d", repoVersion)
+		m.logger.Printf("did not find valid repo migration for version %d", repoVersion)
 		return nil, nil
 	}
 	if len(applicableMigs) > 1 {

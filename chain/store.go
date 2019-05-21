@@ -2,8 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/address"
 
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
@@ -44,8 +42,6 @@ type ReadStore interface {
 	HeadEvents() *pubsub.PubSub
 	// GetHead returns the head of the chain tracked by the store.
 	GetHead() types.SortedCidSet
-	// ActorFromLatestState tries to get an actor from the latest state
-	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 
 	GenesisCid() cid.Cid
 

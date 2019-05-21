@@ -66,11 +66,12 @@ func TestMigrationRunner_Run(t *testing.T) {
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		out := CaptureOutput(func() {
-			assert.NoError(t, runner.Run().Err)
-		})
-		assert.Contains(t, out, "skipping migration from 0 to 1")
-		assert.Contains(t, out, "did not find valid repo migration for version 199")
+		assert.NoError(t, runner.Run().Err)
+
+		out, err := ioutil.ReadFile(dummyLogPath)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), "skipping migration from 0 to 1")
+		assert.Contains(t, string(out), "did not find valid repo migration for version 199")
 	})
 
 	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
@@ -144,10 +145,11 @@ func TestMigrationRunner_Run(t *testing.T) {
 				&TestMigMultiversion,
 			}
 		}
-		output := CaptureOutput(func() {
-			assert.NoError(t, runner.Run().Err)
-		})
-		assert.Contains(t, output, "refusing multi-version migration from 1 to 3")
+		assert.NoError(t, runner.Run().Err)
+
+		out, err := ioutil.ReadFile(dummyLogPath)
+		require.NoError(t, err)
+		assert.Contains(t, string(out), "refusing multi-version migration from 1 to 3")
 	})
 
 	t.Run("newRepoOpt is ignored for commands other than install", func(t *testing.T) {

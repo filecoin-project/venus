@@ -404,11 +404,7 @@ func (td *TestDaemon) Shutdown() {
 		td.test.Fatalf("Failed to kill daemon %s", err)
 	}
 
-	if td.repoDir == "" {
-		panic("testdaemon had no repodir set")
-	}
-
-	_ = os.RemoveAll(td.repoDir)
+	td.cleanupFilesystem()
 }
 
 // ShutdownSuccess stops the daemon, asserting that it exited successfully.
@@ -417,8 +413,7 @@ func (td *TestDaemon) ShutdownSuccess() {
 	assert.NoError(td.test, err)
 
 	td.assertNoLogErrors()
-
-	_ = os.RemoveAll(td.repoDir)
+	td.cleanupFilesystem()
 }
 
 func (td *TestDaemon) assertNoLogErrors() {
@@ -448,7 +443,7 @@ func (td *TestDaemon) ShutdownEasy() {
 	tdOut := td.ReadStderr()
 	assert.NoError(td.test, err, tdOut)
 
-	_ = os.RemoveAll(td.repoDir)
+	td.cleanupFilesystem()
 }
 
 // WaitForAPI polls if the API on the daemon is available, and blocks until
@@ -782,7 +777,6 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	}
 
 	repoDirFlag := fmt.Sprintf("--repodir=%s", td.repoDir)
-
 	sectorDirFlag := fmt.Sprintf("--sectordir=%s", td.sectorDir)
 
 	// build command options
@@ -889,5 +883,25 @@ func (td *TestDaemon) createNewProcess() {
 	td.Stdin, err = td.process.StdinPipe()
 	if err != nil {
 		td.test.Fatal(err)
+	}
+}
+
+func (td *TestDaemon) cleanupFilesystem() {
+	if td.repoDir != "" {
+		err := os.RemoveAll(td.repoDir)
+		if err != nil {
+			td.test.Logf("error removing repo dir %s: %s", td.repoDir, err)
+		}
+	} else {
+		td.test.Logf("testdaemon has nil repodir")
+	}
+
+	if td.sectorDir != "" {
+		err := os.RemoveAll(td.sectorDir)
+		if err != nil {
+			td.test.Logf("error removing sector dir %s: %s", td.sectorDir, err)
+		}
+	} else {
+		td.test.Logf("testdaemon has nil sectordir")
 	}
 }

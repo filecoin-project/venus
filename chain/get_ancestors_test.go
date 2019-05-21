@@ -268,3 +268,129 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint64(25), lastBlockHeight)
 }
+
+func TestFindCommonAncestorSameChain(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+	ctx, blockSource, chainStore := setupGetAncestorTests(t)
+	// Add 30 tipsets to the head of the chainStore.
+	len1 := 30
+	requireGrowChain(ctx, t, blockSource, chainStore, len1)
+	headTipSet := requireHeadTipset(t, chainStore)
+	headIterOne := chain.IterAncestors(ctx, chainStore, headTipSet)
+	headIterTwo := chain.IterAncestors(ctx, chainStore, headTipSet)
+	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
+	assert.NoError(t, err)
+	assert.Equal(t, headTipSet, commonAncestor)
+}
+
+func TestFindCommonAncestorFork(t *testing.T) {
+
+	tf.BadUnitTestWithSideEffects(t)
+	ctx, blockSource, chainStore := setupGetAncestorTests(t)
+	// Add 3 tipsets to the head of the chainStore.
+	len1 := 3
+	requireGrowChain(ctx, t, blockSource, chainStore, len1)
+	headTipSetCA := requireHeadTipset(t, chainStore)
+
+	// make the first fork tipset
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := ki[0].PublicKey()
+	fakeChildParams := th.FakeChildParams{
+		Parent:      headTipSetCA,
+		GenesisCid:  genCid,
+		Signer:      signer,
+		MinerPubKey: mockSignerPubKey,
+		StateRoot:   genStateRoot,
+		Nonce:       uint64(4),
+	}
+
+	firstForkBlock := th.RequireMkFakeChild(t, fakeChildParams)
+	requirePutBlocks(t, blockSource, firstForkBlock)
+	firstForkTS := th.RequireNewTipSet(t, firstForkBlock)
+	firstForkTsas := &chain.TipSetAndState{
+		TipSet:          firstForkTS,
+		TipSetStateRoot: genStateRoot,
+	}
+	th.RequirePutTsas(ctx, t, chainStore, firstForkTsas)
+	err := chainStore.SetHead(ctx, firstForkTS)
+	require.NoError(t, err)
+
+	// grow the fork by 10 blocks
+	lenFork := 10
+	requireGrowChain(ctx, t, blockSource, chainStore, lenFork)
+	headTipSetFork := requireHeadTipset(t, chainStore)
+	headIterFork := chain.IterAncestors(ctx, chainStore, headTipSetFork)
+
+	// go back and complete the original chain
+	err = chainStore.SetHead(ctx, headTipSetCA)
+	require.NoError(t, err)
+	lenMainChain := 14
+	requireGrowChain(ctx, t, blockSource, chainStore, lenMainChain)
+	headTipSetMainChain := requireHeadTipset(t, chainStore)
+	headIterMainChain := chain.IterAncestors(ctx, chainStore, headTipSetMainChain)
+
+	commonAncestor, err := chain.FindCommonAncestor(headIterMainChain, headIterFork)
+	assert.NoError(t, err)
+	assert.Equal(t, headTipSetCA, commonAncestor)
+}
+
+func TestFindCommonAncestorNoFork(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+	ctx, blockSource, chainStore := setupGetAncestorTests(t)
+	// Add 30 tipsets to the head of the chainStore.
+	len1 := 30
+	requireGrowChain(ctx, t, blockSource, chainStore, len1)
+	headTipSet1 := requireHeadTipset(t, chainStore)
+	headIterOne := chain.IterAncestors(ctx, chainStore, headTipSet1)
+	// Now add 19 more tipsets.
+	len2 := 19
+	requireGrowChain(ctx, t, blockSource, chainStore, len2)
+	headTipSet2 := requireHeadTipset(t, chainStore)
+	headIterTwo := chain.IterAncestors(ctx, chainStore, headTipSet2)
+	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
+	assert.NoError(t, err)
+	assert.Equal(t, headTipSet1, commonAncestor)
+}
+
+// This test exercises an edge case fork that our previous common ancestor
+// utility handled incorrectly.
+func TestFindCommonAncestorNullBlockFork(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+	ctx, blockSource, chainStore := setupGetAncestorTests(t)
+	// Add 10 tipsets to the head of the chainStore.
+	len1 := 10
+	requireGrowChain(ctx, t, blockSource, chainStore, len1)
+	expectedCA := requireHeadTipset(t, chainStore)
+
+	// add a null block and another block to the head
+	signer, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := ki[0].PublicKey()
+	fakeChildParams := th.FakeChildParams{
+		Parent:         expectedCA,
+		GenesisCid:     genCid,
+		Signer:         signer,
+		MinerPubKey:    mockSignerPubKey,
+		StateRoot:      genStateRoot,
+		NullBlockCount: uint64(1),
+	}
+
+	afterNullBlock := th.RequireMkFakeChild(t, fakeChildParams)
+	requirePutBlocks(t, blockSource, afterNullBlock)
+	afterNullTS := th.RequireNewTipSet(t, afterNullBlock)
+	afterNullTsas := &chain.TipSetAndState{
+		TipSet:          afterNullTS,
+		TipSetStateRoot: genStateRoot,
+	}
+	th.RequirePutTsas(ctx, t, chainStore, afterNullTsas)
+	afterNullIter := chain.IterAncestors(ctx, chainStore, afterNullTS)
+
+	// grow the fork by 1 block on the other fork
+	len2 := 1
+	requireGrowChain(ctx, t, blockSource, chainStore, len2)
+	mainChainTS := requireHeadTipset(t, chainStore)
+	mainChainIter := chain.IterAncestors(ctx, chainStore, mainChainTS)
+
+	commonAncestor, err := chain.FindCommonAncestor(afterNullIter, mainChainIter)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCA, commonAncestor)
+}
