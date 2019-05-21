@@ -57,7 +57,7 @@ func requireMinerWithPower(ctx context.Context, t *testing.T, numCommittedSector
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 
-	// set up genesis block with numCommittedSectors
+	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
 		Keys: 1,
 		Miners: []gengen.Miner{
