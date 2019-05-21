@@ -64,6 +64,11 @@ func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, 
 	}
 }
 
+// Queue returns the outbox's outbound message queue.
+func (ob *Outbox) Queue() *MessageQueue {
+	return ob.queue
+}
+
 // Send marshals and sends a message, retaining it in the outbound message queue.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (out cid.Cid, err error) {
@@ -78,7 +83,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *typ
 		return cid.Undef, errors.Wrap(err, "invalid params")
 	}
 
-	// Lock to avoid race for message nonce.
+	// Lock to avoid a race inspecting the actor state and message queue to calculate next nonce.
 	ob.nonceLock.Lock()
 	defer ob.nonceLock.Unlock()
 

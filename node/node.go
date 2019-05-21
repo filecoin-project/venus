@@ -50,7 +50,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
+	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
@@ -392,7 +392,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// set up chainstore
 	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
-	chainFacade := bcf.NewBlockChainFacade(chainStore, &cstOffline)
+	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -425,25 +425,24 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainFacade, nc.Repo.Config().Mpool))
+	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	msgQueue := core.NewMessageQueue()
 
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), core.Topic, msgPool)
-	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, chainStore, chainFacade)
+	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, chainStore, chainState)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:      bswap,
-		Chain:        chainFacade,
+		Chain:        chainState,
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
-		MsgSender:    msg.NewSender(outbox),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
-		Outbox:       msgQueue,
+		Outbox:       outbox,
 		Wallet:       fcWallet,
 	}))
 
