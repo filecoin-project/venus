@@ -437,7 +437,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		power := big.NewInt(0).SetBytes(bytes[0])
+		power := types.NewBytesAmountFromBytes(bytes[0])
 
 		bytes, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
@@ -450,7 +450,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		}
 		total := types.NewBytesAmountFromBytes(bytes[0])
 
-		str := fmt.Sprintf("%d / %d", power, total) // nolint: govet
+		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{
