@@ -923,6 +923,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 		},
 	}
 
+	totalPower := types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize)
+
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
 	require.NoError(t, err)
 
@@ -991,13 +993,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize), mockSigner)
+	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	fakeChildParams.Nonce = uint64(1)
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[2].Power, types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize), mockSigner)
+	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
@@ -1022,14 +1024,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerAddr: info.Miners[1].Address,
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize), mockSigner)
+	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	fakeChildParams.Nonce = uint64(1)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[2].Power, types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize), mockSigner)
+	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
@@ -1053,7 +1055,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerAddr: info.Miners[3].Address,
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[3].Power, types.NewBytesAmount(1000), mockSigner)
+	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[3].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	f2 := th.RequireNewTipSet(t, f2b2)
