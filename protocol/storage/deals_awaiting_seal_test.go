@@ -104,6 +104,8 @@ func TestDealsAwaitingSealAdd(t *testing.T) {
 }
 
 func TestDealsAwaitingSealSuccess(t *testing.T) {
+	tf.UnitTest(t)
+
 	newCid := types.NewCidForTestGetter()
 	cid1 := newCid()
 	cid2 := newCid()
@@ -161,6 +163,8 @@ func TestDealsAwaitingSealSuccess(t *testing.T) {
 }
 
 func TestDealsAwaitingSealFail(t *testing.T) {
+	tf.UnitTest(t)
+
 	newCid := types.NewCidForTestGetter()
 	cid1 := newCid()
 	cid2 := newCid()
