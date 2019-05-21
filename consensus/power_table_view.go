@@ -38,8 +38,8 @@ var _ PowerTableView = &MarketView{}
 // Total returns the total storage as a BytesAmount. If the total storage value
 // exceeds the max value of a uint64 this method errors.
 //
-// TODO: uint64 has enough bits to express about 1 exabyte of total storage.
-// This should be increased for v1.
+// TODO: uint64 has enough bits to express about 18.44 exabytes of total
+// storage. This should be increased for v1.
 func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Undef, nil)
@@ -55,11 +55,10 @@ func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 }
 
 // Miner returns the storage that this miner has committed to the network. If
-// the total storage value exceeds the max value of BytesAmount, this method
-// errors.
+// the total storage value exceeds the max value of a uint64 this method errors.
 //
-// TODO: uint64 has enough bits to express about 1 exabyte. This should probably
-// be increased for v1.
+// TODO: uint64 has enough bits to express about 18.44 exabytes of total
+// storage. This should be increased for v1.
 func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Undef, nil)
