@@ -33,6 +33,19 @@ var (
 
 var logSyncer = logging.Logger("chain.syncer")
 
+type syncerChainReader interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	HasTipSetAndState(ctx context.Context, tsKey string) bool
+	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
+	SetHead(ctx context.Context, s types.TipSet) error
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool
+	GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error)
+	HasAllBlocks(ctx context.Context, cs []cid.Cid) bool
+}
+
 type syncFetcher interface {
 	GetBlocks(context.Context, []cid.Cid) ([]*types.Block, error)
 }
@@ -69,13 +82,13 @@ type DefaultSyncer struct {
 	// badTipSetCache is used to filter out collections of invalid blocks.
 	badTipSets *badTipSetCache
 	consensus  consensus.Protocol
-	chainStore Store
+	chainStore syncerChainReader
 }
 
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s Store, f syncFetcher) *DefaultSyncer {
+func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher) *DefaultSyncer {
 	return &DefaultSyncer{
 		fetcher:    f,
 		stateStore: cst,

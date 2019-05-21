@@ -24,7 +24,7 @@ func NewLogger(wc io.WriteCloser, verbose bool) *Logger {
 	}
 	return &Logger{
 		closer: wc,
-		logger: log.New(w, "", 0),
+		logger: log.New(w, "[Filecoin Migration] ", log.LstdFlags),
 	}
 }
 

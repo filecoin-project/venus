@@ -3,7 +3,6 @@ package commands_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,11 +15,7 @@ import (
 func TestInspectConfig(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancel()
-
-	// Get basic testing environment
-	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
 
 	// Teardown after test ends
 	defer func() {
