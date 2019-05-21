@@ -82,49 +82,66 @@ const (
 }`
 )
 
-func TestFSRepoInit(t *testing.T) {
+func TestInitRepo(t *testing.T) {
 	tf.UnitTest(t)
+	cfg := config.NewDefaultConfig()
 
-	dir, err := ioutil.TempDir("", "")
-	assert.NoError(t, err)
-	defer func() {
-		require.NoError(t, os.RemoveAll(dir))
-	}()
+	t.Run("successfully creates when directory exists", func(t *testing.T) {
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(t, err)
+		defer func() {
+			require.NoError(t, os.RemoveAll(dir))
+		}()
 
-	t.Log("init FSRepo")
-	assert.NoError(t, InitFSRepo(dir, config.NewDefaultConfig()))
+		_, err = initAndOpenRepo(dir, cfg)
+		assert.NoError(t, err)
+		checkNewRepoFiles(t, dir)
+	})
 
-	content, err := ioutil.ReadFile(filepath.Join(dir, configFilename))
+	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(t, err)
+		defer func() {
+			require.NoError(t, os.RemoveAll(dir))
+		}()
 
-	assert.NoError(t, err)
+		dir = filepath.Join(dir, "nested")
 
-	t.Log("snapshot dir was created during FSRepo Init")
-	assert.True(t, fileExists(filepath.Join(dir, snapshotStorePrefix)))
+		_, err = initAndOpenRepo(dir, cfg)
+		assert.NoError(t, err)
+		checkNewRepoFiles(t, dir)
+	})
 
-	// TODO: asserting the exact content here is gonna get old real quick
-	t.Log("config file matches expected value")
-	assert.Equal(t,
-		expectContent,
-		string(content),
-	)
+	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
+		parentDir, err := ioutil.TempDir("", "init")
+		assert.NoError(t, err)
+		defer func() {
+			require.NoError(t, os.RemoveAll(parentDir))
+		}()
 
-	version, err := ioutil.ReadFile(filepath.Join(dir, versionFilename))
+		// make read only dir
+		dir := filepath.Join(parentDir, "readonly")
+		err = os.Mkdir(dir, 0444)
+		assert.NoError(t, err)
+		assert.False(t, ConfigExists(dir))
 
-	assert.NoError(t, err)
-	assert.Equal(t, "1", string(version))
-}
+		_, err = initAndOpenRepo(dir, cfg)
+		assert.Contains(t, err.Error(), "permission")
+	})
 
-func getSnapshotFilenames(t *testing.T, dir string) []string {
-	files, err := ioutil.ReadDir(dir)
-	require.NoError(t, err)
+	t.Run("fails with error if directory not empty", func(t *testing.T) {
+		dir, err := ioutil.TempDir("", "init")
+		assert.NoError(t, err)
+		defer func() {
+			require.NoError(t, os.RemoveAll(dir))
+		}()
 
-	var snpFiles []string
-	for _, f := range files {
-		if strings.Contains(f.Name(), "snapshot") {
-			snpFiles = append(snpFiles, f.Name())
-		}
-	}
-	return snpFiles
+		err = ioutil.WriteFile(filepath.Join(dir, "hi"), []byte("hello"), 0644)
+		assert.NoError(t, err)
+
+		_, err = initAndOpenRepo(dir, cfg)
+		assert.Contains(t, err.Error(), "empty")
+	})
 }
 
 func TestFSRepoOpen(t *testing.T) {
@@ -375,69 +392,41 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 }
 
-func TestCreateRepo(t *testing.T) {
-	tf.UnitTest(t)
+// Inits a repo and opens it (ensuring it is openable)
+func initAndOpenRepo(repoPath string, cfg *config.Config) (*FSRepo, error) {
+	if err := InitFSRepo(repoPath, cfg); err != nil {
+		return nil, err
+	}
+	return OpenFSRepo(repoPath)
+}
 
-	cfg := config.NewDefaultConfig()
+func checkNewRepoFiles(t *testing.T, path string) {
+	content, err := ioutil.ReadFile(filepath.Join(path, configFilename))
+	assert.NoError(t, err)
 
-	t.Run("successfully creates when directory exists", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, os.RemoveAll(dir))
-		}()
+	t.Log("snapshot path was created during FSRepo Init")
+	assert.True(t, fileExists(filepath.Join(path, snapshotStorePrefix)))
 
-		_, err = CreateRepo(dir, cfg)
-		assert.NoError(t, err)
-		assert.True(t, ConfigExists(dir))
-	})
+	// TODO: asserting the exact content here is gonna get old real quick
+	t.Log("config file matches expected value")
+	assert.Equal(t, expectContent, string(content))
 
-	t.Run("successfully creates when directory does not exist", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, os.RemoveAll(dir))
-		}()
+	version, err := ioutil.ReadFile(filepath.Join(path, versionFilename))
+	assert.NoError(t, err)
+	assert.Equal(t, "1", string(version))
+}
 
-		dir = filepath.Join(dir, "nested")
+func getSnapshotFilenames(t *testing.T, dir string) []string {
+	files, err := ioutil.ReadDir(dir)
+	require.NoError(t, err)
 
-		_, err = CreateRepo(dir, cfg)
-		assert.NoError(t, err)
-
-		assert.True(t, ConfigExists(dir))
-	})
-
-	t.Run("fails with error if directory is not writeable", func(t *testing.T) {
-		parentDir, err := ioutil.TempDir("", "init")
-		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, os.RemoveAll(parentDir))
-		}()
-
-		// make read only dir
-		dir := filepath.Join(parentDir, "readonly")
-		err = os.Mkdir(dir, 0444)
-		assert.NoError(t, err)
-		assert.False(t, ConfigExists(dir))
-
-		_, err = CreateRepo(dir, cfg)
-		assert.Contains(t, err.Error(), "permission denied")
-	})
-
-	t.Run("fails with error if config file already exists", func(t *testing.T) {
-		dir, err := ioutil.TempDir("", "init")
-		assert.NoError(t, err)
-		defer func() {
-			require.NoError(t, os.RemoveAll(dir))
-		}()
-
-		err = ioutil.WriteFile(filepath.Join(dir, "config.json"), []byte("hello"), 0644)
-		require.NoError(t, err)
-
-		_, err = CreateRepo(dir, cfg)
-		assert.Contains(t, err.Error(), "repo already initialized")
-		assert.True(t, ConfigExists(dir))
-	})
+	var snpFiles []string
+	for _, f := range files {
+		if strings.Contains(f.Name(), "snapshot") {
+			snpFiles = append(snpFiles, f.Name())
+		}
+	}
+	return snpFiles
 }
 
 func withFSRepo(t *testing.T, f func(*FSRepo)) {
