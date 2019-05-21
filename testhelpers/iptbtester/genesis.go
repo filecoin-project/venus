@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/gengen/util"
 )
 
 // GenesisInfo chains require information to start a single node with funds

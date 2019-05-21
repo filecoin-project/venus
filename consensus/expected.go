@@ -178,7 +178,7 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 		floatOwnBytes := new(big.Float).SetUint64(minerBytes.Uint64())
 		wBlk := new(big.Float)
 		wBlk.Quo(floatOwnBytes, floatTotalBytes)
-		wBlk.Mul(wBlk, floatECPrM) // NumCommittedSectors addition
+		wBlk.Mul(wBlk, floatECPrM) // Power addition
 		wBlk.Add(wBlk, floatECV)   // Constant addition
 		w.Add(w, wBlk)
 	}

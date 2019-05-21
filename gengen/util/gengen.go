@@ -89,7 +89,7 @@ type RenderedMinerInfo struct {
 	// Address is the address generated on-chain for the miner
 	Address address.Address
 
-	// NumCommittedSectors is the amount of storage power this miner was created with
+	// Power is the amount of storage power this miner was created with
 	Power *types.BytesAmount
 }
 
@@ -116,7 +116,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, cfg.ProofsMode, pnrg)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, proofsMode types.ProofsMode, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -263,10 +263,18 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
+		// Sector size will ultimately become an argument to the createMiner
+		// method. For now, sector size is a function of the storage market
+		// actor's proofs mode.
+		sectorSize := types.OneKiBSectorSize
+		if proofsMode == types.LiveProofsMode {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		}
+
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
-			Power:   types.NewBytesAmount(m.NumCommittedSectors),
+			Power:   sectorSize.Mul(types.NewBytesAmount(m.NumCommittedSectors)),
 		})
 
 		// commit sector to add power
