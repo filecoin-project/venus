@@ -20,7 +20,7 @@ func mock() *prereleaseTool {
 	prerelease1 := false
 	id1 := int64(1)
 	time1 := now.Add(-1 * time.Minute)
-	r.Data = append(r.Data, &github.RepositoryRelease{
+	r.Releases = append(r.Releases, &github.RepositoryRelease{
 		Name:       &name1,
 		Prerelease: &prerelease1,
 		ID:         &id1,
@@ -30,7 +30,7 @@ func mock() *prereleaseTool {
 	prerelease2 := true
 	id2 := int64(2)
 	time2 := now.Add(-3 * time.Minute)
-	r.Data = append(r.Data, &github.RepositoryRelease{
+	r.Releases = append(r.Releases, &github.RepositoryRelease{
 		Name:       &name2,
 		Prerelease: &prerelease2,
 		ID:         &id2,
@@ -40,7 +40,7 @@ func mock() *prereleaseTool {
 	prerelease3 := true
 	id3 := int64(3)
 	time3 := now.Add(-4 * time.Minute)
-	r.Data = append(r.Data, &github.RepositoryRelease{
+	r.Releases = append(r.Releases, &github.RepositoryRelease{
 		Name:       &name3,
 		Prerelease: &prerelease3,
 		ID:         &id3,
@@ -50,7 +50,7 @@ func mock() *prereleaseTool {
 	prerelease4 := true
 	id4 := int64(4)
 	time4 := now.Add(-2 * time.Minute)
-	r.Data = append(r.Data, &github.RepositoryRelease{
+	r.Releases = append(r.Releases, &github.RepositoryRelease{
 		Name:       &name4,
 		Prerelease: &prerelease4,
 		ID:         &id4,
