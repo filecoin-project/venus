@@ -25,13 +25,15 @@ func TestTotal(t *testing.T) {
 
 	ctx := context.Background()
 
-	power := uint64(19)
-	bs, _, st := requireMinerWithPower(ctx, t, power)
+	numCommittedSectors := uint64(19)
+	bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
 	require.NoError(t, err)
 
-	assert.Equal(t, power, actual)
+	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
+
+	assert.True(t, expected.Equal(actual))
 }
 
 func TestMiner(t *testing.T) {
@@ -39,26 +41,28 @@ func TestMiner(t *testing.T) {
 
 	ctx := context.Background()
 
-	power := uint64(12)
-	bs, addr, st := requireMinerWithPower(ctx, t, power)
+	numCommittedSectors := uint64(12)
+	bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
 	require.NoError(t, err)
 
-	assert.Equal(t, power, actual)
+	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
+
+	assert.True(t, expected.Equal(actual))
 }
 
-func requireMinerWithPower(ctx context.Context, t *testing.T, power uint64) (bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 
-	// set up genesis block with power
+	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
 		Keys: 1,
 		Miners: []gengen.Miner{
 			{
-				Power: power,
+				NumCommittedSectors: numCommittedSectors,
 			},
 		},
 	}

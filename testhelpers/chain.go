@@ -179,17 +179,19 @@ func RequirePutTsas(ctx context.Context, t *testing.T, chn chain.Store, tsas *ch
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerPubKey []byte, minerPower uint64, totalPower uint64, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
-
+func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
 	var ticket types.Signature
 
-	if totalPower/minerPower > 100000 {
+	quot := totalPower.Quo(minerPower)
+	threshold := types.NewBytesAmount(100000).Mul(types.OneKiBSectorSize)
+
+	if quot.GreaterThan(threshold) {
 		return poStProof, ticket, errors.New("MakeProofAndWinningTicket: minerPower is too small for totalPower to generate a winning ticket")
 	}
 
 	for {
-		poStProof = MakeRandomPoSTProofForTest()
+		poStProof = MakeRandomPoStProofForTest()
 		ticket, err := consensus.CreateTicket(poStProof, signerPubKey, signer)
 		if err != nil {
 			errStr := fmt.Sprintf("error creating ticket: %s", err)
