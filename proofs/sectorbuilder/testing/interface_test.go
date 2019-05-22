@@ -68,7 +68,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector.Uint64()/3))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 				if err != nil {
 					errs <- err
 				} else {
@@ -243,8 +243,9 @@ func TestSectorBuilder(t *testing.T) {
 		// holds id of each sector we expect to see sealed
 		sectorIDSet := sync.Map{}
 
-		// SectorBuilder begins polling for SectorIDA seal-status
-		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector.Uint64()-10))
+		// first SectorBuilder begins polling for SectorIDA seal-status after
+		// adding a one-byte piece
+		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 		require.NoError(t, errA)
 		sectorIDSet.Store(sectorIDA, true)
 
@@ -259,8 +260,8 @@ func TestSectorBuilder(t *testing.T) {
 		defer hB.Close()
 
 		// second SectorBuilder begins polling for SectorIDB seal-status in
-		// addition to SectorIDA
-		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, hB.MaxBytesPerSector.Uint64()-50))
+		// addition to SectorIDA after adding a second, one-byte piece
+		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 		require.NoError(t, errB)
 		sectorIDSet.Store(sectorIDB, true)
 
