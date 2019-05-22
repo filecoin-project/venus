@@ -128,13 +128,13 @@ func NewTestPowerTableView(n uint64) *TestPowerTableView {
 }
 
 // Total always returns n.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return tv.n, nil
+func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(tv.n), nil
 }
 
 // Miner always returns 1.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(uint64(1)), nil
 }
 
 // HasPower always returns true.

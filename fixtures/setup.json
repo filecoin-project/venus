@@ -9,6 +9,6 @@
   ],
   "miners": [{
     "owner": 0,
-    "power": 1
+    "numCommittedSectors": 1
   }]
 }
