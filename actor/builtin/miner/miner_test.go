@@ -239,7 +239,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
-		require.Equal(t, types.ZeroBytes.Uint64(), types.NewBytesAmountFromBytes(result[0]).Uint64())
+		require.True(t, types.ZeroBytes.Equal(types.NewBytesAmountFromBytes(result[0])))
 	})
 }
 

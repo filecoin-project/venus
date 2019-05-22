@@ -33,7 +33,7 @@ func TestTotal(t *testing.T) {
 
 	expected := types.OneKiBSectorSize.Mul(types.NewBytesAmount(numCommittedSectors))
 
-	assert.Equal(t, expected.Uint64(), actual.Uint64())
+	assert.True(t, expected.Equal(actual))
 }
 
 func TestMiner(t *testing.T) {
@@ -49,7 +49,7 @@ func TestMiner(t *testing.T) {
 
 	expected := types.OneKiBSectorSize.Mul(types.NewBytesAmount(numCommittedSectors))
 
-	assert.Equal(t, expected.Uint64(), actual.Uint64())
+	assert.True(t, expected.Equal(actual))
 }
 
 func requireMinerWithPower(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {

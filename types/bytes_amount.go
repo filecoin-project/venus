@@ -174,7 +174,7 @@ func (z *BytesAmount) IsZero() bool {
 	return z.Equal(ZeroBytes)
 }
 
-// Bytes returns the absolute value of x as a big-endian byte slice.
+// Bytes returns the absolute value of z as a big-endian byte slice.
 func (z *BytesAmount) Bytes() []byte {
 	ensureBytesAmounts(&z)
 	return leb128.FromBigInt(z.val)
@@ -185,7 +185,15 @@ func (z *BytesAmount) String() string {
 	return z.val.String()
 }
 
-// Uint64 returns the uint64 representation of x. If x cannot be represented in a uint64, the result is undefined.
+// Uint64 returns the uint64 representation of z. If z cannot be represented as
+// a uint64, the result is undefined.
 func (z *BytesAmount) Uint64() uint64 {
+	ensureBytesAmounts(&z)
 	return z.val.Uint64()
+}
+
+// BigInt returns the big.Int representation of z.
+func (z *BytesAmount) BigInt() *big.Int {
+	ensureBytesAmounts(&z)
+	return (&big.Int{}).Set(z.val)
 }
