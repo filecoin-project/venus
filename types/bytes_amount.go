@@ -89,7 +89,7 @@ func NewBytesAmountFromString(s string, base int) (*BytesAmount, bool) {
 	return ba, ok
 }
 
-// Add sets z to the sum x+y and returns z.
+// Add returns the sum z+y.
 func (z *BytesAmount) Add(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -98,7 +98,7 @@ func (z *BytesAmount) Add(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Sub sets z to the difference x-y and returns z.
+// Sub returns the difference z-y.
 func (z *BytesAmount) Sub(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -107,7 +107,7 @@ func (z *BytesAmount) Sub(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Mul sets z to  x*y and returns z.
+// Mul returns the product z*y.
 func (z *BytesAmount) Mul(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -126,31 +126,31 @@ func (z *BytesAmount) Quo(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Equal returns true if z = y
+// Equal returns true if z = y.
 func (z *BytesAmount) Equal(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) == 0
 }
 
-// LessThan returns true if z < y
+// LessThan returns true if z < y.
 func (z *BytesAmount) LessThan(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) < 0
 }
 
-// GreaterThan returns true if z > y
+// GreaterThan returns true if z > y.
 func (z *BytesAmount) GreaterThan(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) > 0
 }
 
-// LessEqual returns true if z <= y
+// LessEqual returns true if z <= y.
 func (z *BytesAmount) LessEqual(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) <= 0
 }
 
-// GreaterEqual returns true if z >= y
+// GreaterEqual returns true if z >= y.
 func (z *BytesAmount) GreaterEqual(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) >= 0
