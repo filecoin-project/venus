@@ -38,26 +38,18 @@ const (
 	DefaultRepoDir = "repo"
 )
 
-// NoRepoError is returned when trying to open a repo where one does not exist
-type NoRepoError struct {
-	Path string
-}
-
 var log = logging.Logger("repo")
-
-func (err NoRepoError) Error() string {
-	return fmt.Sprintf("no filecoin repo found in %s.\nplease run: 'go-filecoin init [--repodir=%s]'", err.Path, err.Path)
-}
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
-	path string
-
+	// Path to the repo root directory.
+	path    string
 	version uint
 
 	// lk protects the config file
-	lk       sync.RWMutex
-	cfg      *config.Config
+	lk  sync.RWMutex
+	cfg *config.Config
+
 	ds       Datastore
 	keystore keystore.Keystore
 	walletDs Datastore
@@ -70,12 +62,34 @@ type FSRepo struct {
 
 var _ Repo = (*FSRepo)(nil)
 
-// CreateRepo provides a quick shorthand for initializing and opening a repo
-func CreateRepo(repoPath string, cfg *config.Config) (*FSRepo, error) {
-	if err := InitFSRepo(repoPath, cfg); err != nil {
-		return nil, err
+// InitFSRepo initializes a new repo at a target path, establishing a provided configuration.
+// The target path must not exist, or must reference an empty, writable directory.
+func InitFSRepo(targetPath string, cfg *config.Config) error {
+	repoPath, err := homedir.Expand(targetPath)
+	if err != nil {
+		return err
 	}
-	return OpenFSRepo(repoPath)
+
+	if err := ensureWritableDirectory(repoPath); err != nil {
+		return errors.Wrap(err, "no writable directory")
+	}
+
+	empty, err := isEmptyDir(repoPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to list repo directory %s", repoPath)
+	}
+	if !empty {
+		return fmt.Errorf("refusing to initialize repo in non-empty directory %s", repoPath)
+	}
+
+	if err := WriteVersion(repoPath, Version); err != nil {
+		return errors.Wrap(err, "initializing repo version failed")
+	}
+
+	if err := initConfig(repoPath, cfg); err != nil {
+		return errors.Wrap(err, "initializing config file failed")
+	}
+	return nil
 }
 
 // OpenFSRepo opens an already initialized fsrepo at the given path
@@ -85,13 +99,13 @@ func OpenFSRepo(repoPath string) (*FSRepo, error) {
 		return nil, err
 	}
 
-	isInit, err := isInitialized(repoPath)
+	hasConfig, err := hasConfig(repoPath)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to check if repo was initialized")
+		return nil, errors.Wrap(err, "failed to check for repo config")
 	}
 
-	if !isInit {
-		return nil, &NoRepoError{repoPath}
+	if !hasConfig {
+		return nil, errors.Errorf("no repo found at %s; run: 'go-filecoin init [--repodir=%s]'", repoPath, repoPath)
 	}
 
 	r := &FSRepo{path: repoPath}
@@ -102,7 +116,7 @@ func OpenFSRepo(repoPath string) (*FSRepo, error) {
 	}
 
 	if err := r.loadFromDisk(); err != nil {
-		r.lockfile.Close() // nolint: errcheck
+		_ = r.lockfile.Close()
 		return nil, err
 	}
 
@@ -148,37 +162,6 @@ func (r *FSRepo) loadFromDisk() error {
 	if err := r.openDealsDatastore(); err != nil {
 		return errors.Wrap(err, "failed to open deals datastore")
 	}
-	return nil
-}
-
-// InitFSRepo initializes an fsrepo at the given path using the given configuration
-func InitFSRepo(repoPath string, cfg *config.Config) error {
-	repoPath, err := homedir.Expand(repoPath)
-	if err != nil {
-		return err
-	}
-
-	if err := checkWritable(repoPath); err != nil {
-		return errors.Wrap(err, "checking writability of repo path failed")
-	}
-
-	init, err := isInitialized(repoPath)
-	if err != nil {
-		return err
-	}
-
-	if init {
-		return fmt.Errorf("repo already initialized")
-	}
-
-	if err := WriteVersion(repoPath, Version); err != nil {
-		return errors.Wrap(err, "initializing repo version failed")
-	}
-
-	if err := initConfig(repoPath, cfg); err != nil {
-		return errors.Wrap(err, "initializing config file failed")
-	}
-
 	return nil
 }
 
@@ -289,15 +272,16 @@ func (r *FSRepo) removeAPIFile() error {
 	return r.removeFile(filepath.Join(r.path, apiFile))
 }
 
-func isInitialized(p string) (bool, error) {
+// Tests whether a repo directory contains the expected config file.
+func hasConfig(p string) (bool, error) {
 	configPath := filepath.Join(p, configFilename)
 
 	_, err := os.Lstat(configPath)
 	switch {
-	case os.IsNotExist(err):
-		return false, nil
 	case err == nil:
 		return true, nil
+	case os.IsNotExist(err):
+		return false, nil
 	default:
 		return false, err
 	}
@@ -409,29 +393,45 @@ func initConfig(p string, cfg *config.Config) error {
 
 	// make the snapshot dir
 	snapshotDir := filepath.Join(p, snapshotStorePrefix)
-	return checkWritable(snapshotDir)
+	return ensureWritableDirectory(snapshotDir)
 }
 
 func genSnapshotFileName() string {
 	return fmt.Sprintf("%s-%d.json", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
 }
 
-func checkWritable(dir string) error {
-	_, err := os.Stat(dir)
+// Ensures that path points to a read/writable directory, creating it if necessary.
+func ensureWritableDirectory(path string) error {
+	// Attempt to create the requested directory, accepting that something might already be there.
+	err := os.Mkdir(path, 0775)
+
 	if err == nil {
-		return nil
+		return nil // Skip the checks below, we just created it.
+	} else if !os.IsExist(err) {
+		return errors.Wrapf(err, "failed to create directory %s", path)
 	}
 
-	if os.IsNotExist(err) {
-		// dir doesnt exist, check that we can create it
-		return os.Mkdir(dir, 0775)
+	// Inspect existing directory.
+	stat, err := os.Stat(path)
+	if err != nil {
+		return errors.Wrapf(err, "failed to stat path \"%s\"", path)
 	}
-
-	if os.IsPermission(err) {
-		return errors.Wrapf(err, "cannot write to %s, incorrect permissions", dir)
+	if !stat.IsDir() {
+		return errors.Errorf("%s is not a directory", path)
 	}
+	if (stat.Mode() & 0600) != 0600 {
+		return errors.Errorf("insufficient permissions for path %s, got %04o need %04o", path, stat.Mode(), 0600)
+	}
+	return nil
+}
 
-	return err
+// Tests whether the directory at path is empty
+func isEmptyDir(path string) (bool, error) {
+	infos, err := ioutil.ReadDir(path)
+	if err != nil {
+		return false, err
+	}
+	return len(infos) == 0, nil
 }
 
 func fileExists(file string) bool {
