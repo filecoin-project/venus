@@ -1,21 +1,14 @@
 package commands_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"math/big"
 	"strings"
 	"testing"
 )
@@ -110,44 +103,4 @@ func TestShowDeal(t *testing.T) {
 		expected := fmt.Sprintf("deal not found: %s", addAskCid.String())
 		minerDaemon.RunFail(expected, "show", "deal", addAskCid.String()).ReadStdoutTrimNewlines()
 	})
-}
-
-func TestShowDeal2(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
-	defer func() {
-		err := env.Teardown(ctx)
-		require.NoError(t, err)
-	}()
-
-	clientNode := env.GenesisMiner
-	require.NoError(t, clientNode.MiningStart(ctx))
-
-	minerNode := env.RequireNewNodeWithFunds(1000)
-
-	// Connect the clientNode and the minerNode
-	err := series.Connect(ctx, clientNode, minerNode)
-	require.NoError(t, err)
-
-	// Create a minerNode
-	pledge := uint64(10)                    // sectors
-	collateral := big.NewInt(500)           // FIL
-	price := big.NewFloat(0.000000001)      // price per byte/block
-	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
-
-	ask, err := series.CreateMinerWithAsk(ctx, minerNode, pledge, collateral, price, expiry)
-	require.NoError(t, err)
-
-	newFile := files.NewBytesFile([]byte("satyamevajayate"))
-	cid, deal, err := series.ImportAndStore(ctx, clientNode, ask, newFile)
-	require.NoError(t, err)
-
-	err = series.WaitForDealState(ctx, clientNode, deal, storagedeal.Posted)
-	require.NoError(t, err)
-
-	showDeal, err := minerNode.ShowDeal(ctx, cid)
-	require.NoError(t, err)
-
-	assert.Contains(t, showDeal, "foo")
 }
