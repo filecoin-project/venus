@@ -20,7 +20,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -359,7 +358,6 @@ func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) t
 // Syncer syncs a single block
 func TestSyncOneBlock(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -376,7 +374,6 @@ func TestSyncOneBlock(t *testing.T) {
 // Syncer syncs a single tipset.
 func TestSyncOneTipSet(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -392,7 +389,6 @@ func TestSyncOneTipSet(t *testing.T) {
 // Syncer syncs one tipset, block by block.
 func TestSyncTipSetBlockByBlock(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	pt := th.NewTestPowerTableView(1, 1)
 	syncer, chainStore, _, blockSource := initSyncTestWithPowerTable(t, pt, dstP)
@@ -416,7 +412,6 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 // Syncer syncs a chain, tipset by tipset.
 func TestSyncChainTipSetByTipSet(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -450,7 +445,6 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 // Syncer syncs a whole chain given only the head cids.
 func TestSyncChainHead(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -472,7 +466,6 @@ func TestSyncChainHead(t *testing.T) {
 // Syncer determines the heavier fork.
 func TestSyncIgnoreLightFork(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -514,7 +507,6 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 // Correctly sync a heavier fork
 func TestHeavierFork(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -587,7 +579,6 @@ func TestHeavierFork(t *testing.T) {
 // Syncer errors if blocks don't form a tipset
 func TestBlocksNotATipSet(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -605,7 +596,6 @@ func TestBlocksNotATipSet(t *testing.T) {
 // Syncer is capable of recovering from a fork reorg after Load.
 func TestLoadFork(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, r, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -704,7 +694,6 @@ func TestLoadFork(t *testing.T) {
 // kept in the store because syncing C1 requires retrieving parent state.
 func TestSubsetParent(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, _, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -757,7 +746,6 @@ func TestSubsetParent(t *testing.T) {
 // Check that the syncer correctly adds widened chain ancestors to the store.
 func TestWidenChainAncestor(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	syncer, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
@@ -841,7 +829,6 @@ func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, b
 // Therefore the syncer should set the head of the store to the union of the links..
 func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	pt := &powerTableForWidenTest{}
 	syncer, chainStore, con, blockSource := initSyncTestWithPowerTable(t, pt, dstP)
@@ -921,7 +908,6 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 // and I can't figure out why because we pass in the correct blockstore to createminerwithpower.
 
 func TestTipSetWeightDeep(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
 
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())

@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -88,7 +87,6 @@ func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
 // Adding tipsets to the store doesn't error.
 func TestPutTipSet(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -103,45 +101,43 @@ func TestPutTipSet(t *testing.T) {
 
 // Tipsets can be retrieved by key (all block cids).
 func TestGetByKey(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	dstP := initDSTParams()
 
 	ctx := context.Background()
-	initStoreTest(ctx, t)
-	chain := newChainStore()
+	initStoreTest(ctx, t, dstP)
+	chain := newChainStore(dstP)
+	requirePutTestChain(t, chain, dstP)
 
-	requirePutTestChain(t, chain)
+	gotGTS := requireGetTipSet(ctx, t, chain, dstP.genTS.ToSortedCidSet())
+	gotGTSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.genTS.ToSortedCidSet())
 
-	gotGTS := requireGetTipSet(ctx, t, chain, genTS.ToSortedCidSet())
-	gotGTSSR := requireGetTipSetStateRoot(ctx, t, chain, genTS.ToSortedCidSet())
+	got1TS := requireGetTipSet(ctx, t, chain, dstP.link1.ToSortedCidSet())
+	got1TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link1.ToSortedCidSet())
 
-	got1TS := requireGetTipSet(ctx, t, chain, link1.ToSortedCidSet())
-	got1TSSR := requireGetTipSetStateRoot(ctx, t, chain, link1.ToSortedCidSet())
+	got2TS := requireGetTipSet(ctx, t, chain, dstP.link2.ToSortedCidSet())
+	got2TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link2.ToSortedCidSet())
 
-	got2TS := requireGetTipSet(ctx, t, chain, link2.ToSortedCidSet())
-	got2TSSR := requireGetTipSetStateRoot(ctx, t, chain, link2.ToSortedCidSet())
+	got3TS := requireGetTipSet(ctx, t, chain, dstP.link3.ToSortedCidSet())
+	got3TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link3.ToSortedCidSet())
 
-	got3TS := requireGetTipSet(ctx, t, chain, link3.ToSortedCidSet())
-	got3TSSR := requireGetTipSetStateRoot(ctx, t, chain, link3.ToSortedCidSet())
+	got4TS := requireGetTipSet(ctx, t, chain, dstP.link4.ToSortedCidSet())
+	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link4.ToSortedCidSet())
+	assert.Equal(t, dstP.genTS, *gotGTS)
+	assert.Equal(t, dstP.link1, *got1TS)
+	assert.Equal(t, dstP.link2, *got2TS)
+	assert.Equal(t, dstP.link3, *got3TS)
+	assert.Equal(t, dstP.link4, *got4TS)
 
-	got4TS := requireGetTipSet(ctx, t, chain, link4.ToSortedCidSet())
-	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, link4.ToSortedCidSet())
-	assert.Equal(t, genTS, *gotGTS)
-	assert.Equal(t, link1, *got1TS)
-	assert.Equal(t, link2, *got2TS)
-	assert.Equal(t, link3, *got3TS)
-	assert.Equal(t, link4, *got4TS)
-
-	assert.Equal(t, genStateRoot, gotGTSSR)
-	assert.Equal(t, link1State, got1TSSR)
-	assert.Equal(t, link2State, got2TSSR)
-	assert.Equal(t, link3State, got3TSSR)
-	assert.Equal(t, link4State, got4TSSR)
+	assert.Equal(t, dstP.genStateRoot, gotGTSSR)
+	assert.Equal(t, dstP.link1State, got1TSSR)
+	assert.Equal(t, dstP.link2State, got2TSSR)
+	assert.Equal(t, dstP.link3State, got3TSSR)
+	assert.Equal(t, dstP.link4State, got4TSSR)
 }
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
 func TestGetByParent(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -175,7 +171,6 @@ func TestGetByParent(t *testing.T) {
 
 func TestGetMultipleByParent(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -219,7 +214,6 @@ func TestGetMultipleByParent(t *testing.T) {
 // All blocks of a tipset can be retrieved after putting their wrapping tipset.
 func TestGetBlocks(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -248,7 +242,6 @@ func TestGetBlocks(t *testing.T) {
 // chain.Store correctly indicates that is has all blocks in put tipsets
 func TestHasAllBlocks(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -274,7 +267,6 @@ func TestHasAllBlocks(t *testing.T) {
 // The constructor call sets the dstP.genesis block for the chain store.
 func TestSetGenesis(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -292,7 +284,6 @@ func assertSetHead(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 // Set and Get Head.
 func TestHead(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -326,7 +317,6 @@ func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
 // Head events are propagated on HeadEvents.
 func TestHeadEvents(t *testing.T) {
 	dstP := initDSTParams()
-	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
@@ -366,37 +356,37 @@ func TestHeadEvents(t *testing.T) {
 // Load does not error and gives the chain store access to all blocks and
 // tipset indexes along the heaviest chain.
 func TestLoadAndReboot(t *testing.T) {
-	tf.BadUnitTestWithSideEffects(t)
+	dstP := initDSTParams()
 
 	ctx := context.Background()
-	initStoreTest(ctx, t)
+	initStoreTest(ctx, t, dstP)
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	chainStore := chain.NewDefaultStore(ds, genCid)
-	requirePutTestChain(t, chainStore)
-	assertSetHead(t, chainStore, genTS) // set the genesis block
+	chainStore := chain.NewDefaultStore(ds, dstP.genCid)
+	requirePutTestChain(t, chainStore, dstP)
+	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
-	assertSetHead(t, chainStore, link4)
+	assertSetHead(t, chainStore, dstP.link4)
 	chainStore.Stop()
 
 	// rebuild chain with same datastore
-	rebootChain := chain.NewDefaultStore(ds, genCid)
+	rebootChain := chain.NewDefaultStore(ds, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
 	// Check that chain store has index
 	// Get a tipset and state by key
-	got2 := requireGetTipSet(ctx, t, rebootChain, link2.ToSortedCidSet())
-	assert.Equal(t, link2, *got2)
+	got2 := requireGetTipSet(ctx, t, rebootChain, dstP.link2.ToSortedCidSet())
+	assert.Equal(t, dstP.link2, *got2)
 
 	// Get another by parent key
-	got4 := requireGetTsasByParentAndHeight(t, rebootChain, link3.String(), uint64(6))
+	got4 := requireGetTsasByParentAndHeight(t, rebootChain, dstP.link3.String(), uint64(6))
 	assert.Equal(t, 1, len(got4))
-	assert.Equal(t, link4, got4[0].TipSet)
+	assert.Equal(t, dstP.link4, got4[0].TipSet)
 
 	// Check that chainStore store has blocks
-	assert.True(t, rebootChain.HasBlock(ctx, link3blk1.Cid()))
-	assert.True(t, rebootChain.HasBlock(ctx, link2blk3.Cid()))
-	assert.True(t, rebootChain.HasBlock(ctx, genesis.Cid()))
+	assert.True(t, rebootChain.HasBlock(ctx, dstP.link3blk1.Cid()))
+	assert.True(t, rebootChain.HasBlock(ctx, dstP.link2blk3.Cid()))
+	assert.True(t, rebootChain.HasBlock(ctx, dstP.genesis.Cid()))
 }
