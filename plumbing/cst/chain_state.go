@@ -83,7 +83,7 @@ func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeigh
 	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }
 
-// GetActorAt returns an actor from the latest state on the chain
+// GetActor returns an actor from the latest state on the chain
 func (chn *ChainStateProvider) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	return chn.GetActorAt(ctx, chn.reader.GetHead(), addr)
 }

@@ -115,7 +115,7 @@ func TestOutbox(t *testing.T) {
 		}
 	})
 
-	t.Run("nonce fails with non-account actor", func(t *testing.T) {
+	t.Run("fails with non-account actor", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
 		toAddr := address.NewForTestGetter()()
