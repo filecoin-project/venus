@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -49,6 +50,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 
 // Happy path
 func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -69,6 +71,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 
 // Height at least 0.
 func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -89,6 +92,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 
 // The starting epoch is a null block.
 func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -141,6 +145,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 }
 
 func TestCollectAtMostNTipSets(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -167,6 +172,7 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 // DependentAncestor epochs = 100
 // Lookback = 20
 func TestGetRecentAncestors(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -190,6 +196,7 @@ func TestGetRecentAncestors(t *testing.T) {
 
 // Test case where parameters specify a chain past genesis.
 func TestGetRecentAncestorsTruncates(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -217,6 +224,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 
 // Test case where no block has the start height in the chain due to null blocks.
 func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
@@ -269,6 +277,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 }
 
 func TestFindCommonAncestorSameChain(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
@@ -283,6 +292,7 @@ func TestFindCommonAncestorSameChain(t *testing.T) {
 }
 
 func TestFindCommonAncestorFork(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 3 tipsets to the head of the chainStore.
@@ -333,6 +343,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 }
 
 func TestFindCommonAncestorNoFork(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 30 tipsets to the head of the chainStore.
@@ -353,6 +364,7 @@ func TestFindCommonAncestorNoFork(t *testing.T) {
 // This test exercises an edge case fork that our previous common ancestor
 // utility handled incorrectly.
 func TestFindCommonAncestorNullBlockFork(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 	ctx, blockSource, chainStore := setupGetAncestorTests(t, dstP)
 	// Add 10 tipsets to the head of the chainStore.

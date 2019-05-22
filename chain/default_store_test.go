@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -86,6 +87,7 @@ func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
 
 // Adding tipsets to the store doesn't error.
 func TestPutTipSet(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -101,6 +103,7 @@ func TestPutTipSet(t *testing.T) {
 
 // Tipsets can be retrieved by key (all block cids).
 func TestGetByKey(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -137,6 +140,7 @@ func TestGetByKey(t *testing.T) {
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
 func TestGetByParent(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -170,6 +174,7 @@ func TestGetByParent(t *testing.T) {
 }
 
 func TestGetMultipleByParent(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -213,6 +218,7 @@ func TestGetMultipleByParent(t *testing.T) {
 
 // All blocks of a tipset can be retrieved after putting their wrapping tipset.
 func TestGetBlocks(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -241,6 +247,7 @@ func TestGetBlocks(t *testing.T) {
 
 // chain.Store correctly indicates that is has all blocks in put tipsets
 func TestHasAllBlocks(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -266,6 +273,7 @@ func TestHasAllBlocks(t *testing.T) {
 
 // The constructor call sets the dstP.genesis block for the chain store.
 func TestSetGenesis(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -283,6 +291,7 @@ func assertSetHead(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 
 // Set and Get Head.
 func TestHead(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -316,6 +325,7 @@ func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
 
 // Head events are propagated on HeadEvents.
 func TestHeadEvents(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
@@ -356,6 +366,7 @@ func TestHeadEvents(t *testing.T) {
 // Load does not error and gives the chain store access to all blocks and
 // tipset indexes along the heaviest chain.
 func TestLoadAndReboot(t *testing.T) {
+	tf.UnitTest(t)
 	dstP := initDSTParams()
 
 	ctx := context.Background()
