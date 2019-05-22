@@ -31,7 +31,7 @@ func TestTotal(t *testing.T) {
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
 	require.NoError(t, err)
 
-	expected := types.OneKiBSectorSize.Mul(types.NewBytesAmount(numCommittedSectors))
+	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
 
 	assert.True(t, expected.Equal(actual))
 }
@@ -47,7 +47,7 @@ func TestMiner(t *testing.T) {
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
 	require.NoError(t, err)
 
-	expected := types.OneKiBSectorSize.Mul(types.NewBytesAmount(numCommittedSectors))
+	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
 
 	assert.True(t, expected.Equal(actual))
 }

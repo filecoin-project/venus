@@ -271,10 +271,12 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			sectorSize = types.TwoHundredFiftySixMiBSectorSize
 		}
 
+		power := types.NewBytesAmount(sectorSize.Uint64() * m.NumCommittedSectors)
+
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
-			Power:   sectorSize.Mul(types.NewBytesAmount(m.NumCommittedSectors)),
+			Power:   power,
 		})
 
 		// commit sector to add power
