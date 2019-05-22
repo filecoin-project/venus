@@ -59,6 +59,9 @@ type State struct {
 
 	// TODO: Determine correct unit of measure. Could be denominated in the
 	// smallest sector size supported by the network.
+	//
+	// See: https://github.com/filecoin-project/specs/issues/6
+	//
 	TotalCommittedStorage *types.BytesAmount
 
 	ProofsMode types.ProofsMode
