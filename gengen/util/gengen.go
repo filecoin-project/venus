@@ -45,7 +45,9 @@ type Miner struct {
 	//
 	// TODO: This struct needs a field which represents the size of sectors
 	// that this miner has committed. For now, sector size is configured by
-	// the StorageMarketActor's ProofsMode.
+	// the StorageMarketActor's ProofsMode. We should add this field as part of:
+	//
+	// https://github.com/filecoin-project/go-filecoin/issues/2530
 	//
 	// TODO: this will get more complicated when we actually have to
 	// prove real files.
