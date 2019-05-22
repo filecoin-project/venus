@@ -25,8 +25,10 @@ type Outbox struct {
 	validator consensus.SignedMessageValidator
 	// Holds messages sent from this node but not yet mined.
 	queue *MessageQueue
-	// Invoked to publish a message to the network
+	// Publishes a signed message to the network.
 	publisher publisher
+	// Maintains message queue in response to new tipsets.
+	policy QueuePolicy
 
 	chains chainProvider
 	actors actorProvider
@@ -53,12 +55,13 @@ var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of er
 
 // NewOutbox creates a new outbox
 func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *MessageQueue,
-	publisher publisher, chains chainProvider, actors actorProvider) *Outbox {
+	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
 	return &Outbox{
 		signer:    signer,
 		validator: validator,
 		queue:     queue,
 		publisher: publisher,
+		policy:    policy,
 		chains:    chains,
 		actors:    actors,
 	}
@@ -126,6 +129,11 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *typ
 	}
 
 	return signed.Cid()
+}
+
+// HandleNewHead maintains the message queue in response to a new head tipset.
+func (ob *Outbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSet) error {
+	return ob.policy.HandleNewHead(ctx, ob.queue, oldHead, newHead)
 }
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger

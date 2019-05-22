@@ -28,7 +28,7 @@ func TestOutbox(t *testing.T) {
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
 
-		ob := core.NewOutbox(w, nullValidator{rejectMessages: true}, queue, publisher, provider, provider)
+		ob := core.NewOutbox(w, nullValidator{rejectMessages: true}, queue, publisher, nullPolicy{}, provider, provider)
 
 		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "")
 		assert.Errorf(t, err, "for testing")
@@ -49,7 +49,7 @@ func TestOutbox(t *testing.T) {
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
 
-		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, provider, provider)
+		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
@@ -79,7 +79,7 @@ func TestOutbox(t *testing.T) {
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
 
-		s := core.NewOutbox(w, nullValidator{}, queue, publisher, provider, provider)
+		s := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 
 		var wg sync.WaitGroup
 		addTwentyMessages := func(batch int) {
@@ -127,7 +127,7 @@ func TestOutbox(t *testing.T) {
 		actr, _ := storagemarket.NewActor() // Not an account actor
 		provider.Set(t, blk, sender, actr)
 
-		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, provider, provider)
+		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 
 		_, err := ob.Send(context.Background(), sender, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), "")
 		assert.Error(t, err)
@@ -195,5 +195,12 @@ func (v nullValidator) Validate(ctx context.Context, msg *types.SignedMessage, f
 	if v.rejectMessages {
 		return errors.New("rejected for testing")
 	}
+	return nil
+}
+
+type nullPolicy struct {
+}
+
+func (nullPolicy) HandleNewHead(ctx context.Context, target core.PolicyTarget, oldHead, newHead types.TipSet) error {
 	return nil
 }
