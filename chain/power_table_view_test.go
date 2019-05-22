@@ -26,7 +26,7 @@ func TestTotal(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(19)
-	bs, _, st := requireMinerWithPower(ctx, t, numCommittedSectors)
+	bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestMiner(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(12)
-	bs, addr, st := requireMinerWithPower(ctx, t, numCommittedSectors)
+	bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestMiner(t *testing.T) {
 	assert.True(t, expected.Equal(actual))
 }
 
-func requireMinerWithPower(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
