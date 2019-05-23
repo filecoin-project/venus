@@ -2,13 +2,13 @@ package consensus
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
@@ -17,11 +17,11 @@ import (
 type PowerTableView interface {
 	// Total returns the total bytes stored by all miners in the given
 	// state.
-	Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error)
+	Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error)
 
 	// Miner returns the total bytes stored by the miner of the
 	// input address in the given state.
-	Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error)
+	Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error)
 
 	// HasPower returns true if the input address is associated with a
 	// miner that has storage power in the network.
@@ -35,45 +35,34 @@ type MarketView struct{}
 
 var _ PowerTableView = &MarketView{}
 
-// Total returns the total storage as a uint64.  If the total storage
-// value exceeds the max value of a uint64 this method errors.
-// TODO: uint64 has enough bits to express about 1 exabyte of total storage.
-// This should be increased for v1.
-func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+// Total returns the total storage as a BytesAmount.
+func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Undef, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if ec != 0 {
-		return 0, errors.Errorf("non-zero return code from query message: %d", ec)
+		return nil, errors.Errorf("non-zero return code from query message: %d", ec)
 	}
-	res := big.NewInt(0)
-	res.SetBytes(rets[0])
 
-	return res.Uint64(), nil
+	return types.NewBytesAmountFromBytes(rets[0]), nil
 }
 
-// Miner returns the storage that this miner has committed as a uint64.
-// If the total storage value exceeds the max value of a uint64 this method
-// errors.
-// TODO: currently power is in sectors, figure out if & how it should be converted to bytes.
-// TODO: uint64 has enough bits to express about 1 exabyte.  This
-// should probably be increased for v1.
-func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+// Miner returns the storage that this miner has committed to the network.
+func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
 	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Undef, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if ec != 0 {
-		return 0, errors.Errorf("non-zero return code from query message: %d", ec)
+		return nil, errors.Errorf("non-zero return code from query message: %d", ec)
 	}
-	ret := big.NewInt(0).SetBytes(rets[0])
 
-	return ret.Uint64(), nil
+	return types.NewBytesAmountFromBytes(rets[0]), nil
 }
 
 // HasPower returns true if the provided address belongs to a miner with power
@@ -88,5 +77,5 @@ func (v *MarketView) HasPower(ctx context.Context, st state.Tree, bstore blockst
 		panic(err) //hey guys, dropping errors is BAD
 	}
 
-	return numBytes > 0
+	return numBytes.GreaterThan(types.ZeroBytes)
 }

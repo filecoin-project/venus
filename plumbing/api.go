@@ -23,8 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -43,16 +43,15 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap      exchange.Interface
-	chain        *bcf.BlockChainFacade
+	chain        *cst.ChainStateProvider
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
-	outbox       *core.MessageQueue
-	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
 	network      *net.Network
+	outbox       *core.Outbox
 	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
@@ -60,17 +59,16 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap      exchange.Interface
-	Chain        *bcf.BlockChainFacade
+	Chain        *cst.ChainStateProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
-	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
-	Outbox       *core.MessageQueue
+	Outbox       *core.Outbox
 	Wallet       *wallet.Wallet
 }
 
@@ -86,7 +84,6 @@ func New(deps *APIDeps) *API {
 		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
-		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
 		outbox:       deps.Outbox,
@@ -162,17 +159,17 @@ func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
 
 // OutboxQueues lists addresses with non-empty outbox queues (in no particular order).
 func (api *API) OutboxQueues() []address.Address {
-	return api.outbox.Queues()
+	return api.outbox.Queue().Queues()
 }
 
 // OutboxQueueLs lists messages in the queue for an address.
 func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
-	return api.outbox.List(sender)
+	return api.outbox.Queue().List(sender)
 }
 
 // OutboxQueueClear clears messages in the queue for an address/
 func (api *API) OutboxQueueClear(sender address.Address) {
-	api.outbox.Clear(sender)
+	api.outbox.Queue().Clear(sender)
 }
 
 // MessagePoolPending lists messages un-mined in the pool
@@ -209,7 +206,7 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 // message to go on chain. Note that no default from address is provided. If you need
 // a default address, use MessageSendWithDefaultAddress instead.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.

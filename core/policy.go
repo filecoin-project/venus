@@ -17,21 +17,26 @@ const OutboxMaxAgeRounds = 10
 
 var log = logging.Logger("mqueue")
 
-// The outbound queue object on which the policy acts.
-type policyTarget interface {
+// QueuePolicy manages a message queue state in response to changes on the blockchain.
+type QueuePolicy interface {
+	// HandleNewHead updates a message queue in response to a new head tipset.
+	HandleNewHead(ctx context.Context, target PolicyTarget, oldHead, newHead types.TipSet) error
+}
+
+// PolicyTarget is outbound queue object on which the policy acts.
+type PolicyTarget interface {
 	RemoveNext(sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error)
 	ExpireBefore(stamp uint64) map[address.Address][]*types.SignedMessage
 }
 
-// MessageQueuePolicy manages a target message queue state in response to changes on the blockchain.
+// DefaultQueuePolicy manages a target message queue state in response to changes on the blockchain.
 // Messages are removed from the queue as soon as they appear in a block that's part of a heaviest chain.
 // At this point, messages are highly likely to be valid and known to a large number of nodes,
 // even if the block ends up as an abandoned fork.
 // There is no special handling for re-orgs and messages do not revert to the queue if the block
 // ends up childless (in contrast to the message pool).
-type MessageQueuePolicy struct {
-	// The queue on which this policy acts
-	queue policyTarget
+type DefaultQueuePolicy struct {
+	// Provides blocks for chain traversal.
 	store chain.BlockProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
@@ -39,12 +44,12 @@ type MessageQueuePolicy struct {
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeRounds` rounds.
-func NewMessageQueuePolicy(queue *MessageQueue, store chain.BlockProvider, maxAge uint64) *MessageQueuePolicy {
-	return &MessageQueuePolicy{queue, store, maxAge}
+func NewMessageQueuePolicy(store chain.BlockProvider, maxAge uint64) *DefaultQueuePolicy {
+	return &DefaultQueuePolicy{store, maxAge}
 }
 
-// OnNewHeadTipset updates the policy target in response to a new head tipset.
-func (p *MessageQueuePolicy) OnNewHeadTipset(ctx context.Context, oldHead, newHead types.TipSet) error {
+// HandleNewHead updates the policy target in response to a new head tipset.
+func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldHead, newHead types.TipSet) error {
 	_, newBlocks, err := CollectBlocksToCommonAncestor(ctx, p.store, oldHead, newHead)
 	if err != nil {
 		return err
@@ -58,7 +63,7 @@ func (p *MessageQueuePolicy) OnNewHeadTipset(ctx context.Context, oldHead, newHe
 	reverse(newBlocks)
 	for _, block := range newBlocks {
 		for _, minedMsg := range block.Messages {
-			removed, found, err := p.queue.RemoveNext(minedMsg.From, uint64(minedMsg.Nonce))
+			removed, found, err := target.RemoveNext(minedMsg.From, uint64(minedMsg.Nonce))
 			if err != nil {
 				return err
 			}
@@ -76,7 +81,7 @@ func (p *MessageQueuePolicy) OnNewHeadTipset(ctx context.Context, oldHead, newHe
 		return err
 	}
 	if height >= p.maxAgeRounds { // avoid uint subtraction overflow
-		expired := p.queue.ExpireBefore(height - p.maxAgeRounds)
+		expired := target.ExpireBefore(height - p.maxAgeRounds)
 		for _, msg := range expired {
 			log.Errorf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
 		}

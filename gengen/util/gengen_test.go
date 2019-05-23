@@ -23,12 +23,12 @@ var testConfig = &GenesisCfg{
 	PreAlloc: []string{"10", "50"},
 	Miners: []Miner{
 		{
-			Owner: 0,
-			Power: 50,
+			Owner:               0,
+			NumCommittedSectors: 50,
 		},
 		{
-			Owner: 1,
-			Power: 10,
+			Owner:               1,
+			NumCommittedSectors: 10,
 		},
 	},
 }

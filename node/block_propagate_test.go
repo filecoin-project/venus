@@ -56,7 +56,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	require.NoError(t, err)
 	baseTS := *headTipSet
 	require.NotNil(t, baseTS)
-	proof := testhelpers.MakeRandomPoSTProofForTest()
+	proof := testhelpers.MakeRandomPoStProofForTest()
 
 	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
 	require.NoError(t, err)
