@@ -225,7 +225,7 @@ func buildMigrations() {
 func install() {
 	log.Println("Installing...")
 
-	runCmd(cmd("go", "install", "-ldflags", fmt.Sprintf(`"-X github.com/filecoin-project/go-filecoin/flags.Commit=%s"`, getCommitSha())))
+	runCmd(cmd("go", "install", "-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha())))
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
