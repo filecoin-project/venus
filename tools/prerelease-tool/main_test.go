@@ -67,6 +67,9 @@ func TestGetPrereleases(t *testing.T) {
 	for _, release := range r.Prereleases {
 		assert.NotEqual(t, *release.Name, "release", "Not a Pre-Release")
 	}
+	assert.Equal(t, *r.Prereleases[0].Name, "prerelease-newest", "Wrong Name at first index")
+	assert.Equal(t, *r.Prereleases[1].Name, "prerelease-middle", "Wrong Name at middle index")
+	assert.Equal(t, *r.Prereleases[2].Name, "prerelease-oldest", "Wrong Name at last index")
 }
 
 func TestGetPrereleasesBoundsCheck(t *testing.T) {
@@ -76,39 +79,20 @@ func TestGetPrereleasesBoundsCheck(t *testing.T) {
 	assert.Len(t, r.Prereleases, 0, "Prelease count is wrong")
 }
 
-func TestSortReleasesByDate(t *testing.T) {
+func TestOutdatedPreleaseIDs(t *testing.T) {
 	tf.UnitTest(t)
 	r := mock()
 	r.getPrereleases()
-	r.sortReleasesByDate()
-	assert.Equal(t, *r.Prereleases[0].Name, "prerelease-newest", "Wrong Name at first index")
-	assert.Equal(t, *r.Prereleases[1].Name, "prerelease-middle", "Wrong Name at middle index")
-	assert.Equal(t, *r.Prereleases[2].Name, "prerelease-oldest", "Wrong Name at last index")
-}
-
-func TestSortReleasesByDateBoundsCheck(t *testing.T) {
-	tf.UnitTest(t)
-	r := prereleaseTool{}
-	r.getPrereleases()
-	r.sortReleasesByDate()
-}
-
-func TestOldReleaseIDs(t *testing.T) {
-	tf.UnitTest(t)
-	r := mock()
-	r.getPrereleases()
-	r.sortReleasesByDate()
-	oldIDs := r.oldReleaseIDs()
+	oldIDs := r.outdatedPreleaseIDs()
 	assert.Len(t, oldIDs, 1, "There should only be one ID")
 	assert.Equal(t, oldIDs[0], int64(3), "Wrong ID to remove")
 }
 
-func TestOldReleaseIDsBoundsCheck(t *testing.T) {
+func TestOutdatedPreleaseIDsBoundsCheck(t *testing.T) {
 	tf.UnitTest(t)
 	r := prereleaseTool{}
 	r.getPrereleases()
-	r.sortReleasesByDate()
-	oldIDs := r.oldReleaseIDs()
+	oldIDs := r.outdatedPreleaseIDs()
 	assert.Len(t, oldIDs, 0, "There should only be no IDs")
 }
 
@@ -117,8 +101,7 @@ func TestTrim(t *testing.T) {
 	ctx := context.Background()
 	r := mock()
 	r.getPrereleases()
-	r.sortReleasesByDate()
-	ok, err := r.trim(ctx, r.oldReleaseIDs())
+	ok, err := r.deleteReleases(ctx, r.outdatedPreleaseIDs())
 	assert.False(t, ok, "This was a dry run, ok should be false")
 	assert.NoError(t, err, "No error should exist")
 }
@@ -130,8 +113,7 @@ func TestTrimBoundsCheck(t *testing.T) {
 		DryRun: true,
 	}
 	r.getPrereleases()
-	r.sortReleasesByDate()
-	ok, err := r.trim(ctx, r.oldReleaseIDs())
+	ok, err := r.deleteReleases(ctx, r.outdatedPreleaseIDs())
 	assert.False(t, ok, "This was a dry run, ok should be false")
 	assert.NoError(t, err, "No error should exist")
 }

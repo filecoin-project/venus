@@ -37,6 +37,12 @@ func main() {
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	go func() {
+		select {
+		case <-ctx.Done():
+			log.Print(ctx.Err())
+		}
+	}()
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 	flag.Parse()
@@ -51,8 +57,7 @@ func main() {
 		log.Fatalf("Could not find any releases: %+v", err)
 	}
 	r.getPrereleases()
-	r.sortReleasesByDate()
-	ok, err := r.trim(ctx, r.oldReleaseIDs())
+	ok, err := r.deleteReleases(ctx, r.outdatedPreleaseIDs())
 	if err != nil {
 		log.Fatalf("Problem attempting to delete releases: %+v", err)
 	}
@@ -75,6 +80,7 @@ func (r *prereleaseTool) getPrereleases() {
 				r.Prereleases = append(r.Prereleases, *release)
 			}
 		}
+		r.sortReleasesByDate()
 	default:
 		log.Print("no releases found")
 	}
@@ -83,18 +89,11 @@ func (r *prereleaseTool) getPrereleases() {
 
 func (r *prereleaseTool) sortReleasesByDate() {
 	sort.Slice(r.Prereleases, func(i, j int) bool {
-		first := r.Prereleases[i].CreatedAt
-		second := r.Prereleases[j].CreatedAt
-		switch {
-		case first.Unix() < second.Unix():
-			return false
-		default:
-			return true
-		}
+		return r.Prereleases[i].CreatedAt.After(r.Prereleases[j].CreatedAt.Time)
 	})
 }
 
-func (r *prereleaseTool) oldReleaseIDs() []int64 {
+func (r *prereleaseTool) outdatedPreleaseIDs() []int64 {
 	var idsToDelete []int64
 	switch {
 	case len(r.Prereleases) > r.Limit:
@@ -108,10 +107,11 @@ func (r *prereleaseTool) oldReleaseIDs() []int64 {
 	return idsToDelete
 }
 
-func (r *prereleaseTool) trim(ctx context.Context, ids []int64) (bool, error) {
+func (r *prereleaseTool) deleteReleases(ctx context.Context, ids []int64) (bool, error) {
 	var ok bool
-	switch {
-	case len(ids) > 0:
+	var deleteCount int
+	defer log.Printf("Deleted %d releases", deleteCount)
+	if len(ids) > 0 {
 		log.Print("Removing outdated Prereleases")
 		for _, id := range ids {
 			log.Printf("Prerelease ID %d selected for deletion", id)
@@ -125,10 +125,9 @@ func (r *prereleaseTool) trim(ctx context.Context, ids []int64) (bool, error) {
 				if resp.StatusCode != 204 {
 					return ok, fmt.Errorf("Unexpected HTTP status code. Expected: 204 Got: %d", resp.StatusCode)
 				}
+				deleteCount++
 			}
 		}
-	default:
-		log.Print("No prereleases to delete")
 	}
 	return ok, nil
 }
