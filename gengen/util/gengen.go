@@ -40,10 +40,18 @@ type Miner struct {
 	// PeerID is the peer ID to set as the miners owner
 	PeerID string
 
-	// Power is the amount of power this miner should start off with
+	// NumCommittedSectors is the number of sectors that this miner has
+	// committed to the network.
+	//
+	// TODO: This struct needs a field which represents the size of sectors
+	// that this miner has committed. For now, sector size is configured by
+	// the StorageMarketActor's ProofsMode. We should add this field as part of:
+	//
+	// https://github.com/filecoin-project/go-filecoin/issues/2530
+	//
 	// TODO: this will get more complicated when we actually have to
-	// prove real files
-	Power uint64
+	// prove real files.
+	NumCommittedSectors uint64
 }
 
 // GenesisCfg is
@@ -84,7 +92,7 @@ type RenderedMinerInfo struct {
 	Address address.Address
 
 	// Power is the amount of storage power this miner was created with
-	Power uint64
+	Power *types.BytesAmount
 }
 
 // GenGen takes the genesis configuration and creates a genesis block that
@@ -110,7 +118,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, cfg.ProofsMode, pnrg)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +219,7 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, proofsMode types.ProofsMode, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -257,14 +265,24 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
+		// Sector size will ultimately become an argument to the createMiner
+		// method. For now, sector size is a function of the storage market
+		// actor's proofs mode.
+		sectorSize := types.OneKiBSectorSize
+		if proofsMode == types.LiveProofsMode {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		}
+
+		power := types.NewBytesAmount(sectorSize.Uint64() * m.NumCommittedSectors)
+
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
-			Power:   m.Power,
+			Power:   power,
 		})
 
 		// commit sector to add power
-		for i := uint64(0); i < m.Power; i++ {
+		for i := uint64(0); i < m.NumCommittedSectors; i++ {
 			// the following statement fakes out the behavior of the SectorBuilder.sectorIDNonce,
 			// which is initialized to 0 and incremented (for the first sector) to 1
 			sectorID := i + 1

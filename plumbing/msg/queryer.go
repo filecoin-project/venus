@@ -3,21 +3,27 @@ package msg
 import (
 	"context"
 
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
+
+// Abstracts over a store of blockchain state.
+type queryerChainReader interface {
+	BlockHeight() (uint64, error)
+	GetHead() types.SortedCidSet
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+}
 
 // Queryer knows how to send read-only messages for querying actor state.
 type Queryer struct {
@@ -25,7 +31,7 @@ type Queryer struct {
 	repo   repo.Repo
 	wallet *wallet.Wallet
 	// To get the head tipset state root.
-	chainReader chain.ReadStore
+	chainReader queryerChainReader
 	// To load the tree for the head tipset state root.
 	cst *hamt.CborIpldStore
 	// For vm storage.
@@ -33,7 +39,7 @@ type Queryer struct {
 }
 
 // NewQueryer constructs a Queryer.
-func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader chain.ReadStore, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
+func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader queryerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
 	return &Queryer{repo, wallet, chainReader, cst, bs}
 }
 
@@ -44,16 +50,11 @@ func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method
 		return nil, errors.Wrap(err, "couldnt encode message params")
 	}
 
-	headTs := q.chainReader.GetHead()
-	tsas, err := q.chainReader.GetTipSetAndState(headTs)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldnt get latest state root")
-	}
-	st, err := state.LoadStateTree(ctx, q.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := chain.LatestState(ctx, q.chainReader, q.cst)
 	if err != nil {
 		return nil, errors.Wrap(err, "could load tree for latest state root")
 	}
-	h, err := tsas.TipSet.Height()
+	h, err := q.chainReader.BlockHeight()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldnt get base tipset height")
 	}

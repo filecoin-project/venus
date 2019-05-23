@@ -32,6 +32,9 @@ CL_PID=""
 STORAGE_MN_REPO_DIR=""
 BOOTSTRAP_MN_REPO_DIR=""
 CL_REPO_DIR=""
+STORAGE_MN_SECTOR_DIR=""
+BOOTSTRAP_MN_SECTOR_DIR=""
+CL_SECTOR_DIR=""
 PIECE_1_PATH=$(mktemp)
 PIECE_2_PATH=$(mktemp)
 UNSEAL_PATH=$(mktemp)
@@ -51,15 +54,18 @@ fi
 
 trap finish EXIT
 
-STORAGE_MN_REPO_DIR=$(mktemp -d)
+STORAGE_MN_REPO_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
+STORAGE_MN_SECTOR_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
 STORAGE_MN_CMDAPI_PORT=$(free_port)
 STORAGE_MN_SWARM_PORT=$(free_port)
 
-BOOTSTRAP_MN_REPO_DIR=$(mktemp -d)
+BOOTSTRAP_MN_REPO_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
+BOOTSTRAP_MN_SECTOR_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
 BOOTSTRAP_MN_CMDAPI_PORT=$(free_port)
 BOOTSTRAP_MN_SWARM_PORT=$(free_port)
 
-CL_REPO_DIR=$(mktemp -d)
+CL_REPO_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
+CL_SECTOR_DIR=$(mktemp -d $(mktemp -d /tmp/XXXXXX)/XXXXXX)
 CL_CMDAPI_PORT=$(free_port)
 CL_SWARM_PORT=$(free_port)
 
@@ -69,9 +75,9 @@ BOOTSTRAP_MN_MINER_FIL_ADDR=$(jq -r '.Miners[] | select(.Owner == 0).Address' < 
 
 echo ""
 echo "initializing daemons..."
-init_local_daemon "${BOOTSTRAP_MN_REPO_DIR}" "${BOOTSTRAP_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
-init_local_daemon "${STORAGE_MN_REPO_DIR}" "${STORAGE_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
-init_local_daemon "${CL_REPO_DIR}" "${CL_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
+init_local_daemon "${BOOTSTRAP_MN_REPO_DIR}" "${BOOTSTRAP_MN_SECTOR_DIR}" "${BOOTSTRAP_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
+init_local_daemon "${STORAGE_MN_REPO_DIR}" "${STORAGE_MN_SECTOR_DIR}" "${STORAGE_MN_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
+init_local_daemon "${CL_REPO_DIR}" "${CL_SECTOR_DIR}" "${CL_CMDAPI_PORT}" "${FIXTURES_PATH}/genesis.car"
 
 echo ""
 echo "start daemons..."

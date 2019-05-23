@@ -4,15 +4,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type miningChainReader interface {
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+}
+
 // MiningAPI provides an interface to the block mining protocol.
 type MiningAPI struct {
 	addNewBlockFunc  func(context.Context, *types.Block) (err error)
-	chainReader      chain.ReadStore
+	chainReader      miningChainReader
 	mineDelay        time.Duration
 	startMiningFunc  func(context.Context) error
 	stopMiningFunc   func(context.Context)
@@ -22,7 +26,7 @@ type MiningAPI struct {
 // New creates a new MiningAPI instance with the provided deps
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
-	chainReader chain.ReadStore,
+	chainReader miningChainReader,
 	blockMineDelay time.Duration,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
@@ -40,18 +44,17 @@ func New(
 
 // MiningOnce mines a single block in the given context, and returns the new block.
 func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
-	tsas, err := a.chainReader.GetTipSetAndState(a.chainReader.GetHead())
+	ts, err := a.chainReader.GetTipSet(a.chainReader.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	ts := tsas.TipSet
 
 	miningWorker, err := a.createWorkerFunc(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := mining.MineOnce(ctx, miningWorker, a.mineDelay, ts)
+	res, err := mining.MineOnce(ctx, miningWorker, a.mineDelay, *ts)
 	if err != nil {
 		return nil, err
 	}

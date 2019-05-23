@@ -272,7 +272,7 @@ This command waits for the ask to be mined.`,
 			_, err := fmt.Fprintf(w, `Set price for miner %s to %s.
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
-	`,
+`,
 				res.MinerSetPriceResponse.MinerAddr.String(),
 				res.MinerSetPriceResponse.Price.String(),
 				res.MinerSetPriceResponse.AddAskCid.String(),
@@ -437,7 +437,7 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		power := big.NewInt(0).SetBytes(bytes[0])
+		power := types.NewBytesAmountFromBytes(bytes[0])
 
 		bytes, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
@@ -448,9 +448,9 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		total := big.NewInt(0).SetBytes(bytes[0])
+		total := types.NewBytesAmountFromBytes(bytes[0])
 
-		str := fmt.Sprintf("%d / %d", power, total) // nolint: govet
+		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{

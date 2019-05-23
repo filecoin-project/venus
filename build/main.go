@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/util/version"
 )
@@ -228,23 +229,20 @@ func install() {
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
-func test(args ...string) {
-	log.Println("Testing...")
+func test(userArgs ...string) {
+	log.Println("Running tests...")
 
-	parallelism, ok := os.LookupEnv("TEST_PARALLELISM")
-
-	if !ok {
-		parallelism = "8"
-	}
-
+	// Consult environment for test packages, in order to support CI container-level parallelism.
 	packages, ok := os.LookupEnv("TEST_PACKAGES")
-
 	if !ok {
 		packages = "./..."
 	}
 
-	runCmd(cmd(fmt.Sprintf("go test -timeout 30m -parallel %s %s %s",
-		parallelism, strings.Replace(packages, "\n", " ", -1), strings.Join(args, " "))))
+	begin := time.Now()
+	runCmd(cmd(fmt.Sprintf("go test %s %s",
+		strings.Replace(packages, "\n", " ", -1), strings.Join(userArgs, " "))))
+	end := time.Now()
+	log.Printf("Tests finished in %.1f seconds\n", end.Sub(begin).Seconds())
 }
 
 func main() {

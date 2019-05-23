@@ -35,9 +35,9 @@ var TestMiners []string
 type detailsStruct struct {
 	Keys   []*types.KeyInfo
 	Miners []struct {
-		Owner   int
-		Address string
-		Power   uint64
+		Owner               int
+		Address             string
+		NumCommittedSectors uint64
 	}
 	GenesisCid cid.Cid `refmt:",omitempty"`
 }

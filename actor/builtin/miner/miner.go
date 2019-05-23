@@ -137,7 +137,12 @@ type State struct {
 	ProvingPeriodStart *types.BlockHeight
 	LastPoSt           *types.BlockHeight
 
-	Power *big.Int
+	// The amount of space committed to the network by this miner.
+	Power *types.BytesAmount
+
+	// SectorSize is the amount of space in each sector committed to the network
+	// by this miner.
+	SectorSize *types.BytesAmount
 }
 
 // NewActor returns a new miner actor
@@ -146,7 +151,7 @@ func NewActor() *actor.Actor {
 }
 
 // NewState creates a miner state struct
-func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL) *State {
+func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
 		PeerID:            pid,
@@ -154,8 +159,9 @@ func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, c
 		PledgeSectors:     pledge,
 		Collateral:        collateral,
 		SectorCommitments: make(map[string]types.Commitments),
-		Power:             big.NewInt(0),
+		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
+		SectorSize:        sectorSize,
 	}
 }
 
@@ -230,7 +236,7 @@ var minerExports = exec.Exports{
 	},
 	"getPower": &exec.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProofs},
@@ -251,6 +257,10 @@ var minerExports = exec.Exports{
 	"isBootstrapMiner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Boolean},
+	},
+	"getSectorSize": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.BytesAmount},
 	},
 }
 
@@ -449,6 +459,29 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 	return a, 0, nil
 }
 
+// GetSectorSize returns the size of the sectors committed to the network by
+// this miner.
+func (ma *Actor) GetSectorSize(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.SectorSize, nil
+	})
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	amt, ok := out.(*types.BytesAmount)
+	if !ok {
+		return nil, 1, errors.NewFaultErrorf("expected a *types.BytesAmount, but got %T instead", out)
+	}
+
+	return amt, 0, nil
+}
+
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
 func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
@@ -465,69 +498,50 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		return 1, errors.NewRevertError("invalid sized commRStar")
 	}
 
-	// As with submitPoSt messages, bootstrap miner actors don't verify
-	// the commitSector messages that they are sent.
-	//
-	// This switching will be removed when issue #2270 is completed.
-	if !ma.Bootstrap {
-		// This unfortunate environment variable-checking needs to happen because
-		// the PoRep verification operation needs to know some things (e.g. size)
-		// about the sector for which the proof was generated in order to verify.
-		//
-		// It is undefined behavior for a miner using "LiveProofsMode" to verify
-		// a proof created by a miner in "TestProofsMode"(and vice-versa).
-		//
-		proofsMode, err := GetProofsMode(ctx)
-		if err != nil {
-			return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
-		}
-
-		var sectorSize types.SectorSize
-		if proofsMode == types.TestProofsMode {
-			sectorSize = types.OneKiBSectorSize
-		} else {
-			sectorSize = types.TwoHundredFiftySixMiBSectorSize
-		}
-
-		req := proofs.VerifySealRequest{}
-		copy(req.CommD[:], commD)
-		copy(req.CommR[:], commR)
-		copy(req.CommRStar[:], commRStar)
-		req.Proof = proof
-		req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
-		req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
-		req.SectorSize = sectorSize
-
-		res, err := (&proofs.RustVerifier{}).VerifySeal(req)
-		if err != nil {
-			return 1, errors.RevertErrorWrap(err, "failed to verify seal proof")
-		}
-		if !res.IsValid {
-			return ErrInvalidSealProof, Errors[ErrInvalidSealProof]
-		}
-	}
-
-	// TODO: use uint64 instead of this abomination, once refmt is fixed
-	// https://github.com/polydawn/refmt/issues/35
-	sectorIDstr := strconv.FormatUint(sectorID, 10)
-
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		// As with submitPoSt messages, bootstrap miner actors don't verify
+		// the commitSector messages that they are sent.
+		//
+		// This switching will be removed when issue #2270 is completed.
+		if !ma.Bootstrap {
+			req := proofs.VerifySealRequest{}
+			copy(req.CommD[:], commD)
+			copy(req.CommR[:], commR)
+			copy(req.CommRStar[:], commRStar)
+			req.Proof = proof
+			req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
+			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
+			req.SectorSize = state.SectorSize
+
+			res, err := (&proofs.RustVerifier{}).VerifySeal(req)
+			if err != nil {
+				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
+			}
+			if !res.IsValid {
+				return nil, Errors[ErrInvalidSealProof]
+			}
+		}
+
 		// verify that the caller is authorized to perform update
 		if ctx.Message().From != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
+
+		// TODO: use uint64 instead of this abomination, once refmt is fixed
+		// https://github.com/polydawn/refmt/issues/35
+		sectorIDstr := strconv.FormatUint(sectorID, 10)
 
 		_, ok := state.SectorCommitments[sectorIDstr]
 		if ok {
 			return nil, Errors[ErrSectorCommitted]
 		}
 
-		if state.Power.Cmp(big.NewInt(0)) == 0 {
+		if state.Power.Equal(types.NewBytesAmount(0)) {
 			state.ProvingPeriodStart = ctx.BlockHeight()
 		}
-		inc := big.NewInt(1)
-		state.Power = state.Power.Add(state.Power, inc)
+		inc := state.SectorSize
+		state.Power = state.Power.Add(inc)
 		comms := types.Commitments{
 			CommD:     types.CommD{},
 			CommR:     types.CommR{},
@@ -688,7 +702,7 @@ func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
 }
 
 // GetPower returns the amount of proven sectors for this miner.
-func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
+func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -701,9 +715,9 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*big.Int, uint8, error) {
 		return nil, errors.CodeError(err), err
 	}
 
-	power, ok := ret.(*big.Int)
+	power, ok := ret.(*types.BytesAmount)
 	if !ok {
-		return nil, 1, errors.NewFaultErrorf("expected *big.Int to be returned, but got %T instead", ret)
+		return nil, 1, errors.NewFaultErrorf("expected *types.BytesAmount to be returned, but got %T instead", ret)
 	}
 
 	return power, 0, nil
@@ -736,24 +750,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			// See comment above, in CommitSector.
-			//
-			// It is undefined behavior for a miner using "LiveProofsMode" to
-			// verify a proof created by a miner using "TestProofsMode" (and
-			// vice-versa).
-			//
-			proofsMode, err := GetProofsMode(ctx)
-			if err != nil {
-				return ErrGetProofsModeFailed, Errors[ErrGetProofsModeFailed]
-			}
-
-			var sectorSize types.SectorSize
-			if proofsMode == types.TestProofsMode {
-				sectorSize = types.OneKiBSectorSize
-			} else {
-				sectorSize = types.TwoHundredFiftySixMiBSectorSize
-			}
-
 			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
@@ -766,12 +762,12 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 
 			sortedCommRs := proofs.NewSortedCommRs(commRs...)
 
-			req := proofs.VerifyPoSTRequest{
+			req := proofs.VerifyPoStRequest{
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
 				Proofs:        poStProofs,
-				SectorSize:    sectorSize,
+				SectorSize:    state.SectorSize,
 			}
 
 			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)

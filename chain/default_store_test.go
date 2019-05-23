@@ -34,7 +34,7 @@ func initStoreTest(ctx context.Context, t *testing.T) {
 func newChainStore() chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	return chain.NewDefaultStore(ds, genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
@@ -75,9 +75,9 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain chain.Store, pKey strin
 }
 
 func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
-	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
-	return headTipSetAndState.TipSet
+	return *headTipSet
 }
 
 /* Putting and getting tipsets into and from the store. */
@@ -107,23 +107,31 @@ func TestGetByKey(t *testing.T) {
 
 	requirePutTestChain(t, chain)
 
-	gotG := requireGetTsas(ctx, t, chain, genTS.ToSortedCidSet())
-	got1 := requireGetTsas(ctx, t, chain, link1.ToSortedCidSet())
-	got2 := requireGetTsas(ctx, t, chain, link2.ToSortedCidSet())
-	got3 := requireGetTsas(ctx, t, chain, link3.ToSortedCidSet())
-	got4 := requireGetTsas(ctx, t, chain, link4.ToSortedCidSet())
+	gotGTS := requireGetTipSet(ctx, t, chain, genTS.ToSortedCidSet())
+	gotGTSSR := requireGetTipSetStateRoot(ctx, t, chain, genTS.ToSortedCidSet())
 
-	assert.Equal(t, genTS, gotG.TipSet)
-	assert.Equal(t, link1, got1.TipSet)
-	assert.Equal(t, link2, got2.TipSet)
-	assert.Equal(t, link3, got3.TipSet)
-	assert.Equal(t, link4, got4.TipSet)
+	got1TS := requireGetTipSet(ctx, t, chain, link1.ToSortedCidSet())
+	got1TSSR := requireGetTipSetStateRoot(ctx, t, chain, link1.ToSortedCidSet())
 
-	assert.Equal(t, genStateRoot, gotG.TipSetStateRoot)
-	assert.Equal(t, link1State, got1.TipSetStateRoot)
-	assert.Equal(t, link2State, got2.TipSetStateRoot)
-	assert.Equal(t, link3State, got3.TipSetStateRoot)
-	assert.Equal(t, link4State, got4.TipSetStateRoot)
+	got2TS := requireGetTipSet(ctx, t, chain, link2.ToSortedCidSet())
+	got2TSSR := requireGetTipSetStateRoot(ctx, t, chain, link2.ToSortedCidSet())
+
+	got3TS := requireGetTipSet(ctx, t, chain, link3.ToSortedCidSet())
+	got3TSSR := requireGetTipSetStateRoot(ctx, t, chain, link3.ToSortedCidSet())
+
+	got4TS := requireGetTipSet(ctx, t, chain, link4.ToSortedCidSet())
+	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, link4.ToSortedCidSet())
+	assert.Equal(t, genTS, *gotGTS)
+	assert.Equal(t, link1, *got1TS)
+	assert.Equal(t, link2, *got2TS)
+	assert.Equal(t, link3, *got3TS)
+	assert.Equal(t, link4, *got4TS)
+
+	assert.Equal(t, genStateRoot, gotGTSSR)
+	assert.Equal(t, link1State, got1TSSR)
+	assert.Equal(t, link2State, got2TSSR)
+	assert.Equal(t, link3State, got3TSSR)
+	assert.Equal(t, link4State, got4TSSR)
 }
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
@@ -354,7 +362,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	chainStore := chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	chainStore := chain.NewDefaultStore(ds, genCid)
 	requirePutTestChain(t, chainStore)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -362,14 +370,14 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore
-	rebootChain := chain.NewDefaultStore(ds, hamt.NewCborStore(), genCid)
+	rebootChain := chain.NewDefaultStore(ds, genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
 	// Check that chain store has index
 	// Get a tipset and state by key
-	got2 := requireGetTsas(ctx, t, rebootChain, link2.ToSortedCidSet())
-	assert.Equal(t, link2, got2.TipSet)
+	got2 := requireGetTipSet(ctx, t, rebootChain, link2.ToSortedCidSet())
+	assert.Equal(t, link2, *got2)
 
 	// Get another by parent key
 	got4 := requireGetTsasByParentAndHeight(t, rebootChain, link3.String(), uint64(6))

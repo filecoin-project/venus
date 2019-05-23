@@ -32,6 +32,8 @@ const (
 	ErrUnknownMiner = 34
 	// ErrInsufficientCollateral indicates the collateral is too low.
 	ErrInsufficientCollateral = 43
+	// ErrUnsupportedSectorSize indicates that the sector size is incompatible with the proofs mode.
+	ErrUnsupportedSectorSize = 44
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -39,6 +41,7 @@ var Errors = map[uint8]error{
 	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
 	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
 	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", MinimumCollateralPerSector),
+	ErrUnsupportedSectorSize:  errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
 }
 
 func init() {
@@ -54,9 +57,12 @@ type Actor struct{}
 type State struct {
 	Miners cid.Cid `refmt:",omitempty"`
 
-	// TotalCommitedStorage is the number of sectors that are currently committed
-	// in the whole network.
-	TotalCommittedStorage *big.Int
+	// TODO: Determine correct unit of measure. Could be denominated in the
+	// smallest sector size supported by the network.
+	//
+	// See: https://github.com/filecoin-project/specs/issues/6
+	//
+	TotalCommittedStorage *types.BytesAmount
 
 	ProofsMode types.ProofsMode
 }
@@ -71,7 +77,7 @@ func (sma *Actor) InitializeState(storage exec.Storage, proofsModeInterface inte
 	proofsMode := proofsModeInterface.(types.ProofsMode)
 
 	initStorage := &State{
-		TotalCommittedStorage: big.NewInt(0),
+		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            proofsMode,
 	}
 	stateBytes, err := cbor.DumpObject(initStorage)
@@ -100,12 +106,12 @@ var storageMarketExports = exec.Exports{
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
+		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
 	},
 	"getTotalStorage": &exec.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.BytesAmount},
 	},
 	"getProofsMode": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -122,6 +128,17 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		// TODO: #2530 - Add a sector size parameter to the Actor#CreateMiner
+		// method and accept the value from the CLI.
+		sectorSize := types.OneKiBSectorSize
+		if state.ProofsMode == types.LiveProofsMode {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		}
+
+		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
+			return nil, Errors[ErrUnsupportedSectorSize]
+		}
+
 		if pledge.Cmp(MinimumPledge) < 0 {
 			// TODO This should probably return a non-zero exit code instead of an error.
 			return nil, Errors[ErrPledgeTooLow]
@@ -136,7 +153,7 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 			return nil, Errors[ErrInsufficientCollateral]
 		}
 
-		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
@@ -171,7 +188,7 @@ func (sma *Actor) CreateMiner(vmctx exec.VMContext, pledge *big.Int, publicKey [
 // UpdatePower is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing or willful removal). The delta is in number of sectors.
-func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, error) {
+func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -194,7 +211,7 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, erro
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with address: %s", miner)
 		}
 
-		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(state.TotalCommittedStorage, delta)
+		state.TotalCommittedStorage = state.TotalCommittedStorage.Add(delta)
 
 		return nil, nil
 	})
@@ -206,7 +223,7 @@ func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *big.Int) (uint8, erro
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error) {
+func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -219,12 +236,12 @@ func (sma *Actor) GetTotalStorage(vmctx exec.VMContext) (*big.Int, uint8, error)
 		return nil, errors.CodeError(err), err
 	}
 
-	count, ok := ret.(*big.Int)
+	amt, ok := ret.(*types.BytesAmount)
 	if !ok {
 		return nil, 1, fmt.Errorf("expected *big.Int to be returned, but got %T instead", ret)
 	}
 
-	return count, 0, nil
+	return amt, 0, nil
 }
 
 // GetSectorSize returns the sector size of the block chain
@@ -252,4 +269,14 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 // MinimumCollateral returns the minimum required amount of collateral for a given pledge
 func MinimumCollateral(sectors *big.Int) *types.AttoFIL {
 	return MinimumCollateralPerSector.MulBigInt(sectors)
+}
+
+// isSupportedSectorSize produces a boolean indicating whether or not the
+// provided sector size is valid given the network's proofs mode.
+func isSupportedSectorSize(mode types.ProofsMode, sectorSize *types.BytesAmount) bool {
+	if mode == types.TestProofsMode {
+		return sectorSize.Equal(types.OneKiBSectorSize)
+	} else {
+		return sectorSize.Equal(types.TwoHundredFiftySixMiBSectorSize)
+	}
 }

@@ -2,8 +2,14 @@ package porcelain
 
 import (
 	"github.com/ipfs/go-cid"
+	errors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+)
+
+var (
+	// ErrDealNotFound means DealGet failed to find a matching deal
+	ErrDealNotFound = errors.New("deal not found")
 )
 
 type strgdlsPlumbing interface {
@@ -11,15 +17,15 @@ type strgdlsPlumbing interface {
 }
 
 // DealGet returns a single deal matching a given cid or an error
-func DealGet(plumbing strgdlsPlumbing, dealCid cid.Cid) *storagedeal.Deal {
+func DealGet(plumbing strgdlsPlumbing, dealCid cid.Cid) (*storagedeal.Deal, error) {
 	deals, err := plumbing.DealsLs()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	for _, storageDeal := range deals {
 		if storageDeal.Response.ProposalCid == dealCid {
-			return storageDeal
+			return storageDeal, nil
 		}
 	}
-	return nil
+	return nil, ErrDealNotFound
 }

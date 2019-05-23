@@ -54,6 +54,7 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 
 		// did we teardown correctly?
 		assert.NoError(t, env.Teardown(ctx))
+		assert.Equal(t, 0, len(env.Processes()))
 		_, existsErr := os.Stat(localenv.location)
 		assert.True(t, os.IsNotExist(existsErr))
 	})

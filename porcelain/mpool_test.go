@@ -5,11 +5,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -35,7 +35,7 @@ func (plumbing *fakeMpoolWaitPlumbing) MessagePoolPending() []*types.SignedMessa
 }
 
 func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
-	subscription := pubsub.NewFakeSubscription(msg.Topic, 1)
+	subscription := pubsub.NewFakeSubscription(core.Topic, 1)
 	plumbing.subscription = subscription
 	return subscription, nil
 }

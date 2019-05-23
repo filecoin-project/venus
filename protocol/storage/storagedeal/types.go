@@ -129,7 +129,7 @@ type ProofInfo struct {
 	SectorID uint64
 
 	// CommitmentMessage is the cid of the message that committed the sector. It's used to track when the sector goes on chain.
-	CommitmentMessage *cid.Cid
+	CommitmentMessage cid.Cid
 
 	// PieceInclusionProof is a proof that a the piece is included within a sector
 	PieceInclusionProof []byte

@@ -9,18 +9,13 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -38,9 +33,6 @@ type DefaultStore struct {
 	// simplify checking the security guarantee that only tipsets of a
 	// validated chain are stored in the filecoin node's DefaultStore.
 	bsPriv bstore.Blockstore
-	// stateStore is the on disk storage used for loading states.  It can be
-	// shared with the rest of the filecoin node.
-	stateStore *hamt.CborIpldStore
 	// ds is the datastore backing bsPriv.  It is also accessed directly
 	// to set and get chain meta-data, specifically the tipset cidset to
 	// state root mapping, and the heaviest tipset cids.
@@ -69,11 +61,10 @@ type DefaultStore struct {
 var _ Store = (*DefaultStore)(nil)
 
 // NewDefaultStore constructs a new default store.
-func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid cid.Cid) *DefaultStore {
+func NewDefaultStore(ds repo.Datastore, genesisCid cid.Cid) *DefaultStore {
 	priv := bstore.NewBlockstore(ds)
 	return &DefaultStore{
 		bsPriv:     priv,
-		stateStore: stateStore,
 		ds:         ds,
 		headEvents: pubsub.New(128),
 		tipIndex:   NewTipIndex(),
@@ -230,10 +221,16 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 	return nil
 }
 
-// GetTipSetAndState returns the tipset and state of the tipset whose block
+// GetTipSet returns the tipset whose block
 // cids correspond to the input sorted cid set.
-func (store *DefaultStore) GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error) {
-	return store.tipIndex.Get(tsKey.String())
+func (store *DefaultStore) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error) {
+	return store.tipIndex.GetTipSet(tsKey.String())
+}
+
+// GetTipSetStateRoot returns the state of the tipset whose block
+// cids correspond to the input sorted cid set.
+func (store *DefaultStore) GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetStateRoot(tsKey.String())
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
@@ -389,20 +386,6 @@ func (store *DefaultStore) BlockHeight() (uint64, error) {
 	defer store.mu.RUnlock()
 
 	return store.head.Height()
-}
-
-// ActorFromLatestState gets the latest state and retrieves an actor from it.
-func (store *DefaultStore) ActorFromLatestState(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	tsas, err := store.GetTipSetAndState(store.GetHead())
-	if err != nil {
-		return nil, err
-	}
-	st, err := state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
-	if err != nil {
-		return nil, err
-	}
-
-	return st.GetActor(ctx, addr)
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

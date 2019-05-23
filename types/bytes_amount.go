@@ -89,7 +89,7 @@ func NewBytesAmountFromString(s string, base int) (*BytesAmount, bool) {
 	return ba, ok
 }
 
-// Add sets z to the sum x+y and returns z.
+// Add returns the sum z+y.
 func (z *BytesAmount) Add(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -98,7 +98,7 @@ func (z *BytesAmount) Add(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Sub sets z to the difference x-y and returns z.
+// Sub returns the difference z-y.
 func (z *BytesAmount) Sub(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -107,7 +107,7 @@ func (z *BytesAmount) Sub(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Mul sets z to  x*y and returns z.
+// Mul returns the product z*y.
 func (z *BytesAmount) Mul(y *BytesAmount) *BytesAmount {
 	ensureBytesAmounts(&z, &y)
 	newVal := big.NewInt(0)
@@ -116,31 +116,41 @@ func (z *BytesAmount) Mul(y *BytesAmount) *BytesAmount {
 	return &newZ
 }
 
-// Equal returns true if z = y
+// Quo returns the quotient z/y for y != 0. If y == 0, a division-by-zero
+// run-time panic occurs.
+func (z *BytesAmount) Quo(y *BytesAmount) *BytesAmount {
+	ensureBytesAmounts(&z, &y)
+	newVal := big.NewInt(0)
+	newVal.Quo(z.val, y.val)
+	newZ := BytesAmount{val: newVal}
+	return &newZ
+}
+
+// Equal returns true if z = y.
 func (z *BytesAmount) Equal(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) == 0
 }
 
-// LessThan returns true if z < y
+// LessThan returns true if z < y.
 func (z *BytesAmount) LessThan(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) < 0
 }
 
-// GreaterThan returns true if z > y
+// GreaterThan returns true if z > y.
 func (z *BytesAmount) GreaterThan(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) > 0
 }
 
-// LessEqual returns true if z <= y
+// LessEqual returns true if z <= y.
 func (z *BytesAmount) LessEqual(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) <= 0
 }
 
-// GreaterEqual returns true if z >= y
+// GreaterEqual returns true if z >= y.
 func (z *BytesAmount) GreaterEqual(y *BytesAmount) bool {
 	ensureBytesAmounts(&z, &y)
 	return z.val.Cmp(y.val) >= 0
@@ -164,7 +174,7 @@ func (z *BytesAmount) IsZero() bool {
 	return z.Equal(ZeroBytes)
 }
 
-// Bytes returns the absolute value of x as a big-endian byte slice.
+// Bytes returns the absolute value of z as a big-endian byte slice.
 func (z *BytesAmount) Bytes() []byte {
 	ensureBytesAmounts(&z)
 	return leb128.FromBigInt(z.val)
@@ -175,7 +185,15 @@ func (z *BytesAmount) String() string {
 	return z.val.String()
 }
 
-// Uint64 returns the uint64 representation of x. If x cannot be represented in a uint64, the result is undefined.
+// Uint64 returns the uint64 representation of z. If z cannot be represented as
+// a uint64, the result is undefined.
 func (z *BytesAmount) Uint64() uint64 {
+	ensureBytesAmounts(&z)
 	return z.val.Uint64()
+}
+
+// BigInt returns the big.Int representation of z.
+func (z *BytesAmount) BigInt() *big.Int {
+	ensureBytesAmounts(&z)
+	return (&big.Int{}).Set(z.val)
 }

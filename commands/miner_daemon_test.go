@@ -443,7 +443,7 @@ func TestMinerPower(t *testing.T) {
 	power := powerOutput.ReadStdoutTrimNewlines()
 
 	assert.NoError(t, err)
-	assert.Equal(t, "3 / 6", power)
+	assert.Equal(t, "3072 / 6144", power)
 }
 
 var testConfig = &gengen.GenesisCfg{
@@ -454,12 +454,12 @@ var testConfig = &gengen.GenesisCfg{
 	},
 	Miners: []gengen.Miner{
 		{
-			Owner: 0,
-			Power: 3,
+			Owner:               0,
+			NumCommittedSectors: 3,
 		},
 		{
-			Owner: 1,
-			Power: 3,
+			Owner:               1,
+			NumCommittedSectors: 3,
 		},
 	},
 }

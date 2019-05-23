@@ -40,7 +40,7 @@ func createTestMinerWith(pledge int64,
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createMiner", pdata)
 
 	result, err := th.ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	assert.NoError(t, err)
@@ -136,7 +136,7 @@ func TestGetKey(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL())
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL(), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},
@@ -228,7 +228,7 @@ func TestMinerGetPledge(t *testing.T) {
 func TestMinerGetPower(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("GetPower returns proven sectors, 0, nil when successful", func(t *testing.T) {
+	t.Run("GetPower returns total storage committed to network", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -239,7 +239,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
-		require.Equal(t, []byte{}, result[0])
+		require.True(t, types.ZeroBytes.Equal(types.NewBytesAmountFromBytes(result[0])))
 	})
 }
 
@@ -326,7 +326,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	// submit post
-	proof := th.MakeRandomPoSTProofForTest()
+	proof := th.MakeRandomPoStProofForTest()
 	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []types.PoStProof{proof})
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
@@ -339,7 +339,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
 
 	// fail to submit inside the proving period
-	proof = th.MakeRandomPoSTProofForTest()
+	proof = th.MakeRandomPoStProofForTest()
 	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", ancestors, []types.PoStProof{proof})
 	require.NoError(t, err)
 	require.EqualError(t, res.ExecutionError, "submitted PoSt late, need to pay a fee")
@@ -390,7 +390,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("After submitting a PoSt", func(t *testing.T) {
 		// submit a post
-		proof := th.MakeRandomPoSTProofForTest()
+		proof := th.MakeRandomPoStProofForTest()
 		blockheightOfPoSt := uint64(8)
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, blockheightOfPoSt, "submitPoSt", ancestors, []types.PoStProof{proof})
 		assert.NoError(t, err)

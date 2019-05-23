@@ -15,13 +15,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	sb "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/require"
 )
 
 // Harness is a struct used to make SectorBuilder testing easier
 type Harness struct {
 	blockService      bserv.BlockService
-	MaxBytesPerSector uint64
+	MaxBytesPerSector *types.BytesAmount
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder

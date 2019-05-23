@@ -89,8 +89,8 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 
 	var err error
 	// see powerTableForWidenTest
-	minerPower := uint64(25)
-	totalPower := uint64(100)
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 	mockSignerPubKey := mockSigner.PubKeys[0]
 
@@ -190,7 +190,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo) (*chain.DefaultSyncer, *th.Te
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource) // note we use same cst for on and offline for tests
@@ -236,7 +236,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
@@ -271,9 +271,9 @@ func requireTsAdded(t *testing.T, chain chain.Store, ts types.TipSet) {
 	h, err := ts.Height()
 	require.NoError(t, err)
 	// Tip Index correctly updated
-	gotTsas, err := chain.GetTipSetAndState(ts.ToSortedCidSet())
+	gotTs, err := chain.GetTipSet(ts.ToSortedCidSet())
 	require.NoError(t, err)
-	require.Equal(t, ts, gotTsas.TipSet)
+	require.Equal(t, ts, *gotTs)
 	parent, err := ts.Parents()
 	require.NoError(t, err)
 	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
@@ -291,9 +291,9 @@ func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 	h, err := ts.Height()
 	assert.NoError(t, err)
 	// Tip Index correctly updated
-	gotTsas, err := chainStore.GetTipSetAndState(ts.ToSortedCidSet())
+	gotTs, err := chainStore.GetTipSet(ts.ToSortedCidSet())
 	assert.NoError(t, err)
-	assert.Equal(t, ts, gotTsas.TipSet)
+	assert.Equal(t, ts, *gotTs)
 	parent, err := ts.Parents()
 	assert.NoError(t, err)
 	childTsasSlice, err := chainStore.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
@@ -309,7 +309,7 @@ func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 func assertNoAdd(t *testing.T, chainStore chain.Store, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
-	_, err := chainStore.GetTipSetAndState(cids)
+	_, err := chainStore.GetTipSet(cids)
 	assert.Error(t, err)
 	// Blocks exist in store
 	for _, c := range cids.ToSlice() {
@@ -322,9 +322,9 @@ func requireHead(t *testing.T, chain chain.Store, head types.TipSet) {
 }
 
 func assertHead(t *testing.T, chain chain.Store, head types.TipSet) {
-	headTipSetAndState, err := chain.GetTipSetAndState(chain.GetHead())
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	assert.NoError(t, err)
-	assert.Equal(t, head, headTipSetAndState.TipSet)
+	assert.Equal(t, head, *headTipSet)
 }
 
 func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.SortedCidSet {
@@ -374,7 +374,7 @@ func TestSyncOneTipSet(t *testing.T) {
 func TestSyncTipSetBlockByBlock(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
-	pt := th.NewTestPowerTableView(1, 1)
+	pt := th.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(1))
 	syncer, chainStore, _, blockSource := initSyncTestWithPowerTable(t, pt)
 	ctx := context.Background()
 	expTs1 := th.RequireNewTipSet(t, link1blk1)
@@ -777,12 +777,12 @@ func TestWidenChainAncestor(t *testing.T) {
 
 type powerTableForWidenTest struct{}
 
-func (pt *powerTableForWidenTest) Total(ctx context.Context, st state.Tree, bs bstore.Blockstore) (uint64, error) {
-	return uint64(100), nil
+func (pt *powerTableForWidenTest) Total(ctx context.Context, st state.Tree, bs bstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(100), nil
 }
 
-func (pt *powerTableForWidenTest) Miner(ctx context.Context, st state.Tree, bs bstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(25), nil
+func (pt *powerTableForWidenTest) Miner(ctx context.Context, st state.Tree, bs bstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(25), nil
 }
 
 func (pt *powerTableForWidenTest) HasPower(ctx context.Context, st state.Tree, bs bstore.Blockstore, mAddr address.Address) bool {
@@ -818,8 +818,8 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	syncer, chainStore, con, blockSource := initSyncTestWithPowerTable(t, pt)
 	ctx := context.Background()
 
-	minerPower := uint64(25)
-	totalPower := uint64(100)
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
 	signer, ki := types.NewMockSignersAndKeyInfo(2)
 	mockSignerPubKey := ki[0].PublicKey()
 
@@ -909,19 +909,21 @@ func TestTipSetWeightDeep(t *testing.T) {
 		Keys: 4,
 		Miners: []gengen.Miner{
 			{
-				Power: uint64(0),
+				NumCommittedSectors: 0,
 			},
 			{
-				Power: uint64(10),
+				NumCommittedSectors: 10,
 			},
 			{
-				Power: uint64(10),
+				NumCommittedSectors: 10,
 			},
 			{
-				Power: uint64(980),
+				NumCommittedSectors: 980,
 			},
 		},
 	}
+
+	totalPower := types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize)
 
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
 	require.NoError(t, err)
@@ -929,7 +931,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
+	chainStore := chain.NewDefaultStore(r.ChainDatastore(), calcGenBlk.Cid())
 
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), &th.TestView{}, calcGenBlk.Cid(), verifier)
@@ -991,13 +993,13 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, 1000, mockSigner)
+	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	fakeChildParams.Nonce = uint64(1)
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[2].Power, 1000, mockSigner)
+	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
@@ -1022,14 +1024,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerAddr: info.Miners[1].Address,
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, 1000, mockSigner)
+	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	fakeChildParams.Nonce = uint64(1)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[2].Power, 1000, mockSigner)
+	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
@@ -1053,7 +1055,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerAddr: info.Miners[3].Address,
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[3].Power, 1000, mockSigner)
+	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[3].Power, totalPower, mockSigner)
 	require.NoError(t, err)
 
 	f2 := th.RequireNewTipSet(t, f2b2)
@@ -1067,14 +1069,20 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
 
-func requireGetTsas(ctx context.Context, t *testing.T, chain chain.Store, key types.SortedCidSet) *chain.TipSetAndState {
-	tsas, err := chain.GetTipSetAndState(key)
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) *types.TipSet {
+	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
-	return tsas
+	return ts
+}
+
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) cid.Cid {
+	stateCid, err := chainStore.GetTipSetStateRoot(key)
+	require.NoError(t, err)
+	return stateCid
 }
 
 func initGenesis(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 	return consensus.MakeGenesisFunc(
-		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddress, minerOwnerAddress, []byte{}, 1000, minerPeerID, types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)(cst, bs)
 }

@@ -230,9 +230,7 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 func TestSelfDialStorageGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx := context.Background()
-
-	ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)
@@ -270,10 +268,5 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	f := files.NewBytesFile([]byte("satyamevajayate"))
 	_, _, err = series.ImportAndStore(ctx, miningNode, ask, f)
 	assert.Error(t, err)
-	var cmdOutBytes []byte
-	w := bytes.NewBuffer(cmdOutBytes)
-	miningNode.DumpLastOutput(w)
-	outputStr := string(w.Bytes())
-	expectedErrStr := "attempting to make storage deal with self"
-	assert.Contains(t, outputStr, expectedErrStr)
+	fastesting.AssertStdErrContains(t, miningNode, "attempting to make storage deal with self")
 }

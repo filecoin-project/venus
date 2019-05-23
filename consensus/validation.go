@@ -2,16 +2,31 @@ package consensus
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/address"
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+var errNegativeValueCt *metrics.Int64Counter
+var errGasAboveBlockLimitCt *metrics.Int64Counter
+var errInsufficientGasCt *metrics.Int64Counter
+var errNonceTooLowCt *metrics.Int64Counter
+var errNonceTooHighCt *metrics.Int64Counter
+
+func init() {
+	errNegativeValueCt = metrics.NewInt64Counter("consensus/msg_negative_value_err", "Number of negative valuedmessage")
+	errGasAboveBlockLimitCt = metrics.NewInt64Counter("consensus/msg_gas_above_blk_limit_err", "Number of messages with gas above block limit")
+	errInsufficientGasCt = metrics.NewInt64Counter("consensus/msg_insufficient_gas_err", "Number of messages with insufficient gas")
+	errNonceTooLowCt = metrics.NewInt64Counter("consensus/msg_nonce_low_err", "Number of messages with nonce too low")
+	errNonceTooHighCt = metrics.NewInt64Counter("consensus/msg_nonce_high_err", "Number of messages with nonce too high")
+}
 
 // SignedMessageValidator validates incoming signed messages.
 type SignedMessageValidator interface {
@@ -60,28 +75,33 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 	}
 
 	if msg.Value.IsNegative() {
-		log.Info("Cannot transfer negative value", fromActor, msg.Value)
+		log.Debugf("Cannot transfer negative value: %s from actor: %s", msg.Value.String(), msg.From.String())
+		errNegativeValueCt.Inc(ctx, 1)
 		return errNegativeValue
 	}
 
 	if msg.GasLimit > types.BlockGasLimit {
-		log.Info("Message gas limit above block limit", fromActor, msg, types.BlockGasLimit)
+		log.Debugf("Message: %s gas limit from actor: %s above block limit: %s", msg.String(), msg.From.String(), string(types.BlockGasLimit))
+		errGasAboveBlockLimitCt.Inc(ctx, 1)
 		return errGasAboveBlockLimit
 	}
 
 	// Avoid processing messages for actors that cannot pay.
 	if !canCoverGasLimit(msg, fromActor) {
-		log.Info("Insufficient funds to cover gas limit: ", fromActor, msg)
+		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
+		errInsufficientGasCt.Inc(ctx, 1)
 		return errInsufficientGas
 	}
 
 	if msg.Nonce < fromActor.Nonce {
-		log.Info("Nonce too low: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		errNonceTooLowCt.Inc(ctx, 1)
 		return errNonceTooLow
 	}
 
 	if !v.allowHighNonce && msg.Nonce > fromActor.Nonce {
-		log.Info("Nonce too high: ", msg.Nonce, fromActor.Nonce, fromActor, msg)
+		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
+		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
 	}
 
@@ -98,7 +118,7 @@ func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
 
 // IngestionValidatorAPI allows the validator to access latest state
 type ingestionValidatorAPI interface {
-	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
+	GetActor(context.Context, address.Address) (*actor.Actor, error)
 }
 
 // IngestionValidator can access latest state and runs additional checks to mitigate DoS attacks
@@ -121,7 +141,7 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
 	// retrieve from actor
-	fromActor, err := v.api.ActorFromLatestState(ctx, msg.From)
+	fromActor, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			fromActor = &actor.Actor{}

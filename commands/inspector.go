@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"runtime"
 
@@ -9,6 +11,7 @@ import (
 	sysi "github.com/whyrusleeping/go-sysinfo"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -49,7 +52,55 @@ Prints out information about filecoin process and its environment.
 		allInfo.Memory = mem
 		allInfo.Config = GetInspectorAPI(env).Config()
 		allInfo.Environment = GetInspectorAPI(env).Environment()
+		allInfo.FilecoinVersion = GetInspectorAPI(env).FilecoinVersion()
 		return cmds.EmitOnce(res, allInfo)
+	},
+	Type: AllInspectorInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *AllInspectorInfo) error {
+			sw := NewSilentWriter(w)
+
+			// Print Version
+			sw.Printf("Version:\t%s\n", info.FilecoinVersion)
+
+			// Print Runtime Info
+			sw.Printf("\nRuntime\n")
+			sw.Printf("OS:           \t%s\n", info.Runtime.OS)
+			sw.Printf("Arch:         \t%s\n", info.Runtime.Arch)
+			sw.Printf("Version:      \t%s\n", info.Runtime.Version)
+			sw.Printf("Compiler:     \t%s\n", info.Runtime.Compiler)
+			sw.Printf("NumProc:      \t%d\n", info.Runtime.NumProc)
+			sw.Printf("GoMaxProcs:   \t%d\n", info.Runtime.GoMaxProcs)
+			sw.Printf("NumGoRoutines:\t%d\n", info.Runtime.NumGoRoutines)
+			sw.Printf("NumCGoCalls:  \t%d\n", info.Runtime.NumCGoCalls)
+
+			// Print Disk Info
+			sw.Printf("\nDisk\n")
+			sw.Printf("Free:  \t%d\n", info.Disk.Free)
+			sw.Printf("Total: \t%d\n", info.Disk.Total)
+			sw.Printf("FSType:\t%s\n", info.Disk.FSType)
+
+			// Print Memory Info
+			sw.Printf("\nMemory\n")
+			sw.Printf("Swap:   \t%d\n", info.Memory.Swap)
+			sw.Printf("Virtual:\t%d\n", info.Memory.Virtual)
+
+			// Print Environment Info
+			sw.Printf("\nEnvironment\n")
+			sw.Printf("FilAPI: \t%s\n", info.Environment.FilAPI)
+			sw.Printf("FilPath:\t%s\n", info.Environment.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.Environment.GoPath)
+
+			// Print Config Info
+			sw.Printf("\nConfig\n")
+			marshaled, err := json.MarshalIndent(info.Config, "", "\t")
+			if err != nil {
+				return err
+			}
+			sw.Printf("%s\n", marshaled)
+
+			return sw.Error()
+		}),
 	},
 }
 
@@ -63,6 +114,21 @@ Prints out information about the golang runtime.
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := GetInspectorAPI(env).Runtime()
 		return cmds.EmitOnce(res, out)
+	},
+	Type: RuntimeInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *RuntimeInfo) error {
+			sw := NewSilentWriter(w)
+			sw.Printf("OS:           \t%s\n", info.OS)
+			sw.Printf("Arch:         \t%s\n", info.Arch)
+			sw.Printf("Version:      \t%s\n", info.Version)
+			sw.Printf("Compiler:     \t%s\n", info.Compiler)
+			sw.Printf("NumProc:      \t%d\n", info.NumProc)
+			sw.Printf("GoMaxProcs:   \t%d\n", info.GoMaxProcs)
+			sw.Printf("NumGoRoutines:\t%d\n", info.NumGoRoutines)
+			sw.Printf("NumCGoCalls:  \t%d\n", info.NumCGoCalls)
+			return sw.Error()
+		}),
 	},
 }
 
@@ -80,6 +146,16 @@ Prints out information about the filesystem.
 		}
 		return cmds.EmitOnce(res, out)
 	},
+	Type: DiskInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *DiskInfo) error {
+			sw := NewSilentWriter(w)
+			sw.Printf("Free:  \t%d\n", info.Free)
+			sw.Printf("Total: \t%d\n", info.Total)
+			sw.Printf("FSType:\t%s\n", info.FSType)
+			return sw.Error()
+		}),
+	},
 }
 
 var memoryInspectCmd = &cmds.Command{
@@ -96,6 +172,15 @@ Prints out information about memory usage.
 		}
 		return cmds.EmitOnce(res, out)
 	},
+	Type: MemoryInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *MemoryInfo) error {
+			sw := NewSilentWriter(w)
+			sw.Printf("Swap:   \t%d\n", info.Swap)
+			sw.Printf("Virtual:\t%d\n", info.Virtual)
+			return sw.Error()
+		}),
+	},
 }
 
 var configInspectCmd = &cmds.Command{
@@ -109,6 +194,18 @@ Prints out information about your filecoin nodes config.
 		out := GetInspectorAPI(env).Config()
 		return cmds.EmitOnce(res, out)
 	},
+	Type: config.Config{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *config.Config) error {
+			marshaled, err := json.MarshalIndent(info, "", "\t")
+			if err != nil {
+				return err
+			}
+			marshaled = append(marshaled, byte('\n'))
+			_, err = w.Write(marshaled)
+			return err
+		}),
+	},
 }
 
 var envInspectCmd = &cmds.Command{
@@ -121,6 +218,16 @@ Prints out information about your filecoin nodes environment.
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
 		out := GetInspectorAPI(env).Environment()
 		return cmds.EmitOnce(res, out)
+	},
+	Type: EnvironmentInfo{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info *EnvironmentInfo) error {
+			sw := NewSilentWriter(w)
+			sw.Printf("FilAPI: \t%s\n", info.FilAPI)
+			sw.Printf("FilPath:\t%s\n", info.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.GoPath)
+			return sw.Error()
+		}),
 	},
 }
 
@@ -138,11 +245,12 @@ type Inspector struct {
 
 // AllInspectorInfo contains all information the inspector can gather.
 type AllInspectorInfo struct {
-	Config      *config.Config
-	Runtime     *RuntimeInfo
-	Environment *EnvironmentInfo
-	Disk        *DiskInfo
-	Memory      *MemoryInfo
+	Config          *config.Config
+	Runtime         *RuntimeInfo
+	Environment     *EnvironmentInfo
+	Disk            *DiskInfo
+	Memory          *MemoryInfo
+	FilecoinVersion string
 }
 
 // RuntimeInfo contains information about the golang runtime.
@@ -244,4 +352,9 @@ func (g *Inspector) Memory() (*MemoryInfo, error) {
 // Config return the current config values of the filecoin node.
 func (g *Inspector) Config() *config.Config {
 	return g.repo.Config()
+}
+
+// FilecoinVersion returns the version of go-filecoin.
+func (g *Inspector) FilecoinVersion() string {
+	return flags.Commit
 }

@@ -2,8 +2,6 @@ package chain
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/address"
 
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
@@ -28,20 +26,27 @@ type ReadStore interface {
 	// Stop stops all activities and cleans up.
 	Stop()
 
-	// GetTipSet retrieves the tipindex value (tipset, state) at the
+	// GetTipSet retrieves the tipset at the
 	// provided tipset key if in the store and an error if it does not
 	// exist.
-	GetTipSetAndState(tsKey types.SortedCidSet) (*TipSetAndState, error)
+	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+
+	// GetTipSet retrieves the state at the
+	// provided tipset key if in the store and an error if it does not
+	// exist.
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+
 	// GetBlock gets a block by cid.
 	GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error)
 
 	HeadEvents() *pubsub.PubSub
 	// GetHead returns the head of the chain tracked by the store.
 	GetHead() types.SortedCidSet
-	// ActorFromLatestState tries to get an actor from the latest state
-	ActorFromLatestState(ctx context.Context, address address.Address) (*actor.Actor, error)
 
 	GenesisCid() cid.Cid
+
+	//returns the chain height of the head tipset
+	BlockHeight() (uint64, error)
 }
 
 // Store wraps the on-disk storage of a valid blockchain.  Callers can get and

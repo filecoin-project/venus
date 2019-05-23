@@ -3,14 +3,15 @@ package fast
 import (
 	"context"
 
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/net"
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process
-func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) (*net.ConnectionResult, error) {
-	var out net.ConnectionResult
+func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiaddr) (peer.ID, error) {
+	var out peer.ID
 
 	args := []string{"go-filecoin", "swarm", "connect"}
 
@@ -19,10 +20,10 @@ func (f *Filecoin) SwarmConnect(ctx context.Context, addrs ...multiaddr.Multiadd
 	}
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return nil, err
+		return peer.ID(""), err
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 // SwarmPeers runs the `swarm peers` command against the filecoin process

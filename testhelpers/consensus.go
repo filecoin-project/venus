@@ -24,13 +24,13 @@ type TestView struct{}
 var _ consensus.PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // HasPower always returns true.
@@ -46,29 +46,22 @@ func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 	return ts
 }
 
-// RequireTipSetAdd adds a block to the provided tipset and requires that this
-// does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
-	err := ts.AddBlock(blk)
-	require.NoError(err)
-}
-
 // TestPowerTableView is an implementation of the powertable view used for testing mining
 // wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct{ minerPower, totalPower uint64 }
+type TestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
 
 // NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower uint64, totalPower uint64) *TestPowerTableView {
+func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount) *TestPowerTableView {
 	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower}
 }
 
 // Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	return tv.totalPower, nil
 }
 
 // Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	return tv.minerPower, nil
 }
 
@@ -80,7 +73,7 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
-	poStProof := MakeRandomPoSTProofForTest()
+	poStProof := MakeRandomPoStProofForTest()
 	ticket, _ := consensus.CreateTicket(poStProof, minerPubKey, signer)
 
 	return &types.Block{
@@ -95,8 +88,8 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 	}
 }
 
-// MakeRandomPoSTProofForTest creates a random proof.
-func MakeRandomPoSTProofForTest() []byte {
+// MakeRandomPoStProofForTest creates a random proof.
+func MakeRandomPoStProofForTest() []byte {
 	proofSize := types.OnePoStProofPartition.ProofLen()
 	p := MakeRandomBytes(proofSize)
 	p[0] = 42

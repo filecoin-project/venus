@@ -24,7 +24,7 @@ func NewLogger(wc io.WriteCloser, verbose bool) *Logger {
 	}
 	return &Logger{
 		closer: wc,
-		logger: log.New(w, "", 0),
+		logger: log.New(w, "[Filecoin Migration] ", log.LstdFlags),
 	}
 }
 
@@ -39,6 +39,11 @@ func (l *Logger) Error(err error) {
 // Print logs a string to the logging output.
 func (l *Logger) Print(msg string) {
 	l.logger.Print(msg)
+}
+
+// Printf logs and formats a string to the logging output.
+func (l *Logger) Printf(format string, v ...interface{}) {
+	l.logger.Printf(format, v...)
 }
 
 // Close closes the logfile backing the Logger.

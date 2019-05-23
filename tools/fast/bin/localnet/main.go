@@ -280,14 +280,8 @@ func main() {
 			return
 		}
 
-		max, err := getMaxUserBytesPerStagedSector()
-		if err != nil {
-			exitcode = handleError(err, "failed to get max user bytes per staged sector;")
-			return
-		}
-
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(max))
+		dataReader := io.LimitReader(rand.Reader, int64(getMaxUserBytesPerStagedSector()))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -356,16 +350,8 @@ func main() {
 	<-exit
 }
 
-func getMaxUserBytesPerStagedSector() (uint64, error) {
-	proofsMode := getProofsMode(smallSectors)
-	var sectorClass types.SectorClass
-	if proofsMode == types.TestProofsMode {
-		sectorClass = types.NewTestSectorClass()
-	} else {
-		sectorClass = types.NewLiveSectorClass()
-	}
-
-	return proofs.GetMaxUserBytesPerStagedSector(sectorClass.SectorSize())
+func getMaxUserBytesPerStagedSector() uint64 {
+	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
 }
 
 func handleError(err error, msg ...string) int {
