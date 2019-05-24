@@ -83,6 +83,9 @@ func TestRetrieval(t *testing.T) {
 	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
 	require.NoError(t, err)
 
+	err = fast.GetFunds(ctx, env, client)
+	require.NoError(t, err)
+
 	// Start setting up the nodes
 	// Setup Genesis
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))

@@ -10,10 +10,9 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	iptb "github.com/ipfs/iptb/testbed"
 
 	"github.com/filecoin-project/go-filecoin/address"
-
-	iptb "github.com/ipfs/iptb/testbed"
 )
 
 // EnvironmentDevnet is a FAST lib environment that is meant to be used
@@ -179,5 +178,5 @@ func GetFunds(ctx context.Context, env Environment, p *Filecoin) error {
 		return nil
 	}
 
-	return fmt.Errorf("environment does not support GetFunds")
+	return fmt.Errorf("environment [%T] does not support GetFunds", env)
 }
