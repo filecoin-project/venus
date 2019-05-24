@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
 // Store is plumbing implementation querying deals
@@ -58,13 +59,18 @@ func (store *Store) Put(storageDeal *storagedeal.Deal) error {
 // given proposal
 // bool should be ignored in case of a non-nil error
 func (store *Store) Has(storageProposal *storagedeal.Proposal) (bool, error) {
-	key := datastore.KeyWithNamespaces([]string{StorageDealPrefix, storageProposal.PieceRef.String()})
+	proposalCid, err := convert.ToCid(storageProposal)
+	if err != nil {
+		return false, err
+	}
+	key := datastore.KeyWithNamespaces([]string{StorageDealPrefix, proposalCid.String()})
+
 	exists, err := store.dealsDs.Has(key)
 	if err != nil || exists == false {
 		return false, err
 	}
 
-	deals, err := store.lsWithPrefix("/" + key.String())
+	deals, err := store.lsWithPrefix(key.String())
 	if err != nil {
 		return false, err
 	}

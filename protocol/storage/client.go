@@ -294,19 +294,6 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 	return &resp, nil
 }
 
-func (smc *Client) isMaybeDupDeal(ctx context.Context, p *storagedeal.Proposal) bool {
-	dealsCh, err := smc.api.DealsLs(ctx)
-	if err != nil {
-		return false
-	}
-	for d := range dealsCh {
-		if d.Deal.Miner == p.MinerAddress && d.Deal.Proposal.PieceRef.Equals(p.PieceRef) {
-			return true
-		}
-	}
-	return false
-}
-
 // LoadVouchersForDeal loads vouchers from disk for a given deal
 func (smc *Client) LoadVouchersForDeal(ctx context.Context, dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
 	storageDeal, err := smc.api.DealGet(ctx, dealCid)

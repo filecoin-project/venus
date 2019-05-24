@@ -1,10 +1,12 @@
 package strgdls_test
 
 import (
+	"testing"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -95,4 +97,9 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	assert.Equal(t, minerAddr, retrievedDeal.Proposal.Payment.Vouchers[0].Target)
 	assert.Equal(t, totalPrice, retrievedDeal.Proposal.Payment.Vouchers[0].Amount)
 	assert.Equal(t, *validAt, retrievedDeal.Proposal.Payment.Vouchers[0].ValidAt)
+
+	ok, err := store.Has(retrievedDeal.Proposal)
+	require.NoError(t, err)
+
+	assert.Equal(t, true, ok)
 }
