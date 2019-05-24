@@ -23,6 +23,8 @@ type prereleaseTool struct {
 	DryRun      bool
 }
 
+type releaseToDelete map[int64]string
+
 func main() {
 	dryRun := flag.Bool("dry-run", false, "perform a dry run instead of executing create/delete/update actions")
 	limit := flag.Int("limit", 7, "limit of prereleases to keep")
@@ -56,35 +58,38 @@ func main() {
 	if err := r.getReleases(ctx); err != nil {
 		log.Fatalf("Could not find any releases: %+v", err)
 	}
-	r.getPrereleases()
-	ok, err := r.deleteReleases(ctx, r.outdatedPreleaseIDs())
-	if err != nil {
-		log.Fatalf("Problem attempting to delete releases: %+v", err)
-	}
-	if !ok {
-		log.Print("Remove --dry-run flag to apply changes")
+	ok = r.getPrereleases()
+	if ok {
+		ok, err := r.deleteReleases(ctx, r.outdatedPreleaseIDs())
+		if err != nil {
+			log.Fatalf("Problem attempting to delete releases: %+v", err)
+		}
+		if !ok {
+			log.Print("Remove --dry-run flag to apply changes")
+		}
 	}
 }
 
 func (r *prereleaseTool) getReleases(ctx context.Context) error {
-	releases, _, err := r.client.Repositories.ListReleases(ctx, r.Owner, r.Repo, nil)
+	releases, _, err := r.client.Repositories.ListReleases(ctx, r.Owner, r.Repo, &github.ListOptions{PerPage: 100})
 	r.Releases = releases
 	return err
 }
 
-func (r *prereleaseTool) getPrereleases() {
-	switch {
-	case len(r.Releases) > 0:
+func (r *prereleaseTool) getPrereleases() bool {
+	var ok bool
+	if len(r.Releases) > 0 {
 		for _, release := range r.Releases {
 			if *release.Prerelease {
 				r.Prereleases = append(r.Prereleases, *release)
 			}
 		}
 		r.sortReleasesByDate()
-	default:
-		log.Print("no releases found")
+		ok = true
+		return ok
 	}
-
+	log.Print("no releases found")
+	return ok
 }
 
 func (r *prereleaseTool) sortReleasesByDate() {
@@ -93,41 +98,54 @@ func (r *prereleaseTool) sortReleasesByDate() {
 	})
 }
 
-func (r *prereleaseTool) outdatedPreleaseIDs() []int64 {
-	var idsToDelete []int64
+func (r *prereleaseTool) outdatedPreleaseIDs() releaseToDelete {
+	m := make(releaseToDelete)
 	switch {
 	case len(r.Prereleases) > r.Limit:
 		trimmedPrereleaseList := r.Prereleases[r.Limit:]
 		for _, release := range trimmedPrereleaseList {
-			idsToDelete = append(idsToDelete, *release.ID)
+			m[*release.ID] = *release.TagName
 		}
 	default:
 		log.Print("There are no outdated prereleases")
 	}
-	return idsToDelete
+	return m
 }
 
-func (r *prereleaseTool) deleteReleases(ctx context.Context, ids []int64) (bool, error) {
+func (r *prereleaseTool) deleteReleases(ctx context.Context, m releaseToDelete) (bool, error) {
 	var ok bool
-	var deleteCount int
-	defer log.Printf("Deleted %d releases", deleteCount)
-	if len(ids) > 0 {
+	var deleteCount int64
+	if len(m) > 0 {
 		log.Print("Removing outdated Prereleases")
-		for _, id := range ids {
-			log.Printf("Prerelease ID %d selected for deletion", id)
+		for id, tag := range m {
+			log.Printf("Prerelease ID: %d, Tag: %s selected for deletion", id, tag)
 			if !r.DryRun {
 				ok = true
 				log.Printf("Deleting Prerelease %d", id)
 				resp, err := r.client.Repositories.DeleteRelease(ctx, r.Owner, r.Repo, id)
 				if err != nil {
-					return ok, err
+					return handleDeleteReleasesReturn(ok, err, deleteCount)
 				}
 				if resp.StatusCode != 204 {
-					return ok, fmt.Errorf("Unexpected HTTP status code. Expected: 204 Got: %d", resp.StatusCode)
+					return handleDeleteReleasesReturn(ok, fmt.Errorf(`Unexpected HTTP status code from release delete request.
+						Expected: 204 Got: %d`, resp.StatusCode), deleteCount)
+				}
+				resp, err = r.client.Git.DeleteRef(ctx, r.Owner, r.Repo, "tags/"+tag)
+				if err != nil {
+					return handleDeleteReleasesReturn(ok, err, deleteCount)
+				}
+				if resp.StatusCode != 204 {
+					return handleDeleteReleasesReturn(ok, fmt.Errorf(`Unexpected HTTP status code from release delete request.
+						Expected: 204 Got: %d`, resp.StatusCode), deleteCount)
 				}
 				deleteCount++
 			}
 		}
 	}
-	return ok, nil
+	return handleDeleteReleasesReturn(ok, nil, deleteCount)
+}
+
+func handleDeleteReleasesReturn(ok bool, err error, count int64) (bool, error) {
+	log.Printf("Deleted %d releases", count)
+	return ok, err
 }
