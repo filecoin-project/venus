@@ -1,4 +1,4 @@
-package metrics
+package metrics_test
 
 import (
 	"context"
@@ -19,6 +19,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/metrics"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -74,10 +76,10 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 	ctx := context.Background()
 	aggregator := newEndpoint(t, 0)
 	filecoin := newEndpoint(t, 0)
-	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(c net.Stream) {
+	aggregator.Host.SetStreamHandler(metrics.HeartbeatProtocol, func(c net.Stream) {
 	})
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
@@ -86,9 +88,8 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			return types.TipSet{
-				testCid: nil,
-			}, nil
+			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			return tipSet, nil
 		},
 	)
 
@@ -106,7 +107,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 	ctx := context.Background()
 	filecoin := newEndpoint(t, 60001)
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      "",
@@ -115,9 +116,8 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			return types.TipSet{
-				testCid: nil,
-			}, nil
+			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			return tipSet, nil
 		},
 	)
 	assert.Error(t, hbs.Connect(ctx))
@@ -142,13 +142,13 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	// The handle method will run the assertions for the test
-	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(s net.Stream) {
+	aggregator.Host.SetStreamHandler(metrics.HeartbeatProtocol, func(s net.Stream) {
 		defer func() {
 			require.NoError(t, s.Close())
 		}()
 
 		dec := json.NewDecoder(s)
-		var hb Heartbeat
+		var hb metrics.Heartbeat
 		require.NoError(t, dec.Decode(&hb))
 
 		assert.Equal(t, expTs.String(), hb.Head)
@@ -158,7 +158,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		cancel()
 	})
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
@@ -169,7 +169,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 		func() (types.TipSet, error) {
 			return expTs, nil
 		},
-		WithMinerAddressGetter(func() address.Address {
+		metrics.WithMinerAddressGetter(func() address.Address {
 			return addr
 		}),
 	)

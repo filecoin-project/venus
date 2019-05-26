@@ -152,7 +152,7 @@ func (s *timingScheduler) IsStarted() bool {
 // previous number of null blocks mined on the previous base, prevNullBlkCount.
 func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int {
 	// We haven't mined on this base before, start with 0 null blocks.
-	if prevBase == nil {
+	if !prevBase.Defined() {
 		return 0
 	}
 	if prevBase.String() != currBase.String() {

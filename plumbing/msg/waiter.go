@@ -108,7 +108,8 @@ func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Ci
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
 		}
-		for _, blk := range iterator.Value() {
+		for i := 0; i < iterator.Value().Len(); i++ {
+			blk := iterator.Value().At(i)
 			for _, msg := range blk.Messages {
 				c, err := msg.Cid()
 				if err != nil {
@@ -146,7 +147,8 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case types.TipSet:
-				for _, blk := range raw {
+				for i := 0; i < raw.Len(); i++ {
+					blk := raw.At(i)
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
 						if err != nil {
@@ -175,9 +177,8 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
-	blks := ts.ToSlice()
-	if len(ts) == 1 {
-		b := blks[0]
+	if ts.IsSolo() {
+		b := ts.At(0)
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
@@ -246,12 +247,10 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // tipset.
 // TODO: find a better home for this method
 func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet) (int, error) {
-	blks := ts.ToSlice()
-	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet
 	var msgCnt int
-	for _, b := range blks {
-		for _, msg := range b.Messages {
+	for i := 0; i < ts.Len(); i++ {
+		for _, msg := range ts.At(i).Messages {
 			c, err := msg.Cid()
 			if err != nil {
 				return -1, err

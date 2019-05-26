@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	//	"math/big"
-	//	"math/rand"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -66,14 +64,15 @@ func MustConvertParams(params ...interface{}) []byte {
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
 func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
-	tipSets := []types.TipSet{}
+	var tipSets []types.TipSet
 	parents := root
 	height := uint64(0)
+	stateRootCidGetter := types.NewCidForTestGetter()
 
 	// only add root to the chain if it is not the zero-valued-tipset
-	if len(parents) != 0 {
-		for _, blk := range parents {
-			MustPut(store, blk)
+	if parents.Defined() {
+		for i := 0; i < parents.Len(); i++ {
+			MustPut(store, parents.At(i))
 		}
 		tipSets = append(tipSets, parents)
 		height, _ = parents.Height()
@@ -81,7 +80,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 	}
 
 	for _, tsMsgs := range msgSets {
-		ts := types.TipSet{}
+		var blocks []*types.Block
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
@@ -90,16 +89,21 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
-			ts[child.Cid()] = child
+			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
 			child := &types.Block{
-				Messages: msgs,
-				Parents:  parents.ToSortedCidSet(),
-				Height:   types.Uint64(height),
+				Messages:  msgs,
+				Parents:   parents.ToSortedCidSet(),
+				Height:    types.Uint64(height),
+				StateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}
 			MustPut(store, child)
-			ts[child.Cid()] = child
+			blocks = append(blocks, child)
+		}
+		ts, err := types.NewTipSet(blocks...)
+		if err != nil {
+			panic(err)
 		}
 		tipSets = append(tipSets, ts)
 		parents = ts

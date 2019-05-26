@@ -41,13 +41,6 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.T
 	return ts
 }
 
-// RequireTipSetAdd adds a block to the provided tipset and requires that this
-// does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
-	err := ts.AddBlock(blk)
-	require.NoError(err)
-}
-
 // TestPowerTableView is an implementation of the powertable view used for testing mining
 // wherein each miner has totalPower/minerPower power.
 type TestPowerTableView struct{ minerPower, totalPower uint64 }

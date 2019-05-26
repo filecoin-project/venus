@@ -124,7 +124,7 @@ func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Pro
 func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (types.TipSet, error) {
 	for _, blk := range blks {
 		if err := c.validateBlockStructure(ctx, blk); err != nil {
-			return nil, err
+			return types.NoTipSet, err
 		}
 	}
 	return types.NewTipSet(blks...)
@@ -149,7 +149,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
-	if len(ts) == 1 && ts.ToSlice()[0].Cid().Equals(c.genesisCid) {
+	if ts.IsSolo() && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
 	// Compute parent weight.
@@ -247,19 +247,6 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 		return nil, err
 	}
 
-	sl := ts.ToSlice()
-	one := sl[0]
-	for _, blk := range sl[1:] {
-		if blk.Parents.String() != one.Parents.String() {
-			log.Error("invalid parents", blk.Parents.String(), one.Parents.String(), blk)
-			panic("invalid parents")
-		}
-		if blk.Height != one.Height {
-			log.Error("invalid height", blk.Height, one.Height, blk)
-			panic("invalid height")
-		}
-	}
-
 	vms := vm.NewStorageMap(c.bstore)
 	st, err = c.runMessages(ctx, pSt, vms, ts, ancestors)
 	if err != nil {
@@ -280,7 +267,8 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
-	for _, blk := range ts.ToSlice() {
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
 		// TODO: Also need to validate BlockSig
 
 		// TODO: Once we've picked a delay function (see #2119), we need to
@@ -360,9 +348,9 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStC
 func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
-	// TODO: order blocks in the tipset by ticket
 	// TODO: don't process messages twice
-	for _, blk := range ts.ToSlice() {
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
 		cpyCid, err := st.Flush(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
@@ -390,7 +378,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, ErrStateRootMismatch
 		}
 	}
-	if len(ts) == 1 { // block validation state == aggregate parent state
+	if ts.IsSolo() { // block validation state == aggregate parent state
 		return cpySt, nil
 	}
 	// multiblock tipsets require reapplying messages to get aggregate state

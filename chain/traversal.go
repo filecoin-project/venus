@@ -16,21 +16,19 @@ type BlockProvider interface {
 // GetParentTipSet returns the parent tipset of a tipset.
 // The result is empty if the tipset has no parents (including if it is empty itself)
 func GetParentTipSet(ctx context.Context, store BlockProvider, ts types.TipSet) (types.TipSet, error) {
-	newTipSet := types.TipSet{}
 	parents, err := ts.Parents()
-	if err != nil {
-		return nil, err
+	if err != nil || parents.Len() == 0 {
+		return types.NoTipSet, err
 	}
+	var newBlocks []*types.Block
 	for it := parents.Iter(); !it.Complete() && ctx.Err() == nil; it.Next() {
 		newBlk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
-			return nil, err
+			return types.NoTipSet, err
 		}
-		if err := newTipSet.AddBlock(newBlk); err != nil {
-			return nil, err
-		}
+		newBlocks = append(newBlocks, newBlk)
 	}
-	return newTipSet, nil
+	return types.NewTipSet(newBlocks...)
 }
 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
@@ -53,7 +51,7 @@ func (it *TipsetIterator) Value() types.TipSet {
 
 // Complete tests whether the iterator is exhausted.
 func (it *TipsetIterator) Complete() bool {
-	return len(it.value) == 0
+	return !it.value.Defined()
 }
 
 // Next advances the iterator to the next value.

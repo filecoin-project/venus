@@ -324,8 +324,8 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	require.True(t, containsTipSet(childTsasSlice, ts))
 
 	// Blocks exist in store
-	for _, blk := range ts {
-		require.True(t, chain.HasBlock(ctx, blk.Cid()))
+	for i := 0; i < ts.Len(); i++ {
+		require.True(t, chain.HasBlock(ctx, ts.At(i).Cid()))
 	}
 }
 
@@ -344,8 +344,8 @@ func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.T
 	assert.True(t, containsTipSet(childTsasSlice, ts))
 
 	// Blocks exist in store
-	for _, blk := range ts {
-		assert.True(t, chainStore.HasBlock(ctx, blk.Cid()))
+	for i := 0; i < ts.Len(); i++ {
+		require.True(t, chainStore.HasBlock(ctx, ts.At(i).Cid()))
 	}
 }
 
@@ -1084,7 +1084,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
-	require.Equal(t, 1, len(baseTS))
+	require.True(t, baseTS.IsSolo())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(t, err)
