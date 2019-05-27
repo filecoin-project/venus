@@ -17,13 +17,13 @@ import (
 func TestMigrationRunner_Run(t *testing.T) {
 	tf.UnitTest(t)
 
-	repoDir, repoSymlink := RequireSetupTestRepo(t, 0)
-	defer RequireRemoveAll(t, repoDir)
-	defer RequireRemoveAll(t, repoSymlink)
+	container, repoLink := RequireInitRepo(t, 0)
+	oldRepoPath := repo.RequireReadLink(t, repoLink)
+	defer repo.RequireRemoveAll(t, container)
 
 	t.Run("valid command returns error if repo not found", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
 		runner, err := NewMigrationRunner(logger, "describe", "/home/filecoin-symlink", "doesnt/matter")
 		require.NoError(t, err)
@@ -31,10 +31,10 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("can set MigrationsProvider", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
@@ -44,12 +44,12 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("Does not run the migration if the repo is already up to date", func(t *testing.T) {
-		require.NoError(t, repo.WriteVersion(repoDir, 1))
+		require.NoError(t, repo.WriteVersion(oldRepoPath, 1))
 
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 		assert.NoError(t, runner.Run().Err)
@@ -57,12 +57,12 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("Returns error when a valid migration is not found", func(t *testing.T) {
-		require.NoError(t, repo.WriteVersion(repoDir, 199))
+		require.NoError(t, repo.WriteVersion(oldRepoPath, 199))
 
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
@@ -75,38 +75,38 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("Returns error when repo version is invalid", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("-1"), 0644))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(oldRepoPath, "version"), []byte("-1"), 0644))
 		assert.EqualError(t, runner.Run().Err, "repo version out of range: -1")
 
-		require.NoError(t, repo.WriteVersion(repoDir, 32767))
+		require.NoError(t, repo.WriteVersion(oldRepoPath, 32767))
 		assert.EqualError(t, runner.Run().Err, "repo version out of range: 32767")
 	})
 
 	t.Run("Returns error if version file does not contain an integer string", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 		runner.MigrationsProvider = testProviderPasses
 
-		require.NoError(t, ioutil.WriteFile(filepath.Join(repoDir, "version"), []byte("foo"), 0644))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(oldRepoPath, "version"), []byte("foo"), 0644))
 		assert.EqualError(t, runner.Run().Err, "repo version is corrupt: strconv.Atoi: parsing \"foo\": invalid syntax")
 	})
 
 	t.Run("describe does not clone repo", func(t *testing.T) {
-		require.NoError(t, repo.WriteVersion(repoSymlink, 0))
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		require.NoError(t, repo.WriteVersion(repoLink, 0))
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 
 		runner.MigrationsProvider = testProviderPasses
@@ -117,10 +117,10 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("run fails if there is more than 1 applicable migration", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 
 		runner.MigrationsProvider = func() []Migration {
@@ -133,10 +133,10 @@ func TestMigrationRunner_Run(t *testing.T) {
 	})
 
 	t.Run("run skips multiversion", func(t *testing.T) {
-		dummyLogFile, dummyLogPath := RequireOpenTempFile(t, "logfile")
-		defer RequireRemoveAll(t, dummyLogPath)
+		dummyLogFile, dummyLogPath := repo.RequireOpenTempFile(t, "logfile")
+		defer repo.RequireRemoveAll(t, dummyLogPath)
 		logger := NewLogger(dummyLogFile, false)
-		runner, err := NewMigrationRunner(logger, "describe", repoSymlink, "")
+		runner, err := NewMigrationRunner(logger, "describe", repoLink, "")
 		require.NoError(t, err)
 
 		runner.MigrationsProvider = func() []Migration {

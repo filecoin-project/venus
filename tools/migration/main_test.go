@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -51,9 +52,9 @@ func TestOptions(t *testing.T) {
 	})
 
 	t.Run("accepts --verbose or -v with valid command", func(t *testing.T) {
-		repoDir, symlink := internal.RequireSetupTestRepo(t, 0)
-		defer internal.RequireRemoveAll(t, repoDir)
-		defer internal.RequireRemoveAll(t, symlink)
+		repoDir, symlink := internal.RequireInitRepo(t, 0)
+		defer repo.RequireRemoveAll(t, repoDir)
+		defer repo.RequireRemoveAll(t, symlink)
 
 		out, err := exec.Command(command, "describe", "--old-repo="+symlink, "--verbose").CombinedOutput()
 		assert.NoError(t, err)

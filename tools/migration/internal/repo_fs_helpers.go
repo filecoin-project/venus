@@ -4,62 +4,62 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/repo"
 	rcopy "github.com/otiai10/copy"
 )
 
 // This is a set of file system helpers for repo migration.
 //
-// CloneRepo and InstallRepo expect a symlink that points to the entire filecoin home
+// CloneRepo and InstallRepo expect a symlink that points to the filecoin repo
 // directory, typically ~/.filecoin or whatever FIL_PATH is set to.
 //
-// This does touch sector data.
+// This does not touch sector data.
 
-// CloneRepo copies the old repo to the new repo dir with Read/Write access.
-//	 oldRepoLink must be a symlink. The symlink will be resolved and used for
-//   copying.
+// CloneRepo copies a linked repo directory to a new, writable repo directory.
+// The directory created will be named with a timestamp, version number, and
+// uniqueifyig tag if necessary.
 //
-//   The new repo dir name will look like: /Users/davonte/.filecoin-20190806-150455-001
-//   If there is an existing dir by that name, the integer at the end will be
-//   incremented until there is a free one or a new timestamp.
-//
-func CloneRepo(oldRepoLink string) (string, error) {
-	realRepoPath, err := os.Readlink(oldRepoLink)
+// Params:
+//   linkPath: path to a symlink, which links to an actual repo directory to be cloned.
+func CloneRepo(linkPath string, newVersion uint) (string, error) {
+	repoDirPath, err := os.Readlink(linkPath)
 	if err != nil {
-		return "", fmt.Errorf("old-repo must be a symbolic link: %s", err)
+		return "", fmt.Errorf("repo path must be a symbolic link: %s", err)
 	}
 
-	newRepoPath, err := makeNewRepoPath(oldRepoLink)
+	newDirPath, err := makeNewRepoPath(linkPath, newVersion)
 	if err != nil {
 		return "", err
 	}
 
-	if err := rcopy.Copy(realRepoPath, newRepoPath); err != nil {
+	if err := rcopy.Copy(repoDirPath, newDirPath); err != nil {
 		return "", err
 	}
-	if err := os.Chmod(newRepoPath, os.ModeDir|0744); err != nil {
+	if err := os.Chmod(newDirPath, os.ModeDir|0744); err != nil {
 		return "", err
 	}
-	return newRepoPath, nil
+	return newDirPath, nil
 }
 
-// InstallNewRepo archives the old repo, and symlinks the new repo in its place.
-// returns any error.
-func InstallNewRepo(oldRepoLink, newRepoPath string) error {
-	if _, err := os.Readlink(oldRepoLink); err != nil {
+// InstallNewRepo updates a symlink to point to a new repo directory.
+func InstallNewRepo(linkPath, newRepoPath string) error {
+	// Check that linkPath is a symlink.
+	if _, err := os.Readlink(linkPath); err != nil {
 		return err
 	}
 
+	// Check the repo exists.
 	if _, err := os.Stat(newRepoPath); err != nil {
 		return err
 	}
 
-	if err := os.Remove(oldRepoLink); err != nil {
+	// Replace the symlink.
+	if err := os.Remove(linkPath); err != nil {
 		return err
 	}
-	if err := os.Symlink(newRepoPath, oldRepoLink); err != nil {
+	if err := os.Symlink(newRepoPath, linkPath); err != nil {
 		return err
 	}
 	return nil
@@ -67,23 +67,18 @@ func InstallNewRepo(oldRepoLink, newRepoPath string) error {
 
 // makeNewRepoPath generates a new repo path for a migration.
 // Params:
-//     oldPath:  the actual old repo path
+//     linkPath:  the actual old repo path
+//     version:   the prospective version for the new repo
 // Returns:
-//     a path generated using the above information plus tmp_<timestamp>.
-//     error
+//     a vacant path for a new repo directory
 // Example output:
-//     /Users/davonte/.filecoin-20190806-150455-001
-func makeNewRepoPath(oldPath string) (string, error) {
-	// unlikely to see a name collision but make sure; making it loop up to 1000
-	// ensures that even if there are 1000 calls/sec then the timestamp will change
-	// anyway.
+//     /Users/davonte/.filecoin-20190806-150455-v002
+func makeNewRepoPath(linkPath string, version uint) (string, error) {
+	// Search for a free name
+	now := time.Now()
 	var newpath string
-	for i := 1; i < 1000; i++ {
-
-		now := time.Now()
-		nowStr := now.Format("20060102-150405")
-
-		newpath = strings.Join([]string{oldPath, nowStr, fmt.Sprintf("%03d", i)}, "-")
+	for i := uint(0); i < 1000; i++ {
+		newpath = repo.MakeRepoDirName(linkPath, now, version, i)
 		if _, err := os.Stat(newpath); os.IsNotExist(err) {
 			return newpath, nil
 		}

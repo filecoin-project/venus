@@ -128,14 +128,6 @@ func init() {
 			return nil, err
 		}
 
-		if err := os.Mkdir(repoPath, 0755); err != nil {
-			return nil, err
-		}
-
-		if err := os.Mkdir(sectorsPath, 0755); err != nil {
-			return nil, err
-		}
-
 		return &Localfilecoin{
 			iptbPath:    dir,
 			binPath:     dst,
@@ -156,6 +148,9 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 	output, oerr := l.RunCmd(ctx, nil, args...)
 	if oerr != nil {
 		return nil, oerr
+	}
+	if output.ExitCode() != 0 {
+		return output, errors.Errorf("%s exited with non-zero code %d", output.Args(), output.ExitCode())
 	}
 
 	icfg, err := l.Config()
