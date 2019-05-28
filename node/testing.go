@@ -212,8 +212,8 @@ func StopNodes(nds []*Node) {
 	}
 }
 
-// MustCreateMinerResult contains the result of a CreateMiner command
-type MustCreateMinerResult struct {
+// MustCreateStorageMinerResult contains the result of a CreateStorageMiner command
+type MustCreateStorageMinerResult struct {
 	MinerAddress *address.Address
 	Err          error
 }

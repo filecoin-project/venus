@@ -242,7 +242,7 @@ func main() {
 	// SendFilecoinDefaults
 	// 4. Issue FIL to node
 	//
-	// CreateMinerWithAsk
+	// CreateStorageMinerWithAsk
 	// 5. Create a new miner
 	// 6. Set the miner price, and get ask
 	//
@@ -274,9 +274,9 @@ func main() {
 			return
 		}
 
-		ask, err := series.CreateMinerWithAsk(ctx, miner, minerPledge, minerCollateral, minerPrice, minerExpiry)
+		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerPledge, minerCollateral, minerPrice, minerExpiry)
 		if err != nil {
-			exitcode = handleError(err, "failed series.CreateMinerWithAsk;")
+			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return
 		}
 
