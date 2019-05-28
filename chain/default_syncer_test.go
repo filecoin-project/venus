@@ -360,16 +360,11 @@ func assertNoAdd(t *testing.T, chainStore requireTsAddedChainStore, cids types.S
 	}
 }
 
-type headGetter interface {
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
-}
-
-func requireHead(t *testing.T, chain headGetter, head types.TipSet) {
+func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	require.Equal(t, head, requireHeadTipset(t, chain))
 }
 
-func assertHead(t *testing.T, chain headGetter, head types.TipSet) {
+func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	assert.NoError(t, err)
 	assert.Equal(t, head, headTipSet)

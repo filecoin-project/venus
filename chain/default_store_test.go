@@ -77,12 +77,12 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.DefaultStore, pK
 	return tsasSlice
 }
 
-type requireHeadTipsetChainStore interface {
+type HeadAndTipsetGetter interface {
 	GetHead() types.SortedCidSet
 	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
 }
 
-func requireHeadTipset(t *testing.T, chain requireHeadTipsetChainStore) types.TipSet {
+func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
 	return headTipSet
