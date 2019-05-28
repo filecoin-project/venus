@@ -100,7 +100,7 @@ func TestShowDeal(t *testing.T) {
 	})
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
-		expected := fmt.Sprintf("deal not found: %s", addAskCid.String())
+		expected := "deal not found"
 		minerDaemon.RunFail(expected, "show", "deal", addAskCid.String()).ReadStdoutTrimNewlines()
 	})
 }
