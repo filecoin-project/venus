@@ -44,7 +44,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	commP := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	commD := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
 	lastPoSt := types.NewBlockHeight(10)
-	require.NoError(t, createMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
+	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
 
 	// Create the payer actor
 	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -163,7 +163,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	})
 }
 
-func createMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
+func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
 	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 

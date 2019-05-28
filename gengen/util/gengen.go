@@ -254,7 +254,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		// create miner
 		pubkey := keys[m.Owner].PublicKey()
 
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createMiner", big.NewInt(10000), pubkey[:], pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", big.NewInt(10000), pubkey[:], pid)
 		if err != nil {
 			return nil, err
 		}
@@ -265,7 +265,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
-		// Sector size will ultimately become an argument to the createMiner
+		// Sector size will ultimately become an argument to the createStorageMiner
 		// method. For now, sector size is a function of the storage market
 		// actor's proofs mode.
 		sectorSize := types.OneKiBSectorSize

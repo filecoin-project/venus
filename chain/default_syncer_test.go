@@ -917,7 +917,7 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 
 // Syncer handles MarketView weight comparisons.
 // Current issue: when creating miner mining with addr0, addr0's storage head isn't found in the blockstore
-// and I can't figure out why because we pass in the correct blockstore to createminerwithpower.
+// and I can't figure out why because we pass in the correct blockstore to createStorageMinerWithpower.
 
 func TestTipSetWeightDeep(t *testing.T) {
 	tf.UnitTest(t)

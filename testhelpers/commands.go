@@ -467,11 +467,11 @@ func (td *TestDaemon) WaitForAPI() error {
 	return fmt.Errorf("filecoin node failed to come online in given time period (10 seconds); last err = %s", err)
 }
 
-// CreateMinerAddr issues a new message to the network, mines the message
+// CreateStorageMinerAddr issues a new message to the network, mines the message
 // and returns the address of the new miner
 // equivalent to:
 //     `go-filecoin miner create --from $TEST_ACCOUNT 100000 20`
-func (td *TestDaemon) CreateMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
+func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) address.Address {
 	var wg sync.WaitGroup
 	var minerAddr address.Address
 	wg.Add(1)
