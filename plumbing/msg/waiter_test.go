@@ -44,12 +44,12 @@ func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *t
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
+func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
 	d := requiredCommonDeps(t, consensus.DefaultGenesis)
 	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
 
-func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
+func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
 	d := requiredCommonDeps(t, gif)
 	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
@@ -64,7 +64,7 @@ func TestWait(t *testing.T) {
 	testWaitNew(ctx, t, cst, chainStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
@@ -82,7 +82,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	testWaitHelp(nil, t, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
@@ -117,7 +117,7 @@ func TestWaitError(t *testing.T) {
 	testWaitError(ctx, t, cst, chainStore, waiter)
 }
 
-func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)

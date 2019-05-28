@@ -14,7 +14,7 @@ import (
 )
 
 // setupGetAncestorTests initializes genesis and chain store for tests.
-func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context.Context, *th.TestFetcher, *chain.DefaultStore) {
+func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context.Context, *th.TestFetcher, *chain.Store) {
 	_, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	return context.Background(), blockSource, chainStore
 }

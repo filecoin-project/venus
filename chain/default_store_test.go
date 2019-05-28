@@ -34,14 +34,14 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestPar
 	requireSetTestChain(t, con, true, dstP)
 }
 
-func newChainStore(dstP *DefaultSyncerTestParams) *chain.DefaultStore {
+func newChainStore(dstP *DefaultSyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewDefaultStore(ds, dstP.genCid)
+	return chain.NewStore(ds, dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
-func requirePutTestChain(t *testing.T, chainStore *chain.DefaultStore, dstP *DefaultSyncerTestParams) {
+func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *DefaultSyncerTestParams) {
 	ctx := context.Background()
 	genTsas := &chain.TipSetAndState{
 		TipSet:          dstP.genTS,
@@ -71,7 +71,7 @@ func requirePutTestChain(t *testing.T, chainStore *chain.DefaultStore, dstP *Def
 	th.RequirePutTsas(ctx, t, chainStore, link4Tsas)
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.DefaultStore, pKey string, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
@@ -250,7 +250,7 @@ func TestGetBlocks(t *testing.T) {
 	assert.Equal(t, len(blks), len(gotBlks))
 }
 
-// chain.DefaultStore correctly indicates that is has all blocks in put tipsets
+// chain.Store correctly indicates that is has all blocks in put tipsets
 func TestHasAllBlocks(t *testing.T) {
 	tf.UnitTest(t)
 	dstP := initDSTParams()
@@ -288,7 +288,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, dstP.genCid, chain.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, chainStore *chain.DefaultStore, ts types.TipSet) {
+func assertSetHead(t *testing.T, chainStore *chain.Store, ts types.TipSet) {
 	ctx := context.Background()
 	err := chainStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
@@ -379,7 +379,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	chainStore := chain.NewDefaultStore(ds, dstP.genCid)
+	chainStore := chain.NewStore(ds, dstP.genCid)
 	requirePutTestChain(t, chainStore, dstP)
 	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
@@ -387,7 +387,7 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore
-	rebootChain := chain.NewDefaultStore(ds, dstP.genCid)
+	rebootChain := chain.NewStore(ds, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
