@@ -46,7 +46,7 @@ type CreatePaymentsParams struct {
 	// Conditions confirming that the miner is storing the client's piece will be directed towards this actor.
 	MinerAddress address.Address
 
-	// CommP is the clients data commitment. It will be the basis of piece inclusion conditions added to the payments.
+	// CommP is the client's data commitment. It will be the basis of piece inclusion conditions added to the payments.
 	CommP types.CommP
 
 	// PaymentInterval is the time between payments (in block height)
@@ -81,7 +81,7 @@ type CreatePaymentsReturn struct {
 	Vouchers []*types.PaymentVoucher
 }
 
-// CreatePayments establishes a payment channel and create multiple payments against it.
+// CreatePayments establishes a payment channel and creates multiple payments against it.
 //
 // Each payment except the last will get a condition that calls verifyPieceInclusion on the recipient's miner
 // actor to ensure the storage miner is still storing the file at the time of redemption.
@@ -172,7 +172,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		}
 	}
 
-	// create last payment if we haven't already created a voucher for the full amount
+	// create last payment
 	validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
 	err = createPayment(ctx, plumbing, response, &config.Value, validAt, nil)
 	if err != nil {
