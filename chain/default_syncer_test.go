@@ -191,22 +191,22 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 
 // requireChainOfLength generates a fake chain of given length for testing
 // relating to chain length
-func requireChainOfLength(t *testing.T, length int, con consensus.Protocol) types.SortedCidSet {
+func requireChainOfLength(t *testing.T, length int, con consensus.Protocol, dstP *DefaultSyncerTestParams) types.SortedCidSet {
 	var err error
-	minerPower := uint64(25)
-	totalPower := uint64(100)
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 	mockSignerPubKey := mockSigner.PubKeys[0]
 
-	lastTipset := genTS
-	farFutureCids := []cid.Cid{genCid}
+	lastTipset := dstP.genTS
+	farFutureCids := []cid.Cid{dstP.genCid}
 	for i := 0; i < length; i++ {
 		fakeChildParams := th.FakeChildParams{
 			Parent:      lastTipset,
-			GenesisCid:  genCid,
-			StateRoot:   genStateRoot,
+			GenesisCid:  dstP.genCid,
+			StateRoot:   dstP.genStateRoot,
 			Consensus:   con,
-			MinerAddr:   minerAddress,
+			MinerAddr:   dstP.minerAddress,
 			MinerPubKey: mockSignerPubKey,
 			Signer:      mockSigner,
 		}
@@ -260,7 +260,7 @@ func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.De
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP)
+	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
 }
 
 // initSyncTestCaughtUp creates and returns the datastructures (consensus, chain
@@ -274,11 +274,11 @@ func initSyncTestCaughtUp(t *testing.T, dstP *DefaultSyncerTestParams) (consensu
 	cst := hamt.NewCborStore()
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, powerTable, dstP.genCid, verifier)
-	requireSetTestChain(t, con, false)
+	requireSetTestChain(t, con, false, dstP)
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	sync, store, repo, tf := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, false)
+	sync, store, repo, tf := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
 	return con, sync, store, repo, tf
 }
 
@@ -295,7 +295,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP)
+	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
 	return sync, testchain, con, fetcher
 }
 
@@ -644,11 +644,12 @@ func TestHeavierFork(t *testing.T) {
 // caught up mode
 func TestFarFutureTipsetsAfterCaughtUp(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
+	dstP := initDSTParams()
 
-	con, syncer, _, _, _ := initSyncTestCaughtUp(t)
+	con, syncer, _, _, _ := initSyncTestCaughtUp(t, dstP)
 	ctx := context.Background()
 
-	farFutureChain := requireChainOfLength(t, chain.FinalityLimit, con)
+	farFutureChain := requireChainOfLength(t, chain.FinalityLimit, con, dstP)
 
 	err := syncer.HandleNewTipset(ctx, farFutureChain)
 	assert.Error(t, err, "test")
