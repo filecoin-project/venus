@@ -59,6 +59,10 @@ func TestProposeDeal(t *testing.T) {
 	dealResponse, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
 	require.NoError(t, err)
 
+	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
+	var commP types.CommP
+	copy(commP[:], dataCid.Bytes())
+
 	t.Run("and creates proposal from parameters", func(t *testing.T) {
 		assert.Equal(t, dataCid, proposal.PieceRef)
 		assert.Equal(t, duration, proposal.Duration)
@@ -97,6 +101,8 @@ func TestProposeDeal(t *testing.T) {
 			assert.Equal(t, testAPI.target, voucher.Target)
 			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), &voucher.Amount)
 			assert.Equal(t, testAPI.payer, voucher.Payer)
+			assert.Equal(t, minerAddr, voucher.Condition.To)
+			assert.Equal(t, commP[:], voucher.Condition.Params[0])
 			lastValidAt = &voucher.ValidAt
 		}
 	})
@@ -193,6 +199,11 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 			Target:  ctp.target,
 			Amount:  *ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
 			ValidAt: *ctp.blockHeight.Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
+			Condition: &types.Predicate{
+				To:     config.MinerAddress,
+				Method: "conditionMethod",
+				Params: []interface{}{config.CommP[:]},
+			},
 		}
 	}
 	return resp, nil
