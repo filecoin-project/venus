@@ -66,6 +66,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -997,7 +998,9 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 		}
 
 		if err := f(ctx, pubSubMsg); err != nil {
-			if err != context.Canceled {
+			if vmerr.ShouldRevert(err) {
+				log.Infof("%s(): %s", fname, err)
+			} else if err != context.Canceled {
 				log.Errorf("%s(): %s", fname, err)
 			}
 		}
