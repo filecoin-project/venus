@@ -52,17 +52,19 @@ func TestOptions(t *testing.T) {
 	})
 
 	t.Run("accepts --verbose or -v with valid command", func(t *testing.T) {
-		repoDir, symlink := internal.RequireInitRepo(t, 0)
+		repoDir, symlink := internal.RequireInitRepo(t, 1)
 		defer repo.RequireRemoveAll(t, repoDir)
 		defer repo.RequireRemoveAll(t, symlink)
 
+		expected := "MetadataFormatJSONtoCBOR migrates the storage repo from version 1 to 2."
+
 		out, err := exec.Command(command, "describe", "--old-repo="+symlink, "--verbose").CombinedOutput()
 		assert.NoError(t, err)
-		assert.Contains(t, string(out), "Repo up-to-date: binary version 0 = repo version 0\n")
+		assert.Contains(t, string(out), expected)
 
 		_, err = exec.Command(command, "describe", "--old-repo="+symlink, "-v").CombinedOutput()
 		assert.NoError(t, err)
-		assert.Contains(t, string(out), "Repo up-to-date: binary version 0 = repo version 0\n")
+		assert.Contains(t, string(out), expected)
 	})
 
 	t.Run("requires --old-repo argument", func(t *testing.T) {

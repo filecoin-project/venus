@@ -78,17 +78,39 @@ func main() { // nolint: deadcode
 	switch command {
 	case "-h", "--help":
 		showUsageAndExit(0)
-	case "describe", "buildonly", "migrate", "install":
-		logFile, err := openLogFile()
+	case "describe":
+		logger, err := newLoggerWithVerbose(true)
 		if err != nil {
 			exitErr(err.Error())
 		}
-		logger := internal.NewLogger(logFile, getVerbose())
-		oldRepoOpt, found := findOpt("old-repo", os.Args)
-		if !found {
-			exitErrCloseLogger(fmt.Sprintf("--old-repo is required\n%s\n", USAGE), logger)
+
+		oldRepoOpt := findOldRepoOrExit(logger)
+
+		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, "")
+		if err != nil {
+			exitErrCloseLogger(err.Error(), logger)
 		}
+
+		runResult := runner.Run()
+		if runResult.Err != nil {
+			exitErrCloseLogger(runResult.Err.Error(), logger)
+		}
+
+		if err != nil {
+			exitErr(err.Error())
+		}
+
+	case "buildonly", "migrate", "install":
+		logger, err := newLoggerWithVerbose(getVerbose())
+		if err != nil {
+			exitErr(err.Error())
+		}
+
+		oldRepoOpt := findOldRepoOrExit(logger)
+
 		var newRepoOpt string
+		var found bool
+
 		if command == "install" {
 			newRepoOpt, found = findOpt("new-repo", os.Args)
 			if !found {
@@ -117,6 +139,14 @@ func main() { // nolint: deadcode
 	default:
 		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
 	}
+}
+
+func findOldRepoOrExit(logger *internal.Logger) string {
+	oldRepoOpt, found := findOpt("old-repo", os.Args)
+	if !found {
+		exitErrCloseLogger(fmt.Sprintf("--old-repo is required\n%s\n", USAGE), logger)
+	}
+	return oldRepoOpt
 }
 
 // exitError exit(1)s the executable with the given error String
@@ -150,13 +180,18 @@ func getVerbose() bool {
 	return res
 }
 
-// openLogFile opens the log file from getLogFilePath
-func openLogFile() (*os.File, error) {
+// newLoggerWithVerbose opens a new logger & logfile with verboseness set to `verb`
+func newLoggerWithVerbose(verb bool) (*internal.Logger, error) {
 	path, err := getLogFilePath()
 	if err != nil {
 		return nil, err
 	}
-	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	logFile, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return internal.NewLogger(logFile, verb), nil
 }
 
 // getLogFilePath returns the path of the logfile.
