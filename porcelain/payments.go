@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+const verifyPieceInclusionMethod = "verifyPieceInclusion"
+
 // cpPlumbing is the subset of the plumbing.API that CreatePayments uses.
 type cpPlumbing interface {
 	ChainBlockHeight() (*types.BlockHeight, error)
@@ -39,6 +41,13 @@ type CreatePaymentsParams struct {
 
 	// Duration is the amount of time (in block height) the payments will cover.
 	Duration uint64
+
+	// MinerAddress is the address of the miner actor representing the payment recipient.
+	// Conditions confirming that the miner is storing the client's piece will be directed towards this actor.
+	MinerAddress address.Address
+
+	// CommP is the client's data commitment. It will be the basis of piece inclusion conditions added to the payments.
+	CommP types.CommP
 
 	// PaymentInterval is the time between payments (in block height)
 	PaymentInterval uint64
@@ -72,7 +81,12 @@ type CreatePaymentsReturn struct {
 	Vouchers []*types.PaymentVoucher
 }
 
-// CreatePayments establishes a payment channel and create multiple payments against it
+// CreatePayments establishes a payment channel and creates multiple payments against it.
+//
+// Each payment except the last will get a condition that calls verifyPieceInclusion on the recipient's miner
+// actor to ensure the storage miner is still storing the file at the time of redemption.
+// The last payment does not contain a condition so that the miner may collect payment without posting a
+// piece inclusion proof after the storage deal is complete.
 func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	// validate
 	if config.From.Empty() {
@@ -135,6 +149,13 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	durationAsAttoFIL := types.NewAttoFIL(big.NewInt(int64(config.Duration)))
 	valuePerPayment := *config.Value.MulBigInt(intervalAsBigInt).DivCeil(durationAsAttoFIL)
 
+	// condition is a condition that requires that the miner has the client's piece and is currently proving on it
+	condition := &types.Predicate{
+		To:     config.MinerAddress,
+		Method: verifyPieceInclusionMethod,
+		Params: []interface{}{config.CommP[:]},
+	}
+
 	// generate payments
 	response.Vouchers = []*types.PaymentVoucher{}
 	voucherAmount := types.ZeroAttoFIL
@@ -145,18 +166,17 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		}
 
 		validAt := currentHeight.Add(types.NewBlockHeight(uint64(i+1) * config.PaymentInterval))
-		err = createPayment(ctx, plumbing, response, voucherAmount, validAt, nil)
+		err = createPayment(ctx, plumbing, response, voucherAmount, validAt, condition)
 		if err != nil {
 			return response, err
 		}
 	}
 
-	if voucherAmount.LessThan(&config.Value) {
-		validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
-		err = createPayment(ctx, plumbing, response, &config.Value, validAt, nil)
-		if err != nil {
-			return response, err
-		}
+	// create last payment
+	validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
+	err = createPayment(ctx, plumbing, response, &config.Value, validAt, nil)
+	if err != nil {
+		return response, err
 	}
 
 	return response, nil

@@ -138,7 +138,7 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	miner1.ConnectSuccess(client)
 	miner2.ConnectSuccess(client)
 
-	miner2Addr := miner2.CreateMinerAddr(miner1, minerOwner2)
+	miner2Addr := miner2.CreateStorageMinerAddr(miner1, minerOwner2)
 	miner2.UpdatePeerID()
 
 	miner2.RunSuccess("mining start")
@@ -260,7 +260,7 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(0.001))
 	expiry := big.NewInt(int64(500))
-	ask, err := series.CreateMinerWithAsk(ctx, miningNode, pledge, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, pledge, collateral, price, expiry)
 	minerCreateDoneCh <- struct{}{}
 	require.NoError(t, err)
 

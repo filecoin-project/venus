@@ -21,6 +21,6 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 
 	log.Debugf("Received new message from network: %s", unmarshaled)
 
-	_, err = node.MsgPool.Add(ctx, unmarshaled)
+	_, err = node.Inbox.Add(ctx, unmarshaled)
 	return err
 }

@@ -37,7 +37,7 @@ func createTestMinerWith(pledge int64,
 ) address.Address {
 	pdata := actor.MustConvertParams(big.NewInt(pledge), key, peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
-	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createMiner", pdata)
+	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createStorageMiner", pdata)
 
 	result, err := th.ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
