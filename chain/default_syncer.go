@@ -111,13 +111,13 @@ type DefaultSyncer struct {
 	// implementation in issue #1160.
 	//
 	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1160
-	SyncMode SyncMode
+	syncMode SyncMode
 }
 
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher) *DefaultSyncer {
+func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *DefaultSyncer {
 	return &DefaultSyncer{
 		fetcher:    f,
 		stateStore: cst,
@@ -126,7 +126,7 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerCha
 		},
 		consensus:  c,
 		chainStore: s,
-		SyncMode:   Syncing,
+		syncMode:   syncMode,
 	}
 }
 
@@ -167,7 +167,7 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	// height of the input blocks has not yet exceeded the sum of the current
 	// consensus height and the finalityLimit constant, otherwise ignore the input
 	// blocks as a likely invalid chain or denial of service attempt.
-	for syncer.SyncMode == Syncing || len(chain) < FinalityLimit {
+	for (syncer.syncMode == Syncing) || (len(chain) < FinalityLimit) {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := tipsetCids.String()

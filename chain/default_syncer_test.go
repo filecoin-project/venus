@@ -189,40 +189,6 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 	}
 }
 
-// requireChainOfLength generates a fake chain of given length for testing
-// relating to chain length
-func requireChainOfLength(t *testing.T, length int, con consensus.Protocol, dstP *DefaultSyncerTestParams) types.SortedCidSet {
-	var err error
-	minerPower := types.NewBytesAmount(25)
-	totalPower := types.NewBytesAmount(100)
-	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := mockSigner.PubKeys[0]
-
-	lastTipset := dstP.genTS
-	farFutureCids := []cid.Cid{dstP.genCid}
-	for i := 0; i < length; i++ {
-		fakeChildParams := th.FakeChildParams{
-			Parent:      lastTipset,
-			GenesisCid:  dstP.genCid,
-			StateRoot:   dstP.genStateRoot,
-			Consensus:   con,
-			MinerAddr:   dstP.minerAddress,
-			MinerPubKey: mockSignerPubKey,
-			Signer:      mockSigner,
-		}
-
-		linkBlk := th.RequireMkFakeChildWithCon(t, fakeChildParams)
-		linkBlk.Proof, linkBlk.Ticket, err = th.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
-		require.NoError(t, err)
-
-		lastTipset = th.RequireNewTipSet(t, linkBlk)
-		blockSource := th.NewTestFetcher()
-		_ = requirePutBlocks(t, blockSource, lastTipset.ToSlice()...)
-		farFutureCids = append(farFutureCids, linkBlk.Cid())
-	}
-	return types.NewSortedCidSet(farFutureCids...)
-}
-
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
 func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *th.TestFetcher) {
 	powerTable := &th.TestView{}
@@ -238,7 +204,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource) // note we use same cst for on and offline for tests
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -260,13 +226,14 @@ func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.De
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
+	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
 }
 
-// initSyncTestCaughtUp creates and returns the datastructures (consensus, chain
+// initSyncTestWithMode creates and returns the datastructures (consensus, chain
 // store, syncer, etc) needed to run tests. It also mutates the chain syncer to
-// use the caught up sync mode for easier testing of caught up mode behavior.
-func initSyncTestCaughtUp(t *testing.T, dstP *DefaultSyncerTestParams) (consensus.Protocol, *chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+// use the specified sync mode for easier testing of caught up and syncing mode
+// behavior.
+func initSyncTestWithMode(t *testing.T, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (consensus.Protocol, *chain.DefaultSyncer, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -278,8 +245,8 @@ func initSyncTestCaughtUp(t *testing.T, dstP *DefaultSyncerTestParams) (consensu
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	sync, store, repo, tf := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
-	return con, sync, store, repo, tf
+	sync, _, _, tf := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, syncMode)
+	return con, sync, tf
 }
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
@@ -295,11 +262,11 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
+	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
 	return sync, testchain, con, fetcher
 }
 
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, caughtUp bool) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -309,10 +276,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
-	if caughtUp {
-		syncer.SyncMode = chain.CaughtUp
-	}
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -640,19 +604,78 @@ func TestHeavierFork(t *testing.T) {
 	assertHead(t, chainStore, forklink3)
 }
 
-// Syncer errors if input blocks massively exceed the current block height in
+// Syncer errors when input blocks massively exceed the current block height in
 // caught up mode
-func TestFarFutureTipsetsAfterCaughtUp(t *testing.T) {
+func TestFarFutureTipsetsWhenCaughtUp(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 	dstP := initDSTParams()
-
-	con, syncer, _, _, _ := initSyncTestCaughtUp(t, dstP)
+	con, syncer, blockSource := initSyncTestWithMode(t, dstP, chain.CaughtUp)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := mockSigner.PubKeys[0]
+	fakeChildParams := th.FakeChildParams{
+		Parent:      dstP.genTS,
+		GenesisCid:  dstP.genCid,
+		StateRoot:   dstP.genStateRoot,
+		Consensus:   con,
+		MinerAddr:   dstP.minerAddress,
+		MinerPubKey: mockSignerPubKey,
+		Signer:      mockSigner,
+	}
 	ctx := context.Background()
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
 
-	farFutureChain := requireChainOfLength(t, chain.FinalityLimit, con, dstP)
+	var err error
+	var tipsetCids types.SortedCidSet
+	for i := 0; i < chain.FinalityLimit+10; i++ {
+		require.NoError(t, err)
 
-	err := syncer.HandleNewTipset(ctx, farFutureChain)
-	assert.Error(t, err, "test")
+		linkBlk := th.RequireMkFakeChildWithCon(t, fakeChildParams)
+		linkBlk.Proof, linkBlk.Ticket, err = th.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
+		require.NoError(t, err)
+
+		fakeChildParams.Parent = th.RequireNewTipSet(t, linkBlk)
+		tipsetCids = requirePutBlocks(t, blockSource, linkBlk)
+	}
+
+	assert.Error(t, syncer.HandleNewTipset(ctx, tipsetCids))
+}
+
+// Syncer succeeds when input blocks massively exceed the current block height
+// in syncing mode
+func TestFarFutureTipsetsWhenSyncing(t *testing.T) {
+	tf.BadUnitTestWithSideEffects(t)
+	dstP := initDSTParams()
+	con, syncer, blockSource := initSyncTestWithMode(t, dstP, chain.Syncing)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	mockSignerPubKey := mockSigner.PubKeys[0]
+	fakeChildParams := th.FakeChildParams{
+		Parent:      dstP.genTS,
+		GenesisCid:  dstP.genCid,
+		StateRoot:   dstP.genStateRoot,
+		Consensus:   con,
+		MinerAddr:   dstP.minerAddress,
+		MinerPubKey: mockSignerPubKey,
+		Signer:      mockSigner,
+	}
+	ctx := context.Background()
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
+
+	var err error
+	var tipsetCids types.SortedCidSet
+	for i := 0; i < chain.FinalityLimit+1; i++ {
+		require.NoError(t, err)
+
+		linkBlk := th.RequireMkFakeChildWithCon(t, fakeChildParams)
+		linkBlk.Proof, linkBlk.Ticket, err = th.MakeProofAndWinningTicket(mockSignerPubKey, minerPower, totalPower, mockSigner)
+		require.NoError(t, err)
+
+		fakeChildParams.Parent = th.RequireNewTipSet(t, linkBlk)
+		tipsetCids = requirePutBlocks(t, blockSource, linkBlk)
+	}
+
+	assert.NoError(t, syncer.HandleNewTipset(ctx, tipsetCids))
 }
 
 // Syncer errors if blocks don't form a tipset
@@ -1053,7 +1076,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource)
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot

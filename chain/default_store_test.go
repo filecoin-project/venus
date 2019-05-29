@@ -30,7 +30,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestPar
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, false)
+	initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
 	requireSetTestChain(t, con, true, dstP)
 }
 
