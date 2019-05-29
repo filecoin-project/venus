@@ -61,9 +61,9 @@ func TestMessagePropagation(t *testing.T) {
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 50)
 
-	require.Equal(t, 0, len(nodes[0].MsgPool.Pending()))
-	require.Equal(t, 0, len(nodes[1].MsgPool.Pending()))
-	require.Equal(t, 0, len(nodes[2].MsgPool.Pending()))
+	require.Equal(t, 0, len(nodes[1].Inbox.Pool().Pending()))
+	require.Equal(t, 0, len(nodes[2].Inbox.Pool().Pending()))
+	require.Equal(t, 0, len(nodes[0].Inbox.Pool().Pending()))
 
 	t.Run("message propagates", func(t *testing.T) {
 		_, err = sender.PorcelainAPI.MessageSendWithDefaultAddress(
@@ -78,13 +78,13 @@ func TestMessagePropagation(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, th.WaitForIt(50, 100*time.Millisecond, func() (bool, error) {
-			return len(nodes[0].MsgPool.Pending()) == 1 &&
-				len(nodes[1].MsgPool.Pending()) == 1 &&
-				len(nodes[2].MsgPool.Pending()) == 1, nil
+			return len(nodes[0].Inbox.Pool().Pending()) == 1 &&
+				len(nodes[1].Inbox.Pool().Pending()) == 1 &&
+				len(nodes[2].Inbox.Pool().Pending()) == 1, nil
 		}), "failed to propagate messages")
 
-		assert.True(t, nodes[0].MsgPool.Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[1].MsgPool.Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[2].MsgPool.Pending()[0].Message.Method == "foo")
+		assert.True(t, nodes[0].Inbox.Pool().Pending()[0].Message.Method == "foo")
+		assert.True(t, nodes[1].Inbox.Pool().Pending()[0].Message.Method == "foo")
+		assert.True(t, nodes[2].Inbox.Pool().Pending()[0].Message.Method == "foo")
 	})
 }
