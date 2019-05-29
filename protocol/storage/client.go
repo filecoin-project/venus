@@ -53,7 +53,7 @@ const (
 type clientPorcelainAPI interface {
 	ChainBlockHeight() (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
-	DealGet(cid.Cid) *storagedeal.Deal
+	DealGet(cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs() ([]*storagedeal.Deal, error)
@@ -109,6 +109,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
+
+	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
+	var commP types.CommP
+	copy(commP[:], data.Bytes())
 
 	sectorSize, err := smc.api.MinerGetSectorSize(ctxSetup, miner)
 	if err != nil {
@@ -174,6 +178,8 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		To:              minerOwner,
 		Value:           *price.MulBigInt(big.NewInt(int64(size * duration))),
 		Duration:        duration,
+		MinerAddress:    miner,
+		CommP:           commP,
 		PaymentInterval: VoucherInterval,
 		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
 		GasPrice:        *types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
@@ -225,9 +231,12 @@ func (smc *Client) recordResponse(resp *storagedeal.Response, miner address.Addr
 	if !proposalCid.Equals(resp.ProposalCid) {
 		return fmt.Errorf("cids not equal %s %s", proposalCid, resp.ProposalCid)
 	}
-	storageDeal := smc.api.DealGet(proposalCid)
-	if storageDeal != nil {
+	_, err = smc.api.DealGet(proposalCid)
+	if err == nil {
 		return fmt.Errorf("deal [%s] is already in progress", proposalCid.String())
+	}
+	if err != porcelain.ErrDealNotFound {
+		return errors.Wrapf(err, "failed to check for existing deal: %s", proposalCid.String())
 	}
 
 	return smc.api.DealPut(&storagedeal.Deal{
@@ -251,11 +260,10 @@ func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Resp
 }
 
 func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
-	storageDeal := smc.api.DealGet(c)
-	if storageDeal == nil {
-		return address.Undef, fmt.Errorf("no such proposal by cid: %s", c)
+	storageDeal, err := smc.api.DealGet(c)
+	if err != nil {
+		return address.Undef, errors.Wrapf(err, "failed to fetch deal: %s", c)
 	}
-
 	return storageDeal.Miner, nil
 }
 
@@ -301,9 +309,9 @@ func (smc *Client) isMaybeDupDeal(p *storagedeal.Proposal) bool {
 
 // LoadVouchersForDeal loads vouchers from disk for a given deal
 func (smc *Client) LoadVouchersForDeal(dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
-	storageDeal := smc.api.DealGet(dealCid)
-	if storageDeal == nil {
-		return []*types.PaymentVoucher{}, fmt.Errorf("could not retrieve deal with proposal CID %s", dealCid)
+	storageDeal, err := smc.api.DealGet(dealCid)
+	if err != nil {
+		return []*types.PaymentVoucher{}, errors.Wrapf(err, "could not retrieve deal with proposal CID %s", dealCid)
 	}
 	return storageDeal.Proposal.Payment.Vouchers, nil
 }

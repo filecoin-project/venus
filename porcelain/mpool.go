@@ -3,8 +3,8 @@ package porcelain
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -18,7 +18,7 @@ type mpwPlumbing interface {
 func MessagePoolWait(ctx context.Context, plumbing mpwPlumbing, messageCount uint) ([]*types.SignedMessage, error) {
 	pending := plumbing.MessagePoolPending()
 	if len(pending) < int(messageCount) {
-		subscription, err := plumbing.PubSubSubscribe(msg.Topic)
+		subscription, err := plumbing.PubSubSubscribe(core.Topic)
 		defer subscription.Cancel()
 		if err != nil {
 			return nil, err

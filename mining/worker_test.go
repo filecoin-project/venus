@@ -98,7 +98,7 @@ func Test_Mine(t *testing.T) {
 
 func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(th.NewTestMessagePoolAPI(0), config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid
@@ -276,13 +276,13 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
-	_, err = pool.Add(ctx, smsg1)
+	_, err = pool.Add(ctx, smsg1, 0)
 	assert.NoError(t, err)
-	_, err = pool.Add(ctx, smsg2)
+	_, err = pool.Add(ctx, smsg2, 0)
 	assert.NoError(t, err)
-	_, err = pool.Add(ctx, smsg3)
+	_, err = pool.Add(ctx, smsg3, 0)
 	assert.NoError(t, err)
-	_, err = pool.Add(ctx, smsg4)
+	_, err = pool.Add(ctx, smsg4, 0)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 4)
@@ -419,7 +419,7 @@ func TestGenerateError(t *testing.T) {
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
-	_, err = pool.Add(ctx, smsg)
+	_, err = pool.Add(ctx, smsg, 0)
 	require.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 1)

@@ -59,6 +59,10 @@ func TestProposeDeal(t *testing.T) {
 	dealResponse, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
 	require.NoError(t, err)
 
+	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
+	var commP types.CommP
+	copy(commP[:], dataCid.Bytes())
+
 	t.Run("and creates proposal from parameters", func(t *testing.T) {
 		assert.Equal(t, dataCid, proposal.PieceRef)
 		assert.Equal(t, duration, proposal.Duration)
@@ -97,6 +101,8 @@ func TestProposeDeal(t *testing.T) {
 			assert.Equal(t, testAPI.target, voucher.Target)
 			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), &voucher.Amount)
 			assert.Equal(t, testAPI.payer, voucher.Payer)
+			assert.Equal(t, minerAddr, voucher.Condition.To)
+			assert.Equal(t, commP[:], voucher.Condition.Params[0])
 			lastValidAt = &voucher.ValidAt
 		}
 	})
@@ -106,10 +112,44 @@ func TestProposeDeal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Accepted, dealResponse.State)
 
-		retrievedDeal := testAPI.DealGet(dealResponse.ProposalCid)
+		retrievedDeal, err := testAPI.DealGet(dealResponse.ProposalCid)
+		require.NoError(t, err)
 
 		assert.Equal(t, retrievedDeal.Response, dealResponse)
 	})
+}
+
+func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	addressCreator := address.NewForTestGetter()
+
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p, ok := request.(*storagedeal.SignedDealProposal)
+		require.True(t, ok)
+
+		pcid, err := convert.ToCid(p.Proposal)
+		require.NoError(t, err)
+		return &storagedeal.Response{
+			State:       storagedeal.Accepted,
+			Message:     "OK",
+			ProposalCid: pcid,
+		}, nil
+	})
+
+	testAPI := newTestClientAPI(t)
+	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
+
+	dataCid := types.SomeCid()
+	minerAddr := addressCreator()
+	askID := uint64(67)
+	duration := uint64(10000)
+	_, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
+	require.NoError(t, err)
+	_, err = client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
+	assert.Error(t, err)
 }
 
 type clientTestAPI struct {
@@ -159,6 +199,11 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 			Target:  ctp.target,
 			Amount:  *ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
 			ValidAt: *ctp.blockHeight.Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
+			Condition: &types.Predicate{
+				To:     config.MinerAddress,
+				Method: "conditionMethod",
+				Params: []interface{}{config.CommP[:]},
+			},
 		}
 	}
 	return resp, nil
@@ -240,8 +285,12 @@ func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
 	return results, nil
 }
 
-func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) *storagedeal.Deal {
-	return ctp.deals[dealCid]
+func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+	deal, ok := ctp.deals[dealCid]
+	if ok {
+		return deal, nil
+	}
+	return nil, porcelain.ErrDealNotFound
 }
 
 func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {

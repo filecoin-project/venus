@@ -122,7 +122,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	vms := th.VMStorage()
 	minerOwner, err := address.NewActorAddress([]byte("mo"))
 	require.NoError(t, err)
-	stCid, miner := mustCreateMiner(ctx, t, st, vms, minerAddr, minerOwner)
+	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
@@ -189,7 +189,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 
 	minerOwner, err := address.NewActorAddress([]byte("mo"))
 	require.NoError(t, err)
-	stCid, miner := mustCreateMiner(ctx, t, st, vms, minerAddr, minerOwner)
+	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
@@ -255,7 +255,7 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	require.NoError(t, err)
 	minerOwner, err := address.NewActorAddress([]byte("mo"))
 	require.NoError(t, err)
-	stCid, _ := mustCreateMiner(ctx, t, st, vms, minerAddr, minerOwner)
+	stCid, _ := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
@@ -296,7 +296,7 @@ func TestProcessBlockReward(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
-	stCid, _ := mustCreateMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
+	stCid, _ := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
 
 	blk := &types.Block{
 		Miner:     minerAddr,
@@ -344,7 +344,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 		toAddr:                 act2,
 	})
 
-	stCid, miner := mustCreateMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
+	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
 
 	msg := types.NewMessage(fromAddr, toAddr, 0, nil, "returnRevertError", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
@@ -1068,7 +1068,7 @@ func mustSetup2Actors(t *testing.T, balance1 *types.AttoFIL, balance2 *types.Att
 	return addr1, act1, addr2, act2, st, mockSigner
 }
 
-func mustCreateMiner(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
+func mustCreateStorageMiner(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
 	miner := th.RequireNewMinerActor(t, vms, minerAddr, minerOwner, []byte{}, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 	require.NoError(t, st.SetActor(ctx, minerAddr, miner))
 	stCid, err := st.Flush(ctx)

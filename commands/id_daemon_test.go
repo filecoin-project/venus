@@ -49,14 +49,14 @@ func TestPersistId(t *testing.T) {
 	require.NoError(t, err)
 
 	// Start a demon in dir
-	d1 := th.NewDaemon(t, th.RepoDir(dir)).Start()
+	d1 := th.NewDaemon(t, th.ContainerDir(dir)).Start()
 
 	// get the id and kill it
 	id1 := d1.GetID()
 	d1.Stop()
 
 	// restart the daemon
-	d2 := th.NewDaemon(t, th.ShouldInit(false), th.RepoDir(dir)).Start()
+	d2 := th.NewDaemon(t, th.ShouldInit(false), th.ContainerDir(dir)).Start()
 
 	// get the id and compare to previous
 	id2 := d2.GetID()

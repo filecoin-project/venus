@@ -50,8 +50,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/plumbing/bcf"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
@@ -66,6 +66,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -117,9 +118,9 @@ type Node struct {
 	HeaviestTipSetHandled func()
 
 	// Incoming messages for block mining.
-	MsgPool *core.MessagePool
+	Inbox *core.Inbox
 	// Messages sent and not yet mined.
-	Outbox *core.MessageQueue
+	Outbox *core.Outbox
 
 	Wallet *wallet.Wallet
 
@@ -392,6 +393,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// set up chainstore
 	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
+	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -410,34 +412,37 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
 	}
 
-	chainFacade := bcf.NewBlockChainFacade(chainStore, &cstOffline)
-
-	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
-	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainFacade, nc.Repo.Config().Mpool))
-	outbox := core.NewMessageQueue()
-
-	// Set up libp2p pubsub
+	// Set up libp2p network
 	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to set up pubsub")
+		return nil, errors.Wrap(err, "failed to set up network")
 	}
+
 	backend, err := wallet.NewDSBackend(nc.Repo.WalletDatastore())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up wallet backend")
 	}
 	fcWallet := wallet.New(backend)
 
+	// only the syncer gets the storage which is online connected
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
+	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
+	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
+
+	msgQueue := core.NewMessageQueue()
+	outboxPolicy := core.NewMessageQueuePolicy(chainStore, core.OutboxMaxAgeRounds)
+	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), core.Topic, msgPool)
+	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
+
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:      bswap,
-		Chain:        chainFacade,
+		Chain:        chainState,
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
-		MsgSender:    msg.NewSender(fcWallet, chainStore, &cstOffline, chainStore, outbox, msgPool, consensus.NewOutboundMessageValidator(), fsub.Publish),
 		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
 		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:       outbox,
@@ -456,9 +461,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
-		MsgPool:      msgPool,
-		Outbox:       outbox,
+		Inbox:        inbox,
 		OfflineMode:  nc.OfflineMode,
+		Outbox:       outbox,
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
@@ -532,7 +537,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PorcelainAPI.PubSubSubscribe(msg.Topic)
+	msgSub, err := node.PorcelainAPI.PubSubSubscribe(core.Topic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}
@@ -544,15 +549,13 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleSubscription(cctx, node.processBlock, "processBlock", node.BlockSub, "BlockSub")
 	go node.handleSubscription(cctx, node.processMessage, "processMessage", node.MessageSub, "MessageSub")
 
-	outboxPolicy := core.NewMessageQueuePolicy(node.Outbox, node.ChainReader, core.OutboxMaxAgeRounds)
-
 	node.HeaviestTipSetHandled = func() {}
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	head, err := node.PorcelainAPI.ChainHead()
 	if err != nil {
 		return errors.Wrap(err, "failed to get chain head")
 	}
-	go node.handleNewHeaviestTipSet(cctx, *head, outboxPolicy)
+	go node.handleNewHeaviestTipSet(cctx, *head)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -643,7 +646,7 @@ func (node *Node) handleNewMiningOutput(miningOutCh <-chan mining.Output) {
 
 }
 
-func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet, outboxPolicy *core.MessageQueuePolicy) {
+func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet) {
 	for {
 		select {
 		case ts, ok := <-node.HeaviestTipSetCh:
@@ -660,10 +663,10 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 				continue
 			}
 
-			if err := outboxPolicy.OnNewHeadTipset(ctx, head, newHead); err != nil {
+			if err := node.Outbox.HandleNewHead(ctx, head, newHead); err != nil {
 				log.Error("updating outbound message queue for new tipset", err)
 			}
-			if err := node.MsgPool.UpdateMessagePool(ctx, node.ChainReader, head, newHead); err != nil {
+			if err := node.Inbox.HandleNewHead(ctx, head, newHead); err != nil {
 				log.Error("updating message pool for new tipset", err)
 			}
 			head = newHead
@@ -996,7 +999,9 @@ func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc,
 		}
 
 		if err := f(ctx, pubSubMsg); err != nil {
-			if err != context.Canceled {
+			if vmerr.ShouldRevert(err) {
+				log.Infof("%s(): %s", fname, err)
+			} else if err != context.Canceled {
 				log.Errorf("%s(): %s", fname, err)
 			}
 		}
@@ -1049,7 +1054,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, err
 	}
 	return mining.NewDefaultWorker(
-		node.MsgPool, node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
+		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
 		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
 		node.Wallet, node.blockTime), nil
 }

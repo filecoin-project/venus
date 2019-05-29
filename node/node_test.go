@@ -188,7 +188,10 @@ func TestUpdateMessagePool(t *testing.T) {
 	require.NoError(t, err)
 	genTS := *headTipSet
 	m := types.NewSignedMsgs(4, mockSigner)
-	core.MustAdd(node.MsgPool, m[0], m[1])
+	_, err = node.Inbox.Add(ctx, m[0])
+	require.NoError(t, err)
+	_, err = node.Inbox.Add(ctx, m[1])
+	require.NoError(t, err)
 
 	oldChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{m[2], m[3]}})
 	newChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
@@ -212,8 +215,8 @@ func TestUpdateMessagePool(t *testing.T) {
 	})
 	assert.NoError(t, chainForTest.SetHead(ctx, newChain[len(newChain)-1]))
 	<-updateMsgPoolDoneCh
-	assert.Equal(t, 2, len(node.MsgPool.Pending()))
-	pending := node.MsgPool.Pending()
+	assert.Equal(t, 2, len(node.Inbox.Pool().Pending()))
+	pending := node.Inbox.Pool().Pending()
 
 	assert.True(t, types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
 	assert.True(t, types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))

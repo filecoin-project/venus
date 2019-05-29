@@ -52,7 +52,7 @@ func MinerCreate(
 		}
 	}
 
-	ctx = log.Start(ctx, "Node.CreateMiner")
+	ctx = log.Start(ctx, "Node.CreateStorageMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
@@ -77,7 +77,7 @@ func MinerCreate(
 		collateral,
 		gasPrice,
 		gasLimit,
-		"createMiner",
+		"createStorageMiner",
 		big.NewInt(int64(pledge)),
 		pubKey,
 		pid,
@@ -138,7 +138,7 @@ func MinerPreviewCreate(
 		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
 	}
 
-	ctx = log.Start(ctx, "Node.CreateMiner")
+	ctx = log.Start(ctx, "Node.CreateStorageMiner")
 	defer func() {
 		log.FinishWithErr(ctx, err)
 	}()
@@ -157,7 +157,7 @@ func MinerPreviewCreate(
 		ctx,
 		fromAddr,
 		address.StorageMarketAddress,
-		"createMiner",
+		"createStorageMiner",
 		big.NewInt(int64(pledge)),
 		pubkey,
 		pid,

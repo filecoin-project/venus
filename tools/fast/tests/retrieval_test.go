@@ -124,7 +124,7 @@ func TestRetrieval(t *testing.T) {
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
 	// Create a miner on the miner node
-	ask, err := series.CreateMinerWithAsk(ctx, miner, pledge, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, pledge, collateral, price, expiry)
 	require.NoError(t, err)
 
 	// Connect the client and the miner

@@ -57,6 +57,9 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	proposalCid, err := convert.ToCid(proposal)
 	require.NoError(t, err)
 
+	messageCid, err := convert.ToCid("messageCid")
+	require.NoError(t, err)
+
 	storageDeal := &storagedeal.Deal{
 		Miner:    minerAddr,
 		Proposal: proposal,
@@ -64,7 +67,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 			State:       storagedeal.Accepted,
 			Message:     responseMessage,
 			ProposalCid: proposalCid,
-			ProofInfo:   &storagedeal.ProofInfo{},
+			ProofInfo:   &storagedeal.ProofInfo{CommitmentMessage: messageCid},
 			Signature:   []byte("signature"),
 		},
 	}
