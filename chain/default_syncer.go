@@ -166,9 +166,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
 
 	// Continue collecting the chain if we're either not yet caught up or the
-	// height of the input blocks has not yet exceeded the sum of the current
-	// consensus height and the finalityLimit constant, otherwise ignore the input
-	// blocks as a likely invalid chain or denial of service attempt.
+	// number of new input blocks is less than the FinalityLimit constant.
+	// Otherwise, halt assuming the new blocks come from an invalid chain.
 	for (syncer.syncMode == Syncing) || (len(chain) < FinalityLimit) {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
