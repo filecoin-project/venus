@@ -35,7 +35,6 @@ func TestMinerHelp(t *testing.T) {
 		expected := []string{
 			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
 			"miner owner <miner>                     - Show the actor address of <miner>",
-			"miner pledge <miner>                    - View number of pledged sectors for <miner>",
 			"miner power <miner>                     - Get the power of a miner versus the total storage market power",
 			"miner set-price <storageprice> <expiry> - Set the minimum price for storage",
 			"miner update-peerid <address> <peerid>  - Change the libp2p identity that a miner is operating",
