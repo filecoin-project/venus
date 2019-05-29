@@ -49,7 +49,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 			TipSet:          link,
 			TipSetStateRoot: dstP.genStateRoot,
 		}
-		th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, linkTsas)
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, linkTsas))
 	}
 	err := chainStore.SetHead(ctx, link)
 	require.NoError(t, err)
@@ -130,7 +130,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 		TipSet:          afterNull,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	err := chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
@@ -260,7 +260,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		TipSet:          afterNull,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	err := chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
@@ -326,7 +326,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 		TipSet:          firstForkTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, firstForkTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, firstForkTsas))
 	err := chainStore.SetHead(ctx, firstForkTS)
 	require.NoError(t, err)
 
@@ -398,7 +398,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 		TipSet:          afterNullTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	afterNullIter := chain.IterAncestors(ctx, chainStore, afterNullTS)
 
 	// grow the fork by 1 block on the other fork

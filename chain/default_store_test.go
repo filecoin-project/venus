@@ -64,11 +64,11 @@ func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *DefaultSyn
 		TipSet:          dstP.link4,
 		TipSetStateRoot: dstP.link4State,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, genTsas)
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, link1Tsas)
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, link2Tsas)
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, link3Tsas)
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, link4Tsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link1Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link2Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link3Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link4Tsas))
 }
 
 func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
@@ -209,7 +209,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		TipSet:          newChild,
 		TipSetStateRoot: newRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, newChildTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, newChildTsas))
 	gotNew1 := requireGetTsasByParentAndHeight(t, chainStore, pk1, uint64(1))
 	require.Equal(t, 2, len(gotNew1))
 	for _, tsas := range gotNew1 {

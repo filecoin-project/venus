@@ -72,10 +72,10 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
+	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
 	testWaitHelp(nil, t, waiter, m1, false, nil)
@@ -99,10 +99,10 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
+	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
 	wg.Wait()
@@ -193,10 +193,10 @@ func TestWaitConflicting(t *testing.T) {
 	core.MustPut(cst, b2)
 
 	ts := th.RequireNewTipSet(t, b1, b2)
-	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,
-	})
+	}))
 	assert.NoError(t, chainStore.SetHead(ctx, ts))
 	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
