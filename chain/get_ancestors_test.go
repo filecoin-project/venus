@@ -34,7 +34,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 			Signer:          signer,
 			MinerPubKey:     mockSignerPubKey,
 			StateRoot:       dstP.genStateRoot,
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 		}
 		linkBlock := th.RequireMkFakeChild(t, fakeChildParams)
 		requirePutBlocks(t, blockSource, linkBlock)
@@ -115,7 +115,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 		Signer:          signer,
 		MinerPubKey:     mockSignerPubKey,
 		StateRoot:       dstP.genStateRoot,
-		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+		BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 	}
 
 	afterNullBlock := th.RequireMkFakeChild(t, fakeChildParams)
@@ -247,7 +247,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		NullBlockCount:  nullBlocks,
 		Signer:          signer,
 		MinerPubKey:     mockSignerPubKey,
-		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+		BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 	}
 	afterNullBlock := th.RequireMkFakeChild(t, fakeChildParams)
 	requirePutBlocks(t, blockSource, afterNullBlock)
@@ -313,7 +313,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 		MinerPubKey:     mockSignerPubKey,
 		StateRoot:       dstP.genStateRoot,
 		Nonce:           uint64(4),
-		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+		BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 	}
 
 	firstForkBlock := th.RequireMkFakeChild(t, fakeChildParams)
@@ -386,7 +386,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 		MinerPubKey:     mockSignerPubKey,
 		StateRoot:       dstP.genStateRoot,
 		NullBlockCount:  uint64(1),
-		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+		BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 	}
 
 	afterNullBlock := th.RequireMkFakeChild(t, fakeChildParams)

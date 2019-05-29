@@ -26,7 +26,7 @@ func TestIsReorg(t *testing.T) {
 			MinerPubKey:     mockSignerPubKey,
 			Signer:          mockSigner,
 			GenesisCid:      reorgGen.Cid(),
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 			StateRoot:       reorgGen.StateRoot}
 		chn := th.RequireMkFakeChain(t, reorgGenTS, 10, params)
 		curHead := chn[len(chn)-1]
@@ -42,7 +42,7 @@ func TestIsReorg(t *testing.T) {
 			MinerPubKey:     mockSignerPubKey,
 			Signer:          mockSigner,
 			GenesisCid:      reorgGen.Cid(),
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 			StateRoot:       reorgGen.StateRoot}
 		chn := th.RequireMkFakeChain(t, reorgGenTS, 20, params)
 		curHead := chn[10]
@@ -55,7 +55,7 @@ func TestIsReorg(t *testing.T) {
 			GenesisCid:      reorgGen.Cid(),
 			MinerPubKey:     mockSignerPubKey,
 			Signer:          mockSigner,
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 			StateRoot:       reorgGen.StateRoot}
 		chn := th.RequireMkFakeChain(t, reorgGenTS, 10, params)
 		curHead := chn[len(chn)-1]
@@ -65,7 +65,7 @@ func TestIsReorg(t *testing.T) {
 			MinerPubKey:     mockSignerPubKey,
 			Signer:          mockSigner,
 			GenesisCid:      reorgGen.Cid(),
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 			StateRoot:       reorgGen.StateRoot})
 		superset := th.RequireNewTipSet(t, headBlock, block2)
 		chn[len(chn)-1] = superset

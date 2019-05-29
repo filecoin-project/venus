@@ -174,7 +174,7 @@ func TestWaitConflicting(t *testing.T) {
 			StateRoot:       baseBlock.StateRoot,
 			Signer:          mockSigner,
 			MinerPubKey:     pubkey1,
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 		})
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
@@ -188,7 +188,7 @@ func TestWaitConflicting(t *testing.T) {
 			StateRoot:       baseBlock.StateRoot,
 			Signer:          mockSigner,
 			MinerPubKey:     pubkey2,
-			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 			Nonce:           uint64(1)})
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}

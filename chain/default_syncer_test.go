@@ -92,7 +92,7 @@ func initDSTParams() *DefaultSyncerTestParams {
 		genTS:             genTS,
 		cidGetter:         cidGetter,
 		genStateRoot:      genStateRoot,
-		blockTimeTicker:   th.NewBlkTimeTickerForTestGetter(),
+		blockTimeTicker:   th.NewBlkTimeForTestGetter(),
 	}
 }
 
@@ -1022,7 +1022,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		return con.Weight(ctx, ts, pSt)
 	}
 
-	blkTimer := th.NewBlkTimeTickerForTestGetter()
+	blkTimer := th.NewBlkTimeForTestGetter()
 	fakeChildParams := th.FakeChildParams{
 		Parent:     baseTS,
 		GenesisCid: calcGenBlk.Cid(),

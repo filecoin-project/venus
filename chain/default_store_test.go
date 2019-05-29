@@ -192,7 +192,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		Nonce:           uint64(5),
 		Signer:          mockSigner,
 		MinerPubKey:     mockSignerPubKey,
-		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+		BlockTimeTicker: th.NewBlkTimeForTestGetter(),
 	}
 
 	requirePutTestChain(t, chainStore, dstP)

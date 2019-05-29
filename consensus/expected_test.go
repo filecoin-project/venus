@@ -122,7 +122,7 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 	stateRoot, err := tree.Flush(ctx)
 	require.NoError(t, err)
 
-	blkTimer := testhelpers.NewBlkTimeTickerForTestGetter()
+	blkTimer := testhelpers.NewBlkTimeForTestGetter()
 	blocks := []*types.Block{
 		testhelpers.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[0], ownerPubKeys[0], mockSigner, blkTimer),
 		testhelpers.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[1], ownerPubKeys[1], mockSigner, blkTimer),

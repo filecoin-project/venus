@@ -61,7 +61,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
 	require.NoError(t, err)
 
-	blkTimer := testhelpers.NewBlkTimeTickerForTestGetter()
+	blkTimer := testhelpers.NewBlkTimeForTestGetter()
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
 		Parents:      baseTS.ToSortedCidSet(),
@@ -112,7 +112,7 @@ func TestChainSync(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 	stateRoot := baseTS.ToSlice()[0].StateRoot
 
-	blkTimer := testhelpers.NewBlkTimeTickerForTestGetter()
+	blkTimer := testhelpers.NewBlkTimeForTestGetter()
 	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr, mockSignerPubKey, signer, blkTimer)
 	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, mockSignerPubKey, signer, blkTimer)
 	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, mockSignerPubKey, signer, blkTimer)

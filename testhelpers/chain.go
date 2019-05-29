@@ -261,7 +261,9 @@ func (bs *FakeBlockProvider) NewBlock(nonce uint64, parents ...*types.Block) *ty
 	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
 }
 
-func NewBlkTimeTickerForTestGetter() func() uint64 {
+// NewBlkTimeForTestGetter returns a closure that returns a uint64 unique to that invocation.
+// The uint64 is unique wrt the closure returned, not globally.
+func NewBlkTimeForTestGetter() func() uint64 {
 	var ticker uint64
 	return func() uint64 {
 		ticker++
