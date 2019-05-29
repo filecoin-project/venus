@@ -1,5 +1,9 @@
 package fast
 
+// The devnet FAST environment provides an environment for using FAST with the deployed kittyhawk
+// devnet infrasturture run by the Filecoin development team. It can be used to setup and manage nodes
+// connected to either the nightly, test, or user devnets for running automation with the FAST library.
+
 import (
 	"context"
 	"fmt"
@@ -16,7 +20,7 @@ import (
 )
 
 // EnvironmentDevnet is a FAST lib environment that is meant to be used
-// when working with kittyhawk devnets.
+// when working with kittyhawk devnets run by the Filecoin development team.
 type EnvironmentDevnet struct {
 	network  string
 	location string
