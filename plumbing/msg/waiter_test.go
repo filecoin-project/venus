@@ -72,7 +72,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
-	th.RequirePutTsas(ctx, t, chainStore, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	})
@@ -99,7 +99,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, len(ts))
-	th.RequirePutTsas(ctx, t, chainStore, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	})
@@ -193,7 +193,7 @@ func TestWaitConflicting(t *testing.T) {
 	core.MustPut(cst, b2)
 
 	ts := th.RequireNewTipSet(t, b1, b2)
-	th.RequirePutTsas(ctx, t, chainStore, &chain.TipSetAndState{
+	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,
 	})

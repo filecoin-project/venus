@@ -171,14 +171,10 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 	return ts
 }
 
-type requirePutTsasChainStore interface {
-	PutTipSetAndState(context.Context, *chain.TipSetAndState) error
-}
-
 // RequirePutTsas ensures that the provided tipset and state is placed in the
 // input store.
-func RequirePutTsas(ctx context.Context, t *testing.T, chn requirePutTsasChainStore, tsas *chain.TipSetAndState) {
-	err := chn.PutTipSetAndState(ctx, tsas)
+func RequirePutTsas(ctx context.Context, t *testing.T, putTipSetAndState func(context.Context, *chain.TipSetAndState) error, tsas *chain.TipSetAndState) {
+	err := putTipSetAndState(ctx, tsas)
 	require.NoError(t, err)
 }
 

@@ -285,7 +285,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 		TipSet:          calcGenTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, genTsas)
+	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, genTsas)
 	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct dstP.genesis
 	require.NoError(t, err)
 	requireHead(t, chainStore, calcGenTS)
@@ -1070,7 +1070,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		TipSet:          calcGenTS,
 		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, genTsas)
+	th.RequirePutTsas(ctx, t, chainStore.PutTipSetAndState, genTsas)
 	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore with correct dstP.genesis
 	require.NoError(t, err)
 	requireHead(t, chainStore, calcGenTS)
