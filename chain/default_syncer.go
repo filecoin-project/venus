@@ -22,6 +22,10 @@ import (
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
 var blkWaitTime = 30 * time.Second
+
+// FinalityLimit is the maximum number of blocks ahead of the current consensus
+// chain height to accept once in caught up mode
+var FinalityLimit = 600
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
@@ -33,7 +37,29 @@ var (
 
 var logSyncer = logging.Logger("chain.syncer")
 
+// SyncMode represents which behavior mode the chain syncer is currently in. By
+// default, the node starts in "Syncing" mode, and once it syncs the most
+// recently generated block, it switches to "Caught Up" mode.
+type SyncMode int
+
+const (
+	// Syncing indicates that the node was started recently and the chain is still
+	// significantly behind the current consensus head.
+	//
+	// See the spec for more detail:
+	// https://github.com/filecoin-project/specs/blob/master/sync.md#syncing-mode
+	Syncing SyncMode = iota
+	// CaughtUp indicates that the node has caught up with consensus head and as a
+	// result can restrict which new blocks are accepted to mitigate consensus
+	// attacks.
+	//
+	// See the spec for more detail:
+	// https://github.com/filecoin-project/specs/blob/master/sync.md#caught-up-mode
+	CaughtUp
+)
+
 type syncerChainReader interface {
+	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
@@ -83,12 +109,18 @@ type DefaultSyncer struct {
 	badTipSets *badTipSetCache
 	consensus  consensus.Protocol
 	chainStore syncerChainReader
+	// syncMode is an enumerable indicating whether the chain is currently caught
+	// up or still syncing. Presently, syncMode is always Syncing pending
+	// implementation in issue #1160.
+	//
+	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1160
+	syncMode SyncMode
 }
 
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher) *DefaultSyncer {
+func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *DefaultSyncer {
 	return &DefaultSyncer{
 		fetcher:    f,
 		stateStore: cst,
@@ -97,6 +129,7 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerCha
 		},
 		consensus:  c,
 		chainStore: s,
+		syncMode:   syncMode,
 	}
 }
 
@@ -133,7 +166,10 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	fetchedHead := tipsetCids
 	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
 
-	for {
+	// Continue collecting the chain if we're either not yet caught up or the
+	// number of new input blocks is less than the FinalityLimit constant.
+	// Otherwise, halt assuming the new blocks come from an invalid chain.
+	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := tipsetCids.String()
@@ -173,6 +209,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 	}
+
+	return nil, ErrNewChainTooLong
 }
 
 // tipSetState returns the state resulting from applying the input tipset to
@@ -414,4 +452,14 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 		parent = ts
 	}
 	return nil
+}
+
+func (syncer *DefaultSyncer) exceedsFinalityLimit(chain []types.TipSet) bool {
+	if len(chain) == 0 {
+		return false
+	}
+	blockHeight, _ := syncer.chainStore.BlockHeight()
+	finalityHeight := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	chainHeight, _ := chain[0].Height()
+	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight)
 }
