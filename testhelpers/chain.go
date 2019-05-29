@@ -21,15 +21,16 @@ import (
 
 // FakeChildParams is a wrapper for all the params needed to create fake child blocks.
 type FakeChildParams struct {
-	Consensus      consensus.Protocol
-	GenesisCid     cid.Cid
-	MinerAddr      address.Address
-	Nonce          uint64
-	NullBlockCount uint64
-	Parent         types.TipSet
-	StateRoot      cid.Cid
-	Signer         consensus.TicketSigner
-	MinerPubKey    []byte
+	Consensus       consensus.Protocol
+	GenesisCid      cid.Cid
+	MinerAddr       address.Address
+	Nonce           uint64
+	NullBlockCount  uint64
+	Parent          types.TipSet
+	StateRoot       cid.Cid
+	Signer          consensus.TicketSigner
+	MinerPubKey     []byte
+	BlockTimeTicker func() uint64
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -75,7 +76,8 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 		params.MinerAddr,
 		params.MinerPubKey,
 		params.Signer,
-		wFun)
+		wFun,
+		params.BlockTimeTicker)
 }
 
 // MkFakeChildCore houses shared functionality between MkFakeChildWithCon and MkFakeChild.
@@ -87,7 +89,8 @@ func MkFakeChildCore(parent types.TipSet,
 	minerAddr address.Address,
 	minerPubKey []byte,
 	signer consensus.TicketSigner,
-	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
+	wFun func(types.TipSet) (uint64, error),
+	blkTimeFunc func() uint64) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
 	w, err := wFun(parent)
@@ -104,13 +107,18 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
+	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer, blkTimeFunc)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
 	newBlock.Nonce = types.Uint64(nonce)
 	newBlock.StateRoot = stateRoot
+	if nullBlockCount != 0 {
+		newBlock.Timestamp = types.Uint64(nullBlockCount * blkTimeFunc())
+	} else {
+		newBlock.Timestamp = types.Uint64(blkTimeFunc())
+	}
 
 	return newBlock, nil
 }
@@ -157,7 +165,8 @@ func RequireMkFakeChildCore(t *testing.T,
 		params.MinerAddr,
 		params.MinerPubKey,
 		params.Signer,
-		wFun)
+		wFun,
+		params.BlockTimeTicker)
 	require.NoError(t, err)
 	return child
 }
@@ -250,4 +259,12 @@ func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*type
 // NewBlock creates and stores a new block in this provider.
 func (bs *FakeBlockProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
 	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
+}
+
+func NewBlkTimeTickerForTestGetter() func() uint64 {
+	var ticker uint64
+	return func() uint64 {
+		ticker++
+		return ticker
+	}
 }

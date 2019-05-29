@@ -168,12 +168,13 @@ func TestWaitConflicting(t *testing.T) {
 
 	b1 := th.RequireMkFakeChild(t,
 		th.FakeChildParams{
-			MinerAddr:   minerAddr,
-			Parent:      baseTS,
-			GenesisCid:  chainStore.GenesisCid(),
-			StateRoot:   baseBlock.StateRoot,
-			Signer:      mockSigner,
-			MinerPubKey: pubkey1,
+			MinerAddr:       minerAddr,
+			Parent:          baseTS,
+			GenesisCid:      chainStore.GenesisCid(),
+			StateRoot:       baseBlock.StateRoot,
+			Signer:          mockSigner,
+			MinerPubKey:     pubkey1,
+			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
 		})
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
@@ -181,13 +182,14 @@ func TestWaitConflicting(t *testing.T) {
 
 	b2 := th.RequireMkFakeChild(t,
 		th.FakeChildParams{
-			MinerAddr:   minerAddr,
-			Parent:      baseTS,
-			GenesisCid:  chainStore.GenesisCid(),
-			StateRoot:   baseBlock.StateRoot,
-			Signer:      mockSigner,
-			MinerPubKey: pubkey2,
-			Nonce:       uint64(1)})
+			MinerAddr:       minerAddr,
+			Parent:          baseTS,
+			GenesisCid:      chainStore.GenesisCid(),
+			StateRoot:       baseBlock.StateRoot,
+			Signer:          mockSigner,
+			MinerPubKey:     pubkey2,
+			BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
+			Nonce:           uint64(1)})
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)

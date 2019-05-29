@@ -3,7 +3,6 @@ package chain_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -50,6 +49,8 @@ type DefaultSyncerTestParams struct {
 	minerAddress      address.Address
 	minerOwnerAddress address.Address
 	minerPeerID       peer.ID
+
+	blockTimeTicker func() uint64
 }
 
 func initDSTParams() *DefaultSyncerTestParams {
@@ -91,6 +92,7 @@ func initDSTParams() *DefaultSyncerTestParams {
 		genTS:             genTS,
 		cidGetter:         cidGetter,
 		genStateRoot:      genStateRoot,
+		blockTimeTicker:   th.NewBlkTimeTickerForTestGetter(),
 	}
 }
 
@@ -107,13 +109,14 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 	mockSignerPubKey := mockSigner.PubKeys[0]
 
 	fakeChildParams := th.FakeChildParams{
-		Parent:      dstP.genTS,
-		GenesisCid:  dstP.genCid,
-		StateRoot:   dstP.genStateRoot,
-		Consensus:   con,
-		MinerAddr:   dstP.minerAddress,
-		MinerPubKey: mockSignerPubKey,
-		Signer:      mockSigner,
+		Parent:          dstP.genTS,
+		GenesisCid:      dstP.genCid,
+		StateRoot:       dstP.genStateRoot,
+		Consensus:       con,
+		MinerAddr:       dstP.minerAddress,
+		MinerPubKey:     mockSignerPubKey,
+		Signer:          mockSigner,
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
 
 	dstP.link1blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
@@ -205,7 +208,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, time.Second) // note we use same cst for on and offline for tests
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, 1) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -257,7 +260,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, time.Second) // note we use same cst for on and offline for tests
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, 1) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -484,12 +487,13 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 
 	forkblk1 := th.RequireMkFakeChild(t,
 		th.FakeChildParams{
-			MinerAddr:   dstP.minerAddress,
-			Signer:      signer,
-			MinerPubKey: signerPubKey,
-			Parent:      forkbase,
-			GenesisCid:  dstP.genCid,
-			StateRoot:   dstP.genStateRoot,
+			MinerAddr:       dstP.minerAddress,
+			Signer:          signer,
+			MinerPubKey:     signerPubKey,
+			Parent:          forkbase,
+			GenesisCid:      dstP.genCid,
+			StateRoot:       dstP.genStateRoot,
+			BlockTimeTicker: dstP.blockTimeTicker,
 		})
 	forklink1 := th.RequireNewTipSet(t, forkblk1)
 
@@ -525,13 +529,14 @@ func TestHeavierFork(t *testing.T) {
 
 	forkbase := th.RequireNewTipSet(t, dstP.link2blk1)
 	fakeChildParams := th.FakeChildParams{
-		Parent:      forkbase,
-		GenesisCid:  dstP.genCid,
-		StateRoot:   dstP.genStateRoot,
-		MinerAddr:   dstP.minerAddress,
-		Signer:      signer,
-		MinerPubKey: mockSignerPubKey,
-		Nonce:       uint64(1),
+		Parent:          forkbase,
+		GenesisCid:      dstP.genCid,
+		StateRoot:       dstP.genStateRoot,
+		MinerAddr:       dstP.minerAddress,
+		Signer:          signer,
+		MinerPubKey:     mockSignerPubKey,
+		Nonce:           uint64(1),
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
 
 	forklink1blk1 := th.RequireMkFakeChild(t, fakeChildParams)
@@ -624,13 +629,14 @@ func TestLoadFork(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 
 	fakeChildParams := th.FakeChildParams{
-		Parent:      forkbase,
-		GenesisCid:  dstP.genCid,
-		MinerAddr:   dstP.minerAddress,
-		Nonce:       uint64(1),
-		StateRoot:   dstP.genStateRoot,
-		Signer:      signer,
-		MinerPubKey: mockSignerPubKey,
+		Parent:          forkbase,
+		GenesisCid:      dstP.genCid,
+		MinerAddr:       dstP.minerAddress,
+		Nonce:           uint64(1),
+		StateRoot:       dstP.genStateRoot,
+		Signer:          signer,
+		MinerPubKey:     mockSignerPubKey,
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
 
 	forklink1blk1 := th.RequireMkFakeChild(t, fakeChildParams)
@@ -723,12 +729,13 @@ func TestSubsetParent(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 
 	fakeChildParams := th.FakeChildParams{
-		Parent:      forkbase,
-		GenesisCid:  dstP.genCid,
-		MinerAddr:   dstP.minerAddress,
-		StateRoot:   dstP.genStateRoot,
-		Signer:      signer,
-		MinerPubKey: mockSignerPubKey,
+		Parent:          forkbase,
+		GenesisCid:      dstP.genCid,
+		MinerAddr:       dstP.minerAddress,
+		StateRoot:       dstP.genStateRoot,
+		Signer:          signer,
+		MinerPubKey:     mockSignerPubKey,
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
 
 	forkblk1 := th.RequireMkFakeChild(t, fakeChildParams)
@@ -766,14 +773,16 @@ func TestWidenChainAncestor(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 
 	fakeChildParams := th.FakeChildParams{
-		MinerAddr:   dstP.minerAddress,
-		Parent:      dstP.link1,
-		GenesisCid:  dstP.genCid,
-		StateRoot:   dstP.genStateRoot,
-		Signer:      signer,
-		MinerPubKey: mockSignerPubKey,
-		Nonce:       uint64(27),
+		MinerAddr:       dstP.minerAddress,
+		Parent:          dstP.link1,
+		GenesisCid:      dstP.genCid,
+		StateRoot:       dstP.genStateRoot,
+		Signer:          signer,
+		MinerPubKey:     mockSignerPubKey,
+		Nonce:           uint64(27),
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
+	fakeChildParams.BlockTimeTicker()
 
 	link2blkother := th.RequireMkFakeChild(t, fakeChildParams)
 
@@ -853,13 +862,14 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 
 	fakeChildParams := th.FakeChildParams{
-		Parent:     dstP.link1,
-		Consensus:  con,
-		GenesisCid: dstP.genCid,
-		StateRoot:  dstP.genStateRoot,
-		MinerAddr:  dstP.minerAddress,
-		Signer:     signer,
-		Nonce:      uint64(1),
+		Parent:          dstP.link1,
+		Consensus:       con,
+		GenesisCid:      dstP.genCid,
+		StateRoot:       dstP.genStateRoot,
+		MinerAddr:       dstP.minerAddress,
+		Signer:          signer,
+		Nonce:           uint64(1),
+		BlockTimeTicker: dstP.blockTimeTicker,
 	}
 
 	var err error
@@ -983,7 +993,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, time.Second)
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, 1)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
@@ -1012,13 +1022,15 @@ func TestTipSetWeightDeep(t *testing.T) {
 		return con.Weight(ctx, ts, pSt)
 	}
 
+	blkTimer := th.NewBlkTimeTickerForTestGetter()
 	fakeChildParams := th.FakeChildParams{
 		Parent:     baseTS,
 		GenesisCid: calcGenBlk.Cid(),
 		StateRoot:  bootstrapStateRoot,
 		Signer:     mockSigner,
 
-		MinerAddr: info.Miners[1].Address,
+		MinerAddr:       info.Miners[1].Address,
+		BlockTimeTicker: blkTimer,
 	}
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
@@ -1050,7 +1062,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 		StateRoot:  bootstrapStateRoot,
 		Signer:     mockSigner,
 
-		MinerAddr: info.Miners[1].Address,
+		MinerAddr:       info.Miners[1].Address,
+		BlockTimeTicker: blkTimer,
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey1, info.Miners[1].Power, totalPower, mockSigner)
@@ -1080,8 +1093,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 		GenesisCid: calcGenBlk.Cid(),
 		Signer:     mockSigner,
 
-		StateRoot: bootstrapStateRoot,
-		MinerAddr: info.Miners[3].Address,
+		StateRoot:       bootstrapStateRoot,
+		MinerAddr:       info.Miners[3].Address,
+		BlockTimeTicker: blkTimer,
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(signerPubKey2, info.Miners[3].Power, totalPower, mockSigner)

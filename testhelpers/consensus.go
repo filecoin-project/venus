@@ -72,7 +72,7 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner, blkTimer func() uint64) *types.Block {
 	poStProof := MakeRandomPoStProofForTest()
 	ticket, _ := consensus.CreateTicket(poStProof, minerPubKey, signer)
 
@@ -85,6 +85,7 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		Nonce:        types.Uint64(height),
 		StateRoot:    stateRootCid,
 		Proof:        poStProof,
+		Timestamp:    types.Uint64(blkTimer()),
 	}
 }
 

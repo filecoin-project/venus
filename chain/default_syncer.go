@@ -226,7 +226,8 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 		limit := int64(pMinTs) + (int64(syncer.blockTime.Seconds()) * int64(len(tickets)))
 		if int64(b.Timestamp) <= limit {
-			return errors.Errorf("block: %s was generated at %d by miner: %s too soon: %d", b.Cid(), b.Timestamp, b.Miner.String(), limit)
+			// DONOTMERGE clean up error message before merging, right now its nice to debug with
+			return errors.Errorf("block: %s was generated at %d by miner: %s too soon. num tickets: %d, blocktime: %d parentTs: %d", b.Cid(), b.Timestamp, b.Miner.String(), len(tickets), int64(syncer.blockTime.Seconds()), pMinTs)
 		}
 	}
 

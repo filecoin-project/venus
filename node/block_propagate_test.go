@@ -61,6 +61,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
 	require.NoError(t, err)
 
+	blkTimer := testhelpers.NewBlkTimeTickerForTestGetter()
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
 		Parents:      baseTS.ToSortedCidSet(),
@@ -69,6 +70,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 		StateRoot:    baseTS.ToSlice()[0].StateRoot,
 		Proof:        proof,
 		Ticket:       ticket,
+		Timestamp:    types.Uint64(blkTimer()),
 	}
 
 	// Wait for network connection notifications to propagate
@@ -110,9 +112,10 @@ func TestChainSync(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 	stateRoot := baseTS.ToSlice()[0].StateRoot
 
-	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr, mockSignerPubKey, signer)
-	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, mockSignerPubKey, signer)
-	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, mockSignerPubKey, signer)
+	blkTimer := testhelpers.NewBlkTimeTickerForTestGetter()
+	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr, mockSignerPubKey, signer, blkTimer)
+	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, mockSignerPubKey, signer, blkTimer)
+	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, mockSignerPubKey, signer, blkTimer)
 
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk2))

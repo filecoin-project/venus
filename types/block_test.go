@@ -72,11 +72,12 @@ func TestTriangleEncoding(t *testing.T) {
 			ParentWeight:    Uint64(1000),
 			Proof:           NewTestPoSt(),
 			StateRoot:       SomeCid(),
+			Timestamp:       Uint64(time.Now().Unix()),
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 12, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 13, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }

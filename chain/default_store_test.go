@@ -185,13 +185,14 @@ func TestGetMultipleByParent(t *testing.T) {
 	mockSignerPubKey := ki[0].PublicKey()
 
 	fakeChildParams := th.FakeChildParams{
-		Parent:      dstP.genTS,
-		GenesisCid:  dstP.genCid,
-		StateRoot:   dstP.genStateRoot,
-		MinerAddr:   dstP.minerAddress,
-		Nonce:       uint64(5),
-		Signer:      mockSigner,
-		MinerPubKey: mockSignerPubKey,
+		Parent:          dstP.genTS,
+		GenesisCid:      dstP.genCid,
+		StateRoot:       dstP.genStateRoot,
+		MinerAddr:       dstP.minerAddress,
+		Nonce:           uint64(5),
+		Signer:          mockSigner,
+		MinerPubKey:     mockSignerPubKey,
+		BlockTimeTicker: th.NewBlkTimeTickerForTestGetter(),
 	}
 
 	requirePutTestChain(t, chainStore, dstP)
