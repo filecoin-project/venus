@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -16,31 +15,9 @@ import (
 
 var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message pool")
 
-// MessageTimeOut is the number of tipsets we should receive before timing out messages
-const MessageTimeOut = 6
-
-type timedmessage struct {
-	message *types.SignedMessage
-	addedAt uint64
-}
-
-// MessagePoolAPI defines an interface to api resources the message pool needs.
-type MessagePoolAPI interface {
-	BlockHeight() (uint64, error)
-}
-
 // MessagePoolValidator defines a validator that ensures a message can go through the pool.
 type MessagePoolValidator interface {
 	Validate(ctx context.Context, msg *types.SignedMessage) error
-}
-
-type addressNonce struct {
-	addr  address.Address
-	nonce uint64
-}
-
-func newAddressNonce(msg *types.SignedMessage) addressNonce {
-	return addressNonce{addr: msg.From, nonce: uint64(msg.Nonce)}
 }
 
 // MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
@@ -53,30 +30,43 @@ func newAddressNonce(msg *types.SignedMessage) addressNonce {
 type MessagePool struct {
 	lk sync.RWMutex
 
-	api           MessagePoolAPI
 	cfg           *config.MessagePoolConfig
 	validator     MessagePoolValidator
 	pending       map[cid.Cid]*timedmessage // all pending messages
 	addressNonces map[addressNonce]bool     // set of address nonce pairs used to efficiently validate duplicate nonces
 }
 
-// Add adds a message to the pool.
-func (pool *MessagePool) Add(ctx context.Context, msg *types.SignedMessage) (cid.Cid, error) {
-	blockTime, err := pool.api.BlockHeight()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return pool.addTimedMessage(ctx, &timedmessage{message: msg, addedAt: blockTime})
+type timedmessage struct {
+	message *types.SignedMessage
+	addedAt uint64
 }
 
-// An error coming out of addTimedMessage probably means the message failed to validate,
-// but it could indicate a more serious problem with the system.
-func (pool *MessagePool) addTimedMessage(ctx context.Context, msg *timedmessage) (cid.Cid, error) {
+type addressNonce struct {
+	addr  address.Address
+	nonce uint64
+}
+
+func newAddressNonce(msg *types.SignedMessage) addressNonce {
+	return addressNonce{addr: msg.From, nonce: uint64(msg.Nonce)}
+}
+
+// NewMessagePool constructs a new MessagePool.
+func NewMessagePool(cfg *config.MessagePoolConfig, validator MessagePoolValidator) *MessagePool {
+	return &MessagePool{
+		cfg:           cfg,
+		validator:     validator,
+		pending:       make(map[cid.Cid]*timedmessage),
+		addressNonces: make(map[addressNonce]bool),
+	}
+}
+
+// Add adds a message to the pool, tagged with the block height at which it was received.
+// Does nothing if the message is already in the pool.
+func (pool *MessagePool) Add(ctx context.Context, msg *types.SignedMessage, height uint64) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
-	c, err := msg.message.Cid()
+	c, err := msg.Cid()
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to create CID")
 	}
@@ -87,12 +77,12 @@ func (pool *MessagePool) addTimedMessage(ctx context.Context, msg *timedmessage)
 		return c, nil
 	}
 
-	if err = pool.validateMessage(ctx, msg.message); err != nil {
+	if err = pool.validateMessage(ctx, msg); err != nil {
 		return cid.Undef, errors.Wrap(err, "validation error adding message to pool")
 	}
 
-	pool.pending[c] = msg
-	pool.addressNonces[newAddressNonce(msg.message)] = true
+	pool.pending[c] = &timedmessage{message: msg, addedAt: height}
+	pool.addressNonces[newAddressNonce(msg)] = true
 	mpSize.Set(ctx, int64(len(pool.pending)))
 	return c, nil
 }
@@ -135,107 +125,6 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 	mpSize.Set(context.TODO(), int64(len(pool.pending)))
 }
 
-// NewMessagePool constructs a new MessagePool.
-func NewMessagePool(api MessagePoolAPI, cfg *config.MessagePoolConfig, validator MessagePoolValidator) *MessagePool {
-	return &MessagePool{
-		api:           api,
-		cfg:           cfg,
-		validator:     validator,
-		pending:       make(map[cid.Cid]*timedmessage),
-		addressNonces: make(map[addressNonce]bool),
-	}
-}
-
-// UpdateMessagePool brings the message pool into the correct state after
-// we accept a new block. It removes messages from the pool that are
-// found in the newly adopted chain and adds back those from the removed
-// chain (if any) that do not appear in the new chain. We think
-// that the right model for keeping the message pool up to date is
-// to think about it like a garbage collector.
-func (pool *MessagePool) UpdateMessagePool(ctx context.Context, store chain.BlockProvider, oldHead, newHead types.TipSet) error {
-	oldBlocks, newBlocks, err := CollectBlocksToCommonAncestor(ctx, store, oldHead, newHead)
-	if err != nil {
-		return err
-	}
-
-	// Add all message from the old blocks to the message pool, so they can be mined again.
-	for _, blk := range oldBlocks {
-		for _, msg := range blk.Messages {
-			_, err = pool.addTimedMessage(ctx, &timedmessage{message: msg, addedAt: uint64(blk.Height)})
-			if err != nil {
-				log.Info(err)
-			}
-		}
-	}
-
-	// Remove all messages in the new blocks from the pool, now mined.
-	// Cid() can error, so collect all the CIDs up front.
-	var removeCids []cid.Cid
-	for _, blk := range newBlocks {
-		for _, msg := range blk.Messages {
-			cid, err := msg.Cid()
-			if err != nil {
-				return err
-			}
-			removeCids = append(removeCids, cid)
-		}
-	}
-	for _, c := range removeCids {
-		pool.Remove(c)
-	}
-
-	// prune all messages that have been in the pool too long
-	return pool.timeoutMessages(ctx, store, newHead)
-}
-
-// timeoutMessages removes all messages from the pool that arrived more than MessageTimeout tip sets ago.
-// Note that we measure the timeout in the number of tip sets we have received rather than a fixed block
-// height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
-// Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
-// sets than to the expected block time over short timescales.
-func (pool *MessagePool) timeoutMessages(ctx context.Context, store chain.BlockProvider, head types.TipSet) error {
-	var err error
-
-	lowestTipSet := head
-	minimumHeight, err := lowestTipSet.Height()
-	if err != nil {
-		return err
-	}
-
-	// walk back MessageTimeout tip sets to arrive at the lowest viable block height
-	for i := 0; minimumHeight > 0 && i < MessageTimeOut; i++ {
-		lowestTipSet, err = chain.GetParentTipSet(ctx, store, lowestTipSet)
-		if err != nil {
-			return err
-		}
-		minimumHeight, err = lowestTipSet.Height()
-		if err != nil {
-			return err
-		}
-	}
-
-	// remove all messages added before minimumHeight
-	for _, cid := range pool.messagesToTimeOut(minimumHeight) {
-		pool.Remove(cid)
-	}
-
-	return nil
-}
-
-// identify all messages that need to be timed out
-func (pool *MessagePool) messagesToTimeOut(minimumHeight uint64) []cid.Cid {
-	pool.lk.RLock()
-	defer pool.lk.RUnlock()
-
-	cids := []cid.Cid{}
-	for cid, msg := range pool.pending {
-		if msg.addedAt < minimumHeight {
-			cids = append(cids, cid)
-		}
-	}
-	return cids
-}
-
 // LargestNonce returns the largest nonce used by a message from address in the pool.
 // If no messages from address are found, found will be false.
 func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, found bool) {
@@ -250,10 +139,24 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 	return
 }
 
+// PendingBefore returns the CIDs of messages added with height less than `minimumHeight`.
+func (pool *MessagePool) PendingBefore(minimumHeight uint64) []cid.Cid {
+	pool.lk.RLock()
+	defer pool.lk.RUnlock()
+
+	var cids []cid.Cid
+	for c, msg := range pool.pending {
+		if msg.addedAt < minimumHeight {
+			cids = append(cids, c)
+		}
+	}
+	return cids
+}
+
 // validateMessage validates that too many messages aren't added to the pool and the ones that are
 // have a high probability of making it through processing.
 func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
-	if len(pool.pending) >= pool.cfg.MaxPoolSize {
+	if uint(len(pool.pending)) >= pool.cfg.MaxPoolSize {
 		return errors.Errorf("message pool is full (%d messages)", pool.cfg.MaxPoolSize)
 	}
 

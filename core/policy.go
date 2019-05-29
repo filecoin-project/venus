@@ -43,7 +43,7 @@ type DefaultQueuePolicy struct {
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
-// messages older than `maxAgeRounds` rounds.
+// messages older than `maxAgeTipsets` rounds.
 func NewMessageQueuePolicy(store chain.BlockProvider, maxAge uint64) *DefaultQueuePolicy {
 	return &DefaultQueuePolicy{store, maxAge}
 }
