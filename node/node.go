@@ -425,7 +425,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, nc.BlockTime)
 	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	msgQueue := core.NewMessageQueue()
 

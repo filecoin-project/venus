@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -204,7 +205,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource) // note we use same cst for on and offline for tests
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, time.Second) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -256,7 +257,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher) // note we use same cst for on and offline for tests
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, time.Second) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -982,7 +983,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource)
+	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, time.Second)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, len(baseTS))
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot

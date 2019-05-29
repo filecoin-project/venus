@@ -54,6 +54,9 @@ type Block struct {
 	// a challenge
 	Proof PoStProof `json:"proof"`
 
+	// A Unix Timestamp generated at block creation.
+	Timestamp Uint64 `json:"timestamp"`
+
 	cachedCid cid.Cid
 
 	cachedBytes []byte

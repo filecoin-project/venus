@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -170,6 +171,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		genesis := &types.Block{
 			StateRoot: c,
 			Nonce:     1337,
+			Timestamp: time.Now().Unix(),
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
