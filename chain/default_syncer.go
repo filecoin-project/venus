@@ -59,6 +59,7 @@ const (
 )
 
 type syncerChainReader interface {
+	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
 	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
@@ -168,7 +169,7 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	// Continue collecting the chain if we're either not yet caught up or the
 	// number of new input blocks is less than the FinalityLimit constant.
 	// Otherwise, halt assuming the new blocks come from an invalid chain.
-	for (syncer.syncMode == Syncing) || (len(chain) < FinalityLimit) {
+	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := tipsetCids.String()
@@ -451,4 +452,14 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 		parent = ts
 	}
 	return nil
+}
+
+func (syncer *DefaultSyncer) exceedsFinalityLimit(chain []types.TipSet) bool {
+	if len(chain) == 0 {
+		return false
+	}
+	blockHeight, _ := syncer.chainStore.BlockHeight()
+	finalityHeight := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	chainHeight, _ := chain[0].Height()
+	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight)
 }
