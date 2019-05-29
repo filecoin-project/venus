@@ -78,8 +78,8 @@ func MinerCreate(
 		gasPrice,
 		gasLimit,
 		"createStorageMiner",
-		big.NewInt(int64(pledge)),
 		pubKey,
+		big.NewInt(int64(pledge)),
 		pid,
 	)
 	if err != nil {
@@ -158,8 +158,8 @@ func MinerPreviewCreate(
 		fromAddr,
 		address.StorageMarketAddress,
 		"createStorageMiner",
-		big.NewInt(int64(pledge)),
 		pubkey,
+		big.NewInt(int64(pledge)),
 		pid,
 	)
 	if err != nil {
