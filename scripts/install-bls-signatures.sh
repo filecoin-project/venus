@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
+RELEASE_SHA1=`git rev-parse @:./bls-signatures/bls-signatures`
+
 install_precompiled() {
-  RELEASE_SHA1=`git rev-parse @:./bls-signatures/bls-signatures`
   RELEASE_NAME="bls-signatures-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
@@ -71,10 +72,10 @@ install_local() {
 }
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES" ]; then
-  echo "using local bls-signatures"
+  echo "using local bls-signatures @ ${RELEASE_SHA1}"
   install_local
 else
-  echo "using precompiled bls-signatures"
+  echo "using precompiled bls-signatures @ ${RELEASE_SHA1}"
   install_precompiled
 
   if [ $? -ne "0" ]; then
