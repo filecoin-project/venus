@@ -37,7 +37,9 @@ var (
 
 var logSyncer = logging.Logger("chain.syncer")
 
-// SyncMode is the
+// SyncMode represents which behavior mode the chain syncer is currently in. By
+// default, the node starts in "Syncing" mode, and once it syncs the most
+// recently generated block, it switches to "Caught Up" mode.
 type SyncMode int
 
 const (
