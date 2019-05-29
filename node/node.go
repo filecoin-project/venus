@@ -91,7 +91,6 @@ type nodeChainReader interface {
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
-	SetHead(context.Context, types.TipSet) error
 	Stop()
 }
 
