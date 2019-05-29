@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@1.0.2
+
 params:
   sector_builder_tests_param: &sector_builder_tests_param
     sector_builder_tests:
@@ -781,7 +784,12 @@ commands:
             trap "go run github.com/jstemmer/go-junit-report < test-results/go-test-suite/go-test.out > test-results/go-test-suite/go-test-report.xml" EXIT
             export TEST_PACKAGES="$(go list ./... | circleci tests split)"
             # Parallelism and timeout set to support medium-class containers, for builds on forked repos.
-            go run ./build test -timeout=30m -parallel=4 -functional=<< parameters.functional >> -integration=<< parameters.integration >> -sectorbuilder=<< parameters.sector_builder_tests >> -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out
+            go run ./build test -cover -coverprofile c.out -timeout=30m -parallel=4 -functional=<< parameters.functional >> -integration=<< parameters.integration >> -sectorbuilder=<< parameters.sector_builder_tests >> -unit=<< parameters.unit >> -v 2>&1 | tee test-results/go-test-suite/go-test.out
+            go tool cover -html=c.out -o coverage.html
+            mkdir -p /tmp/artifacts
+            mv coverage.html /tmp/artifacts/coverage.html
+      - codecov/upload:
+          file: /tmp/artifacts/coverage.html
   linux_configure_env:
     steps:
      - run:
