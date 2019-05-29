@@ -27,7 +27,7 @@ func (p *defaultMessagePublisher) Publish(ctx context.Context, message *types.Si
 		return errors.Wrap(err, "failed to marshal message")
 	}
 
-	if _, err := p.pool.Add(ctx, message); err != nil {
+	if _, err := p.pool.Add(ctx, message, height); err != nil {
 		return errors.Wrap(err, "failed to add message to message pool")
 	}
 

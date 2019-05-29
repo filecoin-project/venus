@@ -38,19 +38,10 @@ func MustGetNonce(st state.Tree, a address.Address) uint64 {
 }
 
 // MustAdd adds the given messages to the messagepool or panics if it cannot.
-func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
+func MustAdd(p *MessagePool, height uint64, msgs ...*types.SignedMessage) {
 	ctx := context.Background()
 	for _, m := range msgs {
-		if _, err := p.Add(ctx, m); err != nil {
-			panic(err)
-		}
-	}
-}
-
-// MustEnqueue adds the given messages to the messagepool or panics if it cannot.
-func MustEnqueue(q *MessageQueue, stamp uint64, msgs ...*types.SignedMessage) {
-	for _, m := range msgs {
-		if err := q.Enqueue(m, stamp); err != nil {
+		if _, err := p.Add(ctx, m, height); err != nil {
 			panic(err)
 		}
 	}
