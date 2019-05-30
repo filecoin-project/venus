@@ -151,7 +151,7 @@ func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessag
 // A chain and actor provider which provides and expects values for a single message.
 type fakeProvider struct {
 	head   types.SortedCidSet // Provided by GetHead and expected by others
-	tipset *types.TipSet      // Provided by GetTipset(head)
+	tipset types.TipSet       // Provided by GetTipset(head)
 	addr   address.Address    // Expected by GetActorAt
 	actor  *actor.Actor       // Provided by GetActorAt(head, tipKey, addr)
 }
@@ -160,7 +160,7 @@ func (p *fakeProvider) GetHead() types.SortedCidSet {
 	return p.head
 }
 
-func (p *fakeProvider) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error) {
+func (p *fakeProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
 	if !tsKey.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
 	}
@@ -179,8 +179,7 @@ func (p *fakeProvider) GetActorAt(ctx context.Context, tsKey types.SortedCidSet,
 
 // Set sets the tipset, from address, and actor to be provided by creating a tipset with one block.
 func (p *fakeProvider) Set(t *testing.T, block *types.Block, addr address.Address, actor *actor.Actor) {
-	ts := types.RequireNewTipSet(t, block)
-	p.tipset = &ts
+	p.tipset = types.RequireNewTipSet(t, block)
 	tsKey := types.NewSortedCidSet(block.Cid())
 	p.head = tsKey
 	p.addr = addr

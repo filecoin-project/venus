@@ -5,7 +5,7 @@ import (
 )
 
 type chBlockHeightPlumbing interface {
-	ChainHead() (*types.TipSet, error)
+	ChainHead() (types.TipSet, error)
 }
 
 // ChainBlockHeight determines the current block height

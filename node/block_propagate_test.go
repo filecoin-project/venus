@@ -54,7 +54,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	head := minerNode.ChainReader.GetHead()
 	headTipSet, err := minerNode.ChainReader.GetTipSet(head)
 	require.NoError(t, err)
-	baseTS := *headTipSet
+	baseTS := headTipSet
 	require.NotNil(t, baseTS)
 	proof := testhelpers.MakeRandomPoStProofForTest()
 
@@ -104,7 +104,7 @@ func TestChainSync(t *testing.T) {
 	head := nodes[0].ChainReader.GetHead()
 	headTipSet, err := nodes[0].ChainReader.GetTipSet(head)
 	require.NoError(t, err)
-	baseTS := *headTipSet
+	baseTS := headTipSet
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
 	mockSignerPubKey := ki[0].PublicKey()

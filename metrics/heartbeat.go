@@ -52,7 +52,7 @@ type HeartbeatService struct {
 	Config *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
-	HeadGetter func() (*types.TipSet, error)
+	HeadGetter func() (types.TipSet, error)
 
 	// A function that returns the miner's address
 	MinerAddressGetter func() address.Address
@@ -76,7 +76,7 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() (*types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() (types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
 		Config:             hbc,

@@ -87,7 +87,7 @@ type nodeChainReader interface {
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
@@ -392,7 +392,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), genCid)
 	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
 	powerTable := &consensus.MarketView{}
 
@@ -555,7 +555,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get chain head")
 	}
-	go node.handleNewHeaviestTipSet(cctx, *head)
+	go node.handleNewHeaviestTipSet(cctx, head)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
