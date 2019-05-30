@@ -25,14 +25,14 @@ var (
 	ErrEmptyTipSet = errors.New("no blocks for tipset")
 )
 
-// NoTipSet is a singleton representing a nil or undefined tipset.
-var NoTipSet = TipSet{}
+// UndefTipSet is a singleton representing a nil or undefined tipset.
+var UndefTipSet = TipSet{}
 
 // NewTipSet builds a new TipSet from a collection of blocks.
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.
 func NewTipSet(blocks ...*Block) (TipSet, error) {
 	if len(blocks) == 0 {
-		return NoTipSet, ErrEmptyTipSet
+		return UndefTipSet, ErrEmptyTipSet
 	}
 
 	first := blocks[0]
@@ -45,19 +45,19 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 	for i, blk := range blocks {
 		if i > 0 { // Skip redundant checks for first block
 			if blk.Height != height {
-				return NoTipSet, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
+				return UndefTipSet, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
 			}
 			if !blk.Parents.Equals(parents) {
-				return NoTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
+				return UndefTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
 			}
 			if blk.ParentWeight != weight {
-				return NoTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
+				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
 		// Reject duplicate blocks (by CID).
 		c := blk.Cid()
 		if cids[c] {
-			return NoTipSet, errors.Errorf("Duplicate block CID %s", c)
+			return UndefTipSet, errors.Errorf("Duplicate block CID %s", c)
 		}
 		cids[c] = true
 		sorted[i] = blk
@@ -93,11 +93,6 @@ func (ts TipSet) At(i int) *Block {
 	return ts.blocks[i]
 }
 
-// IsSolo tests whether the tipset has a single block.
-func (ts TipSet) IsSolo() bool {
-	return len(ts.blocks) == 1
-}
-
 // ToSortedCidSet returns a SortedCidSet containing the CIDs in the tipset.
 func (ts TipSet) ToSortedCidSet() SortedCidSet {
 	s := SortedCidSet{}
@@ -115,6 +110,7 @@ func (ts TipSet) ToSlice() []*Block {
 }
 
 // MinTicket returns the smallest ticket of all blocks in the tipset, and nil error.
+// The nil error is to be removed shortly.
 func (ts TipSet) MinTicket() (Signature, error) {
 	return ts.blocks[0].Ticket, nil
 }

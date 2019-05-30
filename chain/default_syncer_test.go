@@ -1084,7 +1084,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
-	require.True(t, baseTS.IsSolo())
+	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(t, err)

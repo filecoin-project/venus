@@ -177,7 +177,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
-	if ts.IsSolo() {
+	if ts.Len() == 1 {
 		b := ts.At(0)
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers

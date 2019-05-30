@@ -144,7 +144,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		genesii = iterator.Value()
 	}
 	// Check genesis here.
-	if !genesii.IsSolo() {
+	if genesii.Len() != 1 {
 		return errors.Errorf("genesis tip set must be a single block, got %d blocks", genesii.Len())
 	}
 

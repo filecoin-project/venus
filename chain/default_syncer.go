@@ -354,21 +354,21 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {
-		return types.NoTipSet, err
+		return types.UndefTipSet, err
 	}
 	height, err := ts.Height()
 	if err != nil {
-		return types.NoTipSet, err
+		return types.UndefTipSet, err
 	}
 	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
-		return types.NoTipSet, nil
+		return types.UndefTipSet, nil
 	}
 	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
 	if err != nil {
-		return types.NoTipSet, err
+		return types.UndefTipSet, err
 	}
 	if len(candidates) == 0 {
-		return types.NoTipSet, nil
+		return types.UndefTipSet, nil
 	}
 
 	// Only take the tipset with the most blocks (this is EC specific logic)
@@ -380,25 +380,28 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	}
 
 	// Form a new tipset from the union of ts and the largest in the store, de-duped.
-	blocks := make(map[cid.Cid]*types.Block)
+	var blockSlice []*types.Block
+	blockCids := make(map[cid.Cid]struct{})
 	for i := 0; i < ts.Len(); i++ {
-		blocks[ts.At(i).Cid()] = ts.At(i)
+		blk := ts.At(i)
+		blockCids[blk.Cid()] = struct{}{}
+		blockSlice = append(blockSlice, blk)
 	}
 	for i := 0; i < max.Len(); i++ {
-		blocks[max.At(i).Cid()] = max.At(i)
-	}
-	var blockSlice []*types.Block
-	for _, b := range blocks {
-		blockSlice = append(blockSlice, b)
+		blk := max.At(i)
+		if _, found := blockCids[blk.Cid()]; !found {
+			blockSlice = append(blockSlice, blk)
+			blockCids[blk.Cid()] = struct{}{}
+		}
 	}
 	wts, err := types.NewTipSet(blockSlice...)
 	if err != nil {
-		return types.NoTipSet, err
+		return types.UndefTipSet, err
 	}
 
 	// check that the tipset is distinct from the input and tipsets from the store.
 	if wts.String() == ts.String() || wts.String() == max.String() {
-		return types.NoTipSet, nil
+		return types.UndefTipSet, nil
 	}
 
 	return wts, nil

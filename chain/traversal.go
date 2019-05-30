@@ -14,17 +14,18 @@ type BlockProvider interface {
 }
 
 // GetParentTipSet returns the parent tipset of a tipset.
-// The result is empty if the tipset has no parents (including if it is empty itself)
+// The result is empty if the tipset has no parents, but an error if the tipset is undefined.
 func GetParentTipSet(ctx context.Context, store BlockProvider, ts types.TipSet) (types.TipSet, error) {
 	parents, err := ts.Parents()
+	// Parents is empty (without error) for the genesis tipset, and does't produce an error here either.
 	if err != nil || parents.Len() == 0 {
-		return types.NoTipSet, err
+		return types.UndefTipSet, err
 	}
 	var newBlocks []*types.Block
 	for it := parents.Iter(); !it.Complete() && ctx.Err() == nil; it.Next() {
 		newBlk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
-			return types.NoTipSet, err
+			return types.UndefTipSet, err
 		}
 		newBlocks = append(newBlocks, newBlk)
 	}

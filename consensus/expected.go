@@ -124,7 +124,7 @@ func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Pro
 func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (types.TipSet, error) {
 	for _, blk := range blks {
 		if err := c.validateBlockStructure(ctx, blk); err != nil {
-			return types.NoTipSet, err
+			return types.UndefTipSet, err
 		}
 	}
 	return types.NewTipSet(blks...)
@@ -149,7 +149,7 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
-	if ts.IsSolo() && ts.At(0).Cid().Equals(c.genesisCid) {
+	if ts.Len() == 1 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
 	// Compute parent weight.
@@ -378,7 +378,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, ErrStateRootMismatch
 		}
 	}
-	if ts.IsSolo() { // block validation state == aggregate parent state
+	if ts.Len() <= 1 { // block validation state == aggregate parent state
 		return cpySt, nil
 	}
 	// multiblock tipsets require reapplying messages to get aggregate state
