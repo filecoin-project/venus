@@ -57,6 +57,27 @@ func TestDealGet(t *testing.T) {
 	assert.Equal(t, expectedDeal, resultDeal)
 }
 
+func TestDealGetNotFound(t *testing.T) {
+	tf.UnitTest(t)
+
+	cidGetter := types.NewCidForTestGetter()
+	dealCid := cidGetter()
+	badCid := cidGetter()
+	expectedDeal := &storagedeal.Deal{
+		Response: &storagedeal.Response{
+			ProposalCid: dealCid,
+		},
+	}
+
+	plumbing := &testDealLsPlumbing{
+		deals: []*storagedeal.Deal{expectedDeal},
+	}
+
+	resultDeal, err := porcelain.DealGet(context.Background(), plumbing, badCid)
+	assert.Error(t, err, porcelain.ErrDealNotFound)
+	assert.Nil(t, resultDeal)
+}
+
 func TestDealClientLs(t *testing.T) {
 	tf.UnitTest(t)
 
