@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -577,8 +578,9 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 // CollateralForSector returns the collateral required to commit a sector of the
 // given size.
 func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
-	n := int64(0)
-	return types.NewAttoFIL(big.NewInt(int64(sectorSize.Uint64()) * n))
+	// TODO: This value should be a function of sector size.
+	// See: https://github.com/filecoin-project/go-filecoin/issues/2841
+	return storagemarket.MinimumCollateralPerSector
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
