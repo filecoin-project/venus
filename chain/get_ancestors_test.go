@@ -14,14 +14,21 @@ import (
 )
 
 // setupGetAncestorTests initializes genesis and chain store for tests.
-func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context.Context, *th.TestFetcher, chain.Store) {
+func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context.Context, *th.TestFetcher, *chain.Store) {
 	_, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	return context.Background(), blockSource, chainStore
 }
 
+type requireGrowChainStore interface {
+	GetHead() types.SortedCidSet
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	PutTipSetAndState(context.Context, *chain.TipSetAndState) error
+	SetHead(context.Context, types.TipSet) error
+}
+
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore chain.Store, numBlocks uint, dstP *DefaultSyncerTestParams) {
+func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore requireGrowChainStore, numBlocks uint, dstP *DefaultSyncerTestParams) {
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
@@ -42,7 +49,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 			TipSet:          link,
 			TipSetStateRoot: dstP.genStateRoot,
 		}
-		th.RequirePutTsas(ctx, t, chainStore, linkTsas)
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, linkTsas))
 	}
 	err := chainStore.SetHead(ctx, link)
 	require.NoError(t, err)
@@ -123,7 +130,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 		TipSet:          afterNull,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	err := chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
@@ -253,7 +260,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		TipSet:          afterNull,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	err := chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
@@ -319,7 +326,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 		TipSet:          firstForkTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, firstForkTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, firstForkTsas))
 	err := chainStore.SetHead(ctx, firstForkTS)
 	require.NoError(t, err)
 
@@ -391,7 +398,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 		TipSet:          afterNullTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, afterNullTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
 	afterNullIter := chain.IterAncestors(ctx, chainStore, afterNullTS)
 
 	// grow the fork by 1 block on the other fork

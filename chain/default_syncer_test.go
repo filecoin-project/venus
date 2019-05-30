@@ -201,7 +201,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
@@ -214,7 +214,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -251,7 +251,7 @@ func initSyncTestWithMode(t *testing.T, dstP *DefaultSyncerTestParams, syncMode 
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, chain.Store, consensus.Protocol, *th.TestFetcher) {
+func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *chain.Store, consensus.Protocol, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -266,14 +266,14 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	return sync, testchain, con, fetcher
 }
 
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (*chain.DefaultSyncer, chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (*chain.DefaultSyncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewDefaultStore(chainDS, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
@@ -285,7 +285,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 		TipSet:          calcGenTS,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, genTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
 	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct dstP.genesis
 	require.NoError(t, err)
 	requireHead(t, chainStore, calcGenTS)
@@ -303,7 +303,13 @@ func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
 	return false
 }
 
-func requireTsAdded(t *testing.T, chain chain.Store, ts types.TipSet) {
+type requireTsAddedChainStore interface {
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
+	HasBlock(context.Context, cid.Cid) bool
+}
+
+func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
 	ctx := context.Background()
 	h, err := ts.Height()
 	require.NoError(t, err)
@@ -323,7 +329,7 @@ func requireTsAdded(t *testing.T, chain chain.Store, ts types.TipSet) {
 	}
 }
 
-func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
+func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.TipSet) {
 	ctx := context.Background()
 	h, err := ts.Height()
 	assert.NoError(t, err)
@@ -343,7 +349,7 @@ func assertTsAdded(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 	}
 }
 
-func assertNoAdd(t *testing.T, chainStore chain.Store, cids types.SortedCidSet) {
+func assertNoAdd(t *testing.T, chainStore requireTsAddedChainStore, cids types.SortedCidSet) {
 	ctx := context.Background()
 	// Tip Index correctly updated
 	_, err := chainStore.GetTipSet(cids)
@@ -354,11 +360,11 @@ func assertNoAdd(t *testing.T, chainStore chain.Store, cids types.SortedCidSet) 
 	}
 }
 
-func requireHead(t *testing.T, chain chain.Store, head types.TipSet) {
+func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	require.Equal(t, head, requireHeadTipset(t, chain))
 }
 
-func assertHead(t *testing.T, chain chain.Store, head types.TipSet) {
+func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	assert.NoError(t, err)
 	assert.Equal(t, head, headTipSet)
@@ -1053,7 +1059,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewDefaultStore(r.ChainDatastore(), calcGenBlk.Cid())
+	chainStore := chain.NewStore(r.ChainDatastore(), calcGenBlk.Cid())
 
 	verifier := proofs.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), &th.TestView{}, calcGenBlk.Cid(), verifier)
@@ -1064,7 +1070,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		TipSet:          calcGenTS,
 		TipSetStateRoot: calcGenBlk.StateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, genTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
 	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore with correct dstP.genesis
 	require.NoError(t, err)
 	requireHead(t, chainStore, calcGenTS)
@@ -1191,13 +1197,21 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) types.TipSet {
+type tipSetGetter interface {
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+}
+
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.SortedCidSet) types.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts
 }
 
-func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore chain.Store, key types.SortedCidSet) cid.Cid {
+type tipSetStateRootGetter interface {
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+}
+
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key types.SortedCidSet) cid.Cid {
 	stateCid, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
 	return stateCid

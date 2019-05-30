@@ -34,14 +34,14 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestPar
 	requireSetTestChain(t, con, true, dstP)
 }
 
-func newChainStore(dstP *DefaultSyncerTestParams) chain.Store {
+func newChainStore(dstP *DefaultSyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewDefaultStore(ds, dstP.genCid)
+	return chain.NewStore(ds, dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
-func requirePutTestChain(t *testing.T, chainStore chain.Store, dstP *DefaultSyncerTestParams) {
+func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *DefaultSyncerTestParams) {
 	ctx := context.Background()
 	genTsas := &chain.TipSetAndState{
 		TipSet:          dstP.genTS,
@@ -64,20 +64,25 @@ func requirePutTestChain(t *testing.T, chainStore chain.Store, dstP *DefaultSync
 		TipSet:          dstP.link4,
 		TipSetStateRoot: dstP.link4State,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, genTsas)
-	th.RequirePutTsas(ctx, t, chainStore, link1Tsas)
-	th.RequirePutTsas(ctx, t, chainStore, link2Tsas)
-	th.RequirePutTsas(ctx, t, chainStore, link3Tsas)
-	th.RequirePutTsas(ctx, t, chainStore, link4Tsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link1Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link2Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link3Tsas))
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, link4Tsas))
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
 }
 
-func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
+type HeadAndTipsetGetter interface {
+	GetHead() types.SortedCidSet
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+}
+
+func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
 	headTipSet, err := chain.GetTipSet(chain.GetHead())
 	require.NoError(t, err)
 	return headTipSet
@@ -204,7 +209,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		TipSet:          newChild,
 		TipSetStateRoot: newRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, newChildTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, newChildTsas))
 	gotNew1 := requireGetTsasByParentAndHeight(t, chainStore, pk1, uint64(1))
 	require.Equal(t, 2, len(gotNew1))
 	for _, tsas := range gotNew1 {
@@ -283,7 +288,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, dstP.genCid, chain.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, chainStore chain.Store, ts types.TipSet) {
+func assertSetHead(t *testing.T, chainStore *chain.Store, ts types.TipSet) {
 	ctx := context.Background()
 	err := chainStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
@@ -374,7 +379,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	chainStore := chain.NewDefaultStore(ds, dstP.genCid)
+	chainStore := chain.NewStore(ds, dstP.genCid)
 	requirePutTestChain(t, chainStore, dstP)
 	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
@@ -382,7 +387,7 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore
-	rebootChain := chain.NewDefaultStore(ds, dstP.genCid)
+	rebootChain := chain.NewStore(ds, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 

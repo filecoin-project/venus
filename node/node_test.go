@@ -7,25 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 func TestNodeConstruct(t *testing.T) {
 	tf.UnitTest(t)
@@ -167,60 +161,6 @@ func TestNodeStartMining(t *testing.T) {
 		assert.Error(t, err, "node is already mining")
 	})
 
-}
-
-func TestUpdateMessagePool(t *testing.T) {
-	tf.UnitTest(t)
-
-	// Note: majority of tests are in message_pool_test. This test
-	// just makes sure it looks like it is hooked up correctly.
-	ctx := context.Background()
-	node := node.MakeNodesUnstarted(t, 1, true)[0]
-	chainForTest, ok := node.ChainReader.(chain.Store)
-	require.True(t, ok)
-
-	// Msg pool: [m0, m1],   Chain: gen -> b[m2, m3]
-	// to
-	// Msg pool: [m0, m3],   Chain: gen -> b[] -> b[m1, m2]
-	assert.NoError(t, chainForTest.Load(ctx)) // load up head to get genesis block
-	head := chainForTest.GetHead()
-	headTipSet, err := chainForTest.GetTipSet(head)
-	require.NoError(t, err)
-	genTS := headTipSet
-	m := types.NewSignedMsgs(4, mockSigner)
-	_, err = node.Inbox.Add(ctx, m[0])
-	require.NoError(t, err)
-	_, err = node.Inbox.Add(ctx, m[1])
-	require.NoError(t, err)
-
-	oldChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{m[2], m[3]}})
-	newChain := core.NewChainWithMessages(node.CborStore(), genTS, [][]*types.SignedMessage{{}}, [][]*types.SignedMessage{{m[1], m[2]}})
-
-	th.RequirePutTsas(ctx, t, chainForTest, &chain.TipSetAndState{
-		TipSet:          oldChain[len(oldChain)-1],
-		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
-	})
-	assert.NoError(t, chainForTest.SetHead(ctx, oldChain[len(oldChain)-1]))
-	assert.NoError(t, node.Start(ctx))
-	updateMsgPoolDoneCh := make(chan struct{})
-	node.HeaviestTipSetHandled = func() { updateMsgPoolDoneCh <- struct{}{} }
-	// Triggers a notification, node should update the message pool as a result.
-	th.RequirePutTsas(ctx, t, chainForTest, &chain.TipSetAndState{
-		TipSet:          newChain[len(newChain)-2],
-		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
-	})
-	th.RequirePutTsas(ctx, t, chainForTest, &chain.TipSetAndState{
-		TipSet:          newChain[len(newChain)-1],
-		TipSetStateRoot: genTS.ToSlice()[0].StateRoot,
-	})
-	assert.NoError(t, chainForTest.SetHead(ctx, newChain[len(newChain)-1]))
-	<-updateMsgPoolDoneCh
-	assert.Equal(t, 2, len(node.Inbox.Pool().Pending()))
-	pending := node.Inbox.Pool().Pending()
-
-	assert.True(t, types.SmsgCidsEqual(m[0], pending[0]) || types.SmsgCidsEqual(m[0], pending[1]))
-	assert.True(t, types.SmsgCidsEqual(m[3], pending[0]) || types.SmsgCidsEqual(m[3], pending[1]))
-	node.Stop(ctx)
 }
 
 func TestOptionWithError(t *testing.T) {
