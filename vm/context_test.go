@@ -247,7 +247,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		require.NoError(t, err)
 
 		params := &actor.FakeActorStorage{}
-		err = vmctx.CreateNewActor(addr, fakeActorCid, params)
+		err = vmctx.CreateNewActor(addr, fakeActorCid, types.ZeroAttoFIL, params)
 		require.NoError(t, err)
 
 		act, err := tree.GetActor(ctx, addr)

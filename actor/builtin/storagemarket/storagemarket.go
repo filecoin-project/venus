@@ -160,12 +160,7 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, ple
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		if err := vmctx.CreateNewActor(addr, actorCodeCid, minerInitializationParams); err != nil {
-			return nil, err
-		}
-
-		_, _, err = vmctx.Send(addr, "", vmctx.Message().Value, nil)
-		if err != nil {
+		if err := vmctx.CreateNewActor(addr, actorCodeCid, vmctx.Message().Value, minerInitializationParams); err != nil {
 			return nil, err
 		}
 

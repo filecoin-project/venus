@@ -204,10 +204,12 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializerData interface{}) error {
+func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, balance *types.AttoFIL, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
-		return &actor.Actor{}, nil
+		return &actor.Actor{
+			Balance: balance,
+		}, nil
 	})
 
 	if err != nil {

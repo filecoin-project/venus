@@ -76,7 +76,7 @@ type VMContext interface {
 	Charge(cost types.GasUnits) error
 	SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error)
 
-	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code cid.Cid, balance *types.AttoFIL, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)
