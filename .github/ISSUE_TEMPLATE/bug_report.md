@@ -32,7 +32,7 @@ Steps to reproduce the behavior:
 <!-- Please fill out this information below completely. It will help us solve your issue faster. -->
 **Diagnostic information**
 <!-- If you are having issues running go-filecoin, please include the following: -->
-- Filecoin Inspect Ouput: <!-- go-filecoin inspect all -->
+- Filecoin Inspect Output: <!-- go-filecoin inspect all -->
 - Current Head: <!--go-filecoin chain head -->
 - Connected Peers: <!-- go-filecoin swarm connect -->
 
