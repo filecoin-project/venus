@@ -557,11 +557,14 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 // search the sector's piece info to find the one for the given deal's piece
 func (sm *Miner) findPieceInfo(ctx context.Context, dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata) (*sectorbuilder.PieceInfo, error) {
 	deal, err := sm.porcelainAPI.DealGet(ctx, dealCid)
-	if err == porcelain.ErrDealNotFound || deal.Response.State == storagedeal.Unknown {
-		return nil, errors.Wrapf(err, "Could not find deal with deal cid %s", dealCid)
-	}
 	if err != nil {
+		if err == porcelain.ErrDealNotFound {
+			return nil, errors.Wrapf(err, "Could not find deal with deal cid %s", dealCid)
+		}
 		return nil, err
+	}
+	if deal.Response.State == storagedeal.Unknown {
+		return nil, errors.Wrapf(err, "Deal %s state unknown", dealCid)
 	}
 
 	for _, info := range sector.Pieces {
