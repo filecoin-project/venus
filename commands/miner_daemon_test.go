@@ -46,12 +46,6 @@ func TestMinerHelp(t *testing.T) {
 		}
 	})
 
-	t.Run("pledge --help shows pledge help", func(t *testing.T) {
-
-		result := runHelpSuccess(t, "miner", "pledge", "--help")
-		assert.Contains(t, result, "Shows the number of pledged sectors for the given miner address")
-	})
-
 	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
@@ -62,18 +56,6 @@ func TestMinerHelp(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "owner", "--help")
 		assert.Contains(t, result, "Given <miner> miner address, output the address of the actor that owns the miner.")
-	})
-
-	t.Run("power --help shows power help", func(t *testing.T) {
-
-		result := runHelpSuccess(t, "miner", "power", "--help")
-		expected := []string{
-			"Check the current power of a given miner and total power of the storage market.",
-			"Values will be output as a ratio where the first number is the miner power and second is the total market power.",
-		}
-		for _, elem := range expected {
-			assert.Contains(t, result, elem)
-		}
 	})
 
 	t.Run("create --help shows create help", func(t *testing.T) {
@@ -108,52 +90,6 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 
 	op := d.RunSuccess(args...)
 	return op.ReadStdoutTrimNewlines()
-}
-
-func TestMinerPledge(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	fi, err := ioutil.TempFile("", "gengentest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = fi.Close()
-
-	t.Run("shows error with no miner address", func(t *testing.T) {
-
-		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-		defer d.ShutdownSuccess()
-
-		d.RunFail("argument \"miner\" is required", "miner", "pledge")
-	})
-
-	t.Run("shows pledge amount for miner", func(t *testing.T) {
-
-		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-		defer d.ShutdownSuccess()
-
-		// get Miner address
-		actorLsOutput := d.RunSuccess("actor", "ls")
-		scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
-		var addressStruct struct{ Address string }
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "MinerActor") {
-				err := json.Unmarshal([]byte(line), &addressStruct)
-				assert.NoError(t, err)
-				break
-			}
-		}
-
-		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
-		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(t, result1, "10000")
-	})
 }
 
 func TestMinerCreate(t *testing.T) {
