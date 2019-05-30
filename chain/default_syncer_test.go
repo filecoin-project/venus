@@ -304,7 +304,7 @@ func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
 }
 
 type requireTsAddedChainStore interface {
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
 	HasBlock(context.Context, cid.Cid) bool
 }
@@ -1198,10 +1198,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 }
 
 type tipSetGetter interface {
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.SortedCidSet) *types.TipSet {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.SortedCidSet) types.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts

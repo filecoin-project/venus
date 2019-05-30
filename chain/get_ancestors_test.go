@@ -21,14 +21,14 @@ func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context
 
 type requireGrowChainStore interface {
 	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 	PutTipSetAndState(context.Context, *chain.TipSetAndState) error
 	SetHead(context.Context, types.TipSet) error
 }
 
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore requireGrowChainStore, numBlocks int, dstP *DefaultSyncerTestParams) {
+func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore requireGrowChainStore, numBlocks uint, dstP *DefaultSyncerTestParams) {
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)

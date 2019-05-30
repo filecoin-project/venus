@@ -68,7 +68,7 @@ func TestReorgDiffSubset(t *testing.T) {
 // block is 'a' blocks after the genesis block.  The  main chain has an
 // additional 'b' blocks, the fork has an additional 'c' blocks.  This function
 // returns the forked head, the main head and the common ancestor
-func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore chain.Store, blockSource *th.TestFetcher, dstP *DefaultSyncerTestParams, a, b, c uint) (types.TipSet, types.TipSet, types.TipSet) {
+func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore *chain.Store, blockSource *th.TestFetcher, dstP *DefaultSyncerTestParams, a, b, c uint) (types.TipSet, types.TipSet, types.TipSet) {
 	// Add a - 1 tipsets to the head of the chainStore.
 	requireGrowChain(ctx, t, blockSource, chainStore, a, dstP)
 	commonAncestor := requireHeadTipset(t, chainStore)
@@ -93,7 +93,7 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore chain.Sto
 			TipSet:          firstForkTs,
 			TipSetStateRoot: dstP.genStateRoot,
 		}
-		th.RequirePutTsas(ctx, t, chainStore, firstForkTsas)
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, firstForkTsas))
 		err := chainStore.SetHead(ctx, firstForkTs)
 		require.NoError(t, err)
 
@@ -117,7 +117,7 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore chain.Sto
 // and then a fork.  The forked head has a single block and the main chain
 // consists of this single block and another block together forming a tipset
 // that is a superset of the forked head.
-func getSubsetOldNewCommon(ctx context.Context, t *testing.T, chainStore chain.Store, blockSource *th.TestFetcher, dstP *DefaultSyncerTestParams, a uint) (types.TipSet, types.TipSet, types.TipSet) {
+func getSubsetOldNewCommon(ctx context.Context, t *testing.T, chainStore *chain.Store, blockSource *th.TestFetcher, dstP *DefaultSyncerTestParams, a uint) (types.TipSet, types.TipSet, types.TipSet) {
 	requireGrowChain(ctx, t, blockSource, chainStore, a, dstP)
 	commonAncestor := requireHeadTipset(t, chainStore)
 	requireGrowChain(ctx, t, blockSource, chainStore, 1, dstP)
@@ -138,7 +138,7 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, chainStore chain.S
 		TipSet:          superset,
 		TipSetStateRoot: dstP.genStateRoot,
 	}
-	th.RequirePutTsas(ctx, t, chainStore, supersetTsas)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, supersetTsas))
 
 	return oldHead, superset, commonAncestor
 }
