@@ -223,7 +223,7 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 
 // GetTipSet returns the tipset whose block
 // cids correspond to the input sorted cid set.
-func (store *DefaultStore) GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error) {
+func (store *DefaultStore) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
 	return store.tipIndex.GetTipSet(tsKey.String())
 }
 

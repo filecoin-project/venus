@@ -186,7 +186,7 @@ func TestUpdateMessagePool(t *testing.T) {
 	head := chainForTest.GetHead()
 	headTipSet, err := chainForTest.GetTipSet(head)
 	require.NoError(t, err)
-	genTS := *headTipSet
+	genTS := headTipSet
 	m := types.NewSignedMsgs(4, mockSigner)
 	_, err = node.Inbox.Add(ctx, m[0])
 	require.NoError(t, err)
