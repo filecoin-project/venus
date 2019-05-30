@@ -72,11 +72,12 @@ type VMContext interface {
 	Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
+	MyBalance() *types.AttoFIL
 	IsFromAccountActor() bool
 	Charge(cost types.GasUnits) error
 	SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error)
 
-	CreateNewActor(addr address.Address, code cid.Cid, balance *types.AttoFIL, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 
 	// TODO: Remove these when Storage above is completely implemented
 	ReadStorage() ([]byte, error)

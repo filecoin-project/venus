@@ -136,7 +136,7 @@ func TestGetKey(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL(), types.OneKiBSectorSize)
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},

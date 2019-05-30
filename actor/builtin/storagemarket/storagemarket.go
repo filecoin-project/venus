@@ -153,14 +153,19 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, ple
 			return nil, Errors[ErrInsufficientCollateral]
 		}
 
-		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, vmctx.Message().Value, sectorSize)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		if err := vmctx.CreateNewActor(addr, actorCodeCid, vmctx.Message().Value, minerInitializationParams); err != nil {
+		if err := vmctx.CreateNewActor(addr, actorCodeCid, minerInitializationParams); err != nil {
+			return nil, err
+		}
+
+		_, _, err = vmctx.Send(addr, "", vmctx.Message().Value, nil)
+		if err != nil {
 			return nil, err
 		}
 

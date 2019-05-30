@@ -51,7 +51,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	var mstor miner.State
 	builtin.RequireReadState(t, vms, outAddr, minerActor, &mstor)
 
-	assert.Equal(t, mstor.Collateral, types.NewAttoFILFromFIL(100))
+	assert.Equal(t, mstor.ActiveCollateral, types.NewAttoFILFromFIL(0))
 	assert.Equal(t, mstor.PledgeSectors, big.NewInt(10))
 	assert.Equal(t, mstor.PeerID, pid)
 }
@@ -121,7 +121,7 @@ func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T
 	require.NoError(t, err)
 
 	// miner balance should be sum of messages
-	assert.Equal(t, types.NewAttoFILFromFIL(300), miner.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(300).String(), miner.Balance.String())
 }
 
 func TestStorageMarkeCreateStorageMinerErrorsOnInvalidKey(t *testing.T) {

@@ -67,6 +67,8 @@ const (
 	ErrInvalidSealProof = 41
 	// ErrGetProofsModeFailed indicates the call to get the proofs mode failed.
 	ErrGetProofsModeFailed = 42
+	// ErrInsufficientCollateral indicates that the miner does not have sufficient collateral to commit additional sectors.
+	ErrInsufficientCollateral = 43
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -81,6 +83,7 @@ var Errors = map[uint8]error{
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
 	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
+	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
 }
 
 // Actor is the miner actor.
@@ -117,9 +120,9 @@ type State struct {
 	// Pledge is amount the space being offered up by this miner.
 	PledgeSectors *big.Int
 
-	// Collateral is the total amount of filecoin being held as collateral for
-	// the miners pledge.
-	Collateral *types.AttoFIL
+	// ActiveCollateral is the amount of collateral currently committed to live
+	// storage.
+	ActiveCollateral *types.AttoFIL
 
 	// Asks is the set of asks this miner has open
 	Asks      []*Ask
@@ -145,19 +148,18 @@ type State struct {
 	SectorSize *types.BytesAmount
 }
 
-// NewActor returns a new miner actor
-func NewActor() *actor.Actor {
-	return actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+// NewActor returns a new miner actor with the provided balance.
+func NewActor(balance *types.AttoFIL) *actor.Actor {
+	return actor.NewActor(types.MinerActorCodeCid, balance)
 }
 
 // NewState creates a miner state struct
-func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL, sectorSize *types.BytesAmount) *State {
+func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
 		PeerID:            pid,
 		PublicKey:         key,
 		PledgeSectors:     pledge,
-		Collateral:        collateral,
 		SectorCommitments: make(map[string]types.Commitments),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
@@ -533,6 +535,14 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			return nil, Errors[ErrSectorCommitted]
 		}
 
+		// make sure the miner has enough collateral to add more storage
+		collateral := CollateralForSector(state.SectorSize)
+		if collateral.GreaterThan(ctx.MyBalance().Sub(state.ActiveCollateral)) {
+			return nil, Errors[ErrInsufficientCollateral]
+		}
+
+		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
+
 		if state.Power.Equal(types.NewBytesAmount(0)) {
 			state.ProvingPeriodStart = ctx.BlockHeight()
 		}
@@ -562,6 +572,13 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	}
 
 	return 0, nil
+}
+
+// CollateralForSector returns the collateral required to commit a sector of the
+// given size.
+func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
+	n := int64(0)
+	return types.NewAttoFIL(big.NewInt(int64(sectorSize.Uint64()) * n))
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
