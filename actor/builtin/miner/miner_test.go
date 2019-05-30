@@ -206,25 +206,6 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 	})
 }
 
-func TestMinerGetPledge(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("GetPledge returns pledged sectors, 0, nil when successful", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, vms := core.CreateStorages(ctx, t)
-
-		minerAddr := createTestMinerWith(120, 240, t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
-
-		// retrieve power (trivial result for no proven sectors)
-		result := callQueryMethodSuccess("getPledge", ctx, t, st, vms, address.TestAddress, minerAddr)[0][0]
-
-		require.Equal(t, 120, int(result))
-	})
-}
-
 func TestMinerGetPower(t *testing.T) {
 	tf.UnitTest(t)
 
