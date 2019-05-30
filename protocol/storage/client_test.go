@@ -15,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -277,11 +276,11 @@ func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol
 	return nil
 }
 
-func (ctp *clientTestAPI) DealsLs(_ context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
-	results := make(chan *strgdls.StorageDealLsResult)
+func (ctp *clientTestAPI) DealClientLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {
+	results := make(chan *porcelain.StorageDealLsResult)
 	go func() {
 		for _, deal := range ctp.deals {
-			results <- &strgdls.StorageDealLsResult{
+			results <- &porcelain.StorageDealLsResult{
 				Deal: *deal,
 			}
 		}

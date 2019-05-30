@@ -1,8 +1,7 @@
 package strgdls_test
 
 import (
-	"context"
-
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -21,7 +20,6 @@ func TestDealStoreRoundTrip(t *testing.T) {
 
 	addressMaker := address.NewForTestGetter()
 
-	ctx := context.Background()
 	store := strgdls.New(repo.NewInMemoryRepo().DealsDs)
 	minerAddr := addressMaker()
 	pieceRefCid, err := convert.ToCid("pieceRef")
@@ -76,12 +74,13 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	}
 
 	require.NoError(t, store.Put(storageDeal))
-	dealCh, err := store.Ls(ctx)
+	dealIterator, err := store.Iterator()
 	require.NoError(t, err)
 
-	dealChResult := <-dealCh
-	require.NoError(t, dealChResult.Err)
-	retrievedDeal := dealChResult.Deal
+	dealResult := <-(*dealIterator).Next()
+	var retrievedDeal storagedeal.Deal
+	err = cbor.DecodeInto(dealResult.Value, &retrievedDeal)
+	require.NoError(t, err)
 
 	assert.Equal(t, minerAddr, retrievedDeal.Miner)
 

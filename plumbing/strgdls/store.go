@@ -1,8 +1,6 @@
 package strgdls
 
 import (
-	"context"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -25,46 +23,13 @@ func New(dealsDatastore repo.Datastore) *Store {
 	return &Store{dealsDs: dealsDatastore}
 }
 
-// StorageDealLsResult represents a result from the storage deal Ls method. This
-// can either be an error or a storage deal.
-type StorageDealLsResult struct {
-	Deal storagedeal.Deal
-	Err  error
-}
-
-// Ls returns a channel with deals matching the given query, with a possible error
-func (store *Store) Ls(ctx context.Context) (<-chan *StorageDealLsResult, error) {
-	out := make(chan *StorageDealLsResult)
-
+// Iterator returns an iterator with deals matching the given query
+func (store *Store) Iterator() (*query.Results, error) {
 	results, err := store.dealsDs.Query(query.Query{Prefix: "/" + StorageDealPrefix})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to query deals from datastore")
 	}
-	go func() {
-		defer close(out)
-		for entry := range results.Next() {
-			select {
-			case <-ctx.Done():
-				out <- &StorageDealLsResult{
-					Err: ctx.Err(),
-				}
-				return
-			default:
-				var storageDeal storagedeal.Deal
-				if err := cbor.DecodeInto(entry.Value, &storageDeal); err != nil {
-					out <- &StorageDealLsResult{
-						Err: errors.Wrap(err, "failed to unmarshal deals from datastore"),
-					}
-					return
-				}
-				out <- &StorageDealLsResult{
-					Deal: storageDeal,
-				}
-			}
-		}
-	}()
-
-	return out, nil
+	return &results, nil
 }
 
 // Put puts the deal into the datastore

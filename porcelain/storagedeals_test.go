@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -20,11 +19,11 @@ type testDealLsPlumbing struct {
 	minerAddress address.Address
 }
 
-func (tdlp *testDealLsPlumbing) DealsLs(ctx context.Context) (<-chan *strgdls.StorageDealLsResult, error) {
-	dealCh := make(chan *strgdls.StorageDealLsResult)
+func (tdlp *testDealLsPlumbing) DealsLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {
+	dealCh := make(chan *porcelain.StorageDealLsResult)
 	go func() {
 		for _, deal := range tdlp.deals {
-			dealCh <- &strgdls.StorageDealLsResult{
+			dealCh <- &porcelain.StorageDealLsResult{
 				Deal: *deal,
 			}
 		}
