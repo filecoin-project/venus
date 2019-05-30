@@ -3,10 +3,11 @@ package migration12
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -14,10 +15,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var headKey = datastore.NewKey("/chain/heaviestTipSet")
-
 // MetadataFormatJSONtoCBOR is the migration from version 1 to 2.
 type MetadataFormatJSONtoCBOR struct {
+	headKey    datastore.Key
 	chainStore *chain.DefaultStore
 }
 
@@ -26,9 +26,9 @@ func (m *MetadataFormatJSONtoCBOR) Describe() string {
 	return `MetadataFormatJSONtoCBOR migrates the storage repo from version 1 to 2.
 
     This migration changes the chain store metadata serialization from JSON to CBOR.
-    Your chain store metadata will be read in as JSON and rewritten as CBOR. 
+    The chain store metadata will be read in as JSON and rewritten as CBOR. 
 	Chain store metadata consists of CIDs and the chain State Root. 
-	No other repo data is changed.  Migrations are performed on a copy of your
+	No other repo data is changed.  Migrations are performed on a copy of the
 	chain store.
 `
 }
@@ -38,28 +38,25 @@ func (m *MetadataFormatJSONtoCBOR) Migrate(newRepoPath string) error {
 	// open the repo path
 	oldVer, _ := m.Versions()
 
-	// This performs some checks on the repo before we start
+	// This call performs some checks on the repo before we start.
 	fsrepo, err := repo.OpenFSRepo(newRepoPath, oldVer)
 	if err != nil {
 		return err
 	}
 
-	//genCid, err := m.readGenesisCid(fsrepo.Datastore())
+	// we assume the genesis cid on disk is valid and perform no checks or accesses
+	fakeGenCid := cid.Cid{}
 
-	m.chainStore = chain.NewDefaultStore(fsrepo.ChainDatastore(), cid.Cid{})
+	// construct the chainstore from FSRepo
+	m.chainStore = chain.NewDefaultStore(fsrepo.ChainDatastore(), fakeGenCid)
 
-	// read the metadata as JSON
-	cidset, err := m.loadHeadFromStore()
-	if err != nil {
+	// duplicate head key here to protect against future changes
+	newKey := datastore.NewKey("/chain/heaviestTipSet")
+	m.headKey = newKey
+
+	if err = m.convertJSONtoCBOR(context.Background()); err != nil {
 		return err
 	}
-
-	// write as CBOR
-	if err = m.writeHead(context.Background(), cidset); err != nil {
-		return err
-	}
-
-	// done
 	return nil
 }
 
@@ -70,13 +67,16 @@ func (m *MetadataFormatJSONtoCBOR) Versions() (from, to uint) {
 
 // Validate performs validation tests for the migration steps
 func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) error {
+	// validate calls some kind of chain reader function that operates on the new version
+	// of the chain head.
 	return nil
 }
 
-func (m *MetadataFormatJSONtoCBOR) loadHeadFromStore() (types.SortedCidSet, error) {
+// loadHeadFromStoreAsJSON loads the latest known head from disk.
+func (m *MetadataFormatJSONtoCBOR) loadHeadFromStoreAsJSON() (types.SortedCidSet, error) {
 	var emptyCidSet types.SortedCidSet
 
-	bb, err := m.chainStore.GetDatastore().Get(headKey)
+	bb, err := m.chainStore.GetDatastore().Get(m.headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
@@ -90,27 +90,106 @@ func (m *MetadataFormatJSONtoCBOR) loadHeadFromStore() (types.SortedCidSet, erro
 	return cids, nil
 }
 
-// readGenesisCid is a helper function that queries the provided datastore for
-// an entry with the genesisKey cid, returning if found.
-//func (m *MetadataFormatJSONtoCBOR)readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
-//	bb, err := ds.Get(chain.GenesisKey)
-//	if err != nil {
-//		return cid.Undef, errors.Wrap(err, "failed to read genesisKey")
-//	}
-//
-//	var c cid.Cid
-//	err = json.Unmarshal(bb, &c)
-//	if err != nil {
-//		return cid.Undef, errors.Wrap(err, "failed to cast genesisCid")
-//	}
-//	return c, nil
-//}
+func (m *MetadataFormatJSONtoCBOR) loadStateRootAsJSON(ts types.TipSet) (cid.Cid, error) {
+	h, err := ts.Height()
+	if err != nil {
+		return cid.Undef, err
+	}
+	key := datastore.NewKey(makeKey(ts.String(), h))
+	bb, err := m.chainStore.GetDatastore().Get(key)
+	if err != nil {
+		return cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
+	}
 
-func (m *MetadataFormatJSONtoCBOR) writeHead(ctx context.Context, cids types.SortedCidSet) error {
-	val, err := cbornode.DumpObject(cids)
+	var stateRoot cid.Cid
+	err = json.Unmarshal(bb, &stateRoot)
+	if err != nil {
+		return cid.Undef, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
+	}
+	return stateRoot, nil
+}
+
+// this is pared-down from chain DefaultStore.Load (elaborate)
+func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error {
+	tipCids, err := m.loadHeadFromStoreAsJSON()
+	if err != nil {
+		return err
+	}
+	headTs := types.TipSet{}
+	// traverse starting from head to begin loading the chain
+	for it := tipCids.Iter(); !it.Complete(); it.Next() {
+		blk, err := m.chainStore.GetBlock(ctx, it.Value())
+		if err != nil {
+			return errors.Wrap(err, "failed to load block in head TipSet")
+		}
+		err = headTs.AddBlock(blk)
+		if err != nil {
+			return errors.Wrap(err, "failed to add validated block to TipSet")
+		}
+	}
+
+	for iterator := chain.IterAncestors(ctx, m.chainStore, headTs); !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return err
+		}
+
+		if err != nil {
+			return err
+		}
+		stateRoot, err := m.loadStateRootAsJSON(iterator.Value())
+		if err != nil {
+			return err
+		}
+
+		tipSetAndState := &chain.TipSetAndState{
+			TipSet:          iterator.Value(),
+			TipSetStateRoot: stateRoot,
+		}
+
+		// only write TipSet and State; Block and tipIndex formats are not changed.
+		if err = m.writeTipSetAndStateAsCBOR(tipSetAndState); err != nil {
+			return err
+		}
+	}
+
+	// write head.
+	return m.writeHeadAsCBOR(ctx, headTs.ToSortedCidSet())
+}
+
+// writeHeadAsCBOR writes the head (taken from DefaultStore.writeHead)
+func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids types.SortedCidSet) error {
+	val, err := cbor.DumpObject(cids)
 	if err != nil {
 		return err
 	}
 
-	return m.chainStore.GetDatastore.Put(headKey, val)
+	// this writes the value to the FSRepo
+	return m.chainStore.GetDatastore().Put(m.headKey, val)
+}
+
+// writeTipSetAndStateAsCBOR writes the tipset key and the state root id to the
+// datastore. (taken from DefaultStore.writeTipSetAndState)
+func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetAndState) error {
+	if tsas.TipSetStateRoot == cid.Undef {
+		return errors.New("attempting to write state root cid.Undef")
+	}
+	val, err := cbor.DumpObject(tsas.TipSetStateRoot)
+	if err != nil {
+		return err
+	}
+
+	// datastore keeps tsKey:stateRoot (k,v) pairs.
+	h, err := tsas.TipSet.Height()
+	if err != nil {
+		return err
+	}
+	keyStr := makeKey(tsas.TipSet.String(), h)
+	key := datastore.NewKey(keyStr)
+
+	// this writes the value to the FSRepo
+	return m.chainStore.GetDatastore().Put(key, val)
+}
+
+func makeKey(pKey string, h uint64) string {
+	return fmt.Sprintf("p-%s h-%d", pKey, h)
 }
