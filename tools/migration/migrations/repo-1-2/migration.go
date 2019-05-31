@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
@@ -15,10 +16,43 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// migrationDefaultStore is a stripped down, implementation of the Store interface
+// based on DefaultStore, containing only the fields needed for the migration
+type migrationDefaultStore struct {
+
+	// bsPriv is the on disk storage for blocks.  This is private to
+	// the DefaultStore to keep code that adds blocks to the DefaultStore's
+	// underlying storage isolated to this module.  It is important that only
+	// code with access to a DefaultStore can write to this storage to
+	// simplify checking the security guarantee that only tipsets of a
+	// validated chain are stored in the filecoin node's DefaultStore.
+	BsPriv bstore.Blockstore
+
+	// ds is the datastore backing bsPriv.  It is also accessed directly
+	// to set and get chain meta-data, specifically the tipset cidset to
+	// state root mapping, and the heaviest tipset cids.
+	Ds repo.Datastore
+
+	// head is the tipset at the head of the best known chain.
+	Head types.TipSet
+
+	// Tracks tipsets by height/parentset for use by expected consensus.
+	TipIndex *chain.TipIndex
+}
+
+// GetBlock retrieves a block by cid.
+func (store *migrationDefaultStore) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
+	data, err := store.BsPriv.Get(c)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
+	}
+	return types.DecodeBlock(data.RawData())
+}
+
 // MetadataFormatJSONtoCBOR is the migration from version 1 to 2.
 type MetadataFormatJSONtoCBOR struct {
 	headKey    datastore.Key
-	chainStore *chain.DefaultStore
+	chainStore *migrationDefaultStore
 }
 
 // Describe describes the steps this migration will take.
@@ -44,11 +78,12 @@ func (m *MetadataFormatJSONtoCBOR) Migrate(newRepoPath string) error {
 		return err
 	}
 
-	// we assume the genesis cid on disk is valid and perform no checks or accesses
-	fakeGenCid := cid.Cid{}
-
 	// construct the chainstore from FSRepo
-	m.chainStore = chain.NewDefaultStore(fsrepo.ChainDatastore(), fakeGenCid)
+	m.chainStore = &migrationDefaultStore{
+		BsPriv:   bstore.NewBlockstore(fsrepo.ChainDatastore()),
+		Ds:       fsrepo.ChainDatastore(),
+		TipIndex: chain.NewTipIndex(),
+	}
 
 	// duplicate head key here to protect against future changes
 	newKey := datastore.NewKey("/chain/heaviestTipSet")
@@ -67,16 +102,18 @@ func (m *MetadataFormatJSONtoCBOR) Versions() (from, to uint) {
 
 // Validate performs validation tests for the migration steps
 func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) error {
-	// validate calls some kind of chain reader function that operates on the new version
-	// of the chain head.
+	// get tipset and state from old (JSON)
+	// get tipset and state from new (CBOR)
+	// error if head or stateRoots are not equal
 	return nil
 }
 
-// loadHeadFromStoreAsJSON loads the latest known head from disk.
-func (m *MetadataFormatJSONtoCBOR) loadHeadFromStoreAsJSON() (types.SortedCidSet, error) {
+// loadChainHeadAsJSON loads the latest known head from disk.
+func (m *MetadataFormatJSONtoCBOR) loadChainHeadAsJSON() (types.SortedCidSet, error) {
 	var emptyCidSet types.SortedCidSet
 
-	bb, err := m.chainStore.GetDatastore().Get(m.headKey)
+	bb, err := m.chainStore.Ds.Get(m.headKey)
+	//bb, err := m.chainStore.GetDatastore().Get(m.headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
@@ -96,7 +133,7 @@ func (m *MetadataFormatJSONtoCBOR) loadStateRootAsJSON(ts types.TipSet) (cid.Cid
 		return cid.Undef, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
-	bb, err := m.chainStore.GetDatastore().Get(key)
+	bb, err := m.chainStore.Ds.Get(key)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
@@ -109,9 +146,18 @@ func (m *MetadataFormatJSONtoCBOR) loadStateRootAsJSON(ts types.TipSet) (cid.Cid
 	return stateRoot, nil
 }
 
-// this is pared-down from chain DefaultStore.Load (elaborate)
+// convertJSONtoCBOR is adapted from chain DefaultStore.Load:
+//     1. stripped out logging
+//     2. instead of calling DefaultStore.PutTipSetAndState it just calls
+//        writeTipSetAndStateAsCBOR, because block format is unchanged.
+//     3. then calls writeHeadAsCBOR, instead of store.SetHead which also publishes an event
+//        and does some logging
+//
+// This migration will leave some fork metadata in JSON format in the repo, BUT it won't matter:
+//   for consensus purposes we don't care about uncle blocks, and if we see the block again,
+//   it will be over the network, then DataStore.Put will look for it as CBOR, won't find it and write it out as CBOR anyway.  If it's never seen again we don't care about it.
 func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error {
-	tipCids, err := m.loadHeadFromStoreAsJSON()
+	tipCids, err := m.loadChainHeadAsJSON()
 	if err != nil {
 		return err
 	}
@@ -133,9 +179,6 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 			return err
 		}
 
-		if err != nil {
-			return err
-		}
 		stateRoot, err := m.loadStateRootAsJSON(iterator.Value())
 		if err != nil {
 			return err
@@ -146,17 +189,33 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 			TipSetStateRoot: stateRoot,
 		}
 
+		// Maybe not necessary but snippet could be useful for Validate
+		//err = m.chainStore.TipIndex.Put(tipSetAndState)
+		//if err != nil {
+		//	return err
+		//}
+
 		// only write TipSet and State; Block and tipIndex formats are not changed.
 		if err = m.writeTipSetAndStateAsCBOR(tipSetAndState); err != nil {
 			return err
 		}
+
 	}
 
 	// write head.
-	return m.writeHeadAsCBOR(ctx, headTs.ToSortedCidSet())
+	err = m.writeHeadAsCBOR(ctx, headTs.ToSortedCidSet())
+	if err != nil {
+		return err
+	}
+
+	// set chain head
+	// Maybe not necessary but snippet could be useful for validate
+	//m.chainStore.Head = headTs
+	return nil
 }
 
-// writeHeadAsCBOR writes the head (taken from DefaultStore.writeHead)
+// writeHeadAsCBOR writes the head (taken from DefaultStore.writeHead, which was called by
+// setHeadPersistent. We don't need mutexes for this
 func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids types.SortedCidSet) error {
 	val, err := cbor.DumpObject(cids)
 	if err != nil {
@@ -164,7 +223,7 @@ func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids typ
 	}
 
 	// this writes the value to the FSRepo
-	return m.chainStore.GetDatastore().Put(m.headKey, val)
+	return m.chainStore.Ds.Put(m.headKey, val)
 }
 
 // writeTipSetAndStateAsCBOR writes the tipset key and the state root id to the
@@ -187,7 +246,7 @@ func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetA
 	key := datastore.NewKey(keyStr)
 
 	// this writes the value to the FSRepo
-	return m.chainStore.GetDatastore().Put(key, val)
+	return m.chainStore.Ds.Put(key, val)
 }
 
 func makeKey(pKey string, h uint64) string {

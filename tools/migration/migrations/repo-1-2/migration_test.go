@@ -1,10 +1,16 @@
 package migration12_test
 
 import (
+	"context"
+	"os"
+	"os/exec"
+	"path"
+	"syscall"
 	"testing"
 
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/env"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -31,19 +37,32 @@ func TestDescribe(t *testing.T) {
 	assert.Equal(t, expected, mig.Describe())
 }
 
-func TestMigrateEmptyRepo(t *testing.T) {
+func TestMigrateSomeRepo(t *testing.T) {
 	tf.UnitTest(t)
 
 	mig := migration12.MetadataFormatJSONtoCBOR{}
-	oldVer, newVer := mig.Versions()
+	_, newVer := mig.Versions()
 
-	container, repoSymLink := internal.RequireInitRepo(t, oldVer)
-	defer repo.RequireRemoveAll(t, container)
+	curDir, err := syscall.Getwd() // this will be the top go-filecoin dir
+	require.NoError(t, err)
+
+	fixtureTarball := path.Join(curDir, "tools", "migration", "fixtures", "repo-12.tgz")
+
+	tmpDir := repo.RequireMakeTempDir(t, "")
+
+	// unpack the tarball into a tmp dir
+	exec.CommandContext(context.Background(), "tar", "xzf", tmpDir, fixtureTarball)
+
+	// make a symlink
+	repoSymLink := os.Link(path.Base(fixtureTarball)+"/repo-somethingsomething", "repo")
 
 	newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
 	require.NoError(t, err)
 	defer repo.RequireRemoveAll(t, newRepoPath)
 
 	err = mig.Migrate(newRepoPath)
+	require.NoError(t, err)
+
+	err = mig.Validate(repoSymLink, newRepoPath)
 	require.NoError(t, err)
 }
