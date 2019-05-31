@@ -35,7 +35,7 @@ func init() {
 	}
 }
 
-type MinerActorConfig struct {
+type minerActorConfig struct {
 	state   *miner.State
 	balance *types.AttoFIL
 }
@@ -45,7 +45,7 @@ type Config struct {
 	accounts   map[address.Address]*types.AttoFIL
 	nonces     map[address.Address]uint64
 	actors     map[address.Address]*actor.Actor
-	miners     map[address.Address]*MinerActorConfig
+	miners     map[address.Address]*minerActorConfig
 	proofsMode types.ProofsMode
 }
 
@@ -63,7 +63,7 @@ func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 // MinerActor returns a config option that sets up an miner actor account.
 func MinerActor(addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
-		gc.miners[addr] = &MinerActorConfig{
+		gc.miners[addr] = &minerActorConfig{
 			state:   miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, sectorSize),
 			balance: coll,
 		}
@@ -103,7 +103,7 @@ func NewEmptyConfig() *Config {
 		accounts:   make(map[address.Address]*types.AttoFIL),
 		nonces:     make(map[address.Address]uint64),
 		actors:     make(map[address.Address]*actor.Actor),
-		miners:     make(map[address.Address]*MinerActorConfig),
+		miners:     make(map[address.Address]*minerActorConfig),
 		proofsMode: types.TestProofsMode,
 	}
 }
