@@ -30,12 +30,13 @@ func init() {
 	logging.SetDebugLogging()
 }
 
-// TestRetrieval exercises storing and retrieving with the filecoin protocols
-func TestRetrieval(t *testing.T) {
+// TestRetrieval exercises storing and retrieving with the filecoin protocols using a locally running
+// temporary network.
+func TestRetrievalLocalNetwork(t *testing.T) {
 	tf.FunctionalTest(t)
 
-	blocktime := time.Second * 5
 	sectorSize := int64(1016)
+	blocktime := time.Second * 5
 
 	// This test should run in 20 block times, with 120 seconds for sealing, and no longer
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(20*blocktime).Add(120*time.Second))
@@ -60,7 +61,7 @@ func TestRetrieval(t *testing.T) {
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "0"                               // Disable JSON logs
 	options[localplugin.AttrLogLevel] = "4"                              // Set log level to Info
-	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Enable small sectors
+	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Set binary
 
 	ctx = series.SetCtxSleepDelay(ctx, blocktime)
 
@@ -108,18 +109,88 @@ func TestRetrieval(t *testing.T) {
 
 	// Everyone needs FIL to deal with gas costs and make sure their wallets
 	// exists (sending FIL to a wallet addr creates it)
-	err = series.SendFilecoinDefaults(ctx, genesis, miner, 100000)
+	err = series.SendFilecoinDefaults(ctx, genesis, miner, 1000)
 	require.NoError(t, err)
 
-	err = series.SendFilecoinDefaults(ctx, genesis, client, 100000)
+	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(t, err)
 
-	// Start retrieval
-	// Start retrieval
-	// Start retrieval
+	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+}
 
+// TestRetrieval exercises storing and retreiving with the filecoin protocols on a kittyhawk deployed
+// devnet.
+func TestRetrievalDevnet(t *testing.T) {
+	tf.FunctionalTest(t)
+
+	// Skip the test so it doesn't run
+	t.SkipNow()
+
+	blocktime := time.Second * 30
+	sectorSize := int64(266338304)
+
+	// This test should run in and hour and no longer
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(blocktime*120))
+	defer cancel()
+
+	// Create a directory for the test using the test name (mostly for FAST)
+	dir, err := ioutil.TempDir("", t.Name())
+	require.NoError(t, err)
+
+	// Create an environment that includes a genesis block with 1MM FIL
+	env, err := fast.NewEnvironmentDevnet("nightly", dir)
+	require.NoError(t, err)
+
+	// Teardown will shutdown all running processes the environment knows about
+	// and cleanup anything the evironment setup. This includes the directory
+	// the environment was created to use.
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+
+	// Setup options for nodes.
+	options := make(map[string]string)
+	options[localplugin.AttrLogJSON] = "0"                               // Disable JSON logs
+	options[localplugin.AttrLogLevel] = "4"                              // Set log level to Info
+	options[localplugin.AttrFilecoinBinary] = th.MustGetFilecoinBinary() // Set binary
+
+	ctx = series.SetCtxSleepDelay(ctx, blocktime)
+
+	genesisURI := env.GenesisCar()
+
+	fastenvOpts := fast.EnvironmentOpts{
+		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI), fast.PODevnetNightly()},
+		DaemonOpts: []fast.ProcessDaemonOption{},
+	}
+
+	miner, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
+	require.NoError(t, err)
+
+	client, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
+	require.NoError(t, err)
+
+	// Start Miner
+	err = series.InitAndStart(ctx, miner)
+	require.NoError(t, err)
+
+	// Start Client
+	err = series.InitAndStart(ctx, client)
+	require.NoError(t, err)
+
+	// Everyone needs FIL to deal with gas costs and make sure their wallets
+	// exists (sending FIL to a wallet addr creates it)
+	err = fast.GetFunds(ctx, env, miner)
+	require.NoError(t, err)
+
+	err = fast.GetFunds(ctx, env, client)
+	require.NoError(t, err)
+
+	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+}
+
+func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin, sectorSize int64) {
 	pledge := uint64(10)                    // sectors
-	collateral := big.NewInt(500)           // FIL
+	collateral := big.NewInt(int64(pledge)) // FIL
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 

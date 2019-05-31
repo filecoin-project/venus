@@ -45,6 +45,13 @@ func PODevnetNightly() ProcessInitOption {
 	}
 }
 
+// PODevnetUser provides the `--devnet-user` option to process at init
+func PODevnetUser() ProcessInitOption {
+	return func() []string {
+		return []string{"--devnet-user"}
+	}
+}
+
 // ProcessDaemonOption are options passed to process when starting.
 type ProcessDaemonOption func() []string
 
