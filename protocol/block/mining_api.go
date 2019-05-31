@@ -10,7 +10,7 @@ import (
 
 type miningChainReader interface {
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 }
 
 // MiningAPI provides an interface to the block mining protocol.
@@ -54,7 +54,7 @@ func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 
-	res, err := mining.MineOnce(ctx, miningWorker, a.mineDelay, *ts)
+	res, err := mining.MineOnce(ctx, miningWorker, a.mineDelay, ts)
 	if err != nil {
 		return nil, err
 	}

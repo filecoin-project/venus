@@ -24,42 +24,9 @@ var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
 		"owner":         minerOwnerCmd,
-		"pledge":        minerPledgeCmd,
 		"power":         minerPowerCmd,
 		"set-price":     minerSetPriceCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
-	},
-}
-
-var minerPledgeCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "View number of pledged sectors for <miner>",
-		ShortDescription: `Shows the number of pledged sectors for the given miner address`,
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "The miner address"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		var err error
-
-		minerAddr, err := optionalAddr(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getPledge",
-		)
-		if err != nil {
-			return err
-		}
-		pledgeSectors := big.NewInt(0).SetBytes(bytes[0])
-
-		str := fmt.Sprintf("%d", pledgeSectors) // nolint: govet
-		return re.Emit(str)
 	},
 }
 

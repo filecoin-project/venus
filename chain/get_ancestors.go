@@ -16,7 +16,7 @@ import (
 type recentAncestorsChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 }
 
 // ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
@@ -31,7 +31,7 @@ func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader recentAn
 		return nil, err
 	}
 	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	return GetRecentAncestors(ctx, *headTipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	return GetRecentAncestors(ctx, headTipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
 }
 
 // GetRecentAncestors returns the ancestors of base as a slice of TipSets.
@@ -91,7 +91,7 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader rece
 	if err != nil {
 		return nil, err
 	}
-	iterator = IterAncestors(ctx, chainReader, *lookBackTS)
+	iterator = IterAncestors(ctx, chainReader, lookBackTS)
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err

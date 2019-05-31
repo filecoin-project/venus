@@ -35,7 +35,7 @@ func createTestMinerWith(pledge int64,
 	key []byte,
 	peerId peer.ID,
 ) address.Address {
-	pdata := actor.MustConvertParams(big.NewInt(pledge), key, peerId)
+	pdata := actor.MustConvertParams(key, big.NewInt(pledge), peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createStorageMiner", pdata)
 
@@ -203,25 +203,6 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, Errors[ErrCallerUnauthorized], applyMsgResult.ExecutionError)
 		require.NotEqual(t, uint8(0), applyMsgResult.Receipt.ExitCode)
-	})
-}
-
-func TestMinerGetPledge(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("GetPledge returns pledged sectors, 0, nil when successful", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, vms := core.CreateStorages(ctx, t)
-
-		minerAddr := createTestMinerWith(120, 240, t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
-
-		// retrieve power (trivial result for no proven sectors)
-		result := callQueryMethodSuccess("getPledge", ctx, t, st, vms, address.TestAddress, minerAddr)[0][0]
-
-		require.Equal(t, 120, int(result))
 	})
 }
 

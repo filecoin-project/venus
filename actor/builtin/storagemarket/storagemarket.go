@@ -102,7 +102,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createStorageMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer, abi.Bytes, abi.PeerID},
+		Params: []abi.Type{abi.Bytes, abi.Integer, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
@@ -121,7 +121,7 @@ var storageMarketExports = exec.Exports{
 
 // CreateStorageMiner creates a new miner with the a pledge of the given amount of sectors. The
 // miners collateral is set by the value in the message.
-func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, pledge *big.Int, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
+func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, pledge *big.Int, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}

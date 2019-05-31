@@ -67,19 +67,6 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 	return out, nil
 }
 
-// MinerPledge runs the `miner pledge` command against the filecoin process
-func (f *Filecoin) MinerPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	var out big.Int
-
-	sMinerAddr := minerAddr.String()
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "pledge", sMinerAddr); err != nil {
-		return big.NewInt(0), err
-	}
-
-	return &out, nil
-}
-
 // MinerPower runs the `miner power` command against the filecoin process
 func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
 	var out big.Int

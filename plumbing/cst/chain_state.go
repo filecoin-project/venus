@@ -21,7 +21,7 @@ type chainReader interface {
 	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 }
 
@@ -51,7 +51,7 @@ func NewChainStateProvider(chainReader chainReader, cst *hamt.CborIpldStore) *Ch
 }
 
 // Head returns the head tipset
-func (chn *ChainStateProvider) Head() (*types.TipSet, error) {
+func (chn *ChainStateProvider) Head() (types.TipSet, error) {
 	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (chn *ChainStateProvider) Ls(ctx context.Context) (*chain.TipsetIterator, e
 	if err != nil {
 		return nil, err
 	}
-	return chain.IterAncestors(ctx, chn.reader, *ts), nil
+	return chain.IterAncestors(ctx, chn.reader, ts), nil
 }
 
 // GetBlock gets a block by CID

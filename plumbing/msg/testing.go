@@ -19,7 +19,7 @@ import (
 type commonDeps struct {
 	repo       repo.Repo
 	wallet     *wallet.Wallet
-	chainStore *chain.DefaultStore
+	chainStore *chain.Store
 	blockstore bstore.Blockstore
 	cst        *hamt.CborIpldStore
 }
