@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -169,8 +171,45 @@ func forceBuildFC() {
 	}...))
 }
 
+func cleanDirectory(dir string, ignoredots bool) error {
+	if abs := filepath.IsAbs(dir); !abs {
+		return fmt.Errorf("Directory %s is not an absolute path, could not clean directory", dir)
+	}
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		fname := file.Name()
+		if ignoredots && []rune(fname)[0] == '.' {
+			continue
+		}
+
+		fpath := filepath.Join(dir, fname)
+
+		fmt.Println("Removing", fpath)
+		if err := os.Remove(fpath); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func generateGenesis() {
 	log.Println("Generating genesis...")
+
+	liveFixtures, err := filepath.Abs("./fixtures/live")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cleanDirectory(liveFixtures, true); err != nil {
+		panic(err)
+	}
+
 	runCmd(cmd([]string{
 		"./gengen/gengen",
 		"--keypath", "fixtures/live",
@@ -178,6 +217,16 @@ func generateGenesis() {
 		"--out-json", "fixtures/live/gen.json",
 		"--config", "./fixtures/setup.json",
 	}...))
+
+	testFixtures, err := filepath.Abs("./fixtures/test")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cleanDirectory(testFixtures, true); err != nil {
+		panic(err)
+	}
+
 	runCmd(cmd([]string{
 		"./gengen/gengen",
 		"--keypath", "fixtures/test",
