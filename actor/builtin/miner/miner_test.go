@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,11 +23,12 @@ import (
 )
 
 func createTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
-	return createTestMinerWith(100, 100, t, st, vms, minerOwnerAddr, key, pid)
+	return createTestMinerWith(100, types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, key, pid)
 }
 
-func createTestMinerWith(pledge int64,
-	collateral uint64,
+func createTestMinerWith(
+	pledge uint64,
+	collateral *types.AttoFIL,
 	t *testing.T,
 	stateTree state.Tree,
 	vms vm.StorageMap,
@@ -35,9 +36,9 @@ func createTestMinerWith(pledge int64,
 	key []byte,
 	peerId peer.ID,
 ) address.Address {
-	pdata := actor.MustConvertParams(key, big.NewInt(pledge), peerId)
+	pdata := actor.MustConvertParams(key, big.NewInt(int64(pledge)), peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
-	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, types.NewAttoFILFromFIL(collateral), "createStorageMiner", pdata)
+	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
 	result, err := th.ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -136,7 +137,7 @@ func TestGetKey(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.NewZeroAttoFIL(), types.OneKiBSectorSize)
+	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},
@@ -215,7 +216,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(120, 240, t, st, vms, address.TestAddress,
+		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
 			[]byte("my public key"), th.RequireRandomPeerID(t))
 
 		// retrieve power (trivial result for no proven sectors)
@@ -254,33 +255,68 @@ func callQueryMethodSuccess(method string,
 func TestMinerCommitSector(t *testing.T) {
 	tf.UnitTest(t)
 
-	ctx := context.Background()
-	st, vms := core.CreateStorages(ctx, t)
+	t.Run("a commitSector message is rejected if miner can't cover the required collateral", func(t *testing.T) {
+		ctx := context.Background()
+		st, vms := core.CreateStorages(ctx, t)
 
-	origPid := th.RequireRandomPeerID(t)
-	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		numSectorsToPledge := uint64(10)
+		amtCollateralForPledge := MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(numSectorsToPledge))
 
-	commR := th.MakeCommitment()
-	commRStar := th.MakeCommitment()
-	commD := th.MakeCommitment()
+		origPid := th.RequireRandomPeerID(t)
+		minerAddr := createTestMinerWith(numSectorsToPledge, amtCollateralForPledge, t, st, vms, address.TestAddress, []byte("my public key"), origPid)
 
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+		commR := th.MakeCommitment()
+		commRStar := th.MakeCommitment()
+		commD := th.MakeCommitment()
 
-	// check that the proving period matches
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart", nil)
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	// blockheight was 3
-	require.Equal(t, types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
+		f := func(sectorId uint64) (*consensus.ApplicationResult, error) {
+			return th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(sectorId), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		}
 
-	// fail because commR already exists
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
-	require.NoError(t, err)
-	require.EqualError(t, res.ExecutionError, "sector already committed")
-	require.Equal(t, uint8(0x23), res.Receipt.ExitCode)
+		// these commitments should exhaust miner's FIL
+		for i := uint64(0); i < numSectorsToPledge; i++ {
+			res, err := f(i)
+			require.NoError(t, err)
+			require.NoError(t, res.ExecutionError)
+			require.Equal(t, uint8(0), res.Receipt.ExitCode)
+		}
+
+		// this commitment should be rejected (miner has no remaining FIL)
+		res, err := f(numSectorsToPledge)
+		require.NoError(t, err)
+		require.Error(t, res.ExecutionError)
+		require.NotEqual(t, uint8(0), res.Receipt.ExitCode)
+	})
+
+	t.Run("a miner successfully commits a sector", func(t *testing.T) {
+		ctx := context.Background()
+		st, vms := core.CreateStorages(ctx, t)
+
+		origPid := th.RequireRandomPeerID(t)
+		minerAddr := createTestMinerWith(100, types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+
+		commR := th.MakeCommitment()
+		commRStar := th.MakeCommitment()
+		commD := th.MakeCommitment()
+
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		// check that the proving period matches
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart", nil)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		// blockheight was 3
+		require.Equal(t, types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
+
+		// fail because commR already exists
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		require.NoError(t, err)
+		require.EqualError(t, res.ExecutionError, "sector already committed")
+		require.Equal(t, uint8(0x23), res.Receipt.ExitCode)
+	})
 }
 
 func TestMinerSubmitPoSt(t *testing.T) {

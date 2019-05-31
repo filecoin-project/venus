@@ -57,9 +57,9 @@ func RequireNewAccountActor(t *testing.T, value *types.AttoFIL) *actor.Actor {
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
 func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
-	act := actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+	act := actor.NewActor(types.MinerActorCodeCid, coll)
 	storage := vms.NewStorage(addr, act)
-	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll, types.OneKiBSectorSize)
+	initializerData := miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, types.OneKiBSectorSize)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
 	require.NoError(t, err)
 	require.NoError(t, storage.Flush())

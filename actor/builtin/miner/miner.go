@@ -33,6 +33,9 @@ const MaximumPublicKeySize = 100
 // https://github.com/filecoin-project/go-filecoin/issues/966
 const ProvingPeriodBlocks = 20000
 
+// MinimumCollateralPerSector is the minimum amount of collateral required per sector
+var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
+
 // GracePeriodBlocks is the number of blocks after a proving period over
 // which a miner can still submit a post at a penalty.
 // TODO: what is a secure value for this?  Value is arbitrary right now.
@@ -67,6 +70,8 @@ const (
 	ErrInvalidSealProof = 41
 	// ErrGetProofsModeFailed indicates the call to get the proofs mode failed.
 	ErrGetProofsModeFailed = 42
+	// ErrInsufficientCollateral indicates that the miner does not have sufficient collateral to commit additional sectors.
+	ErrInsufficientCollateral = 43
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -81,6 +86,7 @@ var Errors = map[uint8]error{
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
 	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
+	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
 }
 
 // Actor is the miner actor.
@@ -117,9 +123,9 @@ type State struct {
 	// Pledge is amount the space being offered up by this miner.
 	PledgeSectors *big.Int
 
-	// Collateral is the total amount of filecoin being held as collateral for
-	// the miners pledge.
-	Collateral *types.AttoFIL
+	// ActiveCollateral is the amount of collateral currently committed to live
+	// storage.
+	ActiveCollateral *types.AttoFIL
 
 	// Asks is the set of asks this miner has open
 	Asks      []*Ask
@@ -145,23 +151,23 @@ type State struct {
 	SectorSize *types.BytesAmount
 }
 
-// NewActor returns a new miner actor
+// NewActor returns a new miner actor with the provided balance.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+	return actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
 }
 
 // NewState creates a miner state struct
-func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL, sectorSize *types.BytesAmount) *State {
+func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
 		PeerID:            pid,
 		PublicKey:         key,
 		PledgeSectors:     pledge,
-		Collateral:        collateral,
 		SectorCommitments: make(map[string]types.Commitments),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
+		ActiveCollateral:  types.NewZeroAttoFIL(),
 	}
 }
 
@@ -533,6 +539,14 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			return nil, Errors[ErrSectorCommitted]
 		}
 
+		// make sure the miner has enough collateral to add more storage
+		collateral := CollateralForSector(state.SectorSize)
+		if collateral.GreaterThan(ctx.MyBalance().Sub(state.ActiveCollateral)) {
+			return nil, Errors[ErrInsufficientCollateral]
+		}
+
+		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
+
 		if state.Power.Equal(types.NewBytesAmount(0)) {
 			state.ProvingPeriodStart = ctx.BlockHeight()
 		}
@@ -562,6 +576,14 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	}
 
 	return 0, nil
+}
+
+// CollateralForSector returns the collateral required to commit a sector of the
+// given size.
+func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
+	// TODO: Replace this function with the baseline pro-rata construction.
+	// https://github.com/filecoin-project/go-filecoin/issues/2866
+	return MinimumCollateralPerSector
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
