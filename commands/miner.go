@@ -48,7 +48,6 @@ message to be mined as this is required to return the address of the new miner.
 Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in sectors) for the miner"),
 		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
 	},
 	Options: []cmdkit.Option{
@@ -78,12 +77,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			pid = GetPorcelainAPI(env).NetworkGetPeerID()
 		}
 
-		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
-		if err != nil {
-			return ErrInvalidPledge
-		}
-
-		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1])
+		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[0])
 		if !ok {
 			return ErrInvalidCollateral
 		}
@@ -97,9 +91,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			usedGas, err := GetPorcelainAPI(env).MinerPreviewCreate(
 				req.Context,
 				fromAddr,
-				pledge,
 				pid,
-				collateral,
 			)
 			if err != nil {
 				return err
@@ -116,7 +108,6 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			fromAddr,
 			gasPrice,
 			gasLimit,
-			pledge,
 			pid,
 			collateral,
 		)

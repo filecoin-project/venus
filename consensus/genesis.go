@@ -2,8 +2,6 @@ package consensus
 
 import (
 	"context"
-	"math/big"
-
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-peer"
@@ -61,10 +59,10 @@ func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
+func MinerActor(addr address.Address, owner address.Address, key []byte, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &minerActorConfig{
-			state:   miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, sectorSize),
+			state:   miner.NewState(owner, key, pid, sectorSize),
 			balance: coll,
 		}
 		return nil

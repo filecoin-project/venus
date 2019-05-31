@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -128,7 +128,8 @@ func TestMinerCreate(t *testing.T) {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			args = append(args, "1000000", storagemarket.MinimumCollateral(big.NewInt(1000000)).String())
+			collateral := miner.MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
+			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup
 
@@ -165,23 +166,23 @@ func TestMinerCreate(t *testing.T) {
 
 		d.RunFail("invalid peer id",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "20",
 		)
 		d.RunFail("invalid from address",
 			"miner", "create",
-			"--from", "hello", "--gas-price", "1", "--gas-limit", "300", "1000000", "20",
+			"--from", "hello", "--gas-price", "1", "--gas-limit", "1000000", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "'-123'", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "'-123'", "20",
 		)
 		d.RunFail("invalid pledge",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1f", "20",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "1f", "20",
 		)
 		d.RunFail("invalid collateral",
 			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "100", "2f",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "100", "2f",
 		)
 	})
 
@@ -201,7 +202,7 @@ func TestMinerCreate(t *testing.T) {
 		go func() {
 			d.RunFail("pledge must be at least",
 				"miner", "create",
-				"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "1", "10",
+				"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "1", "10",
 			)
 			wg.Done()
 		}()
@@ -242,7 +243,7 @@ func TestMinerCreateSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(t, err)
 		assert.NotEqual(t, addr, address.Undef)
@@ -271,7 +272,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
 		assert.NoError(t, err)
 		assert.NotEqual(t, addr, address.Undef)
