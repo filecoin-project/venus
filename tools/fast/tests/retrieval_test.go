@@ -30,8 +30,9 @@ func init() {
 	logging.SetDebugLogging()
 }
 
-// TestRetrieval exercises storing and retrieving with the filecoin protocols
-func TestRetrieval(t *testing.T) {
+// TestRetrieval exercises storing and retrieving with the filecoin protocols using a locally running
+// temporary network.
+func TestRetrievalLocalNetwork(t *testing.T) {
 	tf.FunctionalTest(t)
 
 	sectorSize := int64(1016)
@@ -117,8 +118,9 @@ func TestRetrieval(t *testing.T) {
 	RunRetrievalTest(ctx, t, miner, client, sectorSize)
 }
 
-// TestRetrieval exercises storing and retreiving with the filecoin protocols
-func TestNetworkRetrieval(t *testing.T) {
+// TestRetrieval exercises storing and retreiving with the filecoin protocols on a kittyhawk deployed
+// devnet.
+func TestRetrievalDevnet(t *testing.T) {
 	tf.FunctionalTest(t)
 
 	// Skip the test so it doesn't run
