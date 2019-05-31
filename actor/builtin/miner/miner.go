@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -33,6 +32,9 @@ const MaximumPublicKeySize = 100
 // TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
 // https://github.com/filecoin-project/go-filecoin/issues/966
 const ProvingPeriodBlocks = 20000
+
+// MinimumCollateralPerSector is the minimum amount of collateral required per sector
+var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
 
 // GracePeriodBlocks is the number of blocks after a proving period over
 // which a miner can still submit a post at a penalty.
@@ -165,6 +167,7 @@ func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, s
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
+		ActiveCollateral:  types.NewZeroAttoFIL(),
 	}
 }
 
@@ -580,7 +583,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
 	// TODO: This value should be a function of sector size.
 	// See: https://github.com/filecoin-project/go-filecoin/issues/2841
-	return storagemarket.MinimumCollateralPerSector
+	return MinimumCollateralPerSector
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.

@@ -36,7 +36,7 @@ func init() {
 }
 
 type MinerActorConfig struct {
-	*miner.State
+	state   *miner.State
 	balance *types.AttoFIL
 }
 
@@ -64,7 +64,7 @@ func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 func MinerActor(addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &MinerActorConfig{
-			State:   miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, sectorSize),
+			state:   miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, sectorSize),
 			balance: coll,
 		}
 		return nil
@@ -142,7 +142,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 
 			s := storageMap.NewStorage(addr, a)
-			scid, err := s.Put(val)
+			scid, err := s.Put(val.state)
 			if err != nil {
 				return nil, err
 			}
