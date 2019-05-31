@@ -164,7 +164,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 }
 
 func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
-	minerActor := miner.NewActor(types.ZeroAttoFIL)
+	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 
 	commitments := map[string]types.Commitments{}

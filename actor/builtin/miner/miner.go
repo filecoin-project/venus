@@ -152,8 +152,8 @@ type State struct {
 }
 
 // NewActor returns a new miner actor with the provided balance.
-func NewActor(balance *types.AttoFIL) *actor.Actor {
-	return actor.NewActor(types.MinerActorCodeCid, balance)
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
 }
 
 // NewState creates a miner state struct

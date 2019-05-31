@@ -135,7 +135,8 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		}
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
-			a := miner.NewActor(val.balance)
+			a := miner.NewActor()
+			a.Balance = val.balance
 
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
