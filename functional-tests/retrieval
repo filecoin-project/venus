@@ -42,14 +42,14 @@ BLOCK_TIME="5s"
 HODL="HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL HODL"
 
 if [ "${FIXTURES_PATH}" = "./fixtures/test" ] ; then
-    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=1 count=700
     dd if=/dev/urandom of="${PIECE_1_PATH}" bs=1 count=500
+    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=1 count=500
 else
     # Maximum number of user piece-bytes in a Live-configuration sector is
     # equal to 266338304. Our first piece will not fill up the whole sector.
-    dd if=/dev/urandom of="${PIECE_1_PATH}" bs=$((1024*1024)) count=180
+    dd if=/dev/urandom of="${PIECE_1_PATH}" bs=$((1024*1024)) count=100
     # Adding this second piece will cause the sector sealing process to run.
-    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=$((1024*1024)) count=180
+    dd if=/dev/urandom of="${PIECE_2_PATH}" bs=$((1024*1024)) count=100
 fi
 
 trap finish EXIT
