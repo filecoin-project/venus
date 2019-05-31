@@ -398,3 +398,52 @@ var testConfig = &gengen.GenesisCfg{
 		},
 	},
 }
+
+func TestMinerListDeals(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	clientDaemon := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		th.DefaultAddress(fixtures.TestAddresses[1]),
+	).Start()
+	defer clientDaemon.ShutdownSuccess()
+
+	minerDaemon := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.AutoSealInterval("1"),
+	).Start()
+	defer minerDaemon.ShutdownSuccess()
+
+	minerDaemon.RunSuccess("mining", "start")
+	minerDaemon.UpdatePeerID()
+
+	minerDaemon.ConnectSuccess(clientDaemon)
+
+	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
+	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+
+	splitOnSpace := strings.Split(proposeDealOutput, " ")
+	dealCid := splitOnSpace[len(splitOnSpace)-1]
+
+	expectedOutput := fmt.Sprintf(`{
+	"minerAddress": "%s",
+	"pieceCid": {
+		"/": "QmbHmUVAkqZjQXgifDady7m5cYprX1fgtGaTYxUBBTX3At"
+	},
+	"proposalCid": {
+		"/": "%s"
+	},
+	"state": 7
+}`, fixtures.TestMiners[0], dealCid)
+
+	listClientDealsOutput := clientDaemon.RunSuccess("miner", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, "", listClientDealsOutput)
+
+	listMinerDealsOutput := minerDaemon.RunSuccess("miner", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, expectedOutput, listMinerDealsOutput)
+}

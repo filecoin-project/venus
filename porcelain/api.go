@@ -54,9 +54,24 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
+// DealClientLs returns a channel with all deals placed as a client
+func (a *API) DealClientLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealClientLs(ctx, a)
+}
+
 // DealGet returns a single deal matching a given cid or an error
-func (a *API) DealGet(proposalCid cid.Cid) (*storagedeal.Deal, error) {
-	return DealGet(a, proposalCid)
+func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
+	return DealGet(ctx, a, proposalCid)
+}
+
+// DealsLs returns a channel with all deals
+func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealsLs(ctx, a)
+}
+
+// DealMinerLs returns a channel with all deals received as a miner
+func (a *API) DealMinerLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealMinerLs(ctx, a)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
