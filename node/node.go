@@ -404,12 +404,15 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
+	// set up validator
+	bv := consensus.NewExpectedBlockValidator(consensus.NewExpectedBlockValidatorClock(nc.BlockTime))
+
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, bv, processor, powerTable, genCid, &proofs.RustVerifier{})
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, bv, processor, powerTable, genCid, nc.Verifier)
 	}
 
 	// Set up libp2p network
@@ -425,7 +428,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, nc.BlockTime)
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, bv, chainStore, fetcher)
 	msgPool := core.NewMessagePool(chainStore, nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	msgQueue := core.NewMessageQueue()
 

@@ -56,6 +56,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	powerTableView := &TestView{}
 	con := consensus.NewExpected(cst,
 		bs,
+		nil, // TODO put a mock validator here
 		NewTestProcessor(),
 		powerTableView,
 		params.GenesisCid,

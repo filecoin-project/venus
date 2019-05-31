@@ -131,19 +131,6 @@ func (ts TipSet) MinTicket() (Signature, error) {
 	return min, nil
 }
 
-// Tickets returns the tickets in the tipset.
-func (ts TipSet) Tickets() ([]Signature, error) {
-	if len(ts) == 0 {
-		return nil, ErrEmptyTipSet
-	}
-	var tickets []Signature
-	for _, t := range ts.ToSlice() {
-		tickets = append(tickets, t.Ticket)
-	}
-	return tickets, nil
-
-}
-
 // MinTimestamp returns the smallest timestamp of all blocks in the tipset.
 func (ts TipSet) MinTimestamp() (uint64, error) {
 	if len(ts) == 0 {

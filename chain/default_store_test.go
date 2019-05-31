@@ -15,21 +15,44 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type testBlockValidator struct {
+}
+
+func (tbv *testBlockValidator) ValidateSyntax(ctx context.Context, ts types.TipSet) error {
+	return nil
+}
+
+func (tbv *testBlockValidator) ValidateSemantics(ctx context.Context, current, parent types.TipSet) error {
+	return nil
+}
+
+func (tbv *testBlockValidator) ValidateState(ctx context.Context, st state.Tree, current, parent types.TipSet) error {
+	return nil
+}
+
+func newTestBlockValidator() consensus.BlockValidator {
+	return &testBlockValidator{}
+}
+
 // Note: many of these tests use the test chain defined in the init function of default_syncer_test.
-func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestParams) {
+func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestParams, bv consensus.BlockValidator) {
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), powerTable, dstP.genCid, proofs.NewFakeVerifier(true, nil))
+
+	con := consensus.NewExpected(cst, bs, bv, th.NewTestProcessor(), powerTable, dstP.genCid, proofs.NewFakeVerifier(true, nil))
+
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
+
 	initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP)
 	requireSetTestChain(t, con, true, dstP)
 }
@@ -89,9 +112,10 @@ func requireHeadTipset(t *testing.T, chain chain.Store) types.TipSet {
 func TestPutTipSet(t *testing.T) {
 	tf.UnitTest(t)
 	dstP := initDSTParams()
-
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	cs := newChainStore(dstP)
 	genTsas := &chain.TipSetAndState{
 		TipSet:          dstP.genTS,
@@ -104,10 +128,12 @@ func TestPutTipSet(t *testing.T) {
 // Tipsets can be retrieved by key (all block cids).
 func TestGetByKey(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 	requirePutTestChain(t, chain, dstP)
 
@@ -141,10 +167,12 @@ func TestGetByKey(t *testing.T) {
 // Tipsets can be retrieved by parent key (all block cids of parents).
 func TestGetByParent(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 
 	requirePutTestChain(t, chain, dstP)
@@ -176,9 +204,10 @@ func TestGetByParent(t *testing.T) {
 func TestGetMultipleByParent(t *testing.T) {
 	tf.UnitTest(t)
 	dstP := initDSTParams()
-
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chainStore := newChainStore(dstP)
 
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
@@ -220,10 +249,12 @@ func TestGetMultipleByParent(t *testing.T) {
 // All blocks of a tipset can be retrieved after putting their wrapping tipset.
 func TestGetBlocks(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 
 	blks := []*types.Block{dstP.genesis, dstP.link1blk1, dstP.link1blk2, dstP.link2blk1,
@@ -249,10 +280,12 @@ func TestGetBlocks(t *testing.T) {
 // chain.Store correctly indicates that is has all blocks in put tipsets
 func TestHasAllBlocks(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 
 	blks := []*types.Block{dstP.genesis, dstP.link1blk1, dstP.link1blk2, dstP.link2blk1,
@@ -275,10 +308,12 @@ func TestHasAllBlocks(t *testing.T) {
 // The constructor call sets the dstP.genesis block for the chain store.
 func TestSetGenesis(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 	requirePutTestChain(t, chain, dstP)
 	require.Equal(t, dstP.genCid, chain.GenesisCid())
@@ -293,10 +328,12 @@ func assertSetHead(t *testing.T, chainStore chain.Store, ts types.TipSet) {
 // Set and Get Head.
 func TestHead(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chain := newChainStore(dstP)
 	requirePutTestChain(t, chain, dstP)
 
@@ -327,10 +364,12 @@ func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
 // Head events are propagated on HeadEvents.
 func TestHeadEvents(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 	chainStore := newChainStore(dstP)
 	requirePutTestChain(t, chainStore, dstP)
 
@@ -368,10 +407,12 @@ func TestHeadEvents(t *testing.T) {
 // tipset indexes along the heaviest chain.
 func TestLoadAndReboot(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
 
+	dstP := initDSTParams()
 	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
+	bv := newTestBlockValidator()
+
+	initStoreTest(ctx, t, dstP, bv)
 
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
