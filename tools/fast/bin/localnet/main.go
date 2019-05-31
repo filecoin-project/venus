@@ -42,12 +42,11 @@ var (
 	err             error
 	fil             = 100000
 	balance         big.Int
-	smallSectors           = true
-	minerCount             = 5
-	minerPledge     uint64 = 10
-	minerCollateral        = big.NewInt(500)
-	minerPrice             = big.NewFloat(0.000000001)
-	minerExpiry            = big.NewInt(24 * 60 * 60)
+	smallSectors    = true
+	minerCount      = 5
+	minerCollateral = big.NewInt(500)
+	minerPrice      = big.NewFloat(0.000000001)
+	minerExpiry     = big.NewInt(24 * 60 * 60)
 
 	exitcode int
 
