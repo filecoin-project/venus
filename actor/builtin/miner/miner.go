@@ -581,8 +581,8 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 // CollateralForSector returns the collateral required to commit a sector of the
 // given size.
 func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
-	// TODO: This value should be a function of sector size.
-	// See: https://github.com/filecoin-project/go-filecoin/issues/2841
+	// TODO: Replace this function with the baseline pro-rata construction.
+	// https://github.com/filecoin-project/go-filecoin/issues/2866
 	return MinimumCollateralPerSector
 }
 
