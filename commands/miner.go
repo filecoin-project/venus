@@ -50,7 +50,7 @@ miner's collateral drops below 0.001FIL, the miner will not be able to commit
 additional sectors.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
+		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send from"),
