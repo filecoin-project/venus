@@ -33,7 +33,7 @@ func TestMinerHelp(t *testing.T) {
 	t.Run("--help shows general miner help", func(t *testing.T) {
 
 		expected := []string{
-			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
+			"miner create <collateral>               - Create a new file miner with <collateral> FIL",
 			"miner owner <miner>                     - Show the actor address of <miner>",
 			"miner power <miner>                     - Get the power of a miner versus the total storage market power",
 			"miner set-price <storageprice> <expiry> - Set the minimum price for storage",
@@ -62,8 +62,10 @@ func TestMinerHelp(t *testing.T) {
 
 		expected := []string{
 			"Issues a new message to the network to create the miner, then waits for the",
-			"message to be mined as this is required to return the address of the new miner",
-			"Collateral must be greater than 0.001 FIL per pledged sector.",
+			"message to be mined as this is required to return the address of the new miner.",
+			"Collateral will be committed at the rate of 0.001FIL per sector. When the",
+			"miner's collateral drops below 0.001FIL, the miner will not be able to commit",
+			"additional sectors.",
 		}
 
 		result := runHelpSuccess(t, "miner", "create", "--help")
@@ -97,16 +99,6 @@ func TestMinerCreate(t *testing.T) {
 
 	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
 	require.NoError(t, err)
-
-	t.Run("create --help includes pledge text", func(t *testing.T) {
-
-		d := makeTestDaemonWithMinerAndStart(t)
-		defer d.ShutdownSuccess()
-
-		op1 := d.RunSuccess("miner", "create", "--help")
-		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(t, result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
-	})
 
 	t.Run("success", func(t *testing.T) {
 
@@ -172,44 +164,10 @@ func TestMinerCreate(t *testing.T) {
 			"miner", "create",
 			"--from", "hello", "--gas-price", "1", "--gas-limit", "1000000", "20",
 		)
-		d.RunFail("invalid pledge",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "'-123'", "20",
-		)
-		d.RunFail("invalid pledge",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "1f", "20",
-		)
 		d.RunFail("invalid collateral",
 			"miner", "create",
 			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "100", "2f",
 		)
-	})
-
-	t.Run("insufficient pledge", func(t *testing.T) {
-
-		d1 := makeTestDaemonWithMinerAndStart(t)
-		defer d1.ShutdownSuccess()
-
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-		defer d.ShutdownSuccess()
-
-		d1.ConnectSuccess(d)
-
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			d.RunFail("pledge must be at least",
-				"miner", "create",
-				"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "1", "10",
-			)
-			wg.Done()
-		}()
-
-		// ensure mining runs after the command in our goroutine
-		d1.MineAndPropagate(time.Second, d)
-		wg.Wait()
 	})
 }
 

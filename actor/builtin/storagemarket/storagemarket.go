@@ -3,7 +3,6 @@ package storagemarket
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -19,26 +18,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MinimumPledge is the minimum amount of sectors a user can pledge.
-var MinimumPledge = big.NewInt(10)
-
 const (
-	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
-	ErrPledgeTooLow = 33
 	// ErrUnknownMiner indicates a pledge under the MinimumPledge.
 	ErrUnknownMiner = 34
-	// ErrInsufficientCollateral indicates the collateral is too low.
-	ErrInsufficientCollateral = 43
 	// ErrUnsupportedSectorSize indicates that the sector size is incompatible with the proofs mode.
 	ErrUnsupportedSectorSize = 44
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
-	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
-	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", miner.MinimumCollateralPerSector),
-	ErrUnsupportedSectorSize:  errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
+	ErrUnknownMiner:          errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
+	ErrUnsupportedSectorSize: errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
 }
 
 func init() {
