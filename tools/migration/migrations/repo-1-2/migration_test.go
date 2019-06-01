@@ -8,9 +8,8 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/env"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -43,25 +42,30 @@ func TestMigrateSomeRepo(t *testing.T) {
 	mig := migration12.MetadataFormatJSONtoCBOR{}
 	_, newVer := mig.Versions()
 
-	curDir, err := syscall.Getwd() // this will be the top go-filecoin dir
+	curDir, err := syscall.Getwd()
 	require.NoError(t, err)
 
-	fixtureTarball := path.Join(curDir, "tools", "migration", "fixtures", "repo-12.tgz")
+	fixturePath := path.Join(curDir, "fixtures")
+	fixtureTarball := path.Join(fixturePath, "repo-1.tgz")
 
-	tmpDir := repo.RequireMakeTempDir(t, "")
-
-	// unpack the tarball into a tmp dir
-	exec.CommandContext(context.Background(), "tar", "xzf", tmpDir, fixtureTarball)
+	// unpack the tarball
+	cmd := exec.CommandContext(context.Background(), "tar", "xzf", fixtureTarball)
+	require.NoError(t, cmd.Run())
+	defer repo.RequireRemoveAll(t, path.Join(curDir, "repo-1"))
 
 	// make a symlink
-	repoSymLink := os.Link(path.Base(fixtureTarball)+"/repo-somethingsomething", "repo")
+	repoDir := path.Join(curDir, "repo-1", "repo-20190530-132738-v001")
+	repoSymLink := path.Join(curDir, "repo-1", "repo")
+	require.NoError(t, os.Symlink(repoDir, repoSymLink))
 
 	newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
 	require.NoError(t, err)
 	defer repo.RequireRemoveAll(t, newRepoPath)
 
-	err = mig.Migrate(newRepoPath)
-	require.NoError(t, err)
+	require.NoError(t, mig.Migrate(newRepoPath))
+
+	// Update the version, pretending that the MigrationRunner did it
+	require.NoError(t, repo.WriteVersion(newRepoPath, 2))
 
 	err = mig.Validate(repoSymLink, newRepoPath)
 	require.NoError(t, err)
