@@ -483,7 +483,10 @@ func (td *TestDaemon) CreateStorageMinerAddr(peer *TestDaemon, fromAddr string) 
 		minerAddr = addr
 		wg.Done()
 	}()
-	wg.Wait()
+
+	if !WaitWithTimeout(&wg, time.Second*5) {
+		td.test.Fatal("timed out waiting for miner create command to return")
+	}
 
 	return minerAddr
 }
@@ -571,7 +574,6 @@ func (td *TestDaemon) MineAndPropagate(wait time.Duration, peers ...*TestDaemon)
 // duration `wait`
 func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemon) {
 	// will signal all nodes have completed check
-	done := make(chan struct{})
 	var wg sync.WaitGroup
 
 	expHeadBlks := td.GetChainHead()
@@ -598,17 +600,12 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 		}(p)
 	}
 
-	go func() {
-		wg.Wait()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-		return
-	case <-time.After(wait):
+	if !WaitWithTimeout(&wg, wait) {
 		td.test.Fatal("Timeout waiting for chains to sync")
+		return
 	}
+
+	return
 }
 
 // GetChainHead returns the blocks in the head tipset from `td`
@@ -898,5 +895,22 @@ func (td *TestDaemon) cleanupFilesystem() {
 		}
 	} else {
 		td.test.Logf("testdaemon has nil container dir")
+	}
+}
+
+// WaitWithTimeout returns when the provided wait group completes or the timeout
+// expires. If the timer expires before the wait group completes,
+// WaitWithTimeout returns false. Otherwise, WaitWithTimeout returns true.
+func WaitWithTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	c := make(chan struct{})
+	go func() {
+		wg.Wait()
+		c <- struct{}{}
+	}()
+	select {
+	case <-c:
+		return true
+	case <-time.After(timeout):
+		return false
 	}
 }

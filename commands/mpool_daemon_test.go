@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +73,9 @@ func TestMpoolLs(t *testing.T) {
 		assert.False(t, complete)
 		sendMessage(d, fixtures.TestAddresses[0], fixtures.TestAddresses[1])
 
-		wg.Wait()
+		if !th.WaitWithTimeout(&wg, time.Second*5) {
+			t.Fatal("timed out waiting for mpool to return")
+		}
 
 		assert.True(t, complete)
 	})

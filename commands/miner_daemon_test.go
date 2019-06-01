@@ -143,7 +143,10 @@ func TestMinerCreate(t *testing.T) {
 
 			// ensure mining runs after the command in our goroutine
 			d1.MineAndPropagate(time.Second, d)
-			wg.Wait()
+
+			if !th.WaitWithTimeout(&wg, time.Second*5) {
+				t.Fatal("timed out waiting for miner create command to return")
+			}
 
 			// expect address to have been written in config
 			config := d.RunSuccess("config mining.minerAddress")
@@ -208,7 +211,10 @@ func TestMinerCreate(t *testing.T) {
 
 		// ensure mining runs after the command in our goroutine
 		d1.MineAndPropagate(time.Second, d)
-		wg.Wait()
+
+		if !th.WaitWithTimeout(&wg, time.Second*5) {
+			t.Fatal("timed out waiting for miner create command to return")
+		}
 	})
 }
 
@@ -250,7 +256,10 @@ func TestMinerCreateSuccess(t *testing.T) {
 	}()
 	// ensure mining runs after the command in our goroutine
 	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
+
+	if !th.WaitWithTimeout(&wg, time.Second*5) {
+		t.Fatal("timed out waiting for miner create command to return")
+	}
 }
 
 func TestMinerCreateChargesGas(t *testing.T) {
@@ -279,7 +288,10 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	}()
 	// ensure mining runs after the command in our goroutine
 	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
+
+	if !th.WaitWithTimeout(&wg, time.Second*5) {
+		t.Fatal("timed out waiting for miner create command to return")
+	}
 
 	expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
 	expectedPrice := types.NewAttoFILFromFIL(333)

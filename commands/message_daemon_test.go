@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,7 +105,9 @@ func TestMessageWait(t *testing.T) {
 
 		d.RunSuccess("mining once")
 
-		wg.Wait()
+		if !th.WaitWithTimeout(&wg, time.Second*5) {
+			t.Fatal("timed out waiting for message wait command to return")
+		}
 	})
 }
 
