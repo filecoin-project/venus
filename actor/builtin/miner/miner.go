@@ -28,10 +28,15 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// ProvingPeriodBlocks defines how long a proving period is for.
-// TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
-// https://github.com/filecoin-project/go-filecoin/issues/966
-const ProvingPeriodBlocks = 20000
+// LargestSectorSizeProvingPeriodBlocks defines the number of blocks in a
+// proving period for a miner configured to use the largest sector size
+// supported by the network.
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant and consensus.AncestorRoundsNeeded will
+// need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const LargestSectorSizeProvingPeriodBlocks = 20000
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
@@ -734,7 +739,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		}
 
 		// Check if we submitted it in time
-		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodBlocks))
+		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
 			// Not great.
 			// TODO: charge penalty
@@ -843,4 +848,13 @@ func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (b
 	combined = append(combined, commD[:]...)
 
 	return bytes.Equal(combined, proof), nil
+}
+
+// ProvingPeriodDuration returns the number of blocks in a proving period for a
+// given sector size.
+//
+// TODO: Make this function return a non-bogus value.
+// https://github.com/filecoin-project/specs/issues/321
+func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
+	return LargestSectorSizeProvingPeriodBlocks
 }

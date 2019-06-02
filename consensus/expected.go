@@ -69,7 +69,11 @@ const ECPrM uint64 = 100
 
 // AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
 // to process all state transitions.
-const AncestorRoundsNeeded = miner.ProvingPeriodBlocks + miner.GracePeriodBlocks
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant will need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.GracePeriodBlocks
 
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
