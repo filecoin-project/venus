@@ -36,7 +36,7 @@ func createTestMinerWith(
 	key []byte,
 	peerId peer.ID,
 ) address.Address {
-	pdata := actor.MustConvertParams(key, peerId)
+	pdata := actor.MustConvertParams(key, types.OneKiBSectorSize, peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 

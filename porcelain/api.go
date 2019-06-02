@@ -111,19 +111,21 @@ func (a *API) MinerCreate(
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
+	sectorSize *types.BytesAmount,
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
-	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, pid, collateral)
+	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sectorSize, pid, collateral)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
 func (a *API) MinerPreviewCreate(
 	ctx context.Context,
 	fromAddr address.Address,
+	sectorSize *types.BytesAmount,
 	pid peer.ID,
 ) (usedGas types.GasUnits, err error) {
-	return MinerPreviewCreate(ctx, a, fromAddr, pid)
+	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)
 }
 
 // MinerGetAsk queries for an ask of the given miner

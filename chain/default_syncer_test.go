@@ -1034,19 +1034,24 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// set up dstP.genesis block with power
 	genCfg := &gengen.GenesisCfg{
-		Keys: 4,
-		Miners: []gengen.Miner{
+		ProofsMode: types.TestProofsMode,
+		Keys:       4,
+		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				NumCommittedSectors: 0,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 			{
 				NumCommittedSectors: 10,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 			{
 				NumCommittedSectors: 10,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 			{
 				NumCommittedSectors: 980,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
 	}

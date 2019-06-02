@@ -217,7 +217,7 @@ func (e *EnvironmentMemoryGenesis) buildGenesis(funds *big.Int) error {
 		PreAlloc: []string{
 			funds.String(),
 		},
-		Miners: []gengen.Miner{
+		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:               0,
 				NumCommittedSectors: 1,
@@ -225,6 +225,10 @@ func (e *EnvironmentMemoryGenesis) buildGenesis(funds *big.Int) error {
 		},
 		ProofsMode: e.proofsMode,
 	}
+
+	// ensure miners' sector size is set appropriately for the configured
+	// proofs mode
+	gengen.ApplyProofsModeDefaults(cfg, e.proofsMode == types.LiveProofsMode, true)
 
 	var genbuffer bytes.Buffer
 

@@ -89,7 +89,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createStorageMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.PeerID},
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
@@ -106,22 +106,15 @@ var storageMarketExports = exec.Exports{
 	},
 }
 
-// CreateStorageMiner creates a new miner. The miners collateral is set by the
-// value in the message.
-func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, pid peer.ID) (address.Address, uint8, error) {
+// CreateStorageMiner creates a new miner which will commit sectors of the
+// given size. The miners collateral is set by the value in the message.
+func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		// TODO: #2530 - Add a sector size parameter to the Actor#CreateStorageMiner
-		// method and accept the value from the CLI.
-		sectorSize := types.OneKiBSectorSize
-		if state.ProofsMode == types.LiveProofsMode {
-			sectorSize = types.TwoHundredFiftySixMiBSectorSize
-		}
-
 		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
 			return nil, Errors[ErrUnsupportedSectorSize]
 		}
