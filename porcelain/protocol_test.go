@@ -38,8 +38,9 @@ func TestProtocolParams(t *testing.T) {
 		}
 
 		expected := &porcelain.ProtocolParams{
-			AutoSealInterval: 120,
-			ProofsMode:       types.TestProofsMode,
+			AutoSealInterval:     120,
+			ProofsMode:           types.TestProofsMode,
+			SupportedSectorSizes: []*types.BytesAmount{types.OneKiBSectorSize},
 		}
 
 		out, err := porcelain.ProtocolParameters(context.TODO(), plumbing)
