@@ -137,7 +137,7 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("slice", func(t *testing.T) {
-		assert.Equal(t, []*Block{b1}, RequireNewTipSet(t, b1))
+		assert.Equal(t, []*Block{b1}, RequireNewTipSet(t, b1).ToSlice())
 
 		ts := RequireNewTipSet(t, b3, b2, b1) // Presented in reverse order
 		slice := ts.ToSlice()
@@ -160,7 +160,7 @@ func TestTipSet(t *testing.T) {
 	t.Run("empty new tipset fails", func(t *testing.T) {
 		_, err := NewTipSet()
 		assert.Error(t, err)
-		assert.Equal(t, ErrEmptyTipSet, err)
+		assert.Equal(t, errNoBlocks, err)
 	})
 
 	t.Run("duplicate block fails new tipset", func(t *testing.T) {

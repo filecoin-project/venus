@@ -68,7 +68,7 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 		return false
 	}
 	nilHeadFunc := func() (types.TipSet, error) {
-		return nil, nil
+		return types.UndefTipSet, nil
 	}
 	worker := NewTestWorkerWithDeps(nothingMine)
 	scheduler := NewScheduler(worker, MineDelayTest, nilHeadFunc)

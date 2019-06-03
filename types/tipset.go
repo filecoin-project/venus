@@ -21,8 +21,10 @@ type TipSet struct {
 }
 
 var (
-	// ErrEmptyTipSet is returned no blocks are provided to a tipset contructor
-	ErrEmptyTipSet = errors.New("no blocks for tipset")
+	// errNoBlocks is returned from the tipset constructor when given no blocks.
+	errNoBlocks = errors.New("no blocks for tipset")
+	// errUndefTipSet is returned from tipset methods invoked on an undefined tipset.
+	errUndefTipSet = errors.New("undefined tipset")
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
@@ -32,7 +34,7 @@ var UndefTipSet = TipSet{}
 // The blocks must be distinct (different CIDs), have the same height, and same parent set.
 func NewTipSet(blocks ...*Block) (TipSet, error) {
 	if len(blocks) == 0 {
-		return UndefTipSet, ErrEmptyTipSet
+		return UndefTipSet, errNoBlocks
 	}
 
 	first := blocks[0]
@@ -109,24 +111,35 @@ func (ts TipSet) ToSlice() []*Block {
 	return slice
 }
 
-// MinTicket returns the smallest ticket of all blocks in the tipset, and nil error.
-// The nil error is to be removed shortly.
+// MinTicket returns the smallest ticket of all blocks in the tipset.
 func (ts TipSet) MinTicket() (Signature, error) {
+	if len(ts.blocks) == 0 {
+		return nil, errUndefTipSet
+	}
 	return ts.blocks[0].Ticket, nil
 }
 
-// Height returns the height of a tipset, and nil error.
+// Height returns the height of a tipset.
 func (ts TipSet) Height() (uint64, error) {
+	if len(ts.blocks) == 0 {
+		return 0, errUndefTipSet
+	}
 	return uint64(ts.blocks[0].Height), nil
 }
 
-// Parents returns the CIDs of the parents of the blocks in the tipset, and nil error.
+// Parents returns the CIDs of the parents of the blocks in the tipset.
 func (ts TipSet) Parents() (SortedCidSet, error) {
+	if len(ts.blocks) == 0 {
+		return SortedCidSet{}, errUndefTipSet
+	}
 	return ts.blocks[0].Parents, nil
 }
 
-// ParentWeight returns the tipset's ParentWeight in fixed point form, and nil error.
+// ParentWeight returns the tipset's ParentWeight in fixed point form.
 func (ts TipSet) ParentWeight() (uint64, error) {
+	if len(ts.blocks) == 0 {
+		return 0, errUndefTipSet
+	}
 	return uint64(ts.blocks[0].ParentWeight), nil
 }
 

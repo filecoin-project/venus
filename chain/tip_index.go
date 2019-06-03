@@ -90,7 +90,7 @@ func (ti *TipIndex) Get(tsKey string) (*TipSetAndState, error) {
 func (ti *TipIndex) GetTipSet(tsKey string) (types.TipSet, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	return tsas.TipSet, nil
 }
