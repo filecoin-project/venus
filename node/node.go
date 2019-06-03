@@ -395,12 +395,16 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
+	// create a blockClock, used for validation of block timestamps
+	blkClock := consensus.NewDefaultBlockValidationClock(nc.BlockTime)
+	blkValid := consensus.NewDefaultBlockValidator(blkClock)
+
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &proofs.RustVerifier{})
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier)
 	}
 
 	// only the syncer gets the storage which is online connected
