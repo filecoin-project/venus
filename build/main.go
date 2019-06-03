@@ -171,6 +171,10 @@ func forceBuildFC() {
 	}...))
 }
 
+// cealnDirectory removes the child of a directly wihtout removing the directory itself, unlike `RemoveAll`.
+// There is also an additional parameter to ignore dot files which is important for directories which are normally
+// empty. Git has no concept of directories, so for a directory to automatically be created on checkout, a file must
+// exist in side o fit. We use this pattern in a few places, so the need to keep the dot files around is impotant.
 func cleanDirectory(dir string, ignoredots bool) error {
 	if abs := filepath.IsAbs(dir); !abs {
 		return fmt.Errorf("Directory %s is not an absolute path, could not clean directory", dir)
