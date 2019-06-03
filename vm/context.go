@@ -123,6 +123,11 @@ func (ctx *Context) BlockHeight() *types.BlockHeight {
 	return ctx.blockHeight
 }
 
+// MyBalance returns the balance of the associated actor.
+func (ctx *Context) MyBalance() *types.AttoFIL {
+	return ctx.to.Balance
+}
+
 // IsFromAccountActor returns true if the message is being sent by an account actor.
 func (ctx *Context) IsFromAccountActor() bool {
 	return account.IsAccount(ctx.from)

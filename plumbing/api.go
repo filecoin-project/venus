@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore/query"
 	"github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
@@ -131,7 +132,7 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, er
 }
 
 // ChainHead returns the head tipset
-func (api *API) ChainHead() (*types.TipSet, error) {
+func (api *API) ChainHead() (types.TipSet, error) {
 	return api.chain.Head()
 }
 
@@ -147,9 +148,9 @@ func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.B
 	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 
-// DealsLs a slice of all storagedeals in the local datastore and possibly an error
-func (api *API) DealsLs() ([]*storagedeal.Deal, error) {
-	return api.storagedeals.Ls()
+// DealsIterator returns an iterator to access all deals
+func (api *API) DealsIterator() (*query.Results, error) {
+	return api.storagedeals.Iterator()
 }
 
 // DealPut puts a given deal in the datastore

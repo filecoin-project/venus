@@ -22,6 +22,10 @@ import (
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
 var blkWaitTime = 30 * time.Second
+
+// FinalityLimit is the maximum number of blocks ahead of the current consensus
+// chain height to accept once in caught up mode
+var FinalityLimit = 600
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
@@ -33,10 +37,32 @@ var (
 
 var logSyncer = logging.Logger("chain.syncer")
 
+// SyncMode represents which behavior mode the chain syncer is currently in. By
+// default, the node starts in "Syncing" mode, and once it syncs the most
+// recently generated block, it switches to "Caught Up" mode.
+type SyncMode int
+
+const (
+	// Syncing indicates that the node was started recently and the chain is still
+	// significantly behind the current consensus head.
+	//
+	// See the spec for more detail:
+	// https://github.com/filecoin-project/specs/blob/master/sync.md#syncing-mode
+	Syncing SyncMode = iota
+	// CaughtUp indicates that the node has caught up with consensus head and as a
+	// result can restrict which new blocks are accepted to mitigate consensus
+	// attacks.
+	//
+	// See the spec for more detail:
+	// https://github.com/filecoin-project/specs/blob/master/sync.md#caught-up-mode
+	CaughtUp
+)
+
 type syncerChainReader interface {
+	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
 	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
@@ -83,12 +109,18 @@ type DefaultSyncer struct {
 	badTipSets *badTipSetCache
 	consensus  consensus.Protocol
 	chainStore syncerChainReader
+	// syncMode is an enumerable indicating whether the chain is currently caught
+	// up or still syncing. Presently, syncMode is always Syncing pending
+	// implementation in issue #1160.
+	//
+	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1160
+	syncMode SyncMode
 }
 
 var _ Syncer = (*DefaultSyncer)(nil)
 
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher) *DefaultSyncer {
+func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *DefaultSyncer {
 	return &DefaultSyncer{
 		fetcher:    f,
 		stateStore: cst,
@@ -97,6 +129,7 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerCha
 		},
 		consensus:  c,
 		chainStore: s,
+		syncMode:   syncMode,
 	}
 }
 
@@ -133,7 +166,10 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	fetchedHead := tipsetCids
 	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
 
-	for {
+	// Continue collecting the chain if we're either not yet caught up or the
+	// number of new input blocks is less than the FinalityLimit constant.
+	// Otherwise, halt assuming the new blocks come from an invalid chain.
+	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
 		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := tipsetCids.String()
@@ -173,6 +209,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 	}
+
+	return nil, ErrNewChainTooLong
 }
 
 // tipSetState returns the state resulting from applying the input tipset to
@@ -268,29 +306,43 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 		}
 	}
 
-	heavier, err := syncer.consensus.IsHeavier(ctx, next, *headTipSet, nextParentSt, headParentSt)
+	heavier, err := syncer.consensus.IsHeavier(ctx, next, headTipSet, nextParentSt, headParentSt)
 	if err != nil {
 		return err
 	}
 
 	if heavier {
-		// Gather the entire new chain for reorg comparison.
-		// See Issue #2151 for making this scalable.
-		iterator := IterAncestors(ctx, syncer.chainStore, parent)
-		newChain, err := CollectTipSetsOfHeightAtLeast(ctx, iterator, types.NewBlockHeight(uint64(0)))
-		if err != nil {
-			return err
-		}
-		newChain = append(newChain, next)
-		if IsReorg(*headTipSet, newChain) {
-			logSyncer.Infof("reorg occurring while switching from %s to %s", headTipSet.String(), next.String())
-		}
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
 			return err
 		}
+		// Gather the entire new chain for reorg comparison and logging.
+		syncer.logReorg(ctx, headTipSet, next)
 	}
 
 	return nil
+}
+
+func (syncer *DefaultSyncer) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
+	curHeadIter := IterAncestors(ctx, syncer.chainStore, curHead)
+	newHeadIter := IterAncestors(ctx, syncer.chainStore, newHead)
+	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
+	if err != nil {
+		// Should never get here because reorgs should always have a
+		// common ancestor..
+		logSyncer.Warningf("unexpected error when running FindCommonAncestor for reorg log: %s", err.Error())
+		return
+	}
+
+	reorg := IsReorg(curHead, newHead, commonAncestor)
+	if reorg {
+		dropped, added, err := ReorgDiff(curHead, newHead, commonAncestor)
+		if err == nil {
+			logSyncer.Infof("reorg dropping %d height and adding %d height from %s to %s", dropped, added, curHead.String(), newHead.String())
+		} else {
+			logSyncer.Infof("reorg from %s to %s", curHead.String(), newHead.String())
+			logSyncer.Errorf("unexpected error from ReorgDiff during log: %s", err.Error())
+		}
+	}
 }
 
 // widen computes a tipset implied by the input tipset and the store that
@@ -302,42 +354,54 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	height, err := ts.Height()
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
-		return nil, nil
+		return types.UndefTipSet, nil
 	}
 	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	if len(candidates) == 0 {
-		return nil, nil
+		return types.UndefTipSet, nil
 	}
 
 	// Only take the tipset with the most blocks (this is EC specific logic)
-	max := candidates[0]
+	max := candidates[0].TipSet
 	for _, candidate := range candidates[0:] {
-		if len(candidate.TipSet) > len(max.TipSet) {
-			max = candidate
+		if candidate.TipSet.Len() > max.Len() {
+			max = candidate.TipSet
 		}
 	}
 
-	// Add blocks of the biggest tipset in the store to a copy of ts
-	wts := ts.Clone()
-	for _, blk := range max.TipSet {
-		if err = wts.AddBlock(blk); err != nil {
-			return nil, err
+	// Form a new tipset from the union of ts and the largest in the store, de-duped.
+	var blockSlice []*types.Block
+	blockCids := make(map[cid.Cid]struct{})
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		blockCids[blk.Cid()] = struct{}{}
+		blockSlice = append(blockSlice, blk)
+	}
+	for i := 0; i < max.Len(); i++ {
+		blk := max.At(i)
+		if _, found := blockCids[blk.Cid()]; !found {
+			blockSlice = append(blockSlice, blk)
+			blockCids[blk.Cid()] = struct{}{}
 		}
+	}
+	wts, err := types.NewTipSet(blockSlice...)
+	if err != nil {
+		return types.UndefTipSet, err
 	}
 
 	// check that the tipset is distinct from the input and tipsets from the store.
-	if wts.String() == ts.String() || wts.String() == max.TipSet.String() {
-		return nil, nil
+	if wts.String() == ts.String() || wts.String() == max.String() {
+		return types.UndefTipSet, nil
 	}
 
 	return wts, nil
@@ -375,11 +439,10 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	if err != nil {
 		return err
 	}
-	parentTs, err := syncer.chainStore.GetTipSet(parentCids)
+	parent, err := syncer.chainStore.GetTipSet(parentCids)
 	if err != nil {
 		return err
 	}
-	parent := *parentTs
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
@@ -391,7 +454,7 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 			if err != nil {
 				return err
 			}
-			if wts != nil {
+			if wts.Defined() {
 				logSyncer.Debug("attempt to sync after widen")
 				err = syncer.syncOne(ctx, parent, wts)
 				if err != nil {
@@ -414,4 +477,14 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 		parent = ts
 	}
 	return nil
+}
+
+func (syncer *DefaultSyncer) exceedsFinalityLimit(chain []types.TipSet) bool {
+	if len(chain) == 0 {
+		return false
+	}
+	blockHeight, _ := syncer.chainStore.BlockHeight()
+	finalityHeight := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	chainHeight, _ := chain[0].Height()
+	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight)
 }

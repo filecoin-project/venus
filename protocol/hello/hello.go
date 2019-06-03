@@ -41,7 +41,7 @@ type Message struct {
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
-type getTipSetFunc func() (*types.TipSet, error)
+type getTipSetFunc func() (types.TipSet, error)
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of

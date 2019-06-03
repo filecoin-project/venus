@@ -28,16 +28,28 @@ func init() {
 // MaximumPublicKeySize is a limit on how big a public key can be.
 const MaximumPublicKeySize = 100
 
-// ProvingPeriodBlocks defines how long a proving period is for.
-// TODO: what is an actual workable value? currently set very high to avoid race conditions in test.
-// https://github.com/filecoin-project/go-filecoin/issues/966
-const ProvingPeriodBlocks = 20000
+// LargestSectorSizeProvingPeriodBlocks defines the number of blocks in a
+// proving period for a miner configured to use the largest sector size
+// supported by the network.
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant and consensus.AncestorRoundsNeeded will
+// need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const LargestSectorSizeProvingPeriodBlocks = 20000
 
-// GracePeriodBlocks is the number of blocks after a proving period over
-// which a miner can still submit a post at a penalty.
-// TODO: what is a secure value for this?  Value is arbitrary right now.
-// See https://github.com/filecoin-project/go-filecoin/issues/1887
-const GracePeriodBlocks = 100
+// LargestSectorGenerationAttackThresholdBlocks defines the number of blocks
+// after a proving period ends after which a miner using the largest sector size
+// supported by the network is subject to storage fault slashing.
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant and consensus.AncestorRoundsNeeded will
+// need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const LargestSectorGenerationAttackThresholdBlocks = 100
+
+// MinimumCollateralPerSector is the minimum amount of collateral required per sector
+var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
 
 // ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
 // after which the miner is no longer considered to be storing the client's piece and they are entitled to
@@ -67,6 +79,8 @@ const (
 	ErrInvalidSealProof = 41
 	// ErrGetProofsModeFailed indicates the call to get the proofs mode failed.
 	ErrGetProofsModeFailed = 42
+	// ErrInsufficientCollateral indicates that the miner does not have sufficient collateral to commit additional sectors.
+	ErrInsufficientCollateral = 43
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -81,6 +95,7 @@ var Errors = map[uint8]error{
 	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
 	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
 	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
+	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
 }
 
 // Actor is the miner actor.
@@ -117,9 +132,9 @@ type State struct {
 	// Pledge is amount the space being offered up by this miner.
 	PledgeSectors *big.Int
 
-	// Collateral is the total amount of filecoin being held as collateral for
-	// the miners pledge.
-	Collateral *types.AttoFIL
+	// ActiveCollateral is the amount of collateral currently committed to live
+	// storage.
+	ActiveCollateral *types.AttoFIL
 
 	// Asks is the set of asks this miner has open
 	Asks      []*Ask
@@ -145,23 +160,23 @@ type State struct {
 	SectorSize *types.BytesAmount
 }
 
-// NewActor returns a new miner actor
+// NewActor returns a new miner actor with the provided balance.
 func NewActor() *actor.Actor {
-	return actor.NewActor(types.MinerActorCodeCid, types.NewZeroAttoFIL())
+	return actor.NewActor(types.MinerActorCodeCid, types.ZeroAttoFIL)
 }
 
 // NewState creates a miner state struct
-func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, collateral *types.AttoFIL, sectorSize *types.BytesAmount) *State {
+func NewState(owner address.Address, key []byte, pledge *big.Int, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
 		PeerID:            pid,
 		PublicKey:         key,
 		PledgeSectors:     pledge,
-		Collateral:        collateral,
 		SectorCommitments: make(map[string]types.Commitments),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
+		ActiveCollateral:  types.NewZeroAttoFIL(),
 	}
 }
 
@@ -229,10 +244,6 @@ var minerExports = exec.Exports{
 	"updatePeerID": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
-	},
-	"getPledge": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.Integer},
 	},
 	"getPower": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -537,6 +548,14 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			return nil, Errors[ErrSectorCommitted]
 		}
 
+		// make sure the miner has enough collateral to add more storage
+		collateral := CollateralForSector(state.SectorSize)
+		if collateral.GreaterThan(ctx.MyBalance().Sub(state.ActiveCollateral)) {
+			return nil, Errors[ErrInsufficientCollateral]
+		}
+
+		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
+
 		if state.Power.Equal(types.NewBytesAmount(0)) {
 			state.ProvingPeriodStart = ctx.BlockHeight()
 		}
@@ -566,6 +585,14 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	}
 
 	return 0, nil
+}
+
+// CollateralForSector returns the collateral required to commit a sector of the
+// given size.
+func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
+	// TODO: Replace this function with the baseline pro-rata construction.
+	// https://github.com/filecoin-project/go-filecoin/issues/2866
+	return MinimumCollateralPerSector
 }
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
@@ -679,28 +706,6 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 	return 0, nil
 }
 
-// GetPledge returns the number of pledged sectors
-func (ma *Actor) GetPledge(ctx exec.VMContext) (*big.Int, uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	var state State
-	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return state.PledgeSectors, nil
-	})
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	pledgeSectors, ok := ret.(*big.Int)
-	if !ok {
-		return nil, 1, errors.NewFaultError("Failed to retrieve pledge sectors")
-	}
-
-	return pledgeSectors, 0, nil
-}
-
 // GetPower returns the amount of proven sectors for this miner.
 func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
@@ -738,8 +743,8 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		}
 
 		// Check if we submitted it in time
-		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodBlocks))
-		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
+		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
+		if ctx.BlockHeight().GreaterThan(provingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))) {
 			// Not great.
 			// TODO: charge penalty
 			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
@@ -847,4 +852,22 @@ func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (b
 	combined = append(combined, commD[:]...)
 
 	return bytes.Equal(combined, proof), nil
+}
+
+// GenerationAttackTime is the number of blocks after a proving period ends
+// after which a storage miner will be subject to storage fault slashing.
+//
+// TODO: How do we compute a non-bogus return value here?
+// https://github.com/filecoin-project/specs/issues/322
+func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
+	return types.NewBlockHeight(LargestSectorGenerationAttackThresholdBlocks)
+}
+
+// ProvingPeriodDuration returns the number of blocks in a proving period for a
+// given sector size.
+//
+// TODO: Make this function return a non-bogus value.
+// https://github.com/filecoin-project/specs/issues/321
+func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
+	return LargestSectorSizeProvingPeriodBlocks
 }

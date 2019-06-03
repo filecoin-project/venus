@@ -30,7 +30,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	pid := th.RequireRandomPeerID(t)
-	pdata := actor.MustConvertParams(big.NewInt(10), []byte{}, pid)
+	pdata := actor.MustConvertParams([]byte{}, big.NewInt(10), pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	var mstor miner.State
 	builtin.RequireReadState(t, vms, outAddr, minerActor, &mstor)
 
-	assert.Equal(t, mstor.Collateral, types.NewAttoFILFromFIL(100))
+	assert.Equal(t, mstor.ActiveCollateral, types.NewAttoFILFromFIL(0))
 	assert.Equal(t, mstor.PledgeSectors, big.NewInt(10))
 	assert.Equal(t, mstor.PeerID, pid)
 }
@@ -64,7 +64,7 @@ func TestStorageMarketCreateStorageMinerPledgeTooLow(t *testing.T) {
 
 	pledge := big.NewInt(5)
 	st, vms := core.CreateStorages(ctx, t)
-	pdata := actor.MustConvertParams(pledge, []byte{}, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams([]byte{}, pledge, th.RequireRandomPeerID(t))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, MinimumCollateral(pledge), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
@@ -80,7 +80,7 @@ func TestStorageMarketCreateStorageMinerInsufficientCollateral(t *testing.T) {
 	defer cancel()
 
 	st, vms := core.CreateStorages(ctx, t)
-	pdata := actor.MustConvertParams(big.NewInt(15000), []byte{}, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams([]byte{}, big.NewInt(15000), th.RequireRandomPeerID(t))
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
@@ -106,7 +106,7 @@ func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	pdata := actor.MustConvertParams(big.NewInt(15), []byte{}, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams([]byte{}, big.NewInt(15), th.RequireRandomPeerID(t))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T
 	require.NoError(t, err)
 
 	// miner balance should be sum of messages
-	assert.Equal(t, types.NewAttoFILFromFIL(300), miner.Balance)
+	assert.Equal(t, types.NewAttoFILFromFIL(300).String(), miner.Balance.String())
 }
 
 func TestStorageMarkeCreateStorageMinerErrorsOnInvalidKey(t *testing.T) {
@@ -133,7 +133,7 @@ func TestStorageMarkeCreateStorageMinerErrorsOnInvalidKey(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
-	pdata := actor.MustConvertParams(big.NewInt(15), publicKey, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams(publicKey, big.NewInt(15), th.RequireRandomPeerID(t))
 
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))

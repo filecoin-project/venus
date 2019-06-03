@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -169,13 +168,6 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 		panic(err)
 	}
 	return ts
-}
-
-// RequirePutTsas ensures that the provided tipset and state is placed in the
-// input store.
-func RequirePutTsas(ctx context.Context, t *testing.T, chn chain.Store, tsas *chain.TipSetAndState) {
-	err := chn.PutTipSetAndState(ctx, tsas)
-	require.NoError(t, err)
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.

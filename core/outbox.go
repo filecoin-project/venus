@@ -39,7 +39,7 @@ type Outbox struct {
 
 type outboxChainProvider interface {
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 }
 
 type actorProvider interface {

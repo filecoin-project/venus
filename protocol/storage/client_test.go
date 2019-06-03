@@ -112,7 +112,7 @@ func TestProposeDeal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Accepted, dealResponse.State)
 
-		retrievedDeal, err := testAPI.DealGet(dealResponse.ProposalCid)
+		retrievedDeal, err := testAPI.DealGet(context.Background(), dealResponse.ProposalCid)
 		require.NoError(t, err)
 
 		assert.Equal(t, retrievedDeal.Response, dealResponse)
@@ -276,16 +276,20 @@ func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol
 	return nil
 }
 
-func (ctp *clientTestAPI) DealsLs() ([]*storagedeal.Deal, error) {
-	var results []*storagedeal.Deal
-
-	for _, storageDeal := range ctp.deals {
-		results = append(results, storageDeal)
-	}
+func (ctp *clientTestAPI) DealClientLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {
+	results := make(chan *porcelain.StorageDealLsResult)
+	go func() {
+		for _, deal := range ctp.deals {
+			results <- &porcelain.StorageDealLsResult{
+				Deal: *deal,
+			}
+		}
+		close(results)
+	}()
 	return results, nil
 }
 
-func (ctp *clientTestAPI) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+func (ctp *clientTestAPI) DealGet(_ context.Context, dealCid cid.Cid) (*storagedeal.Deal, error) {
 	deal, ok := ctp.deals[dealCid]
 	if ok {
 		return deal, nil

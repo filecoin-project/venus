@@ -26,7 +26,7 @@ var log = logging.Logger("messageimpl")
 type waiterChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 }
@@ -101,14 +101,15 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // findMessage looks for a message CID in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
-func (w *Waiter) findMessage(ctx context.Context, ts *types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
-	for iterator := chain.IterAncestors(ctx, w.chainReader, *ts); !iterator.Complete(); err = iterator.Next() {
+	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
 		}
-		for _, blk := range iterator.Value() {
+		for i := 0; i < iterator.Value().Len(); i++ {
+			blk := iterator.Value().At(i)
 			for _, msg := range blk.Messages {
 				c, err := msg.Cid()
 				if err != nil {
@@ -146,7 +147,8 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case types.TipSet:
-				for _, blk := range raw {
+				for i := 0; i < raw.Len(); i++ {
+					blk := raw.At(i)
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
 						if err != nil {
@@ -175,9 +177,8 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
-	blks := ts.ToSlice()
-	if len(ts) == 1 {
-		b := blks[0]
+	if ts.Len() == 1 {
+		b := ts.At(0)
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
@@ -215,7 +216,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	ancestors, err := chain.GetRecentAncestors(ctx, *parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +247,10 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // tipset.
 // TODO: find a better home for this method
 func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet) (int, error) {
-	blks := ts.ToSlice()
-	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet
 	var msgCnt int
-	for _, b := range blks {
-		for _, msg := range b.Messages {
+	for i := 0; i < ts.Len(); i++ {
+		for _, msg := range ts.At(i).Messages {
 			c, err := msg.Cid()
 			if err != nil {
 				return -1, err

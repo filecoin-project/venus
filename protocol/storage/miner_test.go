@@ -226,7 +226,7 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsDatastore(),
 		}
 
-		miner.dealsAwaitingSeal.attachDealToSector(wantSectorID, dealCid)
+		miner.dealsAwaitingSeal.attachDealToSector(context.Background(), wantSectorID, dealCid)
 
 		require.NoError(t, miner.saveDealsAwaitingSeal())
 		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
@@ -241,11 +241,11 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 			dealsAwaitingSealDs: repo.NewInMemoryRepo().DealsDatastore(),
 		}
 
-		miner.dealsAwaitingSeal.attachDealToSector(wantSectorID, dealCid)
+		miner.dealsAwaitingSeal.attachDealToSector(context.Background(), wantSectorID, dealCid)
 		sector := testSectorMetadata(newCid())
 		msgCid := newCid()
 
-		miner.dealsAwaitingSeal.onSealSuccess(sector, msgCid)
+		miner.dealsAwaitingSeal.onSealSuccess(context.Background(), sector, msgCid)
 
 		require.NoError(t, miner.saveDealsAwaitingSeal())
 		miner.dealsAwaitingSeal = &dealsAwaitingSeal{}
@@ -271,7 +271,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
 		// retrieve deal response
-		dealResponse := miner.Query(proposal.Proposal.PieceRef)
+		dealResponse := miner.Query(context.Background(), proposal.Proposal.PieceRef)
 
 		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
 		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
@@ -288,7 +288,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		miner.OnCommitmentSent(emptySector, msgCid, nil)
 
 		// retrieve deal response
-		dealResponse := miner.Query(proposal.Proposal.PieceRef)
+		dealResponse := miner.Query(context.Background(), proposal.Proposal.PieceRef)
 
 		assert.Equal(t, storagedeal.Posted, dealResponse.State, "deal should be in posted state")
 
@@ -456,7 +456,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	// Simulates miner.acceptProposal without going to the network to fetch the data by storing the deal.
 	// Mapping the proposalCid to a sectorID simulates staging the sector.
 	require.NoError(t, porcelainAPI.DealPut(storageDeal))
-	miner.dealsAwaitingSeal.attachDealToSector(sectorID, proposalCid)
+	miner.dealsAwaitingSeal.attachDealToSector(context.Background(), sectorID, proposalCid)
 
 	return porcelainAPI, miner, proposal
 }
@@ -525,16 +525,7 @@ func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.
 	return signedProposal
 }
 
-func (mtp *minerTestPorcelain) DealsLs() ([]*storagedeal.Deal, error) {
-	var results []*storagedeal.Deal
-
-	for _, storageDeal := range mtp.deals {
-		results = append(results, storageDeal)
-	}
-	return results, nil
-}
-
-func (mtp *minerTestPorcelain) DealGet(dealCid cid.Cid) (*storagedeal.Deal, error) {
+func (mtp *minerTestPorcelain) DealGet(_ context.Context, dealCid cid.Cid) (*storagedeal.Deal, error) {
 	storageDeal, ok := mtp.deals[dealCid]
 	if !ok {
 		return nil, porcelain.ErrDealNotFound

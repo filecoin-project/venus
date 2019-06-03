@@ -34,5 +34,5 @@ func (a *API) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.
 
 // Payments calls the storage client LoadVouchersForDeal function
 func (a *API) Payments(ctx context.Context, dealCid cid.Cid) ([]*types.PaymentVoucher, error) {
-	return a.sc.LoadVouchersForDeal(dealCid)
+	return a.sc.LoadVouchersForDeal(ctx, dealCid)
 }

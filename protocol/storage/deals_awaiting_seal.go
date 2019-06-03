@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -40,10 +41,10 @@ type dealsAwaitingSeal struct {
 	SealedSectors map[uint64]*sectorInfo
 
 	// onSuccess will be called only after the sector has been successfully sealed
-	onSuccess func(dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata)
+	onSuccess func(ctx context.Context, dealCid cid.Cid, sector *sectorbuilder.SealedSectorMetadata)
 
 	// onFail will be called if an error occurs during sealing or commitment
-	onFail func(dealCid cid.Cid, message string)
+	onFail func(ctx context.Context, dealCid cid.Cid, message string)
 }
 
 func newDealsAwaitingSeal() *dealsAwaitingSeal {
@@ -56,7 +57,7 @@ func newDealsAwaitingSeal() *dealsAwaitingSeal {
 // attachDealToSector checks the list of sealed sectors to see if a sector has been sealed. If sealing of this sector is done,
 // onSuccess or onFailure will be called immediately, otherwise, add it to SectorsToDeals so we can respond
 // when sealing completes.
-func (dealsAwaitingSeal *dealsAwaitingSeal) attachDealToSector(sectorID uint64, dealCid cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) attachDealToSector(ctx context.Context, sectorID uint64, dealCid cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -75,9 +76,9 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) attachDealToSector(sectorID uint64, 
 
 	// We have sealing information, so process deal with sector data immediately
 	if sector.Succeeded {
-		dealsAwaitingSeal.onSuccess(dealCid, sector.Metadata)
+		dealsAwaitingSeal.onSuccess(ctx, dealCid, sector.Metadata)
 	} else {
-		dealsAwaitingSeal.onFail(dealCid, sector.ErrorMessage)
+		dealsAwaitingSeal.onFail(ctx, dealCid, sector.ErrorMessage)
 	}
 
 	// Don't keep references to sectors around forever. Assume that at most
@@ -90,7 +91,7 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) attachDealToSector(sectorID uint64, 
 	delete(dealsAwaitingSeal.SealedSectors, sectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) onSealSuccess(sector *sectorbuilder.SealedSectorMetadata, commitMessageCID cid.Cid) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) onSealSuccess(ctx context.Context, sector *sectorbuilder.SealedSectorMetadata, commitMessageCID cid.Cid) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -101,12 +102,12 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) onSealSuccess(sector *sectorbuilder.
 	}
 
 	for _, dealCid := range dealsAwaitingSeal.SectorsToDeals[sector.SectorID] {
-		dealsAwaitingSeal.onSuccess(dealCid, sector)
+		dealsAwaitingSeal.onSuccess(ctx, dealCid, sector)
 	}
 	delete(dealsAwaitingSeal.SectorsToDeals, sector.SectorID)
 }
 
-func (dealsAwaitingSeal *dealsAwaitingSeal) onSealFail(sectorID uint64, message string) {
+func (dealsAwaitingSeal *dealsAwaitingSeal) onSealFail(ctx context.Context, sectorID uint64, message string) {
 	dealsAwaitingSeal.l.Lock()
 	defer dealsAwaitingSeal.l.Unlock()
 
@@ -116,7 +117,7 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) onSealFail(sectorID uint64, message 
 	}
 
 	for _, dealCid := range dealsAwaitingSeal.SectorsToDeals[sectorID] {
-		dealsAwaitingSeal.onFail(dealCid, message)
+		dealsAwaitingSeal.onFail(ctx, dealCid, message)
 	}
 	delete(dealsAwaitingSeal.SectorsToDeals, sectorID)
 }

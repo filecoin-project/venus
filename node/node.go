@@ -87,7 +87,7 @@ type nodeChainReader interface {
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (*types.TipSet, error)
+	GetTipSet(types.SortedCidSet) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
@@ -392,7 +392,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewDefaultStore(nc.Repo.ChainDatastore(), genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), genCid)
 	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
 	powerTable := &consensus.MarketView{}
 
@@ -425,7 +425,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher)
+	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, chain.Syncing)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
 
@@ -555,7 +555,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get chain head")
 	}
-	go node.handleNewHeaviestTipSet(cctx, *head)
+	go node.handleNewHeaviestTipSet(cctx, head)
 
 	if !node.OfflineMode {
 		node.Bootstrapper.Start(context.Background())
@@ -658,7 +658,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 				log.Error("non-tipset published on heaviest tipset channel")
 				continue
 			}
-			if len(newHead) == 0 {
+			if !newHead.Defined() {
 				log.Error("tipset of size 0 published on heaviest tipset channel. ignoring and waiting for a new heaviest tipset.")
 				continue
 			}

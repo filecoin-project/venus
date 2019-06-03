@@ -9,12 +9,13 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func newTestUtils() types.TipSet {
+func newTestUtils(t *testing.T) types.TipSet {
 	baseBlock := &types.Block{StateRoot: types.SomeCid()}
-
-	ts := types.TipSet{baseBlock.Cid(): baseBlock}
+	ts, err := types.NewTipSet(baseBlock)
+	require.NoError(t, err)
 	return ts
 }
 
@@ -23,7 +24,7 @@ func newTestUtils() types.TipSet {
 func TestMineOnce(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts := newTestUtils()
+	ts := newTestUtils(t)
 
 	// Echoes the sent block to output.
 	worker := NewTestWorkerWithDeps(MakeEchoMine(t))
@@ -36,7 +37,7 @@ func TestMineOnce(t *testing.T) {
 func TestSchedulerPassesValue(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts := newTestUtils()
+	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
@@ -46,8 +47,8 @@ func TestSchedulerPassesValue(t *testing.T) {
 		return true
 	}
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -66,8 +67,8 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 		outCh <- Output{}
 		return false
 	}
-	nilHeadFunc := func() (*types.TipSet, error) {
-		return nil, nil
+	nilHeadFunc := func() (types.TipSet, error) {
+		return types.UndefTipSet, nil
 	}
 	worker := NewTestWorkerWithDeps(nothingMine)
 	scheduler := NewScheduler(worker, MineDelayTest, nilHeadFunc)
@@ -81,7 +82,7 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts := newTestUtils()
+	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
@@ -98,8 +99,8 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 		return false
 	}
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	worker := NewTestWorkerWithDeps(checkNullBlockMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -122,7 +123,7 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 func TestSchedulerPassesManyValues(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts1 := newTestUtils()
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 	// make tipsets with progressively higher heights
@@ -131,8 +132,8 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
 	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 
 	checkValsMine := func(c context.Context, ts types.TipSet, nBC int, outCh chan<- Output) bool {
@@ -162,15 +163,15 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 func TestSchedulerCollect(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts1 := newTestUtils()
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
 	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		assert.Equal(t, inTS, ts3)
@@ -224,13 +225,13 @@ func TestCannotInterruptMiner(t *testing.T) {
 func TestSchedulerCancelMiningCtx(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts := newTestUtils()
+	ts := newTestUtils(t)
 	// Test that canceling the mining context stops mining, cancels
 	// the inner context, and closes the output channel.
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	shouldCancelMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		mineTimer := time.NewTimer(th.BlockTimeTest)
@@ -253,12 +254,12 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	tf.UnitTest(t)
 
-	ts1 := newTestUtils()
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 	var head types.TipSet
-	headFunc := func() (*types.TipSet, error) {
-		return &head, nil
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}

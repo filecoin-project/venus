@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
+RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-proofs`
+
 install_precompiled() {
-  RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-proofs`
   RELEASE_NAME="rust-fil-proofs-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
@@ -78,10 +79,10 @@ install_local() {
 git submodule update --init --recursive proofs/rust-fil-proofs
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
-  echo "using local rust-fil-proofs"
+  echo "using local rust-fil-proofs @ ${RELEASE_SHA1}"
   install_local
 else
-  echo "using precompiled rust-fil-proofs"
+  echo "using precompiled rust-fil-proofs @ ${RELEASE_SHA1}"
   install_precompiled
 
   if [ $? -ne "0" ]; then

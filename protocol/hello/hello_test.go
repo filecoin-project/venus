@@ -30,8 +30,8 @@ type mockHeaviestGetter struct {
 	heaviest types.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() (*types.TipSet, error) {
-	return &mhg.heaviest, nil
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() (types.TipSet, error) {
+	return mhg.heaviest, nil
 }
 
 func TestHelloHandshake(t *testing.T) {

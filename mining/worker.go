@@ -175,7 +175,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
-	if len(base) == 0 {
+	if !base.Defined() {
 		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
 		return false
