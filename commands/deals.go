@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"io"
 	"strconv"
 
@@ -8,6 +9,9 @@ import (
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
 var dealsCmd = &cmds.Command{
@@ -15,7 +19,56 @@ var dealsCmd = &cmds.Command{
 		Tagline: "Manage and inspect deals made by or with this node",
 	},
 	Subcommands: map[string]*cmds.Command{
+		"list":   dealsListCmd,
 		"redeem": dealsRedeemCmd,
+	},
+}
+
+type dealsListResult struct {
+	Miner       address.Address   `json:"minerAddress"`
+	PieceCid    cid.Cid           `json:"pieceCid"`
+	ProposalCid cid.Cid           `json:"proposalCid"`
+	State       storagedeal.State `json:"state"`
+}
+
+var dealsListCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "List all deals",
+		ShortDescription: `
+Lists all recorded deals made by or with this node. This may include pending
+deals, active deals, finished deals and cancelled deals.
+`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		dealsCh, err := GetPorcelainAPI(env).DealsLs(req.Context)
+		if err != nil {
+			return err
+		}
+
+		for deal := range dealsCh {
+			if deal.Err != nil {
+				return deal.Err
+			}
+			out := &dealsListResult{
+				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
+				ProposalCid: deal.Deal.Response.ProposalCid,
+				State:       deal.Deal.Response.State,
+			}
+			if err = re.Emit(out); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Type: dealsListResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *dealsListResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
+		}),
 	},
 }
 

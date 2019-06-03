@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -30,7 +28,6 @@ var minerCmd = &cmds.Command{
 		"power":         minerPowerCmd,
 		"set-price":     minerSetPriceCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
-		"list-deals":    minerListDealsCmd,
 	},
 }
 
@@ -450,54 +447,6 @@ Values will be output as a ratio where the first number is the miner power and s
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
 			_, err := fmt.Fprintln(w, a)
 			return err
-		}),
-	},
-}
-
-type minerListDealResult struct {
-	Miner       address.Address   `json:"minerAddress"`
-	PieceCid    cid.Cid           `json:"pieceCid"`
-	ProposalCid cid.Cid           `json:"proposalCid"`
-	State       storagedeal.State `json:"state"`
-}
-
-var minerListDealsCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline: "List all deals received by the miner",
-		ShortDescription: `
-Lists all recorded deals received by the miner from clients on the network. This
-may include pending deals, active deals, finished deals and rejected deals.
-`,
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		dealsCh, err := GetPorcelainAPI(env).DealMinerLs(req.Context)
-		if err != nil {
-			return err
-		}
-
-		for deal := range dealsCh {
-			if deal.Err != nil {
-				return deal.Err
-			}
-			out := &minerListDealResult{
-				Miner:       deal.Deal.Miner,
-				PieceCid:    deal.Deal.Proposal.PieceRef,
-				ProposalCid: deal.Deal.Response.ProposalCid,
-				State:       deal.Deal.Response.State,
-			}
-			if err = re.Emit(out); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	},
-	Type: minerListDealResult{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerListDealResult) error {
-			encoder := json.NewEncoder(w)
-			encoder.SetIndent("", "\t")
-			return encoder.Encode(res)
 		}),
 	},
 }
