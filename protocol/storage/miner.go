@@ -727,9 +727,17 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		return
 	}
 
+	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
+	if err != nil {
+		log.Errorf("failed to get miner's sector size: %s", err)
+		return
+	}
+
+	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
-	provingPeriodHeight := types.NewBlockHeight(miner.LargestSectorSizeProvingPeriodBlocks)
-	provingPeriodEnd := provingPeriodStart.Add(provingPeriodHeight)
+
+	// compute the block height at which the miner's current proving period ends
+	provingPeriodEnd := provingPeriodStart.Add(types.NewBlockHeight(miner.ProvingPeriodDuration(sectorSize)))
 
 	if h.GreaterEqual(provingPeriodStart) {
 		if h.LessThan(provingPeriodEnd) {
