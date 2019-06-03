@@ -27,6 +27,13 @@ coverage:
       default:
         enabled: no
 
-comment: true # comment on PRs
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false  # if true: only post the comment if coverage changes
+  require_base: no        # [yes :: must have a base report to post]
+  require_head: yes       # [yes :: must have a head report to post]
+  branches: null          # branch names that can post comment
+
 ignore:
   - "*/testing.go"
