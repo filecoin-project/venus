@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -158,10 +159,11 @@ func TestFSRepoOpen(t *testing.T) {
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
-		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("2"), 0644))
+		assert.NoError(t, WriteVersion(repoPath, 99))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		assert.EqualError(t, err, "binary needs update to handle repo version, got 2 expected 1. Update binary to latest release")
+		expected := fmt.Sprintf("binary needs update to handle repo version, got 99 expected %d. Update binary to latest release", Version)
+		assert.EqualError(t, err, expected)
 	})
 	t.Run("[fail] binary version newer than repo", func(t *testing.T) {
 		container, err := ioutil.TempDir("", "")
@@ -171,10 +173,12 @@ func TestFSRepoOpen(t *testing.T) {
 
 		assert.NoError(t, InitFSRepo(repoPath, 1, config.NewDefaultConfig()))
 		// set wrong version
-		assert.NoError(t, ioutil.WriteFile(filepath.Join(repoPath, versionFilename), []byte("0"), 0644))
+		assert.NoError(t, WriteVersion(repoPath, 0))
 
 		_, err = OpenFSRepo(repoPath, 1)
-		assert.EqualError(t, err, "out of date repo version, got 0 expected 1. Migrate with tools/migration/go-filecoin-migrate")
+		expected := fmt.Sprintf("out of date repo version, got 0 expected %d. Migrate with tools/migration/go-filecoin-migrate", Version)
+
+		assert.EqualError(t, err, expected)
 	})
 	t.Run("[fail] version corrupt", func(t *testing.T) {
 		container, err := ioutil.TempDir("", "")

@@ -409,6 +409,6 @@ func (store *Store) Stop() {
 }
 
 // GetDatastore returns the datastore
-func (store *DefaultStore) GetDatastore() repo.Datastore {
+func (store *Store) GetDatastore() repo.Datastore {
 	return store.ds
 }
