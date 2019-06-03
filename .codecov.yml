@@ -27,6 +27,6 @@ coverage:
       default:
         enabled: no
 
-comment: true
+comment: true # comment on PRs
 ignore:
   - "*/testing.go"
