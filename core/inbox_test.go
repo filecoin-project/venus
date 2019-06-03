@@ -36,10 +36,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(2, mockSigner)
 		mustAdd(ib, m[0], m[1])
 
-		parent := types.TipSet{}
-
 		blk := types.Block{Height: 0}
-		parent[blk.Cid()] = &blk
+		parent := th.MustNewTipSet(&blk)
 
 		oldChain := core.NewChainWithMessages(store, parent, msgsSet{})
 		oldTipSet := headOf(oldChain)
@@ -80,10 +78,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
 
-		parent := types.TipSet{}
-
 		blk := types.Block{Height: 0}
-		parent[blk.Cid()] = &blk
+		parent := th.MustNewTipSet(&blk)
 		oldChain := core.NewChainWithMessages(store, parent, msgsSet{msgs{m[0], m[1]}})
 		oldTipSet := headOf(oldChain)
 
@@ -111,10 +107,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
 
-		parent := types.TipSet{}
-
 		blk := types.Block{Height: 0}
-		parent[blk.Cid()] = &blk
+		parent := th.MustNewTipSet(&blk)
 
 		oldChain := core.NewChainWithMessages(store, parent, msgsSet{msgs{m[0]}, msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
@@ -220,10 +214,8 @@ func TestUpdateMessagePool(t *testing.T) {
 		m := types.NewSignedMsgs(6, mockSigner)
 		mustAdd(ib, m[3], m[5])
 
-		parent := types.TipSet{}
-
 		blk := types.Block{Height: 0}
-		parent[blk.Cid()] = &blk
+		parent := th.MustNewTipSet(&blk)
 
 		oldChain := core.NewChainWithMessages(store, parent,
 			msgsSet{msgs{m[0]}},
@@ -375,14 +367,13 @@ func TestUpdateMessagePool(t *testing.T) {
 			require.NoError(t, err)
 
 			// create a tipset at given height with one block containing no messages
-			next := types.TipSet{}
 			nextHeight := types.Uint64(height + 5) // simulate 4 null blocks
 			blk := &types.Block{
 				Height:  nextHeight,
 				Parents: head.ToSortedCidSet(),
 			}
 			core.MustPut(store, blk)
-			next[blk.Cid()] = blk
+			next := th.MustNewTipSet(blk)
 
 			assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 

@@ -98,20 +98,20 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	headTs := types.TipSet{}
+	var blocks []*types.Block
 	// traverse starting from head to begin loading the chain
-	var startHeight types.Uint64
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
 			return errors.Wrap(err, "failed to load block in head TipSet")
 		}
-		err = headTs.AddBlock(blk)
-		if err != nil {
-			return errors.Wrap(err, "failed to add validated block to TipSet")
-		}
-		startHeight = blk.Height
+		blocks = append(blocks, blk)
 	}
+	headTs, err := types.NewTipSet(blocks...)
+	if err != nil {
+		return errors.Wrap(err, "failed to add validated block to TipSet")
+	}
+	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", tipCids.String(), startHeight)
 	// esnures we only produce 10 log messages regardless of the chain height
 	logStatusEvery := startHeight / 10
@@ -144,11 +144,11 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		genesii = iterator.Value()
 	}
 	// Check genesis here.
-	if len(genesii) != 1 {
-		return errors.Errorf("genesis tip set must be a single block, got %d blocks", len(genesii))
+	if genesii.Len() != 1 {
+		return errors.Errorf("genesis tip set must be a single block, got %d blocks", genesii.Len())
 	}
 
-	loadCid := genesii.ToSlice()[0].Cid()
+	loadCid := genesii.At(0).Cid()
 	if !loadCid.Equals(store.genesis) {
 		return errors.Errorf("expected genesis cid: %s, loaded genesis cid: %s", store.genesis, loadCid)
 	}
@@ -205,8 +205,8 @@ func (store *Store) putBlk(ctx context.Context, block *types.Block) error {
 // PutTipSetAndState persists the blocks of a tipset and the tipset index.
 func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error {
 	// Persist blocks.
-	for _, blk := range tsas.TipSet {
-		if err := store.putBlk(ctx, blk); err != nil {
+	for i := 0; i < tsas.TipSet.Len(); i++ {
+		if err := store.putBlk(ctx, tsas.TipSet.At(i)); err != nil {
 			return err
 		}
 	}
@@ -312,7 +312,7 @@ func (store *Store) SetHead(ctx context.Context, ts types.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
-	if len(ts) < 1 {
+	if !ts.Defined() {
 		logStore.Error("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
@@ -374,7 +374,7 @@ func (store *Store) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
-	if store.head == nil {
+	if !store.head.Defined() {
 		return types.SortedCidSet{}
 	}
 

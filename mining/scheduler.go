@@ -110,7 +110,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 			time.Sleep(s.mineDelay)
 			// Ask for the heaviest tipset.
 			base, _ := s.pollHeadFunc()
-			if base == nil { // Don't try to mine on an unset head.
+			if !base.Defined() { // Don't try to mine on an unset head.
 				outCh <- NewOutput(nil, errors.New("cannot mine on unset (nil) head"))
 				return
 			}
@@ -152,7 +152,7 @@ func (s *timingScheduler) IsStarted() bool {
 // previous number of null blocks mined on the previous base, prevNullBlkCount.
 func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int {
 	// We haven't mined on this base before, start with 0 null blocks.
-	if prevBase == nil {
+	if !prevBase.Defined() {
 		return 0
 	}
 	if prevBase.String() != currBase.String() {

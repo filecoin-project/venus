@@ -66,8 +66,8 @@ func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, int, chan<- Out
 // block of the input tipset as output.
 func MakeEchoMine(t *testing.T) func(context.Context, types.TipSet, int, chan<- Output) bool {
 	echoMine := func(c context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
-		require.NotEqual(t, 0, len(ts))
-		b := ts.ToSlice()[0]
+		require.True(t, ts.Defined())
+		b := ts.At(0)
 		select {
 		case outCh <- Output{NewBlock: b}:
 		case <-c.Done():
