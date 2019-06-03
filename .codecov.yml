@@ -27,6 +27,6 @@ coverage:
       default:
         enabled: no
 
-comment: false
+comment: true
 ignore:
   - "*/testing.go"
