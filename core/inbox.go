@@ -26,7 +26,7 @@ type Inbox struct {
 // InboxChainProvider provides chain access for updating the message pool in response to new heads.
 // Exported for testing.
 type InboxChainProvider interface {
-	chain.BlockProvider
+	chain.TipSetProvider
 	BlockHeight() (uint64, error)
 }
 
@@ -98,25 +98,21 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 // height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
 // Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
 // sets than to the expected block time over short timescales.
-func timeoutMessages(ctx context.Context, pool *MessagePool, chains chain.BlockProvider, head types.TipSet, maxAgeTipsets uint) error {
+func timeoutMessages(ctx context.Context, pool *MessagePool, chains chain.TipSetProvider, head types.TipSet, maxAgeTipsets uint) error {
 	var err error
 
-	lowestTipSet := head
-	minimumHeight, err := lowestTipSet.Height()
+	var minimumHeight uint64
+	itr := chain.IterAncestors(ctx, chains, head)
+
+	// Walk back maxAgeTipsets+1 tipsets to determine lowest block height to prune.
+	for i := uint(0); err == nil && i <= maxAgeTipsets && !itr.Complete(); i++ {
+		minimumHeight, err = itr.Value().Height()
+		if err == nil {
+			err = itr.Next()
+		}
+	}
 	if err != nil {
 		return err
-	}
-
-	// walk back MessageTimeout tip sets to arrive at the lowest viable block height
-	for i := uint(0); minimumHeight > 0 && i < maxAgeTipsets; i++ {
-		lowestTipSet, err = chain.GetParentTipSet(ctx, chains, lowestTipSet)
-		if err != nil {
-			return err
-		}
-		minimumHeight, err = lowestTipSet.Height()
-		if err != nil {
-			return err
-		}
 	}
 
 	// remove all messages added before minimumHeight

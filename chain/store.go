@@ -95,30 +95,28 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Store.Load")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	tipCids, err := store.loadHead()
+	// Clear the tipset index.
+	store.tipIndex = NewTipIndex()
+
+	headTsKey, err := store.loadHead()
 	if err != nil {
 		return err
 	}
-	var blocks []*types.Block
-	// traverse starting from head to begin loading the chain
-	for it := tipCids.Iter(); !it.Complete(); it.Next() {
-		blk, err := store.GetBlock(ctx, it.Value())
-		if err != nil {
-			return errors.Wrap(err, "failed to load block in head TipSet")
-		}
-		blocks = append(blocks, blk)
-	}
-	headTs, err := types.NewTipSet(blocks...)
+
+	headTs, err := LoadTipSetBlocks(ctx, store, headTsKey)
 	if err != nil {
-		return errors.Wrap(err, "failed to add validated block to TipSet")
+		return errors.Wrap(err, "error loading head tipset")
 	}
 	startHeight := headTs.At(0).Height
-	logStore.Infof("start loading chain at tipset: %s, height: %d", tipCids.String(), startHeight)
-	// esnures we only produce 10 log messages regardless of the chain height
-	logStatusEvery := startHeight / 10
+	logStore.Infof("start loading chain at tipset: %s, height: %d", headTsKey.String(), startHeight)
+	// Ensure we only produce 10 log messages regardless of the chain height.
+	logStatusEvery := uint64(startHeight / 10)
 
 	var genesii types.TipSet
-	for iterator := IterAncestors(ctx, store, headTs); !iterator.Complete(); err = iterator.Next() {
+	// Provide tipsets directly from the block store, not from the tipset index which is
+	// being rebuilt by this traversal.
+	tipsetProvider := TipSetProviderFromBlocks(ctx, store)
+	for iterator := IterAncestors(ctx, tipsetProvider, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return err
 		}
@@ -127,7 +125,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if err != nil {
 			return err
 		}
-		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
+		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
 			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
 		}
 		stateRoot, err := store.loadStateRoot(iterator.Value())
@@ -146,7 +144,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	}
 	// Check genesis here.
 	if genesii.Len() != 1 {
-		return errors.Errorf("genesis tip set must be a single block, got %d blocks", genesii.Len())
+		return errors.Errorf("load terminated with tipset of %d blocks, expected genesis with exactly 1", genesii.Len())
 	}
 
 	loadCid := genesii.At(0).Cid()
@@ -295,10 +293,8 @@ func (store *Store) HasAllBlocks(ctx context.Context, cids []cid.Cid) bool {
 
 // HasBlock indicates whether the block is in the store.
 func (store *Store) HasBlock(ctx context.Context, c cid.Cid) bool {
-	// TODO: consider adding Has method to HamtIpldCborstore if this used much,
-	// or using a different store interface for quick Has.
+	// Note: this redundantly decodes the block if it is found.
 	blk, err := store.GetBlock(ctx, c)
-
 	return blk != nil && err == nil
 }
 

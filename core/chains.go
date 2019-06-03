@@ -11,7 +11,7 @@ import (
 // ancestor, collecting all blocks that are in one chain but not the other.
 // The resulting lists of blocks are ordered by decreasing height; the ordering of blocks with the same
 // height is undefined until https://github.com/filecoin-project/go-filecoin/issues/2310 is resolved.
-func CollectBlocksToCommonAncestor(ctx context.Context, store chain.BlockProvider, oldHead, newHead types.TipSet) (oldBlocks, newBlocks []*types.Block, err error) {
+func CollectBlocksToCommonAncestor(ctx context.Context, store chain.TipSetProvider, oldHead, newHead types.TipSet) (oldBlocks, newBlocks []*types.Block, err error) {
 	oldIter := chain.IterAncestors(ctx, store, oldHead)
 	newIter := chain.IterAncestors(ctx, store, newHead)
 

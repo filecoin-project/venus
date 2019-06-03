@@ -197,33 +197,37 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmoun
 	}
 }
 
-///// Fake traversal block provider implementation
+///// Fake traversal chain provider implementation
 
-// FakeBlockProvider is a fake block provider.
-type FakeBlockProvider struct {
+// FakeChainProvider is a fake chain provider.
+type FakeChainProvider struct {
 	blocks map[cid.Cid]*types.Block
 	seq    int
 }
 
-// NewFakeBlockProvider returns a new, empty fake block provider.
-func NewFakeBlockProvider() *FakeBlockProvider {
-	return &FakeBlockProvider{
+// NewFakeChainProvider returns a new, empty fake chain provider.
+func NewFakeChainProvider() *FakeChainProvider {
+	return &FakeChainProvider{
 		make(map[cid.Cid]*types.Block),
 		0,
 	}
 }
 
-// GetBlock implements BlockProvider.GetBlock to return a block by CID.
-func (bs *FakeBlockProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
-	block, ok := bs.blocks[cid]
-	if ok {
-		return block, nil
+// GetTipSet returns a tipset by key.
+func (bs *FakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+	var blocks []*types.Block
+	for it := tsKey.Iter(); !it.Complete(); it.Next() {
+		block, ok := bs.blocks[it.Value()]
+		if !ok {
+			return types.UndefTipSet, errors.New("no such block")
+		}
+		blocks = append(blocks, block)
 	}
-	return nil, errors.New("no such block")
+	return types.NewTipSet(blocks...)
 }
 
 // NewBlockWithMessages creates and stores a new block in this provider.
-func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
+func (bs *FakeChainProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
 	b := &types.Block{
 		Nonce:    types.Uint64(nonce),
 		Messages: messages,
@@ -242,6 +246,6 @@ func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*type
 }
 
 // NewBlock creates and stores a new block in this provider.
-func (bs *FakeBlockProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
+func (bs *FakeChainProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
 	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
 }
