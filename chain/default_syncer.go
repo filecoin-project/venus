@@ -354,42 +354,54 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	height, err := ts.Height()
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
-		return nil, nil
+		return types.UndefTipSet, nil
 	}
 	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	if len(candidates) == 0 {
-		return nil, nil
+		return types.UndefTipSet, nil
 	}
 
 	// Only take the tipset with the most blocks (this is EC specific logic)
-	max := candidates[0]
+	max := candidates[0].TipSet
 	for _, candidate := range candidates[0:] {
-		if len(candidate.TipSet) > len(max.TipSet) {
-			max = candidate
+		if candidate.TipSet.Len() > max.Len() {
+			max = candidate.TipSet
 		}
 	}
 
-	// Add blocks of the biggest tipset in the store to a copy of ts
-	wts := ts.Clone()
-	for _, blk := range max.TipSet {
-		if err = wts.AddBlock(blk); err != nil {
-			return nil, err
+	// Form a new tipset from the union of ts and the largest in the store, de-duped.
+	var blockSlice []*types.Block
+	blockCids := make(map[cid.Cid]struct{})
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		blockCids[blk.Cid()] = struct{}{}
+		blockSlice = append(blockSlice, blk)
+	}
+	for i := 0; i < max.Len(); i++ {
+		blk := max.At(i)
+		if _, found := blockCids[blk.Cid()]; !found {
+			blockSlice = append(blockSlice, blk)
+			blockCids[blk.Cid()] = struct{}{}
 		}
+	}
+	wts, err := types.NewTipSet(blockSlice...)
+	if err != nil {
+		return types.UndefTipSet, err
 	}
 
 	// check that the tipset is distinct from the input and tipsets from the store.
-	if wts.String() == ts.String() || wts.String() == max.TipSet.String() {
-		return nil, nil
+	if wts.String() == ts.String() || wts.String() == max.String() {
+		return types.UndefTipSet, nil
 	}
 
 	return wts, nil
@@ -442,7 +454,7 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 			if err != nil {
 				return err
 			}
-			if wts != nil {
+			if wts.Defined() {
 				logSyncer.Debug("attempt to sync after widen")
 				err = syncer.syncOne(ctx, parent, wts)
 				if err != nil {

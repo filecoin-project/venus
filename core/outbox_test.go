@@ -162,7 +162,7 @@ func (p *fakeProvider) GetHead() types.SortedCidSet {
 
 func (p *fakeProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
 	if !tsKey.Equals(p.head) {
-		return nil, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
+		return types.UndefTipSet, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
 	}
 	return p.tipset, nil
 }

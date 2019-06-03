@@ -54,7 +54,7 @@ func NewChainStateProvider(chainReader chainReader, cst *hamt.CborIpldStore) *Ch
 func (chn *ChainStateProvider) Head() (types.TipSet, error) {
 	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 	return ts, nil
 }

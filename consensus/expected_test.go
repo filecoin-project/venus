@@ -90,7 +90,7 @@ func TestExpected_NewValidTipSet(t *testing.T) {
 
 		tipSet, err := exp.NewValidTipSet(ctx, blocks)
 		assert.Error(t, err, "Foo")
-		assert.Nil(t, tipSet)
+		assert.False(t, tipSet.Defined())
 	})
 }
 
@@ -311,13 +311,14 @@ func TestCreateChallenge(t *testing.T) {
 		decoded, err := hex.DecodeString(c.challenge)
 		assert.NoError(t, err)
 
-		parents := types.TipSet{}
+		var parents []*types.Block
 		for _, ticket := range c.parentTickets {
 			b := types.Block{Ticket: ticket}
-			err = parents.AddBlock(&b)
-			assert.NoError(t, err)
+			parents = append(parents, &b)
 		}
-		r, err := consensus.CreateChallengeSeed(parents, c.nullBlockCount)
+		parentTs, err := types.NewTipSet(parents...)
+		assert.NoError(t, err)
+		r, err := consensus.CreateChallengeSeed(parentTs, c.nullBlockCount)
 		assert.NoError(t, err)
 		assert.Equal(t, decoded, r[:])
 	}

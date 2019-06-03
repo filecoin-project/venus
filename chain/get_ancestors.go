@@ -145,11 +145,11 @@ func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, erro
 
 		leftHeight, err := left.Height()
 		if err != nil {
-			return nil, err
+			return types.UndefTipSet, err
 		}
 		rightHeight, err := right.Height()
 		if err != nil {
-			return nil, err
+			return types.UndefTipSet, err
 		}
 
 		// Found common ancestor.
@@ -162,15 +162,15 @@ func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, erro
 		// other pointer's tipset.
 		if rightHeight >= leftHeight {
 			if err := rightIter.Next(); err != nil {
-				return nil, err
+				return types.UndefTipSet, err
 			}
 		}
 
 		if leftHeight >= rightHeight {
 			if err := leftIter.Next(); err != nil {
-				return nil, err
+				return types.UndefTipSet, err
 			}
 		}
 	}
-	return nil, ErrNoCommonAncestor
+	return types.UndefTipSet, ErrNoCommonAncestor
 }

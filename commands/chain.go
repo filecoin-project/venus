@@ -66,7 +66,7 @@ var chainLsCmd = &cmds.Command{
 			if err != nil {
 				return err
 			}
-			if len(iter.Value()) == 0 {
+			if !iter.Value().Defined() {
 				panic("tipsets from this iterator should have at least one member")
 			}
 			if err := re.Emit(iter.Value().ToSlice()); err != nil {
