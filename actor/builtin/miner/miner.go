@@ -38,14 +38,18 @@ const MaximumPublicKeySize = 100
 // https://github.com/filecoin-project/specs/pull/318
 const LargestSectorSizeProvingPeriodBlocks = 20000
 
+// LargestSectorGenerationAttackThresholdBlocks defines the number of blocks
+// after a proving period ends after which a miner using the largest sector size
+// supported by the network is subject to storage fault slashing.
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant and consensus.AncestorRoundsNeeded will
+// need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const LargestSectorGenerationAttackThresholdBlocks = 100
+
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
-
-// GracePeriodBlocks is the number of blocks after a proving period over
-// which a miner can still submit a post at a penalty.
-// TODO: what is a secure value for this?  Value is arbitrary right now.
-// See https://github.com/filecoin-project/go-filecoin/issues/1887
-const GracePeriodBlocks = 100
 
 // ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
 // after which the miner is no longer considered to be storing the client's piece and they are entitled to
@@ -740,7 +744,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 
 		// Check if we submitted it in time
 		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
-		if ctx.BlockHeight().GreaterThan(provingPeriodEnd) {
+		if ctx.BlockHeight().GreaterThan(provingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))) {
 			// Not great.
 			// TODO: charge penalty
 			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
@@ -848,6 +852,15 @@ func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (b
 	combined = append(combined, commD[:]...)
 
 	return bytes.Equal(combined, proof), nil
+}
+
+// GenerationAttackTime is the number of blocks after a proving period ends
+// after which a storage miner will be subject to storage fault slashing.
+//
+// TODO: How do we compute a non-bogus return value here?
+// https://github.com/filecoin-project/specs/issues/322
+func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
+	return types.NewBlockHeight(LargestSectorGenerationAttackThresholdBlocks)
 }
 
 // ProvingPeriodDuration returns the number of blocks in a proving period for a

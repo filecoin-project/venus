@@ -355,9 +355,9 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
 
-	// fail to submit inside the proving period
+	// fail to submit inside the proving period (plus generation attack threshold)
 	proof = th.MakeRandomPoStProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40008, "submitPoSt", ancestors, []types.PoStProof{proof})
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40108, "submitPoSt", ancestors, []types.PoStProof{proof})
 	require.NoError(t, err)
 	require.EqualError(t, res.ExecutionError, "submitted PoSt late, need to pay a fee")
 }
