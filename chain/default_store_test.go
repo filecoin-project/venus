@@ -213,7 +213,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	gotNew1 := requireGetTsasByParentAndHeight(t, chainStore, pk1, uint64(1))
 	require.Equal(t, 2, len(gotNew1))
 	for _, tsas := range gotNew1 {
-		if len(tsas.TipSet) == 1 {
+		if tsas.TipSet.Len() == 1 {
 			assert.Equal(t, newRoot, tsas.TipSetStateRoot)
 		} else {
 			assert.Equal(t, dstP.link1State, tsas.TipSetStateRoot)

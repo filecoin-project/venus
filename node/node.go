@@ -658,7 +658,7 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 				log.Error("non-tipset published on heaviest tipset channel")
 				continue
 			}
-			if len(newHead) == 0 {
+			if !newHead.Defined() {
 				log.Error("tipset of size 0 published on heaviest tipset channel. ignoring and waiting for a new heaviest tipset.")
 				continue
 			}

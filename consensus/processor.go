@@ -156,13 +156,11 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	bh := types.NewBlockHeight(h)
 	msgFilter := make(map[string]struct{})
 
-	tips := ts.ToSlice()
-	types.SortBlocks(tips)
-
 	// TODO: this can be made slightly more efficient by reusing the validation
 	// transition of the first validated block (change would reach here and
 	// consensus functions).
-	for _, blk := range tips {
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
 		// find miner's owner address
 		minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
 		if err != nil {
