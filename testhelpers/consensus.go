@@ -127,18 +127,21 @@ func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 	return nil
 }
 
-// TestBlockValidator passes everything as valid
-type TestBlockValidator struct{}
+// FakeBlockValidator passes everything as valid
+type FakeBlockValidator struct{}
 
-func NewTestBlockValidator() *TestBlockValidator {
-	return &TestBlockValidator{}
+// NewFakeBlockValidator createas a FakeBlockValidator that passes everything as valid.
+func NewFakeBlockValidator() *FakeBlockValidator {
+	return &FakeBlockValidator{}
 }
 
-func (tbv *TestBlockValidator) ValidateSemantic(ctx context.Context, child, parent *types.Block) error {
+// ValidateSemantic does nothing.
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child, parent *types.Block) error {
 	return nil
 }
 
-func (tbv *TestBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+// ValidateSyntax does nothing.
+func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
 	return nil
 }
 

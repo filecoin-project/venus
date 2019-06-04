@@ -22,40 +22,34 @@ type BlockSyntaxValidator interface {
 }
 
 type BlockValidationClock interface {
-	Now() int64
-	BlockTime() time.Duration
+	EpochSeconds() uint64
 }
 
-type DefaultBlockValidationClock struct {
-	blkTime time.Duration
+type DefaultBlockValidationClock struct{}
+
+func NewDefaultBlockValidationClock() *DefaultBlockValidationClock {
+	return &DefaultBlockValidationClock{}
 }
 
-func NewDefaultBlockValidationClock(bt time.Duration) *DefaultBlockValidationClock {
-	return &DefaultBlockValidationClock{
-		blkTime: bt,
-	}
-}
-
-func (ebc *DefaultBlockValidationClock) Now() int64 {
-	return time.Now().Unix()
-}
-
-func (ebc *DefaultBlockValidationClock) BlockTime() time.Duration {
-	return ebc.blkTime
+func (ebc *DefaultBlockValidationClock) EpochSeconds() uint64 {
+	return uint64(time.Now().Unix())
 }
 
 type DefaultBlockValidator struct {
-	clock BlockValidationClock
+	clock     BlockValidationClock
+	blockTime time.Duration
 }
 
-func NewDefaultBlockValidator(c BlockValidationClock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(blkTime time.Duration) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
-		clock: c,
+		clock:     NewDefaultBlockValidationClock(),
+		blockTime: blkTime,
 	}
 }
 
 func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child, parent *types.Block) error {
 	// TODO validate timestamp
+	// #2886
 	return nil
 }
 
@@ -65,5 +59,10 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 	}
 	// TODO validate timestamp
 	// TODO validate block signature
+	// #2886
 	return nil
+}
+
+func (dv *DefaultBlockValidator) BlockTime() time.Duration {
+	return dv.blockTime
 }
