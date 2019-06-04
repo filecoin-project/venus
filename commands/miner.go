@@ -42,14 +42,15 @@ type MinerCreateResult struct {
 
 var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Create a new file miner with <pledge> sectors and <collateral> FIL",
+		Tagline: "Create a new file miner with <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
-Collateral must be greater than 0.001 FIL per pledged sector.`,
+Collateral will be committed at the rate of 0.001FIL per sector. When the 
+miner's collateral drops below 0.001FIL, the miner will not be able to commit
+additional sectors.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in sectors) for the miner"),
-		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
+		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL"),
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("from", "Address to send from"),
@@ -78,12 +79,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			pid = GetPorcelainAPI(env).NetworkGetPeerID()
 		}
 
-		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
-		if err != nil {
-			return ErrInvalidPledge
-		}
-
-		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1])
+		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[0])
 		if !ok {
 			return ErrInvalidCollateral
 		}
@@ -97,9 +93,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			usedGas, err := GetPorcelainAPI(env).MinerPreviewCreate(
 				req.Context,
 				fromAddr,
-				pledge,
 				pid,
-				collateral,
 			)
 			if err != nil {
 				return err
@@ -116,7 +110,6 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			fromAddr,
 			gasPrice,
 			gasLimit,
-			pledge,
 			pid,
 			collateral,
 		)

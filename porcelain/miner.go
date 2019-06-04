@@ -41,7 +41,6 @@ func MinerCreate(
 	minerOwnerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-	pledge uint64,
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
@@ -79,7 +78,6 @@ func MinerCreate(
 		gasLimit,
 		"createStorageMiner",
 		pubKey,
-		big.NewInt(int64(pledge)),
 		pid,
 	)
 	if err != nil {
@@ -119,9 +117,7 @@ func MinerPreviewCreate(
 	ctx context.Context,
 	plumbing mpcAPI,
 	fromAddr address.Address,
-	pledge uint64,
 	pid peer.ID,
-	collateral *types.AttoFIL,
 ) (usedGas types.GasUnits, err error) {
 	if fromAddr.Empty() {
 		fromAddr, err = plumbing.WalletDefaultAddress()
@@ -159,7 +155,6 @@ func MinerPreviewCreate(
 		address.StorageMarketAddress,
 		"createStorageMiner",
 		pubkey,
-		big.NewInt(int64(pledge)),
 		pid,
 	)
 	if err != nil {

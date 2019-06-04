@@ -2,10 +2,9 @@ package fast
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -14,10 +13,9 @@ import (
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process
-func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *big.Int, options ...ActionOption) (address.Address, error) {
+func (f *Filecoin) MinerCreate(ctx context.Context, collateral *big.Int, options ...ActionOption) (address.Address, error) {
 	var out commands.MinerCreateResult
 
-	sPledge := fmt.Sprintf("%d", pledge)
 	sCollateral := collateral.String()
 
 	args := []string{"go-filecoin", "miner", "create"}
@@ -26,7 +24,7 @@ func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *b
 		args = append(args, option()...)
 	}
 
-	args = append(args, sPledge, sCollateral)
+	args = append(args, sCollateral)
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return address.Undef, err

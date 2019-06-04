@@ -96,7 +96,6 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			1,
 			"",
 			collateral,
 		)
@@ -115,7 +114,6 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			1,
 			"",
 			collateral,
 		)
@@ -163,9 +161,8 @@ func TestMinerPreviewCreate(t *testing.T) {
 	t.Run("returns the price given by message preview", func(t *testing.T) {
 		ctx := context.Background()
 		plumbing := newMinerPreviewCreate(t)
-		collateral := types.NewAttoFILFromFIL(1)
 
-		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, 1, "", collateral)
+		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, "")
 		require.NoError(t, err)
 		assert.Equal(t, usedGas, types.NewGasUnits(5))
 	})

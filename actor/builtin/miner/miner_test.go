@@ -36,7 +36,7 @@ func createTestMinerWith(
 	key []byte,
 	peerId peer.ID,
 ) address.Address {
-	pdata := actor.MustConvertParams(key, big.NewInt(int64(pledge)), peerId)
+	pdata := actor.MustConvertParams(key, peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
@@ -137,7 +137,7 @@ func TestGetKey(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, big.NewInt(1), th.RequireRandomPeerID(t), types.OneKiBSectorSize)
+	state := NewState(address.TestAddress, []byte{}, th.RequireRandomPeerID(t), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},

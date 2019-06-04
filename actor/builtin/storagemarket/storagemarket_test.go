@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"math/big"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
-	. "github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -30,7 +28,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	pid := th.RequireRandomPeerID(t)
-	pdata := actor.MustConvertParams([]byte{}, big.NewInt(10), pid)
+	pdata := actor.MustConvertParams([]byte{}, pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -52,41 +50,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	builtin.RequireReadState(t, vms, outAddr, minerActor, &mstor)
 
 	assert.Equal(t, mstor.ActiveCollateral, types.NewAttoFILFromFIL(0))
-	assert.Equal(t, mstor.PledgeSectors, big.NewInt(10))
 	assert.Equal(t, mstor.PeerID, pid)
-}
-
-func TestStorageMarketCreateStorageMinerPledgeTooLow(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	pledge := big.NewInt(5)
-	st, vms := core.CreateStorages(ctx, t)
-	pdata := actor.MustConvertParams([]byte{}, pledge, th.RequireRandomPeerID(t))
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, MinimumCollateral(pledge), "createStorageMiner", pdata)
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-
-	assert.NoError(t, err)
-	require.NotNil(t, result.ExecutionError)
-	assert.Contains(t, result.ExecutionError.Error(), Errors[ErrPledgeTooLow].Error())
-}
-
-func TestStorageMarketCreateStorageMinerInsufficientCollateral(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	st, vms := core.CreateStorages(ctx, t)
-	pdata := actor.MustConvertParams([]byte{}, big.NewInt(15000), th.RequireRandomPeerID(t))
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "createStorageMiner", pdata)
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-
-	assert.NoError(t, err)
-	require.NotNil(t, result.ExecutionError)
-	assert.Contains(t, result.ExecutionError.Error(), Errors[ErrInsufficientCollateral].Error())
 }
 
 func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T) {
@@ -106,7 +70,7 @@ func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	pdata := actor.MustConvertParams([]byte{}, big.NewInt(15), th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams([]byte{}, th.RequireRandomPeerID(t))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -133,20 +97,12 @@ func TestStorageMarkeCreateStorageMinerErrorsOnInvalidKey(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
-	pdata := actor.MustConvertParams(publicKey, big.NewInt(15), th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams(publicKey, th.RequireRandomPeerID(t))
 
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	assert.Contains(t, result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
-}
-
-func TestMinimumCollateral(t *testing.T) {
-	tf.UnitTest(t)
-
-	numSectors := big.NewInt(25000)
-	expected := types.NewAttoFILFromFIL(25)
-	assert.Equal(t, MinimumCollateral(numSectors), expected)
 }
 
 func TestProofsMode(t *testing.T) {

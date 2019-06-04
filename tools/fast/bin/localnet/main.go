@@ -42,12 +42,11 @@ var (
 	err             error
 	fil             = 100000
 	balance         big.Int
-	smallSectors           = true
-	minerCount             = 5
-	minerPledge     uint64 = 10
-	minerCollateral        = big.NewInt(500)
-	minerPrice             = big.NewFloat(0.000000001)
-	minerExpiry            = big.NewInt(24 * 60 * 60)
+	smallSectors    = true
+	minerCount      = 5
+	minerCollateral = big.NewInt(500)
+	minerPrice      = big.NewFloat(0.000000001)
+	minerExpiry     = big.NewInt(24 * 60 * 60)
 
 	exitcode int
 
@@ -89,7 +88,6 @@ func init() {
 	flag.BoolVar(&smallSectors, "small-sectors", smallSectors, "enables small sectors")
 	flag.DurationVar(&blocktime, "blocktime", blocktime, "duration for blocktime")
 	flag.IntVar(&minerCount, "miner-count", minerCount, "number of miners")
-	flag.Uint64Var(&minerPledge, "miner-pledge", minerPledge, "number of sectors to pledge for each miner")
 	flag.StringVar(&minerCollateralArg, "miner-collateral", minerCollateralArg, "amount of fil each miner will use for collateral")
 	flag.StringVar(&minerPriceArg, "miner-price", minerPriceArg, "price value used when creating ask for miners")
 	flag.StringVar(&minerExpiryArg, "miner-expiry", minerExpiryArg, "expiry value used when creating ask for miners")
@@ -274,7 +272,7 @@ func main() {
 			return
 		}
 
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerPledge, minerCollateral, minerPrice, minerExpiry)
+		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry)
 		if err != nil {
 			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return

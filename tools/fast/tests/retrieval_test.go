@@ -189,13 +189,12 @@ func TestRetrievalDevnet(t *testing.T) {
 }
 
 func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin, sectorSize int64) {
-	pledge := uint64(10)                    // sectors
-	collateral := big.NewInt(int64(pledge)) // FIL
+	collateral := big.NewInt(10)            // FIL
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
 	// Create a miner on the miner node
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, pledge, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
 	require.NoError(t, err)
 
 	// Connect the client and the miner
