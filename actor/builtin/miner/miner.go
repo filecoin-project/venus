@@ -114,7 +114,7 @@ type Actor struct {
 
 // Ask is a price advertisement by the miner
 type Ask struct {
-	Price  *types.AttoFIL
+	Price  types.AttoFIL
 	Expiry *types.BlockHeight
 	ID     *big.Int
 }
@@ -131,7 +131,7 @@ type State struct {
 
 	// ActiveCollateral is the amount of collateral currently committed to live
 	// storage.
-	ActiveCollateral *types.AttoFIL
+	ActiveCollateral types.AttoFIL
 
 	// Asks is the set of asks this miner has open
 	Asks      []*Ask
@@ -277,7 +277,7 @@ func (ma *Actor) Exports() exec.Exports {
 }
 
 // AddAsk adds an ask to this miners ask list
-func (ma *Actor) AddAsk(ctx exec.VMContext, price *types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
+func (ma *Actor) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -567,7 +567,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(comms.CommRStar[:], commRStar)
 		state.LastUsedSectorID = sectorID
 		state.SectorCommitments[sectorIDstr] = comms
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", nil, []interface{}{inc})
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", types.ZeroAttoFIL, []interface{}{inc})
 		if err != nil {
 			return nil, err
 		}
@@ -585,7 +585,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 // CollateralForSector returns the collateral required to commit a sector of the
 // given size.
-func CollateralForSector(sectorSize *types.BytesAmount) *types.AttoFIL {
+func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	// TODO: Replace this function with the baseline pro-rata construction.
 	// https://github.com/filecoin-project/go-filecoin/issues/2866
 	return MinimumCollateralPerSector

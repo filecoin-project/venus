@@ -75,10 +75,10 @@ type PaymentChannel struct {
 	Target address.Address `json:"target"`
 
 	// Amount is the total amount of FIL that has been transferred to the channel from the payer
-	Amount *types.AttoFIL `json:"amount"`
+	Amount types.AttoFIL `json:"amount"`
 
 	// AmountRedeemed is the amount of FIL already transferred to the target
-	AmountRedeemed *types.AttoFIL `json:"amount_redeemed"`
+	AmountRedeemed types.AttoFIL `json:"amount_redeemed"`
 
 	// AgreedEol is the expiration for the payment channel agreed upon by the
 	// payer and payee upon initialization or extension
@@ -222,7 +222,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL,
+func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -284,7 +284,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt *types.AttoFIL,
+func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -512,7 +512,7 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 // If a condition is provided, attempts to redeem or close with the voucher will
 // first send a message based on the condition and require a successful response
 // for funds to be transferred.
-func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
+func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -548,7 +548,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount *ty
 			Channel:   *chid,
 			Payer:     vmctx.Message().From,
 			Target:    channel.Target,
-			Amount:    *amount,
+			Amount:    amount,
 			ValidAt:   *validAt,
 			Condition: condition,
 		}
@@ -616,7 +616,7 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 	return channelsBytes, 0, nil
 }
 
-func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channel *PaymentChannel, amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
 	cacheCondition(channel, condition, redeemerSuppliedParams)
 
 	if err := checkCondition(ctx, channel); err != nil {
@@ -684,7 +684,7 @@ const separator = 0x0
 // SignVoucher creates the signature for the given combination of
 // channel, amount, validAt (earliest block height for redeem) and from address.
 // It does so by signing the following bytes: (channelID | 0x0 | amount | 0x0 | validAt)
-func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, addr address.Address, condition *types.Predicate, signer types.Signer) (types.Signature, error) {
+func SignVoucher(channelID *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, addr address.Address, condition *types.Predicate, signer types.Signer) (types.Signature, error) {
 	data, err := createVoucherSignatureData(channelID, amount, validAt, condition)
 	if err != nil {
 		return nil, err
@@ -693,7 +693,7 @@ func SignVoucher(channelID *types.ChannelID, amount *types.AttoFIL, validAt *typ
 }
 
 // VerifyVoucherSignature returns whether the voucher's signature is valid
-func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) bool {
+func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, sig []byte) bool {
 	data, err := createVoucherSignatureData(chid, amt, validAt, condition)
 	// the only error is failure to encode the values
 	if err != nil {
@@ -702,7 +702,7 @@ func VerifyVoucherSignature(payer address.Address, chid *types.ChannelID, amt *t
 	return types.IsValidSignature(data, payer, sig)
 }
 
-func createVoucherSignatureData(channelID *types.ChannelID, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
+func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
 	data := append(channelID.Bytes(), separator)
 	data = append(data, amount.Bytes()...)
 	data = append(data, separator)

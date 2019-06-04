@@ -13,7 +13,7 @@ import (
 
 // PaychCreate runs the `paych create` command against the filecoin process.
 func (f *Filecoin) PaychCreate(ctx context.Context,
-	target address.Address, amount *types.AttoFIL, eol *types.BlockHeight,
+	target address.Address, amount types.AttoFIL, eol *types.BlockHeight,
 	options ...ActionOption) (cid.Cid, error) {
 
 	var out commands.CreateChannelResult
@@ -49,7 +49,7 @@ func (f *Filecoin) PaychClose(ctx context.Context, voucher string, options ...Ac
 
 // PaychExtend runs the `paych extend` command against the filecoin process.
 func (f *Filecoin) PaychExtend(ctx context.Context,
-	channel *types.ChannelID, amount *types.AttoFIL, eol *types.BlockHeight,
+	channel *types.ChannelID, amount types.AttoFIL, eol *types.BlockHeight,
 	options ...ActionOption) (cid.Cid, error) {
 
 	var out commands.ExtendResult
@@ -133,7 +133,7 @@ func (f *Filecoin) PaychRedeem(ctx context.Context, voucher string, options ...A
 }
 
 // PaychVoucher runs the `paych voucher` command against the filecoin process.
-func (f *Filecoin) PaychVoucher(ctx context.Context, channel *types.ChannelID, amount *types.AttoFIL, options ...ActionOption) (string, error) {
+func (f *Filecoin) PaychVoucher(ctx context.Context, channel *types.ChannelID, amount types.AttoFIL, options ...ActionOption) (string, error) {
 	var out string
 
 	args := []string{"go-filecoin", "paych", "voucher", channel.String(), amount.String()}

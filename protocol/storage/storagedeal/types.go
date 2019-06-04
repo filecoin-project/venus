@@ -49,7 +49,7 @@ type Proposal struct {
 	Size *types.BytesAmount
 
 	// TotalPrice is the total price that will be paid for the entire storage operation
-	TotalPrice *types.AttoFIL
+	TotalPrice types.AttoFIL
 
 	// Duration is the number of blocks to make a deal for
 	Duration uint64

@@ -264,7 +264,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 
-func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *types.AttoFIL {
+func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) types.AttoFIL {
 	output := d.RunSuccess("actor", "ls", "--enc", "json")
 	result := output.ReadStdoutTrimNewlines()
 	for _, line := range bytes.Split([]byte(result), []byte{'\n'}) {
@@ -276,7 +276,7 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 		}
 	}
 	t.Fail()
-	return nil
+	return types.ZeroAttoFIL
 }
 
 func TestMinerOwner(t *testing.T) {

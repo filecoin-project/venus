@@ -133,7 +133,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			ms.Addresses[0], // from needs to be an address from the signer
 			newAddr,
 			0,
-			NewAttoFILFromFIL(0),
+			ZeroAttoFIL,
 			s,
 			[]byte("params"))
 		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasUnits(0))
@@ -187,7 +187,7 @@ func NewMessageForTestGetter() func() *Message {
 			from,
 			to,
 			0,
-			nil,
+			ZeroAttoFIL,
 			s,
 			nil)
 	}

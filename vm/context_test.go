@@ -40,12 +40,12 @@ func TestVMContextStorage(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
 
-	toActor, err := account.NewActor(nil)
+	toActor, err := account.NewActor(types.ZeroAttoFIL)
 	assert.NoError(t, err)
 	toAddr := addrGetter()
 
 	assert.NoError(t, st.SetActor(ctx, toAddr, toActor))
-	msg := types.NewMessage(addrGetter(), toAddr, 0, nil, "hello", nil)
+	msg := types.NewMessage(addrGetter(), toAddr, 0, types.ZeroAttoFIL, "hello", nil)
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
@@ -114,7 +114,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -138,7 +138,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -167,7 +167,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(to, "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(to, "foo", types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -197,7 +197,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -231,7 +231,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", nil, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))

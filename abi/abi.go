@@ -24,7 +24,7 @@ const (
 	Invalid = Type(iota)
 	// Address is a address.Address
 	Address
-	// AttoFIL is a *types.AttoFIL
+	// AttoFIL is a types.AttoFIL
 	AttoFIL
 	// BytesAmount is a *types.BytesAmount
 	BytesAmount
@@ -69,7 +69,7 @@ func (t Type) String() string {
 	case Address:
 		return "address.Address"
 	case AttoFIL:
-		return "*types.AttoFIL"
+		return "types.AttoFIL"
 	case BytesAmount:
 		return "*types.BytesAmount"
 	case ChannelID:
@@ -122,7 +122,7 @@ func (av *Value) String() string {
 	case Address:
 		return av.Val.(address.Address).String()
 	case AttoFIL:
-		return av.Val.(*types.AttoFIL).String()
+		return av.Val.(types.AttoFIL).String()
 	case BytesAmount:
 		return av.Val.(*types.BytesAmount).String()
 	case ChannelID:
@@ -183,7 +183,7 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 		return addr.Bytes(), nil
 	case AttoFIL:
-		ba, ok := av.Val.(*types.AttoFIL)
+		ba, ok := av.Val.(types.AttoFIL)
 		if !ok {
 			return nil, &typeError{types.AttoFIL{}, av.Val}
 		}
@@ -325,7 +325,7 @@ func ToValues(i []interface{}) ([]*Value, error) {
 		switch v := v.(type) {
 		case address.Address:
 			out = append(out, &Value{Type: Address, Val: v})
-		case *types.AttoFIL:
+		case types.AttoFIL:
 			out = append(out, &Value{Type: AttoFIL, Val: v})
 		case *types.BytesAmount:
 			out = append(out, &Value{Type: BytesAmount, Val: v})
@@ -524,7 +524,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 
 var typeTable = map[Type]reflect.Type{
 	Address:        reflect.TypeOf(address.Address{}),
-	AttoFIL:        reflect.TypeOf(&types.AttoFIL{}),
+	AttoFIL:        reflect.TypeOf(types.AttoFIL{}),
 	Bytes:          reflect.TypeOf([]byte{}),
 	BytesAmount:    reflect.TypeOf(&types.BytesAmount{}),
 	ChannelID:      reflect.TypeOf(&types.ChannelID{}),

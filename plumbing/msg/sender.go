@@ -20,7 +20,7 @@ func NewSender(outbox *core.Outbox) *Sender {
 }
 
 // Send sends a message. See api description.
-func (s *Sender) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (out cid.Cid, err error) {
+func (s *Sender) Send(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (out cid.Cid, err error) {
 	return s.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 
 }

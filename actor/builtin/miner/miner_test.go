@@ -28,7 +28,7 @@ func createTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerA
 
 func createTestMinerWith(
 	pledge uint64,
-	collateral *types.AttoFIL,
+	collateral types.AttoFIL,
 	t *testing.T,
 	stateTree state.Tree,
 	vms vm.StorageMap,
@@ -60,7 +60,7 @@ func TestAskFunctions(t *testing.T) {
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
-	msg := types.NewMessage(address.TestAddress, minerAddr, 1, nil, "addAsk", pdata)
+	msg := types.NewMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "addAsk", pdata)
 
 	_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 	assert.NoError(t, err)
@@ -92,7 +92,7 @@ func TestAskFunctions(t *testing.T) {
 
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 3, nil, "addAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 3, types.ZeroAttoFIL, "addAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(3))
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))

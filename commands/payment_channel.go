@@ -273,7 +273,7 @@ var redeemCmd = &cmds.Command{
 		params := []interface{}{
 			voucher.Payer,
 			&voucher.Channel,
-			&voucher.Amount,
+			voucher.Amount,
 			&voucher.ValidAt,
 			voucher.Condition,
 			[]byte(voucher.Signature),
@@ -448,7 +448,7 @@ var closeCmd = &cmds.Command{
 		params := []interface{}{
 			voucher.Payer,
 			&voucher.Channel,
-			&voucher.Amount,
+			voucher.Amount,
 			&voucher.ValidAt,
 			voucher.Condition,
 			[]byte(voucher.Signature),

@@ -996,7 +996,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1009,7 +1009,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, *sys.channelID, voucher.Channel)
 		assert.Equal(t, sys.payer, voucher.Payer)
 		assert.Equal(t, sys.target, voucher.Target)
-		assert.Equal(t, *voucherAmount, voucher.Amount)
+		assert.Equal(t, voucherAmount, voucher.Amount)
 		assert.Nil(t, voucher.Condition)
 	})
 
@@ -1032,7 +1032,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", args)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NotEqual(t, uint8(0), res.Receipt.ExitCode)
@@ -1051,7 +1051,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1064,7 +1064,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, *sys.channelID, voucher.Channel)
 		assert.Equal(t, sys.payer, voucher.Payer)
 		assert.Equal(t, sys.target, voucher.Target)
-		assert.Equal(t, *voucherAmount, voucher.Amount)
+		assert.Equal(t, voucherAmount, voucher.Amount)
 	})
 }
 
@@ -1103,7 +1103,7 @@ func TestSignVoucher(t *testing.T) {
 	})
 }
 
-func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -1186,7 +1186,7 @@ func setup(t *testing.T) system {
 	}
 }
 
-func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
+func (sys *system) Signature(amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
 	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, condition, mockSigner)
 	if err != nil {
 		return nil, err

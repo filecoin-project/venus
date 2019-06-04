@@ -156,21 +156,21 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// If a given message's category changes in the future, it needs to be replaced here in tests by another so we fully
 	// exercise the categorization.
 	// addr2 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
-	msg1 := types.NewMessage(addr2, addr1, 0, nil, "", nil)
+	msg1 := types.NewMessage(addr2, addr1, 0, types.ZeroAttoFIL, "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
 	// This is actually okay and should result in a receipt
-	msg2 := types.NewMessage(addr1, addr2, 0, nil, "", nil)
+	msg2 := types.NewMessage(addr1, addr2, 0, types.ZeroAttoFIL, "", nil)
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
 	// The following two are sending to self -- errSelfSend, a permanent error.
-	msg3 := types.NewMessage(addr1, addr1, 1, nil, "", nil)
+	msg3 := types.NewMessage(addr1, addr1, 1, types.ZeroAttoFIL, "", nil)
 	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
-	msg4 := types.NewMessage(addr2, addr2, 1, nil, "", nil)
+	msg4 := types.NewMessage(addr2, addr2, 1, types.ZeroAttoFIL, "", nil)
 	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
@@ -258,21 +258,21 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
-	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
+	msg1 := types.NewMessage(addrs[2], addrs[0], 0, types.ZeroAttoFIL, "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
 	// This is actually okay and should result in a receipt
-	msg2 := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
+	msg2 := types.NewMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, "", nil)
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
 	// add the following and then increment the actor nonce at addrs[1], nonceTooLow, a permanent error.
-	msg3 := types.NewMessage(addrs[1], addrs[0], 0, nil, "", nil)
+	msg3 := types.NewMessage(addrs[1], addrs[0], 0, types.ZeroAttoFIL, "", nil)
 	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
-	msg4 := types.NewMessage(addrs[1], addrs[2], 1, nil, "", nil)
+	msg4 := types.NewMessage(addrs[1], addrs[2], 1, types.ZeroAttoFIL, "", nil)
 	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
@@ -416,7 +416,7 @@ func TestGenerateError(t *testing.T) {
 		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
 
 	// This is actually okay and should result in a receipt
-	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)
+	msg := types.NewMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 	_, err = pool.Add(ctx, smsg, 0)

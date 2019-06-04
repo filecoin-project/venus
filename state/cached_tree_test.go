@@ -26,11 +26,11 @@ func TestCachedStateGetCommit(t *testing.T) {
 	tree := NewCachedStateTree(underlying)
 
 	// create some actors
-	act1 := actor.NewActor(types.AccountActorCodeCid, nil)
+	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act1Cid := requireCid(t, "hello")
 	act1.Head = act1Cid
 	act1.IncNonce()
-	act2 := actor.NewActor(types.AccountActorCodeCid, nil)
+	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act2Cid := requireCid(t, "world")
 	act2.Head = act2Cid
 
@@ -92,7 +92,7 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	underlying := NewEmptyStateTree(cst)
 	tree := NewCachedStateTree(underlying)
 
-	actorToCreate := actor.NewActor(types.AccountActorCodeCid, nil)
+	actorToCreate := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 	// can create actor in cache
 	addr := address.NewForTestGetter()()

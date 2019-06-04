@@ -18,7 +18,7 @@ type wbPlumbing interface {
 }
 
 // WalletBalance gets the current balance associated with an address
-func WalletBalance(ctx context.Context, plumbing wbPlumbing, addr address.Address) (*types.AttoFIL, error) {
+func WalletBalance(ctx context.Context, plumbing wbPlumbing, addr address.Address) (types.AttoFIL, error) {
 	act, err := plumbing.ActorGet(ctx, addr)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
