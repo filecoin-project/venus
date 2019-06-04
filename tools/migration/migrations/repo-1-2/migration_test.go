@@ -29,7 +29,8 @@ func TestDescribe(t *testing.T) {
 
     This migration changes the chain store metadata serialization from JSON to CBOR.
     The chain store metadata will be read in as JSON and rewritten as CBOR. 
-	Chain store metadata consists of CIDs and the chain State Root. 
+	Chain store metadata consists of associations between tipset keys and state 
+	root cids and the tipset key of the head of the chain.
 	No other repo data is changed.  Migrations are performed on a copy of the
 	chain store.
 `
