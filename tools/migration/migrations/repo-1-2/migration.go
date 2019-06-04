@@ -307,12 +307,12 @@ func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore,
 		return err
 	}
 
-	oldHeadTs, err := loadBlocksToChainStore(ctx, oldTipCids, oldChainStore)
+	oldHeadTs, err := loadTipSet(ctx, oldTipCids, oldChainStore)
 	if err != nil {
 		return err
 	}
 
-	newHeadTs, err := loadBlocksToChainStore(ctx, newTipCids, newChainStore)
+	newHeadTs, err := loadTipSet(ctx, newTipCids, newChainStore)
 	if err != nil {
 		return err
 	}
@@ -321,10 +321,13 @@ func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore,
 		return errors.New("new and old head tipsets not equal")
 	}
 
-	oldIt := chain.IterAncestors(ctx, newChainStore, newHeadTs)
-	for newIt := chain.IterAncestors(ctx, oldChainStore, oldHeadTs); !newIt.Complete(); err = newIt.Next() {
+	oldIt := chain.IterAncestors(ctx, oldChainStore, oldHeadTs)
+	for newIt := chain.IterAncestors(ctx, newChainStore, newHeadTs); !newIt.Complete(); err = newIt.Next() {
 		if err != nil {
 			return err
+		}
+		if oldIt.Complete() {
+			return errors.New("old chain store is shorter than new chain store")
 		}
 
 		newStateRoot, err := loadStateRoot(newIt.Value(), true, newChainStore)
@@ -349,7 +352,7 @@ func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore,
 	return nil
 }
 
-func loadBlocksToChainStore(ctx context.Context, cidSet types.SortedCidSet, chainStore *migrationChainStore) (headTs types.TipSet, err error) {
+func loadTipSet(ctx context.Context, cidSet types.SortedCidSet, chainStore *migrationChainStore) (headTs types.TipSet, err error) {
 	var blocks []*types.Block
 	for iter := cidSet.Iter(); !iter.Complete(); iter.Next() {
 		blk, err := chainStore.GetBlock(ctx, iter.Value())
