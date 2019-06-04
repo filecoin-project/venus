@@ -18,7 +18,7 @@ type BlockValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child, parent *types.Block) error
+	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -63,7 +63,7 @@ func NewDefaultBlockValidator(blkTime time.Duration) *DefaultBlockValidator {
 }
 
 // ValidateSemantic validates a block is correctly derived from its parent.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child, parent *types.Block) error {
+func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
 	// TODO validate timestamp
 	// #2886
 	return nil

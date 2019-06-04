@@ -87,7 +87,7 @@ type Expected struct {
 	PwrTableView PowerTableView
 
 	// validator provides a set of methods used to validate a block.
-	validator BlockValidator
+	BlockValidator
 
 	// cstore is used for loading state trees during message running.
 	cstore *hamt.CborIpldStore
@@ -111,13 +111,13 @@ var _ Protocol = (*Expected)(nil)
 // NewExpected is the constructor for the Expected consenus.Protocol module.
 func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier) *Expected {
 	return &Expected{
-		cstore:       cs,
-		bstore:       bs,
-		processor:    processor,
-		PwrTableView: pt,
-		genesisCid:   gCid,
-		verifier:     verifier,
-		validator:    v,
+		cstore:         cs,
+		bstore:         bs,
+		processor:      processor,
+		PwrTableView:   pt,
+		genesisCid:     gCid,
+		verifier:       verifier,
+		BlockValidator: v,
 	}
 }
 
@@ -247,9 +247,8 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	ancestor := ancestors[0].ToSlice()[0]
 	for _, tip := range ts.ToSlice() {
-		if err := c.ValidateSemantic(ctx, ancestor, tip); err != nil {
+		if err := c.BlockValidator.ValidateSemantic(ctx, tip, &ancestors[0]); err != nil {
 			return nil, err
 		}
 	}
@@ -281,16 +280,6 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 		return nil, err
 	}
 	return st, nil
-}
-
-// ValidateSyntax validates a single block is correctly formed.
-func (c *Expected) ValidateSyntax(ctx context.Context, b *types.Block) error {
-	return c.validator.ValidateSyntax(ctx, b)
-}
-
-// ValidateSemantic validates a block is correctly derived from its parent.
-func (c *Expected) ValidateSemantic(ctx context.Context, child, parent *types.Block) error {
-	return c.validator.ValidateSemantic(ctx, child, parent)
 }
 
 // validateMining checks validity of the block ticket, proof, and miner address.

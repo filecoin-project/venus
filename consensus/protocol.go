@@ -37,5 +37,5 @@ type Protocol interface {
 	ValidateSyntax(ctx context.Context, b *types.Block) error
 
 	// ValidateSemantic validates a block is correctly derived from its parent.
-	ValidateSemantic(ctx context.Context, child, parent *types.Block) error
+	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error
 }
