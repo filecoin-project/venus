@@ -170,7 +170,6 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 	// number of new input blocks is less than the FinalityLimit constant.
 	// Otherwise, halt assuming the new blocks come from an invalid chain.
 	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
-		var blks []*types.Block
 		// check the cache for bad tipsets before doing anything
 		tsKey := tipsetCids.String()
 
@@ -190,10 +189,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 
-		ts, err := syncer.consensus.NewValidTipSet(ctx, blks)
+		ts, err := types.NewTipSet(blks...)
 		if err != nil {
-			syncer.badTipSets.Add(tsKey)
-			syncer.badTipSets.AddChain(chain)
 			return nil, err
 		}
 
