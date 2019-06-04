@@ -305,11 +305,10 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 		}
 	}()
 
-	pledge := uint64(10)
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(0.001))
 	expiry := big.NewInt(int64(500))
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, pledge, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry)
 	minerCreateDoneCh <- struct{}{}
 	require.NoError(t, err)
 

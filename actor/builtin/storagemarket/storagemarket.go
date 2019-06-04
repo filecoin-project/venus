@@ -3,7 +3,6 @@ package storagemarket
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -19,26 +18,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// MinimumPledge is the minimum amount of sectors a user can pledge.
-var MinimumPledge = big.NewInt(10)
-
 const (
-	// ErrPledgeTooLow is the error code for a pledge under the MinimumPledge.
-	ErrPledgeTooLow = 33
 	// ErrUnknownMiner indicates a pledge under the MinimumPledge.
 	ErrUnknownMiner = 34
-	// ErrInsufficientCollateral indicates the collateral is too low.
-	ErrInsufficientCollateral = 43
 	// ErrUnsupportedSectorSize indicates that the sector size is incompatible with the proofs mode.
 	ErrUnsupportedSectorSize = 44
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrPledgeTooLow:           errors.NewCodedRevertErrorf(ErrPledgeTooLow, "pledge must be at least %s sectors", MinimumPledge),
-	ErrUnknownMiner:           errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
-	ErrInsufficientCollateral: errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "collateral must be more than %s FIL per sector", miner.MinimumCollateralPerSector),
-	ErrUnsupportedSectorSize:  errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
+	ErrUnknownMiner:          errors.NewCodedRevertErrorf(ErrUnknownMiner, "unknown miner"),
+	ErrUnsupportedSectorSize: errors.NewCodedRevertErrorf(ErrUnsupportedSectorSize, "sector size is not supported"),
 }
 
 func init() {
@@ -99,7 +89,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createStorageMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.Integer, abi.PeerID},
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
@@ -116,29 +106,17 @@ var storageMarketExports = exec.Exports{
 	},
 }
 
-// CreateStorageMiner creates a new miner with the a pledge of the given amount of sectors. The
-// miners collateral is set by the value in the message.
-func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, pledge *big.Int, pid peer.ID) (address.Address, uint8, error) {
+// CreateStorageMiner creates a new miner which will commit sectors of the
+// given size. The miners collateral is set by the value in the message.
+func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		// TODO: #2530 - Add a sector size parameter to the Actor#CreateStorageMiner
-		// method and accept the value from the CLI.
-		sectorSize := types.OneKiBSectorSize
-		if state.ProofsMode == types.LiveProofsMode {
-			sectorSize = types.TwoHundredFiftySixMiBSectorSize
-		}
-
 		if !isSupportedSectorSize(state.ProofsMode, sectorSize) {
 			return nil, Errors[ErrUnsupportedSectorSize]
-		}
-
-		if pledge.Cmp(MinimumPledge) < 0 {
-			// TODO This should probably return a non-zero exit code instead of an error.
-			return nil, Errors[ErrPledgeTooLow]
 		}
 
 		addr, err := vmctx.AddressForNewActor()
@@ -146,11 +124,7 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, ple
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		if vmctx.Message().Value.LessThan(MinimumCollateral(pledge)) {
-			return nil, Errors[ErrInsufficientCollateral]
-		}
-
-		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pledge, pid, sectorSize)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pid, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
@@ -261,11 +235,6 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 	}
 
 	return size, 0, nil
-}
-
-// MinimumCollateral returns the minimum required amount of collateral for a given pledge
-func MinimumCollateral(sectors *big.Int) *types.AttoFIL {
-	return miner.MinimumCollateralPerSector.MulBigInt(sectors)
 }
 
 // isSupportedSectorSize produces a boolean indicating whether or not the

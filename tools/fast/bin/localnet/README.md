@@ -34,8 +34,6 @@ Usage of ./localnet:
     	number of miners (default 5)
   -miner-expiry string
     	expiry value used when creating ask for miners (default "86400")
-  -miner-pledge uint
-    	number of sectors to pledge for each miner (default 10)
   -miner-price string
     	price value used when creating ask for miners (default "0.0000000010")
   -shell

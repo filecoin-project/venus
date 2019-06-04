@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/big"
 	mrand "math/rand"
 	"strconv"
 
@@ -31,8 +30,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Miner is
-type Miner struct {
+// CreateStorageMinerConfig holds configuration options used to create a storage
+// miner in the genesis block. Note: Instances of this struct can be created
+// from the contents of fixtures/setup.json, which means that a JSON
+// encoder/decoder must exist for any of the struct's fields' types.
+type CreateStorageMinerConfig struct {
 	// Owner is the name of the key that owns this miner
 	// It must be a name of a key from the configs 'Keys' list
 	Owner int
@@ -42,19 +44,14 @@ type Miner struct {
 
 	// NumCommittedSectors is the number of sectors that this miner has
 	// committed to the network.
-	//
-	// TODO: This struct needs a field which represents the size of sectors
-	// that this miner has committed. For now, sector size is configured by
-	// the StorageMarketActor's ProofsMode. We should add this field as part of:
-	//
-	// https://github.com/filecoin-project/go-filecoin/issues/2530
-	//
-	// TODO: this will get more complicated when we actually have to
-	// prove real files.
 	NumCommittedSectors uint64
+
+	// SectorSize is the size of the sectors that this miner commits, in bytes.
+	SectorSize uint64
 }
 
-// GenesisCfg is
+// GenesisCfg is the top level configuration struct used to create a genesis
+// block.
 type GenesisCfg struct {
 	// Keys is an array of names of keys. A random key will be generated
 	// for each name here.
@@ -65,7 +62,7 @@ type GenesisCfg struct {
 	PreAlloc []string
 
 	// Miners is a list of miners that should be set up at the start of the network
-	Miners []Miner
+	Miners []*CreateStorageMinerConfig
 
 	// ProofsMode affects sealing, sector packing, PoSt, etc. in the proofs library
 	ProofsMode types.ProofsMode
@@ -118,7 +115,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, cfg.ProofsMode, pnrg)
+	miners, err := setupMiners(st, storageMap, keys, cfg.Miners, pnrg)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +216,7 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []Miner, proofsMode types.ProofsMode, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -254,7 +251,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		// create miner
 		pubkey := keys[m.Owner].PublicKey()
 
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", pubkey[:], big.NewInt(10000), pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", pubkey[:], types.NewBytesAmount(m.SectorSize), pid)
 		if err != nil {
 			return nil, err
 		}
@@ -265,20 +262,10 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
-		// Sector size will ultimately become an argument to the createStorageMiner
-		// method. For now, sector size is a function of the storage market
-		// actor's proofs mode.
-		sectorSize := types.OneKiBSectorSize
-		if proofsMode == types.LiveProofsMode {
-			sectorSize = types.TwoHundredFiftySixMiBSectorSize
-		}
-
-		power := types.NewBytesAmount(sectorSize.Uint64() * m.NumCommittedSectors)
-
 		minfos = append(minfos, RenderedMinerInfo{
 			Address: maddr,
 			Owner:   m.Owner,
-			Power:   power,
+			Power:   types.NewBytesAmount(m.SectorSize * m.NumCommittedSectors),
 		})
 
 		// commit sector to add power
@@ -397,4 +384,28 @@ var _ types.Signer = (*signer)(nil)
 
 func (ggs *signer) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return nil, nil
+}
+
+// ApplyProofsModeDefaults mutates the given genesis configuration, setting the
+// appropriate proofs mode and corresponding storage miner sector size. If
+// force is true, proofs mode and sector size-values will be overridden with the
+// appropriate defaults for the selected proofs mode.
+func ApplyProofsModeDefaults(cfg *GenesisCfg, useLiveProofsMode bool, force bool) {
+	mode := types.TestProofsMode
+	sectorSize := types.OneKiBSectorSize
+
+	if useLiveProofsMode {
+		mode = types.LiveProofsMode
+		sectorSize = types.TwoHundredFiftySixMiBSectorSize
+	}
+
+	if cfg.ProofsMode == types.UnsetProofsMode || force {
+		cfg.ProofsMode = mode
+	}
+
+	for _, m := range cfg.Miners {
+		if m.SectorSize == 0 || force {
+			m.SectorSize = sectorSize.Uint64()
+		}
+	}
 }

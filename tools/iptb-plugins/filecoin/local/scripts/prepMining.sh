@@ -79,7 +79,7 @@ do
     iptb run "$i" -- go-filecoin message wait "$msgCid"
 
     # create the actual miner
-    newMinerAddr=$(iptb run "$i" -- go-filecoin miner create 10 10 | tail -n +3)
+    newMinerAddr=$(iptb run "$i" -- go-filecoin miner create 10 | tail -n +3)
 
     # start mining
     iptb run "$i" -- go-filecoin mining start  # I don't think these guys need to mine yet, wait until the deal is processed

@@ -59,10 +59,12 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 
 	// set up genesis block containing some miners with non-zero power
 	genCfg := &gengen.GenesisCfg{
-		Keys: 1,
-		Miners: []gengen.Miner{
+		ProofsMode: types.TestProofsMode,
+		Keys:       1,
+		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				NumCommittedSectors: numCommittedSectors,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
 	}

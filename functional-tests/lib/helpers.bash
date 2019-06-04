@@ -169,7 +169,7 @@ function wait_for_message_in_chain_by_method_and_sender {
 }
 
 function create_miner {
-  ./go-filecoin miner create 10 100 \
+  ./go-filecoin miner create 100 \
     --gas-limit=10000 \
     --gas-price=1 \
     --repodir="$1"

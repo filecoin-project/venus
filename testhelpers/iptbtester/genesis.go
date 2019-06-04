@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // GenesisInfo chains require information to start a single node with funds
@@ -29,14 +30,16 @@ type idResult struct {
 func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 	// Setup, generate a genesis and key file
 	cfg := &gengen.GenesisCfg{
-		Keys: 1,
+		ProofsMode: types.TestProofsMode,
+		Keys:       1,
 		PreAlloc: []string{
 			strconv.FormatInt(funds, 10),
 		},
-		Miners: []gengen.Miner{
+		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:               0,
 				NumCommittedSectors: 1,
+				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
 	}

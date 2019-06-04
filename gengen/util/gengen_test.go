@@ -14,21 +14,25 @@ import (
 	. "github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var testConfig = &GenesisCfg{
-	Keys:     4,
-	PreAlloc: []string{"10", "50"},
-	Miners: []Miner{
+	ProofsMode: types.TestProofsMode,
+	Keys:       4,
+	PreAlloc:   []string{"10", "50"},
+	Miners: []*CreateStorageMinerConfig{
 		{
 			Owner:               0,
 			NumCommittedSectors: 50,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 10,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
 }
