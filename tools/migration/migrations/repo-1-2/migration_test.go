@@ -45,6 +45,12 @@ func TestMigrateSomeRepo(t *testing.T) {
 	curDir, err := syscall.Getwd()
 	require.NoError(t, err)
 
+	// The test fixture was created by running FAST's localnet script with a long block time,
+	// allowing it to mine once, suspending it to copy the filecoin repo, then killing the script
+	// (because it deletes the repo afterward).
+	// It was then stripped of everything that did not apply to this migration, tarred and gzipped.
+	// This guarantees that we have an example repo in an unmigrated, pristine v1 state with
+	// a minimal footprint.
 	fixturePath := path.Join(curDir, "fixtures")
 	fixtureTarball := path.Join(fixturePath, "repo-1.tgz")
 
@@ -58,15 +64,44 @@ func TestMigrateSomeRepo(t *testing.T) {
 	repoSymLink := path.Join(curDir, "repo-1", "repo")
 	require.NoError(t, os.Symlink(repoDir, repoSymLink))
 
-	newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
-	require.NoError(t, err)
-	defer repo.RequireRemoveAll(t, newRepoPath)
+	t.Run("Happy path: valid migration passes validation", func(t *testing.T) {
+		newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
+		require.NoError(t, err)
+		defer repo.RequireRemoveAll(t, newRepoPath)
 
-	require.NoError(t, mig.Migrate(newRepoPath))
+		require.NoError(t, mig.Migrate(newRepoPath))
 
-	// Update the version, pretending that the MigrationRunner did it
-	require.NoError(t, repo.WriteVersion(newRepoPath, 2))
+		// Update the version, pretending that the MigrationRunner did it
+		require.NoError(t, repo.WriteVersion(newRepoPath, 2))
 
-	err = mig.Validate(repoSymLink, newRepoPath)
-	require.NoError(t, err)
+		err = mig.Validate(repoSymLink, newRepoPath)
+		require.NoError(t, err)
+	})
+
+	t.Run("Validation before migration is run fails validation", func(t *testing.T) {
+		newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
+		require.NoError(t, err)
+		defer repo.RequireRemoveAll(t, newRepoPath)
+
+		// Update the version, pretending that the MigrationRunner did it
+		require.NoError(t, repo.WriteVersion(newRepoPath, 2))
+
+		err = mig.Validate(repoSymLink, newRepoPath)
+		require.Error(t, err)
+		// Because Validate tried to load JSON encoded data as CBOR
+		assert.Contains(t, err.Error(), "cbor: decoding rejected oversized byte field")
+	})
+
+	t.Run("Validation without a version bump is a validation failure", func(t *testing.T) {
+		newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
+		require.NoError(t, err)
+		defer repo.RequireRemoveAll(t, newRepoPath)
+
+		require.NoError(t, mig.Migrate(newRepoPath))
+
+		err = mig.Validate(repoSymLink, newRepoPath)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "out of date repo version")
+		assert.Contains(t, err.Error(), "Migrate with tools/migration/go-filecoin-migrate")
+	})
 }
