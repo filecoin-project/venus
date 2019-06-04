@@ -11,7 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+)
+
+const (
+	clientOnly = "client"
+	minerOnly  = "miner"
 )
 
 var dealsCmd = &cmds.Command{
@@ -39,10 +45,26 @@ Lists all recorded deals made by or with this node. This may include pending
 deals, active deals, finished deals and cancelled deals.
 `,
 	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption(clientOnly, "c", "only return deals made as a client"),
+		cmdkit.BoolOption(minerOnly, "m", "only return deals made as a miner"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddress, _ := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
 		dealsCh, err := GetPorcelainAPI(env).DealsLs(req.Context)
 		if err != nil {
 			return err
+		}
+
+		if filterForMiner, _ := req.Options[minerOnly].(bool); filterForMiner {
+			dealsCh = filterDealChannel(dealsCh, func(deal *storagedeal.Deal) bool {
+				return deal.Miner == minerAddress
+			})
+		}
+		if filterForClient, _ := req.Options[clientOnly].(bool); filterForClient {
+			dealsCh = filterDealChannel(dealsCh, func(deal *storagedeal.Deal) bool {
+				return deal.Miner != minerAddress
+			})
 		}
 
 		for deal := range dealsCh {
@@ -70,6 +92,21 @@ deals, active deals, finished deals and cancelled deals.
 			return encoder.Encode(res)
 		}),
 	},
+}
+
+func filterDealChannel(dealCh <-chan *porcelain.StorageDealLsResult, filterFunc func(*storagedeal.Deal) bool) <-chan *porcelain.StorageDealLsResult {
+	outCh := make(chan *porcelain.StorageDealLsResult)
+
+	go func() {
+		defer close(outCh)
+		for deal := range dealCh {
+			if deal.Err != nil || filterFunc(&deal.Deal) {
+				outCh <- deal
+			}
+		}
+	}()
+
+	return outCh
 }
 
 var dealsRedeemCmd = &cmds.Command{
