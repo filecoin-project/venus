@@ -20,7 +20,7 @@ import (
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
 // migrationDefaultStore is a stripped down implementation of the Store interface
-// based on Store, containing only the fields needed for the migration.
+// based on Store, containing only the fields and functions needed for the migration.
 //
 // the extraction line is drawn at package level where the migration occurs, i.e. chain,
 // and no further.
@@ -283,7 +283,7 @@ func loadChainStore(ctx context.Context, asCBOR bool, chainStore *migrationDefau
 //     3. then calls writeHeadAsCBOR, instead of store.SetHead which also publishes an event
 //        and does some logging
 //
-// This migration will leave some fork metadata in JSON format in the repo, BUT it won't matter:
+// This migration will leave some fork metadata in JSON format in the repo, but it won't matter:
 //   for consensus purposes we don't care about uncle blocks, and if we see the block again,
 //   it will be over the network, then DataStore.Put will look for it as CBOR, won't find it and write it out as CBOR anyway.  If it's never seen again we don't care about it.
 func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error {

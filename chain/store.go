@@ -407,8 +407,3 @@ func (store *Store) GenesisCid() cid.Cid {
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
 }
-
-// GetDatastore returns the datastore
-func (store *Store) GetDatastore() repo.Datastore {
-	return store.ds
-}

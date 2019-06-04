@@ -86,19 +86,8 @@ func main() { // nolint: deadcode
 
 		oldRepoOpt := findOldRepoOrExit(logger)
 
-		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, "")
-		if err != nil {
-			exitErrCloseLogger(err.Error(), logger)
-		}
-
-		runResult := runner.Run()
-		if runResult.Err != nil {
-			exitErrCloseLogger(runResult.Err.Error(), logger)
-		}
-
-		if err != nil {
-			exitErr(err.Error())
-		}
+		// Errors are handled inside runRunner
+		_ = runRunner(logger, command, oldRepoOpt, "")
 
 	case "buildonly", "migrate", "install":
 		logger, err := newLoggerWithVerbose(getVerbose())
@@ -118,14 +107,7 @@ func main() { // nolint: deadcode
 			}
 		}
 
-		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
-		if err != nil {
-			exitErrCloseLogger(err.Error(), logger)
-		}
-		runResult := runner.Run()
-		if runResult.Err != nil {
-			exitErrCloseLogger(runResult.Err.Error(), logger)
-		}
+		runResult := runRunner(logger, command, oldRepoOpt, newRepoOpt)
 		if runResult.NewRepoPath != "" {
 			logger.Printf("New repo location: %s", runResult.NewRepoPath)
 		}
@@ -139,6 +121,18 @@ func main() { // nolint: deadcode
 	default:
 		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
 	}
+}
+
+func runRunner(logger *internal.Logger, command string, oldRepoOpt string, newRepoOpt string) internal.RunResult {
+	runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
+	if err != nil {
+		exitErrCloseLogger(err.Error(), logger)
+	}
+	runResult := runner.Run()
+	if runResult.Err != nil {
+		exitErrCloseLogger(runResult.Err.Error(), logger)
+	}
+	return runResult
 }
 
 func findOldRepoOrExit(logger *internal.Logger) string {
