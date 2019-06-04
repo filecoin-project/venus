@@ -142,13 +142,9 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, pid
 			return nil, err
 		}
 
-		// don't bother to send a FIL-transfer if the amount of FIL to transfer
-		// is zero
-		if vmctx.Message().Value.IsPositive() {
-			_, _, err = vmctx.Send(addr, "", vmctx.Message().Value, nil)
-			if err != nil {
-				return nil, err
-			}
+		_, _, err = vmctx.Send(addr, "", vmctx.Message().Value, nil)
+		if err != nil {
+			return nil, err
 		}
 
 		ctx := context.Background()
