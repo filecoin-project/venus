@@ -247,6 +247,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
+	ancestor := ancestors[0].ToSlice()[0]
+	for _, tip := range ts.ToSlice() {
+		if err := c.ValidateSemantic(ctx, ancestor, tip); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := c.validateMining(ctx, pSt, ts, ancestors[0]); err != nil {
 		return nil, err
 	}

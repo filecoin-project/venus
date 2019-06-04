@@ -56,7 +56,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	con := consensus.NewExpected(cst,
 		bs,
 		NewTestProcessor(),
-		NewTestBlockValidator(),
+		NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
 		proofs.NewFakeVerifier(true, nil))

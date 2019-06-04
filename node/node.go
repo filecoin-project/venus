@@ -395,9 +395,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
-	// create a blockClock, used for validation of block timestamps
-	blkClock := consensus.NewDefaultBlockValidationClock(nc.BlockTime)
-	blkValid := consensus.NewDefaultBlockValidator(blkClock)
+	// setup block validation
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime)
 
 	// set up consensus
 	var nodeConsensus consensus.Protocol

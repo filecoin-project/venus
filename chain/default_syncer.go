@@ -145,6 +145,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 		// TODO: if we didn't get these blocks from the network and instead got
 		// them from disk, validation feels redundant. This requires
 		// looser coupling between the store and the fetcher.
+		// De-tangle syner and store: #2128
+		// Prevent Bad block propagation: #2783
 		for _, b := range blks {
 			if err := syncer.consensus.ValidateSyntax(ctx, b); err != nil {
 				syncer.badTipSets.Add(tsKey)
@@ -369,7 +371,6 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	// Walk the chain given by the input blocks back to a known tipset in
 	// the store. This is the only code that may go to the network to
 	// resolve cids to blocks.
-	// collectChain performs block syntax validation
 	chain, err := syncer.collectChain(ctx, tipsetCids)
 	if err != nil {
 		return err
