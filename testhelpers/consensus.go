@@ -127,6 +127,24 @@ func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 	return nil
 }
 
+// FakeBlockValidator passes everything as valid
+type FakeBlockValidator struct{}
+
+// NewFakeBlockValidator createas a FakeBlockValidator that passes everything as valid.
+func NewFakeBlockValidator() *FakeBlockValidator {
+	return &FakeBlockValidator{}
+}
+
+// ValidateSemantic does nothing.
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+	return nil
+}
+
+// ValidateSyntax does nothing.
+func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+	return nil
+}
+
 // NewTestProcessor creates a processor with a test validator and test rewarder
 func NewTestProcessor() *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})

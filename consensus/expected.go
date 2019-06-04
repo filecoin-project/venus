@@ -90,6 +90,9 @@ type Expected struct {
 	// computation.
 	PwrTableView PowerTableView
 
+	// validator provides a set of methods used to validate a block.
+	BlockValidator
+
 	// cstore is used for loading state trees during message running.
 	cstore *hamt.CborIpldStore
 
@@ -110,42 +113,16 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier) Protocol {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier) *Expected {
 	return &Expected{
-		cstore:       cs,
-		bstore:       bs,
-		processor:    processor,
-		PwrTableView: pt,
-		genesisCid:   gCid,
-		verifier:     verifier,
+		cstore:         cs,
+		bstore:         bs,
+		processor:      processor,
+		PwrTableView:   pt,
+		genesisCid:     gCid,
+		verifier:       verifier,
+		BlockValidator: v,
 	}
-}
-
-// NewValidTipSet creates a new tipset from the input blocks that is guaranteed
-// to be valid. It operates by validating each block and further checking that
-// this tipset contains only blocks with the same heights, parent weights,
-// and parent sets.
-func (c *Expected) NewValidTipSet(ctx context.Context, blks []*types.Block) (types.TipSet, error) {
-	for _, blk := range blks {
-		if err := c.validateBlockStructure(ctx, blk); err != nil {
-			return types.UndefTipSet, err
-		}
-	}
-	return types.NewTipSet(blks...)
-}
-
-// ValidateBlockStructure verifies that this block, on its own, is structurally and
-// cryptographically valid. This means checking that all of its fields are
-// properly filled out and its signatures are correct. Checking the validity of
-// state changes must be done separately and only once the state of the
-// previous block has been validated. TODO: not yet signature checking
-func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) error {
-	// TODO: validate signature on block
-	if !b.StateRoot.Defined() {
-		return fmt.Errorf("block has nil StateRoot")
-	}
-
-	return nil
 }
 
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
@@ -246,6 +223,12 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	for i := 0; i < ts.Len(); i++ {
+		if err := c.BlockValidator.ValidateSemantic(ctx, ts.At(i), &ancestors[0]); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := c.validateMining(ctx, pSt, ts, ancestors[0]); err != nil {
 		return nil, err

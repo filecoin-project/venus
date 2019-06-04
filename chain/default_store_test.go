@@ -26,7 +26,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestPar
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), powerTable, dstP.genCid, proofs.NewFakeVerifier(true, nil))
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, dstP.genCid, proofs.NewFakeVerifier(true, nil))
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
