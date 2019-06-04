@@ -96,6 +96,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
+			types.OneKiBSectorSize,
 			"",
 			collateral,
 		)
@@ -114,6 +115,7 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
+			types.OneKiBSectorSize,
 			"",
 			collateral,
 		)
@@ -162,7 +164,7 @@ func TestMinerPreviewCreate(t *testing.T) {
 		ctx := context.Background()
 		plumbing := newMinerPreviewCreate(t)
 
-		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, "")
+		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, types.OneKiBSectorSize, "")
 		require.NoError(t, err)
 		assert.Equal(t, usedGas, types.NewGasUnits(5))
 	})

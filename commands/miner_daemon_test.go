@@ -341,19 +341,22 @@ func TestMinerPower(t *testing.T) {
 }
 
 var testConfig = &gengen.GenesisCfg{
-	Keys: 4,
+	ProofsMode: types.TestProofsMode,
+	Keys:       4,
 	PreAlloc: []string{
 		"10",
 		"50",
 	},
-	Miners: []gengen.Miner{
+	Miners: []*gengen.CreateStorageMinerConfig{
 		{
 			Owner:               0,
 			NumCommittedSectors: 3,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 		{
 			Owner:               1,
 			NumCommittedSectors: 3,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
 }

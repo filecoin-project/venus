@@ -62,6 +62,25 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
+		pp, err := GetPorcelainAPI(env).ProtocolParameters(env.Context())
+		if err != nil {
+			return err
+		}
+
+		// TODO: Modify this command to accept a sector size as an argument,
+		// ensuring that the provided sector size is supported by the network.
+		// https://github.com/filecoin-project/go-filecoin/issues/2530
+		//
+		// TODO: It may become the case that the protocol does not specify an
+		// enumeration of supported sector sizes, but rather that any sector
+		// size for which a miner has Groth parameters and a verifying key is
+		// supported.
+		// https://github.com/filecoin-project/specs/pull/318
+		sectorSize := types.OneKiBSectorSize
+		if pp.ProofsMode == types.LiveProofsMode {
+			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		}
+
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
 			return err
@@ -93,6 +112,7 @@ additional sectors.`,
 			usedGas, err := GetPorcelainAPI(env).MinerPreviewCreate(
 				req.Context,
 				fromAddr,
+				sectorSize,
 				pid,
 			)
 			if err != nil {
@@ -110,6 +130,7 @@ additional sectors.`,
 			fromAddr,
 			gasPrice,
 			gasLimit,
+			sectorSize,
 			pid,
 			collateral,
 		)

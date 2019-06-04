@@ -226,12 +226,14 @@ var PeerKeys = []crypto.PrivKey{
 
 // TestGenCfg is a genesis configuration used for tests.
 var TestGenCfg = &gengen.GenesisCfg{
-	Keys: 2,
-	Miners: []gengen.Miner{
+	ProofsMode: types.TestProofsMode,
+	Keys:       2,
+	Miners: []*gengen.CreateStorageMinerConfig{
 		{
 			Owner:               0,
 			NumCommittedSectors: 100,
 			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
 	PreAlloc: []string{
