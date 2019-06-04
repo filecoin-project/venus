@@ -40,9 +40,6 @@ type migrationDefaultStore struct {
 
 	// head is the tipset at the head of the best known chain.
 	Head types.TipSet
-
-	// Tracks tipsets by height/parentset for use by expected consensus.
-	TipIndex *chain.TipIndex
 }
 
 // GetBlock retrieves a block by cid.
@@ -85,9 +82,8 @@ func (m *MetadataFormatJSONtoCBOR) Migrate(newRepoPath string) error {
 
 	// construct the chainstore from FSRepo
 	m.chainStore = &migrationDefaultStore{
-		BsPriv:   bstore.NewBlockstore(fsrepo.ChainDatastore()),
-		Ds:       fsrepo.ChainDatastore(),
-		TipIndex: chain.NewTipIndex(),
+		BsPriv: bstore.NewBlockstore(fsrepo.ChainDatastore()),
+		Ds:     fsrepo.ChainDatastore(),
 	}
 
 	if err = m.convertJSONtoCBOR(context.Background()); err != nil {
@@ -118,9 +114,8 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 
 	// construct the chainstore from FSRepo
 	oldChainStore := &migrationDefaultStore{
-		BsPriv:   bstore.NewBlockstore(oldFsRepo.ChainDatastore()),
-		Ds:       oldFsRepo.ChainDatastore(),
-		TipIndex: chain.NewTipIndex(),
+		BsPriv: bstore.NewBlockstore(oldFsRepo.ChainDatastore()),
+		Ds:     oldFsRepo.ChainDatastore(),
 	}
 
 	newFsRepo, err := repo.OpenFSRepo(newRepoPath, newVer)
@@ -130,9 +125,8 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 	defer mustCloseRepo(newFsRepo)
 
 	newChainStore := &migrationDefaultStore{
-		BsPriv:   bstore.NewBlockstore(newFsRepo.ChainDatastore()),
-		Ds:       newFsRepo.ChainDatastore(),
-		TipIndex: chain.NewTipIndex(),
+		BsPriv: bstore.NewBlockstore(newFsRepo.ChainDatastore()),
+		Ds:     newFsRepo.ChainDatastore(),
 	}
 
 	ctx := context.Background()
@@ -148,17 +142,26 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 	}
 
 	// Compare heads
-	if !newChainStore.Head.Equals(oldChainStore.Head) {
-		return errors.New("migrated chain head not equal to source chain head")
+	oldChainHead, err := loadChainHeadAsJSON(oldChainStore)
+	if err != nil {
+		return err
 	}
-
-	oldStateRoot, err := oldChainStore.TipIndex.GetTipSetStateRoot(oldChainStore.Head.ToSortedCidSet().String())
+	newChainHead, err := loadChainHead(true, newChainStore)
 	if err != nil {
 		return err
 	}
 
+	if !newChainHead.Equals(oldChainHead) {
+		return errors.New("migrated chain head not equal to source chain head")
+	}
+
 	// Compare stateroots
-	newStateRoot, err := oldChainStore.TipIndex.GetTipSetStateRoot(newChainStore.Head.ToSortedCidSet().String())
+	oldStateRoot, err := loadStateRoot(oldChainStore.Head, false, oldChainStore)
+	if err != nil {
+		return err
+	}
+
+	newStateRoot, err := loadStateRoot(newChainStore.Head, true, newChainStore)
 	if err != nil {
 		return err
 	}
@@ -255,17 +258,7 @@ func loadChainStore(ctx context.Context, asCBOR bool, chainStore *migrationDefau
 			return err
 		}
 
-		stateRoot, err := loadStateRoot(iterator.Value(), asCBOR, chainStore)
-		if err != nil {
-			return err
-		}
-
-		tipSetAndState := &chain.TipSetAndState{
-			TipSet:          iterator.Value(),
-			TipSetStateRoot: stateRoot,
-		}
-
-		err = chainStore.TipIndex.Put(tipSetAndState)
+		_, err := loadStateRoot(iterator.Value(), asCBOR, chainStore)
 		if err != nil {
 			return err
 		}
