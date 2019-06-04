@@ -98,7 +98,7 @@ func (m *MetadataFormatJSONtoCBOR) Versions() (from, to uint) {
 // Compares the two and returns error if they are not completely equal once loaded.
 func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) error {
 	// open the repo path
-	oldVer, newVer := m.Versions()
+	oldVer, _ := m.Versions()
 
 	// This call performs some checks on the repo before we start.
 	oldFsRepo, err := repo.OpenFSRepo(oldRepoPath, oldVer)
@@ -113,7 +113,8 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 		Ds:     oldFsRepo.ChainDatastore(),
 	}
 
-	newFsRepo, err := repo.OpenFSRepo(newRepoPath, newVer)
+	// Version hasn't been updated yet.
+	newFsRepo, err := repo.OpenFSRepo(newRepoPath, oldVer)
 	if err != nil {
 		return err
 	}

@@ -72,9 +72,6 @@ func TestMigrateSomeRepo(t *testing.T) {
 
 		require.NoError(t, mig.Migrate(newRepoPath))
 
-		// Update the version, pretending that the MigrationRunner did it
-		require.NoError(t, repo.WriteVersion(newRepoPath, 2))
-
 		err = mig.Validate(repoSymLink, newRepoPath)
 		require.NoError(t, err)
 	})
@@ -84,25 +81,9 @@ func TestMigrateSomeRepo(t *testing.T) {
 		require.NoError(t, err)
 		defer repo.RequireRemoveAll(t, newRepoPath)
 
-		// Update the version, pretending that the MigrationRunner did it
-		require.NoError(t, repo.WriteVersion(newRepoPath, 2))
-
 		err = mig.Validate(repoSymLink, newRepoPath)
 		require.Error(t, err)
 		// Because Validate tried to load JSON encoded data as CBOR
 		assert.Contains(t, err.Error(), "cbor: decoding rejected oversized byte field")
-	})
-
-	t.Run("Validation without a version bump is a validation failure", func(t *testing.T) {
-		newRepoPath, err := internal.CloneRepo(repoSymLink, newVer)
-		require.NoError(t, err)
-		defer repo.RequireRemoveAll(t, newRepoPath)
-
-		require.NoError(t, mig.Migrate(newRepoPath))
-
-		err = mig.Validate(repoSymLink, newRepoPath)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "out of date repo version")
-		assert.Contains(t, err.Error(), "Migrate with tools/migration/go-filecoin-migrate")
 	})
 }

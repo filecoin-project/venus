@@ -21,33 +21,28 @@ USAGE
 	go-filecoin-migrate install --old-repo=<repolink> --new-repo=<migrated-repo> [-v|--verbose]
 
 COMMANDS
-	describe
-		prints a description of what the current migration will do
-	buildonly
-		runs the migration and validations, but does not install the newly migrated repo
-		at the --old-repo symlink
-	migrate
-		runs migration, validations, and installs newly migrated repo at --old-repo symlink
-	install
-		installs a newly migrated repo
+	describe	prints a description of what the current migration will do
+
+	buildonly	runs the migration and validations, but does not install the newly migrated 
+				repo at the --old-repo symlink
+
+	migrate		runs migration, validations, and installs newly migrated repo at 
+				--old-repo symlink
+
+	install		installs a newly migrated repo
 
 REQUIRED ARGUMENTS
-	--old-repo
-		The symlink location of this node's filecoin home directory. This is required even for the
-		'describe' command, as its repo version helps determine which migration to run. This
-		must be a symbolic link or migration will not proceed.
+	--old-repo	the symlink location of this node's filecoin home directory. This is required
+		even for the 'describe' command, as its repo version helps determine which migration 
+		to run. This must be a symbolic link or migration will not proceed.
 
-	--new-repo
-		the location of a newly migrated repo. This is required only for the install command and
-		otherwise ignored.
+	--new-repo	the location of a newly migrated repo. This is required only for the 
+		install command and otherwise ignored.
 
 OPTIONS
-	-h, --help
-		This message
-	-v --verbose
-		Print diagnostic messages to stdout
-        --log-file
-                The path of the file for writing detailed log output
+	-h, --help     This message
+	-v --verbose   Print diagnostic messages to stdout
+	--log-file     The path of the file for writing detailed log output
 
 EXAMPLES
 	for a migration from version 1 to 2:
