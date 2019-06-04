@@ -96,7 +96,6 @@ func TestOutdatedPreleaseIDs(t *testing.T) {
 	r.getPrereleases()
 	outdated := r.outdatedPreleaseIDs()
 	assert.Len(t, outdated, 1, "There should only be one ID")
-	t.Logf("outdated: %+v", outdated)
 	tag, ok := outdated[3]
 	assert.True(t, ok, "map key should exist")
 	assert.Equal(t, tag, "v3", "unexpected prerelease name")
