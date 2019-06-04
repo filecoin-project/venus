@@ -189,19 +189,6 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 
-		// validate blocks we maybe got from the network
-		// TODO: if we didn't get these blocks from the network and instead got
-		// them from disk, validation feels redundant. This requires
-		// looser coupling between the store and the fetcher.
-		// De-tangle syner and store: #2128
-		// Prevent Bad block propagation: #2783
-		for _, b := range blks {
-			if err := syncer.consensus.ValidateSyntax(ctx, b); err != nil {
-				syncer.badTipSets.Add(tsKey)
-				syncer.badTipSets.AddChain(chain)
-				return nil, err
-			}
-		}
 		ts, err := types.NewTipSet(blks...)
 		if err != nil {
 			return nil, err

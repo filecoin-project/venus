@@ -378,12 +378,15 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up pinger
 	pingService := ping.NewPingService(peerHost)
 
+	// setup block validation
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime)
+
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
-	fetcher := net.NewFetcher(ctx, bservice)
+	fetcher := net.NewFetcher(ctx, bservice, blkValid)
 
 	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
@@ -403,9 +406,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	} else {
 		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
 	}
-
-	// setup block validation
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime)
 
 	// set up consensus
 	var nodeConsensus consensus.Protocol
