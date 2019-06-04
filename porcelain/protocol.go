@@ -12,8 +12,9 @@ import (
 
 // ProtocolParams TODO(rosa)
 type ProtocolParams struct {
-	AutoSealInterval uint
-	ProofsMode       types.ProofsMode
+	AutoSealInterval     uint
+	ProofsMode           types.ProofsMode
+	SupportedSectorSizes []*types.BytesAmount
 }
 
 type protocolParamsPlumbing interface {
@@ -38,10 +39,28 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve proofs mode")
 	}
 
+	supportedSectorSizes := []*types.BytesAmount{types.OneKiBSectorSize}
+	if proofsMode == types.LiveProofsMode {
+		supportedSectorSizes[0] = types.TwoHundredFiftySixMiBSectorSize
+	}
+
 	return &ProtocolParams{
-		AutoSealInterval: autoSealInterval,
-		ProofsMode:       proofsMode,
+		AutoSealInterval:     autoSealInterval,
+		ProofsMode:           proofsMode,
+		SupportedSectorSizes: supportedSectorSizes,
 	}, nil
+}
+
+// IsSupportedSectorSize returns true if the given sector size is supported by
+// the network.
+func (pp *ProtocolParams) IsSupportedSectorSize(sectorSize *types.BytesAmount) bool {
+	for _, size := range pp.SupportedSectorSizes {
+		if size.Equal(sectorSize) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.ProofsMode, error) {

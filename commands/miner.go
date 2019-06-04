@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
@@ -50,10 +51,11 @@ miner's collateral drops below 0.001FIL, the miner will not be able to commit
 additional sectors.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL"),
+		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL."),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "Address to send from"),
+		cmdkit.StringOption("sectorsize", "size of the sectors which this miner will commit, in bytes"),
+		cmdkit.StringOption("from", "address to send from"),
 		cmdkit.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
 		priceOption,
 		limitOption,
@@ -67,18 +69,22 @@ additional sectors.`,
 			return err
 		}
 
-		// TODO: Modify this command to accept a sector size as an argument,
-		// ensuring that the provided sector size is supported by the network.
-		// https://github.com/filecoin-project/go-filecoin/issues/2530
-		//
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectorSizes[0])
+		if err != nil {
+			return err
+		}
+
 		// TODO: It may become the case that the protocol does not specify an
 		// enumeration of supported sector sizes, but rather that any sector
 		// size for which a miner has Groth parameters and a verifying key is
 		// supported.
 		// https://github.com/filecoin-project/specs/pull/318
-		sectorSize := types.OneKiBSectorSize
-		if pp.ProofsMode == types.LiveProofsMode {
-			sectorSize = types.TwoHundredFiftySixMiBSectorSize
+		if !pp.IsSupportedSectorSize(sectorSize) {
+			supportedStrs := make([]string, len(pp.SupportedSectorSizes))
+			for i, ss := range pp.SupportedSectorSizes {
+				supportedStrs[i] = ss.String()
+			}
+			return fmt.Errorf("unsupported sector size: %s (supported sizes: %s)", sectorSize, strings.Join(supportedStrs, ", "))
 		}
 
 		fromAddr, err := optionalAddr(req.Options["from"])

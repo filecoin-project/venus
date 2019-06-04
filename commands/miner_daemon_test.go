@@ -149,6 +149,18 @@ func TestMinerCreate(t *testing.T) {
 		tf(testAddr, th.RequireRandomPeerID(t))
 	})
 
+	t.Run("unsupported sector size", func(t *testing.T) {
+		d := th.NewDaemon(t).Start()
+		defer d.ShutdownSuccess()
+
+		d.CreateAddress()
+
+		d.RunFail("unsupported sector size",
+			"miner", "create", "20",
+			"--sectorsize", "42",
+		)
+	})
+
 	t.Run("validation failure", func(t *testing.T) {
 
 		d := th.NewDaemon(t).Start()
@@ -156,6 +168,10 @@ func TestMinerCreate(t *testing.T) {
 
 		d.CreateAddress()
 
+		d.RunFail("invalid sector size",
+			"miner", "create", "20",
+			"--sectorsize", "ninetybillion",
+		)
 		d.RunFail("invalid peer id",
 			"miner", "create",
 			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "20",
