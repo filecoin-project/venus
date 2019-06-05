@@ -48,7 +48,7 @@ func (store *migrationChainStore) GetBlock(ctx context.Context, c cid.Cid) (*typ
 
 // MetadataFormatJSONtoCBOR is the migration from version 1 to 2.
 type MetadataFormatJSONtoCBOR struct {
-	chainStore *migrationChainStore
+	store *migrationChainStore
 }
 
 // Describe describes the steps this migration will take.
@@ -77,7 +77,7 @@ func (m *MetadataFormatJSONtoCBOR) Migrate(newRepoPath string) error {
 	defer mustCloseRepo(fsrepo)
 
 	// construct the chainstore to be migrated from FSRepo
-	m.chainStore = &migrationChainStore{
+	m.store = &migrationChainStore{
 		BsPriv: bstore.NewBlockstore(fsrepo.ChainDatastore()),
 		Ds:     fsrepo.ChainDatastore(),
 	}
@@ -108,7 +108,7 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 	defer mustCloseRepo(oldFsRepo)
 
 	// construct the chainstore from FSRepo
-	oldChainStore := &migrationChainStore{
+	oldStore := &migrationChainStore{
 		BsPriv: bstore.NewBlockstore(oldFsRepo.ChainDatastore()),
 		Ds:     oldFsRepo.ChainDatastore(),
 	}
@@ -120,7 +120,7 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 	}
 	defer mustCloseRepo(newFsRepo)
 
-	newChainStore := &migrationChainStore{
+	newStore := &migrationChainStore{
 		BsPriv: bstore.NewBlockstore(newFsRepo.ChainDatastore()),
 		Ds:     newFsRepo.ChainDatastore(),
 	}
@@ -128,7 +128,7 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 	ctx := context.Background()
 
 	// compare entire chainstores
-	if err = compareChainStores(ctx, oldChainStore, newChainStore); err != nil {
+	if err = compareChainStores(ctx, oldStore, newStore); err != nil {
 		return errors.Wrap(err, "old and new chainStores are not equal")
 	}
 
@@ -146,14 +146,14 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 //   for consensus purposes we don't care about uncle blocks, and if we see the block again,
 //   it will be over the network, then DataStore.Put will look for it as CBOR, won't find it and write it out as CBOR anyway.  If it's never seen again we don't care about it.
 func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error {
-	tipCids, err := loadChainHeadAsJSON(m.chainStore)
+	tipCids, err := loadChainHeadAsJSON(m.store)
 	if err != nil {
 		return err
 	}
 	var blocks []*types.Block
 	// traverse starting from head to begin loading the chain
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
-		blk, err := m.chainStore.GetBlock(ctx, it.Value())
+		blk, err := m.store.GetBlock(ctx, it.Value())
 		if err != nil {
 			return errors.Wrap(err, "failed to load block in head TipSet")
 		}
@@ -165,17 +165,17 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 		return errors.Wrap(err, "failed to add validated block to TipSet")
 	}
 
-	for iterator := chain.IterAncestors(ctx, m.chainStore, headTs); !iterator.Complete(); err = iterator.Next() {
+	for iter := chain.IterAncestors(ctx, m.store, headTs); !iter.Complete(); err = iter.Next() {
 		if err != nil {
 			return err
 		}
 
-		stateRoot, err := loadStateRootAsJSON(iterator.Value(), m.chainStore)
+		stateRoot, err := loadStateRootAsJSON(iter.Value(), m.store)
 		if err != nil {
 			return err
 		}
 		tipSetAndState := &chain.TipSetAndState{
-			TipSet:          iterator.Value(),
+			TipSet:          iter.Value(),
 			TipSetStateRoot: stateRoot,
 		}
 		// only write TipSet and State; Block and tipIndex formats are not changed.
@@ -201,7 +201,7 @@ func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids typ
 	}
 
 	// this writes the value to the FSRepo
-	return m.chainStore.Ds.Put(headKey, val)
+	return m.store.Ds.Put(headKey, val)
 }
 
 // writeTipSetAndStateAsCBOR writes the tipset key and the state root id to the
@@ -224,7 +224,7 @@ func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetA
 	key := datastore.NewKey(keyStr)
 
 	// this writes the value to the FSRepo
-	return m.chainStore.Ds.Put(key, val)
+	return m.store.Ds.Put(key, val)
 }
 
 // loadChainHeadAsJSON loads the latest known head from disk assuming JSON format
@@ -233,15 +233,15 @@ func loadChainHeadAsJSON(chainStore *migrationChainStore) (types.SortedCidSet, e
 }
 
 // loadChainHeadAsCBOR loads the latest known head from disk assuming CBOR format
-func loadChainHeadAsCBOR(chainStore *migrationChainStore) (types.SortedCidSet, error) {
-	return loadChainHead(true, chainStore)
+func loadChainHeadAsCBOR(store *migrationChainStore) (types.SortedCidSet, error) {
+	return loadChainHead(true, store)
 }
 
 // loadChainHead loads the chain head CIDs as either CBOR or JSON
-func loadChainHead(asCBOR bool, chainStore *migrationChainStore) (types.SortedCidSet, error) {
+func loadChainHead(asCBOR bool, store *migrationChainStore) (types.SortedCidSet, error) {
 	var emptyCidSet types.SortedCidSet
 
-	bb, err := chainStore.Ds.Get(headKey)
+	bb, err := store.Ds.Get(headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
@@ -261,20 +261,20 @@ func loadChainHead(asCBOR bool, chainStore *migrationChainStore) (types.SortedCi
 }
 
 // function wrapper for loading state root as JSON
-func loadStateRootAsJSON(ts types.TipSet, chainStore *migrationChainStore) (cid.Cid, error) {
-	return loadStateRoot(ts, false, chainStore)
+func loadStateRootAsJSON(ts types.TipSet, store *migrationChainStore) (cid.Cid, error) {
+	return loadStateRoot(ts, false, store)
 }
 
-// loadStateRoot loads the chain store metadata into chainStore, updating its
+// loadStateRoot loads the chain store metadata into store, updating its
 // state root and then returning the state root + any error
 // pass true to load as CBOR (new format) or false to load as JSON (old format)
-func loadStateRoot(ts types.TipSet, asCBOR bool, chainStore *migrationChainStore) (cid.Cid, error) {
+func loadStateRoot(ts types.TipSet, asCBOR bool, store *migrationChainStore) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
-	bb, err := chainStore.Ds.Get(key)
+	bb, err := store.Ds.Get(key)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
@@ -296,23 +296,23 @@ func loadStateRoot(ts types.TipSet, asCBOR bool, chainStore *migrationChainStore
 //     * at any point state roots are not equal
 //     * the old and new chain store iterators are not complete at the same time
 // 	   * at the end the two heads are not equal
-func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore, newChainStore *migrationChainStore) error {
-	oldTipCids, err := loadChainHeadAsJSON(oldChainStore)
+func compareChainStores(ctx context.Context, oldStore *migrationChainStore, newStore *migrationChainStore) error {
+	oldTipCids, err := loadChainHeadAsJSON(oldStore)
 	if err != nil {
 		return err
 	}
 
-	newTipCids, err := loadChainHeadAsCBOR(newChainStore)
+	newTipCids, err := loadChainHeadAsCBOR(newStore)
 	if err != nil {
 		return err
 	}
 
-	oldHeadTs, err := loadTipSet(ctx, oldTipCids, oldChainStore)
+	oldHeadTs, err := loadTipSet(ctx, oldTipCids, oldStore)
 	if err != nil {
 		return err
 	}
 
-	newHeadTs, err := loadTipSet(ctx, newTipCids, newChainStore)
+	newHeadTs, err := loadTipSet(ctx, newTipCids, newStore)
 	if err != nil {
 		return err
 	}
@@ -321,8 +321,8 @@ func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore,
 		return errors.New("new and old head tipsets not equal")
 	}
 
-	oldIt := chain.IterAncestors(ctx, oldChainStore, oldHeadTs)
-	for newIt := chain.IterAncestors(ctx, newChainStore, newHeadTs); !newIt.Complete(); err = newIt.Next() {
+	oldIt := chain.IterAncestors(ctx, oldStore, oldHeadTs)
+	for newIt := chain.IterAncestors(ctx, newStore, newHeadTs); !newIt.Complete(); err = newIt.Next() {
 		if err != nil {
 			return err
 		}
@@ -330,16 +330,16 @@ func compareChainStores(ctx context.Context, oldChainStore *migrationChainStore,
 			return errors.New("old chain store is shorter than new chain store")
 		}
 
-		newStateRoot, err := loadStateRoot(newIt.Value(), true, newChainStore)
+		newSr, err := loadStateRoot(newIt.Value(), true, newStore)
 		if err != nil {
 			return err
 		}
 
-		oldStateRoot, err := loadStateRootAsJSON(oldIt.Value(), oldChainStore)
+		oldSr, err := loadStateRootAsJSON(oldIt.Value(), oldStore)
 		if err != nil {
 			return err
 		}
-		if !newStateRoot.Equals(oldStateRoot) {
+		if !newSr.Equals(oldSr) {
 			return errors.New("current state root not equal for block")
 		}
 		if err = oldIt.Next(); err != nil {
