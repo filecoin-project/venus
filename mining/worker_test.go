@@ -57,7 +57,7 @@ func Test_Mine(t *testing.T) {
 		outCh := make(chan mining.Output)
 		worker := mining.NewDefaultWorkerWithDeps(
 			pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), mining.NewTestPowerTableView(1),
-			bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest,
+			bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewTestBlockClock(),
 			CreatePoSTFunc)
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -70,7 +70,7 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, th.NewTestProcessor(),
-			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 		outCh := make(chan mining.Output)
 		doSomeWorkCalled = false
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -85,7 +85,7 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+			mining.NewTestPowerTableView(1), bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 		input := types.TipSet{}
 		outCh := make(chan mining.Output)
 		go worker.Mine(ctx, input, 0, outCh)
@@ -212,7 +212,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	minerOwnerAddr := addrs[3]
 
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-		&th.TestView{}, bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		&th.TestView{}, bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 
 	parents := types.NewSortedCidSet(newCid())
 	stateRoot := newCid()
@@ -255,7 +255,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		return nil, nil
 	}
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, nil, "", nil)
@@ -337,7 +337,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		&th.TestView{}, bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
@@ -379,7 +379,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		return nil, nil
 	}
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -413,7 +413,7 @@ func TestGenerateError(t *testing.T) {
 	}
 	worker := mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors,
 		consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.BlockTimeTest, CreatePoSTFunc)
+		&th.TestView{}, bs, cst, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewTestBlockClock(), CreatePoSTFunc)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, nil, "", nil)

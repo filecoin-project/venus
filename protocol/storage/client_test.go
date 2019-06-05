@@ -49,7 +49,7 @@ func TestProposeDeal(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(t)
-	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
@@ -139,7 +139,7 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(t)
-	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
@@ -259,10 +259,6 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 	}
 }
 
-func (tcn *testClientNode) GetBlockTime() time.Duration {
-	return 100 * time.Millisecond
-}
-
 // MakeTestProtocolRequest calls the responder set for the testClientNode to provide a test
 // response for a protocol request.
 // It ignores the host param required for the storage client interface.
@@ -274,6 +270,10 @@ func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol
 	}
 	*dealResponse = *res.(*storagedeal.Response)
 	return nil
+}
+
+func (ctp *clientTestAPI) BlockTime(_ context.Context) time.Duration {
+	return 100 * time.Millisecond
 }
 
 func (ctp *clientTestAPI) DealClientLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {

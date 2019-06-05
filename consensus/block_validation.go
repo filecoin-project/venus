@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/plumbing/clock"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -49,16 +50,14 @@ func (ebc *DefaultBlockValidationClock) EpochSeconds() uint64 {
 
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
-	clock     BlockValidationClock
-	blockTime time.Duration
+	clock clock.BlockClock
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration) *DefaultBlockValidator {
+func NewDefaultBlockValidator(c clock.BlockClock) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
-		clock:     NewDefaultBlockValidationClock(),
-		blockTime: blkTime,
+		clock: c,
 	}
 }
 
@@ -83,5 +82,5 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 // BlockTime returns the block time the DefaultBlockValidator uses to validate
 /// blocks against.
 func (dv *DefaultBlockValidator) BlockTime() time.Duration {
-	return dv.blockTime
+	return dv.clock.BlockTime()
 }

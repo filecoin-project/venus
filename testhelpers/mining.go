@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"context"
 	"crypto/rand"
 	"strconv"
 	"testing"
@@ -11,6 +12,24 @@ import (
 
 // BlockTimeTest is the block time used by workers during testing
 const BlockTimeTest = time.Second
+
+// TestBlockClock implement plumbing/clock.BlockClock
+type TestBlockClock struct {
+	blockTime time.Duration
+}
+
+// NewTestBlockClock returns a TestBlockClock that uses BlockTimeTest
+// as its duration
+func NewTestBlockClock() *TestBlockClock {
+	return &TestBlockClock{
+		blockTime: BlockTimeTest,
+	}
+}
+
+// BlockTime returns the block time of TestBlockClock
+func (tbc *TestBlockClock) BlockTime(ctx context.Context) time.Duration {
+	return tbc.blockTime
+}
 
 // MakeCommitment creates a random commitment.
 func MakeCommitment() []byte {

@@ -72,6 +72,10 @@ type MessageApplier interface {
 	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
+type workerPorcelainAPI interface {
+	BlockTime(ctx context.Context) time.Duration
+}
+
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	createPoSTFunc DoSomeWorkFunc
@@ -91,7 +95,7 @@ type DefaultWorker struct {
 	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
 	cstore        *hamt.CborIpldStore
-	blockTime     time.Duration
+	clock         workerPorcelainAPI
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -107,7 +111,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	minerOwner address.Address,
 	minerPubKey []byte,
 	workerSigner consensus.TicketSigner,
-	bt time.Duration) *DefaultWorker {
+	clock workerPorcelainAPI) *DefaultWorker {
 
 	w := NewDefaultWorkerWithDeps(messageSource,
 		getStateTree,
@@ -121,7 +125,7 @@ func NewDefaultWorker(messageSource MessageSource,
 		minerOwner,
 		minerPubKey,
 		workerSigner,
-		bt,
+		clock,
 		func() {})
 
 	// TODO: create real PoST.
@@ -144,22 +148,22 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	minerOwner address.Address,
 	minerPubKey []byte,
 	workerSigner consensus.TicketSigner,
-	bt time.Duration,
+	clock workerPorcelainAPI,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
+		blockstore:     bs,
+		clock:          clock,
+		createPoSTFunc: createPoST,
+		cstore:         cst,
+		getAncestors:   getAncestors,
 		getStateTree:   getStateTree,
 		getWeight:      getWeight,
-		getAncestors:   getAncestors,
 		messageSource:  messageSource,
-		processor:      processor,
-		powerTable:     powerTable,
-		blockstore:     bs,
-		cstore:         cst,
-		createPoSTFunc: createPoST,
 		minerAddr:      miner,
 		minerOwnerAddr: minerOwner,
 		minerPubKey:    minerPubKey,
-		blockTime:      bt,
+		powerTable:     powerTable,
+		processor:      processor,
 		workerSigner:   workerSigner,
 	}
 }
@@ -259,5 +263,5 @@ func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFun
 // fakeCreatePoST is the default implementation of DoSomeWorkFunc.
 // It simply sleeps for the blockTime.
 func (w *DefaultWorker) fakeCreatePoST() {
-	time.Sleep(w.blockTime)
+	time.Sleep(w.clock.BlockTime(context.Background()))
 }
