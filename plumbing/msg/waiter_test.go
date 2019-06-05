@@ -145,6 +145,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
 		consensus.MinerActor(minerAddr, addr3, []byte{}, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
+		consensus.BlockTimerFunc(func() int64 { return 0 }),
 	)
 	cst, chainStore, waiter := setupTestWithGif(t, testGen)
 

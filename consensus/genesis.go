@@ -5,6 +5,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-peer"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -40,11 +41,12 @@ type minerActorConfig struct {
 
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts   map[address.Address]*types.AttoFIL
-	nonces     map[address.Address]uint64
-	actors     map[address.Address]*actor.Actor
-	miners     map[address.Address]*minerActorConfig
-	proofsMode types.ProofsMode
+	accounts       map[address.Address]*types.AttoFIL
+	nonces         map[address.Address]uint64
+	actors         map[address.Address]*actor.Actor
+	miners         map[address.Address]*minerActorConfig
+	proofsMode     types.ProofsMode
+	blockTimerFunc func() int64
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -95,14 +97,22 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	}
 }
 
+func BlockTimerFunc(btf func() int64) GenOption {
+	return func(gc *Config) error {
+		gc.blockTimerFunc = btf
+		return nil
+	}
+}
+
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts:   make(map[address.Address]*types.AttoFIL),
-		nonces:     make(map[address.Address]uint64),
-		actors:     make(map[address.Address]*actor.Actor),
-		miners:     make(map[address.Address]*minerActorConfig),
-		proofsMode: types.TestProofsMode,
+		accounts:       make(map[address.Address]*types.AttoFIL),
+		nonces:         make(map[address.Address]uint64),
+		actors:         make(map[address.Address]*actor.Actor),
+		miners:         make(map[address.Address]*minerActorConfig),
+		proofsMode:     types.TestProofsMode,
+		blockTimerFunc: time.Now().Unix,
 	}
 }
 
@@ -177,6 +187,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		genesis := &types.Block{
 			StateRoot: c,
 			Nonce:     1337,
+			Timestamp: types.Uint64(genCfg.blockTimerFunc()),
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
@@ -194,7 +205,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 // DefaultGenesis creates a genesis block with default accounts and actors installed.
 func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-	return MakeGenesisFunc()(cst, bs)
+	return MakeGenesisFunc(BlockTimerFunc(func() int64 { return 0 }))(cst, bs)
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.

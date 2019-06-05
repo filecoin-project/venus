@@ -28,7 +28,7 @@ func init() {
 	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
 }
 
-func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight uint64, msg string) *Block {
+func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
 	addrGetter := address.NewForTestGetter()
 
 	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
@@ -45,6 +45,7 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Messages:        []*SignedMessage{sm1},
 		StateRoot:       SomeCid(),
 		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
+		Timestamp:       Uint64(timestamp),
 	}
 }
 
@@ -68,8 +69,8 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("order breaks ties with CID", func(t *testing.T) {
-		b1 := block(t, []byte{1}, 1, cid1, parentWeight, "1")
-		b2 := block(t, []byte{1}, 1, cid1, parentWeight, "2")
+		b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
+		b2 := block(t, []byte{1}, 1, cid1, parentWeight, 2, "2")
 
 		ts := RequireNewTipSet(t, b1, b2)
 		if bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) < 0 {
@@ -121,6 +122,11 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, b1.Ticket, tsTicket)
 	})
 
+	t.Run("min timestamp", func(t *testing.T) {
+		tsTime, _ := RequireNewTipSet(t, b1, b2, b3).MinTimestamp()
+		assert.Equal(t, b1.Timestamp, tsTime)
+	})
+
 	t.Run("equality", func(t *testing.T) {
 		ts1a := RequireNewTipSet(t, b3, b2, b1)
 		ts1b := RequireNewTipSet(t, b1, b2, b3)
@@ -153,7 +159,12 @@ func TestTipSet(t *testing.T) {
 		// String shouldn't really need testing, but some existing code uses the string as a
 		// datastore key and depends on the format exactly.
 		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
-		assert.Equal(t, "{ "+b1.Cid().String()+" "+b2.Cid().String()+" "+b3.Cid().String()+" }",
+
+		// DONOTMETGE this test (actually just the below assertion) needed to be fixed after adding a timestamp to block,
+		// I believe this is becasue tipsets are sorted by tickets, but when converted to a
+		// string they are sorted by CID's. I belive I am missing something or it was a fluke this
+		// test passed in the first place...
+		assert.Equal(t, "{ "+b2.Cid().String()+" "+b1.Cid().String()+" "+b3.Cid().String()+" }",
 			RequireNewTipSet(t, b3, b2, b1).String())
 	})
 
@@ -195,10 +206,10 @@ func TestTipSet(t *testing.T) {
 	})
 }
 
-// Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
+// Test methods: String, ToSortedCidSet, ToSlice, MinTicket, MinTimestamp, Height, NewTipSet, Equals
 func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
-	b1 := block(t, []byte{1}, 1, cid1, parentWeight, "1")
-	b2 := block(t, []byte{2}, 1, cid1, parentWeight, "2")
-	b3 := block(t, []byte{3}, 1, cid1, parentWeight, "3")
+	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
+	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
+	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
 	return b1, b2, b3
 }

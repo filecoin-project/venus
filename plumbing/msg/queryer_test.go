@@ -47,6 +47,7 @@ func TestQuery(t *testing.T) {
 			consensus.AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
 			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			consensus.BlockTimerFunc(func() int64 { return 0 }),
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
@@ -84,6 +85,7 @@ func TestQuery(t *testing.T) {
 			consensus.AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
 			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			consensus.BlockTimerFunc(func() int64 { return 0 }),
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 

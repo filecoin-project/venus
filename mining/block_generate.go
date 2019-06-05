@@ -86,6 +86,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		Proof:           proof,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
+		Timestamp:       types.Uint64(time.Now().Unix()),
 	}
 
 	for i, msg := range res.PermanentFailures {

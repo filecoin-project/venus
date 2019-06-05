@@ -151,7 +151,10 @@ func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
 	if sourceName == "" {
-		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
+		return consensus.MakeGenesisFunc(
+			consensus.ProofsMode(types.LiveProofsMode),
+			consensus.BlockTimerFunc(func() int64 { return 0 }),
+		), nil
 	}
 
 	sourceURL, err := url.Parse(sourceName)
