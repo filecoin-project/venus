@@ -4,8 +4,10 @@ import (
 	"time"
 	"unsafe"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/lib -lfilecoin_proofs
@@ -50,20 +52,16 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	sectorIDCbytes := C.CBytes(req.SectorID[:])
 	defer C.free(sectorIDCbytes)
 
-	cfg, err := CSectorStoreType(req.StoreType)
-	if err != nil {
-		return VerifySealResponse{}, err
-	}
-
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
-		cfg,
+		C.uint64_t(req.SectorSize.Uint64()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
 		(*[31]C.uint8_t)(proverIDCBytes),
 		(*[31]C.uint8_t)(sectorIDCbytes),
-		(*[384]C.uint8_t)(proofCBytes),
+		(*C.uint8_t)(proofCBytes),
+		C.size_t(len(req.Proof)),
 	)))
 	defer C.destroy_verify_seal_response(resPtr)
 
@@ -77,12 +75,21 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 }
 
 // VerifyPoST verifies that a proof-of-spacetime is valid.
-func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, error) {
+func (rp *RustVerifier) VerifyPoST(req VerifyPoStRequest) (VerifyPoSTResponse, error) {
 	defer elapsed("VerifyPoST")()
 
+	// validate verification request
+	if len(req.Proofs) == 0 {
+		return VerifyPoSTResponse{}, errors.New("must provide at least one proof to verify")
+	}
+
+	// CommRs must be provided to C.verify_post in the same order that they were
+	// provided to the C.generate_post
+	commRs := req.SortedCommRs.Values()
+
 	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, 32*len(req.CommRs))
-	for idx, commR := range req.CommRs {
+	flattened := make([]byte, 32*len(commRs))
+	for idx, commR := range commRs {
 		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
 	}
 
@@ -93,21 +100,17 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	challengeSeedCBytes := C.CBytes(req.ChallengeSeed[:])
 	defer C.free(challengeSeedCBytes)
 
-	proofsPtr, proofsLen := cPoStProofs(req.Proofs)
+	proofPartitions, proofsPtr, proofsLen := cPoStProofs(req.Proofs)
 	defer C.free(unsafe.Pointer(proofsPtr))
 
 	// allocate fixed-length array of uint64s in C heap
 	faultsPtr, faultsSize := cUint64s(req.Faults)
 	defer C.free(unsafe.Pointer(faultsPtr))
 
-	cfg, err := CSectorStoreType(req.StoreType)
-	if err != nil {
-		return VerifyPoSTResponse{}, err
-	}
-
 	// a mutable pointer to a VerifyPoSTResponse C-struct
 	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
-		cfg,
+		C.uint64_t(req.SectorSize.Uint64()),
+		proofPartitions,
 		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
 		(*[32]C.uint8_t)(challengeSeedCBytes),
@@ -123,57 +126,13 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoSTRequest) (VerifyPoSTResponse, e
 	}
 
 	return VerifyPoSTResponse{
-		// TODO: change this to the bool statement
-		// See https://github.com/filecoin-project/go-filecoin/issues/1302
-		// bool(resPtr.is_valid),
-		IsValid: true,
+		IsValid: bool(resPtr.is_valid),
 	}, nil
 }
 
-// cPoStProofs copies bytes from the provided PoSt proofs to a C array and
-// returns a pointer to that array and its size. Callers are responsible for
-// freeing the pointer. If they do not do that, the array will be leaked.
-func cPoStProofs(src []PoStProof) (*C.uint8_t, C.size_t) {
-	flattenedLen := C.size_t(192 * len(src))
-
-	// flattening the byte slice makes it easier to copy into the C heap
-	flattened := make([]byte, flattenedLen)
-	for idx, proof := range src {
-		copy(flattened[(192*idx):(192*(1+idx))], proof[:])
-	}
-
-	return (*C.uint8_t)(C.CBytes(flattened)), flattenedLen
-}
-
-// cUint64s copies the contents of a slice into a C heap-allocated array and
-// returns a pointer to that array and its size. Callers are responsible for
-// freeing the pointer. If they do not do that, the array will be leaked.
-func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
-	srcCSizeT := C.size_t(len(src))
-
-	// allocate array in C heap
-	cUint64s := C.malloc(srcCSizeT * C.sizeof_uint64_t)
-
-	// create a Go slice backed by the C-array
-	pp := (*[1 << 30]C.uint64_t)(cUint64s)
-	for i, v := range src {
-		pp[i] = C.uint64_t(v)
-	}
-
-	return (*C.uint64_t)(cUint64s), srcCSizeT
-}
-
-// CSectorStoreType marshals from SectorStoreType to the FFI type
-// *C.ConfiguredStore.
-func CSectorStoreType(cfg SectorStoreType) (*C.ConfiguredStore, error) {
-	var scfg C.ConfiguredStore
-	if cfg == Live {
-		scfg = C.ConfiguredStore(C.Live)
-	} else if cfg == Test {
-		scfg = C.ConfiguredStore(C.Test)
-	} else {
-		return nil, errors.Errorf("unknown sector store type: %v", cfg)
-	}
-
-	return &scfg, nil
+// GetMaxUserBytesPerStagedSector returns the number of user bytes that will fit
+// into a staged sector. Due to bit-padding, the number of user bytes that will
+// fit into the staged sector will be less than number of bytes in sectorSize.
+func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
+	return types.NewBytesAmount(uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
 }

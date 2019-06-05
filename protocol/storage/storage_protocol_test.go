@@ -3,20 +3,18 @@ package storage_test
 import (
 	"testing"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSerializeProposal(t *testing.T) {
-	require := require.New(t)
-
-	t.Parallel()
+	tf.UnitTest(t)
 
 	ag := address.NewForTestGetter()
 	cg := types.NewCidForTestGetter()
@@ -25,7 +23,7 @@ func TestSerializeProposal(t *testing.T) {
 	cmc := cg()
 	p.Payment.ChannelMsgCid = &cmc
 	p.Payment.Channel = types.NewChannelID(4)
-	voucher := &paymentbroker.PaymentVoucher{
+	voucher := &types.PaymentVoucher{
 		Channel:   *types.NewChannelID(4),
 		Payer:     ag(),
 		Target:    ag(),
@@ -33,12 +31,12 @@ func TestSerializeProposal(t *testing.T) {
 		ValidAt:   *types.NewBlockHeight(3),
 		Signature: types.Signature{},
 	}
-	p.Payment.Vouchers = []*paymentbroker.PaymentVoucher{voucher}
+	p.Payment.Vouchers = []*types.PaymentVoucher{voucher}
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
 	chunk, err := cbor.DumpObject(p)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	err = cbor.DecodeInto(chunk, &storagedeal.Proposal{})
-	require.NoError(err)
+	require.NoError(t, err)
 }

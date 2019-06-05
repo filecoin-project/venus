@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -121,6 +121,11 @@ func (ctx *Context) WriteStorage(memory interface{}) error {
 // BlockHeight returns the block height of the block currently being processed
 func (ctx *Context) BlockHeight() *types.BlockHeight {
 	return ctx.blockHeight
+}
+
+// MyBalance returns the balance of the associated actor.
+func (ctx *Context) MyBalance() *types.AttoFIL {
+	return ctx.to.Balance
 }
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.

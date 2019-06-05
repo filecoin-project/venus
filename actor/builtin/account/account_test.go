@@ -3,32 +3,33 @@ package account
 import (
 	"testing"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 )
 
 func TestAccountActorCborMarshaling(t *testing.T) {
-	t.Run("CBOR decode(encode(Actor)) == identity(Actor)", func(t *testing.T) {
-		require := require.New(t)
+	tf.UnitTest(t)
 
+	t.Run("CBOR decode(encode(Actor)) == identity(Actor)", func(t *testing.T) {
 		preEncode, _ := NewActor(types.NewAttoFILFromFIL(100))
 		out, err := cbor.DumpObject(preEncode)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		var postDecode actor.Actor
 		err = cbor.DecodeInto(out, &postDecode)
-		require.NoError(err)
+		require.NoError(t, err)
 
 		c1, _ := preEncode.Cid()
-		require.NoError(err)
+		require.NoError(t, err)
 
 		c2, _ := postDecode.Cid()
-		require.NoError(err)
+		require.NoError(t, err)
 
-		types.AssertCidsEqual(assert.New(t), c1, c2)
+		types.AssertCidsEqual(t, c1, c2)
 	})
 }

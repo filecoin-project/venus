@@ -1,4 +1,4 @@
-package metrics
+package metrics_test
 
 import (
 	"context"
@@ -7,19 +7,21 @@ import (
 	"fmt"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
-	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
-	"gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p"
-	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-net"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/metrics"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -69,14 +71,15 @@ func newEndpoint(t *testing.T, port int) endpoint {
 }
 
 func TestHeartbeatConnectSuccess(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	aggregator := newEndpoint(t, 0)
 	filecoin := newEndpoint(t, 0)
-	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(c net.Stream) {
+	aggregator.Host.SetStreamHandler(metrics.HeartbeatProtocol, func(c net.Stream) {
 	})
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
@@ -84,27 +87,27 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return types.TipSet{
-				testCid: nil,
-			}
+		func() (types.TipSet, error) {
+			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			return tipSet, nil
 		},
 	)
 
-	assert.Equal(1, len(aggregator.Host.Peerstore().Peers()))
-	assert.Contains(aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
-	assert.NoError(hbs.Connect(ctx))
-	assert.Equal(2, len(aggregator.Host.Peerstore().Peers()))
-	assert.Contains(aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
-	assert.Contains(aggregator.Host.Peerstore().Peers(), filecoin.Host.ID())
+	assert.Equal(t, 1, len(aggregator.Host.Peerstore().Peers()))
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
+	assert.NoError(t, hbs.Connect(ctx))
+	assert.Equal(t, 2, len(aggregator.Host.Peerstore().Peers()))
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), aggregator.Host.ID())
+	assert.Contains(t, aggregator.Host.Peerstore().Peers(), filecoin.Host.ID())
 }
 
 func TestHeartbeatConnectFailure(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 	filecoin := newEndpoint(t, 60001)
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      "",
@@ -112,18 +115,16 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return types.TipSet{
-				testCid: nil,
-			}
+		func() (types.TipSet, error) {
+			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			return tipSet, nil
 		},
 	)
-	assert.Error(hbs.Connect(ctx))
+	assert.Error(t, hbs.Connect(ctx))
 }
 
 func TestHeartbeatRunSuccess(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
 
 	ctx := context.Background()
 	// we will use this to stop the run method after making assertions
@@ -137,25 +138,27 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	expHeight := types.Uint64(444)
 	expTs := mustMakeTipset(t, expHeight)
 
-	addr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(err)
+	addr, err := address.NewActorAddress([]byte("miner address"))
+	require.NoError(t, err)
 
 	// The handle method will run the assertions for the test
-	aggregator.Host.SetStreamHandler(HeartbeatProtocol, func(s net.Stream) {
-		defer s.Close()
+	aggregator.Host.SetStreamHandler(metrics.HeartbeatProtocol, func(s net.Stream) {
+		defer func() {
+			require.NoError(t, s.Close())
+		}()
 
 		dec := json.NewDecoder(s)
-		var hb Heartbeat
-		require.NoError(dec.Decode(&hb))
+		var hb metrics.Heartbeat
+		require.NoError(t, dec.Decode(&hb))
 
-		assert.Equal(expTs.String(), hb.Head)
-		assert.Equal(uint64(444), hb.Height)
-		assert.Equal("BobHoblaw", hb.Nickname)
-		assert.Equal(addr, hb.MinerAddress)
+		assert.Equal(t, expTs.String(), hb.Head)
+		assert.Equal(t, uint64(444), hb.Height)
+		assert.Equal(t, "BobHoblaw", hb.Nickname)
+		assert.Equal(t, addr, hb.MinerAddress)
 		cancel()
 	})
 
-	hbs := NewHeartbeatService(
+	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
@@ -163,18 +166,18 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func() types.TipSet {
-			return expTs
+		func() (types.TipSet, error) {
+			return expTs, nil
 		},
-		WithMinerAddressGetter(func() address.Address {
+		metrics.WithMinerAddressGetter(func() address.Address {
 			return addr
 		}),
 	)
 
-	require.NoError(hbs.Connect(ctx))
+	require.NoError(t, hbs.Connect(ctx))
 
-	assert.NoError(hbs.Run(runCtx))
-	assert.Error(runCtx.Err(), context.Canceled.Error())
+	assert.NoError(t, hbs.Run(runCtx))
+	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 
 }
 
@@ -184,7 +187,7 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 		Ticket:          nil,
 		Parents:         types.SortedCidSet{},
 		ParentWeight:    0,
-		Height:          types.Uint64(height),
+		Height:          height,
 		Nonce:           0,
 		Messages:        nil,
 		MessageReceipts: nil,

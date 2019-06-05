@@ -6,12 +6,14 @@ go-filecoin
 .idea
 gengen/gengen
 gengen/gensetup
-fixtures/*.key
-fixtures/gen.json
-fixtures/genesis.car
+fixtures/test
+!fixtures/test/.gitkeep
+fixtures/live
+!fixtures/live/.gitkeep
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
+tools/migration/go-filecoin-migrate
 proofs/misc/parameters.json
 proofs/bin/paramcache
 proofs/bin/paramfetch

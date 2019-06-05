@@ -6,10 +6,13 @@ import (
 	"io"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLinePuller(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("pull on empty source", func(t *testing.T) {
 		var source bytes.Buffer
 		var sink bytes.Buffer
@@ -41,7 +44,7 @@ func TestLinePuller(t *testing.T) {
 
 		lp := NewLinePuller(&source, &sink)
 
-		writeLines(0, 1000, &source, &expected)
+		require.NoError(t, writeLines(0, 1000, &source, &expected))
 
 		err := lp.Pull()
 		require.NoError(t, err)

@@ -3,19 +3,19 @@ package node
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
-	"os"
 	"testing"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
-	"gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	ds "gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	bserv "github.com/ipfs/go-blockservice"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -212,8 +212,8 @@ func StopNodes(nds []*Node) {
 	}
 }
 
-// MustCreateMinerResult contains the result of a CreateMiner command
-type MustCreateMinerResult struct {
+// MustCreateStorageMinerResult contains the result of a CreateStorageMiner command
+type MustCreateStorageMinerResult struct {
 	MinerAddress *address.Address
 	Err          error
 }
@@ -226,12 +226,14 @@ var PeerKeys = []crypto.PrivKey{
 
 // TestGenCfg is a genesis configuration used for tests.
 var TestGenCfg = &gengen.GenesisCfg{
-	Keys: 2,
-	Miners: []gengen.Miner{
+	ProofsMode: types.TestProofsMode,
+	Keys:       2,
+	Miners: []*gengen.CreateStorageMinerConfig{
 		{
-			Owner:  0,
-			Power:  100,
-			PeerID: mustPeerID(PeerKeys[0]).Pretty(),
+			Owner:               0,
+			NumCommittedSectors: 100,
+			PeerID:              mustPeerID(PeerKeys[0]).Pretty(),
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
 	PreAlloc: []string{
@@ -243,6 +245,14 @@ var TestGenCfg = &gengen.GenesisCfg{
 // GenNode allows you to completely configure a node for testing.
 func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	r := repo.NewInMemoryRepo()
+
+	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r.Config().SectorBase.RootDir = sectorDir
+
 	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 	if !tno.OfflineMode {
 		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
@@ -253,8 +263,6 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	require.NoError(t, err)
 	r.Config().API.Address = fmt.Sprintf(":%d", port)
 
-	// This needs to preserved to keep the test runtime (and corresponding timeouts) sane
-	err = os.Setenv("FIL_USE_SMALL_SECTORS", "true")
 	require.NoError(t, err)
 
 	if tno.GenesisFunc != nil {

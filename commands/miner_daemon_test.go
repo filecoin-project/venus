@@ -12,31 +12,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
 )
 
 func TestMinerHelp(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	t.Run("--help shows general miner help", func(t *testing.T) {
-		t.Parallel()
 
 		expected := []string{
-			"miner create <pledge> <collateral>      - Create a new file miner with <pledge> sectors and <collateral> FIL",
+			"miner create <collateral>               - Create a new file miner with <collateral> FIL",
 			"miner owner <miner>                     - Show the actor address of <miner>",
-			"miner pledge <miner>                    - View number of pledged sectors for <miner>",
 			"miner power <miner>                     - Get the power of a miner versus the total storage market power",
 			"miner set-price <storageprice> <expiry> - Set the minimum price for storage",
 			"miner update-peerid <address> <peerid>  - Change the libp2p identity that a miner is operating",
@@ -44,52 +42,35 @@ func TestMinerHelp(t *testing.T) {
 
 		result := runHelpSuccess(t, "miner", "--help")
 		for _, elem := range expected {
-			assert.Contains(result, elem)
+			assert.Contains(t, result, elem)
 		}
-	})
-
-	t.Run("pledge --help shows pledge help", func(t *testing.T) {
-		t.Parallel()
-		result := runHelpSuccess(t, "miner", "pledge", "--help")
-		assert.Contains(result, "Shows the number of pledged sectors for the given miner address")
 	})
 
 	t.Run("update-peerid --help shows update-peerid help", func(t *testing.T) {
-		t.Parallel()
+
 		result := runHelpSuccess(t, "miner", "update-peerid", "--help")
-		assert.Contains(result, "Issues a new message to the network to update the miner's libp2p identity.")
+		assert.Contains(t, result, "Issues a new message to the network to update the miner's libp2p identity.")
 	})
 
 	t.Run("owner --help shows owner help", func(t *testing.T) {
-		t.Parallel()
-		result := runHelpSuccess(t, "miner", "owner", "--help")
-		assert.Contains(result, "Given <miner> miner address, output the address of the actor that owns the miner.")
-	})
 
-	t.Run("power --help shows power help", func(t *testing.T) {
-		t.Parallel()
-		result := runHelpSuccess(t, "miner", "power", "--help")
-		expected := []string{
-			"Check the current power of a given miner and total power of the storage market.",
-			"Values will be output as a ratio where the first number is the miner power and second is the total market power.",
-		}
-		for _, elem := range expected {
-			assert.Contains(result, elem)
-		}
+		result := runHelpSuccess(t, "miner", "owner", "--help")
+		assert.Contains(t, result, "Given <miner> miner address, output the address of the actor that owns the miner.")
 	})
 
 	t.Run("create --help shows create help", func(t *testing.T) {
-		t.Parallel()
 
 		expected := []string{
 			"Issues a new message to the network to create the miner, then waits for the",
-			"message to be mined as this is required to return the address of the new miner",
-			"Collateral must be greater than 0.001 FIL per pledged sector.",
+			"message to be mined as this is required to return the address of the new miner.",
+			"Collateral will be committed at the rate of 0.001FIL per sector. When the",
+			"miner's collateral drops below 0.001FIL, the miner will not be able to commit",
+			"additional sectors.",
 		}
 
 		result := runHelpSuccess(t, "miner", "create", "--help")
 		for _, elem := range expected {
-			assert.Contains(result, elem)
+			assert.Contains(t, result, elem)
 		}
 	})
 
@@ -113,72 +94,14 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 	return op.ReadStdoutTrimNewlines()
 }
 
-func TestMinerPledge(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-
-	fi, err := ioutil.TempFile("", "gengentest")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
-		t.Fatal(err)
-	}
-
-	_ = fi.Close()
-
-	t.Run("shows error with no miner address", func(t *testing.T) {
-		t.Parallel()
-		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-		defer d.ShutdownSuccess()
-
-		d.RunFail("argument \"miner\" is required", "miner", "pledge")
-	})
-
-	t.Run("shows pledge amount for miner", func(t *testing.T) {
-		t.Parallel()
-		d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
-		defer d.ShutdownSuccess()
-
-		// get Miner address
-		actorLsOutput := d.RunSuccess("actor", "ls")
-		scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
-		var addressStruct struct{ Address string }
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.Contains(line, "MinerActor") {
-				json.Unmarshal([]byte(line), &addressStruct)
-				break
-			}
-		}
-
-		op1 := d.RunSuccess("miner", "pledge", addressStruct.Address)
-		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "10000")
-	})
-}
-
 func TestMinerCreate(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.IntegrationTest(t)
 
 	testAddr, err := address.NewFromString(fixtures.TestAddresses[2])
-	require.NoError(err)
-
-	t.Run("create --help includes pledge text", func(t *testing.T) {
-		t.Parallel()
-		d := makeTestDaemonWithMinerAndStart(t)
-		defer d.ShutdownSuccess()
-
-		op1 := d.RunSuccess("miner", "create", "--help")
-		result1 := op1.ReadStdoutTrimNewlines()
-		assert.Contains(result1, "<pledge>     - The size of the pledge (in sectors) for the miner")
-	})
+	require.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
+
 		var err error
 		var addr address.Address
 
@@ -191,13 +114,14 @@ func TestMinerCreate(t *testing.T) {
 
 			d1.ConnectSuccess(d)
 
-			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "0", "--gas-limit", "300"}
+			args := []string{"miner", "create", "--from", fromAddress.String(), "--gas-price", "1", "--gas-limit", "300"}
 
 			if pid.Pretty() != peer.ID("").Pretty() {
 				args = append(args, "--peerid", pid.Pretty())
 			}
 
-			args = append(args, "1000000", storagemarket.MinimumCollateral(big.NewInt(1000000)).String())
+			collateral := miner.MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(1000000 * types.OneKiBSectorSize.Uint64()))
+			args = append(args, collateral.String())
 
 			var wg sync.WaitGroup
 
@@ -205,8 +129,8 @@ func TestMinerCreate(t *testing.T) {
 			go func() {
 				miner := d.RunSuccess(args...)
 				addr, err = address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-				assert.NoError(err)
-				assert.NotEqual(addr, address.Undef)
+				assert.NoError(t, err)
+				assert.NotEqual(t, addr, address.Undef)
 				wg.Done()
 			}()
 
@@ -216,74 +140,55 @@ func TestMinerCreate(t *testing.T) {
 
 			// expect address to have been written in config
 			config := d.RunSuccess("config mining.minerAddress")
-			assert.Contains(config.ReadStdout(), addr.String())
+			assert.Contains(t, config.ReadStdout(), addr.String())
 		}
 
 		tf(testAddr, peer.ID(""))
 
 		// Will accept a peer ID if one is provided
-		tf(testAddr, th.RequireRandomPeerID())
+		tf(testAddr, th.RequireRandomPeerID(t))
 	})
 
-	t.Run("validation failure", func(t *testing.T) {
-		t.Parallel()
+	t.Run("unsupported sector size", func(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
 		d.CreateAddress()
 
-		d.RunFail("invalid peer id",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "--peerid", "flarp", "1000000", "20",
-		)
-		d.RunFail("invalid from address",
-			"miner", "create",
-			"--from", "hello", "--gas-price", "0", "--gas-limit", "300", "1000000", "20",
-		)
-		d.RunFail("invalid pledge",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "'-123'", "20",
-		)
-		d.RunFail("invalid pledge",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1f", "20",
-		)
-		d.RunFail("invalid collateral",
-			"miner", "create",
-			"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "100", "2f",
+		d.RunFail("unsupported sector size",
+			"miner", "create", "20",
+			"--sectorsize", "42",
 		)
 	})
 
-	t.Run("insufficient pledge", func(t *testing.T) {
-		t.Parallel()
-		d1 := makeTestDaemonWithMinerAndStart(t)
-		defer d1.ShutdownSuccess()
+	t.Run("validation failure", func(t *testing.T) {
 
-		d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
+		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
-		d1.ConnectSuccess(d)
+		d.CreateAddress()
 
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			d.RunFail("pledge must be at least",
-				"miner", "create",
-				"--from", testAddr.String(), "--gas-price", "0", "--gas-limit", "300", "1", "10",
-			)
-			wg.Done()
-		}()
-
-		// ensure mining runs after the command in our goroutine
-		d1.MineAndPropagate(time.Second, d)
-		wg.Wait()
+		d.RunFail("invalid sector size",
+			"miner", "create", "20",
+			"--sectorsize", "ninetybillion",
+		)
+		d.RunFail("invalid peer id",
+			"miner", "create",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "300", "--peerid", "flarp", "20",
+		)
+		d.RunFail("invalid from address",
+			"miner", "create",
+			"--from", "hello", "--gas-price", "1", "--gas-limit", "1000000", "20",
+		)
+		d.RunFail("invalid collateral",
+			"miner", "create",
+			"--from", testAddr.String(), "--gas-price", "1", "--gas-limit", "100", "2f",
+		)
 	})
 }
 
 func TestMinerSetPrice(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	d1 := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
@@ -293,17 +198,16 @@ func TestMinerSetPrice(t *testing.T) {
 
 	d1.RunSuccess("mining", "start")
 
-	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "0", "--gas-limit", "300")
-	assert.Contains(setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
+	setPrice := d1.RunSuccess("miner", "set-price", "62", "6", "--gas-price", "1", "--gas-limit", "300")
+	assert.Contains(t, setPrice.ReadStdoutTrimNewlines(), fmt.Sprintf("Set price for miner %s to 62.", fixtures.TestMiners[0]))
 
 	configuredPrice := d1.RunSuccess("config", "mining.storagePrice")
 
-	assert.Equal(`"62"`, configuredPrice.ReadStdoutTrimNewlines())
+	assert.Equal(t, `"62"`, configuredPrice.ReadStdoutTrimNewlines())
 }
 
 func TestMinerCreateSuccess(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
@@ -313,10 +217,10 @@ func TestMinerCreateSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "0", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Undef)
+		assert.NoError(t, err)
+		assert.NotEqual(t, addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -325,12 +229,10 @@ func TestMinerCreateSuccess(t *testing.T) {
 }
 
 func TestMinerCreateChargesGas(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.IntegrationTest(t)
 
 	miningMinerOwnerAddr, err := address.NewFromString(fixtures.TestAddresses[0])
-	require.NoError(err)
+	require.NoError(t, err)
 
 	d1 := makeTestDaemonWithMinerAndStart(t)
 	defer d1.ShutdownSuccess()
@@ -344,10 +246,10 @@ func TestMinerCreateChargesGas(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "300", "100", "200")
+		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
 		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(err)
-		assert.NotEqual(addr, address.Undef)
+		assert.NoError(t, err)
+		assert.NotEqual(t, addr, address.Undef)
 		wg.Done()
 	}()
 	// ensure mining runs after the command in our goroutine
@@ -359,7 +261,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	expectedGasCost := big.NewInt(100)
 	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))
 	newBalance := queryBalance(t, d, miningMinerOwnerAddr)
-	assert.Equal(expectedBalance.String(), newBalance.Sub(startingBalance).String())
+	assert.Equal(t, expectedBalance.String(), newBalance.Sub(startingBalance).String())
 }
 
 func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *types.AttoFIL {
@@ -378,8 +280,7 @@ func queryBalance(t *testing.T, d *th.TestDaemon, actorAddr address.Address) *ty
 }
 
 func TestMinerOwner(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
@@ -403,7 +304,8 @@ func TestMinerOwner(t *testing.T) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
-			json.Unmarshal([]byte(line), &addressStruct)
+			err = json.Unmarshal([]byte(line), &addressStruct)
+			assert.NoError(t, err)
 			break
 		}
 	}
@@ -412,12 +314,11 @@ func TestMinerOwner(t *testing.T) {
 
 	_, err = address.NewFromString(ownerOutput.ReadStdoutTrimNewlines())
 
-	assert.NoError(err)
+	assert.NoError(t, err)
 }
 
 func TestMinerPower(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	fi, err := ioutil.TempFile("", "gengentest")
 	if err != nil {
@@ -441,7 +342,8 @@ func TestMinerPower(t *testing.T) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, "MinerActor") {
-			json.Unmarshal([]byte(line), &addressStruct)
+			err = json.Unmarshal([]byte(line), &addressStruct)
+			assert.NoError(t, err)
 			break
 		}
 	}
@@ -450,24 +352,76 @@ func TestMinerPower(t *testing.T) {
 
 	power := powerOutput.ReadStdoutTrimNewlines()
 
-	assert.NoError(err)
-	assert.Equal("3 / 6", power)
+	assert.NoError(t, err)
+	assert.Equal(t, "3072 / 6144", power)
 }
 
 var testConfig = &gengen.GenesisCfg{
-	Keys: 4,
+	ProofsMode: types.TestProofsMode,
+	Keys:       4,
 	PreAlloc: []string{
 		"10",
 		"50",
 	},
-	Miners: []gengen.Miner{
+	Miners: []*gengen.CreateStorageMinerConfig{
 		{
-			Owner: 0,
-			Power: 3,
+			Owner:               0,
+			NumCommittedSectors: 3,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 		{
-			Owner: 1,
-			Power: 3,
+			Owner:               1,
+			NumCommittedSectors: 3,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
+}
+
+func TestMinerListDeals(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	clientDaemon := th.NewDaemon(t,
+		th.KeyFile(fixtures.KeyFilePaths()[1]),
+		th.DefaultAddress(fixtures.TestAddresses[1]),
+	).Start()
+	defer clientDaemon.ShutdownSuccess()
+
+	minerDaemon := th.NewDaemon(t,
+		th.WithMiner(fixtures.TestMiners[0]),
+		th.KeyFile(fixtures.KeyFilePaths()[0]),
+		th.DefaultAddress(fixtures.TestAddresses[0]),
+		th.AutoSealInterval("1"),
+	).Start()
+	defer minerDaemon.ShutdownSuccess()
+
+	minerDaemon.RunSuccess("mining", "start")
+	minerDaemon.UpdatePeerID()
+
+	minerDaemon.ConnectSuccess(clientDaemon)
+
+	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
+	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
+	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
+
+	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
+
+	splitOnSpace := strings.Split(proposeDealOutput, " ")
+	dealCid := splitOnSpace[len(splitOnSpace)-1]
+
+	expectedOutput := fmt.Sprintf(`{
+	"minerAddress": "%s",
+	"pieceCid": {
+		"/": "QmbHmUVAkqZjQXgifDady7m5cYprX1fgtGaTYxUBBTX3At"
+	},
+	"proposalCid": {
+		"/": "%s"
+	},
+	"state": 7
+}`, fixtures.TestMiners[0], dealCid)
+
+	listClientDealsOutput := clientDaemon.RunSuccess("miner", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, "", listClientDealsOutput)
+
+	listMinerDealsOutput := minerDaemon.RunSuccess("miner", "list-deals").ReadStdoutTrimNewlines()
+	assert.Equal(t, expectedOutput, listMinerDealsOutput)
 }

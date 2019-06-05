@@ -3,12 +3,14 @@ package commands_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestPing2Nodes(t *testing.T) {
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/127.0.0.1/tcp/6000")).Start()
 	defer d1.ShutdownSuccess()
@@ -25,8 +27,8 @@ func TestPing2Nodes(t *testing.T) {
 	ping2 := d2.RunSuccess("ping", "--count=2", d1.GetID())
 
 	t.Log("[success] 1 -> 2")
-	assert.Contains(ping1.ReadStdout(), "Pong received")
+	assert.Contains(t, ping1.ReadStdout(), "Pong received")
 
 	t.Log("[success] 2 -> 1")
-	assert.Contains(ping2.ReadStdout(), "Pong received")
+	assert.Contains(t, ping2.ReadStdout(), "Pong received")
 }

@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 type MockTime struct {
@@ -16,11 +17,11 @@ func (mt *MockTime) Until(t time.Time) time.Duration {
 }
 
 func TestReady(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Not ready before time elapses", func(t *testing.T) {
-		assert := assert.New(t)
-
 		lockedFor := time.Microsecond * 50
 		mt := &MockTime{}
 		mt.UntilReturn = lockedFor
@@ -29,13 +30,11 @@ func TestReady(t *testing.T) {
 
 		l.Add(addr, time.Now().Add(lockedFor))
 		t0, ok := l.Ready(addr)
-		assert.False(ok)
-		assert.Equal(lockedFor, t0)
+		assert.False(t, ok)
+		assert.Equal(t, lockedFor, t0)
 	})
 
 	t.Run("Ready after time elapses", func(t *testing.T) {
-		assert := assert.New(t)
-
 		lockedFor := time.Microsecond * 50
 
 		mt := &MockTime{}
@@ -45,26 +44,22 @@ func TestReady(t *testing.T) {
 
 		l.Add(addr, time.Now().Add(lockedFor))
 		t0, ok := l.Ready(addr)
-		assert.True(ok)
-		assert.Equal(time.Duration(0), t0)
+		assert.True(t, ok)
+		assert.Equal(t, time.Duration(0), t0)
 	})
 
 	t.Run("Ready if not added", func(t *testing.T) {
-		assert := assert.New(t)
-
 		mt := &MockTime{}
 		mt.UntilReturn = time.Duration(0)
 
 		l := NewLimiter(mt)
 
 		t0, ok := l.Ready(addr)
-		assert.True(ok)
-		assert.Equal(time.Duration(0), t0)
+		assert.True(t, ok)
+		assert.Equal(t, time.Duration(0), t0)
 	})
 
 	t.Run("Ready after waiting returned duration", func(t *testing.T) {
-		assert := assert.New(t)
-
 		lockedFor := time.Microsecond * 50
 		mt := &MockTime{}
 		mt.UntilReturn = lockedFor
@@ -74,23 +69,23 @@ func TestReady(t *testing.T) {
 		l.Add(addr, time.Now().Add(lockedFor))
 
 		d0, ok := l.Ready(addr)
-		assert.False(ok)
-		assert.Equal(lockedFor, d0)
+		assert.False(t, ok)
+		assert.Equal(t, lockedFor, d0)
 
 		mt.UntilReturn = time.Duration(0)
 
 		d0, ok = l.Ready(addr)
-		assert.True(ok)
-		assert.Equal(time.Duration(0), d0)
+		assert.True(t, ok)
+		assert.Equal(t, time.Duration(0), d0)
 	})
 }
 
 func TestClear(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Ready after clear", func(t *testing.T) {
-		assert := assert.New(t)
-
 		lockedFor := time.Microsecond * 50
 		mt := &MockTime{}
 		mt.UntilReturn = lockedFor
@@ -99,21 +94,21 @@ func TestClear(t *testing.T) {
 
 		l.Add(addr, time.Now().Add(lockedFor))
 		_, ok := l.Ready(addr)
-		assert.False(ok)
+		assert.False(t, ok)
 
 		l.Clear(addr)
 
 		_, ok = l.Ready(addr)
-		assert.True(ok)
+		assert.True(t, ok)
 	})
 }
 
 func TestClean(t *testing.T) {
+	tf.UnitTest(t)
+
 	addr := "Qmaddr"
 
 	t.Run("Removes expired values", func(t *testing.T) {
-		assert := assert.New(t)
-
 		lockedFor := time.Microsecond * 50
 		mt := &MockTime{}
 		mt.UntilReturn = time.Duration(0)
@@ -121,13 +116,13 @@ func TestClean(t *testing.T) {
 		l := NewLimiter(mt)
 
 		l.Add(addr, time.Now().Add(lockedFor))
-		assert.Len(l.addrs, 1)
+		assert.Len(t, l.addrs, 1)
 
 		l.Clean()
 
-		assert.Len(l.addrs, 0)
+		assert.Len(t, l.addrs, 0)
 
 		_, ok := l.Ready(addr)
-		assert.True(ok)
+		assert.True(t, ok)
 	})
 }

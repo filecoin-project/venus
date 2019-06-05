@@ -5,12 +5,14 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -19,23 +21,26 @@ import (
 // See https://github.com/filecoin-project/go-filecoin/pull/1643
 
 func TestRetrievalProtocolPieceNotFound(t *testing.T) {
-	t.Parallel()
-	require := require.New(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 
 	minerNode, _, minerAddr, _ := configureMinerAndClient(t)
 
-	require.NoError(minerNode.StartMining(ctx))
+	require.NoError(t, minerNode.StartMining(ctx))
 	defer minerNode.StopMining(ctx)
 
 	someRandomCid := types.NewCidForTestGetter()()
 
-	_, err := retrievePieceBytes(ctx, minerNode.RetrievalAPI, someRandomCid, minerAddr)
-	require.Error(err)
+	minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
+	require.NoError(t, err)
+
+	_, err = retrievePieceBytes(ctx, minerNode.RetrievalAPI, someRandomCid, minerPID, minerAddr)
+	require.Error(t, err)
 }
 
-func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, addr address.Address) ([]byte, error) {
-	r, err := retrievalAPI.RetrievePiece(ctx, data, addr)
+func retrievePieceBytes(ctx context.Context, retrievalAPI *retrieval.API, data cid.Cid, minerPID peer.ID, addr address.Address) ([]byte, error) {
+	r, err := retrievalAPI.RetrievePiece(ctx, data, minerPID, addr)
 	if err != nil {
 		return nil, err
 	}

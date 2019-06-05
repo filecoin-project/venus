@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -36,7 +36,12 @@ var clientRetrievePieceCmd = &cmds.Command{
 			return err
 		}
 
-		readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, minerAddr)
+		mpid, err := GetPorcelainAPI(env).MinerGetPeerID(req.Context, minerAddr)
+		if err != nil {
+			return err
+		}
+
+		readCloser, err := GetRetrievalAPI(env).RetrievePiece(req.Context, pieceCID, mpid, minerAddr)
 		if err != nil {
 			return err
 		}

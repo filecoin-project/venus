@@ -2,11 +2,9 @@ package consensus
 
 import (
 	"context"
-	"math/big"
-
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -35,12 +33,18 @@ func init() {
 	}
 }
 
+type minerActorConfig struct {
+	state   *miner.State
+	balance *types.AttoFIL
+}
+
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts map[address.Address]*types.AttoFIL
-	nonces   map[address.Address]uint64
-	actors   map[address.Address]*actor.Actor
-	miners   map[address.Address]*miner.State
+	accounts   map[address.Address]*types.AttoFIL
+	nonces     map[address.Address]uint64
+	actors     map[address.Address]*actor.Actor
+	miners     map[address.Address]*minerActorConfig
+	proofsMode types.ProofsMode
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -55,9 +59,12 @@ func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) GenOption {
+func MinerActor(addr address.Address, owner address.Address, key []byte, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
-		gc.miners[addr] = miner.NewState(owner, key, big.NewInt(int64(pledge)), pid, coll)
+		gc.miners[addr] = &minerActorConfig{
+			state:   miner.NewState(owner, key, pid, sectorSize),
+			balance: coll,
+		}
 		return nil
 	}
 }
@@ -80,13 +87,22 @@ func AddActor(addr address.Address, actor *actor.Actor) GenOption {
 	}
 }
 
+// ProofsMode sets the mode of operation for the proofs library.
+func ProofsMode(proofsMode types.ProofsMode) GenOption {
+	return func(gc *Config) error {
+		gc.proofsMode = proofsMode
+		return nil
+	}
+}
+
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts: make(map[address.Address]*types.AttoFIL),
-		nonces:   make(map[address.Address]uint64),
-		actors:   make(map[address.Address]*actor.Actor),
-		miners:   make(map[address.Address]*miner.State),
+		accounts:   make(map[address.Address]*types.AttoFIL),
+		nonces:     make(map[address.Address]uint64),
+		actors:     make(map[address.Address]*actor.Actor),
+		miners:     make(map[address.Address]*minerActorConfig),
+		proofsMode: types.TestProofsMode,
 	}
 }
 
@@ -118,13 +134,14 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		// Initialize miner actors
 		for addr, val := range genCfg.miners {
 			a := miner.NewActor()
+			a.Balance = val.balance
 
 			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
 
 			s := storageMap.NewStorage(addr, a)
-			scid, err := s.Put(val)
+			scid, err := s.Put(val.state)
 			if err != nil {
 				return nil, err
 			}
@@ -142,7 +159,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				return nil, err
 			}
 		}
-		if err := SetupDefaultActors(ctx, st, storageMap); err != nil {
+		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode); err != nil {
 			return nil, err
 		}
 		// Now add any other actors configured.
@@ -181,7 +198,7 @@ func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.B
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap) error {
+func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode) error {
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
 		if err != nil {
@@ -197,7 +214,8 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	if err != nil {
 		return err
 	}
-	err = (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), nil)
+
+	err = (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
 	if err != nil {
 		return err
 	}

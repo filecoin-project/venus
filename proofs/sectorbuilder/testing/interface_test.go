@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/hex"
 	"io/ioutil"
-	"os"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 // MaxTimeToSealASector represents the maximum amount of time the test should
@@ -29,9 +30,8 @@ const MaxTimeToSealASector = time.Second * 360
 const MaxTimeToGenerateSectorPoSt = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
-	if os.Getenv("FILECOIN_RUN_SECTOR_BUILDER_TESTS") != "true" {
-		t.SkipNow()
-	}
+	tf.SectorBuilderTest(t)
+
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
@@ -58,14 +58,17 @@ func TestSectorBuilder(t *testing.T) {
 		for i := 0; i < autoSealsToSchedule; i++ {
 			go func(n int) {
 				time.Sleep(time.Second * time.Duration(n))
-				h.SectorBuilder.SealAllStagedSectors(context.Background())
+				err := h.SectorBuilder.SealAllStagedSectors(context.Background())
+				if err != nil {
+					errs <- err
+				}
 			}(i)
 		}
 
 		piecesToSeal := 10
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector/3))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 				if err != nil {
 					errs <- err
 				} else {
@@ -147,7 +150,7 @@ func TestSectorBuilder(t *testing.T) {
 		piecesToSeal := 5
 		for i := 0; i < piecesToSeal; i++ {
 			go func() {
-				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector))
+				_, pieceCid, err := h.AddPiece(context.Background(), RequireRandomBytes(t, h.MaxBytesPerSector.Uint64()))
 				if err != nil {
 					errs <- err
 				} else {
@@ -184,11 +187,11 @@ func TestSectorBuilder(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
 
-		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
-		info, err := h.CreatePieceInfo(inputBytes)
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector.Uint64())
+		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
 		require.NoError(t, err)
 
-		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
+		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), ref, size, reader)
 		require.NoError(t, err)
 
 		// Sealing can take 180+ seconds on an i7 MacBook Pro. We are sealing
@@ -201,13 +204,13 @@ func TestSectorBuilder(t *testing.T) {
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
 			res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
-				CommD:     val.SealingResult.CommD,
-				CommR:     val.SealingResult.CommR,
-				CommRStar: val.SealingResult.CommRStar,
-				Proof:     val.SealingResult.Proof,
-				ProverID:  sectorbuilder.AddressToProverID(h.MinerAddr),
-				SectorID:  sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
-				StoreType: h.SectorConfig,
+				CommD:      val.SealingResult.CommD,
+				CommR:      val.SealingResult.CommR,
+				CommRStar:  val.SealingResult.CommRStar,
+				Proof:      val.SealingResult.Proof,
+				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
+				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				SectorSize: types.OneKiBSectorSize,
 			})
 			require.NoError(t, err)
 			require.True(t, res.IsValid)
@@ -215,7 +218,7 @@ func TestSectorBuilder(t *testing.T) {
 			t.Fatalf("timed out waiting for seal to complete")
 		}
 
-		reader, err := h.SectorBuilder.ReadPieceFromSealedSector(info.Ref)
+		reader, err = h.SectorBuilder.ReadPieceFromSealedSector(ref)
 		require.NoError(t, err)
 
 		outputBytes, err := ioutil.ReadAll(reader)
@@ -236,15 +239,20 @@ func TestSectorBuilder(t *testing.T) {
 		}
 
 		hA := NewBuilder(t).StagingDir(stagingDir).SealedDir(sealedDir).Build()
-		defer hA.Close()
 
 		// holds id of each sector we expect to see sealed
 		sectorIDSet := sync.Map{}
 
-		// SectorBuilder begins polling for SectorIDA seal-status
-		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, hA.MaxBytesPerSector-10))
+		// first SectorBuilder begins polling for SectorIDA seal-status after
+		// adding a one-byte piece
+		sectorIDA, _, errA := hA.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 		require.NoError(t, errA)
 		sectorIDSet.Store(sectorIDA, true)
+
+		// destroy the first sector builder, which releases the metadata
+		// database lock and allows a new sector builder to be created using the
+		// same sectors dir
+		hA.Close()
 
 		// create new SectorBuilder which should start with a poller pre-seeded
 		// with state from previous SectorBuilder
@@ -252,13 +260,14 @@ func TestSectorBuilder(t *testing.T) {
 		defer hB.Close()
 
 		// second SectorBuilder begins polling for SectorIDB seal-status in
-		// addition to SectorIDA
-		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, hB.MaxBytesPerSector-50))
+		// addition to SectorIDA after adding a second, one-byte piece
+		sectorIDB, _, errB := hB.AddPiece(context.Background(), RequireRandomBytes(t, 1))
 		require.NoError(t, errB)
 		sectorIDSet.Store(sectorIDB, true)
 
 		// seal everything
-		hB.SectorBuilder.SealAllStagedSectors(context.Background())
+		err = hB.SectorBuilder.SealAllStagedSectors(context.Background())
+		require.NoError(t, err)
 
 		timeout := time.After(MaxTimeToSealASector * 2)
 	Loop:
@@ -293,11 +302,11 @@ func TestSectorBuilder(t *testing.T) {
 		h := NewBuilder(t).Build()
 		defer h.Close()
 
-		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector)
-		info, err := h.CreatePieceInfo(inputBytes)
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector.Uint64())
+		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
 		require.NoError(t, err)
 
-		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), info)
+		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), ref, size, reader)
 		require.NoError(t, err)
 
 		timeout := time.After(MaxTimeToSealASector + MaxTimeToGenerateSectorPoSt)
@@ -307,24 +316,38 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, val.SealingErr)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
+			sres, serr := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
+				CommD:      val.SealingResult.CommD,
+				CommR:      val.SealingResult.CommR,
+				CommRStar:  val.SealingResult.CommRStar,
+				Proof:      val.SealingResult.Proof,
+				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
+				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				SectorSize: types.OneKiBSectorSize,
+			})
+			require.NoError(t, serr, "seal proof-verification produced an error")
+			require.True(t, sres.IsValid, "seal proof was not valid")
+
 			// TODO: This should be generates from some standard source of
 			// entropy, e.g. the blockchain
-			challengeSeed := proofs.PoStChallengeSeed{1, 2, 3}
+			challengeSeed := types.PoStChallengeSeed{1, 2, 3}
+
+			sortedCommRs := proofs.NewSortedCommRs(val.SealingResult.CommR)
 
 			// generate a proof-of-spacetime
 			gres, gerr := h.SectorBuilder.GeneratePoSt(sectorbuilder.GeneratePoStRequest{
-				CommRs:        []proofs.CommR{val.SealingResult.CommR},
+				SortedCommRs:  sortedCommRs,
 				ChallengeSeed: challengeSeed,
 			})
 			require.NoError(t, gerr)
 
 			// verify the proof-of-spacetime
-			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoSTRequest{
+			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoStRequest{
 				ChallengeSeed: challengeSeed,
-				CommRs:        []proofs.CommR{val.SealingResult.CommR},
+				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,
 				Proofs:        gres.Proofs,
-				StoreType:     proofs.Test,
+				SectorSize:    types.OneKiBSectorSize,
 			})
 
 			require.NoError(t, verr)

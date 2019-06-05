@@ -1,15 +1,19 @@
 package types
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestMessageMarshal(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	addrGetter := address.NewForTestGetter()
 
 	// TODO: allow more types than just strings for the params
@@ -18,28 +22,36 @@ func TestMessageMarshal(t *testing.T) {
 	msg := NewMessage(
 		addrGetter(),
 		addrGetter(),
-		0,
+		42,
 		NewAttoFILFromFIL(17777),
 		"send",
 		[]byte("foobar"),
 	)
 
+	// This check requests that you add a non-zero value for new fields above,
+	// then update the field count below.
+	require.Equal(t, 6, reflect.TypeOf(*msg).NumField())
+
 	marshalled, err := msg.Marshal()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	msgBack := Message{}
-	err = msgBack.Unmarshal(marshalled)
-	assert.NoError(err)
+	assert.False(t, msg.Equals(&msgBack))
 
-	assert.Equal(msg.To, msgBack.To)
-	assert.Equal(msg.From, msgBack.From)
-	assert.Equal(msg.Value, msgBack.Value)
-	assert.Equal(msg.Method, msgBack.Method)
-	assert.Equal(msg.Params, msgBack.Params)
+	err = msgBack.Unmarshal(marshalled)
+	assert.NoError(t, err)
+
+	assert.Equal(t, msg.To, msgBack.To)
+	assert.Equal(t, msg.From, msgBack.From)
+	assert.Equal(t, msg.Value, msgBack.Value)
+	assert.Equal(t, msg.Method, msgBack.Method)
+	assert.Equal(t, msg.Params, msgBack.Params)
+	assert.True(t, msg.Equals(&msgBack))
 }
 
 func TestMessageCid(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	addrGetter := address.NewForTestGetter()
 
 	msg1 := NewMessage(
@@ -61,16 +73,16 @@ func TestMessageCid(t *testing.T) {
 	)
 
 	c1, err := msg1.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := msg2.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.NotEqual(c1.String(), c2.String())
+	assert.NotEqual(t, c1.String(), c2.String())
 }
 
 func TestMessageString(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
+
 	addrGetter := address.NewForTestGetter()
 
 	msg := NewMessage(
@@ -83,8 +95,8 @@ func TestMessageString(t *testing.T) {
 	)
 
 	cid, err := msg.Cid()
-	require.NoError(err)
+	require.NoError(t, err)
 
 	got := msg.String()
-	assert.Contains(got, cid.String())
+	assert.Contains(t, got, cid.String())
 }

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
@@ -14,12 +16,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestActorCid(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	actor1 := NewActor(types.AccountActorCodeCid, nil)
 	actor2 := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
@@ -27,33 +28,34 @@ func TestActorCid(t *testing.T) {
 	actor1.IncNonce()
 
 	c1, err := actor1.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 	c2, err := actor2.Cid()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
-	assert.NotEqual(c1.String(), c2.String())
+	assert.NotEqual(t, c1.String(), c2.String())
 }
 
 func TestActorFormat(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	accountActor := NewActor(types.AccountActorCodeCid, types.NewAttoFILFromFIL(5))
 
 	formatted := fmt.Sprintf("%v", accountActor)
-	assert.Contains(formatted, "AccountActor")
-	assert.Contains(formatted, "balance: 5")
-	assert.Contains(formatted, "nonce: 0")
+	assert.Contains(t, formatted, "AccountActor")
+	assert.Contains(t, formatted, "balance: 5")
+	assert.Contains(t, formatted, "nonce: 0")
 
 	minerActor := NewActor(types.MinerActorCodeCid, types.NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", minerActor)
-	assert.Contains(formatted, "MinerActor")
+	assert.Contains(t, formatted, "MinerActor")
 
 	storageMarketActor := NewActor(types.StorageMarketActorCodeCid, types.NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", storageMarketActor)
-	assert.Contains(formatted, "StorageMarketActor")
+	assert.Contains(t, formatted, "StorageMarketActor")
 
 	paymentBrokerActor := NewActor(types.PaymentBrokerActorCodeCid, types.NewAttoFILFromFIL(5))
 	formatted = fmt.Sprintf("%v", paymentBrokerActor)
-	assert.Contains(formatted, "PaymentBrokerActor")
+	assert.Contains(t, formatted, "PaymentBrokerActor")
 }
 
 func requireCid(t *testing.T, data string) cid.Cid {
@@ -118,9 +120,9 @@ func makeCtx(method string) exec.VMContext {
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
-	t.Run("no return", func(t *testing.T) {
-		assert := assert.New(t)
+	tf.UnitTest(t)
 
+	t.Run("no return", func(t *testing.T) {
 		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"two": {
 				Params: nil,
@@ -130,14 +132,12 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		ret, exitCode, err := MakeTypedExport(a, "two")(makeCtx("two"))
 
-		assert.NoError(err)
-		assert.Equal(exitCode, uint8(0))
-		assert.Nil(ret)
+		assert.NoError(t, err)
+		assert.Equal(t, exitCode, uint8(0))
+		assert.Nil(t, ret)
 	})
 
 	t.Run("with return", func(t *testing.T) {
-		assert := assert.New(t)
-
 		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"four": {
 				Params: nil,
@@ -147,17 +147,15 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		ret, exitCode, err := MakeTypedExport(a, "four")(makeCtx("four"))
 
-		assert.NoError(err)
-		assert.Equal(exitCode, uint8(0))
+		assert.NoError(t, err)
+		assert.Equal(t, exitCode, uint8(0))
 		vv, err := abi.DecodeValues(ret, a.Exports()["four"].Return)
-		assert.NoError(err)
-		assert.Equal(1, len(vv))
-		assert.Equal(vv[0].Val, []byte("hello"))
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(vv))
+		assert.Equal(t, vv[0].Val, []byte("hello"))
 	})
 
 	t.Run("with error return", func(t *testing.T) {
-		assert := assert.New(t)
-
 		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"five": {
 				Params: []abi.Type{},
@@ -167,14 +165,12 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 
 		ret, exitCode, err := MakeTypedExport(a, "five")(makeCtx("five"))
 
-		assert.Contains(err.Error(), "fail5")
-		assert.Equal(exitCode, uint8(2))
-		assert.Nil(ret)
+		assert.Contains(t, err.Error(), "fail5")
+		assert.Equal(t, exitCode, uint8(2))
+		assert.Nil(t, ret)
 	})
 
 	t.Run("with error that is not revert or fault", func(t *testing.T) {
-		assert := assert.New(t)
-
 		a := NewMockActor(map[string]*exec.FunctionSignature{
 			"six": {
 				Params: nil,
@@ -183,13 +179,15 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 		})
 
 		exportedFunc := MakeTypedExport(a, "six")
-		assert.Panics(func() {
-			exportedFunc(makeCtx("six"))
+		assert.Panics(t, func() {
+			_, _, _ = exportedFunc(makeCtx("six"))
 		})
 	})
 }
 
 func TestMakeTypedExportFail(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		Name   string
 		Actor  *MockActor
@@ -265,9 +263,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			assert := assert.New(t)
-
-			assert.PanicsWithValue(tc.Error, func() {
+			assert.PanicsWithValue(t, tc.Error, func() {
 				MakeTypedExport(tc.Actor, tc.Method)
 			})
 		})

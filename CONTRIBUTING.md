@@ -28,7 +28,18 @@ Filecoin, including go-filecoin and all related modules, follows the
     - [Reviewer Responsibilities:](#reviewer-responsibilities)
   - [Landing Changes](#landing-changes)
   - [Developer Do's and Don'ts](#developer-dos-and-donts)
-- [Good First Issues](#good-first-issues)
+- [Issues and tracking](#issues-and-tracking)
+  - [Good First Issues](#good-first-issues)
+  - [Pipelines (ZenHub)](#pipelines-zenhub)
+  - [Labels (GitHub)](#labels-github)
+  - [Epics (ZenHub)](#epics-zenhub)
+  - [Releases (ZenHub)](#releases-zenhub)
+  - [Milestones (GitHub)](#milestones-github)
+- [Roles](#roles)
+  - [Contributors](#contributors)
+  - [Collaborators](#collaborators)
+  - [Committers](#committers)
+  - [Maintainers](#maintainers)
 - [Additional Developer Notes](#additional-developer-notes)
     - [Error Handling](#error-handling)
     - [Testing](#testing)
@@ -39,11 +50,6 @@ Filecoin, including go-filecoin and all related modules, follows the
       - [Filing / triaging go-filecoin issues](#filing--triaging-go-filecoin-issues)
       - [Picking up issues](#picking-up-issues)
     - [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
-  - [Roles](#roles)
-    - [Contributors](#contributors)
-    - [Collaborators](#collaborators)
-    - [Committers](#committers)
-    - [Maintainers](#maintainers)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -78,11 +84,11 @@ We review every change before merging to master, using GitHub pull requests.
 
 `go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
 
-1. The first review is done by a committer familiar with that area of the codebase. Once they deem it ready for merge, they will assign a maintainer for the second review. 
+1. The first review is done by a committer familiar with that area of the codebase. Once they deem it ready for merge, they will assign a maintainer for the second review.
 1. Once the PR has 2 Approvals and blocking comments have been addressed, the committer [rebases and merges](#landing-changes) the PR.
     - If the author has merge access as a committer or maintainer, they merge their own PRs.
 
-If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is welcome and encouraged. 
+If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is welcome and encouraged.
 
 We use the following conventions for code reviews:
 
@@ -90,7 +96,7 @@ We use the following conventions for code reviews:
   - *Example: reviewer points out an off by one error in a blocking comment, but Approves the PR. Reviewee must fix the error, but PR can progress to maintainer review. Committer confirms this before merge.*
 - "Request Changes" means you don't have approval, and the reviewer wants another look.
   - *Example: the whole design of an abstraction is wrong and reviewer wants to see it reworked.*
-  
+
 - By default, code review comments are advisory: the reviewee should consider them but doesn't _have_ to respond or address them. Comments that start with "BLOCKING" must be addressed and responded to. If a reviewer makes a blocking comment but does not block merging (by marking the review "Add Comments" or "Approve") then the reviewee can merge if the issue is addressed.
 
 In rare cases, a maintainer may request approval from all maintainers for a wide-reaching PR.
@@ -107,7 +113,7 @@ We strongly discourage merge commits on the `master` branch. When merging to mas
 - squash your PR's commits into one commit with an encompassing message, and
 - rebase against master so that your commit lands as a "fast-forward", without a merge commit.
 
-At the command line, update your branch with `git fetch origin +master:master; git rebase master`. 
+At the command line, update your branch with `git fetch origin +master:master; git rebase master`.
 "Merge" your changes with `git checkout master; git merge --ff-only <mybranch>`, and push.
 
 On GitHub, use the grey "updated branch" button, which adds a merge commit to your branch, but then land your changes with the "rebase and merge" or "squash and merge" options on the green merge button.
@@ -118,7 +124,7 @@ If either protection is not in force, committers should use their best judgement
 
 ### Developer Do's and Don'ts
 
-- **DO be aware of patterns from closely related systems.** It often makes sense to draw patterns from more established, closely related platforms than to derive them from first principles. For example, we draw heavily on patterns in IPFS for things like configuration, commands, and persistence. Similarly, we draw on patterns in Ethereum for message processing. 
+- **DO be aware of patterns from closely related systems.** It often makes sense to draw patterns from more established, closely related platforms than to derive them from first principles. For example, we draw heavily on patterns in IPFS for things like configuration, commands, and persistence. Similarly, we draw on patterns in Ethereum for message processing.
 - **DO NOT create technical debt.** Half-completed features give us a false sense of progress.
   - *Example: you add a cache for something. To prevent the cache
     from becoming a DOS vector, it requires the addition of a tricky
@@ -126,16 +132,22 @@ If either protection is not in force, committers should use their best judgement
     because there is a lot else to do. "Do not create technical debt"
     means you should implement the replacement policy along with the cache,
     and not defer that work into the future.*
-* **DO NOT add dependencies on `Node` or add more implementation to `Node`**: The 
+* **DO NOT add dependencies on `Node` or add more implementation to `Node`**: The
   `Node` has become a god object and a dependency of convenience. Abstractions
   should not take a `Node` as a dependency: they should take the narrower
   set of things they actually need. Building blocks should not go on `Node`;
-  they should go into separate, smaller abstractions that depend on the 
+  they should go into separate, smaller abstractions that depend on the
   narrow set of things they actually need. [More detail in #1223](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
 
-## Good First Issues
+## Issues and tracking
 
-Ready to begin? Here are well-prepared starter issues ([E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue)) for your coding pleasure. They have clear problem statements, pointers to the right areas of the code base, and clear acceptance criteria. 
+We use GitHub issues to track all significant work, including design, implementation, documentation and community efforts.
+We also use [ZenHub](https://app.zenhub.com/workspaces/filecoin-5ab0036a12f8e82ae4ed60f0/boards?repos=113219518&showPipelineDescriptions=false) to record issue priority and track team progress.
+ZenHub adds some useful project management overlay data to GitHub issues.
+
+### Good First Issues
+
+Ready to begin? Here are well-prepared starter issues ([E-good-first-issue](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-good-first-issue)) for your coding pleasure. They have clear problem statements, pointers to the right areas of the code base, and clear acceptance criteria.
 
 To pick up an issue:
 
@@ -146,6 +158,124 @@ To pick up an issue:
 
 For continued adventures, search for issues with the label [E-help-wanted](https://github.com/filecoin-project/go-filecoin/issues?q=is%3Aopen+is%3Aissue+label%3AE-help-wanted). These are slightly thornier problems that are also reasonably well-prepared.
 
+### Pipelines (ZenHub)
+We use ZenHub pipelines to track the flow of work on open issues. 
+This usage can vary over time, but the pipelines roughly indicate:
+- *Inbox*: new issues yet to be triaged
+- *Candidates*: reasonably complete issues, ready for prioritisation by maintainers
+- *Icebox*: no near-term intention for implementation
+- *Backlog*: not an immediate priority, but likely to become one in the future
+- *Ready*: ready for implementation
+- *In Progress*: actively being worked on
+- *Review/QA*: in review (usually triggered by linking a PR)
+- *Blocked*: unable to progress
+
+Committers and maintainers are expected to keep pipeline information up to date, including on behalf of contributors whose work they are shepherding.
+Other contributors do not need to maintain this state.
+
+ZenHub can also track dependencies between issues, which is encouraged.
+
+### Labels (GitHub)
+We use GitHub issue labels to aid browsing, search and discovery of issues related to some outcome or theme.
+We use a relatively small set of labels, which doesn't change very frequently.
+Labels are used inclusively, to aid discovery.
+An issue may have multiple labels; not all issues are expected to have labels.
+A label is never expected to be "done" (stable state of no open issues).
+
+Labels mark [dimensions including](https://github.com/filecoin-project/go-filecoin/issues/labels):
+- *Area* (name prefixed with `A-`): an area of code functionality
+- *Category* (name prefixed with `C-`): type of issue, e.g. bug, tech debt, ux
+- *Engagement* (name prefixed with `E-`): issues suitable for broader community involvement
+- *Importance* (name prefixed with `I-`): highlights why issues are important, e.g. related to security, scale, or runtime crashes
+- *Priority* (`P0` thru `P3`): not consistently used across the repo; may be used within epics or areas
+- ...plus a few other binary tags
+
+### Epics (ZenHub)
+An epic is a set of issues required to deliver a particular outcome, typically designed in a design doc.
+Epics support focus and forecasting through exclusion or inclusion of (ir-)relevant issues.
+We will typically scope an epic to a deliverable targeting a particular release, so most epics should live less than six weeks.
+
+### Releases (ZenHub)
+Release tags identify issues targeted to or blocking a particular go-filecoin software release.
+Release tags are forward-looking and support forecasting and focus though inclusion or exclusion of issues.
+At present (April 2019) we aim for a time-based release roughly every six weeks.
+ZenHub release tags can span multiple repositories.
+
+### Milestones (GitHub)
+We don't actively use GitHub milestones (but have in the past).
+Milestones support short time-based cycles such as sprints. Milestones are repo-specific.
+
+
+## Roles
+
+There are four main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Collaborators, Committers, and Maintainers.
+
+### Contributors
+
+Anyone is welcome. If you have created an issue, commented on an issue or discussion forum thread, or submitted a PR, you are a contributor.
+
+Responsibilities:
+
+* Participate in the project, following the [Code of Conduct](https://github.com/filecoin-project/community/blob/master/CODE_OF_CONDUCT.md).
+
+Abilities:
+
+* Open issues and PRs
+* Comment on issues and PRs
+
+### Collaborators
+
+A **Collaborator** is someone who demonstrates helpful contributions to the project.
+
+Responsibilities:
+
+* Make helpful contributions via issues, PRs, and other venues
+
+Abilities:
+* Write to the repo (but cannot merge to master)
+* Manage issues
+
+### Committers
+
+A **Committer** is someone with a broad understanding of the codebase and the judgment and humility to call on others' expertise when needed. They have a consistent track record of quality contributions, regular participation, and enabling others.
+
+Responsibilities:
+
+* Review PRs and guide work to ready-to-merge
+* With maintainer approval, rebase and merge contributor PRs
+* Issue triage and other project stewardship
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+### Maintainers
+
+A **Maintainer** is someone:
+
+1. **who is invested in and broadly familiar with the project**, as demonstrated by a history of significant technical-, process-, and/or project-level contributions;
+2. **who deeply understands the system**, especially knowing when and who to defer to as a reviewer, and with an eye towards unintended consequences;
+3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
+4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
+
+Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, @phritz, @whyrusleeping. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
+
+Responsibilities:
+
+* Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
+* Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
+* Make significant, direct technical contributions
+* Backstop for hard problems and general project stewardship (TODO: improve wording)
+
+Abilities:
+
+* Manage issues
+* Merge PRs
+
+**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an [issue](https://github.com/filecoin-project/go-filecoin/issues) pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities described in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.
+
+
 ## Additional Developer Notes
 
 #### Error Handling
@@ -155,11 +285,11 @@ incorrect view of the world.
 
 * **DO NOT INTENTIONALLY CRASH THE NODE**. Don't panic() if you can exit cleanly. panic()ing stops the node
   from doing useful work that might be unrelated to the error and does not give subsystems an opportunity to
-  clean up, thus potentially creating additional problems. 
+  clean up, thus potentially creating additional problems.
   * If an error is likely a function of an input, discard the input.
   * If an error could be transient, attempt to continue making progress.
   * If an error appears to be permanent or we have inconsistent internal state, error out to the top level
-  and exit cleanly if possible. 
+  and exit cleanly if possible.
 
 We should log an ERROR only in truly unexpected conditions
 that should not happen and that a dev should go look at.
@@ -171,6 +301,7 @@ that should not happen and that a dev should go look at.
 - Daemon tests (integration tests that run a node and send it commands):
   - Daemon tests should test integration, not comprehensive functionality
   - Daemon tests should validate that their responses conform to a JSON schema
+- Tests should be placed in a separate package, and follow the naming pattern `$PACKAGE_test`. For example, a test of the chain package should live in a package named `chain_test`. In limited situations, exceptions may be made for some "white box" tests placed in the same package as the code it tests.
 
 #### Profiling
 
@@ -225,9 +356,7 @@ We use the following import ordering.
 import (
         [stdlib packages, alpha-sorted]
         <single, empty line>
-        [gx-installed packages]
-        <single, empty line>
-        [go get-installed packages (not part of go-filecoin)]
+        [external packages]
         <single, empty line>
         [go-filecoin packages]
 )
@@ -240,10 +369,9 @@ import (
 	"context"
 	"testing"
 
-	cmds "gx/ipfs/QmYMj156vnPY7pYvtkvQiMDAzqWDDHkfiW5bYbMpYoHxhB/go-ipfs-cmds"
-	"gx/ipfs/QmcZfnkapfECQGcLZaf9B79NRg7cRa9EnZh4LSbkCzwNvY/go-cid"
-	ipld "gx/ipfs/Qme5bWv7wtjUNGsK2BNGVUFPKiuxWrsqrtvYwCLRw8YFES/go-ipld-format"
-
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/testhelpers"
@@ -284,73 +412,6 @@ Presently (Q1'19) the minimum bar is:
 * Lint (`go run ./build/*.go lint`).
 * Must match a subset of the spec.
 * Documentation is up to date.
-* For major or risky changes: the code must be integrated. 
+* For major or risky changes: the code must be integrated.
 Integrated means verifying that it works for real in a devnet, not just that it passes tests.
 This higher bar ensures major changes actually work, and reduces surprises/nightmares during release.
-
-### Roles
-
-There are four main roles for people participating in `go-filecoin`. Each has a specific set of abilities and responsibilities: Contributors, Collaborators, Committers, and Maintainers.
-
-#### Contributors
-
-Anyone is welcome. If you have created an issue, commented on an issue or discussion forum thread, or submitted a PR, you are a contributor.
-
-Responsibilities:
-
-* Participate in the project, following the [Code of Conduct](https://github.com/filecoin-project/community/blob/master/CODE_OF_CONDUCT.md).
-
-Abilities:
-
-* Open issues and PRs
-* Comment on issues and PRs
-
-#### Collaborators
-
-A **Collaborator** is someone who demonstrates helpful contributions to the project.
-
-Responsibilities:
-
-* Make helpful contributions via issues, PRs, and other venues
-
-Abilities:
-* Write to the repo (but cannot merge to master)
-* Manage issues
-
-#### Committers
-
-A **Committer** is someone with a broad understanding of the codebase and the judgment and humility to call on others' expertise when needed. They have a consistent track record of quality contributions, regular participation, and enabling others.
-
-Responsibilities:
-
-* Review PRs and guide work to ready-to-merge
-* With maintainer approval, rebase and merge contributor PRs
-* Issue triage and other project stewardship
-
-Abilities:
-
-* Manage issues
-* Merge PRs
-
-#### Maintainers
-
-A **Maintainer** is someone:
-
-1. **who is invested in and broadly familiar with the project**, as demonstrated by a history of significant technical-, process-, and/or project-level contributions;
-2. **who deeply understands the system**, especially knowing when and who to defer to as a reviewer, and with an eye towards unintended consequences;
-3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
-4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
-
-Responsibilities:
-
-* Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
-* Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
-* Make significant, direct technical contributions
-* Backstop for hard problems and general project stewardship (TODO: improve wording)
-
-Abilities:
-
-* Manage issues
-* Merge PRs
-
-**Becoming a committer or maintainer:** Anyone can nominate someone for committership or maintainership by filing an issue {TODO: link to correct repo} pointing to evidence that the candidate (1) meets the definition and (2) is already performing the responsibilities decsribed in Roles. Existing maintainers must unanimously approve the new candidate. Removing a committer or maintainer requires either self-nomination, or confirmation by at least 66% of existing maintainers.

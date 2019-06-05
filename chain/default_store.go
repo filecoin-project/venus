@@ -6,37 +6,39 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	"gx/ipfs/QmdbxjQWogRCHRaxhhGnYdT1oQJzL9GdqSKzCdqWr85AP2/pubsub"
+	"github.com/cskr/pubsub"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+// NewHeadTopic is the topic used to publish new heads.
+const NewHeadTopic = "new-head"
+
+// GenesisKey is the key at which the genesis Cid is written in the datastore.
+var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 
 var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
-// DefaultStore is a generic implementation of the Store interface.
+// Store is a generic implementation of the Store interface.
 // It works(tm) for now.
-type DefaultStore struct {
+type Store struct {
 	// bsPriv is the on disk storage for blocks.  This is private to
-	// the DefaultStore to keep code that adds blocks to the DefaultStore's
+	// the Store to keep code that adds blocks to the Store's
 	// underlying storage isolated to this module.  It is important that only
-	// code with access to a DefaultStore can write to this storage to
+	// code with access to a Store can write to this storage to
 	// simplify checking the security guarantee that only tipsets of a
-	// validated chain are stored in the filecoin node's DefaultStore.
+	// validated chain are stored in the filecoin node's Store.
 	bsPriv bstore.Blockstore
-	// stateStore is the on disk storage used for loading states.  It can be
-	// shared with the rest of the filecoin node.
-	stateStore *hamt.CborIpldStore
 	// ds is the datastore backing bsPriv.  It is also accessed directly
 	// to set and get chain meta-data, specifically the tipset cidset to
 	// state root mapping, and the heaviest tipset cids.
@@ -61,15 +63,11 @@ type DefaultStore struct {
 	tipIndex *TipIndex
 }
 
-// Ensure DefaultStore satisfies the Store interface at compile time.
-var _ Store = (*DefaultStore)(nil)
-
-// NewDefaultStore constructs a new default store.
-func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisCid cid.Cid) *DefaultStore {
+// NewStore constructs a new default store.
+func NewStore(ds repo.Datastore, genesisCid cid.Cid) *Store {
 	priv := bstore.NewBlockstore(ds)
-	return &DefaultStore{
+	return &Store{
 		bsPriv:     priv,
-		stateStore: stateStore,
 		ds:         ds,
 		headEvents: pubsub.New(128),
 		tipIndex:   NewTipIndex(),
@@ -77,78 +75,80 @@ func NewDefaultStore(ds repo.Datastore, stateStore *hamt.CborIpldStore, genesisC
 	}
 }
 
-// Load rebuilds the DefaultStore's caches by traversing backwards from the
+// Load rebuilds the Store's caches by traversing backwards from the
 // most recent best head as stored in its datastore.  Because Load uses a
 // content addressed datastore it guarantees that parent blocks are correctly
 // resolved from the datastore.  Furthermore Load ensures that all tipsets
 // references correctly have the same parent height, weight and parent set.
 // However, Load DOES NOT validate state transitions, it assumes that the
-// tipset were only Put to the DefaultStore after checking for valid transitions.
+// tipset were only Put to the Store after checking for valid transitions.
 //
-// Furthermore Load trusts that the DefaultStore's backing datastore correctly
+// Furthermore Load trusts that the Store's backing datastore correctly
 // preserves the cids of the heaviest tipset under the "headKey" datastore key.
 // If the headKey cids are tampered with and invalid blocks added to the datastore
 // then Load could be tricked into loading an invalid chain. Load will error if the
 // head does not link back to the expected genesis block, or the Store's
 // datastore does not store a link in the chain.  In case of error the caller
 // should not consider the chain useable and propagate the error.
-func (store *DefaultStore) Load(ctx context.Context) error {
+func (store *Store) Load(ctx context.Context) (err error) {
+	ctx, span := trace.StartSpan(ctx, "Store.Load")
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
 	tipCids, err := store.loadHead()
 	if err != nil {
 		return err
 	}
-	headTs := types.TipSet{}
+	var blocks []*types.Block
 	// traverse starting from head to begin loading the chain
-	var startHeight types.Uint64
 	for it := tipCids.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
 			return errors.Wrap(err, "failed to load block in head TipSet")
 		}
-		err = headTs.AddBlock(blk)
-		if err != nil {
-			return errors.Wrap(err, "failed to add validated block to TipSet")
-		}
-		startHeight = blk.Height
+		blocks = append(blocks, blk)
 	}
+	headTs, err := types.NewTipSet(blocks...)
+	if err != nil {
+		return errors.Wrap(err, "failed to add validated block to TipSet")
+	}
+	startHeight := headTs.At(0).Height
 	logStore.Infof("start loading chain at tipset: %s, height: %d", tipCids.String(), startHeight)
 	// esnures we only produce 10 log messages regardless of the chain height
 	logStatusEvery := startHeight / 10
 
 	var genesii types.TipSet
-	err = store.walkChain(ctx, headTs.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-		if logStatusEvery != 0 && (tips[0].Height%logStatusEvery) == 0 {
-			logStore.Infof("load tipset: %s, height: %v", tips[0].Cid().String(), tips[0].Height)
-		}
-		ts, err := types.NewTipSet(tips...)
+	for iterator := IterAncestors(ctx, store, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
-			return false, err
+			return err
 		}
-		stateRoot, err := store.loadStateRoot(ts)
+
+		height, err := iterator.Value().Height()
 		if err != nil {
-			return false, err
+			return err
+		}
+		if logStatusEvery != 0 && (types.Uint64(height)%logStatusEvery) == 0 {
+			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
+		}
+		stateRoot, err := store.loadStateRoot(iterator.Value())
+		if err != nil {
+			return err
 		}
 		err = store.PutTipSetAndState(ctx, &TipSetAndState{
-			TipSet:          ts,
+			TipSet:          iterator.Value(),
 			TipSetStateRoot: stateRoot,
 		})
 		if err != nil {
-			return false, err
+			return err
 		}
-		// TODO: we should probably warm up the block cache with the
-		// most recent tipsets traversed here.
-		genesii = ts
-		return true, nil
-	})
-	if err != nil {
-		return err
+
+		genesii = iterator.Value()
 	}
 	// Check genesis here.
-	if len(genesii) != 1 {
-		return errors.Errorf("genesis tip set must be a single block, got %d blocks", len(genesii))
+	if genesii.Len() != 1 {
+		return errors.Errorf("genesis tip set must be a single block, got %d blocks", genesii.Len())
 	}
 
-	loadCid := genesii.ToSlice()[0].Cid()
+	loadCid := genesii.At(0).Cid()
 	if !loadCid.Equals(store.genesis) {
 		return errors.Errorf("expected genesis cid: %s, loaded genesis cid: %s", store.genesis, loadCid)
 	}
@@ -159,7 +159,7 @@ func (store *DefaultStore) Load(ctx context.Context) error {
 }
 
 // loadHead loads the latest known head from disk.
-func (store *DefaultStore) loadHead() (types.SortedCidSet, error) {
+func (store *Store) loadHead() (types.SortedCidSet, error) {
 	var emptyCidSet types.SortedCidSet
 	bb, err := store.ds.Get(headKey)
 	if err != nil {
@@ -175,7 +175,7 @@ func (store *DefaultStore) loadHead() (types.SortedCidSet, error) {
 	return cids, nil
 }
 
-func (store *DefaultStore) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
+func (store *Store) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, err
@@ -195,7 +195,7 @@ func (store *DefaultStore) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 }
 
 // putBlk persists a block to disk.
-func (store *DefaultStore) putBlk(ctx context.Context, block *types.Block) error {
+func (store *Store) putBlk(ctx context.Context, block *types.Block) error {
 	if err := store.bsPriv.Put(block.ToNode()); err != nil {
 		return errors.Wrap(err, "failed to put block")
 	}
@@ -203,10 +203,10 @@ func (store *DefaultStore) putBlk(ctx context.Context, block *types.Block) error
 }
 
 // PutTipSetAndState persists the blocks of a tipset and the tipset index.
-func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error {
+func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error {
 	// Persist blocks.
-	for _, blk := range tsas.TipSet {
-		if err := store.putBlk(ctx, blk); err != nil {
+	for i := 0; i < tsas.TipSet.Len(); i++ {
+		if err := store.putBlk(ctx, tsas.TipSet.At(i)); err != nil {
 			return err
 		}
 	}
@@ -224,33 +224,43 @@ func (store *DefaultStore) PutTipSetAndState(ctx context.Context, tsas *TipSetAn
 	return nil
 }
 
-// GetTipSetAndState returns the tipset and state of the tipset whose block
-// cids correspond to the input string.
-func (store *DefaultStore) GetTipSetAndState(ctx context.Context, tsKey string) (*TipSetAndState, error) {
-	return store.tipIndex.Get(tsKey)
+// GetTipSet returns the tipset whose block
+// cids correspond to the input sorted cid set.
+func (store *Store) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+	return store.tipIndex.GetTipSet(tsKey.String())
+}
+
+// GetTipSetStateRoot returns the state of the tipset whose block
+// cids correspond to the input sorted cid set.
+func (store *Store) GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetStateRoot(tsKey.String())
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset referenced in the input key.
-func (store *DefaultStore) HasTipSetAndState(ctx context.Context, tsKey string) bool {
+func (store *Store) HasTipSetAndState(ctx context.Context, tsKey string) bool {
 	return store.tipIndex.Has(tsKey)
 }
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have the parent set corresponding to the
 // input key.
-func (store *DefaultStore) GetTipSetAndStatesByParentsAndHeight(ctx context.Context, pTsKey string, h uint64) ([]*TipSetAndState, error) {
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error) {
 	return store.tipIndex.GetByParentsAndHeight(pTsKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset indexed by the provided parent ID.
-func (store *DefaultStore) HasTipSetAndStatesWithParentsAndHeight(ctx context.Context, pTsKey string, h uint64) bool {
+func (store *Store) HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool {
 	return store.tipIndex.HasByParentsAndHeight(pTsKey, h)
 }
 
 // GetBlocks retrieves the blocks referenced in the input cid set.
-func (store *DefaultStore) GetBlocks(ctx context.Context, cids types.SortedCidSet) ([]*types.Block, error) {
+func (store *Store) GetBlocks(ctx context.Context, cids types.SortedCidSet) (blks []*types.Block, err error) {
+	ctx, span := trace.StartSpan(ctx, "Store.GetBlocks")
+	span.AddAttributes(trace.StringAttribute("tipset", cids.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
 	var blocks []*types.Block
 	for it := cids.Iter(); !it.Complete(); it.Next() {
 		id := it.Value()
@@ -264,7 +274,7 @@ func (store *DefaultStore) GetBlocks(ctx context.Context, cids types.SortedCidSe
 }
 
 // GetBlock retrieves a block by cid.
-func (store *DefaultStore) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
+func (store *Store) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
 	data, err := store.bsPriv.Get(c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
@@ -273,7 +283,7 @@ func (store *DefaultStore) GetBlock(ctx context.Context, c cid.Cid) (*types.Bloc
 }
 
 // HasAllBlocks indicates whether the blocks are in the store.
-func (store *DefaultStore) HasAllBlocks(ctx context.Context, cids []cid.Cid) bool {
+func (store *Store) HasAllBlocks(ctx context.Context, cids []cid.Cid) bool {
 	for _, c := range cids {
 		if !store.HasBlock(ctx, c) {
 			return false
@@ -283,7 +293,7 @@ func (store *DefaultStore) HasAllBlocks(ctx context.Context, cids []cid.Cid) boo
 }
 
 // HasBlock indicates whether the block is in the store.
-func (store *DefaultStore) HasBlock(ctx context.Context, c cid.Cid) bool {
+func (store *Store) HasBlock(ctx context.Context, c cid.Cid) bool {
 	// TODO: consider adding Has method to HamtIpldCborstore if this used much,
 	// or using a different store interface for quick Has.
 	blk, err := store.GetBlock(ctx, c)
@@ -293,16 +303,16 @@ func (store *DefaultStore) HasBlock(ctx context.Context, c cid.Cid) bool {
 
 // HeadEvents returns a pubsub interface the pushes events each time the
 // default store's head is reset.
-func (store *DefaultStore) HeadEvents() *pubsub.PubSub {
+func (store *Store) HeadEvents() *pubsub.PubSub {
 	return store.headEvents
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *DefaultStore) SetHead(ctx context.Context, ts types.TipSet) error {
+func (store *Store) SetHead(ctx context.Context, ts types.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
-	if len(ts) < 1 {
+	if !ts.Defined() {
 		logStore.Error("publishing empty tipset")
 		logStore.Error(debug.Stack())
 	}
@@ -317,7 +327,7 @@ func (store *DefaultStore) SetHead(ctx context.Context, ts types.TipSet) error {
 	return nil
 }
 
-func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts types.TipSet) error {
+func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -332,7 +342,7 @@ func (store *DefaultStore) setHeadPersistent(ctx context.Context, ts types.TipSe
 }
 
 // writeHead writes the given cid set as head to disk.
-func (store *DefaultStore) writeHead(ctx context.Context, cids types.SortedCidSet) error {
+func (store *Store) writeHead(ctx context.Context, cids types.SortedCidSet) error {
 	logStore.Debugf("WriteHead %s", cids.String())
 	val, err := json.Marshal(cids)
 	if err != nil {
@@ -344,7 +354,7 @@ func (store *DefaultStore) writeHead(ctx context.Context, cids types.SortedCidSe
 
 // writeTipSetAndState writes the tipset key and the state root id to the
 // datastore.
-func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
+func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
 	val, err := json.Marshal(tsas.TipSetStateRoot)
 	if err != nil {
 		return err
@@ -359,104 +369,36 @@ func (store *DefaultStore) writeTipSetAndState(tsas *TipSetAndState) error {
 	return store.ds.Put(key, val)
 }
 
-// Head returns the current head.
-func (store *DefaultStore) Head() types.TipSet {
+// GetHead returns the current head tipset cids.
+func (store *Store) GetHead() types.SortedCidSet {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
-	return store.head
+	if !store.head.Defined() {
+		return types.SortedCidSet{}
+	}
+
+	return store.head.ToSortedCidSet()
 }
 
 // BlockHeight returns the chain height of the head tipset.
 // Strictly speaking, the block height is the number of tip sets that appear on chain plus
 // the number of "null blocks" that occur when a mining round fails to produce a block.
-func (store *DefaultStore) BlockHeight() (uint64, error) {
-	return store.Head().Height()
-}
+func (store *Store) BlockHeight() (uint64, error) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
 
-// LatestState returns the state associated with the latest chain head.
-func (store *DefaultStore) LatestState(ctx context.Context) (state.Tree, error) {
-	h := store.Head()
-	if h == nil {
-		return nil, errors.New("Unset head")
-	}
-	tsas, err := store.GetTipSetAndState(ctx, h.String())
-	if err != nil {
-		return nil, err
-	}
-	return state.LoadStateTree(ctx, store.stateStore, tsas.TipSetStateRoot, builtin.Actors)
-}
-
-// BlockHistory returns a channel of block pointers (or errors), starting with the input tipset
-// followed by each subsequent parent and ending with the genesis block, after which the channel
-// is closed. If an error is encountered while fetching a block, the error is sent, and the channel is closed.
-func (store *DefaultStore) BlockHistory(ctx context.Context, start types.TipSet) <-chan interface{} {
-	ctx = logStore.Start(ctx, "BlockHistory")
-	out := make(chan interface{})
-
-	go func() {
-		defer close(out)
-		defer logStore.Finish(ctx)
-		err := store.walkChain(ctx, start.ToSlice(), func(tips []*types.Block) (cont bool, err error) {
-			var raw interface{}
-			raw, err = types.NewTipSet(tips...)
-			if err != nil {
-				raw = err
-			}
-			select {
-			case <-ctx.Done():
-				return false, nil
-			case out <- raw:
-			}
-			return true, nil
-		})
-		if err != nil {
-			select {
-			case <-ctx.Done():
-			case out <- err:
-			}
-		}
-	}()
-	return out
-}
-
-// walkChain walks backward through the chain, starting at tips, invoking cb() at each height.
-func (store *DefaultStore) walkChain(ctx context.Context, tips []*types.Block, cb func(tips []*types.Block) (cont bool, err error)) error {
-	for {
-		cont, err := cb(tips)
-		if err != nil {
-			return errors.Wrap(err, "error processing block")
-		}
-		if !cont {
-			return nil
-		}
-		ids := tips[0].Parents
-		if ids.Empty() {
-			break
-		}
-
-		tips = tips[:0]
-		for it := ids.Iter(); !it.Complete(); it.Next() {
-			pid := it.Value()
-			p, err := store.GetBlock(ctx, pid)
-			if err != nil {
-				return errors.Wrap(err, "error retrieving block from store")
-			}
-			tips = append(tips, p)
-		}
-	}
-
-	return nil
+	return store.head.Height()
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.
-func (store *DefaultStore) GenesisCid() cid.Cid {
+func (store *Store) GenesisCid() cid.Cid {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	return store.genesis
 }
 
 // Stop stops all activities and cleans up.
-func (store *DefaultStore) Stop() {
+func (store *Store) Stop() {
 	store.headEvents.Shutdown()
 }

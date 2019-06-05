@@ -4,16 +4,17 @@ import (
 	"io/ioutil"
 	"testing"
 
-	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	offline "gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	bserv "github.com/ipfs/go-blockservice"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 // Builder is used to create a SectorBuilder test harness
@@ -66,7 +67,7 @@ func (b *Builder) Build() Harness {
 		b.sealedDir = sealedDir
 	}
 
-	memRepo := repo.NewInMemoryRepoWithSectorDirectories(b.stagingDir, b.sealedDir)
+	memRepo := repo.NewInMemoryRepo()
 	blockStore := bstore.NewBlockstore(memRepo.Datastore())
 	blockService := bserv.New(blockStore, offline.Exchange(blockStore))
 	minerAddr, err := address.NewActorAddress([]byte("wombat"))
@@ -74,22 +75,20 @@ func (b *Builder) Build() Harness {
 		panic(err)
 	}
 
-	// TODO: Replace this with proofs.Live plus a sector size (in this case,
-	// "small" or 127 (bytes).
-	sectorStoreType := proofs.Test
+	class := types.NewSectorClass(types.OneKiBSectorSize)
 
 	sb, err := sectorbuilder.NewRustSectorBuilder(sectorbuilder.RustSectorBuilderConfig{
 		BlockService:     blockService,
 		LastUsedSectorID: 0,
-		MetadataDir:      memRepo.StagingDir(),
+		MetadataDir:      b.stagingDir,
 		MinerAddr:        minerAddr,
-		SealedSectorDir:  memRepo.SealedDir(),
-		SectorStoreType:  sectorStoreType,
-		StagedSectorDir:  memRepo.StagingDir(),
+		SealedSectorDir:  b.sealedDir,
+		SectorClass:      class,
+		StagedSectorDir:  b.stagingDir,
 	})
 	require.NoError(b.t, err)
 
-	n, err := sb.GetMaxUserBytesPerStagedSector()
+	max := proofs.GetMaxUserBytesPerStagedSector(class.SectorSize())
 	require.NoError(b.t, err)
 
 	return Harness{
@@ -98,7 +97,6 @@ func (b *Builder) Build() Harness {
 		blockService:      blockService,
 		SectorBuilder:     sb,
 		MinerAddr:         minerAddr,
-		MaxBytesPerSector: n,
-		SectorConfig:      sectorStoreType,
+		MaxBytesPerSector: max,
 	}
 }

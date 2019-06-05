@@ -1,19 +1,17 @@
 package repo
 
 import (
-	"io/ioutil"
-	"os"
 	"sync"
 
-	"gx/ipfs/QmTsgWR7cZQ11NMMSgptZkWXBHsYzcPd712JbPzNeowqXy/go-ipfs-keystore"
-	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
-	dss "gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore/sync"
+	"github.com/ipfs/go-datastore"
+	dss "github.com/ipfs/go-datastore/sync"
+	"github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/paths"
 )
 
-// MemRepo is a mostly (see `stagingDir` and `sealedDir`) in-memory
-// implementation of the Repo interface.
+// MemRepo is an in-memory implementation of the Repo interface.
 type MemRepo struct {
 	// lk guards the config
 	lk         sync.RWMutex
@@ -25,41 +23,20 @@ type MemRepo struct {
 	DealsDs    Datastore
 	version    uint
 	apiAddress string
-	stagingDir string
-	sealedDir  string
 }
 
 var _ Repo = (*MemRepo)(nil)
 
 // NewInMemoryRepo makes a new instance of MemRepo
 func NewInMemoryRepo() *MemRepo {
-	stagingDir, err := ioutil.TempDir("", "staging")
-	if err != nil {
-		panic(err)
-	}
-
-	sealedDir, err := ioutil.TempDir("", "staging")
-	if err != nil {
-		panic(err)
-	}
-
-	return NewInMemoryRepoWithSectorDirectories(stagingDir, sealedDir)
-}
-
-// NewInMemoryRepoWithSectorDirectories makes a new instance of MemRepo
-// configured to use the provided directories as sealed and staged
-// sector-storage.
-func NewInMemoryRepoWithSectorDirectories(staging, sealedDir string) *MemRepo {
 	return &MemRepo{
-		C:          config.NewDefaultConfig(),
-		D:          dss.MutexWrap(datastore.NewMapDatastore()),
-		Ks:         keystore.MutexWrap(keystore.NewMemKeystore()),
-		W:          dss.MutexWrap(datastore.NewMapDatastore()),
-		Chain:      dss.MutexWrap(datastore.NewMapDatastore()),
-		DealsDs:    dss.MutexWrap(datastore.NewMapDatastore()),
-		version:    Version,
-		stagingDir: staging,
-		sealedDir:  sealedDir,
+		C:       config.NewDefaultConfig(),
+		D:       dss.MutexWrap(datastore.NewMapDatastore()),
+		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
+		W:       dss.MutexWrap(datastore.NewMapDatastore()),
+		Chain:   dss.MutexWrap(datastore.NewMapDatastore()),
+		DealsDs: dss.MutexWrap(datastore.NewMapDatastore()),
+		version: Version,
 	}
 }
 
@@ -114,24 +91,7 @@ func (mr *MemRepo) Version() uint {
 // Close deletes the temporary directories which hold staged piece data and
 // sealed sectors.
 func (mr *MemRepo) Close() error {
-	mr.CleanupSectorDirs()
 	return nil
-}
-
-// StagingDir implements node.StagingDir.
-func (mr *MemRepo) StagingDir() string {
-	return mr.stagingDir
-}
-
-// SealedDir implements node.SectorDirs.
-func (mr *MemRepo) SealedDir() string {
-	return mr.sealedDir
-}
-
-// CleanupSectorDirs removes all sector directories and their contents.
-func (mr *MemRepo) CleanupSectorDirs() {
-	os.RemoveAll(mr.StagingDir()) // nolint: errcheck
-	os.RemoveAll(mr.SealedDir())  // nolint:errcheck
 }
 
 // SetAPIAddr writes the address of the running API to memory.
@@ -143,4 +103,9 @@ func (mr *MemRepo) SetAPIAddr(addr string) error {
 // APIAddr reads the address of the running API from memory.
 func (mr *MemRepo) APIAddr() (string, error) {
 	return mr.apiAddress, nil
+}
+
+// Path returns the default path.
+func (mr *MemRepo) Path() (string, error) {
+	return paths.GetRepoPath("")
 }

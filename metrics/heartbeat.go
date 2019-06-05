@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	"gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	"gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
+	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -52,7 +52,7 @@ type HeartbeatService struct {
 	Config *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
-	HeadGetter func() types.TipSet
+	HeadGetter func() (types.TipSet, error)
 
 	// A function that returns the miner's address
 	MinerAddressGetter func() address.Address
@@ -76,7 +76,7 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() types.TipSet, options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() (types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
 		Config:             hbc,
@@ -181,7 +181,7 @@ func (hbs *HeartbeatService) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-beatTicker.C:
-			hb := hbs.Beat()
+			hb := hbs.Beat(ctx)
 			if err := encoder.Encode(hb); err != nil {
 				hbs.stream.Conn().Close() // nolint: errcheck
 				return err
@@ -191,9 +191,12 @@ func (hbs *HeartbeatService) Run(ctx context.Context) error {
 }
 
 // Beat will create a heartbeat.
-func (hbs *HeartbeatService) Beat() Heartbeat {
+func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	nick := hbs.Config.Nickname
-	ts := hbs.HeadGetter()
+	ts, err := hbs.HeadGetter()
+	if err != nil {
+		log.Errorf("unable to fetch chain head: %s", err)
+	}
 	tipset := ts.ToSortedCidSet().String()
 	height, err := ts.Height()
 	if err != nil {

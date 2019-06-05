@@ -6,15 +6,22 @@ import (
 	"sync"
 	"time"
 
-	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	inet "gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	routing "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	host "gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
+	logging "github.com/ipfs/go-log"
+	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-kad-dht"
+	inet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	routing "github.com/libp2p/go-libp2p-routing"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
+var filecoinDHTBootstrapConfig = dht.BootstrapConfig{
+	// Recommended initial options from issu #1947
+	Queries: 2,
+	Period:  5 * time.Minute,
+	Timeout: time.Minute,
+}
 
 // Bootstrapper attempts to keep the p2p host connected to the filecoin network
 // by keeping a minimum threshold of connections. If the threshold isn't met it
@@ -108,9 +115,9 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 		// DHT Bootstrap is a persistent process so only do this once.
 		if !b.dhtBootStarted {
 			b.dhtBootStarted = true
-			err := b.r.Bootstrap(b.ctx)
+			err := b.bootstrapIpfsRouting()
 			if err != nil {
-				logBootstrap.Warningf("got error trying to bootstrap DHT: %s. Peer discovery may suffer.", err.Error())
+				logBootstrap.Warningf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
 			}
 		}
 		cancel()
@@ -146,4 +153,14 @@ func hasPID(pids []peer.ID, pid peer.ID) bool {
 		}
 	}
 	return false
+}
+
+func (b *Bootstrapper) bootstrapIpfsRouting() error {
+	dht, ok := b.r.(*dht.IpfsDHT)
+	if !ok {
+		// No bootstrapping to do exit quietly.
+		return nil
+	}
+
+	return dht.BootstrapWithConfig(b.ctx, filecoinDHTBootstrapConfig)
 }

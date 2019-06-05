@@ -4,7 +4,7 @@ package errors
 
 import (
 	"fmt"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/pkg/errors"
 )
 
 // RevertError is an error wrapper that signals that the vm should
@@ -57,7 +57,7 @@ func NewCodedRevertErrorf(code uint8, format string, args ...interface{}) error 
 
 // RevertErrorWrap wraps a given error in a RevertError.
 func RevertErrorWrap(err error, msg string) error {
-	return &RevertError{err: err, msg: msg}
+	return &RevertError{err: err, msg: msg, code: 1}
 }
 
 // RevertErrorWrapf wraps a given error in a RevertError and adds a message
@@ -85,6 +85,9 @@ func ShouldRevert(err error) bool {
 
 // CodeError returns the RevertError's error code if it is a revert error, or 1 otherwise.
 func CodeError(err error) uint8 {
+	if err == nil {
+		return 0
+	}
 	if ShouldRevert(err) {
 		return err.(*RevertError).Code()
 	}

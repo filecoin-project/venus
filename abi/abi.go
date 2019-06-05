@@ -5,12 +5,11 @@ import (
 	"math/big"
 	"reflect"
 
-	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"github.com/filecoin-project/go-leb128"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -51,6 +50,16 @@ const (
 	PoStProofs
 	// Boolean is a bool
 	Boolean
+	// ProofsMode is an enumeration of possible modes of proof operation
+	ProofsMode
+	// PoRepProof is a dynamic length array of the PoRep proof-bytes
+	PoRepProof
+	// PoStProof is a dynamic length array of the PoSt proof-bytes
+	PoStProof
+	// Predicate is subset of a message used to ask an actor about a condition
+	Predicate
+	// Parameters is a slice of individually encodable parameters
+	Parameters
 )
 
 func (t Type) String() string {
@@ -82,9 +91,19 @@ func (t Type) String() string {
 	case CommitmentsMap:
 		return "map[string]types.Commitments"
 	case PoStProofs:
-		return "[]proofs.PoStProof"
+		return "[]types.PoStProof"
 	case Boolean:
 		return "bool"
+	case ProofsMode:
+		return "types.ProofsMode"
+	case PoRepProof:
+		return "types.PoRepProof"
+	case PoStProof:
+		return "types.PoStProof"
+	case Predicate:
+		return "*types.Predicate"
+	case Parameters:
+		return "[]interface{}"
 	default:
 		return "<unknown type>"
 	}
@@ -125,9 +144,19 @@ func (av *Value) String() string {
 	case CommitmentsMap:
 		return fmt.Sprint(av.Val.(map[string]types.Commitments))
 	case PoStProofs:
-		return fmt.Sprint(av.Val.([]proofs.PoStProof))
+		return fmt.Sprint(av.Val.([]types.PoStProof))
 	case Boolean:
 		return fmt.Sprint(av.Val.(bool))
+	case ProofsMode:
+		return fmt.Sprint(av.Val.(types.ProofsMode))
+	case PoRepProof:
+		return fmt.Sprint(av.Val.(types.PoRepProof))
+	case PoStProof:
+		return fmt.Sprint(av.Val.(types.PoStProof))
+	case Predicate:
+		return fmt.Sprint(av.Val.(*types.Predicate))
+	case Parameters:
+		return fmt.Sprint(av.Val.([]interface{}))
 	default:
 		return "<unknown type>"
 	}
@@ -228,9 +257,9 @@ func (av *Value) Serialize() ([]byte, error) {
 
 		return cbor.DumpObject(m)
 	case PoStProofs:
-		m, ok := av.Val.([]proofs.PoStProof)
+		m, ok := av.Val.([]types.PoStProof)
 		if !ok {
-			return nil, &typeError{[]proofs.PoStProof{}, av.Val}
+			return nil, &typeError{[]types.PoStProof{}, av.Val}
 		}
 
 		return cbor.DumpObject(m)
@@ -246,6 +275,39 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return []byte{b}, nil
+	case ProofsMode:
+		v, ok := av.Val.(types.ProofsMode)
+		if !ok {
+			return nil, &typeError{types.TestProofsMode, av.Val}
+		}
+
+		return []byte{byte(v)}, nil
+	case PoRepProof:
+		b, ok := av.Val.(types.PoRepProof)
+		if !ok {
+			return nil, &typeError{types.PoRepProof{}, av.Val}
+		}
+		return b, nil
+	case PoStProof:
+		b, ok := av.Val.(types.PoStProof)
+		if !ok {
+			return nil, &typeError{types.PoStProof{}, av.Val}
+		}
+		return b, nil
+	case Predicate:
+		p, ok := av.Val.(*types.Predicate)
+		if !ok {
+			return nil, &typeError{&types.Predicate{}, av.Val}
+		}
+
+		return cbor.DumpObject(p)
+	case Parameters:
+		p, ok := av.Val.([]interface{})
+		if !ok {
+			return nil, &typeError{[]interface{}{}, av.Val}
+		}
+
+		return cbor.DumpObject(p)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -285,10 +347,20 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: SectorID, Val: v})
 		case map[string]types.Commitments:
 			out = append(out, &Value{Type: CommitmentsMap, Val: v})
-		case []proofs.PoStProof:
+		case []types.PoStProof:
 			out = append(out, &Value{Type: PoStProofs, Val: v})
 		case bool:
 			out = append(out, &Value{Type: Boolean, Val: v})
+		case types.ProofsMode:
+			out = append(out, &Value{Type: ProofsMode, Val: v})
+		case types.PoRepProof:
+			out = append(out, &Value{Type: PoRepProof, Val: v})
+		case types.PoStProof:
+			out = append(out, &Value{Type: PoStProof, Val: v})
+		case *types.Predicate:
+			out = append(out, &Value{Type: Predicate, Val: v})
+		case []interface{}:
+			out = append(out, &Value{Type: Parameters, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -393,7 +465,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Val:  m,
 		}, nil
 	case PoStProofs:
-		var slice []proofs.PoStProof
+		var slice []types.PoStProof
 		if err := cbor.DecodeInto(data, &slice); err != nil {
 			return nil, err
 		}
@@ -409,6 +481,39 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		return &Value{
 			Type: t,
 			Val:  b,
+		}, nil
+	case ProofsMode:
+		return &Value{
+			Type: t,
+			Val:  types.ProofsMode(int(data[0])),
+		}, nil
+	case PoRepProof:
+		return &Value{
+			Type: t,
+			Val:  append(types.PoRepProof{}, data[:]...),
+		}, nil
+	case PoStProof:
+		return &Value{
+			Type: t,
+			Val:  append(types.PoStProof{}, data[:]...),
+		}, nil
+	case Predicate:
+		var predicate *types.Predicate
+		if err := cbor.DecodeInto(data, &predicate); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  predicate,
+		}, nil
+	case Parameters:
+		var parameters []interface{}
+		if err := cbor.DecodeInto(data, &parameters); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  parameters,
 		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
@@ -430,8 +535,13 @@ var typeTable = map[Type]reflect.Type{
 	PeerID:         reflect.TypeOf(peer.ID("")),
 	SectorID:       reflect.TypeOf(uint64(0)),
 	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
-	PoStProofs:     reflect.TypeOf([]proofs.PoStProof{}),
+	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
 	Boolean:        reflect.TypeOf(false),
+	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
+	PoRepProof:     reflect.TypeOf(types.PoRepProof{}),
+	PoStProof:      reflect.TypeOf(types.PoStProof{}),
+	Predicate:      reflect.TypeOf(&types.Predicate{}),
+	Parameters:     reflect.TypeOf([]interface{}{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

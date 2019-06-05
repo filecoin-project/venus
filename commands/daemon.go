@@ -10,18 +10,18 @@ import (
 	"syscall"
 	"time"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZcLBXKaFe8ND5YHPkJRAwmhJGrVsi1JqDZNyJ4nRK5Mj/go-multiaddr-net"
-	writer "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log/writer"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
-	cmdhttp "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/http"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
+	writer "github.com/ipfs/go-log/writer"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr-net"
+	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -56,13 +56,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	// second highest precedence is env vars.
-	if envapi := os.Getenv("FIL_API"); envapi != "" {
-		rep.Config().API.Address = envapi
+	if envAPI := os.Getenv("FIL_API"); envAPI != "" {
+		rep.Config().API.Address = envAPI
 	}
 
 	// highest precedence is cmd line flag.
-	if apiAddress, ok := req.Options[OptionAPI].(string); ok && apiAddress != "" {
-		rep.Config().API.Address = apiAddress
+	if flagAPI, ok := req.Options[OptionAPI].(string); ok && flagAPI != "" {
+		rep.Config().API.Address = flagAPI
 	}
 
 	if swarmAddress, ok := req.Options[SwarmAddress].(string); ok && swarmAddress != "" {
@@ -119,22 +119,28 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
-	return repo.OpenFSRepo(getRepoDir(req))
+	repoDir, _ := req.Options[OptionRepoDir].(string)
+	repoDir, err := paths.GetRepoPath(repoDir)
+	if err != nil {
+		return nil, err
+	}
+	return repo.OpenFSRepo(repoDir, repo.Version)
 }
 
 func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
-	api := impl.New(nd)
-	if err := api.Daemon().Start(ctx); err != nil {
+	if err := nd.Start(ctx); err != nil {
 		return err
 	}
+	defer nd.Stop(ctx)
 
 	servenv := &Env{
-		// TODO: should this be the passed in context?
-		ctx:          context.Background(),
-		api:          api,
-		porcelainAPI: nd.PorcelainAPI,
-		blockAPI:     nd.BlockAPI,
-		retrievalAPI: nd.RetrievalAPI,
+		// TODO: should this be the passed in context?  Issue 2641
+		blockMiningAPI: nd.BlockMiningAPI,
+		ctx:            context.Background(),
+		inspectorAPI:   NewInspectorAPI(nd.Repo),
+		porcelainAPI:   nd.PorcelainAPI,
+		retrievalAPI:   nd.RetrievalAPI,
+		storageAPI:     nd.StorageAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()
@@ -176,7 +182,6 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	}()
 
 	// write our api address to file
-	// TODO: use api.Repo() once implemented
 	if err := nd.Repo.SetAPIAddr(config.API.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
@@ -192,5 +197,5 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 		fmt.Println("failed to shut down api server:", err)
 	}
 
-	return api.Daemon().Stop(ctx)
+	return nil
 }

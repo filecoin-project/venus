@@ -1,17 +1,17 @@
 package mining
 
 import (
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestMessageQueueOrder(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
 
 	var seed = types.GenerateKeyInfoSeed()
 	var ki = types.MustGenerateKeyInfo(10, seed)
@@ -29,16 +29,16 @@ func TestMessageQueueOrder(t *testing.T) {
 			Nonce: types.Uint64(nonce),
 		}
 		s, err := types.NewSignedMessage(msg, &mockSigner, types.NewGasPrice(price), types.NewGasUnits(units))
-		require.NoError(err)
+		require.NoError(t, err)
 		return s
 	}
 
 	t.Run("empty", func(t *testing.T) {
 		q := NewMessageQueue([]*types.SignedMessage{})
-		assert.True(q.Empty())
+		assert.True(t, q.Empty())
 		msg, ok := q.Pop()
-		assert.Nil(msg)
-		assert.False(ok)
+		assert.Nil(t, msg)
+		assert.False(t, ok)
 	})
 
 	t.Run("orders by nonce", func(t *testing.T) {
@@ -66,11 +66,11 @@ func TestMessageQueueOrder(t *testing.T) {
 		for msg, more := q.Pop(); more == true; msg, more = q.Pop() {
 			last, seen := lastFromAddr[msg.From]
 			if seen {
-				assert.True(last <= uint64(msg.Nonce))
+				assert.True(t, last <= uint64(msg.Nonce))
 			}
 			lastFromAddr[msg.From] = uint64(msg.Nonce)
 		}
-		assert.True(q.Empty())
+		assert.True(t, q.Empty())
 	})
 
 	t.Run("orders by gas price", func(t *testing.T) {
@@ -82,8 +82,8 @@ func TestMessageQueueOrder(t *testing.T) {
 		q := NewMessageQueue(msgs)
 		expected := []*types.SignedMessage{msgs[1], msgs[0], msgs[2]}
 		actual := q.Drain()
-		assert.Equal(expected, actual)
-		assert.True(q.Empty())
+		assert.Equal(t, expected, actual)
+		assert.True(t, q.Empty())
 	})
 
 	t.Run("nonce overrides gas price", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestMessageQueueOrder(t *testing.T) {
 
 		q := NewMessageQueue(msgs)
 		actual := q.Drain()
-		assert.Equal(expected, actual)
-		assert.True(q.Empty())
+		assert.Equal(t, expected, actual)
+		assert.True(t, q.Empty())
 	})
 }

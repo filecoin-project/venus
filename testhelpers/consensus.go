@@ -4,14 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -25,13 +24,13 @@ type TestView struct{}
 var _ consensus.PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // HasPower always returns true.
@@ -41,35 +40,28 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.TipSet {
+func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 	ts, err := types.NewTipSet(blks...)
-	require.NoError(err)
+	require.NoError(t, err)
 	return ts
-}
-
-// RequireTipSetAdd adds a block to the provided tipset and requires that this
-// does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
-	err := ts.AddBlock(blk)
-	require.NoError(err)
 }
 
 // TestPowerTableView is an implementation of the powertable view used for testing mining
 // wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct{ minerPower, totalPower uint64 }
+type TestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
 
 // NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower uint64, totalPower uint64) *TestPowerTableView {
+func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount) *TestPowerTableView {
 	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower}
 }
 
 // Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
+func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	return tv.totalPower, nil
 }
 
 // Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
+func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	return tv.minerPower, nil
 }
 
@@ -81,8 +73,8 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerPubKey []byte, signer consensus.TicketSigner) *types.Block {
-	postProof := MakeRandomPoSTProofForTest()
-	ticket, _ := consensus.CreateTicket(postProof, minerPubKey, signer)
+	poStProof := MakeRandomPoStProofForTest()
+	ticket, _ := consensus.CreateTicket(poStProof, minerPubKey, signer)
 
 	return &types.Block{
 		Miner:        minerAddr,
@@ -92,19 +84,20 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		Height:       types.Uint64(height),
 		Nonce:        types.Uint64(height),
 		StateRoot:    stateRootCid,
-		Proof:        postProof,
+		Proof:        poStProof,
 	}
 }
 
-// MakeRandomPoSTProofForTest creates a random proof.
-func MakeRandomPoSTProofForTest() proofs.PoStProof {
-	p := MakeRandomBytes(192)
+// MakeRandomPoStProofForTest creates a random proof.
+func MakeRandomPoStProofForTest() []byte {
+	proofSize := types.OnePoStProofPartition.ProofLen()
+	p := MakeRandomBytes(proofSize)
 	p[0] = 42
-	var postProof proofs.PoStProof
+	poStProof := make([]byte, proofSize)
 	for idx, elem := range p {
-		postProof[idx] = elem
+		poStProof[idx] = elem
 	}
-	return postProof
+	return poStProof
 }
 
 // TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
@@ -131,6 +124,24 @@ func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, mi
 // GasReward does nothing
 func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
 	// do nothing to keep state root the same
+	return nil
+}
+
+// FakeBlockValidator passes everything as valid
+type FakeBlockValidator struct{}
+
+// NewFakeBlockValidator createas a FakeBlockValidator that passes everything as valid.
+func NewFakeBlockValidator() *FakeBlockValidator {
+	return &FakeBlockValidator{}
+}
+
+// ValidateSemantic does nothing.
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+	return nil
+}
+
+// ValidateSyntax does nothing.
+func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
 	return nil
 }
 
@@ -184,7 +195,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 }
 
 func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(0), types.NewGasUnits(300))
+	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)
 	}

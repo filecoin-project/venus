@@ -1,10 +1,9 @@
 package storagedeal
 
 import (
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -38,7 +37,7 @@ type PaymentInfo struct {
 	// Vouchers is a set of payments from the client to the miner that can be
 	// cashed out contingent on the agreed upon data being provably within a
 	// live sector in the miners control on-chain
-	Vouchers []*paymentbroker.PaymentVoucher
+	Vouchers []*types.PaymentVoucher
 }
 
 // Proposal is the information sent over the wire, when a client proposes a deal to a miner.
@@ -125,11 +124,15 @@ type Deal struct {
 }
 
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
-// TODO: finalize parameters
 type ProofInfo struct {
+	// Sector id allows us to find the committed sector metadata on chain
 	SectorID uint64
-	CommR    []byte
-	CommD    []byte
+
+	// CommitmentMessage is the cid of the message that committed the sector. It's used to track when the sector goes on chain.
+	CommitmentMessage cid.Cid
+
+	// PieceInclusionProof is a proof that a the piece is included within a sector
+	PieceInclusionProof []byte
 }
 
 // QueryRequest is used for making protocol api requests for deals

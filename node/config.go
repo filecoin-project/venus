@@ -1,9 +1,9 @@
 package node
 
 import (
-	ci "gx/ipfs/QmTW4SdgBWq9GjsBsHeUx8WuGxzhgzAf88UMH2w62PC8yK/go-libp2p-crypto"
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	libp2p "gx/ipfs/QmcNGX5RaxPPCYwa6yGXM1EcUbrreTTinixLcYGmMwf1sx/go-libp2p"
+	libp2p "github.com/libp2p/go-libp2p"
+	ci "github.com/libp2p/go-libp2p-crypto"
+	errors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/repo"
 )

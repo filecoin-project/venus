@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
 )
@@ -24,9 +24,7 @@ func WaitOnAPI(l testbedi.Libp2p) error {
 		if err == nil {
 			return nil
 		}
-		if err != nil {
-			log.Warning(err.Error())
-		}
+		log.Warning(err.Error())
 		time.Sleep(time.Millisecond * 400)
 	}
 

@@ -2,7 +2,6 @@ package functional
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,35 +12,27 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/testhelpers/iptbtester"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
-
-var runFunctionalTests = flag.Bool("functional", false, "Run the functional go tests")
 
 var faucetBinary = "../tools/faucet/faucet"
 
-func init() {
+func TestFaucetSendFunds(t *testing.T) {
+	tf.FunctionalTest(t)
+
 	if _, err := os.Stat(faucetBinary); os.IsNotExist(err) {
 		panic("faucet not found, run `go run build/*.go build` to fix")
 	}
-}
-
-func TestFaucetSendFunds(t *testing.T) {
-	// Only run this test if the "-functional" flag is passed to test command
-	if !*runFunctionalTests {
-		t.SkipNow()
-	}
-	assert := assert.New(t)
-	require := require.New(t)
 
 	ctx := context.Background()
 
 	tns, err := iptbtester.NewTestNodes(t, 2, nil)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	node0 := tns[0]
 	node1 := tns[1]
@@ -96,10 +87,10 @@ func TestFaucetSendFunds(t *testing.T) {
 	var balanceStr string
 	node1.MustRunCmdJSON(ctx, &balanceStr, "go-filecoin", "wallet", "balance", targetAddr.Addresses[0])
 	balance, err := strconv.ParseInt(balanceStr, 10, 64)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	// Assert funds have arrived
-	assert.Equal(fundAmount, balance)
+	assert.Equal(t, fundAmount, balance)
 }
 
 // MustStartFaucet runs the faucet using the given node. It sends funds from the nodes default wallet

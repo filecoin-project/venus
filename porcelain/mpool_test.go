@@ -5,12 +5,13 @@ import (
 	"sync"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -34,38 +35,36 @@ func (plumbing *fakeMpoolWaitPlumbing) MessagePoolPending() []*types.SignedMessa
 }
 
 func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
-	subscription := pubsub.NewFakeSubscription(msg.Topic, 1)
+	subscription := pubsub.NewFakeSubscription(core.Topic, 1)
 	plumbing.subscription = subscription
 	return subscription, nil
 }
 
 func TestMessagePoolWait(t *testing.T) {
-	t.Parallel()
-	require := require.New(t)
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
 	signer := types.NewMockSigner(ki)
 
 	t.Run("empty", func(t *testing.T) {
-		t.Parallel()
+
 		plumbing := newFakeMpoolWaitPlumbing(nil)
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, 0)
-		require.NoError(e)
-		assert.Equal(0, len(msgs))
+		require.NoError(t, e)
+		assert.Equal(t, 0, len(msgs))
 	})
 
 	t.Run("returns immediates", func(t *testing.T) {
-		t.Parallel()
+
 		plumbing := newFakeMpoolWaitPlumbing(nil)
 		plumbing.pending = types.NewSignedMsgs(3, signer)
 
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, 3)
-		require.NoError(e)
-		assert.Equal(3, len(msgs))
+		require.NoError(t, e)
+		assert.Equal(t, 3, len(msgs))
 	})
 
 	t.Run("waits", func(t *testing.T) {
-		t.Parallel()
 
 		var plumbing *fakeMpoolWaitPlumbing
 		callCount := 0
@@ -85,18 +84,17 @@ func TestMessagePoolWait(t *testing.T) {
 				plumbing.pending = types.NewSignedMsgs(1, signer)
 				plumbing.subscription.Post(nil)
 			}
-			callCount += 1
+			callCount++
 		}
 
 		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)
-		finished := assertMessagePoolWaitAsync(plumbing, 1, require, assert)
+		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
 
 		finished.Wait()
 		plumbing.subscription.AwaitCancellation()
 	})
 
 	t.Run("message races pubsub", func(t *testing.T) {
-		t.Parallel()
 
 		var plumbing *fakeMpoolWaitPlumbing
 
@@ -107,7 +105,7 @@ func TestMessagePoolWait(t *testing.T) {
 		}
 
 		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)
-		finished := assertMessagePoolWaitAsync(plumbing, 1, require, assert)
+		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
 
 		finished.Wait()
 		plumbing.subscription.AwaitCancellation()
@@ -115,14 +113,14 @@ func TestMessagePoolWait(t *testing.T) {
 }
 
 // assertMessagePoolWaitAsync waits for msgCount messages asynchronously
-func assertMessagePoolWaitAsync(plumbing *fakeMpoolWaitPlumbing, msgCount uint, require *require.Assertions, assert *assert.Assertions) *sync.WaitGroup {
+func assertMessagePoolWaitAsync(plumbing *fakeMpoolWaitPlumbing, msgCount uint, t *testing.T) *sync.WaitGroup {
 	finished := sync.WaitGroup{}
 	finished.Add(1)
 
 	go func() {
 		msgs, e := porcelain.MessagePoolWait(context.Background(), plumbing, msgCount)
-		require.NoError(e)
-		assert.Equal(msgCount, uint(len(msgs)))
+		require.NoError(t, e)
+		assert.Equal(t, msgCount, uint(len(msgs)))
 		defer finished.Done()
 	}()
 

@@ -7,8 +7,8 @@ labels: candidate
 assignees: ''
 
 ---
-
 ### Description
+Please first see README for how to get help before filing a new issue.
 
 ### Acceptance criteria
 

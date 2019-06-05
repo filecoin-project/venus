@@ -5,19 +5,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/commands"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestActorDaemon(t *testing.T) {
-	t.Parallel()
-	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
-		require := require.New(t)
-		assert := assert.New(t)
+	tf.IntegrationTest(t)
 
+	t.Run("actor ls --enc json returns NDJSON containing all actors in the state tree", func(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -31,20 +30,20 @@ func TestActorDaemon(t *testing.T) {
 			// unmarshall JSON to actor view an add to slice
 			var av commands.ActorView
 			err := json.Unmarshal(line, &av)
-			require.NoError(err)
+			require.NoError(t, err)
 			avs = append(avs, av)
 		}
 
-		assert.NotZero(len(avs))
+		assert.NotZero(t, len(avs))
 
 		// The order of actors is consistent, but only within builds of genesis.car.
 		// We just want to make sure the views have something valid in them.
 		for _, av := range avs {
-			assert.Contains([]string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor", "MinerActor", "BootstrapMinerActor"}, av.ActorType)
+			assert.Contains(t, []string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor", "MinerActor", "BootstrapMinerActor"}, av.ActorType)
 			if av.ActorType == "AccountActor" {
-				assert.Zero(len(av.Exports))
+				assert.Zero(t, len(av.Exports))
 			} else {
-				assert.NotZero(len(av.Exports))
+				assert.NotZero(t, len(av.Exports))
 			}
 		}
 	})

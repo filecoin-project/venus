@@ -1,10 +1,10 @@
 package strgdls
 
 import (
-	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
-	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore/query"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -23,23 +23,13 @@ func New(dealsDatastore repo.Datastore) *Store {
 	return &Store{dealsDs: dealsDatastore}
 }
 
-// Ls returns a slice of deals matching the given query, with a possible error
-func (store *Store) Ls() ([]*storagedeal.Deal, error) {
-	var deals []*storagedeal.Deal
-
+// Iterator returns an iterator with deals matching the given query
+func (store *Store) Iterator() (*query.Results, error) {
 	results, err := store.dealsDs.Query(query.Query{Prefix: "/" + StorageDealPrefix})
 	if err != nil {
-		return deals, errors.Wrap(err, "failed to query deals from datastore")
+		return nil, errors.Wrap(err, "failed to query deals from datastore")
 	}
-	for entry := range results.Next() {
-		var storageDeal storagedeal.Deal
-		if err := cbor.DecodeInto(entry.Value, &storageDeal); err != nil {
-			return deals, errors.Wrap(err, "failed to unmarshal deals from datastore")
-		}
-		deals = append(deals, &storageDeal)
-	}
-
-	return deals, nil
+	return &results, nil
 }
 
 // Put puts the deal into the datastore

@@ -1,12 +1,13 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -28,6 +29,28 @@ func init() {
 type SignedMessage struct {
 	MeteredMessage `json:"meteredMessage"`
 	Signature      Signature `json:"signature"`
+	// Pay attention to Equals() if updating this struct.
+}
+
+// NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
+// a signature derived from the serialized `msg` and `msg.From`
+func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
+	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
+
+	mmsg, err := meteredMsg.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := s.SignBytes(mmsg, msg.From)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SignedMessage{
+		MeteredMessage: *meteredMsg,
+		Signature:      sig,
+	}, nil
 }
 
 // Unmarshal a SignedMessage from the given bytes.
@@ -95,23 +118,8 @@ func (smsg *SignedMessage) String() string {
 	return fmt.Sprintf("SignedMessage cid=[%v]: %s", cid, string(js))
 }
 
-// NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
-// a signature derived from the serialized `msg` and `msg.From`
-func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
-
-	bmsg, err := meteredMsg.Marshal()
-	if err != nil {
-		return nil, err
-	}
-
-	sig, err := s.SignBytes(bmsg, msg.From)
-	if err != nil {
-		return nil, err
-	}
-
-	return &SignedMessage{
-		MeteredMessage: *meteredMsg,
-		Signature:      sig,
-	}, nil
+// Equals tests whether two signed messages are equal.
+func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
+	return smsg.MeteredMessage.Equals(&other.MeteredMessage) &&
+		bytes.Equal(smsg.Signature, other.Signature)
 }

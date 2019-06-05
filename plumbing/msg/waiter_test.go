@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -21,12 +22,12 @@ var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
 		cb = func(b *types.Block, msg *types.SignedMessage,
 			rcp *types.MessageReceipt) error {
-			assert.True(types.SmsgCidsEqual(expectMsg, msg))
+			assert.True(t, types.SmsgCidsEqual(expectMsg, msg))
 			if wg != nil {
 				wg.Done()
 			}
@@ -34,98 +35,104 @@ func testWaitHelp(wg *sync.WaitGroup, assert *assert.Assertions, waiter *Waiter,
 			return nil
 		}
 	}
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	err = waiter.Wait(context.Background(), expectCid, cb)
-	assert.Equal(expectError, err != nil)
+	assert.Equal(t, expectError, err != nil)
 }
 
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(require *require.Assertions) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
-	d := requiredCommonDeps(require, consensus.DefaultGenesis)
+func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
+	d := requiredCommonDeps(t, consensus.DefaultGenesis)
 	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
 
-func setupTestWithGif(require *require.Assertions, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.DefaultStore, *Waiter) {
-	d := requiredCommonDeps(require, gif)
+func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
+	d := requiredCommonDeps(t, gif)
 	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
 }
 
 func TestWait(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-	cst, chainStore, waiter := setupTest(require)
+	tf.UnitTest(t)
 
-	testWaitExisting(ctx, assert, require, cst, chainStore, waiter)
-	testWaitNew(ctx, assert, require, cst, chainStore, waiter)
+	ctx := context.Background()
+	cst, chainStore, waiter := setupTest(t)
+
+	testWaitExisting(ctx, t, cst, chainStore, waiter)
+	testWaitNew(ctx, t, cst, chainStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}})
+	head := chainStore.GetHead()
+	headTipSet, err := chainStore.GetTipSet(head)
+	require.NoError(t, err)
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
-	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	require.Equal(t, 1, ts.Len())
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
-	require.NoError(chainStore.SetHead(ctx, ts))
+	}))
+	require.NoError(t, chainStore.SetHead(ctx, ts))
 
-	testWaitHelp(nil, assert, waiter, m1, false, nil)
-	testWaitHelp(nil, assert, waiter, m2, false, nil)
+	testWaitHelp(nil, t, waiter, m1, false, nil)
+	testWaitHelp(nil, t, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
 	m3, m4 := newSignedMessage(), newSignedMessage()
-	chainWithMsgs := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m3, m4}})
+	head := chainStore.GetHead()
+	headTipSet, err := chainStore.GetTipSet(head)
+	require.NoError(t, err)
+	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
-	go testWaitHelp(&wg, assert, waiter, m3, false, nil)
-	go testWaitHelp(&wg, assert, waiter, m4, false, nil)
+	go testWaitHelp(&wg, t, waiter, m3, false, nil)
+	go testWaitHelp(&wg, t, waiter, m4, false, nil)
 	time.Sleep(10 * time.Millisecond)
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
-	require.Equal(1, len(ts))
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	require.Equal(t, 1, ts.Len())
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
-	})
-	require.NoError(chainStore.SetHead(ctx, ts))
+	}))
+	require.NoError(t, chainStore.SetHead(ctx, ts))
 
 	wg.Wait()
 }
 
 func TestWaitError(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
-	ctx := context.Background()
-	cst, chainStore, waiter := setupTest(require)
+	tf.UnitTest(t)
 
-	testWaitError(ctx, assert, require, cst, chainStore, waiter)
+	ctx := context.Background()
+	cst, chainStore, waiter := setupTest(t)
+
+	testWaitError(ctx, t, cst, chainStore, waiter)
 }
 
-func testWaitError(ctx context.Context, assert *assert.Assertions, require *require.Assertions, cst *hamt.CborIpldStore, chainStore *chain.DefaultStore, waiter *Waiter) {
+func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
-	chain := core.NewChainWithMessages(cst, chainStore.Head(), smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	head := chainStore.GetHead()
+	headTipSet, err := chainStore.GetTipSet(head)
+	require.NoError(t, err)
+	chain := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
-	err := chainStore.SetHead(ctx, chain[len(chain)-1])
-	assert.Nil(err)
+	err = chainStore.SetHead(ctx, chain[len(chain)-1])
+	assert.Nil(t, err)
 
-	testWaitHelp(nil, assert, waiter, m2, true, nil)
+	testWaitHelp(nil, t, waiter, m2, true, nil)
 }
 
 func TestWaitConflicting(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 
 	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
@@ -137,27 +144,30 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-		consensus.MinerActor(minerAddr, addr3, []byte{}, 1000, testhelpers.RequireRandomPeerID(), types.ZeroAttoFIL),
+		consensus.MinerActor(minerAddr, addr3, []byte{}, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)
-	cst, chainStore, waiter := setupTestWithGif(require, testGen)
+	cst, chainStore, waiter := setupTestWithGif(t, testGen)
 
 	// Create conflicting messages
 	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm1, err := types.NewSignedMessage(*m1, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	sm1, err := types.NewSignedMessage(*m1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
 	m2 := types.NewMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(6000), "", nil)
-	sm2, err := types.NewSignedMessage(*m2, &mockSigner, types.NewGasPrice(0), types.NewGasUnits(0))
-	require.NoError(err)
+	sm2, err := types.NewSignedMessage(*m2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
+	require.NoError(t, err)
 
-	baseTS := chainStore.Head()
-	require.Equal(1, len(baseTS))
+	head := chainStore.GetHead()
+	headTipSet, err := chainStore.GetTipSet(head)
+	require.NoError(t, err)
+	baseTS := headTipSet
+	require.Equal(t, 1, baseTS.Len())
 	baseBlock := baseTS.ToSlice()[0]
 
-	require.NotNil(chainStore.GenesisCid())
+	require.NotNil(t, chainStore.GenesisCid())
 
-	b1 := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{
+	b1 := th.RequireMkFakeChild(t,
+		th.FakeChildParams{
 			MinerAddr:   minerAddr,
 			Parent:      baseTS,
 			GenesisCid:  chainStore.GenesisCid(),
@@ -169,8 +179,8 @@ func TestWaitConflicting(t *testing.T) {
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(cst, b1)
 
-	b2 := chain.RequireMkFakeChild(require,
-		chain.FakeChildParams{
+	b2 := th.RequireMkFakeChild(t,
+		th.FakeChildParams{
 			MinerAddr:   minerAddr,
 			Parent:      baseTS,
 			GenesisCid:  chainStore.GenesisCid(),
@@ -182,37 +192,36 @@ func TestWaitConflicting(t *testing.T) {
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)
 
-	ts := testhelpers.RequireNewTipSet(require, b1, b2)
-	chain.RequirePutTsas(ctx, require, chainStore, &chain.TipSetAndState{
+	ts := th.RequireNewTipSet(t, b1, b2)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          ts,
 		TipSetStateRoot: baseBlock.StateRoot,
-	})
-	chainStore.SetHead(ctx, ts)
+	}))
+	assert.NoError(t, chainStore.SetHead(ctx, ts))
 	msgApplySucc := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
-		assert.NotNil(rcp)
+		assert.NotNil(t, rcp)
 		return nil
 	}
 	msgApplyFail := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
-		assert.Nil(rcp)
+		assert.Nil(t, rcp)
 		return nil
 	}
 
-	testWaitHelp(nil, assert, waiter, sm1, false, msgApplySucc)
-	testWaitHelp(nil, assert, waiter, sm2, false, msgApplyFail)
+	testWaitHelp(nil, t, waiter, sm1, false, msgApplySucc)
+	testWaitHelp(nil, t, waiter, sm2, false, msgApplyFail)
 }
 
 func TestWaitRespectsContextCancel(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
-	_, _, waiter := setupTest(require)
+	_, _, waiter := setupTest(t)
 
 	failIfCalledCb := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
-		assert.Fail("Should not be called -- message doesnt exist")
+		assert.Fail(t, "Should not be called -- message doesnt exist")
 		return nil
 	}
 
@@ -227,8 +236,8 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 
 	select {
 	case <-doneCh:
-		assert.Error(err)
+		assert.Error(t, err)
 	case <-time.After(2 * time.Second):
-		assert.Fail("Wait should have returned when context was canceled")
+		assert.Fail(t, "Wait should have returned when context was canceled")
 	}
 }

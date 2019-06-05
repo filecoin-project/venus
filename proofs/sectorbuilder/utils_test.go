@@ -5,19 +5,19 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSectorBuilderUtils(t *testing.T) {
-	t.Run("prover id creation", func(t *testing.T) {
-		t.Parallel()
-		require := require.New(t)
+	tf.UnitTest(t)
 
+	t.Run("prover id creation", func(t *testing.T) {
 		addr, err := address.NewActorAddress([]byte("satoshi"))
-		require.NoError(err)
+		require.NoError(t, err)
 
 		id := AddressToProverID(addr)
 
-		require.Equal(31, len(id))
+		require.Equal(t, 31, len(id))
 	})
 }

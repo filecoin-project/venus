@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // ProcessInitOption are options passed to process init.
@@ -42,6 +42,13 @@ func PODevnetTest() ProcessInitOption {
 func PODevnetNightly() ProcessInitOption {
 	return func() []string {
 		return []string{"--devnet-nightly"}
+	}
+}
+
+// PODevnetUser provides the `--devnet-user` option to process at init
+func PODevnetUser() ProcessInitOption {
+	return func() []string {
+		return []string{"--devnet-user"}
 	}
 }
 

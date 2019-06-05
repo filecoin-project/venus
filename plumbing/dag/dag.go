@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs"
-	imp "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/importer"
-	uio "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
-	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
-	"gx/ipfs/QmVUojkFtcsrVBa8kYZiM6LhxpYXaKDTxE4aF1NFj4RfBv/go-path"
-	"gx/ipfs/QmVUojkFtcsrVBa8kYZiM6LhxpYXaKDTxE4aF1NFj4RfBv/go-path/resolver"
-	chunk "gx/ipfs/QmXivYDjgMqNQXbEQVC7TMuZnRADCa71ABQUQxWPZPTLbd/go-ipfs-chunker"
+	"github.com/ipfs/go-cid"
+	chunk "github.com/ipfs/go-ipfs-chunker"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-path"
+	"github.com/ipfs/go-path/resolver"
+	"github.com/ipfs/go-unixfs"
+	imp "github.com/ipfs/go-unixfs/importer"
+	uio "github.com/ipfs/go-unixfs/io"
 )
 
 // DAG is a service for accessing the merkledag
@@ -77,6 +77,10 @@ func (dag *DAG) GetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 
 // Cat returns an iostream with a piece of data stored on the merkeldag with
 // the given cid.
+//
+// TODO: this goes back to 'how is data stored and referenced'
+// For now, lets just do things the ipfs way.
+// https://github.com/filecoin-project/specs/issues/136
 func (dag *DAG) Cat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 	data, err := dag.dserv.Get(ctx, c)
 	if err != nil {

@@ -3,17 +3,16 @@ package porcelain
 import (
 	"context"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type pclPlumbing interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	WalletDefaultAddress() (address.Address, error)
 }
 
 // PaymentChannelLs lists payments for a given payer
@@ -24,7 +23,7 @@ func PaymentChannelLs(
 	payerAddr address.Address,
 ) (channels map[string]*paymentbroker.PaymentChannel, err error) {
 	if fromAddr.Empty() {
-		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +33,7 @@ func PaymentChannelLs(
 		payerAddr = fromAddr
 	}
 
-	values, _, err := plumbing.MessageQuery(
+	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -53,9 +52,9 @@ func PaymentChannelLs(
 }
 
 type pcvPlumbing interface {
-	GetAndMaybeSetDefaultSenderAddress() (address.Address, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
+	WalletDefaultAddress() (address.Address, error)
 }
 
 // PaymentChannelVoucher returns a signed payment channel voucher
@@ -66,20 +65,21 @@ func PaymentChannelVoucher(
 	channel *types.ChannelID,
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
-) (voucher *paymentbroker.PaymentVoucher, err error) {
+	condition *types.Predicate,
+) (voucher *types.PaymentVoucher, err error) {
 	if fromAddr.Empty() {
-		fromAddr, err = plumbing.GetAndMaybeSetDefaultSenderAddress()
+		fromAddr, err = plumbing.WalletDefaultAddress()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	values, _, err := plumbing.MessageQuery(
+	values, err := plumbing.MessageQuery(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
 		"voucher",
-		channel, amount, validAt,
+		channel, amount, validAt, condition,
 	)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func PaymentChannelVoucher(
 		return nil, err
 	}
 
-	sig, err := paymentbroker.SignVoucher(channel, amount, validAt, fromAddr, plumbing)
+	sig, err := paymentbroker.SignVoucher(channel, amount, validAt, fromAddr, condition, plumbing)
 	if err != nil {
 		return nil, err
 	}

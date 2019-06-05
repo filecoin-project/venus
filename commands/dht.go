@@ -6,11 +6,12 @@ import (
 	"io"
 	"time"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	notif "gx/ipfs/QmWaDSNoSdSXU9b6udyaq9T8y6LkzMwqWxECznFqvtcTsk/go-libp2p-routing/notifications"
-	cmdkit "gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	cmds "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	notif "github.com/libp2p/go-libp2p-routing/notifications"
 )
 
 const (
@@ -28,7 +29,72 @@ var dhtCmd = &cmds.Command{
 
 	Subcommands: map[string]*cmds.Command{
 		"findprovs": findProvidersDhtCmd,
+		"findpeer":  findPeerDhtCmd,
+		"query":     queryDhtCmd,
 	},
+}
+
+var queryDhtCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Find the closest Peer IDs to a given Peer ID by querying the DHT.",
+		ShortDescription: "Outputs a list of newline-delimited Peer IDs.",
+	},
+
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerID", true, false, "The peerID to run the query against."),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption(dhtVerboseOptionName, "v", "Print extra information."),
+	},
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
+
+		id, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return cmds.ClientError("invalid peer ID")
+		}
+
+		ctx, cancel := context.WithCancel(req.Context)
+		ctx, events := notif.RegisterForQueryEvents(ctx)
+
+		closestPeers, err := GetPorcelainAPI(env).NetworkGetClosestPeers(ctx, string(id))
+		if err != nil {
+			cancel()
+			return err
+		}
+
+		go func() {
+			defer cancel()
+			for p := range closestPeers {
+				notif.PublishQueryEvent(ctx, &notif.QueryEvent{
+					ID:   p,
+					Type: notif.FinalPeer,
+				})
+			}
+		}()
+
+		for e := range events {
+			if err := res.Emit(e); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *notif.QueryEvent) error {
+			pfm := pfuncMap{
+				notif.PeerResponse: func(obj *notif.QueryEvent, out io.Writer, verbose bool) {
+					for _, p := range obj.Responses {
+						fmt.Fprintf(out, "%s\n", p.ID.Pretty()) // nolint: errcheck
+					}
+				},
+			}
+			verbose, _ := req.Options[dhtVerboseOptionName].(bool)
+			printEvent(out, w, verbose, pfm)
+			return nil
+		}),
+	},
+	Type: notif.QueryEvent{},
 }
 
 var findProvidersDhtCmd = &cmds.Command{
@@ -172,4 +238,38 @@ func printEvent(obj *notif.QueryEvent, out io.Writer, verbose bool, override pfu
 			fmt.Fprintf(out, "unrecognized event type: %d\n", obj.Type) // nolint: errcheck
 		}
 	}
+}
+
+var findPeerDhtCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Find the multiaddresses associated with a Peer ID.",
+		ShortDescription: "Outputs a list of newline-delimited multiaddresses.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerID", true, false, "The ID of the peer to search for."),
+	},
+	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
+		peerID, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		out, err := GetPorcelainAPI(env).NetworkFindPeer(req.Context, peerID)
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range out.Addrs {
+			if err := res.Emit(addr.String()); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, addr string) error {
+			_, err := fmt.Fprintln(w, addr)
+			return err
+		}),
+	},
 }

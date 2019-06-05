@@ -6,46 +6,49 @@ import (
 	"time"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func newTestUtils(t *testing.T) (*assert.Assertions, *require.Assertions, types.TipSet) {
-	assert := assert.New(t)
-	require := require.New(t)
+func newTestUtils(t *testing.T) types.TipSet {
 	baseBlock := &types.Block{StateRoot: types.SomeCid()}
-
-	ts := types.TipSet{baseBlock.Cid(): baseBlock}
-	return assert, require, ts
+	ts, err := types.NewTipSet(baseBlock)
+	require.NoError(t, err)
+	return ts
 }
 
 // TestMineOnce tests that the MineOnce function results in a mining job being
 // scheduled and run by the mining scheduler.
 func TestMineOnce(t *testing.T) {
-	assert, require, ts := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts := newTestUtils(t)
 
 	// Echoes the sent block to output.
-	worker := NewTestWorkerWithDeps(MakeEchoMine(require))
+	worker := NewTestWorkerWithDeps(MakeEchoMine(t))
 	result, err := MineOnce(context.Background(), worker, MineDelayTest, ts)
-	assert.NoError(err)
-	assert.NoError(result.Err)
-	assert.True(ts.ToSlice()[0].StateRoot.Equals(result.NewBlock.StateRoot))
+	assert.NoError(t, err)
+	assert.NoError(t, result.Err)
+	assert.True(t, ts.ToSlice()[0].StateRoot.Equals(result.NewBlock.StateRoot))
 }
 
 func TestSchedulerPassesValue(t *testing.T) {
-	assert, _, ts := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
-		assert.Equal(ctx, c) // individual run ctx splits off from mining ctx
-		assert.Equal(inTS, ts)
+		assert.Equal(t, ctx, c) // individual run ctx splits off from mining ctx
+		assert.Equal(t, inTS, ts)
 		outCh <- Output{}
 		return true
 	}
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -56,30 +59,33 @@ func TestSchedulerPassesValue(t *testing.T) {
 }
 
 func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
-	assert, _, _ := newTestUtils(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
 
 	nothingMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		outCh <- Output{}
 		return false
 	}
-	nilHeadFunc := func() types.TipSet {
-		return nil
+	nilHeadFunc := func() (types.TipSet, error) {
+		return types.UndefTipSet, nil
 	}
 	worker := NewTestWorkerWithDeps(nothingMine)
 	scheduler := NewScheduler(worker, MineDelayTest, nilHeadFunc)
 	outCh, doneWg := scheduler.Start(ctx)
 	output := <-outCh
-	assert.Error(output.Err)
+	assert.Error(t, output.Err)
 	doneWg.Wait()
 }
 
 // If head is the same increment the nullblkcount, otherwise make it 0.
 func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
-	assert, require, ts := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := th.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(t, blk2)
 
 	checkNullBlocks := 0
 	checkNullBlockMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
@@ -88,13 +94,13 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 			return false
 		default:
 		}
-		assert.Equal(checkNullBlocks, nBC)
+		assert.Equal(t, checkNullBlocks, nBC)
 		outCh <- Output{}
 		return false
 	}
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	worker := NewTestWorkerWithDeps(checkNullBlockMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -115,21 +121,23 @@ func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 // Test that we can push multiple blocks through.  This schedules tipsets
 // with successively higher block heights (aka epoch).
 func TestSchedulerPassesManyValues(t *testing.T) {
-	assert, require, ts1 := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := th.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(t, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
-	ts3 := th.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 
 	checkValsMine := func(c context.Context, ts types.TipSet, nBC int, outCh chan<- Output) bool {
-		assert.Equal(ts, checkTS)
+		assert.Equal(t, ts, checkTS)
 		outCh <- Output{}
 		return false
 	}
@@ -153,18 +161,20 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 
 // TestSchedulerCollect tests that the scheduler collects tipsets before mining
 func TestSchedulerCollect(t *testing.T) {
-	assert, require, ts1 := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := th.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(t, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts3 := th.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
-		assert.Equal(inTS, ts3)
+		assert.Equal(t, inTS, ts3)
 		outCh <- Output{}
 		return false
 	}
@@ -213,13 +223,15 @@ func TestCannotInterruptMiner(t *testing.T) {
 }*/
 
 func TestSchedulerCancelMiningCtx(t *testing.T) {
-	assert, _, ts := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts := newTestUtils(t)
 	// Test that canceling the mining context stops mining, cancels
 	// the inner context, and closes the output channel.
 	miningCtx, miningCtxCancel := context.WithCancel(context.Background())
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	shouldCancelMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
 		mineTimer := time.NewTimer(th.BlockTimeTest)
@@ -236,25 +248,27 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	outCh, doneWg := scheduler.Start(miningCtx)
 	miningCtxCancel()
 	doneWg.Wait()
-	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
+	assert.Equal(t, ChannelClosed, ReceiveOutCh(outCh))
 }
 
 func TestSchedulerMultiRoundWithCollect(t *testing.T) {
-	assert, require, ts1 := newTestUtils(t)
+	tf.UnitTest(t)
+
+	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 	var head types.TipSet
-	headFunc := func() types.TipSet {
-		return head
+	headFunc := func() (types.TipSet, error) {
+		return head, nil
 	}
 	// make tipsets with progressively higher heights
 	blk2 := &types.Block{StateRoot: types.SomeCid(), Height: 1}
-	ts2 := th.RequireNewTipSet(require, blk2)
+	ts2 := th.RequireNewTipSet(t, blk2)
 	blk3 := &types.Block{StateRoot: types.SomeCid(), Height: 2}
-	ts3 := th.RequireNewTipSet(require, blk3)
+	ts3 := th.RequireNewTipSet(t, blk3)
 
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
-		assert.Equal(inTS, checkTS)
+		assert.Equal(t, inTS, checkTS)
 		outCh <- Output{}
 		return false
 	}
@@ -279,5 +293,5 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	for range outCh {
 	}
 
-	assert.Equal(ChannelClosed, ReceiveOutCh(outCh))
+	assert.Equal(t, ChannelClosed, ReceiveOutCh(outCh))
 }

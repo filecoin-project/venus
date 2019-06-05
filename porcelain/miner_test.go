@@ -1,30 +1,33 @@
-package porcelain
+package porcelain_test
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
-
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
+	"github.com/filecoin-project/go-leb128"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-peer"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type minerCreate struct {
-	assert  *assert.Assertions
-	require *require.Assertions
+	testing *testing.T
 	address address.Address
 	config  *cfg.Config
 	wallet  *wallet.Wallet
@@ -32,13 +35,12 @@ type minerCreate struct {
 	msgFail bool
 }
 
-func newMinerCreate(assert *assert.Assertions, require *require.Assertions, msgFail bool, address address.Address) *minerCreate {
+func newMinerCreate(t *testing.T, msgFail bool, address address.Address) *minerCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
-	require.NoError(err)
+	require.NoError(t, err)
 	return &minerCreate{
-		assert:  assert,
-		require: require,
+		testing: t,
 		address: address,
 		config:  cfg.NewConfig(repo),
 		wallet:  wallet.New(backend),
@@ -54,10 +56,6 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
-}
-
 func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, errors.New("Test Error")
@@ -67,13 +65,16 @@ func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from,
 }
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	mpc.assert.Equal(mpc.msgCid, msgCid)
+	assert.Equal(mpc.testing, msgCid, msgCid)
 	receipt := &types.MessageReceipt{
 		Return:   [][]byte{mpc.address.Bytes()},
 		ExitCode: uint8(0),
 	}
-	cb(nil, nil, receipt)
-	return nil
+	return cb(nil, nil, receipt)
+}
+
+func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
 }
 
 func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
@@ -81,13 +82,12 @@ func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte,
 }
 
 func TestMinerCreate(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
+	tf.UnitTest(t)
 
+	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
 		expectedAddress := address.NewForTestGetter()()
-		plumbing := newMinerCreate(assert, require, false, expectedAddress)
+		plumbing := newMinerCreate(t, false, expectedAddress)
 		collateral := types.NewAttoFILFromFIL(1)
 
 		addr, err := MinerCreate(
@@ -96,20 +96,17 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			1,
+			types.OneKiBSectorSize,
 			"",
 			collateral,
 		)
-		require.NoError(err)
-		assert.Equal(expectedAddress, *addr)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAddress, *addr)
 	})
 
 	t.Run("failure to send", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
 		ctx := context.Background()
-		plumbing := newMinerCreate(assert, require, true, address.Address{})
+		plumbing := newMinerCreate(t, true, address.Address{})
 		collateral := types.NewAttoFILFromFIL(1)
 
 		_, err := MinerCreate(
@@ -118,11 +115,11 @@ func TestMinerCreate(t *testing.T) {
 			address.Address{},
 			types.NewGasPrice(0),
 			types.NewGasUnits(100),
-			1,
+			types.OneKiBSectorSize,
 			"",
 			collateral,
 		)
-		assert.Error(err, "Test Error")
+		assert.Error(t, err, "Test Error")
 	})
 }
 
@@ -130,11 +127,11 @@ type minerPreviewCreate struct {
 	wallet *wallet.Wallet
 }
 
-func newMinerPreviewCreate(require *require.Assertions) *minerPreviewCreate {
+func newMinerPreviewCreate(t *testing.T) *minerPreviewCreate {
 	repo := repo.NewInMemoryRepo()
 	backend, err := wallet.NewDSBackend(repo.WalletDatastore())
 	wallet := wallet.New(backend)
-	require.NoError(err)
+	require.NoError(t, err)
 	return &minerPreviewCreate{
 		wallet: wallet,
 	}
@@ -152,33 +149,30 @@ func (mpc *minerPreviewCreate) NetworkGetPeerID() peer.ID {
 	return peer.ID("")
 }
 
+func (mpc *minerPreviewCreate) WalletDefaultAddress() (address.Address, error) {
+	return wallet.NewAddress(mpc.wallet)
+}
+
 func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backend, error) {
 	return mpc.wallet.Find(address)
 }
 
-func (mpc *minerPreviewCreate) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
-}
-
 func TestMinerPreviewCreate(t *testing.T) {
+	tf.UnitTest(t)
+
 	t.Run("returns the price given by message preview", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
 		ctx := context.Background()
-		plumbing := newMinerPreviewCreate(require)
-		collateral := types.NewAttoFILFromFIL(1)
+		plumbing := newMinerPreviewCreate(t)
 
-		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, 1, "", collateral)
-		require.NoError(err)
-		assert.Equal(usedGas, types.NewGasUnits(5))
+		usedGas, err := MinerPreviewCreate(ctx, plumbing, address.Undef, types.OneKiBSectorSize, "")
+		require.NoError(t, err)
+		assert.Equal(t, usedGas, types.NewGasUnits(5))
 	})
 }
 
 type minerSetPricePlumbing struct {
 	config  *cfg.Config
-	assert  *assert.Assertions
-	require *require.Assertions
+	testing *testing.T
 
 	msgCid   cid.Cid
 	blockCid cid.Cid
@@ -191,11 +185,10 @@ type minerSetPricePlumbing struct {
 	messageSend func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 }
 
-func newMinerSetPricePlumbing(assert *assert.Assertions, require *require.Assertions) *minerSetPricePlumbing {
+func newMinerSetPricePlumbing(t *testing.T) *minerSetPricePlumbing {
 	return &minerSetPricePlumbing{
 		config:  cfg.NewConfig(repo.NewInMemoryRepo()),
-		assert:  assert,
-		require: require,
+		testing: t,
 	}
 }
 
@@ -220,7 +213,7 @@ func (mtp *minerSetPricePlumbing) MessageWait(ctx context.Context, msgCid cid.Ci
 		return errors.New("Test error in MessageWait")
 	}
 
-	mtp.require.True(msgCid.Equals(mtp.msgCid))
+	require.True(mtp.testing, msgCid.Equals(mtp.msgCid))
 
 	block := &types.Block{
 		Nonce: 393,
@@ -228,9 +221,7 @@ func (mtp *minerSetPricePlumbing) MessageWait(ctx context.Context, msgCid cid.Ci
 	mtp.blockCid = block.Cid()
 
 	// call back
-	cb(block, &types.SignedMessage{}, &types.MessageReceipt{ExitCode: 0, Return: [][]byte{}})
-
-	return nil
+	return cb(block, &types.SignedMessage{}, &types.MessageReceipt{ExitCode: 0, Return: [][]byte{}})
 }
 
 func (mtp *minerSetPricePlumbing) ConfigSet(dottedKey string, jsonString string) error {
@@ -250,151 +241,126 @@ func (mtp *minerSetPricePlumbing) ConfigGet(dottedPath string) (interface{}, err
 }
 
 func TestMinerSetPrice(t *testing.T) {
-	t.Run("reports error when get miner address fails", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
+	tf.UnitTest(t)
 
-		plumbing := newMinerSetPricePlumbing(assert, require)
+	t.Run("reports error when get miner address fails", func(t *testing.T) {
+		plumbing := newMinerSetPricePlumbing(t)
 		plumbing.failGet = true
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.Error(err)
-		assert.Contains(err.Error(), "Test error in ConfigGet")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Test error in ConfigGet")
 	})
 
 	t.Run("reports error when setting into config", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 		plumbing.failSet = true
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.Error(err)
-		assert.Contains(err.Error(), "Test error in ConfigSet")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Test error in ConfigSet")
 	})
 
 	t.Run("sets price into config", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.NoError(err)
+		require.NoError(t, err)
 
 		configPrice, err := plumbing.config.Get("mining.storagePrice")
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(price, configPrice)
+		assert.Equal(t, price, configPrice)
 	})
 
 	t.Run("saves config and reports error when send fails", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 		plumbing.failSend = true
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.Error(err)
-		assert.Contains(err.Error(), "Test error in MessageSend")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Test error in MessageSend")
 
 		configPrice, err := plumbing.config.Get("mining.storagePrice")
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(price, configPrice)
+		assert.Equal(t, price, configPrice)
 	})
 
 	t.Run("sends ask to specific miner when miner is given", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		minerAddr := address.NewForTestGetter()()
 
 		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-			assert.Equal(minerAddr, to)
+			assert.Equal(t, minerAddr, to)
 			return types.NewCidForTestGetter()(), nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.NoError(err)
+		require.NoError(t, err)
 	})
 
 	t.Run("sends ask to default miner when no miner is given", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 
 		minerAddr := address.NewForTestGetter()()
-		require.NoError(plumbing.config.Set("mining.minerAddress", minerAddr.String()))
+		require.NoError(t, plumbing.config.Set("mining.minerAddress", minerAddr.String()))
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 
 		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-			assert.Equal(minerAddr, to)
+			assert.Equal(t, minerAddr, to)
 			return types.NewCidForTestGetter()(), nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.NoError(err)
+		require.NoError(t, err)
 	})
 
 	t.Run("sends ask with correct parameters", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 		expiry := big.NewInt(24)
 
 		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-			assert.Equal("addAsk", method)
-			assert.Equal(price, params[0])
-			assert.Equal(expiry, params[1])
+			assert.Equal(t, "addAsk", method)
+			assert.Equal(t, price, params[0])
+			assert.Equal(t, expiry, params[1])
 			return types.NewCidForTestGetter()(), nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
-		require.NoError(err)
+		require.NoError(t, err)
 	})
 
 	t.Run("reports error when wait fails", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 		plumbing.failWait = true
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
-		require.Error(err)
-		assert.Contains(err.Error(), "Test error in MessageWait")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Test error in MessageWait")
 	})
 
 	t.Run("returns interesting information about adding the ask", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
-
-		plumbing := newMinerSetPricePlumbing(assert, require)
+		plumbing := newMinerSetPricePlumbing(t)
 
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
@@ -408,12 +374,12 @@ func TestMinerSetPrice(t *testing.T) {
 		}
 
 		res, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
-		require.NoError(err)
+		require.NoError(t, err)
 
-		assert.Equal(price, res.Price)
-		assert.Equal(minerAddr, res.MinerAddr)
-		assert.Equal(messageCid, res.AddAskCid)
-		assert.Equal(plumbing.blockCid, res.BlockCid)
+		assert.Equal(t, price, res.Price)
+		assert.Equal(t, minerAddr, res.MinerAddr)
+		assert.Equal(t, messageCid, res.AddAskCid)
+		assert.Equal(t, plumbing.blockCid, res.BlockCid)
 	})
 }
 
@@ -440,58 +406,67 @@ func (mtp *minerPreviewSetPricePlumbing) ConfigGet(dottedPath string) (interface
 }
 
 func TestMinerPreviewSetPrice(t *testing.T) {
-	t.Run("returns the gas cost given by preview query", func(t *testing.T) {
-		assert := assert.New(t)
-		require := require.New(t)
+	tf.UnitTest(t)
 
+	t.Run("returns the gas cost given by preview query", func(t *testing.T) {
 		plumbing := newMinerPreviewSetPricePlumbing()
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(0)
 
 		usedGas, err := MinerPreviewSetPrice(ctx, plumbing, address.Undef, address.Undef, price, big.NewInt(0))
 
-		require.NoError(err)
-		assert.Equal(types.NewGasUnits(7), usedGas)
+		require.NoError(t, err)
+		assert.Equal(t, types.NewGasUnits(7), usedGas)
 	})
 }
 
 type minerGetOwnerPlumbing struct{}
 
-func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
-	return [][]byte{address.TestAddress.Bytes()}, nil, nil
+func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{address.TestAddress.Bytes()}, nil
+}
+
+func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "getSectorSize" {
+		return &exec.FunctionSignature{
+			Params: nil,
+			Return: []abi.Type{abi.BytesAmount},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported method: %s", method)
 }
 
 func TestMinerGetOwnerAddress(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
-	assert.NoError(err)
-	assert.Equal(address.TestAddress, addr)
+	assert.NoError(t, err)
+	assert.Equal(t, address.TestAddress, addr)
 }
 
 type minerGetPeerIDPlumbing struct{}
 
-func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 
 	peerID := requirePeerID()
-	return [][]byte{[]byte(peerID)}, nil, nil
+	return [][]byte{[]byte(peerID)}, nil
 }
 
 func TestMinerGetPeerID(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
 
 	id, err := MinerGetPeerID(context.Background(), &minerGetPeerIDPlumbing{}, address.TestAddress2)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	expected := requirePeerID()
-	require.NoError(err)
-	assert.Equal(expected, id)
+	require.NoError(t, err)
+	assert.Equal(t, expected, id)
 }
 
 type minerGetAskPlumbing struct{}
 
-func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	out, err := cbor.DumpObject(miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
 		Expiry: types.NewBlockHeight(41),
@@ -500,19 +475,18 @@ func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to a
 	if err != nil {
 		panic("Could not encode ask")
 	}
-	return [][]byte{out}, nil, nil
+	return [][]byte{out}, nil
 }
 
 func TestMinerGetAsk(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
 
 	ask, err := MinerGetAsk(context.Background(), &minerGetAskPlumbing{}, address.TestAddress2, 4)
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal(types.NewAttoFILFromFIL(32), ask.Price)
-	assert.Equal(types.NewBlockHeight(41), ask.Expiry)
-	assert.Equal(big.NewInt(4), ask.ID)
+	assert.Equal(t, types.NewAttoFILFromFIL(32), ask.Price)
+	assert.Equal(t, types.NewBlockHeight(41), ask.Expiry)
+	assert.Equal(t, big.NewInt(4), ask.ID)
 }
 
 func requirePeerID() peer.ID {
@@ -521,4 +495,46 @@ func requirePeerID() peer.ID {
 		panic("Could not create peer id")
 	}
 	return id
+}
+
+type minerGetSectorSizePlumbing struct{}
+
+func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{types.NewBytesAmount(1234).Bytes()}, nil
+}
+func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	return &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.BytesAmount},
+	}, nil
+}
+
+func TestMinerGetSectorSize(t *testing.T) {
+	tf.UnitTest(t)
+
+	sectorSize, err := MinerGetSectorSize(context.Background(), &minerGetSectorSizePlumbing{}, address.TestAddress2)
+	require.NoError(t, err)
+
+	assert.Equal(t, int(sectorSize.Uint64()), 1234)
+}
+
+type minerGetLastCommittedSectorIDPlumbing struct{}
+
+func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	return [][]byte{leb128.FromUInt64(5432)}, nil
+}
+func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	return &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
+	}, nil
+}
+
+func TestMinerGetLastCommittedSectorID(t *testing.T) {
+	tf.UnitTest(t)
+
+	lastCommittedSectorID, err := MinerGetLastCommittedSectorID(context.Background(), &minerGetLastCommittedSectorIDPlumbing{}, address.TestAddress2)
+	require.NoError(t, err)
+
+	assert.Equal(t, int(lastCommittedSectorID), 5432)
 }

@@ -1,23 +1,27 @@
 package proofs
 
+import (
+	"github.com/filecoin-project/go-filecoin/types"
+)
+
 // VerifySealRequest represents a request to verify the output of a Seal() operation.
 type VerifySealRequest struct {
-	CommD     CommD           // returned from seal
-	CommR     CommR           // returned from seal
-	CommRStar CommRStar       // returned from seal
-	Proof     SealProof       // returned from Seal
-	ProverID  [31]byte        // uniquely identifies miner
-	SectorID  [31]byte        // uniquely identifies sector
-	StoreType SectorStoreType // used to control sealing/verification performance
+	CommD      types.CommD      // returned from seal
+	CommR      types.CommR      // returned from seal
+	CommRStar  types.CommRStar  // returned from seal
+	Proof      types.PoRepProof // returned from seal
+	ProverID   [31]byte         // uniquely identifies miner
+	SectorID   [31]byte         // uniquely identifies sector
+	SectorSize *types.BytesAmount
 }
 
-// VerifyPoSTRequest represents a request to generate verify a proof-of-spacetime.
-type VerifyPoSTRequest struct {
-	ChallengeSeed PoStChallengeSeed
-	CommRs        []CommR
+// VerifyPoStRequest represents a request to generate verify a proof-of-spacetime.
+type VerifyPoStRequest struct {
+	ChallengeSeed types.PoStChallengeSeed
+	SortedCommRs  SortedCommRs
 	Faults        []uint64
-	Proofs        []PoStProof
-	StoreType     SectorStoreType // used to control sealing/verification performance
+	Proofs        []types.PoStProof
+	SectorSize    *types.BytesAmount
 }
 
 // VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
@@ -32,17 +36,6 @@ type VerifySealResponse struct {
 
 // Verifier provides an interface to the proving subsystem.
 type Verifier interface {
-	VerifyPoST(VerifyPoSTRequest) (VerifyPoSTResponse, error)
+	VerifyPoST(VerifyPoStRequest) (VerifyPoSTResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
 }
-
-// SectorStoreType configures the behavior of the SectorStore used by the SectorBuilder.
-type SectorStoreType int
-
-const (
-	// Live configures the SectorBuilder to be used by someone operating a real
-	// Filecoin node.
-	Live = SectorStoreType(iota)
-	// Test configures the SectorBuilder to be used with large sectors, in tests.
-	Test
-)

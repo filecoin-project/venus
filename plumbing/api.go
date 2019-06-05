@@ -5,14 +5,17 @@ import (
 	"io"
 	"time"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	uio "gx/ipfs/QmRDWTzVdbHXdtat7tVJ7YC7kRaW7rTZTEF79yykcLYa49/go-unixfs/io"
-	ipld "gx/ipfs/QmRL22E4paat7ky7vx9MLpR97JHHbFPrg3ytFQw6qp1y1s/go-ipld-format"
-	pstore "gx/ipfs/QmRhFARzTHcFh8wUxwN5KvyTGq73FLC65EfFAhz8Ng7aGb/go-libp2p-peerstore"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmZZseAa9xcK6tT3YpaShNUAEpyRAoWmUL5ojH3uGNepAc/go-libp2p-metrics"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/ipfs/go-bitswap"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore/query"
+	"github.com/ipfs/go-ipfs-exchange-interface"
+	ipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log"
+	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/libp2p/go-libp2p-metrics"
+	"github.com/libp2p/go-libp2p-peer"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -22,9 +25,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
-	"github.com/filecoin-project/go-filecoin/plumbing/mthdsig"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -40,33 +43,33 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	chain        chain.ReadStore
+	bitswap      exchange.Interface
+	chain        *cst.ChainStateProvider
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
-	msgSender    *msg.Sender
 	msgWaiter    *msg.Waiter
 	network      *net.Network
-	sigGetter    *mthdsig.Getter
+	outbox       *core.Outbox
 	storagedeals *strgdls.Store
 	wallet       *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Chain        chain.ReadStore
+	Bitswap      exchange.Interface
+	Chain        *cst.ChainStateProvider
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
-	MsgSender    *msg.Sender
 	MsgWaiter    *msg.Waiter
 	Network      *net.Network
-	SigGetter    *mthdsig.Getter
+	Outbox       *core.Outbox
 	Wallet       *wallet.Wallet
 }
 
@@ -75,26 +78,36 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
+		bitswap:      deps.Bitswap,
 		chain:        deps.Chain,
 		config:       deps.Config,
 		dag:          deps.DAG,
 		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
-		msgSender:    deps.MsgSender,
 		msgWaiter:    deps.MsgWaiter,
 		network:      deps.Network,
-		sigGetter:    deps.SigGetter,
+		outbox:       deps.Outbox,
 		storagedeals: deps.Deals,
 		wallet:       deps.Wallet,
 	}
+}
+
+// ActorGet returns an actor from the latest state on the chain
+func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	return api.chain.GetActor(ctx, addr)
 }
 
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
 func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return api.sigGetter.Get(ctx, actorAddr, method)
+	return api.chain.GetActorSignature(ctx, actorAddr, method)
+}
+
+// ActorLs returns a channel with actors from the latest state on the chain
+func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+	return api.chain.LsActors(ctx)
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.
@@ -113,53 +126,51 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 	return api.config.Get(dottedPath)
 }
 
-// ChainHead returns the head tipset
-func (api *API) ChainHead(ctx context.Context) types.TipSet {
-	return api.chain.Head()
-}
-
-// GetRecentAncestorsOfHeaviestChain returns the recent ancestors of the
-// `TipSet` with height `descendantBlockHeight` in the heaviest chain.
-func (api *API) GetRecentAncestorsOfHeaviestChain(ctx context.Context, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return chain.GetRecentAncestorsOfHeaviestChain(ctx, api.chain, descendantBlockHeight)
-}
-
-// ChainLs returns a channel of tipsets from head to genesis
-func (api *API) ChainLs(ctx context.Context) <-chan interface{} {
-	return api.chain.BlockHistory(ctx, api.chain.Head())
-}
-
-// ActorGet returns an actor from the latest state on the chain
-func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	state, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetActor(ctx, addr)
-}
-
-// ActorLs returns a slice of actors from the latest state on the chain
-func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := api.chain.LatestState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return state.GetAllActors(ctx, st), nil
-}
-
-// BlockGet gets a block by CID
-func (api *API) BlockGet(ctx context.Context, id cid.Cid) (*types.Block, error) {
+// ChainGetBlock gets a block by CID
+func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	return api.chain.GetBlock(ctx, id)
 }
 
-// DealsLs a slice of all storagedeals in the local datastore and possibly an error
-func (api *API) DealsLs() ([]*storagedeal.Deal, error) {
-	return api.storagedeals.Ls()
+// ChainHead returns the head tipset
+func (api *API) ChainHead() (types.TipSet, error) {
+	return api.chain.Head()
+}
+
+// ChainLs returns an iterator of tipsets from head to genesis
+func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
+	return api.chain.Ls(ctx)
+}
+
+// ChainSampleRandomness produces a slice of random bytes sampled from a TipSet
+// in the blockchain at a given height, useful for things like PoSt challenge seed
+// generation.
+func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	return api.chain.SampleRandomness(ctx, sampleHeight)
+}
+
+// DealsIterator returns an iterator to access all deals
+func (api *API) DealsIterator() (*query.Results, error) {
+	return api.storagedeals.Iterator()
 }
 
 // DealPut puts a given deal in the datastore
 func (api *API) DealPut(storageDeal *storagedeal.Deal) error {
 	return api.storagedeals.Put(storageDeal)
+}
+
+// OutboxQueues lists addresses with non-empty outbox queues (in no particular order).
+func (api *API) OutboxQueues() []address.Address {
+	return api.outbox.Queue().Queues()
+}
+
+// OutboxQueueLs lists messages in the queue for an address.
+func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
+	return api.outbox.Queue().List(sender)
+}
+
+// OutboxQueueClear clears messages in the queue for an address/
+func (api *API) OutboxQueueClear(sender address.Address) {
+	api.outbox.Queue().Clear(sender)
 }
 
 // MessagePoolPending lists messages un-mined in the pool
@@ -186,7 +197,7 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
 }
 
@@ -196,7 +207,12 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 // message to go on chain. Note that no default from address is provided. If you need
 // a default address, use MessageSendWithDefaultAddress instead.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return api.msgSender.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+}
+
+// MessageFind returns a message and receipt from the blockchain, if it exists.
+func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
+	return api.msgWaiter.Find(ctx, msgCid)
 }
 
 // MessageWait invokes the callback when a message with the given cid appears on chain.
@@ -235,12 +251,32 @@ func (api *API) NetworkGetPeerID() peer.ID {
 
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
 func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
-	return api.network.FindProvidersAsync(ctx, key, count)
+	return api.network.Router.FindProvidersAsync(ctx, key, count)
+}
+
+// NetworkGetClosestPeers issues a getClosestPeers query to the filecoin network.
+func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan peer.ID, error) {
+	return api.network.GetClosestPeers(ctx, key)
 }
 
 // NetworkPing sends echo request packets over the network.
 func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
-	return api.network.PingService.Ping(ctx, pid)
+	return api.network.Pinger.Ping(ctx, pid)
+}
+
+// NetworkFindPeer searches the libp2p router for a given peer id
+func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+	return api.network.FindPeer(ctx, peerID)
+}
+
+// NetworkConnect connects to peers at the given addresses
+func (api *API) NetworkConnect(ctx context.Context, addrs []string) (<-chan net.ConnectionResult, error) {
+	return api.network.Connect(ctx, addrs)
+}
+
+// NetworkPeers lists peers currently available on the network
+func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool) (*net.SwarmConnInfos, error) {
+	return api.network.Peers(ctx, verbose, latency, streams)
 }
 
 // SignBytes uses private key information associated with the given address to sign the given bytes.
@@ -299,4 +335,9 @@ func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
 // node via Bitswap and a copy will be kept in the blockstore.
 func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	return api.dag.ImportData(ctx, data)
+}
+
+// BitswapGetStats returns bitswaps stats.
+func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
+	return api.bitswap.(*bitswap.Bitswap).Stat()
 }

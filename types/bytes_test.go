@@ -2,26 +2,28 @@ package types
 
 import (
 	"bytes"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRoundtrip(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
+
 	cases := [][]byte{nil, {}, []byte("bytes")}
 	for _, c := range cases {
 		b, err := cbor.WrapObject(c, DefaultHashFunction, -1)
-		assert.NoError(err)
+		assert.NoError(t, err)
 		var out []byte
 		err = cbor.DecodeInto(b.RawData(), &out)
-		assert.NoError(err)
+		assert.NoError(t, err)
 		switch {
 		case c == nil:
-			assert.Nil(out)
+			assert.Nil(t, out)
 		default:
-			assert.True(bytes.Equal(c, out))
+			assert.True(t, bytes.Equal(c, out))
 		}
 	}
 }

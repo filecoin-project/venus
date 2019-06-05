@@ -6,19 +6,17 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path/filepath"
 	"syscall"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZcLBXKaFe8ND5YHPkJRAwmhJGrVsi1JqDZNyJ4nRK5Mj/go-multiaddr-net"
-	"gx/ipfs/QmdcULN1WCzgoQmcCaUAmEhwcxHYsDrbZ2LvRJKCL8dMrK/go-homedir"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/cli"
-	cmdhttp "gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds/http"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-cmds/cli"
+	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr-net"
+	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/api/impl"
+	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -29,6 +27,9 @@ const (
 
 	// OptionRepoDir is the name of the option for specifying the directory of the repo.
 	OptionRepoDir = "repodir"
+
+	// OptionSectorDir is the name of the option for specifying the directory into which staged and sealed sectors will be written.
+	OptionSectorDir = "sectordir"
 
 	// APIPrefix is the prefix for the http version of the api.
 	APIPrefix = "/api"
@@ -108,6 +109,7 @@ VIEW DATA STRUCTURES
   go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
+  go-filecoin bitswap                - Explore libp2p bitswap
   go-filecoin bootstrap              - Interact with bootstrap addresses
   go-filecoin dht                    - Interact with the dht
   go-filecoin id                     - Show info about the network peers
@@ -116,7 +118,7 @@ NETWORK COMMANDS
   go-filecoin stats                  - Monitor statistics on your network usage
 
 ACTOR COMMANDS
-  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts.
+  go-filecoin actor                  - Interact with actors. Actors are built-in smart contracts
   go-filecoin paych                  - Payment channel operations
 
 MESSAGE COMMANDS
@@ -124,13 +126,15 @@ MESSAGE COMMANDS
   go-filecoin mpool                  - Manage the message pool
 
 TOOL COMMANDS
-  go-filecoin log                    - Interact with the daemon event log output.
+  go-filecoin inspect                - Show info about the go-filecoin node
+  go-filecoin log                    - Interact with the daemon event log output
+  go-filecoin protocol               - Show protocol parameter details
   go-filecoin version                - Show go-filecoin version information
 `,
 	},
 	Options: []cmdkit.Option{
 		cmdkit.StringOption(OptionAPI, "set the api port to use"),
-		cmdkit.StringOption(OptionRepoDir, "set the directory of the repo, defaults to ~/.filecoin"),
+		cmdkit.StringOption(OptionRepoDir, "set the repo directory, defaults to ~/.filecoin/repo"),
 		cmds.OptionEncodingType,
 		cmdkit.BoolOption("help", "Show the full command help text."),
 		cmdkit.BoolOption("h", "Show a short version of the command help text."),
@@ -145,14 +149,16 @@ var rootCmdDaemon = &cmds.Command{
 
 // all top level commands, not available to daemon
 var rootSubcmdsLocal = map[string]*cmds.Command{
-	"daemon": daemonCmd,
-	"init":   initCmd,
+	"daemon":  daemonCmd,
+	"init":    initCmd,
+	"version": versionCmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
 var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"actor":            actorCmd,
 	"address":          addrsCmd,
+	"bitswap":          bitswapCmd,
 	"bootstrap":        bootstrapCmd,
 	"chain":            chainCmd,
 	"config":           configCmd,
@@ -160,18 +166,20 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"dag":              dagCmd,
 	"dht":              dhtCmd,
 	"id":               idCmd,
+	"inspect":          inspectCmd,
 	"log":              logCmd,
 	"message":          msgCmd,
 	"miner":            minerCmd,
 	"mining":           miningCmd,
 	"mpool":            mpoolCmd,
+	"outbox":           outboxCmd,
 	"paych":            paymentChannelCmd,
 	"ping":             pingCmd,
+	"protocol":         protocolCmd,
 	"retrieval-client": retrievalClientCmd,
 	"show":             showCmd,
 	"stats":            statsCmd,
 	"swarm":            swarmCmd,
-	"version":          versionCmd,
 	"wallet":           walletCmd,
 }
 
@@ -199,7 +207,7 @@ func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
 }
 
 func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
-	return &Env{ctx: ctx, api: impl.New(nil)}, nil
+	return &Env{ctx: ctx}, nil
 }
 
 type executor struct {
@@ -253,6 +261,7 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 
 func getAPIAddress(req *cmds.Request) (string, error) {
 	var rawAddr string
+	var err error
 	// second highest precedence is env vars.
 	if envapi := os.Getenv("FIL_API"); envapi != "" {
 		rawAddr = envapi
@@ -265,17 +274,15 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 
 	// we will read the api file if no other option is given.
 	if len(rawAddr) == 0 {
-		rawPath := filepath.Join(filepath.Clean(getRepoDir(req)), repo.APIFile)
-		apiFilePath, err := homedir.Expand(rawPath)
+		repoDir, _ := req.Options[OptionRepoDir].(string)
+		repoDir, err = paths.GetRepoPath(repoDir)
 		if err != nil {
-			return "", errors.Wrap(err, fmt.Sprintf("can't resolve local repo path %s", rawPath))
+			return "", err
 		}
-
-		rawAddr, err = repo.APIAddrFromFile(apiFilePath)
+		rawAddr, err = repo.APIAddrFromRepoPath(repoDir)
 		if err != nil {
 			return "", errors.Wrap(err, "can't find API endpoint address in environment, command-line, or local repo (is the daemon running?)")
 		}
-
 	}
 
 	maddr, err := ma.NewMultiaddr(rawAddr)
@@ -292,14 +299,11 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 }
 
 func requiresDaemon(req *cmds.Request) bool {
-	if req.Command == daemonCmd {
-		return false
+	for _, cmd := range rootSubcmdsLocal {
+		if req.Command == cmd {
+			return false
+		}
 	}
-
-	if req.Command == initCmd {
-		return false
-	}
-
 	return true
 }
 

@@ -1,39 +1,33 @@
 #!/usr/bin/env bash
 
+RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-proofs`
+
 install_precompiled() {
-  RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-proofs`
   RELEASE_NAME="rust-fil-proofs-`uname`"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
   RELEASE_RESPONSE=`curl \
+    --retry 3 \
     --location \
     "https://api.github.com/repos/filecoin-project/rust-fil-proofs/releases/tags/$RELEASE_TAG"
   `
 
-  RELEASE_ID=`echo $RELEASE_RESPONSE | jq '.id'`
-
-  if [ "$RELEASE_ID" == "null" ]; then
-    echo "release ${RELEASE_TAG} does not exist, GitHub said ${RELEASE_RESPONSE}"
-    echo "ensure your access token has full repo scope"
-    return 1
-  fi
-
   RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url"`
 
-
   ASSET_URL=`curl \
-      --head \
-      --header "Accept:application/octet-stream" \
-      --location \
-      --output /dev/null \
-      -w %{url_effective} \
-      "$RELEASE_URL"
+    --head \
+    --retry 3 \
+    --header "Accept:application/octet-stream" \
+    --location \
+    --output /dev/null \
+    -w %{url_effective} \
+    "$RELEASE_URL"
   `
   ASSET_ID=`basename ${RELEASE_URL}`
 
   TAR_NAME="${RELEASE_NAME}_${ASSET_ID}"
   if [ ! -f "/tmp/${TAR_NAME}.tar.gz" ]; then
-      curl --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
+      curl --retry 3 --output "/tmp/${TAR_NAME}.tar.gz" "$ASSET_URL"
       if [ $? -ne "0" ]; then
           echo "asset failed to be downloaded"
           return 1
@@ -52,6 +46,12 @@ install_local() {
   if ! [ -x "$(command -v cargo)" ] ; then
     echo 'Error: cargo is not installed.'
     echo 'Install Rust toolchain to resolve this problem.'
+    exit 1
+  fi
+
+  if ! [ -x "$(command -v rustup)" ] ; then
+    echo 'Error: rustup is not installed.'
+    echo 'Install Rust toolchain installer to resolve this problem.'
     exit 1
   fi
 
@@ -79,10 +79,10 @@ install_local() {
 git submodule update --init --recursive proofs/rust-fil-proofs
 
 if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
-  echo "using local rust-fil-proofs"
+  echo "using local rust-fil-proofs @ ${RELEASE_SHA1}"
   install_local
 else
-  echo "using precompiled rust-fil-proofs"
+  echo "using precompiled rust-fil-proofs @ ${RELEASE_SHA1}"
   install_precompiled
 
   if [ $? -ne "0" ]; then

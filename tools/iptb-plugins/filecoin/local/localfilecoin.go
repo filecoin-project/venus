@@ -12,16 +12,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/config"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-
-	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 )
 
 // PluginName is the name of the plugin
@@ -29,21 +31,24 @@ var PluginName = "localfilecoin"
 
 var log = logging.Logger(PluginName)
 
-// ErrIsAlive will be returned by Start if the node is already running
-var ErrIsAlive = errors.New("node is already running")
+// errIsAlive will be returned by Start if the node is already running
+var errIsAlive = errors.New("node is already running")
 var errTimeout = errors.New("timeout")
 
-// DefaultFilecoinBinary is the name or full path of the binary that will be used
-var DefaultFilecoinBinary = "go-filecoin"
+// defaultFilecoinBinary is the name or full path of the binary that will be used
+const defaultFilecoinBinary = "go-filecoin"
 
-// DefaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
-var DefaultLogLevel = "3"
+// defaultRepoPath is the name of the repo path relative to the plugin root directory
+const defaultRepoPath = "repo"
 
-// DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
-var DefaultUseSmallSectors = "false"
+// defaultSectorsPath is the name of the sector path relative to the plugin root directory
+const defaultSectorsPath = "sectors"
 
-// DefaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
-var DefaultLogJSON = "false"
+// defaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
+const defaultLogLevel = "3"
+
+// defaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
+const defaultLogJSON = "false"
 
 var (
 	// AttrFilecoinBinary is the key used to set which binary to use in the plugin through NewNode attrs
@@ -55,33 +60,37 @@ var (
 	// AttrLogJSON is the key used to set the node to output json logs
 	AttrLogJSON = "logJSON"
 
-	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
-	AttrUseSmallSectors = "useSmallSectors"
+	// AttrSectorsPath is the key used to set the sectors path
+	AttrSectorsPath = "sectorsPath"
 )
 
 // Localfilecoin represents a filecoin node
 type Localfilecoin struct {
-	dir     string
-	peerid  cid.Cid
-	apiaddr multiaddr.Multiaddr
+	iptbPath string // Absolute path for all process data
+	peerid   cid.Cid
+	apiaddr  multiaddr.Multiaddr
 
-	binPath         string
-	logLevel        string
-	logJSON         string
-	useSmallSectors string
+	binPath     string // Absolute path to binary
+	repoPath    string // Absolute path to repo
+	sectorsPath string // Absolute path to sectors
+	logLevel    string
+	logJSON     string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
 
 func init() {
 	NewNode = func(dir string, attrs map[string]string) (testbedi.Core, error) {
+		dir, err := filepath.Abs(dir)
+		if err != nil {
+			return nil, err
+		}
 		var (
-			err error
-
-			binPath         = ""
-			logLevel        = DefaultLogLevel
-			logJSON         = DefaultLogJSON
-			useSmallSectors = DefaultUseSmallSectors
+			binPath     = ""
+			repoPath    = filepath.Join(dir, defaultRepoPath)
+			sectorsPath = filepath.Join(dir, defaultSectorsPath)
+			logLevel    = defaultLogLevel
+			logJSON     = defaultLogJSON
 		)
 
 		if v, ok := attrs[AttrFilecoinBinary]; ok {
@@ -92,16 +101,16 @@ func init() {
 			logLevel = v
 		}
 
-		if v, ok := attrs[AttrUseSmallSectors]; ok {
-			useSmallSectors = v
-		}
-
 		if v, ok := attrs[AttrLogJSON]; ok {
 			logJSON = v
 		}
 
+		if v, ok := attrs[AttrSectorsPath]; ok {
+			sectorsPath = v
+		}
+
 		if len(binPath) == 0 {
-			if binPath, err = exec.LookPath(DefaultFilecoinBinary); err != nil {
+			if binPath, err = exec.LookPath(defaultFilecoinBinary); err != nil {
 				return nil, err
 			}
 		}
@@ -120,49 +129,31 @@ func init() {
 		}
 
 		return &Localfilecoin{
-			dir:             dir,
-			binPath:         dst,
-			logLevel:        logLevel,
-			logJSON:         logJSON,
-			useSmallSectors: useSmallSectors,
+			iptbPath:    dir,
+			binPath:     dst,
+			repoPath:    repoPath,
+			sectorsPath: sectorsPath,
+			logLevel:    logLevel,
+			logJSON:     logJSON,
 		}, nil
 	}
-}
-
-func copyFileContents(src, dst string) (err error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return
-	}
-	defer in.Close() // nolint: errcheck
-	out, err := os.Create(dst)
-	if err != nil {
-		return
-	}
-	defer func() {
-		cerr := out.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
-	if _, err = io.Copy(out, in); err != nil {
-		return
-	}
-	err = out.Sync()
-	return
 }
 
 /** Core Interface **/
 
 // Init runs the node init process.
 func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Output, error) {
+	// The repo path is provided by the environment
 	args = append([]string{l.binPath, "init"}, args...)
 	output, oerr := l.RunCmd(ctx, nil, args...)
 	if oerr != nil {
 		return nil, oerr
 	}
+	if output.ExitCode() != 0 {
+		return output, errors.Errorf("%s exited with non-zero code %d", output.Args(), output.ExitCode())
+	}
 
-	icfg, err := l.GetConfig()
+	icfg, err := l.Config()
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +166,18 @@ func (l *Localfilecoin) Init(ctx context.Context, args ...string) (testbedi.Outp
 
 	if err := lcfg.Set("swarm.address", `"/ip4/127.0.0.1/tcp/0"`); err != nil {
 		return nil, err
+	}
+
+	// only set sectors path to l.sectorsPath if init command does not set
+	isectorsPath, err := lcfg.Get("sectorbase.rootdir")
+	if err != nil {
+		return nil, err
+	}
+	lsectorsPath := isectorsPath.(string)
+	if lsectorsPath == "" {
+		if err := lcfg.Set("sectorbase.rootdir", l.sectorsPath); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := l.WriteConfig(lcfg); err != nil {
@@ -192,14 +195,13 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 	}
 
 	if alive {
-		return nil, ErrIsAlive
+		return nil, errIsAlive
 	}
 
-	dir := l.dir
-	repoFlag := fmt.Sprintf("--repodir=%s", l.Dir())
+	repoFlag := fmt.Sprintf("--repodir=%s", l.repoPath) // Not provided by environment here
 	dargs := append([]string{"daemon", repoFlag}, args...)
 	cmd := exec.CommandContext(ctx, l.binPath, dargs...)
-	cmd.Dir = dir
+	cmd.Dir = l.iptbPath
 
 	cmd.Env, err = l.env()
 	if err != nil {
@@ -208,12 +210,12 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 
 	iptbutil.SetupOpt(cmd)
 
-	stdout, err := os.Create(filepath.Join(dir, "daemon.stdout"))
+	stdout, err := os.Create(filepath.Join(l.iptbPath, "daemon.stdout"))
 	if err != nil {
 		return nil, err
 	}
 
-	stderr, err := os.Create(filepath.Join(dir, "daemon.stderr"))
+	stderr, err := os.Create(filepath.Join(l.iptbPath, "daemon.stderr"))
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +235,7 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 
 	l.Infof("Started daemon: %s, pid: %d", l, pid)
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "daemon.pid"), []byte(fmt.Sprint(pid)), 0666); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(l.iptbPath, "daemon.pid"), []byte(fmt.Sprint(pid)), 0666); err != nil {
 		return nil, err
 	}
 	if wait {
@@ -248,12 +250,12 @@ func (l *Localfilecoin) Start(ctx context.Context, wait bool, args ...string) (t
 func (l *Localfilecoin) Stop(ctx context.Context) error {
 	pid, err := l.getPID()
 	if err != nil {
-		return fmt.Errorf("error killing daemon %s: %s", l.dir, err)
+		return fmt.Errorf("error killing daemon %s: %s", l.iptbPath, err)
 	}
 
 	p, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("error killing daemon %s: %s", l.dir, err)
+		return fmt.Errorf("error killing daemon %s: %s", l.iptbPath, err)
 	}
 
 	waitch := make(chan struct{}, 1)
@@ -264,13 +266,13 @@ func (l *Localfilecoin) Stop(ctx context.Context) error {
 	}()
 
 	defer func() {
-		err := os.Remove(filepath.Join(l.dir, "daemon.pid"))
+		err := os.Remove(filepath.Join(l.iptbPath, "daemon.pid"))
 		if err != nil && !os.IsNotExist(err) {
-			panic(fmt.Errorf("error removing pid file for daemon at %s: %s", l.dir, err))
+			panic(fmt.Errorf("error removing pid file for daemon at %s: %s", l.iptbPath, err))
 		}
-		err = os.Remove(filepath.Join(l.dir, "api"))
+		err = os.Remove(filepath.Join(l.repoPath, "api"))
 		if err != nil && !os.IsNotExist(err) {
-			panic(fmt.Errorf("error removing pid file for daemon at %s: %s", l.dir, err))
+			panic(fmt.Errorf("error removing API file for daemon at %s: %s", l.repoPath, err))
 		}
 	}()
 
@@ -327,13 +329,24 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 		return nil, err
 	}
 
-	stderrbytes, err := ioutil.ReadAll(stderr)
-	if err != nil {
-		return nil, err
-	}
+	g, ctx := errgroup.WithContext(ctx)
 
-	stdoutbytes, err := ioutil.ReadAll(stdout)
-	if err != nil {
+	var stderrbytes []byte
+	var stdoutbytes []byte
+
+	g.Go(func() error {
+		var err error
+		stderrbytes, err = ioutil.ReadAll(stderr)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		stdoutbytes, err = ioutil.ReadAll(stdout)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -379,7 +392,22 @@ func (l *Localfilecoin) Connect(ctx context.Context, n testbedi.Core) error {
 	return err
 }
 
-// Shell starts a shell in the context of a node.
+// Shell starts a user shell in the context of a node setting FIL_PATH to ensure calls to
+// go-filecoin will be ran agasint the target node. Stderr, stdout will be set to os.Stderr
+// and os.Stdout. If env TTY is set, it will be used for stdin, otherwise os.Stdin will be used.
+//
+// If FIL_PATH is already set, an error will be returned.
+//
+// The shell environment will have the follow variables set in the shell for the user.
+//
+// NODE0-NODE# - set to the PeerID for each value in ns passed.
+// FIL_PATH    - The value is set to the directory for the Filecoin node.
+// FIL_PID     - The value is set to the pid for the Filecoin daemon
+// FIL_BINARY  - The value is set to the path of the binary used for running the Filecoin daemon.
+// PATH        - The users PATH will be updated to include a location that contains the FIL_BINARY.
+//
+// Note: user shell configuration may lead to the `go-filecoin` command not pointing to FIL_BINARY,
+// due to PATH ordering.
 func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
@@ -420,7 +448,25 @@ func (l *Localfilecoin) Shell(ctx context.Context, ns []testbedi.Core) error {
 
 	cmd := exec.CommandContext(ctx, shell)
 	cmd.Env = nenvs
-	cmd.Stdin = os.Stdin
+
+	stdin := os.Stdin
+
+	// When running code with `go test`, the os.Stdin is not connected to the shell
+	// where `go test` was ran. This makes the shell exit immediately and it's not
+	// possible to run it. To get around this issue we can let the user tell us the
+	// TTY their shell is using by setting the TTY env. This will allow the shell
+	// to use the same TTY the user started running `go test` in.
+	tty := os.Getenv("TTY")
+	if len(tty) != 0 {
+		f, err := os.Open(tty)
+		if err != nil {
+			return err
+		}
+
+		stdin = f
+	}
+
+	cmd.Stdin = stdin
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
@@ -441,9 +487,9 @@ func (l *Localfilecoin) Errorf(format string, args ...interface{}) {
 	log.Errorf("Node: %s %s", l, fmt.Sprintf(format, args...))
 }
 
-// Dir returns the directory the node is using.
+// Dir returns the IPTB directory the node is using.
 func (l *Localfilecoin) Dir() string {
-	return l.dir
+	return l.iptbPath
 }
 
 // Type returns the type of the node.
@@ -453,7 +499,7 @@ func (l *Localfilecoin) Type() string {
 
 // String implements the stringr interface.
 func (l *Localfilecoin) String() string {
-	return l.dir
+	return l.iptbPath
 }
 
 /** Libp2p Interface **/
@@ -484,7 +530,7 @@ func (l *Localfilecoin) APIAddr() (string, error) {
 	*/
 
 	var err error
-	l.apiaddr, err = filecoin.GetAPIAddrFromRepo(l.dir)
+	l.apiaddr, err = filecoin.GetAPIAddrFromRepo(l.repoPath)
 	if err != nil {
 		return "", err
 	}
@@ -510,13 +556,13 @@ func (l *Localfilecoin) SwarmAddrs() ([]string, error) {
 
 /** Config Interface **/
 
-// GetConfig returns the nodes config.
-func (l *Localfilecoin) GetConfig() (interface{}, error) {
-	return config.ReadFile(filepath.Join(l.dir, "config.json"))
+// Config returns the nodes config.
+func (l *Localfilecoin) Config() (interface{}, error) {
+	return config.ReadFile(filepath.Join(l.repoPath, "config.json"))
 }
 
 // WriteConfig writes a nodes config file.
 func (l *Localfilecoin) WriteConfig(cfg interface{}) error {
 	lcfg := cfg.(*config.Config)
-	return lcfg.WriteFile(filepath.Join(l.dir, "config.json"))
+	return lcfg.WriteFile(filepath.Join(l.repoPath, "config.json"))
 }

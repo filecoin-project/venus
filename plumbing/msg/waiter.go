@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/cskr/pubsub"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -21,20 +22,45 @@ import (
 
 var log = logging.Logger("messageimpl")
 
+// Abstracts over a store of blockchain state.
+type waiterChainReader interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	HeadEvents() *pubsub.PubSub
+}
+
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader chain.ReadStore
+	chainReader waiterChainReader
 	cst         *hamt.CborIpldStore
 	bs          bstore.Blockstore
 }
 
+// ChainMessage is an on-chain message with its block and receipt.
+type ChainMessage struct {
+	Message *types.SignedMessage
+	Block   *types.Block
+	Receipt *types.MessageReceipt
+}
+
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore chain.ReadStore, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,
 		bs:          bs,
 	}
+}
+
+// Find searches the blockchain history for a message (but doesn't wait).
+func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool, error) {
+	headTipSet, err := w.chainReader.GetTipSet(w.chainReader.GetHead())
+	if err != nil {
+		return nil, false, err
+	}
+	return w.findMessage(ctx, headTipSet, msgCid)
 }
 
 // Wait invokes the callback when a message with the given cid appears on chain.
@@ -53,65 +79,92 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 	ctx = log.Start(ctx, "Waiter.Wait")
 	defer log.Finish(ctx)
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
-	// Ch will contain a stream of blocks to check for message (or errors).
-	// Blocks are either in new heaviest tipsets, or next oldest historical blocks.
-	ch := make(chan (interface{}))
 
-	// New blocks
-	newHeadCh := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	defer w.chainReader.HeadEvents().Unsub(newHeadCh, chain.NewHeadTopic)
+	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	defer w.chainReader.HeadEvents().Unsub(ch, chain.NewHeadTopic)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	chainMsg, found, err := w.Find(ctx, msgCid)
+	if err != nil {
+		return err
+	}
+	if found {
+		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
+	}
 
-	// Historical blocks
-	historyCh := w.chainReader.BlockHistory(ctx, w.chainReader.Head())
+	chainMsg, found, err = w.waitForMessage(ctx, ch, msgCid)
+	if found {
+		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
+	}
+	return err
+}
 
-	// Merge historical and new block Channels.
-	go func() {
-		for raw := range newHeadCh {
-			ch <- raw
+// findMessage looks for a message CID in the chain and returns the message,
+// block and receipt, when it is found. Returns the found message/block or nil
+// if now block with the given CID exists in the chain.
+func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+	var err error
+	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			log.Errorf("Waiter.Wait: %s", err)
+			return nil, false, err
 		}
-	}()
-	go func() {
-		for raw := range historyCh {
-			ch <- raw
+		for i := 0; i < iterator.Value().Len(); i++ {
+			blk := iterator.Value().At(i)
+			for _, msg := range blk.Messages {
+				c, err := msg.Cid()
+				if err != nil {
+					return nil, false, err
+				}
+				if c.Equals(msgCid) {
+					recpt, err := w.receiptFromTipSet(ctx, msgCid, iterator.Value())
+					if err != nil {
+						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+					}
+					return &ChainMessage{msg, blk, recpt}, true, nil
+				}
+			}
 		}
-	}()
+	}
+	return nil, false, nil
+}
 
+// waitForMessage looks for a message CID in a channel of tipsets and returns
+// the message, block and receipt, when it is found. Reads until the channel is
+// closed or the context done. Returns the found message/block (or nil if the
+// channel closed without finding it), whether it was found, or an error.
+func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, false, ctx.Err()
 		case raw, more := <-ch:
 			if !more {
-				return errors.New("wait input channel closed without finding message")
+				return nil, false, nil
 			}
-			switch raw.(type) { // nolint: staticcheck
+			switch raw := raw.(type) {
 			case error:
 				e := raw.(error)
 				log.Errorf("Waiter.Wait: %s", e)
-				return e
+				return nil, false, e
 			case types.TipSet:
-				ts := raw.(types.TipSet)
-				for _, blk := range ts {
+				for i := 0; i < raw.Len(); i++ {
+					blk := raw.At(i)
 					for _, msg := range blk.Messages {
 						c, err := msg.Cid()
 						if err != nil {
-							log.Errorf("Waiter.Wait: %s", err)
-							return err
+							return nil, false, err
 						}
 						if c.Equals(msgCid) {
-							recpt, err := w.receiptFromTipSet(ctx, msgCid, ts)
+							recpt, err := w.receiptFromTipSet(ctx, msgCid, raw)
 							if err != nil {
-								return errors.Wrap(err, "error retrieving receipt from tipset")
+								return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 							}
-							return cb(blk, msg, recpt)
+							return &ChainMessage{msg, blk, recpt}, true, nil
 						}
 					}
 				}
 			default:
-				return fmt.Errorf("unexpected type in channel: %T", raw)
+				return nil, false, fmt.Errorf("unexpected type in channel: %T", raw)
 			}
 		}
 	}
@@ -124,9 +177,8 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
-	blks := ts.ToSlice()
-	if len(ts) == 1 {
-		b := blks[0]
+	if ts.Len() == 1 {
+		b := ts.At(0)
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
@@ -145,11 +197,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsas, err := w.chainReader.GetTipSetAndState(ctx, ids.String())
+	stateCid, err := w.chainReader.GetTipSetStateRoot(ids)
 	if err != nil {
 		return nil, err
 	}
-	st, err := state.LoadStateTree(ctx, w.cst, tsas.TipSetStateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, w.cst, stateCid, builtin.Actors)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +211,12 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		return nil, err
 	}
 	tsBlockHeight := types.NewBlockHeight(tsHeight)
-	ancestors, err := chain.GetRecentAncestors(ctx, tsas.TipSet, w.chainReader, tsBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	parentTs, err := w.chainReader.GetTipSet(ids)
+	if err != nil {
+		return nil, err
+	}
+	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, err
 	}
@@ -190,12 +247,10 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // tipset.
 // TODO: find a better home for this method
 func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet) (int, error) {
-	blks := ts.ToSlice()
-	types.SortBlocks(blks)
 	var duplicates types.SortedCidSet
 	var msgCnt int
-	for _, b := range blks {
-		for _, msg := range b.Messages {
+	for i := 0; i < ts.Len(); i++ {
+		for _, msg := range ts.At(i).Messages {
 			c, err := msg.Cid()
 			if err != nil {
 				return -1, err

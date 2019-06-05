@@ -2,15 +2,13 @@ package core
 
 import (
 	"context"
-	//	"math/big"
-	//	"math/rand"
 	"testing"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -37,11 +35,11 @@ func MustGetNonce(st state.Tree, a address.Address) uint64 {
 	return nonce
 }
 
-// MustAdd adds the given messages to the messagepool or panics if it
-// cannot.
-func MustAdd(p *MessagePool, msgs ...*types.SignedMessage) {
+// MustAdd adds the given messages to the messagepool or panics if it cannot.
+func MustAdd(p *MessagePool, height uint64, msgs ...*types.SignedMessage) {
+	ctx := context.Background()
 	for _, m := range msgs {
-		if _, err := p.Add(m); err != nil {
+		if _, err := p.Add(ctx, m, height); err != nil {
 			panic(err)
 		}
 	}
@@ -66,41 +64,50 @@ func MustConvertParams(params ...interface{}) []byte {
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
 func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
-	tipSets := []types.TipSet{}
+	var tipSets []types.TipSet
 	parents := root
+	height := uint64(0)
+	stateRootCidGetter := types.NewCidForTestGetter()
 
 	// only add root to the chain if it is not the zero-valued-tipset
-	if len(parents) != 0 {
-		for _, blk := range parents {
-			MustPut(store, blk)
+	if parents.Defined() {
+		for i := 0; i < parents.Len(); i++ {
+			MustPut(store, parents.At(i))
 		}
 		tipSets = append(tipSets, parents)
+		height, _ = parents.Height()
+		height++
 	}
 
 	for _, tsMsgs := range msgSets {
-		height, _ := parents.Height()
-		ts := types.TipSet{}
+		var blocks []*types.Block
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
-				Height:  types.Uint64(height + 1),
+				Height:  types.Uint64(height),
 				Parents: parents.ToSortedCidSet(),
 			}
 			MustPut(store, child)
-			ts[child.Cid()] = child
+			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
 			child := &types.Block{
-				Messages: msgs,
-				Parents:  parents.ToSortedCidSet(),
-				Height:   types.Uint64(height + 1),
+				Messages:  msgs,
+				Parents:   parents.ToSortedCidSet(),
+				Height:    types.Uint64(height),
+				StateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}
 			MustPut(store, child)
-			ts[child.Cid()] = child
+			blocks = append(blocks, child)
+		}
+		ts, err := types.NewTipSet(blocks...)
+		if err != nil {
+			panic(err)
 		}
 		tipSets = append(tipSets, ts)
 		parents = ts
+		height++
 	}
 
 	return tipSets

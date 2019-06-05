@@ -3,19 +3,19 @@ package commands_test
 import (
 	"testing"
 
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/stretchr/testify/assert"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestBootstrapList(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	bs := d.RunSuccess("bootstrap ls")
 
-	assert.Equal("&{[]}\n", bs.ReadStdout())
+	assert.Equal(t, "&{[]}\n", bs.ReadStdout())
 }

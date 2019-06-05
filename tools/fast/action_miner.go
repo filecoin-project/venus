@@ -2,11 +2,10 @@ package fast
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
@@ -14,10 +13,9 @@ import (
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process
-func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *big.Int, options ...ActionOption) (address.Address, error) {
+func (f *Filecoin) MinerCreate(ctx context.Context, collateral *big.Int, options ...ActionOption) (address.Address, error) {
 	var out commands.MinerCreateResult
 
-	sPledge := fmt.Sprintf("%d", pledge)
 	sCollateral := collateral.String()
 
 	args := []string{"go-filecoin", "miner", "create"}
@@ -26,7 +24,7 @@ func (f *Filecoin) MinerCreate(ctx context.Context, pledge uint64, collateral *b
 		args = append(args, option()...)
 	}
 
-	args = append(args, sPledge, sCollateral)
+	args = append(args, sCollateral)
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return address.Undef, err
@@ -65,19 +63,6 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 	}
 
 	return out, nil
-}
-
-// MinerPledge runs the `miner pledge` command against the filecoin process
-func (f *Filecoin) MinerPledge(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	var out big.Int
-
-	sMinerAddr := minerAddr.String()
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "pledge", sMinerAddr); err != nil {
-		return big.NewInt(0), err
-	}
-
-	return &out, nil
 }
 
 // MinerPower runs the `miner power` command against the filecoin process

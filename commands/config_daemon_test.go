@@ -1,23 +1,22 @@
-package commands
+package commands_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestConfigDaemon(t *testing.T) {
-	t.Run("config <key> prints config value", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-		require := require.New(t)
+	tf.IntegrationTest(t)
 
+	t.Run("config <key> prints config value", func(t *testing.T) {
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -26,18 +25,15 @@ func TestConfigDaemon(t *testing.T) {
 		wrapped1 := config.NewDefaultConfig().Datastore
 		var decodedOutput1 config.DatastoreConfig
 		err := json.Unmarshal([]byte(jsonOut), &decodedOutput1)
-		require.NoError(err)
-		assert.Equal(wrapped1, &decodedOutput1)
+		require.NoError(t, err)
+		assert.Equal(t, wrapped1, &decodedOutput1)
 
 		op2 := d.RunSuccess("config", "datastore.path")
 		jsonOut = op2.ReadStdout()
-		assert.Equal(fmt.Sprintf("%q\n", config.NewDefaultConfig().Datastore.Path), jsonOut)
+		assert.Equal(t, fmt.Sprintf("%q\n", config.NewDefaultConfig().Datastore.Path), jsonOut)
 	})
 
 	t.Run("config <key> simple_value updates config", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -49,18 +45,14 @@ func TestConfigDaemon(t *testing.T) {
 		// validate output
 		jsonOut := op1.ReadStdout()
 		bootstrapConfig := config.NewDefaultConfig().Bootstrap
-		assert.Equal(fmt.Sprintf("\"%s\"\n", period), jsonOut)
+		assert.Equal(t, fmt.Sprintf("\"%s\"\n", period), jsonOut)
 
 		// validate config write
 		cfg := d.Config()
-		assert.Equal(cfg.Bootstrap, bootstrapConfig)
+		assert.Equal(t, cfg.Bootstrap, bootstrapConfig)
 	})
 
 	t.Run("config <key> <val> updates config", func(t *testing.T) {
-		t.Parallel()
-		assert := assert.New(t)
-		require := require.New(t)
-
 		d := th.NewDaemon(t).Start()
 		defer d.ShutdownSuccess()
 
@@ -72,11 +64,11 @@ func TestConfigDaemon(t *testing.T) {
 		bootstrapConfig := config.NewDefaultConfig().Bootstrap
 		bootstrapConfig.Addresses = []string{"fake1", "fake2"}
 		someJSON, err := json.MarshalIndent(bootstrapConfig, "", "\t")
-		require.NoError(err)
-		assert.Equal(fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
+		require.NoError(t, err)
+		assert.Equal(t, fmt.Sprintf("%s\n", string(someJSON)), jsonOut)
 
 		// validate config write
 		cfg := d.Config()
-		assert.Equal(cfg.Bootstrap, bootstrapConfig)
+		assert.Equal(t, cfg.Bootstrap, bootstrapConfig)
 	})
 }

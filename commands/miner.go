@@ -1,19 +1,22 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -24,43 +27,10 @@ var minerCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"create":        minerCreateCmd,
 		"owner":         minerOwnerCmd,
-		"pledge":        minerPledgeCmd,
 		"power":         minerPowerCmd,
 		"set-price":     minerSetPriceCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
-	},
-}
-
-var minerPledgeCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline:          "View number of pledged sectors for <miner>",
-		ShortDescription: `Shows the number of pledged sectors for the given miner address`,
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "The miner address"),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		var err error
-
-		minerAddr, err := optionalAddr(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getPledge",
-		)
-		if err != nil {
-			return err
-		}
-		pledgeSectors := big.NewInt(0).SetBytes(bytes[0])
-
-		str := fmt.Sprintf("%d", pledgeSectors)
-		re.Emit(str) // nolint: errcheck
-		return nil
+		"list-deals":    minerListDealsCmd,
 	},
 }
 
@@ -73,17 +43,19 @@ type MinerCreateResult struct {
 
 var minerCreateCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Create a new file miner with <pledge> sectors and <collateral> FIL",
+		Tagline: "Create a new file miner with <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
-Collateral must be greater than 0.001 FIL per pledged sector.`,
+Collateral will be committed at the rate of 0.001FIL per sector. When the 
+miner's collateral drops below 0.001FIL, the miner will not be able to commit
+additional sectors.`,
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("pledge", true, false, "The size of the pledge (in sectors) for the miner"),
-		cmdkit.StringArg("collateral", true, false, "The amount of collateral in FIL to be sent (minimum 0.001 FIL per sector)"),
+		cmdkit.StringArg("collateral", true, false, "The amount of collateral, in FIL."),
 	},
 	Options: []cmdkit.Option{
-		cmdkit.StringOption("from", "Address to send from"),
+		cmdkit.StringOption("sectorsize", "size of the sectors which this miner will commit, in bytes"),
+		cmdkit.StringOption("from", "address to send from"),
 		cmdkit.StringOption("peerid", "Base58-encoded libp2p peer ID that the miner will operate"),
 		priceOption,
 		limitOption,
@@ -91,6 +63,29 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
+
+		pp, err := GetPorcelainAPI(env).ProtocolParameters(env.Context())
+		if err != nil {
+			return err
+		}
+
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectorSizes[0])
+		if err != nil {
+			return err
+		}
+
+		// TODO: It may become the case that the protocol does not specify an
+		// enumeration of supported sector sizes, but rather that any sector
+		// size for which a miner has Groth parameters and a verifying key is
+		// supported.
+		// https://github.com/filecoin-project/specs/pull/318
+		if !pp.IsSupportedSectorSize(sectorSize) {
+			supportedStrs := make([]string, len(pp.SupportedSectorSizes))
+			for i, ss := range pp.SupportedSectorSizes {
+				supportedStrs[i] = ss.String()
+			}
+			return fmt.Errorf("unsupported sector size: %s (supported sizes: %s)", sectorSize, strings.Join(supportedStrs, ", "))
+		}
 
 		fromAddr, err := optionalAddr(req.Options["from"])
 		if err != nil {
@@ -109,12 +104,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			pid = GetPorcelainAPI(env).NetworkGetPeerID()
 		}
 
-		pledge, err := strconv.ParseUint(req.Arguments[0], 10, 64)
-		if err != nil {
-			return ErrInvalidPledge
-		}
-
-		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[1])
+		collateral, ok := types.NewAttoFILFromFILString(req.Arguments[0])
 		if !ok {
 			return ErrInvalidCollateral
 		}
@@ -128,9 +118,8 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			usedGas, err := GetPorcelainAPI(env).MinerPreviewCreate(
 				req.Context,
 				fromAddr,
-				pledge,
+				sectorSize,
 				pid,
-				collateral,
 			)
 			if err != nil {
 				return err
@@ -147,7 +136,7 @@ Collateral must be greater than 0.001 FIL per pledged sector.`,
 			fromAddr,
 			gasPrice,
 			gasLimit,
-			pledge,
+			sectorSize,
 			pid,
 			collateral,
 		)
@@ -273,7 +262,7 @@ This command waits for the ask to be mined.`,
 			_, err := fmt.Fprintf(w, `Set price for miner %s to %s.
 	Published ask, cid: %s.
 	Ask confirmed on chain in block: %s.
-	`,
+`,
 				res.MinerSetPriceResponse.MinerAddr.String(),
 				res.MinerSetPriceResponse.Price.String(),
 				res.MinerSetPriceResponse.AddAskCid.String(),
@@ -390,7 +379,7 @@ var minerOwnerCmd = &cmds.Command{
 			return err
 		}
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -429,7 +418,7 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		bytes, _, err := GetPorcelainAPI(env).MessageQuery(
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -438,9 +427,9 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		power := big.NewInt(0).SetBytes(bytes[0])
+		power := types.NewBytesAmountFromBytes(bytes[0])
 
-		bytes, _, err = GetPorcelainAPI(env).MessageQuery(
+		bytes, err = GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			address.StorageMarketAddress,
@@ -449,9 +438,9 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		total := big.NewInt(0).SetBytes(bytes[0])
+		total := types.NewBytesAmountFromBytes(bytes[0])
 
-		str := fmt.Sprintf("%d / %d", power, total)
+		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{
@@ -461,6 +450,54 @@ Values will be output as a ratio where the first number is the miner power and s
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
 			_, err := fmt.Fprintln(w, a)
 			return err
+		}),
+	},
+}
+
+type minerListDealResult struct {
+	Miner       address.Address   `json:"minerAddress"`
+	PieceCid    cid.Cid           `json:"pieceCid"`
+	ProposalCid cid.Cid           `json:"proposalCid"`
+	State       storagedeal.State `json:"state"`
+}
+
+var minerListDealsCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "List all deals received by the miner",
+		ShortDescription: `
+Lists all recorded deals received by the miner from clients on the network. This
+may include pending deals, active deals, finished deals and rejected deals.
+`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		dealsCh, err := GetPorcelainAPI(env).DealMinerLs(req.Context)
+		if err != nil {
+			return err
+		}
+
+		for deal := range dealsCh {
+			if deal.Err != nil {
+				return deal.Err
+			}
+			out := &minerListDealResult{
+				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
+				ProposalCid: deal.Deal.Response.ProposalCid,
+				State:       deal.Deal.Response.State,
+			}
+			if err = re.Emit(out); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Type: minerListDealResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *minerListDealResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
 		}),
 	},
 }

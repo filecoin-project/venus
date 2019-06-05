@@ -3,9 +3,10 @@ package porcelain
 import (
 	"context"
 	"math/big"
+	"time"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -44,8 +45,8 @@ func New(plumbing *plumbing.API) *API {
 }
 
 // ChainBlockHeight determines the current block height
-func (a *API) ChainBlockHeight(ctx context.Context) (*types.BlockHeight, error) {
-	return ChainBlockHeight(ctx, a)
+func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
+	return ChainBlockHeight(a)
 }
 
 // CreatePayments establishes a payment channel and create multiple payments against it
@@ -53,16 +54,24 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
-// SampleChainRandomness produces a slice of random bytes sampled from a TipSet
-// in the blockchain at a given height, useful for things like PoSt challenge seed
-// generation.
-func (a *API) SampleChainRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	return SampleChainRandomness(ctx, a, sampleHeight)
+// DealClientLs returns a channel with all deals placed as a client
+func (a *API) DealClientLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealClientLs(ctx, a)
 }
 
 // DealGet returns a single deal matching a given cid or an error
-func (a *API) DealGet(proposalCid cid.Cid) *storagedeal.Deal {
-	return DealGet(a, proposalCid)
+func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
+	return DealGet(ctx, a, proposalCid)
+}
+
+// DealsLs returns a channel with all deals
+func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealsLs(ctx, a)
+}
+
+// DealMinerLs returns a channel with all deals received as a miner
+func (a *API) DealMinerLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
+	return DealMinerLs(ctx, a)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
@@ -102,22 +111,21 @@ func (a *API) MinerCreate(
 	accountAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-	pledge uint64,
+	sectorSize *types.BytesAmount,
 	pid peer.ID,
 	collateral *types.AttoFIL,
 ) (_ *address.Address, err error) {
-	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, pledge, pid, collateral)
+	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sectorSize, pid, collateral)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
 func (a *API) MinerPreviewCreate(
 	ctx context.Context,
 	fromAddr address.Address,
-	pledge uint64,
+	sectorSize *types.BytesAmount,
 	pid peer.ID,
-	collateral *types.AttoFIL,
 ) (usedGas types.GasUnits, err error) {
-	return MinerPreviewCreate(ctx, a, fromAddr, pledge, pid, collateral)
+	return MinerPreviewCreate(ctx, a, fromAddr, sectorSize, pid)
 }
 
 // MinerGetAsk queries for an ask of the given miner
@@ -128,6 +136,16 @@ func (a *API) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID 
 // MinerGetOwnerAddress queries for the owner address of the given miner
 func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
 	return MinerGetOwnerAddress(ctx, a, minerAddr)
+}
+
+// MinerGetSectorSize queries for the sector size of the given miner.
+func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
+	return MinerGetSectorSize(ctx, a, minerAddr)
+}
+
+// MinerGetLastCommittedSectorID queries for the sector size of the given miner.
+func (a *API) MinerGetLastCommittedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
+	return MinerGetLastCommittedSectorID(ctx, a, minerAddr)
 }
 
 // MinerGetKey queries for the public key of the given miner
@@ -157,16 +175,20 @@ func (a *API) MinerPreviewSetPrice(
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
 }
 
-// GetAndMaybeSetDefaultSenderAddress returns a default address from which to
-// send messsages. If none is set it picks the first address in the wallet and
-// sets it as the default in the config.
-func (a *API) GetAndMaybeSetDefaultSenderAddress() (address.Address, error) {
-	return GetAndMaybeSetDefaultSenderAddress(a)
+// ProtocolParameters fetches the current protocol configuration parameters.
+func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
+	return ProtocolParameters(ctx, a)
 }
 
 // WalletBalance returns the current balance of the given wallet address.
 func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)
+}
+
+// WalletDefaultAddress returns a default wallet address from the config.
+// If none is set it picks the first address in the wallet and sets it as the default in the config.
+func (a *API) WalletDefaultAddress() (address.Address, error) {
+	return WalletDefaultAddress(a)
 }
 
 // PaymentChannelLs lists payment channels for a given payer
@@ -185,11 +207,22 @@ func (a *API) PaymentChannelVoucher(
 	channel *types.ChannelID,
 	amount *types.AttoFIL,
 	validAt *types.BlockHeight,
-) (voucher *paymentbroker.PaymentVoucher, err error) {
-	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt)
+	condition *types.Predicate,
+) (voucher *types.PaymentVoucher, err error) {
+	return PaymentChannelVoucher(ctx, a, fromAddr, channel, amount, validAt, condition)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
+}
+
+// PingMinerWithTimeout pings a storage or retrieval miner, waiting the given
+// timeout and returning desciptive errors.
+func (a *API) PingMinerWithTimeout(
+	ctx context.Context,
+	minerPID peer.ID,
+	timeout time.Duration,
+) error {
+	return PingMinerWithTimeout(ctx, minerPID, timeout, a)
 }

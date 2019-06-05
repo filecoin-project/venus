@@ -43,7 +43,10 @@ function finish {
   rm -f "${UNSEAL_PATH}"
   rm -rf "${CL_REPO_DIR}"
   rm -rf "${BOOTSTRAP_MN_REPO_DIR}"
-  rm -rf "${MN_REPO_DIR}"
+  rm -rf "${STORAGE_MN_REPO_DIR}"
+  rm -rf "${CL_SECTOR_DIR}"
+  rm -rf "${BOOTSTRAP_MN_SECTOR_DIR}"
+  rm -rf "${STORAGE_MN_SECTOR_DIR}"
 }
 
 function free_port {
@@ -51,7 +54,7 @@ function free_port {
 }
 
 function import_private_key {
-  ./go-filecoin wallet import ./fixtures/"$1".key \
+  ./go-filecoin wallet import "${FIXTURES_PATH}/$1".key \
     --repodir="$2"
 }
 
@@ -59,8 +62,9 @@ function init_local_daemon {
   ./go-filecoin init \
     --auto-seal-interval-seconds="${AUTO_SEAL_INTERVAL_SECONDS}" \
     --repodir="$1" \
-    --cmdapiaddr=/ip4/127.0.0.1/tcp/"$2" \
-    --genesisfile="$3"
+    --sectordir="$2" \
+    --cmdapiaddr=/ip4/127.0.0.1/tcp/"$3" \
+    --genesisfile="$4"
 }
 
 function init_devnet_daemon {
@@ -139,19 +143,24 @@ function wait_for_message_in_chain_by_method_and_sender {
   local __chain=""
   local __hodl=""
 
+  # set the maximum number of chain polls to FLOOR(seconds/10)
+  local __polls_remaining=$(($( printf "%.0f" "$4" )/10))
+
   while [ -z $__hodl ]; do
-    __chain=$(chain_ls "$3")
+    # dump chain state to stdout if we time out
+    if [ $__polls_remaining -eq 0 ]
+    then
+        echo "timed out after waiting seconds=$4 for method=$1, sent from address=$2, to be included in repodir=$3 chain..."
+        chain_ls "$3"
+        unset IFS
+        exit 1
+    fi
 
-    __hodl=""
-    for blk in $__chain
-    do
-        __hodl=$(echo "$blk" | jq ".[].messages[].meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
-        if [ ! -z "$__hodl" ]; then
-          break
-        fi
-    done
+    __hodl=$(echo "$(chain_ls "$3")" | jq ".[] | select(.messages != null) | .messages[].meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
 
-    echo "$(date "+%T") - sleeping for 10 seconds"
+    __polls_remaining=$((__polls_remaining - 1))
+    local seconds_remaining=$((__polls_remaining*10))
+    echo "$(date "+%T") - sleeping for 10 seconds ($seconds_remaining seconds remaining - method=$1, sent from address=$2)"
     echo "$__hodl"
     sleep 10
   done
@@ -160,9 +169,9 @@ function wait_for_message_in_chain_by_method_and_sender {
 }
 
 function create_miner {
-  ./go-filecoin miner create 10 100 \
+  ./go-filecoin miner create 100 \
     --gas-limit=10000 \
-    --gas-price=0 \
+    --gas-price=1 \
     --repodir="$1"
 }
 
@@ -171,7 +180,7 @@ function send_fil {
     --from "$1" \
     --value $2 \
     --gas-limit=10000 \
-    --gas-price=0 \
+    --gas-price=1 \
     "$3" \
     --repodir="$4"
 }
@@ -193,12 +202,12 @@ function wait_mpool_size {
 }
 
 function set_price {
-  ./go-filecoin miner set-price --repodir="$3" --gas-price=0 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
+  ./go-filecoin miner set-price --repodir="$3" --gas-price=1 --gas-limit=300 "$1" "$2" --enc=json | jq -r .MinerSetPriceResponse.AddAskCid.'"\/"'
 }
 
 function miner_update_pid {
   ./go-filecoin miner update-peerid "$1" "$2" \
-    --gas-price=0 --gas-limit=300 \
+    --gas-price=1 --gas-limit=300 \
     --repodir="$3"
 }
 

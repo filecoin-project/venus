@@ -3,16 +3,27 @@ package consensus
 import (
 	"context"
 	"math/big"
-	"time"
+
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/metrics"
+	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+var pbTimer *metrics.Float64Timer
+var amTimer *metrics.Float64Timer
+
+func init() {
+	amTimer = metrics.NewTimer("consensus/apply_message", "Duration of message application in milliseconds")
+	pbTimer = metrics.NewTimer("consensus/process_block", "Duration of block processing in milliseconds")
+}
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
@@ -92,13 +103,15 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error) {
-	var emptyResults []*ApplicationResult
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) (results []*ApplicationResult, err error) {
+	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessBlock")
+	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	processBlkTimer := time.Now()
-	defer func() {
-		log.Infof("[TIMER] DefaultProcessor.ProcessBlock BlkCID: %s - elapsed time: %s", blk.Cid(), time.Since(processBlkTimer).Round(time.Millisecond))
-	}()
+	pbsw := pbTimer.Start(ctx)
+	defer pbsw.Stop(ctx)
+
+	var emptyResults []*ApplicationResult
 
 	// find miner's owner address
 	minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
@@ -129,7 +142,11 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (*ProcessTipSetResponse, error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
+	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
+	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
 	var res ProcessTipSetResponse
 	var emptyRes ProcessTipSetResponse
 	h, err := ts.Height()
@@ -139,13 +156,11 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	bh := types.NewBlockHeight(h)
 	msgFilter := make(map[string]struct{})
 
-	tips := ts.ToSlice()
-	types.SortBlocks(tips)
-
 	// TODO: this can be made slightly more efficient by reusing the validation
 	// transition of the first validated block (change would reach here and
 	// consensus functions).
-	for _, blk := range tips {
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
 		// find miner's owner address
 		minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
 		if err != nil {
@@ -259,18 +274,19 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*ApplicationResult, error) {
-
-	// used for log timer call below
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (result *ApplicationResult, err error) {
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	applyMsgTimer := time.Now()
-	defer func() {
-		log.Infof("[TIMER] DefaultProcessor.ApplyMessage CID: %s - elapsed time: %s", msgCid.String(), time.Since(applyMsgTimer).Round(time.Millisecond))
-	}()
+	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ApplyMessage")
+	span.AddAttributes(trace.StringAttribute("message", msgCid.String()))
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	// used for log timer call below
+	amsw := amTimer.Start(ctx)
+	defer amsw.Stop(ctx)
 
 	cachedStateTree := state.NewCachedStateTree(st)
 
@@ -328,6 +344,7 @@ var (
 	// used in any other context as they are an implementation detail.
 	errFromAccountNotFound       = errors.NewRevertError("from (sender) account not found")
 	errGasAboveBlockLimit        = errors.NewRevertError("message gas limit above block gas limit")
+	errGasPriceZero              = errors.NewRevertError("message gas price is zero")
 	errGasTooHighForCurrentBlock = errors.NewRevertError("message gas limit too high for current block")
 	errNonceTooHigh              = errors.NewRevertError("nonce too high")
 	errNonceTooLow               = errors.NewRevertError("nonce too low")

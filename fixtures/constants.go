@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
+	cid "github.com/ipfs/go-cid"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -35,9 +35,9 @@ var TestMiners []string
 type detailsStruct struct {
 	Keys   []*types.KeyInfo
 	Miners []struct {
-		Owner   int
-		Address string
-		Power   uint64
+		Owner               int
+		Address             string
+		NumCommittedSectors uint64
 	}
 	GenesisCid cid.Cid `refmt:",omitempty"`
 }
@@ -48,7 +48,7 @@ func init() {
 		panic(err)
 	}
 
-	detailspath := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/gen.json")
+	detailspath := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/test/gen.json")
 	detailsFile, err := os.Open(detailspath)
 	if err != nil {
 		// fmt.Printf("Fixture data not found. Skipping fixture initialization: %s\n", err)
@@ -96,7 +96,7 @@ func KeyFilePaths() []string {
 	if err != nil {
 		panic(err)
 	}
-	folder := "/src/github.com/filecoin-project/go-filecoin/fixtures/"
+	folder := "/src/github.com/filecoin-project/go-filecoin/fixtures/test/"
 
 	res := make([]string, len(testKeys))
 	for i, k := range testKeys {

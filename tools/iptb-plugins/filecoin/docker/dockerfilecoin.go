@@ -13,10 +13,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin"
 
-	"gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -55,18 +55,12 @@ var DefaultLogLevel = "3"
 // DefaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
 var DefaultLogJSON = "false"
 
-// DefaultUseSmallSectors is the value that will be used for FIL_USE_SMALL_SECTORS
-var DefaultUseSmallSectors = "false"
-
 var (
 	// AttrLogLevel is the key used to set the log level through NewNode attrs
 	AttrLogLevel = "logLevel"
 
 	// AttrLogJSON is the key used to set the node to output json logs
 	AttrLogJSON = "logJSON"
-
-	// AttrUseSmallSectors is the key used to set the node to use small sectors through NewNode attrs
-	AttrUseSmallSectors = "useSmallSectors"
 )
 
 // Dockerfilecoin represents attributes of a dockerized filecoin node.
@@ -82,9 +76,8 @@ type Dockerfilecoin struct {
 	apiaddr      multiaddr.Multiaddr
 	swarmaddr    multiaddr.Multiaddr
 
-	logLevel        string
-	logJSON         string
-	useSmallSectors string
+	logLevel string
+	logJSON  string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -98,7 +91,6 @@ func init() {
 		dockerVolumePrefix := DefaultDockerVolumePrefix
 		logLevel := DefaultLogLevel
 		logJSON := DefaultLogJSON
-		useSmallSectors := DefaultUseSmallSectors
 
 		// the dockerid file is present once the container has started the daemon process,
 		// iptb uses the dockerid file to keep track of the containers its running
@@ -142,10 +134,6 @@ func init() {
 			logLevel = v
 		}
 
-		if v, ok := attrs[AttrUseSmallSectors]; ok {
-			useSmallSectors = v
-		}
-
 		if v, ok := attrs[AttrLogJSON]; ok {
 			logJSON = v
 		}
@@ -158,9 +146,8 @@ func init() {
 			User:         dockerUser,
 			VolumePrefix: dockerVolumePrefix,
 
-			logLevel:        logLevel,
-			logJSON:         logJSON,
-			useSmallSectors: useSmallSectors,
+			logLevel: logLevel,
+			logJSON:  logJSON,
 
 			dir:       dir,
 			apiaddr:   apiaddr,
@@ -402,7 +389,6 @@ func (l *Dockerfilecoin) env() ([]string, error) {
 	envs := os.Environ()
 
 	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_PATH", "/data/filecoin")
-	envs = filecoin.UpdateOrAppendEnv(envs, "FIL_USE_SMALL_SECTORS", l.useSmallSectors)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_LEVEL", l.logLevel)
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-files"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -31,9 +31,10 @@ var addrsCmd = &cmds.Command{
 		Tagline: "Interact with addresses",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"ls":     addrsLsCmd,
-		"new":    addrsNewCmd,
-		"lookup": addrsLookupCmd,
+		"ls":      addrsLsCmd,
+		"new":     addrsNewCmd,
+		"lookup":  addrsLookupCmd,
+		"default": defaultAddressCmd,
 	},
 }
 
@@ -108,6 +109,24 @@ var addrsLookupCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pid string) error {
 			_, err := fmt.Fprintln(w, pid)
+			return err
+		}),
+	},
+}
+
+var defaultAddressCmd = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		addr, err := GetPorcelainAPI(env).WalletDefaultAddress()
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&addressResult{addr.String()})
+	},
+	Type: &addressResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *addressResult) error {
+			_, err := fmt.Fprintln(w, a.Address)
 			return err
 		}),
 	},

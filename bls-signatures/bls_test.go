@@ -3,11 +3,12 @@ package bls
 import (
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBLSSigningAndVerification(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	// generate private keys
 	fooPrivateKey := PrivateKeyGenerate()
@@ -30,16 +31,16 @@ func TestBLSSigningAndVerification(t *testing.T) {
 	barSignature := PrivateKeySign(barPrivateKey, barMessage)
 
 	// assert the foo message was signed with the foo key
-	assert.True(Verify(fooSignature, []Digest{fooDigest}, []PublicKey{fooPublicKey}))
+	assert.True(t, Verify(fooSignature, []Digest{fooDigest}, []PublicKey{fooPublicKey}))
 
 	// assert the bar message was signed with the bar key
-	assert.True(Verify(barSignature, []Digest{barDigest}, []PublicKey{barPublicKey}))
+	assert.True(t, Verify(barSignature, []Digest{barDigest}, []PublicKey{barPublicKey}))
 
 	// assert the foo message was not signed by the bar key
-	assert.False(Verify(fooSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
+	assert.False(t, Verify(fooSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
 
 	// assert the bar/foo message was not signed by the foo/bar key
-	assert.False(Verify(barSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
-	assert.False(Verify(barSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
-	assert.False(Verify(fooSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
+	assert.False(t, Verify(barSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
+	assert.False(t, Verify(barSignature, []Digest{fooDigest}, []PublicKey{barPublicKey}))
+	assert.False(t, Verify(fooSignature, []Digest{barDigest}, []PublicKey{fooPublicKey}))
 }

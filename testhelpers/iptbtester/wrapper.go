@@ -7,13 +7,12 @@ import (
 	"reflect"
 	"testing"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
 
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	iptb "github.com/ipfs/iptb/testbed"
 
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	iptb "github.com/ipfs/iptb/testbed"
 
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -61,8 +60,7 @@ type TestNode struct {
 	iptb.Testbed
 	testbedi.Core
 
-	T       *testing.T
-	Require *require.Assertions
+	T *testing.T
 }
 
 // NewTestNodes returns `count` TestNodes, and error is returned if a failure is
@@ -103,7 +101,6 @@ func NewTestNodes(t *testing.T, count int, attrs map[string]string) ([]*TestNode
 			Testbed: tb,
 			Core:    n,
 			T:       t,
-			Require: require.New(t),
 		}
 		testnodes = append(testnodes, tn)
 	}

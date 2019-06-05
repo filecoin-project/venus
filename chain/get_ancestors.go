@@ -3,17 +3,35 @@ package chain
 import (
 	"context"
 
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type recentAncestorsChainReader interface {
+	GetBlock(context.Context, cid.Cid) (*types.Block, error)
+	GetHead() types.SortedCidSet
+	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+}
+
+// ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.
+var ErrNoCommonAncestor = errors.New("no common ancestor")
+
 // GetRecentAncestorsOfHeaviestChain returns the ancestors of a `TipSet` with
 // height `descendantBlockHeight` in the heaviest chain.
-func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStore, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	return GetRecentAncestors(ctx, chainReader.Head(), chainReader, descendantBlockHeight, consensus.AncestorRoundsNeeded, sampling.LookbackParameter)
+func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader recentAncestorsChainReader, descendantBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	head := chainReader.GetHead()
+	headTipSet, err := chainReader.GetTipSet(head)
+	if err != nil {
+		return nil, err
+	}
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	return GetRecentAncestors(ctx, headTipSet, chainReader, descendantBlockHeight, ancestorHeight, sampling.LookbackParameter)
 }
 
 // GetRecentAncestors returns the ancestors of base as a slice of TipSets.
@@ -40,7 +58,10 @@ func GetRecentAncestorsOfHeaviestChain(ctx context.Context, chainReader ReadStor
 // the length of provingPeriodAncestors may vary (more null blocks -> shorter length).  The
 // length of slice extraRandomnessAncestors is a constant (at least once the
 // chain is longer than lookback tipsets).
-func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader ReadStore, childBH, ancestorRoundsNeeded *types.BlockHeight, lookback uint) ([]types.TipSet, error) {
+func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader recentAncestorsChainReader, childBH, ancestorRoundsNeeded *types.BlockHeight, lookback uint) (ts []types.TipSet, err error) {
+	ctx, span := trace.StartSpan(ctx, "Chain.GetRecentAncestors")
+	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
 	if lookback == 0 {
 		return nil, errors.New("lookback must be greater than 0")
 	}
@@ -48,11 +69,11 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	if earliestAncestorHeight.LessThan(types.NewBlockHeight(0)) {
 		earliestAncestorHeight = types.NewBlockHeight(uint64(0))
 	}
-	historyCh := chainReader.BlockHistory(ctx, base)
 
 	// Step 1 -- gather all tipsets with a height greater than the earliest
 	// possible proving period start still in scope for the given head.
-	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, historyCh, earliestAncestorHeight)
+	iterator := IterAncestors(ctx, chainReader, base)
+	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, iterator, earliestAncestorHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -66,16 +87,12 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	// Get a fresh channel starting at the first tipset in extraRandomnessAncestors.
-	// This is needed because CollectTipSetsOfHeightAtLeast necessarily reads out
-	// the first tipset of extraRandomnessAncestors from the channel so historyCh can't
-	// be reused.
-	tsas, err := chainReader.GetTipSetAndState(ctx, firstExtraRandomnessAncestorsCids.String())
+	lookBackTS, err := chainReader.GetTipSet(firstExtraRandomnessAncestorsCids)
 	if err != nil {
 		return nil, err
 	}
-	historyCh = chainReader.BlockHistory(ctx, tsas.TipSet)
-	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, historyCh, lookback)
+	iterator = IterAncestors(ctx, chainReader, lookBackTS)
+	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
 	}
@@ -83,63 +100,77 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, chainReader Read
 }
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
-// than or equal to minHeight from the input channel.  Precondition, the input
-// channel contains interfaces which may be tipsets or errors.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, ch <-chan interface{}, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+// than or equal to minHeight from the input tipset.
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
 	var ret []types.TipSet
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case raw, more := <-ch:
-			if !more {
-				return ret, nil
-			}
-			switch raw.(type) { // nolint: staticcheck
-			case error:
-				e := raw.(error)
-				return nil, e
-			case types.TipSet:
-				// Add tipset to ancestors.
-				ts := raw.(types.TipSet)
-				h, err := ts.Height()
-				if err != nil {
-					return nil, err
-				}
-
-				// Check for termination.
-				if types.NewBlockHeight(h).LessThan(minHeight) {
-					return ret, nil
-				}
-				ret = append(ret, ts)
-			}
+	var err error
+	var h uint64
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
 		}
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
+		if types.NewBlockHeight(h).LessThan(minHeight) {
+			return ret, nil
+		}
+		ret = append(ret, iterator.Value())
 	}
+	return ret, nil
 }
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, ch <-chan interface{}, n uint) ([]types.TipSet, error) {
+func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]types.TipSet, error) {
 	var ret []types.TipSet
-	for i := uint(0); i < n; i++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case raw, more := <-ch:
-			if !more {
-				return ret, nil
-			}
-			switch raw.(type) { // nolint: staticcheck
-			case error:
-				e := raw.(error)
-				return nil, e
-			case types.TipSet:
-				// Add tipset to ancestors.
-				ts := raw.(types.TipSet)
-				ret = append(ret, ts)
+	var err error
+	for i := uint(0); i < n && !iterator.Complete(); i++ {
+		ret = append(ret, iterator.Value())
+		if err = iterator.Next(); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
+}
+
+// FindCommonAncestor returns the common ancestor of the two tipsets pointed to
+// by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
+// will be returned.
+func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, error) {
+	for !rightIter.Complete() && !leftIter.Complete() {
+		left := leftIter.Value()
+		right := rightIter.Value()
+
+		leftHeight, err := left.Height()
+		if err != nil {
+			return types.UndefTipSet, err
+		}
+		rightHeight, err := right.Height()
+		if err != nil {
+			return types.UndefTipSet, err
+		}
+
+		// Found common ancestor.
+		if left.Equals(right) {
+			return left, nil
+		}
+
+		// Update the pointers.  Pointers move back one tipset if they
+		// point to a tipset at the same height or higher than the
+		// other pointer's tipset.
+		if rightHeight >= leftHeight {
+			if err := rightIter.Next(); err != nil {
+				return types.UndefTipSet, err
 			}
 		}
 
+		if leftHeight >= rightHeight {
+			if err := leftIter.Next(); err != nil {
+				return types.UndefTipSet, err
+			}
+		}
 	}
-	return ret, nil
+	return types.UndefTipSet, ErrNoCommonAncestor
 }

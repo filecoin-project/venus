@@ -6,9 +6,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 // TestView is an implementation of stateView used for testing the chain
@@ -19,13 +19,13 @@ type TestView struct{}
 var _ PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (uint64, error) {
-	return uint64(1), nil
+func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+	return types.NewBytesAmount(1), nil
 }
 
 // HasPower always returns true.
@@ -39,13 +39,6 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.T
 	ts, err := types.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
-}
-
-// RequireTipSetAdd adds a block to the provided tipset and requires that this
-// does not error.
-func RequireTipSetAdd(require *require.Assertions, blk *types.Block, ts types.TipSet) {
-	err := ts.AddBlock(blk)
-	require.NoError(err)
 }
 
 // TestPowerTableView is an implementation of the powertable view used for testing mining

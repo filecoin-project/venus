@@ -5,41 +5,47 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmSz8kAe2JCKp2dWSG8gHSWnwSmne8YfRXTeK5HBmc9L7t/go-ipfs-exchange-offline"
-	ds "gx/ipfs/QmUadX5EcvrBmxAV9sE7wUWtWSqxns5K84qKJBixmcT1w9/go-datastore"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	bserv "github.com/ipfs/go-blockservice"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 
 	. "github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 var testConfig = &GenesisCfg{
-	Keys:     4,
-	PreAlloc: []string{"10", "50"},
-	Miners: []Miner{
+	ProofsMode: types.TestProofsMode,
+	Keys:       4,
+	PreAlloc:   []string{"10", "50"},
+	Miners: []*CreateStorageMinerConfig{
 		{
-			Owner: 0,
-			Power: 50,
+			Owner:               0,
+			NumCommittedSectors: 50,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 		{
-			Owner: 1,
-			Power: 10,
+			Owner:               1,
+			NumCommittedSectors: 10,
+			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
 }
 
 func TestGenGenLoading(t *testing.T) {
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
+
 	fi, err := ioutil.TempFile("", "gengentest")
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	_, err = GenGenesisCar(testConfig, fi, 0)
-	assert.NoError(err)
-	assert.NoError(fi.Close())
+	assert.NoError(t, err)
+	assert.NoError(t, fi.Close())
 
 	td := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
 	defer td.ShutdownSuccess()
@@ -47,12 +53,12 @@ func TestGenGenLoading(t *testing.T) {
 	o := td.Run("actor", "ls").AssertSuccess()
 
 	stdout := o.ReadStdout()
-	assert.Contains(stdout, `"MinerActor"`)
-	assert.Contains(stdout, `"StoragemarketActor"`)
+	assert.Contains(t, stdout, `"MinerActor"`)
+	assert.Contains(t, stdout, `"StoragemarketActor"`)
 }
 
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	var info *RenderedGenInfo
 	for i := 0; i < 50; i++ {
@@ -65,11 +71,11 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 		ctx := context.Background()
 
 		inf, err := GenGen(ctx, testConfig, cst, bstore, 0)
-		assert.NoError(err)
+		assert.NoError(t, err)
 		if info == nil {
 			info = inf
 		} else {
-			assert.Equal(info, inf)
+			assert.Equal(t, info, inf)
 		}
 	}
 }

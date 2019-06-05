@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func BigIntFromString(s string) *big.Int {
@@ -18,215 +19,213 @@ func BigIntFromString(s string) *big.Int {
 }
 
 func TestFILToAttoFIL(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	x := NewAttoFILFromFIL(2)
 	v := big.NewInt(10)
 	v = v.Exp(v, big.NewInt(18), nil)
 	v = v.Mul(v, big.NewInt(2))
-	assert.True(NewAttoFIL(v).Equal(x))
+	assert.True(t, NewAttoFIL(v).Equal(x))
 }
 
 func TestAttoFILCreation(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	a := NewAttoFILFromFIL(123)
-	assert.IsType(&AttoFIL{}, a)
+	assert.IsType(t, &AttoFIL{}, a)
 
 	ab := a.Bytes()
 	b := NewAttoFILFromBytes(ab)
-	assert.Equal(a, b)
+	assert.Equal(t, a, b)
 
 	as := a.String()
-	assert.Equal(as, "123")
+	assert.Equal(t, as, "123")
 	c, ok := NewAttoFILFromFILString(as)
-	assert.True(ok)
-	assert.Equal(a, c)
+	assert.True(t, ok)
+	assert.Equal(t, a, c)
 	d, ok := NewAttoFILFromString("123000000000000000000", 10)
-	assert.True(ok)
-	assert.Equal(a, d)
+	assert.True(t, ok)
+	assert.Equal(t, a, d)
 
 	_, ok = NewAttoFILFromFILString("asdf")
-	assert.False(ok)
+	assert.False(t, ok)
 }
 
 func TestZeroAttoFIL(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	z := NewAttoFILFromFIL(0)
 
-	assert.Equal(z, ZeroAttoFIL)
-	assert.True(z.Equal(nil))
-	assert.True(ZeroAttoFIL.Equal(nil))
+	assert.Equal(t, z, ZeroAttoFIL)
+	assert.True(t, z.Equal(nil))
+	assert.True(t, ZeroAttoFIL.Equal(nil))
 }
 
 func TestAttoFILComparison(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(123)
 	b := NewAttoFILFromFIL(123)
 	c := NewAttoFILFromFIL(456)
 
 	t.Run("handles comparison", func(t *testing.T) {
-		assert := assert.New(t)
+		assert.True(t, a.Equal(b))
+		assert.True(t, b.Equal(a))
 
-		assert.True(a.Equal(b))
-		assert.True(b.Equal(a))
+		assert.False(t, a.Equal(c))
+		assert.False(t, c.Equal(a))
 
-		assert.False(a.Equal(c))
-		assert.False(c.Equal(a))
-
-		assert.True(a.LessThan(c))
-		assert.True(a.LessEqual(c))
-		assert.True(c.GreaterThan(a))
-		assert.True(c.GreaterEqual(a))
-		assert.True(a.GreaterEqual(b))
-		assert.True(a.LessEqual(b))
+		assert.True(t, a.LessThan(c))
+		assert.True(t, a.LessEqual(c))
+		assert.True(t, c.GreaterThan(a))
+		assert.True(t, c.GreaterEqual(a))
+		assert.True(t, a.GreaterEqual(b))
+		assert.True(t, a.LessEqual(b))
 	})
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
-		assert := assert.New(t)
 		d := ZeroAttoFIL.Sub(a)
 		var np *AttoFIL
 
-		assert.True(np.Equal(ZeroAttoFIL))
-		assert.True(ZeroAttoFIL.Equal(np))
-		assert.True(d.LessThan(np))
-		assert.True(np.GreaterThan(d))
-		assert.True(c.GreaterThan(np))
-		assert.True(np.LessThan(c))
+		assert.True(t, np.Equal(ZeroAttoFIL))
+		assert.True(t, ZeroAttoFIL.Equal(np))
+		assert.True(t, d.LessThan(np))
+		assert.True(t, np.GreaterThan(d))
+		assert.True(t, c.GreaterThan(np))
+		assert.True(t, np.LessThan(c))
 	})
 }
 
 func TestAttoFILAddition(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(123)
 	b := NewAttoFILFromFIL(456)
 
 	t.Run("handles addition", func(t *testing.T) {
-		assert := assert.New(t)
-
 		aStr := a.String()
 		bStr := b.String()
 		sum := a.Add(b)
 
-		assert.Equal(NewAttoFILFromFIL(579), sum)
+		assert.Equal(t, NewAttoFILFromFIL(579), sum)
 
 		// Storage is not reused
-		assert.NotEqual(&a, &sum)
-		assert.NotEqual(&b, &sum)
+		assert.NotEqual(t, &a, &sum)
+		assert.NotEqual(t, &b, &sum)
 
 		// Values have not changed.
-		assert.Equal(aStr, a.String())
-		assert.Equal(bStr, b.String())
+		assert.Equal(t, aStr, a.String())
+		assert.Equal(t, bStr, b.String())
 	})
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
-		assert := assert.New(t)
 		var x, z *AttoFIL
 
-		assert.True(z.Add(a).Equal(a))
-		assert.True(a.Add(z).Equal(a))
-		assert.True(a.Add(nil).Equal(a))
-		assert.True(z.Add(x).Equal(nil))
-		assert.True(z.Add(nil).Equal(x))
+		assert.True(t, z.Add(a).Equal(a))
+		assert.True(t, a.Add(z).Equal(a))
+		assert.True(t, a.Add(nil).Equal(a))
+		assert.True(t, z.Add(x).Equal(nil))
+		assert.True(t, z.Add(nil).Equal(x))
 	})
 }
 
 func TestAttoFILSubtraction(t *testing.T) {
+	tf.UnitTest(t)
+
 	a := NewAttoFILFromFIL(456)
 	b := NewAttoFILFromFIL(123)
 
 	t.Run("handles subtraction", func(t *testing.T) {
-		assert := assert.New(t)
-
 		aStr := a.String()
 		bStr := b.String()
 		delta := a.Sub(b)
 
-		assert.Equal(delta, NewAttoFILFromFIL(333))
+		assert.Equal(t, delta, NewAttoFILFromFIL(333))
 
 		// Storage is not reused
-		assert.NotEqual(&a, &delta)
-		assert.NotEqual(&b, &delta)
+		assert.NotEqual(t, &a, &delta)
+		assert.NotEqual(t, &b, &delta)
 
 		// Values have not changed.
-		assert.Equal(aStr, a.String())
-		assert.Equal(bStr, b.String())
+		assert.Equal(t, aStr, a.String())
+		assert.Equal(t, bStr, b.String())
 	})
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
-		assert := assert.New(t)
 		var z *AttoFIL
 
-		assert.True(a.Sub(z).Equal(a))
-		assert.True(a.Sub(nil).Equal(a))
-		assert.True(z.Sub(z).Equal(z))
-		assert.True(z.Sub(nil).Equal(nil))
+		assert.True(t, a.Sub(z).Equal(a))
+		assert.True(t, a.Sub(nil).Equal(a))
+		assert.True(t, z.Sub(z).Equal(z))
+		assert.True(t, z.Sub(nil).Equal(nil))
 	})
 }
 
 func TestMulInt(t *testing.T) {
+	tf.UnitTest(t)
+
 	multiplier := big.NewInt(25)
 	attoFIL := AttoFIL{val: big.NewInt(1000)}
 
 	t.Run("correctly multiplies the values and returns an AttoFIL", func(t *testing.T) {
-		assert := assert.New(t)
 		expected := AttoFIL{val: big.NewInt(25000)}
-		assert.Equal(attoFIL.MulBigInt(multiplier), &expected)
+		assert.Equal(t, attoFIL.MulBigInt(multiplier), &expected)
 	})
 }
 
 func TestDivCeil(t *testing.T) {
+	tf.UnitTest(t)
+
 	x := AttoFIL{val: big.NewInt(200)}
 
 	t.Run("returns exactly the dividend when y divides x", func(t *testing.T) {
-		assert := assert.New(t)
 		actual := x.DivCeil(&AttoFIL{val: big.NewInt(10)})
-		assert.Equal(NewAttoFIL(big.NewInt(20)), actual)
+		assert.Equal(t, NewAttoFIL(big.NewInt(20)), actual)
 	})
 
 	t.Run("rounds up when y does not divide x", func(t *testing.T) {
-		assert := assert.New(t)
 		actual := x.DivCeil(&AttoFIL{val: big.NewInt(9)})
-		assert.Equal(NewAttoFIL(big.NewInt(23)), actual)
+		assert.Equal(t, NewAttoFIL(big.NewInt(23)), actual)
 	})
 }
 
 func TestPriceCalculation(t *testing.T) {
+	tf.UnitTest(t)
+
 	price := NewAttoFILFromFIL(123)
 	numBytes := NewBytesAmount(10)
 
 	t.Run("calculates prices by multiplying with BytesAmount", func(t *testing.T) {
-		assert := assert.New(t)
 		priceStr := price.String()
 		numBytesStr := numBytes.String()
 
 		total := price.CalculatePrice(numBytes)
-		assert.Equal(total, NewAttoFILFromFIL(1230))
+		assert.Equal(t, total, NewAttoFILFromFIL(1230))
 
 		// Storage is not reused
-		assert.NotEqual(&price, &total)
-		assert.NotEqual(&numBytes, &total)
+		assert.NotEqual(t, &price, &total)
+		assert.NotEqual(t, &numBytes, &total)
 
 		// Values have not changed.
-		assert.Equal(priceStr, price.String())
-		assert.Equal(numBytesStr, numBytes.String())
+		assert.Equal(t, priceStr, price.String())
+		assert.Equal(t, numBytesStr, numBytes.String())
 	})
 
 	t.Run("treats nil pointers as zero", func(t *testing.T) {
-		assert := assert.New(t)
 		var nt *AttoFIL
 		var nb *BytesAmount
 
-		assert.Equal(price.CalculatePrice(nil), ZeroAttoFIL)
-		assert.Equal(nt.CalculatePrice(numBytes), ZeroAttoFIL)
-		assert.Equal(price.CalculatePrice(nb), ZeroAttoFIL)
-		assert.Equal(nt.CalculatePrice(nb), ZeroAttoFIL)
+		assert.Equal(t, price.CalculatePrice(nil), ZeroAttoFIL)
+		assert.Equal(t, nt.CalculatePrice(numBytes), ZeroAttoFIL)
+		assert.Equal(t, price.CalculatePrice(nb), ZeroAttoFIL)
+		assert.Equal(t, nt.CalculatePrice(nb), ZeroAttoFIL)
 	})
 }
 
 func TestAttoFILCborMarshaling(t *testing.T) {
-	t.Run("CBOR decode(encode(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
-		assert := assert.New(t)
+	tf.UnitTest(t)
 
+	t.Run("CBOR decode(encode(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
@@ -234,208 +233,197 @@ func TestAttoFILCborMarshaling(t *testing.T) {
 			postDecode := AttoFIL{}
 
 			out, err := cbor.DumpObject(preEncode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			err = cbor.DecodeInto(out, &postDecode)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
+			assert.True(t, preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
 		}
 	})
 	t.Run("cannot CBOR encode nil as *AttoFIL", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *AttoFIL
 
 		out, err := cbor.DumpObject(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := cbor.DumpObject(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }
 
 func TestAttoFILJsonMarshaling(t *testing.T) {
-	t.Run("JSON unmarshal(marshal(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
-		assert := assert.New(t)
+	tf.UnitTest(t)
 
+	t.Run("JSON unmarshal(marshal(AttoFIL)) == identity(AttoFIL)", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		for i := 0; i < 100; i++ {
 			toBeMarshaled := NewAttoFILFromFIL(rng.Uint64())
 
 			marshaled, err := json.Marshal(toBeMarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var unmarshaled AttoFIL
 			err = json.Unmarshal(marshaled, &unmarshaled)
-			assert.NoError(err)
+			assert.NoError(t, err)
 
-			assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
+			assert.True(t, toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 		}
 	})
 
 	t.Run("unmarshal(marshal(AttoFIL)) == AttoFIL for decimal FIL", func(t *testing.T) {
-		assert := assert.New(t)
-
 		toBeMarshaled, _ := NewAttoFILFromFILString("912129289198393.123456789012345678")
 
 		marshaled, err := json.Marshal(toBeMarshaled)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		var unmarshaled AttoFIL
 		err = json.Unmarshal(marshaled, &unmarshaled)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.True(toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
+		assert.True(t, toBeMarshaled.Equal(&unmarshaled), "should be equal - toBeMarshaled: %s unmarshaled: %s)", toBeMarshaled.String(), unmarshaled.String())
 	})
 
 	t.Run("cannot JSON marshall nil as *AttoFIL", func(t *testing.T) {
-		assert := assert.New(t)
-
 		var np *AttoFIL
 
 		out, err := json.Marshal(np)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		out2, err := json.Marshal(ZeroAttoFIL)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
-		assert.NotEqual(out, out2)
+		assert.NotEqual(t, out, out2)
 	})
 }
 
 func TestAttoFILIsPositive(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
 	var np *AttoFIL
 
 	t.Run("returns false if zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(z.IsPositive())
-		assert.False(np.IsPositive())
+		assert.False(t, z.IsPositive())
+		assert.False(t, np.IsPositive())
 	})
 
 	t.Run("returns true if greater than zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.True(p.IsPositive())
+		assert.True(t, p.IsPositive())
 	})
 
 	t.Run("returns false if less than zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(n.IsPositive(), "IsPositive(%s)", n.String())
+		assert.False(t, n.IsPositive(), "IsPositive(%s)", n.String())
 	})
 }
 
 func TestAttoFILIsNegative(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
 	var np *AttoFIL
 
 	t.Run("returns false if zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(z.IsNegative())
-		assert.False(np.IsNegative())
+		assert.False(t, z.IsNegative())
+		assert.False(t, np.IsNegative())
 	})
 
 	t.Run("returns false if greater than zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(p.IsNegative())
+		assert.False(t, p.IsNegative())
 	})
 
 	t.Run("returns true if less than zero", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.True(n.IsNegative(), "IsNegative(%s)", n.String())
+		assert.True(t, n.IsNegative(), "IsNegative(%s)", n.String())
 	})
 }
 
 func TestAttoFILIsZero(t *testing.T) {
+	tf.UnitTest(t)
+
 	p := NewAttoFILFromFIL(100)      // positive
 	z := NewAttoFILFromFIL(0)        // zero
 	n := NewAttoFILFromFIL(0).Sub(p) // negative
 	var np *AttoFIL
 
 	t.Run("returns true if zero token", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.True(z.IsZero())
-		assert.True(np.IsZero())
+		assert.True(t, z.IsZero())
+		assert.True(t, np.IsZero())
 	})
 
 	t.Run("returns false if greater than zero token", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(p.IsZero())
+		assert.False(t, p.IsZero())
 	})
 
 	t.Run("returns false if less than zero token", func(t *testing.T) {
-		assert := assert.New(t)
-		assert.False(n.IsZero())
+		assert.False(t, n.IsZero())
 	})
 }
 
 func TestString(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	// A very large number of attoFIL
 	attoFIL, _ := new(big.Int).SetString("912129289198393123456789012345678", 10)
-	assert.Equal("912129289198393.123456789012345678", NewAttoFIL(attoFIL).String())
+	assert.Equal(t, "912129289198393.123456789012345678", NewAttoFIL(attoFIL).String())
 
 	// A multiple of 1000 attoFIL
 	attoFIL, _ = new(big.Int).SetString("9123372036854775000", 10)
-	assert.Equal("9.123372036854775", NewAttoFIL(attoFIL).String())
+	assert.Equal(t, "9.123372036854775", NewAttoFIL(attoFIL).String())
 
 	// Less than 10^18 attoFIL
 	attoFIL, _ = new(big.Int).SetString("36854775878", 10)
-	assert.Equal("0.000000036854775878", NewAttoFIL(attoFIL).String())
+	assert.Equal(t, "0.000000036854775878", NewAttoFIL(attoFIL).String())
 
 	// A multiple of 100 attFIL that is less than 10^18
 	attoFIL, _ = new(big.Int).SetString("36854775800", 10)
-	assert.Equal("0.0000000368547758", NewAttoFIL(attoFIL).String())
+	assert.Equal(t, "0.0000000368547758", NewAttoFIL(attoFIL).String())
 
 	// A number of attFIL that is an integer number of FIL
 	attoFIL, _ = new(big.Int).SetString("123000000000000000000", 10)
-	assert.Equal("123", NewAttoFIL(attoFIL).String())
+	assert.Equal(t, "123", NewAttoFIL(attoFIL).String())
 }
 
 func TestNewAttoFILFromFILString(t *testing.T) {
-	t.Run("parses legitimate values correctly", func(t *testing.T) {
-		assert := assert.New(t)
+	tf.UnitTest(t)
 
+	t.Run("parses legitimate values correctly", func(t *testing.T) {
 		attoFIL, _ := NewAttoFILFromFILString(".12345")
-		assert.Equal(BigIntFromString("123450000000000000"), attoFIL.val)
+		assert.Equal(t, BigIntFromString("123450000000000000"), attoFIL.val)
 
 		attoFIL, _ = NewAttoFILFromFILString("000000.000000")
-		assert.Equal(BigIntFromString("0"), attoFIL.val)
+		assert.Equal(t, BigIntFromString("0"), attoFIL.val)
 
 		attoFIL, _ = NewAttoFILFromFILString("0000.12345")
-		assert.Equal(BigIntFromString("123450000000000000"), attoFIL.val)
+		assert.Equal(t, BigIntFromString("123450000000000000"), attoFIL.val)
 
 		attoFIL, _ = NewAttoFILFromFILString("12345.0")
-		assert.Equal(BigIntFromString("12345000000000000000000"), attoFIL.val)
+		assert.Equal(t, BigIntFromString("12345000000000000000000"), attoFIL.val)
 
 		attoFIL, _ = NewAttoFILFromFILString("12345")
-		assert.Equal(BigIntFromString("12345000000000000000000"), attoFIL.val)
+		assert.Equal(t, BigIntFromString("12345000000000000000000"), attoFIL.val)
 	})
 
 	t.Run("rejects nonsense values", func(t *testing.T) {
-		assert := assert.New(t)
-
 		_, ok := NewAttoFILFromFILString("notanumber")
-		assert.False(ok)
+		assert.False(t, ok)
 
 		_, ok = NewAttoFILFromFILString("384042.wat")
-		assert.False(ok)
+		assert.False(t, ok)
 
 		_, ok = NewAttoFILFromFILString("78wat")
-		assert.False(ok)
+		assert.False(t, ok)
 
 		_, ok = NewAttoFILFromFILString("1234567890abcde")
-		assert.False(ok)
+		assert.False(t, ok)
 
 		_, ok = NewAttoFILFromFILString("127.0.0.1")
-		assert.False(ok)
+		assert.False(t, ok)
 	})
 }

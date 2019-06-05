@@ -4,32 +4,33 @@ import (
 	"encoding/json"
 	"testing"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUint64CBor(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	v := Uint64(64)
 	m, err := cbor.DumpObject(v)
-	assert.NoError(err)
+	assert.NoError(t, err)
 	var got Uint64
 	err = cbor.DecodeInto(m, &got)
-	assert.NoError(err)
-	assert.Equal(v, got)
+	assert.NoError(t, err)
+	assert.Equal(t, v, got)
 }
 
 func TestUint64Json(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	v := Uint64(64)
 	m, err := json.Marshal(v)
-	assert.NoError(err)
-	assert.Equal(`"64"`, string(m))
+	assert.NoError(t, err)
+	assert.Equal(t, `"64"`, string(m))
 	var got Uint64
 	err = json.Unmarshal(m, &got)
-	assert.NoError(err)
-	assert.Equal(v, got)
+	assert.NoError(t, err)
+	assert.Equal(t, v, got)
 }

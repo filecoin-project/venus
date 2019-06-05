@@ -3,13 +3,14 @@ package types
 import (
 	"testing"
 
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMessageReceiptMarshal(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	cases := []MessageReceipt{
 		{
@@ -24,12 +25,12 @@ func TestMessageReceiptMarshal(t *testing.T) {
 
 	for _, expected := range cases {
 		bytes, err := cbor.DumpObject(expected)
-		assert.NoError(err)
+		assert.NoError(t, err)
 
 		var actual MessageReceipt
 		err = cbor.DecodeInto(bytes, &actual)
 
-		assert.NoError(err)
-		assert.Equal(expected, actual)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
 	}
 }

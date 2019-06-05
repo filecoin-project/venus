@@ -3,23 +3,21 @@ package types
 import (
 	"bytes"
 	"fmt"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
+	"github.com/ipfs/go-cid"
+	"github.com/minio/blake2b-simd"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 // NewTestPoSt creates a trivial, right-sized byte slice for a Proof of Spacetime.
-func NewTestPoSt() [192]byte {
-	var newProof [192]byte
-	return newProof
+func NewTestPoSt() []byte {
+	return make([]byte, OnePoStProofPartition.ProofLen())
 }
 
 // MockRecoverer implements the Recoverer interface
@@ -59,8 +57,8 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 	return ms
 }
 
-// NewMockSignersAndKeyInfo is a convenience function to generate a given number of (mock)
-// signers with their KeyInfo
+// NewMockSignersAndKeyInfo is a convenience function to generate a mock
+// signers with some keys.
 func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
 	ki := MustGenerateKeyInfo(numSigners, GenerateKeyInfoSeed())
 	signer := NewMockSigner(ki)
@@ -97,7 +95,7 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 }
 
 // CreateTicket is effectively a duplicate of Wallet CreateTicket for testing purposes.
-func (ms MockSigner) CreateTicket(proof proofs.PoStProof, signerPubKey []byte) (Signature, error) {
+func (ms MockSigner) CreateTicket(proof PoStProof, signerPubKey []byte) (Signature, error) {
 	var ticket Signature
 
 	signerAddr, err := ms.GetAddressForPubKey(signerPubKey)
@@ -216,9 +214,9 @@ func NewBlockForTest(parent *Block, nonce uint64) *Block {
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*Block) TipSet {
+func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
 	ts, err := NewTipSet(blks...)
-	require.NoError(err)
+	require.NoError(t, err)
 	return ts
 }
 
@@ -230,6 +228,7 @@ func NewMsgs(n int) []*Message {
 	msgs := make([]*Message, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = newMsg()
+		msgs[i].Nonce = Uint64(i)
 	}
 	return msgs
 }
@@ -237,11 +236,18 @@ func NewMsgs(n int) []*Message {
 // NewSignedMsgs returns n signed messages. The messages returned are unique to this invocation
 // but are not unique globally (ie, a second call to NewSignedMsgs will return the same
 // set of messages).
-func NewSignedMsgs(n int, ms MockSigner) []*SignedMessage {
-	newSmsg := NewSignedMessageForTestGetter(ms)
+func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
+	var err error
+	newMsg := NewMessageForTestGetter()
 	smsgs := make([]*SignedMessage, n)
-	for i := 0; i < n; i++ {
-		smsgs[i] = newSmsg()
+	for i := uint(0); i < n; i++ {
+		msg := newMsg()
+		msg.From = ms.Addresses[0]
+		msg.Nonce = Uint64(i)
+		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(1), NewGasUnits(0))
+		if err != nil {
+			panic(err)
+		}
 	}
 	return smsgs
 }
@@ -310,15 +316,15 @@ type HasCid interface {
 }
 
 // AssertHaveSameCid asserts that two values have identical CIDs.
-func AssertHaveSameCid(a *assert.Assertions, m HasCid, n HasCid) {
+func AssertHaveSameCid(t *testing.T, m HasCid, n HasCid) {
 	if !m.Cid().Equals(n.Cid()) {
-		a.Fail("CIDs don't match", "not equal %v %v", m.Cid(), n.Cid())
+		assert.Fail(t, "CIDs don't match", "not equal %v %v", m.Cid(), n.Cid())
 	}
 }
 
 // AssertCidsEqual asserts that two CIDS are identical.
-func AssertCidsEqual(a *assert.Assertions, m cid.Cid, n cid.Cid) {
+func AssertCidsEqual(t *testing.T, m cid.Cid, n cid.Cid) {
 	if !m.Equals(n) {
-		a.Fail("CIDs don't match", "not equal %v %v", m, n)
+		assert.Fail(t, "CIDs don't match", "not equal %v %v", m, n)
 	}
 }

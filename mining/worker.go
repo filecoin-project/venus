@@ -8,15 +8,14 @@ import (
 	"context"
 	"time"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -176,7 +175,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
-	if len(base) == 0 {
+	if !base.Defined() {
 		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
 		return false
@@ -202,7 +201,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
-	var proof proofs.PoStProof
+	var proof types.PoStProof
 	var ticket []byte
 	select {
 	case <-ctx.Done():
@@ -213,7 +212,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			log.Errorf("Worker.Mine got zero value from channel prChRead")
 			return false
 		}
-		copy(proof[:], prChRead[:])
+		proof := append(types.PoStProof{}, prChRead[:]...)
 		ticket, err = consensus.CreateTicket(proof, w.minerPubKey, w.workerSigner)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)
@@ -246,8 +245,8 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 
 // TODO: Actually use the results of the PoST once it is implemented.
 // Currently createProof just passes the challenge seed through.
-func createProof(challengeSeed proofs.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan proofs.PoStChallengeSeed {
-	c := make(chan proofs.PoStChallengeSeed)
+func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan types.PoStChallengeSeed {
+	c := make(chan types.PoStChallengeSeed)
 	go func() {
 		// TODO send new PoST on channel once we can create it
 		//  https://github.com/filecoin-project/go-filecoin/issues/1791

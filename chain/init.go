@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"gx/ipfs/QmNf3wujpV2Y7Lnj2hy2UrmuX8bhMDStRHbnSLh7Ypf36h/go-hamt-ipld"
-	bstore "gx/ipfs/QmRu7tiRnFk9mMPpVECQTBQJqXtmG132jJxA1w9A7TtpBz/go-ipfs-blockstore"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -14,7 +14,7 @@ import (
 )
 
 // Init initializes a DefaultSycner in the given repo.
-func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.CborIpldStore, gen consensus.GenesisInitFunc) (*DefaultStore, error) {
+func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.CborIpldStore, gen consensus.GenesisInitFunc) (*Store, error) {
 	// TODO the following should be wrapped in the chain.Store or a sub
 	// interface.
 	// Generate the genesis tipset.
@@ -26,7 +26,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Cbor
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
-	chainStore := NewDefaultStore(r.ChainDatastore(), cst, genesis.Cid())
+	chainStore := NewStore(r.ChainDatastore(), genesis.Cid())
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetAndState{

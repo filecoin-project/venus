@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
+	"github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
@@ -37,9 +37,6 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 	}
 
 	_, err = node.MinerUpdatePeerid(ctx, minerAddress, node.PeerID, fast.AOFromAddr(wallet[0]), fast.AOPrice(big.NewFloat(300)), fast.AOLimit(300))
-	if err != nil {
-		return err
-	}
 
-	return node.MiningStart(ctx)
+	return err
 }

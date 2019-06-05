@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -84,6 +84,24 @@ func (ti *TipIndex) Get(tsKey string) (*TipSetAndState, error) {
 		return nil, ErrNotFound
 	}
 	return tsas, nil
+}
+
+// GetTipSet returns the tipset from func (ti *TipIndex) Get(tsKey string)
+func (ti *TipIndex) GetTipSet(tsKey string) (types.TipSet, error) {
+	tsas, err := ti.Get(tsKey)
+	if err != nil {
+		return types.UndefTipSet, err
+	}
+	return tsas.TipSet, nil
+}
+
+// GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipIndex) Get(tsKey string).
+func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid, error) {
+	tsas, err := ti.Get(tsKey)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return tsas.TipSetStateRoot, nil
 }
 
 // Has returns true iff the tipset with the input ID is stored in

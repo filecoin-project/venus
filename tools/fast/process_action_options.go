@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // ActionOption is used to pass optional arguments to actions.
@@ -96,5 +97,21 @@ func AOValue(value int) ActionOption {
 	sValue := fmt.Sprintf("%d", value)
 	return func() []string {
 		return []string{"--value", sValue}
+	}
+}
+
+// AOPayer provides the `--payer=<addr>` option to actions
+func AOPayer(payer address.Address) ActionOption {
+	sPayer := payer.String()
+	return func() []string {
+		return []string{"--payer", sPayer}
+	}
+}
+
+// AOValidAt provides the `--validat=<blockheight>` option to actions
+func AOValidAt(bh *types.BlockHeight) ActionOption {
+	sBH := bh.String()
+	return func() []string {
+		return []string{"--validat", sBH}
 	}
 }

@@ -1,19 +1,20 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
 
-	"gx/ipfs/QmQmhotPUzVrMEWNK3x1R5jQ5ZHWyL7tVUrmRPjrBrvyCb/go-ipfs-files"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/Qmde5VP1qUkyQXKCfmEUA7bP64V2HAptbJ7phuPp7jXWwg/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf46mr235gtyxizkKUkTH5fo62Thza2zwXR4DWC7rkoqF/go-ipfs-cmds"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var clientCmd = &cmds.Command{
@@ -26,6 +27,7 @@ var clientCmd = &cmds.Command{
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
+		"list-deals":           clientListDealsCmd,
 		"payments":             paymentsCmd,
 	},
 }
@@ -145,7 +147,7 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 			return err
 		}
 
-		resp, err := GetAPI(env).Client().ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
+		resp, err := GetStorageAPI(env).ProposeStorageDeal(req.Context, data, miner, askid, duration, allowDuplicates)
 		if err != nil {
 			return err
 		}
@@ -181,7 +183,7 @@ format is specified with the --enc flag.
 			return err
 		}
 
-		resp, err := GetAPI(env).Client().QueryStorageDeal(req.Context, propcid)
+		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, propcid)
 		if err != nil {
 			return err
 		}
@@ -229,6 +231,54 @@ respectively.
 	},
 }
 
+type clientListDealResult struct {
+	Miner       address.Address   `json:"minerAddress"`
+	PieceCid    cid.Cid           `json:"pieceCid"`
+	ProposalCid cid.Cid           `json:"proposalCid"`
+	State       storagedeal.State `json:"state"`
+}
+
+var clientListDealsCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "List all deals made by this client",
+		ShortDescription: `
+Lists all recorded deals made by this client with miners on the network. This
+may include pending deals, active deals, finished deals and cancelled deals.
+`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		dealsCh, err := GetPorcelainAPI(env).DealClientLs(req.Context)
+		if err != nil {
+			return err
+		}
+
+		for deal := range dealsCh {
+			if deal.Err != nil {
+				return deal.Err
+			}
+			out := &clientListDealResult{
+				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
+				ProposalCid: deal.Deal.Response.ProposalCid,
+				State:       deal.Deal.Response.State,
+			}
+			if err = re.Emit(out); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Type: clientListDealResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *clientListDealResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
+		}),
+	},
+}
+
 var paymentsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "List payments for a given deal",
@@ -244,16 +294,16 @@ var paymentsCmd = &cmds.Command{
 			return fmt.Errorf("invalid channel id")
 		}
 
-		vouchers, err := GetAPI(env).Client().Payments(req.Context, dealCid)
+		vouchers, err := GetStorageAPI(env).Payments(req.Context, dealCid)
 		if err != nil {
 			return err
 		}
 
 		return re.Emit(vouchers)
 	},
-	Type: []*paymentbroker.PaymentVoucher{},
+	Type: []*types.PaymentVoucher{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*paymentbroker.PaymentVoucher) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, vouchers []*types.PaymentVoucher) error {
 			if _, err := fmt.Println("Channel\tAmount\tValidAt\tEncoded Voucher"); err != nil {
 				return err
 			}

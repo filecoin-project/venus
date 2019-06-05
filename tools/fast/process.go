@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"io"
 
+	logging "github.com/ipfs/go-log"
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
+	"github.com/libp2p/go-libp2p-peer"
 
+	fcconfig "github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
 	dockerplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/docker"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -55,6 +56,7 @@ func init() {
 // IPTBCoreExt is an extended interface of the iptb.Core. It defines additional requirement.
 type IPTBCoreExt interface {
 	testbedi.Core
+	testbedi.Config
 
 	// StderrReader is require to gather daemon logs during action execution
 	StderrReader() (io.ReadCloser, error)
@@ -150,7 +152,8 @@ func (f *Filecoin) StopDaemon(ctx context.Context) error {
 	return f.teardownStderrCapturing()
 }
 
-// Shell starts a user shell targeting the filecoin process
+// Shell starts a user shell targeting the filecoin process. Exact behavior is plugin
+// dependent. Please refer to the plugin documentation for more information.
 func (f *Filecoin) Shell() error {
 	return f.core.Shell(f.ctx, []testbedi.Core{})
 }
@@ -178,6 +181,11 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 	} else {
 		fmt.Fprintln(w, "{}") // nolint: errcheck
 	}
+}
+
+// LastCmdStdErr is the standard error output from the last command run
+func (f *Filecoin) LastCmdStdErr() io.ReadCloser {
+	return f.lastCmdOutput.Stderr()
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.
@@ -230,4 +238,23 @@ func (f *Filecoin) RunCmdLDJSONWithStdin(ctx context.Context, stdin io.Reader, a
 	}
 
 	return json.NewDecoder(out.Stdout()), nil
+}
+
+// Config return the config file of the FAST process.
+func (f *Filecoin) Config() (*fcconfig.Config, error) {
+	fcc, err := f.core.Config()
+	if err != nil {
+		return nil, err
+	}
+	cfg, ok := fcc.(*fcconfig.Config)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast filecoin config struct")
+	}
+
+	return cfg, nil
+}
+
+// WriteConfig writes the config `cgf` to the FAST process's repo.
+func (f *Filecoin) WriteConfig(cfg *fcconfig.Config) error {
+	return f.core.WriteConfig(cfg)
 }

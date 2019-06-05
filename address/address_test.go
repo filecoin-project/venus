@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmSKyB5faguXT4NqbrXpnRXqaVj5DhSm7x9BtzFydBY1UK/go-leb128"
+	"github.com/filecoin-project/go-leb128"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/bls-signatures"
 	"github.com/filecoin-project/go-filecoin/crypto"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func init() {
@@ -22,22 +23,24 @@ func init() {
 }
 
 func TestRandomIDAddress(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	addr, err := NewIDAddress(uint64(rand.Int()))
-	assert.NoError(err)
-	assert.Equal(ID, addr.Protocol())
+	assert.NoError(t, err)
+	assert.Equal(t, ID, addr.Protocol())
 
 	str, err := encode(Testnet, addr)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	maybe, err := decode(str)
-	assert.NoError(err)
-	assert.Equal(addr, maybe)
+	assert.NoError(t, err)
+	assert.Equal(t, addr, maybe)
 
 }
 
 func TestVectorsIDAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    uint64
 		expected string
@@ -55,55 +58,56 @@ func TestVectorsIDAddress(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing actorID address: %s", tc.expected), func(t *testing.T) {
-			assert := assert.New(t)
-
 			// Round trip encoding and decoding from string
 			addr, err := NewIDAddress(tc.input)
-			assert.NoError(err)
-			assert.Equal(tc.expected, addr.String())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, addr.String())
 
 			maybeAddr, err := NewFromString(tc.expected)
-			assert.NoError(err)
-			assert.Equal(ID, maybeAddr.Protocol())
-			assert.Equal(tc.input, leb128.ToUInt64(maybeAddr.Payload()))
+			assert.NoError(t, err)
+			assert.Equal(t, ID, maybeAddr.Protocol())
+			assert.Equal(t, tc.input, leb128.ToUInt64(maybeAddr.Payload()))
 
 			// Round trip to and from bytes
 			maybeAddrBytes, err := NewFromBytes(maybeAddr.Bytes())
-			assert.NoError(err)
-			assert.Equal(maybeAddr, maybeAddrBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, maybeAddr, maybeAddrBytes)
 
 			// Round trip encoding and decoding json
 			b, err := addr.MarshalJSON()
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
-			assert.Equal(addr, newAddr)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(t, err)
+			assert.Equal(t, addr, newAddr)
 		})
 	}
 
 }
 
 func TestSecp256k1Address(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	sk, err := crypto.GenerateKey()
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	addr, err := NewSecp256k1Address(crypto.PublicKey(sk))
-	assert.NoError(err)
-	assert.Equal(SECP256K1, addr.Protocol())
+	assert.NoError(t, err)
+	assert.Equal(t, SECP256K1, addr.Protocol())
 
 	str, err := encode(Mainnet, addr)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	maybe, err := decode(str)
-	assert.NoError(err)
-	assert.Equal(addr, maybe)
+	assert.NoError(t, err)
+	assert.Equal(t, addr, maybe)
 
 }
 
 func TestVectorSecp256k1Address(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -149,54 +153,55 @@ func TestVectorSecp256k1Address(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing secp256k1 address: %s", tc.expected), func(t *testing.T) {
-			assert := assert.New(t)
-
 			// Round trip encoding and decoding from string
 			addr, err := NewSecp256k1Address(tc.input)
-			assert.NoError(err)
-			assert.Equal(tc.expected, addr.String())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, addr.String())
 
 			maybeAddr, err := NewFromString(tc.expected)
-			assert.NoError(err)
-			assert.Equal(SECP256K1, maybeAddr.Protocol())
-			assert.Equal(addressHash(tc.input), maybeAddr.Payload())
+			assert.NoError(t, err)
+			assert.Equal(t, SECP256K1, maybeAddr.Protocol())
+			assert.Equal(t, addressHash(tc.input), maybeAddr.Payload())
 
 			// Round trip to and from bytes
 			maybeAddrBytes, err := NewFromBytes(maybeAddr.Bytes())
-			assert.NoError(err)
-			assert.Equal(maybeAddr, maybeAddrBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, maybeAddr, maybeAddrBytes)
 
 			// Round trip encoding and decoding json
 			b, err := addr.MarshalJSON()
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
-			assert.Equal(addr, newAddr)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(t, err)
+			assert.Equal(t, addr, newAddr)
 		})
 	}
 }
 
 func TestRandomActorAddress(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	actorMsg := make([]byte, 20)
 	rand.Read(actorMsg)
 
 	addr, err := NewActorAddress(actorMsg)
-	assert.NoError(err)
-	assert.Equal(Actor, addr.Protocol())
+	assert.NoError(t, err)
+	assert.Equal(t, Actor, addr.Protocol())
 
 	str, err := encode(Mainnet, addr)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	maybe, err := decode(str)
-	assert.NoError(err)
-	assert.Equal(addr, maybe)
+	assert.NoError(t, err)
+	assert.Equal(t, addr, maybe)
 
 }
 
 func TestVectorActorAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -220,53 +225,54 @@ func TestVectorActorAddress(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing Actor address: %s", tc.expected), func(t *testing.T) {
-			assert := assert.New(t)
-
 			// Round trip encoding and decoding from string
 			addr, err := NewActorAddress(tc.input)
-			assert.NoError(err)
-			assert.Equal(tc.expected, addr.String())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, addr.String())
 
 			maybeAddr, err := NewFromString(tc.expected)
-			assert.NoError(err)
-			assert.Equal(Actor, maybeAddr.Protocol())
-			assert.Equal(addressHash(tc.input), maybeAddr.Payload())
+			assert.NoError(t, err)
+			assert.Equal(t, Actor, maybeAddr.Protocol())
+			assert.Equal(t, addressHash(tc.input), maybeAddr.Payload())
 
 			// Round trip to and from bytes
 			maybeAddrBytes, err := NewFromBytes(maybeAddr.Bytes())
-			assert.NoError(err)
-			assert.Equal(maybeAddr, maybeAddrBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, maybeAddr, maybeAddrBytes)
 
 			// Round trip encoding and decoding json
 			b, err := addr.MarshalJSON()
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
-			assert.Equal(addr, newAddr)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(t, err)
+			assert.Equal(t, addr, newAddr)
 		})
 	}
 }
 
 func TestRandomBLSAddress(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	pk := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
 
 	addr, err := NewBLSAddress(pk[:])
-	assert.NoError(err)
-	assert.Equal(BLS, addr.Protocol())
+	assert.NoError(t, err)
+	assert.Equal(t, BLS, addr.Protocol())
 
 	str, err := encode(Mainnet, addr)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	maybe, err := decode(str)
-	assert.NoError(err)
-	assert.Equal(addr, maybe)
+	assert.NoError(t, err)
+	assert.Equal(t, addr, maybe)
 
 }
 
 func TestVectorBLSAddress(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expected string
@@ -300,35 +306,36 @@ func TestVectorBLSAddress(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing bls address: %s", tc.expected), func(t *testing.T) {
-			assert := assert.New(t)
-
 			// Round trip encoding and decoding from string
 			addr, err := NewBLSAddress(tc.input)
-			assert.NoError(err)
-			assert.Equal(tc.expected, addr.String())
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, addr.String())
 
 			maybeAddr, err := NewFromString(tc.expected)
-			assert.NoError(err)
-			assert.Equal(BLS, maybeAddr.Protocol())
-			assert.Equal(tc.input, maybeAddr.Payload())
+			assert.NoError(t, err)
+			assert.Equal(t, BLS, maybeAddr.Protocol())
+			assert.Equal(t, tc.input, maybeAddr.Payload())
 
 			// Round trip to and from bytes
 			maybeAddrBytes, err := NewFromBytes(maybeAddr.Bytes())
-			assert.NoError(err)
-			assert.Equal(maybeAddr, maybeAddrBytes)
+			assert.NoError(t, err)
+			assert.Equal(t, maybeAddr, maybeAddrBytes)
 
 			// Round trip encoding and decoding json
 			b, err := addr.MarshalJSON()
-			assert.NoError(err)
+			assert.NoError(t, err)
 
 			var newAddr Address
-			newAddr.UnmarshalJSON(b)
-			assert.Equal(addr, newAddr)
+			err = newAddr.UnmarshalJSON(b)
+			assert.NoError(t, err)
+			assert.Equal(t, addr, newAddr)
 		})
 	}
 }
 
 func TestInvalidStringAddresses(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    string
 		expetErr error
@@ -345,16 +352,16 @@ func TestInvalidStringAddresses(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing string address: %s", tc.expetErr), func(t *testing.T) {
-			assert := assert.New(t)
-
 			_, err := NewFromString(tc.input)
-			assert.Equal(tc.expetErr, err)
+			assert.Equal(t, tc.expetErr, err)
 		})
 	}
 
 }
 
 func TestInvalidByteAddresses(t *testing.T) {
+	tf.UnitTest(t)
+
 	testCases := []struct {
 		input    []byte
 		expetErr error
@@ -379,42 +386,38 @@ func TestInvalidByteAddresses(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("testing byte address: %s", tc.expetErr), func(t *testing.T) {
-			assert := assert.New(t)
-
 			_, err := NewFromBytes(tc.input)
-			assert.Equal(tc.expetErr, err)
+			assert.Equal(t, tc.expetErr, err)
 		})
 	}
 
 }
 
 func TestChecksum(t *testing.T) {
-	assert := assert.New(t)
+	tf.UnitTest(t)
 
 	data := []byte("helloworld")
 	bata := []byte("kittinmittins")
 
 	cksm := Checksum(data)
-	assert.Len(cksm, ChecksumHashLength)
+	assert.Len(t, cksm, ChecksumHashLength)
 
-	assert.True(ValidateChecksum(data, cksm))
-	assert.False(ValidateChecksum(bata, cksm))
+	assert.True(t, ValidateChecksum(data, cksm))
+	assert.False(t, ValidateChecksum(bata, cksm))
 
 }
 
 func TestAddressFormat(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
 
 	a, err := NewActorAddress([]byte("hello"))
-	require.NoError(err)
+	require.NoError(t, err)
 
-	assert.Equal("t2wvjry4bx6bwj6kkhcmvgu5zafqyi5cjzbtet3va", a.String())
-	assert.Equal("02B5531C7037F06C9F2947132A6A77202C308E8939", fmt.Sprintf("%X", a))
-	assert.Equal("[2 - b5531c7037f06c9f2947132a6a77202c308e8939]", fmt.Sprintf("%v", a))
+	assert.Equal(t, "t2wvjry4bx6bwj6kkhcmvgu5zafqyi5cjzbtet3va", a.String())
+	assert.Equal(t, "02B5531C7037F06C9F2947132A6A77202C308E8939", fmt.Sprintf("%X", a))
+	assert.Equal(t, "[2 - b5531c7037f06c9f2947132a6a77202c308e8939]", fmt.Sprintf("%v", a))
 
-	assert.Equal("", fmt.Sprintf("%X", Undef))
-	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef.String())) // nolint: staticcheck
-	assert.Equal(UndefAddressString, fmt.Sprintf("%s", Undef))          // nolint: staticcheck
-	assert.Equal(UndefAddressString, fmt.Sprintf("%v", Undef))
+	assert.Equal(t, "", fmt.Sprintf("%X", Undef))
+	assert.Equal(t, UndefAddressString, Undef.String())
+	assert.Equal(t, UndefAddressString, fmt.Sprintf("%v", Undef))
 }

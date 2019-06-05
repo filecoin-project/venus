@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmWoXtvgC8inqFkAATB7cp2Dax7XBi9VDvSg9RCCZufmRk/go-block-format"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	"github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -16,14 +17,16 @@ import (
 // a persistent bitswap session on a networked blockservice.
 type Fetcher struct {
 	// session is a bitswap session that enables efficient transfer.
-	session *bserv.Session
+	session   *bserv.Session
+	validator consensus.BlockSyntaxValidator
 }
 
 // NewFetcher returns a Fetcher wired up to the input BlockService and a newly
 // initialized persistent session of the block service.
-func NewFetcher(ctx context.Context, bsrv bserv.BlockService) *Fetcher {
+func NewFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensus.BlockSyntaxValidator) *Fetcher {
 	return &Fetcher{
-		session: bserv.NewSession(ctx, bsrv),
+		session:   bserv.NewSession(ctx, bsrv),
+		validator: bv,
 	}
 }
 
@@ -51,6 +54,12 @@ func (f *Fetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("fetched data (cid %s) was not a block", u.Cid().String()))
 		}
+
+		// reject blocks that are syntactically invalid.
+		if err := f.validator.ValidateSyntax(ctx, block); err != nil {
+			continue
+		}
+
 		blocks = append(blocks, block)
 	}
 	return blocks, nil

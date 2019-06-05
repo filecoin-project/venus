@@ -1,20 +1,21 @@
-package commands
+package commands_test
 
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestStatsBandwidth(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
+	tf.IntegrationTest(t)
 
 	d := th.NewDaemon(t).Start()
 	defer d.ShutdownSuccess()
 
 	stats := d.RunSuccess("stats", "bandwidth").ReadStdoutTrimNewlines()
 
-	assert.Equal("{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
+	assert.Equal(t, "{\"TotalIn\":0,\"TotalOut\":0,\"RateIn\":0,\"RateOut\":0}", stats)
 }

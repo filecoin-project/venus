@@ -1,32 +1,31 @@
 package testing
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"io"
 	"strings"
 	"testing"
 
-	dag "gx/ipfs/QmNRAuGmvnVw8urHkUZQirhu42VTiZjVWASa2aTznEMmpP/go-merkledag"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	bserv "gx/ipfs/QmZsGVGCqMCNzHLNMB6q4F6yyvomqf1VxwhJwSfgo1NGaF/go-blockservice"
+	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	sb "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
-
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
+	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/stretchr/testify/require"
 )
 
 // Harness is a struct used to make SectorBuilder testing easier
 type Harness struct {
 	blockService      bserv.BlockService
-	MaxBytesPerSector uint64
+	MaxBytesPerSector *types.BytesAmount
 	MinerAddr         address.Address
 	repo              repo.Repo
 	SectorBuilder     sb.SectorBuilder
-	SectorConfig      proofs.SectorStoreType
 	t                 *testing.T
 }
 
@@ -52,31 +51,28 @@ func (h Harness) Close() {
 // AddPiece adds the provided bytes to the underlying SectorBuilder and returns
 // the sector id, piece cid, and any error
 func (h Harness) AddPiece(ctx context.Context, pieceData []byte) (uint64, cid.Cid, error) {
-	pieceInfo, err := h.CreatePieceInfo(pieceData)
+	ref, size, reader, err := h.CreateAddPieceArgs(pieceData)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
 
-	sectorID, err := h.SectorBuilder.AddPiece(ctx, pieceInfo)
+	sectorID, err := h.SectorBuilder.AddPiece(ctx, ref, size, reader)
 	if err != nil {
 		return 0, cid.Undef, err
 	}
 
-	return sectorID, pieceInfo.Ref, nil
+	return sectorID, ref, nil
 }
 
-// CreatePieceInfo creates a PieceInfo for the provided bytes
-func (h Harness) CreatePieceInfo(pieceData []byte) (*sb.PieceInfo, error) {
+// CreateAddPieceArgs creates a PieceInfo for the provided bytes
+func (h Harness) CreateAddPieceArgs(pieceData []byte) (cid.Cid, uint64, io.Reader, error) {
 	data := dag.NewRawNode(pieceData)
 
 	if err := h.blockService.AddBlock(data); err != nil {
-		return nil, err
+		return cid.Cid{}, 0, nil, err
 	}
 
-	return &sb.PieceInfo{
-		Ref:  data.Cid(),
-		Size: uint64(len(pieceData)),
-	}, nil
+	return data.Cid(), uint64(len(pieceData)), bytes.NewReader(pieceData), nil
 }
 
 // RequireRandomBytes produces n-number of bytes

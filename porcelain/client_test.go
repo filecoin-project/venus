@@ -8,14 +8,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 type claPlumbing struct {
@@ -54,14 +54,14 @@ func (cla *claPlumbing) ActorLs(ctx context.Context) (<-chan state.GetAllActorsR
 	return out, nil
 }
 
-func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, *exec.FunctionSignature, error) {
+func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if cla.messageFail {
-		return nil, nil, errors.New("MESSAGE FAILURE")
+		return nil, errors.New("MESSAGE FAILURE")
 	}
 
 	if method == "getAsks" {
 		askIDs, _ := cbor.DumpObject([]uint64{0})
-		return [][]byte{askIDs}, nil, nil
+		return [][]byte{askIDs}, nil
 	}
 
 	ask := miner.Ask{
@@ -70,15 +70,13 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 		Price:  types.NewAttoFILFromFIL(3),
 	}
 	askBytes, _ := cbor.DumpObject(ask)
-	return [][]byte{askBytes}, nil, nil
+	return [][]byte{askBytes}, nil
 }
 
 func TestClientListAsks(t *testing.T) {
-	t.Parallel()
+	tf.UnitTest(t)
 
 	t.Run("success", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{}
 
@@ -92,12 +90,10 @@ func TestClientListAsks(t *testing.T) {
 			Price:  types.NewAttoFILFromFIL(3),
 		}
 
-		assert.Equal(expectedResult, result)
+		assert.Equal(t, expectedResult, result)
 	})
 
 	t.Run("failed actor ls", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			actorFail: true,
@@ -106,12 +102,10 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "ACTOR FAILURE")
+		assert.Error(t, result.Error, "ACTOR FAILURE")
 	})
 
 	t.Run("failed actor ls via channel", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			actorChFail: true,
@@ -120,12 +114,10 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "ACTOR CHANNEL FAILURE")
+		assert.Error(t, result.Error, "ACTOR CHANNEL FAILURE")
 	})
 
 	t.Run("failed message query", func(t *testing.T) {
-		assert := assert.New(t)
-
 		ctx := context.Background()
 		plumbing := &claPlumbing{
 			messageFail: true,
@@ -134,6 +126,6 @@ func TestClientListAsks(t *testing.T) {
 		results := porcelain.ClientListAsks(ctx, plumbing)
 		result := <-results
 
-		assert.Error(result.Error, "MESSAGE FAILURE")
+		assert.Error(t, result.Error, "MESSAGE FAILURE")
 	})
 }

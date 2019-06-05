@@ -4,21 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/assert"
-	"gx/ipfs/QmPVkJMTeRC6iBByPWdrRkD3BE5UXsj5HPzb4kPqL186mS/testify/require"
-	"gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	"gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/chain"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestGetParentTipSet(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	require := require.New(t)
+	tf.UnitTest(t)
+
 	ctx := context.Background()
-	store := newBlockStore()
+	store := th.NewFakeBlockProvider()
 
 	root := store.NewBlock(0)
 	b11 := store.NewBlock(1, root)
@@ -28,89 +27,80 @@ func TestGetParentTipSet(t *testing.T) {
 	t.Run("root has empty parent", func(t *testing.T) {
 		ts := requireTipset(t, root)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.Empty(parent)
+		require.NoError(t, e)
+		assert.Empty(t, parent)
 	})
 	t.Run("plural tipset", func(t *testing.T) {
 		ts := requireTipset(t, b11, b12)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.True(requireTipset(t, root).Equals(parent))
+		require.NoError(t, e)
+		assert.True(t, requireTipset(t, root).Equals(parent))
 	})
 	t.Run("plural parent", func(t *testing.T) {
 		ts := requireTipset(t, b21)
 		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(e)
-		assert.True(requireTipset(t, b11, b12).Equals(parent))
+		require.NoError(t, e)
+		assert.True(t, requireTipset(t, b11, b12).Equals(parent))
 	})
 }
 
 func TestIterAncestors(t *testing.T) {
-	t.Parallel()
-	assert := assert.New(t)
-	ctx := context.Background()
-	store := newBlockStore()
+	tf.UnitTest(t)
 
-	root := store.NewBlock(0)
-	b11 := store.NewBlock(1, root)
-	b12 := store.NewBlock(2, root)
-	b21 := store.NewBlock(3, b11, b12)
+	t.Run("iterates", func(t *testing.T) {
+		ctx := context.Background()
+		store := th.NewFakeBlockProvider()
 
-	t0 := requireTipset(t, root)
-	t1 := requireTipset(t, b11, b12)
-	t2 := requireTipset(t, b21)
+		root := store.NewBlock(0)
+		b11 := store.NewBlock(1, root)
+		b12 := store.NewBlock(2, root)
+		b21 := store.NewBlock(3, b11, b12)
 
-	it := chain.IterAncestors(ctx, store, t2)
-	assert.False(it.Complete())
-	assert.True(t2.Equals(it.Value()))
+		t0 := requireTipset(t, root)
+		t1 := requireTipset(t, b11, b12)
+		t2 := requireTipset(t, b21)
 
-	assert.NoError(it.Next())
-	assert.False(it.Complete())
-	assert.True(t1.Equals(it.Value()))
+		it := chain.IterAncestors(ctx, store, t2)
+		assert.False(t, it.Complete())
+		assert.True(t, t2.Equals(it.Value()))
 
-	assert.NoError(it.Next())
-	assert.False(it.Complete())
-	assert.True(t0.Equals(it.Value()))
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t1.Equals(it.Value()))
 
-	assert.NoError(it.Next())
-	assert.True(it.Complete())
-}
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t0.Equals(it.Value()))
 
-type fakeBlockStore struct {
-	blocks map[cid.Cid]*types.Block
-	seq    int
-}
+		assert.NoError(t, it.Next())
+		assert.True(t, it.Complete())
+	})
 
-func newBlockStore() *fakeBlockStore {
-	return &fakeBlockStore{
-		make(map[cid.Cid]*types.Block),
-		0,
-	}
-}
+	t.Run("respects context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		store := th.NewFakeBlockProvider()
 
-func (bs *fakeBlockStore) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
-	block, ok := bs.blocks[cid]
-	if ok {
-		return block, nil
-	}
-	return nil, errors.New("No such block")
-}
+		root := store.NewBlock(0)
+		b11 := store.NewBlock(1, root)
+		b12 := store.NewBlock(2, root)
+		b21 := store.NewBlock(3, b11, b12)
 
-func (bs *fakeBlockStore) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
-	b := &types.Block{
-		Nonce: types.Uint64(nonce),
-	}
+		requireTipset(t, root)
+		t1 := requireTipset(t, b11, b12)
+		t2 := requireTipset(t, b21)
 
-	if len(parents) > 0 {
-		b.Height = parents[0].Height + 1
-		b.StateRoot = parents[0].StateRoot
-		for _, p := range parents {
-			b.Parents.Add(p.Cid())
-		}
-	}
+		it := chain.IterAncestors(ctx, store, t2)
+		assert.False(t, it.Complete())
+		assert.True(t, t2.Equals(it.Value()))
 
-	bs.blocks[b.Cid()] = b
-	return b
+		assert.NoError(t, it.Next())
+		assert.False(t, it.Complete())
+		assert.True(t, t1.Equals(it.Value()))
+
+		cancel()
+
+		assert.Error(t, it.Next())
+	})
 }
 
 func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {

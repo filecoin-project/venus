@@ -5,17 +5,22 @@ import (
 	"fmt"
 	"time"
 
-	ma "gx/ipfs/QmNTCey11oxhb1AxDnQBRHtdhap6Ctud872NjAYPYYXPuc/go-multiaddr"
-	cid "gx/ipfs/QmR8BauakNcBa3RbE4nbQu76PDiJgoQgz8AJdhJuiU4TAw/go-cid"
-	net "gx/ipfs/QmTGxDz2CjBucFzPNTiWwzQmTWdrBnzqbqrMucDYMsjuPb/go-libp2p-net"
-	peer "gx/ipfs/QmTu65MVbemtUxJEWgsTtzv9Zv9P8rvmqNA4eG9TrTRGYc/go-libp2p-peer"
-	logging "gx/ipfs/QmbkT7eMTyXfpeyB3ZMxxcxg7XH8t6uXp49jqzz4HB7BGF/go-log"
-	cbor "gx/ipfs/QmcZLyosDwMKdB6NLRsiss9HXzDPhVhhRtPy67JFKTDQDX/go-ipld-cbor"
-	host "gx/ipfs/Qmd52WKRSwrBK5gUaJKawryZQ5by6UbNB8KVW2Zy6JtbyW/go-libp2p-host"
+	cid "github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
+	host "github.com/libp2p/go-libp2p-host"
+	net "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
+	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var versionErrCt = metrics.NewInt64Counter("hello_version_error", "Number of errors encountered in hello protocol due to incorrect version")
+var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
+var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
 
 func init() {
 	cbor.RegisterCborType(Message{})
@@ -36,7 +41,7 @@ type Message struct {
 
 type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
 
-type getTipSetFunc func() types.TipSet
+type getTipSetFunc func() (types.TipSet, error)
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -50,7 +55,7 @@ type Handler struct {
 	// chainSyncCB is called when new peers tell us about their chain
 	chainSyncCB syncCallback
 
-	// getHeaviestTipSet is used to retrieve the current heaviest tipset
+	//  is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
@@ -84,17 +89,21 @@ func (h *Handler) handleNewStream(s net.Stream) {
 
 	var hello Message
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
-		log.Warningf("bad hello message from peer %s: %s", from, err)
+		log.Debugf("bad hello message from peer %s: %s", from, err)
+		helloMsgErrCt.Inc(context.TODO(), 1)
+		s.Conn().Close() // nolint: errcheck
 		return
 	}
 
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
-		log.Warningf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
+		genesisErrCt.Inc(context.TODO(), 1)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case ErrWrongVersion:
-		log.Errorf("code not at same version: %s does not match %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
+		versionErrCt.Inc(context.TODO(), 1)
 		s.Conn().Close() // nolint: errcheck
 		return
 	case nil: // ok, noop
@@ -113,7 +122,7 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return ErrBadGenesis
 	}
-	if h.net == "devnet-user" && msg.CommitSha != h.commitSha {
+	if (h.net == "devnet-test" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
 		return ErrWrongVersion
 	}
 
@@ -122,7 +131,10 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 }
 
 func (h *Handler) getOurHelloMessage() *Message {
-	heaviest := h.getHeaviestTipSet()
+	heaviest, err := h.getHeaviestTipSet()
+	if err != nil {
+		panic("cannot fetch chain head")
+	}
 	height, err := heaviest.Height()
 	if err != nil {
 		panic("somehow heaviest tipset is empty")

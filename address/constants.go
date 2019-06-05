@@ -3,8 +3,8 @@ package address
 import (
 	"encoding/base32"
 
-	errors "gx/ipfs/QmVmDhyTTUcQXFD1rRQ64fGLMSAoaQvNH3hwuaCFAPq2hy/errors"
-	"gx/ipfs/QmZp3eKdYQHHAneECmeK6HhiMwTPufmjC8DuuaGKv3unvx/blake2b-simd"
+	"github.com/minio/blake2b-simd"
+	errors "github.com/pkg/errors"
 )
 
 func init() {
@@ -47,7 +47,7 @@ var (
 	NetworkAddress Address
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market.
 	StorageMarketAddress Address
-	// PaymentBrokerAddress is the hard-coded address of the filecoin storage market.
+	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker.
 	PaymentBrokerAddress Address
 )
 

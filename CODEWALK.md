@@ -28,6 +28,7 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
   - [Plumbing & porcelain](#plumbing--porcelain)
   - [Commands](#commands)
   - [Protocols](#protocols)
+      - [Protocol Mining APIs](#protocol-mining-apis)
   - [Actors](#actors)
   - [The state tree](#the-state-tree)
   - [Messages and state transitions](#messages-and-state-transitions)
@@ -38,17 +39,25 @@ It is complemented by specs (link forthcoming) that describe the key concepts im
 - [Sector builder & proofs](#sector-builder--proofs)
   - [Building and distribution.](#building-and-distribution)
   - [Groth parameters](#groth-parameters)
-  - [Sector size configuration](#sector-size-configuration)
+  - [Proof mode configuration](#proof-mode-configuration)
 - [Networking](#networking)
 - [Filesystem storage](#filesystem-storage)
   - [JSON Config](#json-config)
   - [Datastores](#datastores)
   - [Keystore](#keystore)
 - [Testing](#testing)
+    - [Test Categorization](#test-categorization)
+      - [Unit Tests (`-unit`)](#unit-tests--unit)
+      - [Integration Tests (`-integration`)](#integration-tests--integration)
+      - [Functional Tests (`-functional`)](#functional-tests--functional)
+      - [Sector Builder Tests (`-sectorbuilder`)](#sector-builder-tests--sectorbuilder)
 - [Dependencies](#dependencies)
 - [Patterns](#patterns)
   - [Plumbing and porcelain](#plumbing-and-porcelain)
   - [Consumer-defined interfaces](#consumer-defined-interfaces)
+  - [Observability](#observability)
+    - [Metrics](#metrics)
+    - [Tracing](#tracing)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -79,34 +88,45 @@ Blockchain blocks are stored in block service blocks, but are not the same thing
 ## Architecture overview
 
 ```
-           ┌─────────────────────────────────────┐
-           │                                     │
-  Network  │  network (gossipsub, bitswap, etc.) │                 | | \/
-           │                                     │                 |_| /\
-           └─────▲────────────▲────────────▲─────┘
-                 │            │            │           ┌────────────────────────────┐
-           ┌─────▼────┐ ┌─────▼─────┐ ┌────▼─────┐     │                            │
-           │          │ │           │ │          │     │    Commands / REST API     │
-Protocols  │ Storage  │ │  Mining   │ │Retrieval │     │                            │
-           │ Protocol │ │ Protocol  │ │ Protocol │     └────────────────────────────┘
-           │          │ │           │ │          │                    │
-           └──────────┘ └───────────┘ └──────────┘                    │
-                 │            │             │                         │
-                 └──────────┬─┴─────────────┴───────────┐             │
-                            ▼                           ▼             ▼
-           ┌────────────────────────────────┐ ┌───────────────────┬─────────────────┐
- Internal  │            Core API            │ │     Porcelain     │     Plumbing    │
-      API  │                                │ ├───────────────────┘                 │
-           └────────────────────────────────┘ └─────────────────────────────────────┘
-                            │                                    │
-                  ┌─────────┴────┬──────────────┬──────────────┬─┴────────────┐
-                  ▼              ▼              ▼              ▼              ▼
-           ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-           │            │ │            │ │            │ │            │ │            │
-     Core  │  Message   │ │   Chain    │ │ Processor  │ │   Block    │ │   Wallet   │
-           │    Pool    │ │   Store    │ │            │ │  Service   │ │            │
-           │            │ │            │ │            │ │            │ │            │
-           └────────────┘ └────────────┘ └────────────┘ └────────────┘ └────────────┘
+                                                                                  | |\/
+                                                                                  |_|/\
+                    ╔══════════════════════════════════════════╗      ╔══════════════════════════════╗
+                    ║                                          ║      ║                              ║
+                    ║                                          ║      ║                              ║
+                    ║    NETWORK (gossipsub, bitswap, etc.)    ║      ║     COMMANDS / REST API      ║
+ Network            ║                                          ║      ║                              ║
+                    ║                                          ║      ║                              ║
+                    ╚═════════════════════╦════════════════════╝      ╚══════════════════════════════╝
+                                          │                                           │
+                          ┌───────────────┼───────────────┐    ┌──────────────────────┤
+                          │               │               │    │                      │
+                          ▼               ▼               ▼    ▼                      │
+                  ┌──────────────┬─────────────────┬─────────────┐                    │
+         ┌───────▶│ Storage API  │  Retrieval API  │  Block API  │                    │
+         │        ├──────────────┼─────────────────┼─────────────┤                    │
+         │        │              │                 │             │                    │
+         │        │              │                 │             │──┐                 │
+         │        │   Storage    │    Retrieval    │    Block    │  │                 │
+Internal │        │   Protocol   │    Protocol     │  Protocol   │  │                 │
+   API   │        └──────────────┴────────┬────────┴─────────────┘  │                 │
+         │                │               │               │         │                 │
+         │                ▼               ▼               ▼         │                 ▼
+         │          ┌───────────────────────────────────────────┐   │  ┌─────────────┬──────────────┐
+         │          │                                           │   │  │             │              │
+         │          │                 Core API                  │   │  │  Porcelain  │   Plumbing   │
+         └─────────▶│                                           │   └─▶├─────────────┘              │
+                    │                                           │      │                            │
+                    └───────────────────────────────────────────┘      └────────────────────────────┘
+                                          │                                           │
+                   ┌─────────────────┬────┴──────────────┬────────────────┬───────────┴─────┐
+                   │                 │                   │                │                 │
+                   ▼                 ▼                   ▼                ▼                 ▼
+ Core       ┌─────────────┐   ┌─────────────┐     ┌─────────────┐  ┌─────────────┐   ┌─────────────┐
+            │             │   │             │     │             │  │             │   │             │
+            │   Message   │   │ Chain Store │     │  Processor  │  │    Block    │   │   Wallet    │
+            │    Pool     │   │             │     │             │  │   Service   │   │             │
+            │             │   │             │     │             │  │             │   │             │
+            └─────────────┘   └─────────────┘     └─────────────┘  └─────────────┘   └─────────────┘
 ```
 ## A tour of the code
 
@@ -125,7 +145,7 @@ The implementation of this API is the `Node`.
 We are migrating away from this `api` package to the plumbing package, see below.
 
 The [`protocol`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol) package contains much of the application-level protocol code. 
-The protocols are implemented in terms of the Node API (old) as well as the new plumbing & porcelain APIs (see below).
+The protocols are implemented in terms of the plumbing & porcelain APIs (see below).
 Currently the hello, retrieval and storage protocols are implemented here. 
 Block mining should move here (from the [`mining`](https://github.com/filecoin-project/go-filecoin/tree/master/mining) top-level package and `Node` internals). 
 Chain syncing may move here too.
@@ -154,16 +174,14 @@ Services include (not exhaustive):
 
 The [`plumbing`](https://github.com/filecoin-project/go-filecoin/tree/master/plumbing) & 
 [`porcelain`](https://github.com/filecoin-project/go-filecoin/tree/master/porcelain) packages are 
-the new API; 
-over time, this patterns should completely replace the existing top-level `api` package and its implementation in `Node`. 
-The plumbing & porcelain design pattern is explained in more detail below.
+the API for most non-protocol commands. 
 
-Plumbing is the set of public apis required to implement all user-, tool-, and protocol-level features. 
+__Plumbing__ is the set of public apis required to implement all user-, tool-, and some protocol-level features. 
 Plumbing implementations depend on the core services they need, but not on the `Node`.
 Plumbing is intended to be fairly thin, routing requests and data between core components. 
 Plumbing implementations are often tested with real implementations of the core services they use, but can also be tested with fakes and mocks.
 
-Porcelain implementations are convenience compositions of plumbing. 
+__Porcelain__ implementations are convenience compositions of plumbing. 
 They depend only on the plumbing API, and can coordinate a sequence of actions. 
 Porcelain is ephemeral; the lifecycle is the duration of a single porcelain call: something calls into it, it does its thing, and then returns. 
 Porcelain implementations are ideally tested with fakes of the plumbing they use, but can also use full implementations. 
@@ -206,6 +224,13 @@ Miners win elections in proportion to storage committed.
 This block mining is spread through a few places in the code. 
 Much in mining package, but also a bunch in the node implementation.
 - Chain protocol: protocol for exchange of mined blocks
+
+##### Protocol Mining APIs
+The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
+[`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
+and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/block/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
+
+
 
 More detail on the individual protocols is coming soon.
 
@@ -439,12 +464,11 @@ The `install-rust-proofs.sh` script fetches or generates these Groth parameters 
 Groth parameters in `/tmp/filecoin-proof-parameters` are accessed at go-filecoin runtime.
 The parameters are identified by the `parameters.json` file from fil-rust-proofs, which includes a checksum.
 
-### Sector size configuration
-Sealing a sector is a compute-intensive process that grows with the size of the sector being sealed (replication grows linearly, and proof-generation logarithmically).
-For ease of development, go-filecoin can be configured to use tiny sectors, holding only 1016 bytes of user data, which are faster to seal. 
-This mode is triggered by the `FIL_USE_SMALL_SECTORS` environment variable. 
-Sector size is a parameter on which nodes in a network must agree, and determines the Groth parameters; 
-nodes with different sector sizes cannot verify each other’s proofs.
+### Proof mode configuration
+For ease of development, go-filecoin can be configured to use a test proofs mode, which will cause storage miners to use sectors into which only 1016 bytes of user data can be written.
+This lowers the computational burden of sealing and generating PoSts.
+
+The `genesis.car` in `fixtures/test/` is configured to use test proofs mode.
 
 ## Networking
 
@@ -538,22 +562,38 @@ The goal of this is to unify duplicated code paths which bootstrap and drive `go
 and network deployment verification, providing a common library for filecoin automation in Go. 
 
 Tests are typically run with `go run ./build/*.go test`. 
-It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests. 
+It passes flags to `go test` under the hood, so you can provide `-run <regex>` to run a subset of tests.
+By default it will run unit and integration tests, but skip more expensive functional and sectorbuilder tests.
+For a complete description of testing flags see [Test Categorization](#test-categorization).
 Vanilla `go test` also works, after build scripts have built and installed appropriate dependencies.
+
+#### Test Categorization
+
+##### Unit Tests (`-unit`)
+By default unit tests are enabled when issuing the `go test` command.
+To disable pass `-unit=false`.
+A unit test exercises one or a few code modules exhaustively. Unit tests do not involve complex integrations or non-trivial communication, disk access, or artificial delays. A unit test should complete in well under a second, frequently <10 milliseconds. Unit tests should have no side effects and be executable in parallel
+
+##### Integration Tests (`-integration`)
+By default integration tests are enabled when issuing the `go test` command.
+To disable pass `-integration=false`.
+An integration test exercises integrated functionality and/or multiple nodes and may include multiple processes, inter-node communication, delays for consensus, nontrivial disk access and other expensive operations. Integration tests may involve multiple processes (daemon tests) or in-process integrations. An individual integration test should complete in seconds.
+
+##### Functional Tests (`-functional`)
+By default functional tests are disabled when issuing the `go test` command.
+To enable pass `-functional`.
+A functional test is an extensive multi-node orchestration or resource-intensive test that may take minutes to run.
+
+##### Sector Builder Tests (`-sectorbuilder`)
+By default sectorbuilder tests are disabled when issuing the `go test` command.
+To enable pass `-sectorbuilder`.
+A sectorbuilder test is a resource-intensive test that may take minutes to run.
 
 ## Dependencies
 
-Dependencies in go-filecoin are managed by [gx](https://github.com/whyrusleeping/gx), a content-addressed dependency manager. 
-You’ll notice that the hash of a dependency’s content appears in the import path. 
-Almost all runtime dependencies are managed by gx (mostly being other Protocol Labs-sponsored projects). 
+Dependencies in go-filecoin are managed as go modules, go's new dependency system.
 
-The `gx-go` manages a package.json file. 
-In order to be imported by gx, a package needs to be "gxed". 
-See the [gx-go repo](https://github.com/whyrusleeping/gx-go) for details about preparing a package for gxing and importing it into the project. 
-If you want to depend on a package whos author has not gxed it, we can fork it and gx our fork.
-
-gx came about before Go modules, which aim to solve many of the same problems. 
-The IPFS project and go-filecoin [may migrate to Go modules](https://github.com/ipfs/go-ipfs/issues/5850) in the future.
+If you've cloned go-filecoin into your GOPATH, you may need to set the `GO111MODULES` environment variable to `on`. The build system automatically sets this but your favorite editor or IDE may not work without it.
 
 ## Patterns
 
@@ -600,3 +640,20 @@ Our implementation of [plumbing and porcelain](#plumbing-and-porcelain) embraces
 
 This idiom is unfortunately hidden away in a [wiki page about code review](https://github.com/golang/go/wiki/CodeReviewComments#interfaces).
 See also Dave Cheney on [SOLID Go Design](https://dave.cheney.net/2016/08/20/solid-go-design).
+
+### Observability
+
+go-filecoin uses [Opencensus-go](https://github.com/census-instrumentation/opencensus-go) for stats collection and distributed tracing instrumentation.
+Stats are exported for consumption via [Prometheus](https://prometheus.io/) and traces are exported for consumption via [Jaeger](https://www.jaegertracing.io/docs/1.11/).
+
+#### Metrics
+
+go-filecoin can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+To view metrics from your filecoin node using the default configuration options set the `prometheusEnabled` value to `true`, start the filecoin daemon, then visit `localhost:9400/metrics` in your web-browser. 
+
+#### Tracing
+
+go-filecoin can be configured to collect and export traces to Jaeger via the `TraceConfig`.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+To collect traces from your filecoin node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the filecoin daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.
