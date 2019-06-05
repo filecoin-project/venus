@@ -137,7 +137,7 @@ func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMa
 	cst := hamt.NewCborStore()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
-	blk, err := consensus.DefaultGenesis(cst, bs)
+	blk, err := consensus.DefaultTestGenesis(cst, bs)
 	require.NoError(t, err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)

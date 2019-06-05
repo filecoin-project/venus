@@ -190,7 +190,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	vms := vm.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
-	blk, err := consensus.DefaultGenesis(cst, bs)
+	blk, err := consensus.DefaultTestGenesis(cst, bs)
 	require.NoError(err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)

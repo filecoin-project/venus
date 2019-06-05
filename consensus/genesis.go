@@ -203,8 +203,8 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 	}
 }
 
-// DefaultGenesis creates a genesis block with default accounts and actors installed.
-func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+// DefaultTestGenesis creates a genesis block with default accounts and actors installed for testing.
+func DefaultTestGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 	return MakeGenesisFunc(BlockTimerFunc(func() int64 { return 0 }))(cst, bs)
 }
 

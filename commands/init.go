@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-hamt-ipld"
@@ -153,7 +154,6 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 	if sourceName == "" {
 		return consensus.MakeGenesisFunc(
 			consensus.ProofsMode(types.LiveProofsMode),
-			consensus.BlockTimerFunc(func() int64 { return 0 }),
 		), nil
 	}
 

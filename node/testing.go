@@ -177,7 +177,7 @@ func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif
 // MakeNodesUnstarted creates some new nodes with an InMemoryRepo, fake proof verifier, and default genesis block.
 // Call StartNodes to start them.
 func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool) []*Node {
-	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.DefaultGenesis)
+	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.DefaultTestGenesis)
 }
 
 // MakeOfflineNode returns a single unstarted offline node.
@@ -185,7 +185,7 @@ func MakeOfflineNode(t *testing.T) *Node {
 	return MakeNodesUnstartedWithGif(t,
 		1,    /* 1 node */
 		true, /* offline */
-		consensus.DefaultGenesis)[0]
+		consensus.DefaultTestGenesis)[0]
 }
 
 // DefaultTestingConfig returns default configuration for testing

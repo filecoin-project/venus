@@ -84,7 +84,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	ctx := context.Background()
 
 	cistore, bstore, verifier := setupCborBlockstoreProofs()
-	genesisBlock, err := consensus.DefaultGenesis(cistore, bstore)
+	genesisBlock, err := consensus.DefaultTestGenesis(cistore, bstore)
 	require.NoError(t, err)
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
