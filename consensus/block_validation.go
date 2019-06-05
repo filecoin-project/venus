@@ -3,7 +3,6 @@ package consensus
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/plumbing/clock"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -26,12 +25,6 @@ type BlockSemanticValidator interface {
 // syntax.
 type BlockSyntaxValidator interface {
 	ValidateSyntax(ctx context.Context, blk *types.Block) error
-}
-
-// EpochSeconds returns Unix time, the number of seconds elapsed since January 1, 1970 UTC.
-// The result does not depend on location.
-func (ebc *DefaultBlockValidationClock) EpochSeconds() uint64 {
-	return uint64(time.Now().Unix())
 }
 
 // DefaultBlockValidator implements the BlockValidator interface.

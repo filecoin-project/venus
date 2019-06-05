@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-hamt-ipld"
@@ -152,9 +151,7 @@ func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
 
 func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
 	if sourceName == "" {
-		return consensus.MakeGenesisFunc(
-			consensus.ProofsMode(types.LiveProofsMode),
-		), nil
+		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
 	}
 
 	sourceURL, err := url.Parse(sourceName)
