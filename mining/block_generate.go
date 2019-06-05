@@ -86,6 +86,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		Proof:           proof,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
+		// TODO user BlockClock interface from #2894 while completing #2886
+		Timestamp: 0,
 	}
 
 	for i, msg := range res.PermanentFailures {

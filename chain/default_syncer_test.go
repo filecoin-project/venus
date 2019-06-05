@@ -1058,7 +1058,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	totalPower := types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize)
 
-	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
+	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0, 0)
 	require.NoError(t, err)
 
 	var calcGenBlk types.Block

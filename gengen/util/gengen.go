@@ -6,6 +6,7 @@ import (
 	"io"
 	mrand "math/rand"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -97,7 +98,7 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed int64) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed, timestamp int64) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
@@ -148,6 +149,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 
 	geneblk := &types.Block{
 		StateRoot: stateRoot,
+		Timestamp: types.Uint64(timestamp),
 	}
 
 	c, err := cst.Put(ctx, geneblk)
@@ -312,7 +314,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 
 	ctx := context.Background()
 
-	info, err := GenGen(ctx, cfg, cst, bstore, seed)
+	info, err := GenGen(ctx, cfg, cst, bstore, seed, time.Now().Unix())
 	if err != nil {
 		return nil, err
 	}

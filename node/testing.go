@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"testing"
+	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
 	ds "github.com/ipfs/go-datastore"
@@ -54,7 +55,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	blkserv := bserv.New(bstore, offl)
 	cst := &hamt.CborIpldStore{Blocks: blkserv}
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0)
+	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0, time.Now().Unix())
 	require.NoError(t, err)
 
 	return &ChainSeed{

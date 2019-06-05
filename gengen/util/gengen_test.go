@@ -70,7 +70,7 @@ func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 
 		ctx := context.Background()
 
-		inf, err := GenGen(ctx, testConfig, cst, bstore, 0)
+		inf, err := GenGen(ctx, testConfig, cst, bstore, 0, 0)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf
