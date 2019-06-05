@@ -95,7 +95,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	if err != nil {
 		return errors.Wrap(err, "Bad block time passed")
 	}
-	opts = append(opts, node.BlockTime(blockTime))
+	opts = append(opts, node.BlockClock(blockTime))
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {

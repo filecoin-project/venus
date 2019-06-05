@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
+	"github.com/filecoin-project/go-filecoin/plumbing/clock"
 	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
@@ -45,6 +46,7 @@ type API struct {
 
 	bitswap      exchange.Interface
 	chain        *cst.ChainStateProvider
+	clock        clock.BlockClock
 	config       *cfg.Config
 	dag          *dag.DAG
 	msgPool      *core.MessagePool
@@ -61,6 +63,7 @@ type API struct {
 type APIDeps struct {
 	Bitswap      exchange.Interface
 	Chain        *cst.ChainStateProvider
+	Clock        clock.BlockClock
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
@@ -80,6 +83,7 @@ func New(deps *APIDeps) *API {
 
 		bitswap:      deps.Bitswap,
 		chain:        deps.Chain,
+		clock:        deps.Clock,
 		config:       deps.Config,
 		dag:          deps.DAG,
 		msgPool:      deps.MsgPool,
@@ -108,6 +112,11 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 // ActorLs returns a channel with actors from the latest state on the chain
 func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	return api.chain.LsActors(ctx)
+}
+
+// BlockTime returns a duration representing the current block time.
+func (api *API) BlockTime(ctx context.Context) time.Duration {
+	return api.clock.BlockTime()
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.

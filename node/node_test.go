@@ -198,7 +198,7 @@ func TestNodeConfig(t *testing.T) {
 	configOptions := []node.ConfigOpt{
 		repoConfig(),
 		node.VerifierConfigOption(verifier),
-		node.BlockTime(time.Duration(configBlockTime)),
+		node.BlockClock(time.Duration(configBlockTime)),
 	}
 
 	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}
