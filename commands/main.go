@@ -106,6 +106,7 @@ MINE
 VIEW DATA STRUCTURES
   go-filecoin chain                  - Inspect the filecoin blockchain
   go-filecoin dag                    - Interact with IPLD DAG objects
+  go-filecoin deals                  - Manage deals made by or with this node
   go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
@@ -164,6 +165,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"config":           configCmd,
 	"client":           clientCmd,
 	"dag":              dagCmd,
+	"deals":            dealsCmd,
 	"dht":              dhtCmd,
 	"id":               idCmd,
 	"inspect":          inspectCmd,
