@@ -171,7 +171,7 @@ func forceBuildFC() {
 	}...))
 }
 
-// cealnDirectory removes the child of a directly wihtout removing the directory itself, unlike `RemoveAll`.
+// cleanDirectory removes the child of a directly wihtout removing the directory itself, unlike `RemoveAll`.
 // There is also an additional parameter to ignore dot files which is important for directories which are normally
 // empty. Git has no concept of directories, so for a directory to automatically be created on checkout, a file must
 // exist in side of it. We use this pattern in a few places, so the need to keep the dot files around is impotant.
@@ -194,7 +194,7 @@ func cleanDirectory(dir string, ignoredots bool) error {
 		fpath := filepath.Join(dir, fname)
 
 		fmt.Println("Removing", fpath)
-		if err := os.Remove(fpath); err != nil {
+		if err := os.RemoveAll(fpath); err != nil {
 			return err
 		}
 	}
@@ -216,9 +216,9 @@ func generateGenesis() {
 
 	runCmd(cmd([]string{
 		"./gengen/gengen",
-		"--keypath", "fixtures/live",
-		"--out-car", "fixtures/live/genesis.car",
-		"--out-json", "fixtures/live/gen.json",
+		"--keypath", liveFixtures,
+		"--out-car", filepath.Join(liveFixtures, "genesis.car"),
+		"--out-json", filepath.Join(liveFixtures, "gen.json"),
 		"--config", "./fixtures/setup.json",
 	}...))
 
@@ -233,9 +233,9 @@ func generateGenesis() {
 
 	runCmd(cmd([]string{
 		"./gengen/gengen",
-		"--keypath", "fixtures/test",
-		"--out-car", "fixtures/test/genesis.car",
-		"--out-json", "fixtures/test/gen.json",
+		"--keypath", testFixtures,
+		"--out-car", filepath.Join(testFixtures, "genesis.car"),
+		"--out-json", filepath.Join(testFixtures, "gen.json"),
 		"--config", "./fixtures/setup.json",
 		"--test-proofs-mode",
 	}...))
