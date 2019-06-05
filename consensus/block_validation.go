@@ -91,7 +91,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 		return fmt.Errorf("block has nil StateRoot")
 	}
 
-	if blk.Timestamp > types.Uint64(time.Now().Unix()) {
+	if blk.Timestamp > types.Uint64(dv.clock.EpochSeconds()) {
 		return fmt.Errorf("block was generated too far in the future")
 	}
 
