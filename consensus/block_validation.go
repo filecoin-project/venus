@@ -63,7 +63,24 @@ func NewDefaultBlockValidator(c clock.BlockClock) *DefaultBlockValidator {
 
 // ValidateSemantic validates a block is correctly derived from its parent.
 func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
-	// TODO validate timestamp
+	pmin, err := parents.MinTimestamp()
+	if err != nil {
+		return err
+	}
+
+	ph, err := parents.Height()
+	if err != nil {
+		return err
+	}
+
+	// check that child is appropriately delayed from its parents including
+	// null blocks.
+	// TODO replace check on height when #2222 lands
+	limit := uint64(pmin) + uint64(dv.BlockTime().Seconds())*uint64(uint64(child.Height)-ph)
+	if uint64(child.Timestamp) < limit {
+		return fmt.Errorf("block was generated too soon")
+	}
+
 	// #2886
 	return nil
 }
@@ -73,7 +90,11 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 	if !blk.StateRoot.Defined() {
 		return fmt.Errorf("block has nil StateRoot")
 	}
-	// TODO validate timestamp
+
+	if blk.Timestamp > types.Uint64(time.Now().Unix()) {
+		return fmt.Errorf("block was generated too far in the future")
+	}
+
 	// TODO validate block signature
 	// #2886
 	return nil

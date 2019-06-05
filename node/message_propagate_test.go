@@ -31,7 +31,6 @@ func TestMessagePropagation(t *testing.T) {
 	genesis := consensus.MakeGenesisFunc(
 		consensus.ActorAccount(senderAddress, types.NewAttoFILFromFIL(100)),
 		consensus.BlockTimerFunc(func() int64 { return 0 }),
-		consensus.BlockTimerFunc(func() int64 { return 0 }),
 	)
 
 	// Initialize the first node to be the message sender.
