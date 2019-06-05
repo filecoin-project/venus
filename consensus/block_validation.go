@@ -28,20 +28,6 @@ type BlockSyntaxValidator interface {
 	ValidateSyntax(ctx context.Context, blk *types.Block) error
 }
 
-// BlockValidationClock defines an interface for fetching unix epoch time.
-type BlockValidationClock interface {
-	EpochSeconds() uint64
-}
-
-// DefaultBlockValidationClock implements BlockValidationClock using the
-// Go time package.
-type DefaultBlockValidationClock struct{}
-
-// NewDefaultBlockValidationClock returns a DefaultBlockValidationClock.
-func NewDefaultBlockValidationClock() *DefaultBlockValidationClock {
-	return &DefaultBlockValidationClock{}
-}
-
 // EpochSeconds returns Unix time, the number of seconds elapsed since January 1, 1970 UTC.
 // The result does not depend on location.
 func (ebc *DefaultBlockValidationClock) EpochSeconds() uint64 {
@@ -50,14 +36,14 @@ func (ebc *DefaultBlockValidationClock) EpochSeconds() uint64 {
 
 // DefaultBlockValidator implements the BlockValidator interface.
 type DefaultBlockValidator struct {
-	clock clock.BlockClock
+	clock.BlockClock
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
 func NewDefaultBlockValidator(c clock.BlockClock) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
-		clock: c,
+		BlockClock: c,
 	}
 }
 
@@ -91,17 +77,11 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 		return fmt.Errorf("block has nil StateRoot")
 	}
 
-	if blk.Timestamp > types.Uint64(dv.clock.EpochSeconds()) {
+	if blk.Timestamp > types.Uint64(dv.EpochSeconds()) {
 		return fmt.Errorf("block was generated too far in the future")
 	}
 
 	// TODO validate block signature
 	// #2886
 	return nil
-}
-
-// BlockTime returns the block time the DefaultBlockValidator uses to validate
-/// blocks against.
-func (dv *DefaultBlockValidator) BlockTime() time.Duration {
-	return dv.clock.BlockTime()
 }
