@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs
-// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libfilecoin_proofs.pc
-// #include "../include/libfilecoin_proofs.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libsector_builder_ffi.pc
+// #include "../include/libsector_builder_ffi.h"
 import "C"
 
 var log = logging.Logger("sectorbuilder") // nolint: deadcode
@@ -57,7 +57,7 @@ type RustSectorBuilder struct {
 	// knows about.
 	sealStatusPoller *sealStatusPoller
 
-	// SectorClass configures behavior of libfilecoin_proofs, including sector
+	// SectorClass configures behavior of libsector_builder_ffi, including sector
 	// packing, sector sizes, sealing and PoSt generation performance.
 	SectorClass types.SectorClass
 }
