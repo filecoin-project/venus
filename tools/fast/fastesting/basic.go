@@ -60,7 +60,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.Envi
 
 	fastenvOpts = fast.EnvironmentOpts{
 		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
-		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...),
+		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Second)}, fastenvOpts.DaemonOpts...),
 	}
 
 	// Setup the first node which is used to help coordinate the other nodes by providing

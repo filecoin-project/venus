@@ -1,14 +1,27 @@
 package commands_test
 
 import (
+	"bytes"
+	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
+	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io"
+	"math/big"
 	"strings"
 	"testing"
 )
@@ -103,4 +116,70 @@ func TestShowDeal(t *testing.T) {
 		expected := "deal not found"
 		minerDaemon.RunFail(expected, "show", "deal", addAskCid.String()).ReadStdoutTrimNewlines()
 	})
+}
+
+func TestShowDeal2(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	fastenvOpts := fast.EnvironmentOpts{
+		//InitOpts: []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
+		//DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(time.Second)},
+	}
+
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastenvOpts)
+
+	clientNode := env.GenesisMiner
+	require.NoError(t, clientNode.MiningStart(ctx))
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+
+	// Connect the clientNode and the minerNode
+	err := series.Connect(ctx, clientNode, minerNode)
+	require.NoError(t, err)
+
+	// Create a minerNode
+	collateral := big.NewInt(500)           // FIL
+	price := big.NewFloat(0.000000001)      // price per byte/block
+	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
+
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
+	require.NoError(t, err)
+
+	// Create some data that is the full sector size and make it autoseal asap
+	var data bytes.Buffer
+	dataReader := io.LimitReader(rand.Reader, int64(getMaxUserBytesPerStagedSector()))
+	dataReader = io.TeeReader(dataReader, &data)
+	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
+	require.NoError(t, err)
+
+	t.Run("showDeal outputs correct information", func(t *testing.T) {
+		showDeal, err := clientNode.ShowDeal(ctx, deal)
+		require.NoError(t, err)
+
+		assert.Equal(t, ask.Miner.String(), showDeal.Miner.String())
+		assert.Equal(t, "accepted", showDeal.Response.State.String())
+
+		totalPrice := types.NewAttoFILFromFIL(1016)
+		assert.Equal(t, totalPrice, showDeal.Proposal.TotalPrice)
+	})
+
+	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
+		deal.ProposalCid = requireTestCID(t, []byte("anything"))
+		showDeal, err := clientNode.ShowDeal(ctx, deal)
+		assert.Error(t, err, "Error: deal not found")
+		assert.Nil(t, showDeal)
+	})
+}
+
+func getMaxUserBytesPerStagedSector() uint64 {
+	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+}
+
+func requireTestCID(t *testing.T, data []byte) cid.Cid {
+	hash, err := multihash.Sum(data, multihash.SHA2_256, -1)
+	require.NoError(t, err)
+	return cid.NewCidV1(cid.DagCBOR, hash)
 }
