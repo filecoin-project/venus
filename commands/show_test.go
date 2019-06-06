@@ -5,25 +5,24 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
+	"io"
+	"math/big"
+	"testing"
+
+	"github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
+	"github.com/multiformats/go-multihash"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
-	files "github.com/ipfs/go-ipfs-files"
-	"github.com/multiformats/go-multihash"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"io"
-	"math/big"
-	"strings"
-	"testing"
 )
 
 func TestBlockDaemon(t *testing.T) {
@@ -69,55 +68,6 @@ func TestBlockDaemon(t *testing.T) {
 	})
 }
 
-func TestShowDeal(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-		th.AutoSealInterval("1"),
-	).Start()
-	defer minerDaemon.ShutdownSuccess()
-
-	clientDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
-	).Start()
-	defer clientDaemon.ShutdownSuccess()
-
-	minerDaemon.RunSuccess("mining", "start")
-	minerDaemon.UpdatePeerID()
-
-	minerDaemon.ConnectSuccess(clientDaemon)
-
-	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-
-	t.Run("when deal exists shows deal info", func(t *testing.T) {
-		clientDaemon.WaitForMessageRequireSuccess(addAskCid)
-		dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
-		proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
-
-		splitOnSpace := strings.Split(proposeDealOutput, " ")
-
-		dealCid := splitOnSpace[len(splitOnSpace)-1]
-
-		showdeal := minerDaemon.RunSuccess("show", "deal", dealCid).ReadStdoutTrimNewlines()
-		assert.Contains(t, showdeal, fmt.Sprintf("CID: %s", dealCid))
-		assert.Contains(t, showdeal, fmt.Sprintf("Miner: %s", fixtures.TestMiners[0]))
-		assert.Contains(t, showdeal, "Duration: 5 blocks")
-		assert.Contains(t, showdeal, "State: staged")
-		assert.Contains(t, showdeal, "Size: 12 bytes")
-		assert.Contains(t, showdeal, "Total Price: 1200 FIL")
-	})
-
-	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
-		expected := "deal not found"
-		minerDaemon.RunFail(expected, "show", "deal", addAskCid.String()).ReadStdoutTrimNewlines()
-	})
-}
-
 func TestShowDeal2(t *testing.T) {
 	tf.IntegrationTest(t)
 
@@ -150,7 +100,9 @@ func TestShowDeal2(t *testing.T) {
 
 	// Create some data that is the full sector size and make it autoseal asap
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, int64(getMaxUserBytesPerStagedSector()))
+
+	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
+	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
 	dataReader = io.TeeReader(dataReader, &data)
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
@@ -162,7 +114,9 @@ func TestShowDeal2(t *testing.T) {
 		assert.Equal(t, ask.Miner.String(), showDeal.Miner.String())
 		assert.Equal(t, "accepted", showDeal.Response.State.String())
 
-		totalPrice := types.NewAttoFILFromFIL(1016)
+		prFIL := types.NewAttoFIL(big.NewInt(10000000000))
+		totalPrice := prFIL.MulBigInt(big.NewInt(maxBytesi64))
+
 		assert.Equal(t, totalPrice, showDeal.Proposal.TotalPrice)
 	})
 
