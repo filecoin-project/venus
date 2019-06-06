@@ -68,7 +68,7 @@ func TestBlockDaemon(t *testing.T) {
 	})
 }
 
-func TestShowDeal2(t *testing.T) {
+func TestShowDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	fastenvOpts := fast.EnvironmentOpts{
