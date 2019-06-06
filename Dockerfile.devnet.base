@@ -1,0 +1,67 @@
+FROM golang:1.12.1-stretch AS builder
+MAINTAINER Filecoin Dev Team
+
+RUN apt-get update && apt-get install -y ca-certificates build-essential clang jq
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
+
+ARG FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes
+ARG FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES=yes
+
+COPY . /go/go-filecoin
+WORKDIR /go/go-filecoin
+
+RUN go mod download
+RUN ./scripts/install-rust-fil-proofs.sh
+RUN ./scripts/install-bls-signatures.sh
+
+RUN go run ./build build-filecoin
+RUN go run ./build build-deploy
+RUN go run ./build build-gengen
+RUN go run ./build build-faucet
+
+FROM busybox:1-glibc AS filecoin
+MAINTAINER Filecoin Dev Team
+
+# Base resources
+COPY --from=builder /etc/ssl/certs                       /etc/ssl/certs
+COPY --from=builder /lib/x86_64-linux-gnu/libdl-2.24.so  /lib/libdl.so.2
+COPY --from=builder /lib/x86_64-linux-gnu/librt.so.1     /lib/librt.so.1
+COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1  /lib/libgcc_s.so.1
+COPY --from=builder /lib/x86_64-linux-gnu/libutil.so.1   /lib/libutil.so.1
+
+# Built resources
+COPY --from=builder /go/go-filecoin/tools/fast/devnets/deploy/deploy-sh  /usr/local/bin/deploy-sh
+COPY --from=builder /go/go-filecoin/go-filecoin                          /usr/local/bin/go-filecoin
+COPY --from=builder /go/go-filecoin/gengen/gengen                        /usr/local/bin/gengen
+COPY --from=builder /go/go-filecoin/tools/faucet/faucet                  /usr/local/bin/faucet
+COPY --from=builder /go/go-filecoin/tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
+
+RUN adduser -D -h /var/filecoin -u 1000 -G users filecoin
+
+ENV FILECOIN_PARAMETER_CACHE="/var/filecoin-proof-parameters"
+ENV FIL_PATH /var/filecoin/repo
+
+# Swarm
+EXPOSE 6000
+
+# API
+EXPOSE 3453
+
+# Facuet
+EXPOSE 9797
+
+
+# Location of repo / sectors
+VOLUME /var/filecoin
+
+# Location of proof parameter files
+VOLUME /var/filecoin-proof-parameters
+
+# Location of operational setup files
+VOLUME /opt/filecoin
+
+USER filecoin
+
+ENTRYPOINT ["/usr/local/bin/deploy-sh"]
+
+CMD ["-help"]

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -x
+
+if [ ! -f "$FIL_PATH" ]; then
+  /usr/local/bin/deploy $@ -step pre
+fi
+
+/usr/local/bin/go-filecoin daemon $(/usr/local/bin/deploy $@ -step daemon)

@@ -1,0 +1,15 @@
+{
+  "WorkingDir": "/var/filecoin",
+  "GenesisCarFile":"/opt/filecoin/genesis.car",
+  "PeerkeyFile": "/opt/filecoin/peer4.key",
+  "FaucetURL": "http://172.19.0.5:9797/tap",
+  "AutoSealInterval": 120,
+  "Network": "user",
+  "BlockTime": "30s",
+  "LogJSON": "1",
+  "LogLevel":"5",
+  "Collateral": 10,
+  "AskPrice": "0.000000001",
+  "AskExpiry": 100,
+  "SectorSize": 128
+}

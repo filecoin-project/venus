@@ -115,13 +115,17 @@ func init() {
 			}
 		}
 
-		if err := os.Mkdir(filepath.Join(dir, "bin"), 0755); err != nil {
-			return nil, fmt.Errorf("could not make dir: %s", err)
+		if _, err := os.Stat(filepath.Join(dir, "bin")); os.IsNotExist(err) {
+			if err := os.Mkdir(filepath.Join(dir, "bin"), 0755); err != nil {
+				return nil, fmt.Errorf("could not make dir: %s", err)
+			}
 		}
 
 		dst := filepath.Join(dir, "bin", filepath.Base(binPath))
-		if err := copyFileContents(binPath, dst); err != nil {
-			return nil, err
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			if err := copyFileContents(binPath, dst); err != nil {
+				return nil, err
+			}
 		}
 
 		if err := os.Chmod(dst, 0755); err != nil {

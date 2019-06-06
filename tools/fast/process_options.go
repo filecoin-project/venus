@@ -82,3 +82,10 @@ func POSwarmRelayPublic(a multiaddr.Multiaddr) ProcessDaemonOption {
 		return []string{"--swarmrelaypublic", a.String()}
 	}
 }
+
+// POSwarmListen provides the `--swarmlisten` to process when starting
+func POSwarmListen(a multiaddr.Multiaddr) ProcessDaemonOption {
+	return func() []string {
+		return []string{"--swarmlisten", a.String()}
+	}
+}
