@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/plumbing/clock"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -198,7 +199,7 @@ func TestNodeConfig(t *testing.T) {
 	configOptions := []node.ConfigOpt{
 		repoConfig(),
 		node.VerifierConfigOption(verifier),
-		node.BlockClock(time.Duration(configBlockTime)),
+		node.BlockClock(clock.NewConfiguredBlockClock(time.Duration(configBlockTime))),
 	}
 
 	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}

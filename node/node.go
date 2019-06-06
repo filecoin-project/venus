@@ -214,9 +214,9 @@ func IsRelay() ConfigOpt {
 }
 
 // BlockClock sets the clock.
-func BlockClock(blockTime time.Duration) ConfigOpt {
+func BlockClock(clk clock.BlockClock) ConfigOpt {
 	return func(c *Config) error {
-		c.Clock = clock.NewDefaultBlockClock(blockTime)
+		c.Clock = clk
 		return nil
 	}
 }
@@ -381,7 +381,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// DO NOT MERGE this code smells like poo, this smell exists elsewhere,
 	// should have defaults set on it _before_ we get here?
 	if nc.Clock == nil {
-		nc.Clock = clock.NewDefaultBlockClock(mining.DefaultBlockTime)
+		nc.Clock = clock.NewDefaultBlockClock()
 	}
 
 	// setup block validation

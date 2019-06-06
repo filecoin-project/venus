@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+// DefaultBlockTime is the estimated proving period time.
+// We define this so that we can fake mining in the current incomplete system.
+const DefaultBlockTime = 30 * time.Second
+
 // BlockClock defines an interface for fetching the block time.
 type BlockClock interface {
 	BlockTime() time.Duration
@@ -16,10 +20,19 @@ type DefaultBlockClock struct {
 }
 
 // NewDefaultBlockClock returns a DefaultBlockClock. It can be used to
-// get the value of block time.
-func NewDefaultBlockClock(t time.Duration) *DefaultBlockClock {
+// get the value of block time. NewDefaultBlockClock uses DefaltBlockTime
+// as the block time.
+func NewDefaultBlockClock() *DefaultBlockClock {
 	return &DefaultBlockClock{
-		blockTime: t,
+		blockTime: DefaultBlockTime,
+	}
+}
+
+// NewConfiguredBlockClock returns a DefaultBlockClock with the provided
+// blockTime.
+func NewConfiguredBlockClock(blockTime time.Duration) *DefaultBlockClock {
+	return &DefaultBlockClock{
+		blockTime: blockTime,
 	}
 }
 

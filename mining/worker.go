@@ -23,10 +23,6 @@ import (
 
 var log = logging.Logger("mining")
 
-// DefaultBlockTime is the estimated proving period time.
-// We define this so that we can fake mining in the current incomplete system.
-const DefaultBlockTime = 30 * time.Second
-
 // Output is the result of a single mining run. It has either a new
 // block or an error, mimicing the golang (retVal, error) pattern.
 // If a mining run's context is canceled there is no output.

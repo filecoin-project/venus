@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/mining"
+	"github.com/filecoin-project/go-filecoin/plumbing/clock"
 )
 
 type ctxSleepDelayKey struct{}
@@ -14,7 +14,7 @@ var (
 	sleepDelayKey = ctxSleepDelayKey{}
 
 	// Default delay
-	defaultSleepDelay = mining.DefaultBlockTime
+	defaultSleepDelay = clock.DefaultBlockTime
 )
 
 // SetCtxSleepDelay returns a context with `d` set in the context. To sleep with
