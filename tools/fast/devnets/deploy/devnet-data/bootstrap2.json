@@ -1,0 +1,12 @@
+{
+  "WorkingDir": "/var/filecoin",
+  "GenesisCarFile":"/opt/filecoin/genesis.car",
+  "PeerkeyFile": "/opt/filecoin/peer2.key",
+  "AutoSealInterval": 120,
+  "Network": "user",
+  "BlockTime": "30s",
+  "LogJSON": "1",
+  "LogLevel":"5",
+  "SwarmListen": "/ip4/172.19.0.30/tcp/6000",
+  "SwarmRelayPublic": "/ip4/172.19.0.30/tcp/6000"
+}

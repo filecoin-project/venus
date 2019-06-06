@@ -18,9 +18,7 @@ func CreateStorageMinerWithAsk(ctx context.Context, miner *fast.Filecoin, collat
 		return porcelain.Ask{}, err
 	}
 
-	if err := miner.MiningStart(ctx); err != nil {
-		return porcelain.Ask{}, err
-	}
+	CtxMiningOnce(ctx)
 
 	return SetPriceGetAsk(ctx, miner, price, expiry)
 

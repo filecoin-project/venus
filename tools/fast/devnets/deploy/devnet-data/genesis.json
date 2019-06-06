@@ -1,0 +1,12 @@
+{
+  "WorkingDir": "/var/filecoin",
+  "GenesisCarFile":"/opt/filecoin/genesis.car",
+  "PeerkeyFile": "/opt/filecoin/peer0.key",
+  "AutoSealInterval": 120,
+  "Network": "user",
+  "BlockTime": "30s",
+  "LogJSON": "1",
+  "LogLevel":"5",
+  "WalletFile": "/opt/filecoin/0.key",
+  "MinerAddress": "t2r2ilwshnizs2wm6gqbbq6eomnp3i4bks6dp6fda"
+}

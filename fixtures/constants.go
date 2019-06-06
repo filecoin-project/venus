@@ -124,6 +124,7 @@ const (
 	nightlyFilecoinBootstrap4 string = "/dns4/nightly.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
+/*
 // user devnet addrs
 const (
 	userFilecoinBootstrap0 string = "/dns4/user.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
@@ -131,6 +132,13 @@ const (
 	userFilecoinBootstrap2 string = "/dns4/user.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
 	userFilecoinBootstrap3 string = "/dns4/user.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
 	userFilecoinBootstrap4 string = "/dns4/user.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
+)
+*/
+// user devnet addrs
+const (
+	userFilecoinBootstrap0 string = "/ip4/172.19.0.20/tcp/6000/ipfs/QmS871Bs3Q6K6trGjDRH5tUVPAPR9VwWfXybqiHR8sjhdp"
+	userFilecoinBootstrap1 string = "/ip4/172.19.0.30/tcp/6000/ipfs/Qmf4JTNtz5idc5bDuS5Ay6L58FTPxbfgyAzjkUsxr9jRho"
+	userFilecoinBootstrap2 string = "/ip4/172.19.0.40/tcp/6000/ipfs/QmUo9T2xveWBGuzJkUhmPLjjw1E3opjPMwhE9gEqUdwapU"
 )
 
 // DevnetTestBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
@@ -159,6 +167,6 @@ var DevnetUserBootstrapAddrs = []string{
 	userFilecoinBootstrap0,
 	userFilecoinBootstrap1,
 	userFilecoinBootstrap2,
-	userFilecoinBootstrap3,
-	userFilecoinBootstrap4,
+	//userFilecoinBootstrap3,
+	//userFilecoinBootstrap4,
 }
