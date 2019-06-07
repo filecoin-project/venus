@@ -7,11 +7,11 @@ download_release_tarball() {
     __release_name="${__repo_name}-$(uname)"
     __release_sha1=$(git rev-parse @:"${__submodule_path}")
     __release_tag="${__release_sha1:0:16}"
+    __release_url="https://api.github.com/repos/filecoin-project/${__repo_name}/releases/tags/${__release_tag}"
 
     __release_response=$(curl \
  --retry 3 \
- --location \
- "https://api.github.com/repos/filecoin-project/${__repo_name}/releases/tags/${__release_tag}")
+ --location $__release_url)
 
     __release_url=$(echo $__release_response | jq -r ".assets[] | select(.name | contains(\"${__release_name}\")) | .url")
 
@@ -29,7 +29,7 @@ download_release_tarball() {
     if [[ ! -f "${__tar_path}" ]]; then
         curl --retry 3 --output "${__tar_path}" "$__asset_url"
         if [[ $? -ne "0" ]]; then
-            echo "asset failed to be downloaded"
+            echo "failed to download release asset (url: ${__release_url}, response: ${__release_response})"
             return 1
         fi
     fi
