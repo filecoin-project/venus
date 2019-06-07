@@ -1,7 +1,6 @@
 package commands_test
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -85,8 +84,7 @@ func TestShowDeal(t *testing.T) {
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode
-	err := series.Connect(ctx, clientNode, minerNode)
-	require.NoError(t, err)
+	require.NoError(t, series.Connect(ctx, clientNode, minerNode))
 
 	// Create a minerNode
 	collateral := big.NewInt(500)           // FIL
@@ -97,11 +95,9 @@ func TestShowDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create some data that is the full sector size and make it autoseal asap
-	var data bytes.Buffer
 
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
-	dataReader = io.TeeReader(dataReader, &data)
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
