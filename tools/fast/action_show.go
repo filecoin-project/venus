@@ -23,11 +23,11 @@ func (f *Filecoin) ShowBlock(ctx context.Context, ref cid.Cid) (*types.Block, er
 }
 
 // ShowDeal runs the `show deal` command against the filecoin process
-func (f *Filecoin) ShowDeal(ctx context.Context, dealResp *storagedeal.Response) (*storagedeal.Deal, error) {
+func (f *Filecoin) ShowDeal(ctx context.Context, propCid cid.Cid) (*storagedeal.Deal, error) {
 
 	var out storagedeal.Deal
 
-	err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "deal", dealResp.ProposalCid.String())
+	err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "deal", propCid.String())
 	if err != nil {
 		return nil, err
 	}

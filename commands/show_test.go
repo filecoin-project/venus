@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
@@ -71,20 +72,17 @@ func TestBlockDaemon(t *testing.T) {
 func TestShowDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	fastenvOpts := fast.EnvironmentOpts{
-		//InitOpts: []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
-		//DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(time.Second)},
-	}
+	fastenvOpts := fast.EnvironmentOpts{}
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastenvOpts)
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
-	defer func() {
-		require.NoError(t, env.Teardown(ctx))
-	}()
 
 	// Connect the clientNode and the minerNode
 	err := series.Connect(ctx, clientNode, minerNode)
@@ -108,21 +106,23 @@ func TestShowDeal(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("showDeal outputs correct information", func(t *testing.T) {
-		showDeal, err := clientNode.ShowDeal(ctx, deal)
+		showDeal, err := clientNode.ShowDeal(ctx, deal.ProposalCid)
 		require.NoError(t, err)
 
-		assert.Equal(t, ask.Miner.String(), showDeal.Miner.String())
-		assert.Equal(t, "accepted", showDeal.Response.State.String())
+		assert.Equal(t, ask.Miner, showDeal.Miner)
+		assert.Equal(t, storagedeal.Accepted, showDeal.Response.State)
 
-		prFIL := types.NewAttoFIL(big.NewInt(10000000000))
-		totalPrice := prFIL.MulBigInt(big.NewInt(maxBytesi64))
+		duri64 := int64(showDeal.Proposal.Duration)
+		foo := big.NewInt(duri64 * maxBytesi64)
+
+		totalPrice := ask.Price.MulBigInt(foo)
 
 		assert.Equal(t, totalPrice, showDeal.Proposal.TotalPrice)
 	})
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
 		deal.ProposalCid = requireTestCID(t, []byte("anything"))
-		showDeal, err := clientNode.ShowDeal(ctx, deal)
+		showDeal, err := clientNode.ShowDeal(ctx, deal.ProposalCid)
 		assert.Error(t, err, "Error: deal not found")
 		assert.Nil(t, showDeal)
 	})
