@@ -1,29 +1,28 @@
 #!/usr/bin/env bash
 
-RELEASE_SHA1=`git rev-parse @:./proofs/rust-fil-sector-builder`
+RELEASE_SHA1=$(git rev-parse @:./proofs/rust-fil-sector-builder)
 
 install_precompiled() {
-  RELEASE_NAME="rust-fil-sector-builder-`uname`"
+  RELEASE_NAME="rust-fil-sector-builder-$(uname)"
   RELEASE_TAG="${RELEASE_SHA1:0:16}"
 
-  RELEASE_RESPONSE=`curl \
+  RELEASE_RESPONSE=$(curl \
     --retry 3 \
     --location \
-    "https://api.github.com/repos/filecoin-project/rust-fil-sector-builder/releases/tags/$RELEASE_TAG"
-  `
+    "https://api.github.com/repos/filecoin-project/rust-fil-sector-builder/releases/tags/$RELEASE_TAG")
 
-  RELEASE_URL=`echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url"`
+  RELEASE_URL=$(echo $RELEASE_RESPONSE | jq -r ".assets[] | select(.name | contains(\"$RELEASE_NAME\")) | .url")
 
-  ASSET_URL=`curl \
+  ASSET_URL=$(curl \
     --head \
     --retry 3 \
     --header "Accept:application/octet-stream" \
     --location \
     --output /dev/null \
     -w %{url_effective} \
-    "$RELEASE_URL"
-  `
-  ASSET_ID=`basename ${RELEASE_URL}`
+    "$RELEASE_URL")
+
+  ASSET_ID=$(basename ${RELEASE_URL})
 
   TAR_NAME="${RELEASE_NAME}_${ASSET_ID}"
   if [ ! -f "/tmp/${TAR_NAME}.tar.gz" ]; then
@@ -37,8 +36,8 @@ install_precompiled() {
   tmp_dir=$(mktemp -d)
   tar -C $tmp_dir -xzf /tmp/${TAR_NAME}.tar.gz
 
-  cp "${tmp_dir}/include" proofs/include
-  cp -R "${tmp_dir}/lib" proofs/lib
+  cp -R "${tmp_dir}/include" proofs
+  cp -R "${tmp_dir}/lib" proofs
 }
 
 install_local() {
@@ -72,15 +71,10 @@ install_local() {
 
 git submodule update --init --recursive proofs/rust-fil-sector-builder
 
-if [ -z "$FILECOIN_USE_PRECOMPILED_RUST_PROOFS" ]; then
-  echo "using local rust-fil-sector-builder @ ${RELEASE_SHA1}"
-  install_local
-else
-  echo "using precompiled rust-fil-sector-builder @ ${RELEASE_SHA1}"
-  install_precompiled
+echo "using precompiled rust-fil-sector-builder @ ${RELEASE_SHA1}"
+install_precompiled
 
-  if [ $? -ne "0" ]; then
-    echo "failed to find or obtain precompiled rust-fil-sector-builder, falling back to local"
-    install_local
-  fi
+if [ $? -ne "0" ]; then
+  echo "failed to find or obtain precompiled rust-fil-sector-builder, falling back to local"
+  install_local
 fi

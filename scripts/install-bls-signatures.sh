@@ -71,15 +71,10 @@ install_local() {
   cp bls-signatures/bls-signatures/target/release/libbls_signatures.pc ./bls-signatures/lib/pkgconfig/
 }
 
-if [ -z "$FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES" ]; then
-  echo "using local bls-signatures @ ${RELEASE_SHA1}"
-  install_local
-else
-  echo "using precompiled bls-signatures @ ${RELEASE_SHA1}"
-  install_precompiled
+echo "using precompiled bls-signatures @ ${RELEASE_SHA1}"
+install_precompiled
 
-  if [ $? -ne "0" ]; then
-    echo "failed to find or obtain precompiled bls-signatures, falling back to local"
-    install_local
-  fi
+if [ $? -ne "0" ]; then
+  echo "failed to find or obtain precompiled bls-signatures, falling back to local"
+  install_local
 fi
