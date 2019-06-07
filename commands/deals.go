@@ -30,7 +30,8 @@ var dealsCmd = &cmds.Command{
 	},
 }
 
-type dealsListResult struct {
+// DealsListResult represents the subset of deal data returned by deals list
+type DealsListResult struct {
 	Miner       address.Address   `json:"minerAddress"`
 	PieceCid    cid.Cid           `json:"pieceCid"`
 	ProposalCid cid.Cid           `json:"proposalCid"`
@@ -71,7 +72,7 @@ deals, active deals, finished deals and cancelled deals.
 			if deal.Err != nil {
 				return deal.Err
 			}
-			out := &dealsListResult{
+			out := &DealsListResult{
 				Miner:       deal.Deal.Miner,
 				PieceCid:    deal.Deal.Proposal.PieceRef,
 				ProposalCid: deal.Deal.Response.ProposalCid,
@@ -84,9 +85,9 @@ deals, active deals, finished deals and cancelled deals.
 
 		return nil
 	},
-	Type: dealsListResult{},
+	Type: DealsListResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *dealsListResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *DealsListResult) error {
 			encoder := json.NewEncoder(w)
 			encoder.SetIndent("", "\t")
 			return encoder.Encode(res)
