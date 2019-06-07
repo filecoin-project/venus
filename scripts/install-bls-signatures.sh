@@ -10,8 +10,8 @@ if download_release_tarball tarball_path "${subm_dir}"; then
     tmp_dir=$(mktemp -d)
     tar -C $tmp_dir -xzf $tarball_path
 
-    cp -R "${tmp_dir}/include" proofs
-    cp -R "${tmp_dir}/lib" proofs
+    cp -R "${tmp_dir}/include" bls-signatures
+    cp -R "${tmp_dir}/lib" bls-signatures
 else
     echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local"
     build_from_source "${subm_dir}"
@@ -19,7 +19,7 @@ else
     mkdir -p bls-signatures/include
     mkdir -p bls-signatures/lib/pkgconfig
 
-    cp "${subm_dir}/target/release/libbls_signatures.h" ./proofs/include/libbls_signatures.h
-    cp "${subm_dir}/target/release/libbls_signatures_ffi.a" ./proofs/lib/libbls_signatures.a
-    cp "${subm_dir}/target/release/libbls_signatures.pc" ./proofs/lib/pkgconfig/libbls_signatures.pc
+    cp "${subm_dir}/target/release/libbls_signatures.h" ./bls-signatures/include/libbls_signatures.h
+    cp "${subm_dir}/target/release/libbls_signatures_ffi.a" ./bls-signatures/lib/libbls_signatures.a
+    cp "${subm_dir}/target/release/libbls_signatures.pc" ./bls-signatures/lib/pkgconfig/libbls_signatures.pc
 fi
