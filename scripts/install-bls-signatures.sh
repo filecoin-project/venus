@@ -13,7 +13,7 @@ if download_release_tarball tarball_path "${subm_dir}"; then
     cp -R "${tmp_dir}/include" bls-signatures
     cp -R "${tmp_dir}/lib" bls-signatures
 else
-    echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local"
+    (>&2 echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local build")
     build_from_source "${subm_dir}"
 
     mkdir -p bls-signatures/include

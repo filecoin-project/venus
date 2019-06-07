@@ -7,13 +7,20 @@ download_release_tarball() {
     __release_name="${__repo_name}-$(uname)"
     __release_sha1=$(git rev-parse @:"${__submodule_path}")
     __release_tag="${__release_sha1:0:16}"
-    __release_url="https://api.github.com/repos/filecoin-project/${__repo_name}/releases/tags/${__release_tag}"
+    __release_tag_url="https://api.github.com/repos/filecoin-project/${__repo_name}/releases/tags/${__release_tag}"
+
+    echo "acquiring release @ ${__release_tag}"
 
     __release_response=$(curl \
  --retry 3 \
- --location $__release_url)
+ --location $__release_tag_url)
 
     __release_url=$(echo $__release_response | jq -r ".assets[] | select(.name | contains(\"${__release_name}\")) | .url")
+
+    if [[ -z "$__release_url" ]]; then
+        (>&2 echo "failed to download release (tag URL: ${__release_tag_url}, response: ${__release_response})")
+        return 1
+    fi
 
     __asset_url=$(curl \
  --head \
@@ -29,7 +36,7 @@ download_release_tarball() {
     if [[ ! -f "${__tar_path}" ]]; then
         curl --retry 3 --output "${__tar_path}" "$__asset_url"
         if [[ $? -ne "0" ]]; then
-            echo "failed to download release asset (url: ${__release_url}, response: ${__release_response})"
+            (>&2 echo "failed to download release asset (tag URL: ${__release_tag_url}, asset URL: ${__asset_url})")
             return 1
         fi
     fi
@@ -39,16 +46,20 @@ download_release_tarball() {
 
 build_from_source() {
     __submodule_path=$1
+    __submodule_sha1=$(git rev-parse @:"${__submodule_path}")
+    __submodule_sha1_truncated="${__submodule_sha1:0:16}"
+
+    echo "building from source @ ${__submodule_sha1_truncated}"
 
     if ! [ -x "$(command -v cargo)" ]; then
-        echo 'Error: cargo is not installed.'
-        echo 'Install Rust toolchain to resolve this problem.'
+        (>&2 echo 'Error: cargo is not installed.')
+        (>&2 echo 'Install Rust toolchain to resolve this problem.')
         exit 1
     fi
 
     if ! [ -x "$(command -v rustup)" ]; then
-        echo 'Error: rustup is not installed.'
-        echo 'Install Rust toolchain installer to resolve this problem.'
+        (>&2 echo 'Error: rustup is not installed.')
+        (>&2 echo 'Install Rust toolchain installer to resolve this problem.')
         exit 1
     fi
 

@@ -13,7 +13,7 @@ if download_release_tarball tarball_path "${subm_dir}"; then
     cp -R "${tmp_dir}/bin" proofs
     cp -R "${tmp_dir}/misc" proofs
 else
-    echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local"
+    echo "failed to find or obtain precompiled assets for ${subm_dir}, falling back to local build"
     build_from_source "${subm_dir}"
 
     mkdir -p proofs/bin
