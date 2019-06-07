@@ -787,7 +787,7 @@ func checkCondition(vmctx exec.VMContext, channel *PaymentChannel) error {
 		return nil
 	}
 
-	_, _, err := vmctx.Send(channel.Condition.To, channel.Condition.Method, types.NewZeroAttoFIL(), channel.Condition.Params)
+	_, _, err := vmctx.Send(channel.Condition.To, channel.Condition.Method, types.ZeroAttoFIL, channel.Condition.Params)
 	if err != nil {
 		if errors.IsFault(err) {
 			return err

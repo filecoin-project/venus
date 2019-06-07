@@ -66,7 +66,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.NoError(t, err)
 
 	pdata = actor.MustConvertParams(big.NewInt(0))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(t, err)
 
@@ -85,7 +85,7 @@ func TestAskFunctions(t *testing.T) {
 
 	// Look for an ask that doesn't exist
 	pdata = actor.MustConvertParams(big.NewInt(3453))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.NewZeroAttoFIL(), "getAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.Equal(t, Errors[ErrAskNotFound], result.ExecutionError)
 	assert.NoError(t, err)
@@ -98,7 +98,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(t, big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	pdata = actor.MustConvertParams(big.NewInt(1))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 4, types.NewZeroAttoFIL(), "getAsk", pdata)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 4, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 
@@ -108,7 +108,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(t, types.NewBlockHeight(203), ask2.Expiry)
 	assert.Equal(t, uint64(1), ask2.ID.Uint64())
 
-	msg = types.NewMessage(address.TestAddress, minerAddr, 5, types.NewZeroAttoFIL(), "getAsks", nil)
+	msg = types.NewMessage(address.TestAddress, minerAddr, 5, types.ZeroAttoFIL, "getAsks", nil)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 	assert.NoError(t, result.ExecutionError)

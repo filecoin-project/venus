@@ -113,7 +113,7 @@ func newDefaultMiningConfig() *MiningConfig {
 	return &MiningConfig{
 		MinerAddress:            address.Undef,
 		AutoSealIntervalSeconds: 120,
-		StoragePrice:            types.NewZeroAttoFIL(),
+		StoragePrice:            types.ZeroAttoFIL,
 	}
 }
 

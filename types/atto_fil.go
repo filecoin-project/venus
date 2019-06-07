@@ -13,28 +13,15 @@ import (
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
-// NOTE -- ALL *AttoFIL methods must call ensureZeroAmounts with refs to every user-supplied value before use.
-
 func init() {
 	cbor.RegisterCborType(attoFILAtlasEntry)
 }
 
 var attoPower = 18
 var tenToTheEighteen = big.NewInt(10).Exp(big.NewInt(10), big.NewInt(18), nil)
-var zero big.Int
 
-// ZeroAttoFIL represents an AttoFIL quantity of 0
+// ZeroAttoFIL is the zero value for an AttoFIL, exported for consistency in construction of AttoFILs
 var ZeroAttoFIL AttoFIL
-
-// ensureZeroAmounts takes a variable number of refs -- variables holding *AttoFIL --
-// and sets their values to the ZeroAttoFIL (the zero value for the type) if their values are nil.
-func ensureZeroAmounts(refs ...*AttoFIL) {
-	//for _, ref := range refs {
-	//	if ref.val == nil {
-	//		ref.val = &zero
-	//	}
-	//}
-}
 
 var attoFILAtlasEntry = atlas.BuildEntry(AttoFIL{}).Transform().
 	TransformMarshal(atlas.MakeMarshalTransformFunc(
@@ -78,12 +65,6 @@ func NewAttoFIL(x *big.Int) AttoFIL {
 	return AttoFIL{val: *big.NewInt(0).Set(x)}
 }
 
-// NewZeroAttoFIL returns a new zero quantity of attofilecoin. It is
-// different from ZeroAttoFIL in that this value may be used/mutated.
-func NewZeroAttoFIL() AttoFIL {
-	return AttoFIL{}
-}
-
 // NewAttoFILFromFIL returns a new AttoFIL representing a quantity
 // of attofilecoin equal to x filecoin.
 func NewAttoFILFromFIL(x uint64) AttoFIL {
@@ -122,14 +103,13 @@ func NewAttoFILFromFILString(s string) (AttoFIL, bool) {
 // NewAttoFILFromString allocates a new AttoFIL set to the value of s attofilecoin,
 // interpreted in the given base, and returns it and a boolean indicating success.
 func NewAttoFILFromString(s string, base int) (AttoFIL, bool) {
-	af := NewZeroAttoFIL()
+	af := AttoFIL{}
 	_, ok := af.val.SetString(s, base)
 	return af, ok
 }
 
 // Add sets z to the sum x+y and returns z.
 func (z AttoFIL) Add(y AttoFIL) AttoFIL {
-	ensureZeroAmounts(&z, &y)
 	newZ := AttoFIL{}
 	newZ.val.Add(&z.val, &y.val)
 	return newZ
@@ -137,7 +117,6 @@ func (z AttoFIL) Add(y AttoFIL) AttoFIL {
 
 // Sub sets z to the difference x-y and returns z.
 func (z AttoFIL) Sub(y AttoFIL) AttoFIL {
-	ensureZeroAmounts(&z, &y)
 	newZ := AttoFIL{}
 	newZ.val.Sub(&z.val, &y.val)
 	return newZ
@@ -166,60 +145,50 @@ func (z AttoFIL) DivCeil(y AttoFIL) AttoFIL {
 
 // Equal returns true if z = y
 func (z AttoFIL) Equal(y AttoFIL) bool {
-	ensureZeroAmounts(&z, &y)
 	return z.val.Cmp(&y.val) == 0
 }
 
 // LessThan returns true if z < y
 func (z AttoFIL) LessThan(y AttoFIL) bool {
-	ensureZeroAmounts(&z, &y)
 	return z.val.Cmp(&y.val) < 0
 }
 
 // GreaterThan returns true if z > y
 func (z AttoFIL) GreaterThan(y AttoFIL) bool {
-	ensureZeroAmounts(&z, &y)
 	return z.val.Cmp(&y.val) > 0
 }
 
 // LessEqual returns true if z <= y
 func (z AttoFIL) LessEqual(y AttoFIL) bool {
-	ensureZeroAmounts(&z, &y)
 	return z.val.Cmp(&y.val) <= 0
 }
 
 // GreaterEqual returns true if z >= y
 func (z AttoFIL) GreaterEqual(y AttoFIL) bool {
-	ensureZeroAmounts(&z, &y)
 	return z.val.Cmp(&y.val) >= 0
 }
 
 // IsPositive returns true if z is greater than zero.
 func (z AttoFIL) IsPositive() bool {
-	ensureZeroAmounts(&z)
 	return z.GreaterThan(ZeroAttoFIL)
 }
 
 // IsNegative returns true if z is less than zero.
 func (z AttoFIL) IsNegative() bool {
-	ensureZeroAmounts(&z)
 	return z.LessThan(ZeroAttoFIL)
 }
 
 // IsZero returns true if z equals zero.
 func (z AttoFIL) IsZero() bool {
-	ensureZeroAmounts(&z)
 	return z.Equal(ZeroAttoFIL)
 }
 
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z AttoFIL) Bytes() []byte {
-	ensureZeroAmounts(&z)
 	return leb128.FromBigInt(&z.val)
 }
 
 func (z AttoFIL) String() string {
-	ensureZeroAmounts(&z)
 	attoPadLength := strconv.Itoa(attoPower + 1)
 	paddedStr := fmt.Sprintf("%0"+attoPadLength+"d", &z.val)
 	decimaledStr := fmt.Sprintf("%s.%s", paddedStr[:len(paddedStr)-attoPower], paddedStr[len(paddedStr)-attoPower:])
@@ -229,7 +198,6 @@ func (z AttoFIL) String() string {
 
 // CalculatePrice treats z as a price in AttoFIL/Byte and applies it to numBytes to calculate a total price.
 func (z AttoFIL) CalculatePrice(numBytes *BytesAmount) AttoFIL {
-	ensureZeroAmounts(&z)
 	ensureBytesAmounts(&numBytes)
 	unitPrice := z
 

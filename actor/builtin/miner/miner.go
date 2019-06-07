@@ -172,7 +172,7 @@ func NewState(owner address.Address, key []byte, pid peer.ID, sectorSize *types.
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
-		ActiveCollateral:  types.NewZeroAttoFIL(),
+		ActiveCollateral:  types.ZeroAttoFIL,
 	}
 }
 
@@ -827,7 +827,7 @@ func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (typ
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.Send(address.StorageMarketAddress, "getProofsMode", types.NewZeroAttoFIL(), nil)
+	msgResult, _, err := ctx.Send(address.StorageMarketAddress, "getProofsMode", types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'getProofsMode' message failed")
 	}

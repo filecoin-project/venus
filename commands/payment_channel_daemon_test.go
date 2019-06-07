@@ -68,7 +68,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		assert.Equal(t, channelExpiry, channel.AgreedEol)
 		assert.Equal(t, channelExpiry, channel.Eol)
 		assert.Equal(t, rsrc.targetAddr, channel.Target)
-		assert.True(t, types.ZeroAttoFIL.Equal(channel.AmountRedeemed))
+		assert.Equal(t, types.ZeroAttoFIL, channel.AmountRedeemed)
 	})
 
 	t.Run("Works with specified payer", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		assert.Equal(t, channelExpiry, channel.AgreedEol)
 		assert.Equal(t, channelExpiry, channel.Eol)
 		assert.Equal(t, rsrc.targetAddr, channel.Target)
-		assert.True(t, types.ZeroAttoFIL.Equal(channel.AmountRedeemed))
+		assert.Equal(t, types.ZeroAttoFIL, channel.AmountRedeemed)
 	})
 
 	t.Run("No results when listing with different from address", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 
 	channel := channels[chanid.String()]
 	assert.Equal(t, channelAmount, channel.Amount)
-	assert.True(t, types.ZeroAttoFIL.Equal(channel.AmountRedeemed))
+	assert.Equal(t, types.ZeroAttoFIL, channel.AmountRedeemed)
 }
 
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
@@ -395,7 +395,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	assert.Equal(t, channelExpiry, channel.AgreedEol)
 	assert.Equal(t, channelExpiry, channel.Eol)
 	assert.Equal(t, rsrc.targetAddr, channel.Target)
-	assert.True(t, types.ZeroAttoFIL.Equal(channel.AmountRedeemed))
+	assert.Equal(t, types.ZeroAttoFIL, channel.AmountRedeemed)
 
 	extendAmount := types.NewAttoFILFromFIL(100)
 	extendExpiry := types.NewBlockHeight(100)
@@ -419,7 +419,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	assert.Equal(t, extendExpiry, channel.AgreedEol)
 	assert.Equal(t, extendExpiry, channel.Eol)
 	assert.Equal(t, rsrc.targetAddr, channel.Target)
-	assert.True(t, types.ZeroAttoFIL.Equal(channel.AmountRedeemed))
+	assert.Equal(t, types.ZeroAttoFIL, channel.AmountRedeemed)
 }
 
 func TestPaymentChannelCancelSuccess(t *testing.T) {

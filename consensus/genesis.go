@@ -223,7 +223,7 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		return err
 	}
 
-	pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
+	pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
 	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
 	if err != nil {
 		return err

@@ -950,7 +950,7 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 
 	t.Run("A single message whose gas limit is greater than the block gas limit fails permanently", func(t *testing.T) {
 		msg := types.NewMessage(sender, receiver, 0, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg, err := types.NewSignedMessage(*msg, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*2)
+		sgnedMsg, err := types.NewSignedMessage(*msg, signer, types.ZeroAttoFIL, types.BlockGasLimit*2)
 		require.NoError(t, err)
 
 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg}, sender, types.NewBlockHeight(0), nil)
@@ -961,11 +961,11 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 
 	t.Run("2 msgs both succeed when sum of limits > block limit, but 1st usage + 2nd limit < block limit", func(t *testing.T) {
 		msg1 := types.NewMessage(sender, receiver, 0, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*5/8)
+		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
 		require.NoError(t, err)
 
 		msg2 := types.NewMessage(sender, receiver, 1, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*5/8)
+		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
 		require.NoError(t, err)
 
 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2}, sender, types.NewBlockHeight(0), nil)
@@ -977,11 +977,11 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 
 	t.Run("2nd message delayed when 1st usage + 2nd limit > block limit", func(t *testing.T) {
 		msg1 := types.NewMessage(sender, receiver, 0, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*3/8)
+		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
 		require.NoError(t, err)
 
 		msg2 := types.NewMessage(sender, receiver, 1, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*7/8)
+		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
 		require.NoError(t, err)
 
 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2}, sender, types.NewBlockHeight(0), nil)
@@ -993,15 +993,15 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 
 	t.Run("message with high gas limit does not block messages with lower limits from being included in block", func(t *testing.T) {
 		msg1 := types.NewMessage(sender, receiver, 0, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*3/8)
+		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
 		require.NoError(t, err)
 
 		msg2 := types.NewMessage(sender, receiver, 1, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*7/8)
+		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
 		require.NoError(t, err)
 
 		msg3 := types.NewMessage(sender, receiver, 2, types.ZeroAttoFIL, "blockLimitTestMethod", []byte{})
-		sgnedMsg3, err := types.NewSignedMessage(*msg3, signer, types.NewZeroAttoFIL(), types.BlockGasLimit*3/8)
+		sgnedMsg3, err := types.NewSignedMessage(*msg3, signer, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
 		require.NoError(t, err)
 
 		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2, sgnedMsg3}, sender, types.NewBlockHeight(0), nil)
