@@ -17,9 +17,9 @@ tools/migration/go-filecoin-migrate
 proofs/misc/parameters.json
 proofs/bin/paramcache
 proofs/bin/paramfetch
-proofs/include/libfilecoin_proofs.h
-proofs/lib/libfilecoin_proofs.a
-proofs/lib/pkgconfig/libfilecoin_proofs.pc
+proofs/include/libsector_builder_ffi.h
+proofs/lib/libsector_builder_ffi.a
+proofs/lib/pkgconfig/libsector_builder_ffi.pc
 proofs/misc/
 bls-signatures/include/libbls_signatures.h
 bls-signatures/lib/libbls_signatures.a
