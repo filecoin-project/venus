@@ -2,7 +2,7 @@
 
 source "$(dirname "${BASH_SOURCE[0]}")/install-shared.bash"
 
-subm_dir="proofs/rust-fil-sector-builder"
+subm_dir="proofs/rust-fil-proofs"
 
 git submodule update --init --recursive ${subm_dir}
 
