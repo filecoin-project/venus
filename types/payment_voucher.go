@@ -1,8 +1,11 @@
 package types
 
 import (
+	"fmt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multibase"
+	"sort"
+	"strings"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -73,4 +76,13 @@ func (voucher *PaymentVoucher) Encode() (string, error) {
 	}
 
 	return multibase.Encode(multibase.Base58BTC, cborVoucher)
+}
+
+// SortVouchersByValidAt takes a list of payment vouchers and sorts them
+// in increasing value of ValidAt (block height)
+func SortVouchersByValidAt(sorted []*PaymentVoucher) []*PaymentVoucher {
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].ValidAt.LessThan(&sorted[j].ValidAt)
+	})
+	return sorted
 }

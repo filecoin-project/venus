@@ -55,3 +55,77 @@ func TestBlockDaemon(t *testing.T) {
 		requireSchemaConformance(t, []byte(blockGetLine), "filecoin_block")
 	})
 }
+
+func TestShowDeal(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	fastenvOpts := fast.EnvironmentOpts{}
+
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastenvOpts)
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+
+	clientNode := env.GenesisMiner
+	require.NoError(t, clientNode.MiningStart(ctx))
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+
+	// Connect the clientNode and the minerNode
+	require.NoError(t, series.Connect(ctx, clientNode, minerNode))
+
+	// Create a minerNode
+	collateral := big.NewInt(500)           // FIL
+	price := big.NewFloat(0.000000001)      // price per byte/block
+	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
+
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
+	require.NoError(t, err)
+
+	// Create some data that is the full sector size and make it autoseal asap
+
+	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
+	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
+	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
+	require.NoError(t, err)
+
+	t.Run("showDeal outputs correct information", func(t *testing.T) {
+		showDeal, err := clientNode.ShowDeal(ctx, deal.ProposalCid)
+		require.NoError(t, err)
+
+		assert.Equal(t, ask.Miner, showDeal.Miner)
+		assert.Equal(t, storagedeal.Accepted, showDeal.Response.State)
+
+		duri64 := int64(showDeal.Proposal.Duration)
+		foo := big.NewInt(duri64 * maxBytesi64)
+
+		totalPrice := ask.Price.MulBigInt(foo)
+
+		assert.Equal(t, totalPrice, showDeal.Proposal.TotalPrice)
+	})
+
+	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
+		deal.ProposalCid = requireTestCID(t, []byte("anything"))
+		showDeal, err := clientNode.ShowDeal(ctx, deal.ProposalCid)
+		assert.Error(t, err, "Error: deal not found")
+		assert.Nil(t, showDeal)
+	})
+
+	t.Run("prints voucher info when deal has payment vouchers", func(t *testing.T) {
+
+	})
+
+	t.Run("prints 'none' if no vouchers", func(t *testing.T) {
+
+	})
+}
+
+func getMaxUserBytesPerStagedSector() uint64 {
+	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+}
+
+func requireTestCID(t *testing.T, data []byte) cid.Cid {
+	hash, err := multihash.Sum(data, multihash.SHA2_256, -1)
+	require.NoError(t, err)
+	return cid.NewCidV1(cid.DagCBOR, hash)
+}
