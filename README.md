@@ -89,7 +89,7 @@ The build process for go-filecoin requires:
 - `pkg-config` - used by go-filecoin to handle generating linker flags
   - Mac OS devs can install through brew `brew install pkg-config`
 
-Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether you're using a prebuilt libfilecoin_proofs (our cgo-compatible rust-fil-proofs library) or building it yourself from source. If you want to use `gcc` (e.g. `export CC=gcc`) when building go-filecoin, you will need to use v7.4.0 or higher.
+Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether you're using a prebuilt libsector_builder_ffi (our cgo-compatible rust-fil-proofs library) or building it yourself from source. If you want to use `gcc` (e.g. `export CC=gcc`) when building go-filecoin, you will need to use v7.4.0 or higher.
   - You must have libclang on you linker search path in order to build
     rust-fil-proofs from source. You can satisfy this requirement in most
     environments by installing Clang using your favorite package manager.

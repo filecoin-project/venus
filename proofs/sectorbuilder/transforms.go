@@ -7,9 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/../lib -lfilecoin_proofs
-// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libfilecoin_proofs.pc
-// #include "../include/libfilecoin_proofs.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libsector_builder_ffi.pc
+// #include "../include/libsector_builder_ffi.h"
 import "C"
 
 func goBytes(src *C.uint8_t, size C.size_t) []byte {
