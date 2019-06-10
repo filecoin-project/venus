@@ -1,10 +1,12 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
@@ -156,6 +158,7 @@ var msgWaitCmd = &cmds.Command{
 		cmdkit.BoolOption("message", "Print the whole message").WithDefault(true),
 		cmdkit.BoolOption("receipt", "Print the whole message receipt").WithDefault(true),
 		cmdkit.BoolOption("return", "Print the return value from the receipt").WithDefault(false),
+		cmdkit.StringOption("timeout", "Maximum time to wait for message. e.g., 300ms, 1.5h, 2h45m.").WithDefault("10m"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msgCid, err := cid.Parse(req.Arguments[0])
@@ -166,7 +169,16 @@ var msgWaitCmd = &cmds.Command{
 		fmt.Printf("waiting for: %s\n", req.Arguments[0])
 
 		found := false
-		err = GetPorcelainAPI(env).MessageWait(req.Context, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
+
+		timeoutDuration, err := time.ParseDuration(req.Options["timeout"].(string))
+		if err != nil {
+			return errors.Wrap(err, "Invalid timeout string")
+		}
+
+		ctx, cancel := context.WithTimeout(req.Context, timeoutDuration)
+		defer cancel()
+
+		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
 			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {

@@ -442,9 +442,9 @@ When the `FILECOIN_USE_PRECOMPILED_RUST_PROOFS` environment variable is set, `in
 and installs them in the same hardcoded locations required by the Go build.
 
 The build or tarball contains:
-- `libfilecoin_proofs.a` (a static library)
-- `libfilecoin_proofs.h` (corresponding C-header file)
-- `libfilecoin_proofs.pc` (a pkg-config manifest, used to specify linker dependencies)
+- `libsector_builder_ffi.a` (a static library)
+- `libsector_builder_ffi.h` (corresponding C-header file)
+- `libsector_builder_ffi.pc` (a pkg-config manifest, used to specify linker dependencies)
 - `paramcache` (populates Groth parameter-cache
 - `paramfetch` (fetches Groth parameters from IPFS gateway into cache)
 - `parameters.json` (contains the most recently-published Groth parameters)

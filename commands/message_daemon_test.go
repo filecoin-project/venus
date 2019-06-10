@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,34 +76,36 @@ func TestMessageWait(t *testing.T) {
 	defer d.ShutdownSuccess()
 
 	t.Run("[success] transfer only", func(t *testing.T) {
-		msg := d.RunSuccess(
-			"message", "send",
+		msg := d.RunSuccess("message", "send",
 			"--from", fixtures.TestAddresses[0],
-			"--gas-price", "1", "--gas-limit", "300",
-			"--value=10",
+			"--gas-price", "1",
+			"--gas-limit", "300",
 			fixtures.TestAddresses[1],
 		)
+		msgcid := msg.ReadStdoutTrimNewlines()
 
-		msgcid := strings.Trim(msg.ReadStdout(), "\n")
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			wait := d.RunSuccess(
-				"message", "wait",
-				"--message=false",
-				"--receipt=false",
-				"--return",
-				msgcid,
-			)
-			// nothing should be printed, as there is no return value
-			assert.Equal(t, "", wait.ReadStdout())
-			wg.Done()
-		}()
+		// Fail with timeout before the message has been mined
+		d.RunFail(
+			"deadline exceeded",
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--timeout=100ms",
+			"--return",
+			msgcid,
+		)
 
 		d.RunSuccess("mining once")
 
-		wg.Wait()
+		wait := d.RunSuccess(
+			"message", "wait",
+			"--message=false",
+			"--receipt=false",
+			"--timeout=1m",
+			"--return",
+			msgcid,
+		)
+		assert.Equal(t, "", wait.ReadStdout())
 	})
 }
 
