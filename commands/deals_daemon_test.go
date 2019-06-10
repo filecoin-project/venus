@@ -1,59 +1,66 @@
 package commands_test
 
 import (
-	"strconv"
-	"strings"
+	"context"
+	"math/big"
 	"testing"
 
+	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestDealsRedeem(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	clientDaemon := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(fixtures.TestAddresses[1]),
-	).Start()
-	defer clientDaemon.ShutdownSuccess()
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
 
-	minerDaemon := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-		th.AutoSealInterval("1"),
-	).Start()
-	defer minerDaemon.ShutdownSuccess()
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
 
-	minerDaemon.RunSuccess("mining", "start")
-	minerDaemon.UpdatePeerID()
+	clientDaemon := env.RequireNewNodeWithFunds(10000)
+	minerDaemon := env.RequireNewNodeWithFunds(10000)
 
-	minerDaemon.ConnectSuccess(clientDaemon)
+	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
 
-	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
-	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
-	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
-
-	splitOnSpace := strings.Split(proposeDealOutput, " ")
-	dealCid := splitOnSpace[len(splitOnSpace)-1]
-
-	walletBalanceOutput := minerDaemon.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
-	oldWalletBalance, err := strconv.ParseFloat(walletBalanceOutput, 64)
+	collateral := big.NewInt(int64(1))
+	price := big.NewFloat(float64(20))
+	expiry := big.NewInt(int64(100))
+	_, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry)
 	require.NoError(t, err)
 
-	redeemCid := minerDaemon.RunSuccess("deals", "redeem", dealCid, "--gas-price", "1", "--gas-limit", "100").ReadStdoutTrimNewlines()
-	minerDaemon.RunSuccess("message", "wait", redeemCid)
-
-	walletBalanceOutput = minerDaemon.RunSuccess("wallet", "balance", fixtures.TestAddresses[0]).ReadStdoutTrimNewlines()
-	newWalletBalance, err := strconv.ParseFloat(walletBalanceOutput, 64)
+	f := files.NewBytesFile([]byte("HODLHODLHODL"))
+	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)
 
-	assert.Equal(t, float64(1000), (newWalletBalance - oldWalletBalance))
+	var minerAddress address.Address
+	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
+	require.NoError(t, err)
+
+	proposeDealOutput, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, 5, true)
+	require.NoError(t, err)
+
+	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerAddress)
+	require.NoError(t, err)
+
+	redeemCid, err := minerDaemon.DealsRedeem(ctx, proposeDealOutput.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
+	require.NoError(t, err)
+
+	_, err = clientDaemon.MessageWait(ctx, redeemCid)
+	require.NoError(t, err)
+
+	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerAddress)
+	require.NoError(t, err)
+
+	expectedBalanceDiff := types.NewAttoFILFromFIL(0).String()
+	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance).String()
+	assert.Equal(t, expectedBalanceDiff, actualBalanceDiff)
 }
