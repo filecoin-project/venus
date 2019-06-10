@@ -64,6 +64,18 @@ func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.De
 	return DealGet(ctx, a, proposalCid)
 }
 
+// DealRedeem redeems a voucher for the deal with the given cid and returns
+// either the cid of the created redeem message or an error
+func (a *API) DealRedeem(ctx context.Context, fromAddr address.Address, dealCid cid.Cid, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
+	return DealRedeem(ctx, a, fromAddr, dealCid, gasPrice, gasLimit)
+}
+
+// DealRedeemPreview previews the redeem method for a deal and returns the
+// expected gas used
+func (a *API) DealRedeemPreview(ctx context.Context, fromAddr address.Address, dealCid cid.Cid) (types.GasUnits, error) {
+	return DealRedeemPreview(ctx, a, fromAddr, dealCid)
+}
+
 // DealsLs returns a channel with all deals
 func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
 	return DealsLs(ctx, a)

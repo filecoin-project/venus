@@ -8,9 +8,6 @@ import (
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var dealsCmd = &cmds.Command{
@@ -54,61 +51,21 @@ Redeem vouchers for FIL on the storage deal specified with the given deal CID.
 			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
 		}
 
-		deal, err := GetPorcelainAPI(env).DealGet(req.Context, dealCid)
-		if err != nil {
-			return err
-		}
-
-		currentBlockHeight, err := GetPorcelainAPI(env).ChainBlockHeight()
-		if err != nil {
-			return err
-		}
-
-		var voucher *types.PaymentVoucher
-		for _, v := range deal.Proposal.Payment.Vouchers {
-			if v.ValidAt.LessThan(currentBlockHeight) {
-				continue
-			}
-			if voucher != nil && v.Amount.LessThan(&voucher.Amount) {
-				continue
-			}
-			voucher = v
-		}
-
-		if voucher == nil {
-			return errors.New("no remaining redeemable vouchers found")
-		}
-
 		result := &RedeemResult{Preview: preview}
 
-		params := []interface{}{
-			voucher.Payer,
-			&voucher.Channel,
-			&voucher.Amount,
-			&voucher.ValidAt,
-			voucher.Condition,
-			[]byte(voucher.Signature),
-			[]interface{}{},
-		}
-
 		if preview {
-			result.GasUsed, err = GetPorcelainAPI(env).MessagePreview(
+			result.GasUsed, err = GetPorcelainAPI(env).DealRedeemPreview(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
-				"redeem",
-				params...,
+				dealCid,
 			)
 		} else {
-			result.Cid, err = GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			result.Cid, err = GetPorcelainAPI(env).DealRedeem(
 				req.Context,
 				fromAddr,
-				address.PaymentBrokerAddress,
-				types.NewAttoFILFromFIL(0),
+				dealCid,
 				gasPrice,
 				gasLimit,
-				"redeem",
-				params...,
 			)
 		}
 
