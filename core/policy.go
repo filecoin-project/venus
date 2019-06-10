@@ -25,7 +25,7 @@ type QueuePolicy interface {
 
 // PolicyTarget is outbound queue object on which the policy acts.
 type PolicyTarget interface {
-	RemoveNext(sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error)
+	RemoveNext(ctx context.Context, sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error)
 	ExpireBefore(stamp uint64) map[address.Address][]*types.SignedMessage
 }
 
@@ -63,7 +63,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	reverse(newBlocks)
 	for _, block := range newBlocks {
 		for _, minedMsg := range block.Messages {
-			removed, found, err := target.RemoveNext(minedMsg.From, uint64(minedMsg.Nonce))
+			removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
 			if err != nil {
 				return err
 			}

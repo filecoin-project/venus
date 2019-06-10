@@ -119,7 +119,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *typ
 	}
 
 	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
-	if err := ob.queue.Enqueue(signed, height); err != nil {
+	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 

@@ -28,7 +28,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	bob := mm.Addresses()[1]
 
 	requireEnqueue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) *types.SignedMessage {
-		err := q.Enqueue(msg, stamp)
+		err := q.Enqueue(ctx, msg, stamp)
 		require.NoError(t, err)
 		return msg
 	}
