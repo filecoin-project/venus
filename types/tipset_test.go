@@ -149,13 +149,14 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, []*Block{b1, b2, b3}, ts.ToSlice()) // tipset is immutable
 	})
 
-	//t.Run("string", func(t *testing.T) {
-	//	// String shouldn't really need testing, but some existing code uses the string as a
-	//	// datastore key and depends on the format exactly.
-	//	assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
-	//	assert.Equal(t, "{ "+b1.Cid().String()+" "+b2.Cid().String()+" "+b3.Cid().String()+" }",
-	//		RequireNewTipSet(t, b3, b2, b1).String())
-	//})
+	t.Run("string", func(t *testing.T) {
+		// String shouldn't really need testing, but some existing code uses the string as a
+		// datastore key and depends on the format exactly.
+		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
+
+		expected := NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid()).String()
+		assert.Equal(t, expected, RequireNewTipSet(t, b3, b2, b1).String())
+	})
 
 	t.Run("empty new tipset fails", func(t *testing.T) {
 		_, err := NewTipSet()

@@ -58,6 +58,10 @@ func (z AttoFIL) MarshalJSON() ([]byte, error) {
 // AttoFIL represents a signed multi-precision integer quantity of
 // attofilecoin (atto is metric for 10**-18). The zero value for
 // AttoFIL represents the value 0.
+//
+// Reasons for embedding a big.Int instead of *big.Int:
+//   - We don't have check for nil in every method that does calculations.
+//   - Serialization "symmetry" when serializing AttoFIL{}.
 type AttoFIL struct{ val big.Int }
 
 // NewAttoFIL allocates and returns a new AttoFIL set to x.
@@ -102,31 +106,27 @@ func NewAttoFILFromFILString(s string) (AttoFIL, bool) {
 
 // NewAttoFILFromString allocates a new AttoFIL set to the value of s attofilecoin,
 // interpreted in the given base, and returns it and a boolean indicating success.
-func NewAttoFILFromString(s string, base int) (AttoFIL, bool) {
-	af := AttoFIL{}
-	_, ok := af.val.SetString(s, base)
-	return af, ok
+func NewAttoFILFromString(s string, base int) (out AttoFIL, err bool) {
+	_, err = out.val.SetString(s, base)
+	return
 }
 
 // Add sets z to the sum x+y and returns z.
-func (z AttoFIL) Add(y AttoFIL) AttoFIL {
-	newZ := AttoFIL{}
-	newZ.val.Add(&z.val, &y.val)
-	return newZ
+func (z AttoFIL) Add(y AttoFIL) (out AttoFIL) {
+	out.val.Add(&z.val, &y.val)
+	return
 }
 
 // Sub sets z to the difference x-y and returns z.
-func (z AttoFIL) Sub(y AttoFIL) AttoFIL {
-	newZ := AttoFIL{}
-	newZ.val.Sub(&z.val, &y.val)
-	return newZ
+func (z AttoFIL) Sub(y AttoFIL) (out AttoFIL) {
+	out.val.Sub(&z.val, &y.val)
+	return
 }
 
 // MulBigInt multiplies attoFIL by a given big int
-func (z AttoFIL) MulBigInt(x *big.Int) AttoFIL {
-	newZ := AttoFIL{}
-	newZ.val.Mul(&z.val, x)
-	return newZ
+func (z AttoFIL) MulBigInt(x *big.Int) (out AttoFIL) {
+	out.val.Mul(&z.val, x)
+	return
 }
 
 // DivCeil returns the minimum number of times this value can be divided into smaller amounts
@@ -199,10 +199,5 @@ func (z AttoFIL) String() string {
 // CalculatePrice treats z as a price in AttoFIL/Byte and applies it to numBytes to calculate a total price.
 func (z AttoFIL) CalculatePrice(numBytes *BytesAmount) AttoFIL {
 	ensureBytesAmounts(&numBytes)
-	unitPrice := z
-
-	newVal := big.NewInt(0)
-	newVal.Mul(&unitPrice.val, numBytes.val)
-
-	return AttoFIL{val: *newVal}
+	return z.MulBigInt(numBytes.val)
 }

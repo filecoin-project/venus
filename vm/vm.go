@@ -73,9 +73,6 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 		return errors.Errors[errors.ErrInsufficientBalance]
 	}
 
-	//if toActor.Balance == nil {
-	//	toActor.Balance = types.ZeroAttoFIL
-	//}
 	fromActor.Balance = fromActor.Balance.Sub(value)
 	toActor.Balance = toActor.Balance.Add(value)
 
