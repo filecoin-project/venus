@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestDealsRedeem(t *testing.T) {
@@ -26,14 +26,14 @@ func TestDealsRedeem(t *testing.T) {
 		require.NoError(t, env.Teardown(ctx))
 	}()
 
+	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
+
 	clientDaemon := env.RequireNewNodeWithFunds(10000)
 	minerDaemon := env.RequireNewNodeWithFunds(10000)
 
-	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
-
 	collateral := big.NewInt(int64(1))
-	price := big.NewFloat(float64(20))
-	expiry := big.NewInt(int64(100))
+	price := big.NewFloat(float64(0.001))
+	expiry := big.NewInt(int64(10000))
 	_, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry)
 	require.NoError(t, err)
 
@@ -41,26 +41,32 @@ func TestDealsRedeem(t *testing.T) {
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)
 
+	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
+	require.NoError(t, err)
+	minerOwnerAddress := minerOwnerAddresses[0]
+
+	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
+	require.NoError(t, err)
+
 	var minerAddress address.Address
 	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
 	require.NoError(t, err)
 
-	proposeDealOutput, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, 5, true)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, 1, true)
 	require.NoError(t, err)
 
-	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerAddress)
+	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Posted)
 	require.NoError(t, err)
 
-	redeemCid, err := minerDaemon.DealsRedeem(ctx, proposeDealOutput.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
+	redeemCid, err := minerDaemon.DealsRedeem(ctx, dealResponse.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
 	require.NoError(t, err)
 
-	_, err = clientDaemon.MessageWait(ctx, redeemCid)
+	_, err = minerDaemon.MessageWait(ctx, redeemCid)
 	require.NoError(t, err)
 
-	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerAddress)
+	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
-	expectedBalanceDiff := types.NewAttoFILFromFIL(0).String()
 	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance).String()
-	assert.Equal(t, expectedBalanceDiff, actualBalanceDiff)
+	assert.Equal(t, "1000.0119999999999998", actualBalanceDiff)
 }
