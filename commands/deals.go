@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
 const (
@@ -25,6 +27,7 @@ var dealsCmd = &cmds.Command{
 	Subcommands: map[string]*cmds.Command{
 		"list":   dealsListCmd,
 		"redeem": dealsRedeemCmd,
+		"show":   dealsShowCmd,
 	},
 }
 
@@ -156,6 +159,54 @@ Redeem vouchers for FIL on the storage deal specified with the given deal CID.
 				return err
 			}
 			return PrintString(w, res.Cid)
+		}),
+	},
+}
+
+var dealsShowCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show deal details for CID <cid>",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("cid", true, false, "CID of deal to query"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		propcid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		deal, err := GetPorcelainAPI(env).DealGet(req.Context, propcid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(deal)
+	},
+	Type: storagedeal.Deal{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *storagedeal.Deal) error {
+			emptyDeal := storagedeal.Deal{}
+			if *deal == emptyDeal {
+				return fmt.Errorf("deal not found: %s", req.Arguments[0])
+			}
+
+			_, err := fmt.Fprintf(w, `Deal details
+CID: %s
+State: %s
+Miner: %s
+Duration: %d blocks
+Size: %s bytes
+Total Price: %s FIL
+`,
+				deal.Response.ProposalCid,
+				deal.Response.State,
+				deal.Miner.String(),
+				deal.Proposal.Duration,
+				deal.Proposal.Size,
+				deal.Proposal.TotalPrice,
+			)
+			return err
 		}),
 	},
 }
