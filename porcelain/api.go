@@ -86,7 +86,7 @@ func (a *API) MessageSendWithDefaultAddress(
 	ctx context.Context,
 	from,
 	to address.Address,
-	value *types.AttoFIL,
+	value types.AttoFIL,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
 	method string,
@@ -113,7 +113,7 @@ func (a *API) MinerCreate(
 	gasLimit types.GasUnits,
 	sectorSize *types.BytesAmount,
 	pid peer.ID,
-	collateral *types.AttoFIL,
+	collateral types.AttoFIL,
 ) (_ *address.Address, err error) {
 	return MinerCreate(ctx, a, accountAddr, gasPrice, gasLimit, sectorSize, pid, collateral)
 }
@@ -159,7 +159,7 @@ func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (pe
 }
 
 // MinerSetPrice configures the price of storage. See implementation for details.
-func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
+func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
 	return MinerSetPrice(ctx, a, from, miner, gasPrice, gasLimit, price, expiry)
 }
 
@@ -169,7 +169,7 @@ func (a *API) MinerPreviewSetPrice(
 	ctx context.Context,
 	from address.Address,
 	miner address.Address,
-	price *types.AttoFIL,
+	price types.AttoFIL,
 	expiry *big.Int,
 ) (types.GasUnits, error) {
 	return MinerPreviewSetPrice(ctx, a, from, miner, price, expiry)
@@ -181,7 +181,7 @@ func (a *API) ProtocolParameters(ctx context.Context) (*ProtocolParams, error) {
 }
 
 // WalletBalance returns the current balance of the given wallet address.
-func (a *API) WalletBalance(ctx context.Context, address address.Address) (*types.AttoFIL, error) {
+func (a *API) WalletBalance(ctx context.Context, address address.Address) (types.AttoFIL, error) {
 	return WalletBalance(ctx, a, address)
 }
 
@@ -205,7 +205,7 @@ func (a *API) PaymentChannelVoucher(
 	ctx context.Context,
 	fromAddr address.Address,
 	channel *types.ChannelID,
-	amount *types.AttoFIL,
+	amount types.AttoFIL,
 	validAt *types.BlockHeight,
 	condition *types.Predicate,
 ) (voucher *types.PaymentVoucher, err error) {

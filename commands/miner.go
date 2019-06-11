@@ -339,7 +339,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			req.Context,
 			fromAddr,
 			minerAddr,
-			nil,
+			types.ZeroAttoFIL,
 			gasPrice,
 			gasLimit,
 			"updatePeerID",

@@ -139,7 +139,7 @@ func (r *ZeroRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr
 	return nil
 }
 
-func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
+func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
 	return nil
 }
 

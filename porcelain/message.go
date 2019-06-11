@@ -13,7 +13,7 @@ var log = logging.Logger("porcelain") // nolint: deadcode
 
 // mswdaAPI is the subset of the plumbing.API that MessageSendWithDefaultAddress uses.
 type mswdaAPI interface {
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -25,7 +25,7 @@ func MessageSendWithDefaultAddress(
 	plumbing mswdaAPI,
 	from,
 	to address.Address,
-	value *types.AttoFIL,
+	value types.AttoFIL,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
 	method string,

@@ -42,7 +42,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 			Channel: channelID,
 			Payer:   clientAddr,
 			Target:  minerAddr,
-			Amount:  *totalPrice,
+			Amount:  totalPrice,
 			ValidAt: *validAt,
 		}}}
 
@@ -93,6 +93,6 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	assert.Equal(t, channelID, retrievedDeal.Proposal.Payment.Vouchers[0].Channel)
 	assert.Equal(t, clientAddr, retrievedDeal.Proposal.Payment.Vouchers[0].Payer)
 	assert.Equal(t, minerAddr, retrievedDeal.Proposal.Payment.Vouchers[0].Target)
-	assert.Equal(t, *totalPrice, retrievedDeal.Proposal.Payment.Vouchers[0].Amount)
+	assert.Equal(t, totalPrice, retrievedDeal.Proposal.Payment.Vouchers[0].Amount)
 	assert.Equal(t, *validAt, retrievedDeal.Proposal.Payment.Vouchers[0].ValidAt)
 }

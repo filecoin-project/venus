@@ -122,7 +122,7 @@ func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, mi
 }
 
 // GasReward does nothing
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error {
+func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }

@@ -76,7 +76,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			Channel:   *types.NewChannelID(5),
 			Payer:     address.Undef,
 			Target:    address.Undef,
-			Amount:    *types.NewAttoFILFromFIL(10),
+			Amount:    types.NewAttoFILFromFIL(10),
 			ValidAt:   *types.NewBlockHeight(0),
 			Signature: []byte{},
 			Condition: &types.Predicate{

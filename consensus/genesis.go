@@ -22,11 +22,11 @@ import (
 type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error)
 
 var (
-	defaultAccounts map[address.Address]*types.AttoFIL
+	defaultAccounts map[address.Address]types.AttoFIL
 )
 
 func init() {
-	defaultAccounts = map[address.Address]*types.AttoFIL{
+	defaultAccounts = map[address.Address]types.AttoFIL{
 		address.NetworkAddress: types.NewAttoFILFromFIL(10000000000),
 		address.TestAddress:    types.NewAttoFILFromFIL(50000),
 		address.TestAddress2:   types.NewAttoFILFromFIL(60000),
@@ -35,12 +35,12 @@ func init() {
 
 type minerActorConfig struct {
 	state   *miner.State
-	balance *types.AttoFIL
+	balance types.AttoFIL
 }
 
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts   map[address.Address]*types.AttoFIL
+	accounts   map[address.Address]types.AttoFIL
 	nonces     map[address.Address]uint64
 	actors     map[address.Address]*actor.Actor
 	miners     map[address.Address]*minerActorConfig
@@ -51,7 +51,7 @@ type Config struct {
 type GenOption func(*Config) error
 
 // ActorAccount returns a config option that sets up an actor account.
-func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
+func ActorAccount(addr address.Address, amt types.AttoFIL) GenOption {
 	return func(gc *Config) error {
 		gc.accounts[addr] = amt
 		return nil
@@ -59,7 +59,7 @@ func ActorAccount(addr address.Address, amt *types.AttoFIL) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, key []byte, pid peer.ID, coll *types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
+func MinerActor(addr address.Address, owner address.Address, key []byte, pid peer.ID, coll types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &minerActorConfig{
 			state:   miner.NewState(owner, key, pid, sectorSize),
@@ -98,7 +98,7 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts:   make(map[address.Address]*types.AttoFIL),
+		accounts:   make(map[address.Address]types.AttoFIL),
 		nonces:     make(map[address.Address]uint64),
 		actors:     make(map[address.Address]*actor.Actor),
 		miners:     make(map[address.Address]*minerActorConfig),
@@ -223,7 +223,7 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		return err
 	}
 
-	pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.NewZeroAttoFIL())
+	pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
 	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
 	if err != nil {
 		return err

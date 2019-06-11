@@ -165,7 +165,7 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 	return signed
 }
 
-func attoFil(v int) *types.AttoFIL {
+func attoFil(v int) types.AttoFIL {
 	val, _ := types.NewAttoFILFromString(fmt.Sprintf("%d", v), 10)
 	return val
 }

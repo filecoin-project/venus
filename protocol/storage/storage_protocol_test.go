@@ -27,7 +27,7 @@ func TestSerializeProposal(t *testing.T) {
 		Channel:   *types.NewChannelID(4),
 		Payer:     ag(),
 		Target:    ag(),
-		Amount:    *types.NewAttoFILFromFIL(3),
+		Amount:    types.NewAttoFILFromFIL(3),
 		ValidAt:   *types.NewBlockHeight(3),
 		Signature: types.Signature{},
 	}

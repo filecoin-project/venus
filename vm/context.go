@@ -124,7 +124,7 @@ func (ctx *Context) BlockHeight() *types.BlockHeight {
 }
 
 // MyBalance returns the balance of the associated actor.
-func (ctx *Context) MyBalance() *types.AttoFIL {
+func (ctx *Context) MyBalance() types.AttoFIL {
 	return ctx.to.Balance
 }
 
@@ -135,7 +135,7 @@ func (ctx *Context) IsFromAccountActor() bool {
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *Context) Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+func (ctx *Context) Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message

@@ -20,7 +20,7 @@ type Actor struct{}
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 // NewActor creates a new account actor.
-func NewActor(balance *types.AttoFIL) (*actor.Actor, error) {
+func NewActor(balance types.AttoFIL) (*actor.Actor, error) {
 	return actor.NewActor(types.AccountActorCodeCid, balance), nil
 }
 

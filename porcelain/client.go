@@ -15,7 +15,7 @@ import (
 // Ask is a result of querying for an ask, it may contain an error
 type Ask struct {
 	Miner  address.Address
-	Price  *types.AttoFIL
+	Price  types.AttoFIL
 	Expiry *types.BlockHeight
 	ID     uint64
 

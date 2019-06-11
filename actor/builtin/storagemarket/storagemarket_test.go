@@ -53,7 +53,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	assert.Equal(t, mstor.PeerID, pid)
 }
 
-func TestStorageMarkeCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T) {
+func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
