@@ -76,7 +76,7 @@ var outboxClearCmd = &cmds.Command{
 		}
 
 		for _, addr := range addresses {
-			GetPorcelainAPI(env).OutboxQueueClear(addr)
+			GetPorcelainAPI(env).OutboxQueueClear(req.Context, addr)
 		}
 		return nil
 	},

@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"context"
 	"math"
 	"testing"
 
@@ -24,13 +25,15 @@ func TestMessageQueue(t *testing.T) {
 	bob := mm.Addresses()[1]
 	require.NotEqual(t, alice, bob)
 
+	ctx := context.Background()
+
 	requireEnqueue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) {
-		err := q.Enqueue(msg, stamp)
+		err := q.Enqueue(ctx, msg, stamp)
 		require.NoError(t, err)
 	}
 
 	requireRemoveNext := func(q *core.MessageQueue, sender address.Address, expected uint64) *types.SignedMessage {
-		msg, found, e := q.RemoveNext(sender, expected)
+		msg, found, e := q.RemoveNext(ctx, sender, expected)
 		require.True(t, found)
 		require.NoError(t, e)
 		return msg
@@ -49,7 +52,7 @@ func TestMessageQueue(t *testing.T) {
 
 	t.Run("empty queue", func(t *testing.T) {
 		q := core.NewMessageQueue()
-		msg, found, err := q.RemoveNext(alice, 0)
+		msg, found, err := q.RemoveNext(ctx, alice, 0)
 		assert.Nil(t, msg)
 		assert.False(t, found)
 		assert.NoError(t, err)
@@ -82,7 +85,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.Equal(t, msgs[0], msg)
 		assert.Equal(t, int64(2), q.Size())
 
-		_, found, err := q.RemoveNext(alice, 0) // Remove first message again
+		_, found, err := q.RemoveNext(ctx, alice, 0) // Remove first message again
 		assert.False(t, found)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(2), q.Size())
@@ -91,7 +94,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.Equal(t, msgs[1], msg)
 		assert.Equal(t, int64(1), q.Size())
 
-		_, found, err = q.RemoveNext(alice, 0) // Remove first message yet again
+		_, found, err = q.RemoveNext(ctx, alice, 0) // Remove first message yet again
 		assert.False(t, found)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), q.Size())
@@ -112,13 +115,13 @@ func TestMessageQueue(t *testing.T) {
 		q := core.NewMessageQueue()
 		requireEnqueue(q, msgs[1], 0)
 
-		err := q.Enqueue(msgs[0], 0) // Prior to existing
+		err := q.Enqueue(ctx, msgs[0], 0) // Prior to existing
 		assert.Error(t, err)
 
-		err = q.Enqueue(msgs[1], 0) // Equal to existing
+		err = q.Enqueue(ctx, msgs[1], 0) // Equal to existing
 		assert.Error(t, err)
 
-		err = q.Enqueue(msgs[3], 0) // Gap after existing
+		err = q.Enqueue(ctx, msgs[3], 0) // Gap after existing
 		assert.Error(t, err)
 	})
 
@@ -132,12 +135,12 @@ func TestMessageQueue(t *testing.T) {
 		requireEnqueue(q, msgs[0], 0)
 		requireEnqueue(q, msgs[1], 0)
 
-		msg, found, err := q.RemoveNext(alice, 9) // Prior to head
+		msg, found, err := q.RemoveNext(ctx, alice, 9) // Prior to head
 		assert.Nil(t, msg)
 		assert.False(t, found)
 		require.NoError(t, err)
 
-		msg, found, err = q.RemoveNext(alice, 11) // After head
+		msg, found, err = q.RemoveNext(ctx, alice, 11) // After head
 		assert.False(t, found)
 		assert.Nil(t, msg)
 		assert.Error(t, err)
@@ -184,7 +187,7 @@ func TestMessageQueue(t *testing.T) {
 		requireEnqueue(q, msgs[2], 0)
 		assert.Equal(t, int64(2), q.Size())
 		assertLargestNonce(q, alice, 2)
-		q.Clear(alice)
+		q.Clear(ctx, alice)
 		assert.Equal(t, int64(0), q.Size())
 		assertNoNonce(q, alice)
 
@@ -234,7 +237,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.Equal(t, fromBob[0], msg)
 		assert.Equal(t, int64(4), q.Size())
 
-		q.Clear(bob)
+		q.Clear(ctx, bob)
 		assertLargestNonce(q, alice, 2)
 		assertNoNonce(q, bob)
 		assert.Equal(t, int64(2), q.Size())
