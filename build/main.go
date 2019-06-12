@@ -151,6 +151,7 @@ func build() {
 	buildGenesisFileServer()
 	generateGenesis()
 	buildMigrations()
+	buildPrereleaseTool()
 }
 
 func forcebuild() {
@@ -160,6 +161,7 @@ func forcebuild() {
 	buildGenesisFileServer()
 	generateGenesis()
 	buildMigrations()
+	buildPrereleaseTool()
 }
 
 func forceBuildFC() {
@@ -274,6 +276,12 @@ func buildMigrations() {
 	log.Println("Building migrations...")
 	runCmd(cmd([]string{
 		"go", "build", "-o", "./tools/migration/go-filecoin-migrate", "./tools/migration/main.go"}...))
+}
+
+func buildPrereleaseTool() {
+	log.Println("Building prerelease-tool...")
+
+	runCmd(cmd([]string{"go", "build", "-o", "./tools/prerelease-tool/prerelease-tool", "./tools/prerelease-tool/"}...))
 }
 
 func install() {
