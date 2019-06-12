@@ -61,7 +61,7 @@ func (is IntSet) Difference(other IntSet) IntSet {
 	return out
 }
 
-// Integers returns a slice with all integers in this IntSet
-func (is IntSet) Integers() []uint64 {
+// Values returns a slice with all integers in this IntSet
+func (is IntSet) Values() []uint64 {
 	return is.ba.ToNums()
 }

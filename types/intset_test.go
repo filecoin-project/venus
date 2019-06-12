@@ -1,6 +1,8 @@
 package types_test
 
 import (
+	"math/rand"
+	"sort"
 	"testing"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -72,9 +74,17 @@ func TestIntSet(t *testing.T) {
 		assert.False(t, result.Contains(3))
 	})
 
-	t.Run("Integers", func(t *testing.T) {
-		is0 := types.NewIntSet(1, 2, 3)
+	t.Run("Values", func(t *testing.T) {
+		ints := make([]uint64, 1024)
+		for idx := range ints {
+			ints[idx] = rand.Uint64()
+		}
 
-		assert.Equal(t, is0.Integers(), []uint64{1, 2, 3})
+		result := types.NewIntSet(ints...).Values()
+
+		sort.Slice(ints, func(i, j int) bool { return ints[i] < ints[j] })
+		sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+
+		assert.Equal(t, ints, result)
 	})
 }
