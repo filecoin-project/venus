@@ -1,4 +1,4 @@
-package fast
+package environment
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
 // ErrNoGenesisMiner is returned by GenesisMiner if the environment does not
@@ -22,12 +23,6 @@ type GenesisMiner struct {
 
 	// Owner is the private key of the wallet which is assoiated with the miner
 	Owner io.Reader
-}
-
-// EnvironmentOpts are used define process init and daemon options for the environment.
-type EnvironmentOpts struct {
-	InitOpts   []ProcessInitOption
-	DaemonOpts []ProcessDaemonOption
 }
 
 // Environment defines the interface common among all environments that the
@@ -53,11 +48,11 @@ type Environment interface {
 	// environments may create a Filecoin process that interacts with
 	// an already running filecoin node, and supplied the API multiaddr
 	// as options.
-	NewProcess(ctx context.Context, processType string, options map[string]string, eo EnvironmentOpts) (*Filecoin, error)
+	NewProcess(ctx context.Context, processType string, options map[string]string, eo fast.FilecoinOpts) (*fast.Filecoin, error)
 
 	// Processes returns a slice of all processes the environment knows
 	// about.
-	Processes() []*Filecoin
+	Processes() []*fast.Filecoin
 
 	// Teardown runs anything that the environment may need to do to
 	// be nice to the the execution area of this code.
@@ -65,5 +60,5 @@ type Environment interface {
 
 	// TeardownProcess runs anything that the environment may need to do
 	// to remove a process from the environment in a clean way.
-	TeardownProcess(context.Context, *Filecoin) error
+	TeardownProcess(context.Context, *fast.Filecoin) error
 }

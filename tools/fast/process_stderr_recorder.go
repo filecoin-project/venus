@@ -36,8 +36,13 @@ func (f *Filecoin) setupStderrCapturing() error {
 }
 
 func (f *Filecoin) teardownStderrCapturing() error {
-	f.lpCancel()
-	return f.stderr.Close()
+	if f.lp != nil {
+		f.lpCancel()
+	}
+	if f.stderr != nil {
+		return f.stderr.Close()
+	}
+	return nil
 }
 
 // StartLogCapture returns a fastutil.Interval, after calling fastutil.Interval#Stop

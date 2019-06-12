@@ -19,14 +19,20 @@ import (
 )
 
 var (
-	// ErrDoubleInitOpts is returned by InitDaemon when both init options are provided by EnvironmentOpts
+	// ErrDoubleInitOpts is returned by InitDaemon when both init options are provided by FilecoinOpts
 	// in NewProcess as well as passed to InitDaemon directly.
 	ErrDoubleInitOpts = errors.New("cannot provide both init options through environment and arguments")
 
-	// ErrDoubleDaemonOpts is returned by StartDaemon when both init options are provided by EnvironmentOpts
+	// ErrDoubleDaemonOpts is returned by StartDaemon when both init options are provided by FilecoinOpts
 	// in NewProcess as well as passed to StartDaemon directly.
 	ErrDoubleDaemonOpts = errors.New("cannot provide both daemon options through environment and arguments")
 )
+
+// FilecoinOpts are used define process init and daemon options for the environment.
+type FilecoinOpts struct {
+	InitOpts   []ProcessInitOption
+	DaemonOpts []ProcessDaemonOption
+}
 
 // must register all filecoin iptb plugins first.
 func init() {
@@ -86,7 +92,7 @@ type Filecoin struct {
 }
 
 // NewFilecoinProcess returns a pointer to a Filecoin process that wraps the IPTB core interface `c`.
-func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt, eo EnvironmentOpts) *Filecoin {
+func NewFilecoinProcess(ctx context.Context, c IPTBCoreExt, eo FilecoinOpts) *Filecoin {
 	return &Filecoin{
 		core:       c,
 		Log:        logging.Logger(c.String()),
@@ -158,9 +164,14 @@ func (f *Filecoin) Shell() error {
 	return f.core.Shell(f.ctx, []testbedi.Core{})
 }
 
-// Dir returns the dirtectory used by the filecoin process
+// Dir returns the dirtectory used by the filecoin process.
 func (f *Filecoin) Dir() string {
 	return f.core.Dir()
+}
+
+// String returns the string representation of the filecoin process.
+func (f *Filecoin) String() string {
+	return f.core.String()
 }
 
 // DumpLastOutput writes all the output (args, exit-code, error, stderr, stdout) of the last ran

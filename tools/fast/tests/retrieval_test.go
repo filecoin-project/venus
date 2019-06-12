@@ -19,6 +19,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -47,7 +48,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(t, err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -69,7 +70,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	genesisMiner, err := env.GenesisMiner()
 	require.NoError(t, err)
 
-	fastenvOpts := fast.EnvironmentOpts{
+	fastenvOpts := fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
 	}
@@ -138,7 +139,7 @@ func TestRetrievalDevnet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentDevnet("nightly", dir)
+	env, err := environment.NewDevnet("nightly", dir)
 	require.NoError(t, err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -158,7 +159,7 @@ func TestRetrievalDevnet(t *testing.T) {
 
 	genesisURI := env.GenesisCar()
 
-	fastenvOpts := fast.EnvironmentOpts{
+	fastenvOpts := fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI), fast.PODevnetNightly()},
 		DaemonOpts: []fast.ProcessDaemonOption{},
 	}
@@ -179,10 +180,10 @@ func TestRetrievalDevnet(t *testing.T) {
 
 	// Everyone needs FIL to deal with gas costs and make sure their wallets
 	// exists (sending FIL to a wallet addr creates it)
-	err = fast.GetFunds(ctx, env, miner)
+	err = environment.GetFunds(ctx, env, miner)
 	require.NoError(t, err)
 
-	err = fast.GetFunds(ctx, env, client)
+	err = environment.GetFunds(ctx, env, client)
 	require.NoError(t, err)
 
 	RunRetrievalTest(ctx, t, miner, client, sectorSize)

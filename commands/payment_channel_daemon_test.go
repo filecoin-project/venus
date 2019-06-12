@@ -21,7 +21,7 @@ import (
 func TestPaymentChannelCreateSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -42,7 +42,7 @@ func TestPaymentChannelLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("Works with default payer", func(t *testing.T) {
-		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 		// Teardown after test ends
 		defer func() {
@@ -72,7 +72,7 @@ func TestPaymentChannelLs(t *testing.T) {
 	})
 
 	t.Run("Works with specified payer", func(t *testing.T) {
-		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 		// Teardown after test ends
 		defer func() {
@@ -106,7 +106,7 @@ func TestPaymentChannelLs(t *testing.T) {
 		defer cancel()
 
 		// Get basic testing environment
-		ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.EnvironmentOpts{})
+		ctx, env := fastesting.NewTestEnvironment(ctx, t, fast.FilecoinOpts{})
 
 		// Teardown after test ends
 		defer func() {
@@ -133,7 +133,7 @@ func TestPaymentChannelLs(t *testing.T) {
 func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -163,7 +163,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -204,7 +204,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -245,7 +245,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -317,7 +317,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 func TestPaymentChannelCloseSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -369,7 +369,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 func TestPaymentChannelExtendSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {
@@ -425,7 +425,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 func TestPaymentChannelCancelSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	// Teardown after test ends
 	defer func() {

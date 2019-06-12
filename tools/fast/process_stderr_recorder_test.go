@@ -31,7 +31,7 @@ func TestStartLogCapture(t *testing.T) {
 	fc, ok := c.(IPTBCoreExt)
 	require.True(t, ok)
 
-	mfc := NewFilecoinProcess(ctx, fc, EnvironmentOpts{})
+	mfc := NewFilecoinProcess(ctx, fc, FilecoinOpts{})
 	err = mfc.setupStderrCapturing()
 	require.NoError(t, err)
 
