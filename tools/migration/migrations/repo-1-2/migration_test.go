@@ -17,6 +17,9 @@ import (
 	migration12 "github.com/filecoin-project/go-filecoin/tools/migration/migrations/repo-1-2"
 )
 
+// ==============  IMPORTANT ================
+// PLEASE SEE THE README IF YOU ARE HERE BECAUSE YOUR CHANGES BROKE A MIGRATION TEST
+// ==========================================
 func TestDescribe(t *testing.T) {
 	tf.UnitTest(t)
 

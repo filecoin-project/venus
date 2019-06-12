@@ -16,6 +16,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// ==============  IMPORTANT ================
+// PLEASE SEE THE README IF YOU ARE HERE BECAUSE YOUR CHANGES BROKE A MIGRATION TEST
+// ==========================================
 // duplicate head key here to protect against future changes
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
