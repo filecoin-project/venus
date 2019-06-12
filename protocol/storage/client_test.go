@@ -49,7 +49,7 @@ func TestProposeDeal(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(t)
-	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
@@ -139,7 +139,7 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	})
 
 	testAPI := newTestClientAPI(t)
-	client := NewClient(testNode.GetBlockTime(), th.NewFakeHost(), testAPI)
+	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.SomeCid()
@@ -177,6 +177,10 @@ func newTestClientAPI(t *testing.T) *clientTestAPI {
 		testing:     t,
 		deals:       make(map[cid.Cid]*storagedeal.Deal),
 	}
+}
+
+func (ctp *clientTestAPI) BlockTime() time.Duration {
+	return 100 * time.Millisecond
 }
 
 func (ctp *clientTestAPI) ChainBlockHeight() (*types.BlockHeight, error) {
@@ -257,10 +261,6 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 	return &testClientNode{
 		responder: responder,
 	}
-}
-
-func (tcn *testClientNode) GetBlockTime() time.Duration {
-	return 100 * time.Millisecond
 }
 
 // MakeTestProtocolRequest calls the responder set for the testClientNode to provide a test

@@ -11,6 +11,7 @@ package consensus
 // except for errors in the case the stores do not have a mapping.
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -38,4 +39,7 @@ type Protocol interface {
 
 	// ValidateSemantic validates a block is correctly derived from its parent.
 	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error
+
+	// BlockTime returns the block time used by the consensus protocol.
+	BlockTime() time.Duration
 }

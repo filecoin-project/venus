@@ -33,7 +33,7 @@ func TestNewExpected(t *testing.T) {
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore, verifier := setupCborBlockstoreProofs()
 		ptv := th.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
-		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier)
+		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier, th.BlockTimeTest)
 		assert.NotNil(t, exp)
 	})
 }
@@ -93,7 +93,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		totalPower := types.NewBytesAmount(1)
 
 		ptv := th.NewTestPowerTableView(minerPower, totalPower)
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), verifier)
+		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), verifier, th.BlockTimeTest)
 
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 
@@ -112,7 +112,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 
 		ptv := NewFailingMinerTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier, th.BlockTimeTest)
 
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 

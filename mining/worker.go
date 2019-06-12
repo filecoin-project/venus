@@ -23,10 +23,6 @@ import (
 
 var log = logging.Logger("mining")
 
-// DefaultBlockTime is the estimated proving period time.
-// We define this so that we can fake mining in the current incomplete system.
-const DefaultBlockTime = 30 * time.Second
-
 // Output is the result of a single mining run. It has either a new
 // block or an error, mimicing the golang (retVal, error) pattern.
 // If a mining run's context is canceled there is no output.
@@ -72,8 +68,14 @@ type MessageApplier interface {
 	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
+type workerPorcelainAPI interface {
+	BlockTime() time.Duration
+}
+
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
+	api workerPorcelainAPI
+
 	createPoSTFunc DoSomeWorkFunc
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
@@ -91,7 +93,6 @@ type DefaultWorker struct {
 	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
 	cstore        *hamt.CborIpldStore
-	blockTime     time.Duration
 }
 
 // NewDefaultWorker instantiates a new Worker.
@@ -107,7 +108,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	minerOwner address.Address,
 	minerPubKey []byte,
 	workerSigner consensus.TicketSigner,
-	bt time.Duration) *DefaultWorker {
+	api workerPorcelainAPI) *DefaultWorker {
 
 	w := NewDefaultWorkerWithDeps(messageSource,
 		getStateTree,
@@ -121,7 +122,7 @@ func NewDefaultWorker(messageSource MessageSource,
 		minerOwner,
 		minerPubKey,
 		workerSigner,
-		bt,
+		api,
 		func() {})
 
 	// TODO: create real PoST.
@@ -144,9 +145,10 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	minerOwner address.Address,
 	minerPubKey []byte,
 	workerSigner consensus.TicketSigner,
-	bt time.Duration,
+	api workerPorcelainAPI,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
+		api:            api,
 		getStateTree:   getStateTree,
 		getWeight:      getWeight,
 		getAncestors:   getAncestors,
@@ -159,7 +161,6 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 		minerAddr:      miner,
 		minerOwnerAddr: minerOwner,
 		minerPubKey:    minerPubKey,
-		blockTime:      bt,
 		workerSigner:   workerSigner,
 	}
 }
@@ -259,5 +260,5 @@ func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFun
 // fakeCreatePoST is the default implementation of DoSomeWorkFunc.
 // It simply sleeps for the blockTime.
 func (w *DefaultWorker) fakeCreatePoST() {
-	time.Sleep(w.blockTime)
+	time.Sleep(w.api.BlockTime())
 }
