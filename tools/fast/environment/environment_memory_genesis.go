@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	iptb "github.com/ipfs/iptb/testbed"
@@ -68,6 +69,15 @@ func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMo
 	}
 
 	return env, nil
+}
+
+// GetFunds retrieves a fixed amount of tokens from an environment
+func (e *MemoryGenesis) GetFunds(ctx context.Context, p *fast.Filecoin) error {
+	e.processesMu.Lock()
+	defer e.processesMu.Unlock()
+
+	e.log.Infof("GetFunds for process: %s", p.String())
+	return series.SendFilecoinDefaults(ctx, e.Processes()[0], p, 1000)
 }
 
 // GenesisCar provides a url where the genesis file can be fetched from

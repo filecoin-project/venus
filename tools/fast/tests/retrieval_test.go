@@ -180,10 +180,10 @@ func TestRetrievalDevnet(t *testing.T) {
 
 	// Everyone needs FIL to deal with gas costs and make sure their wallets
 	// exists (sending FIL to a wallet addr creates it)
-	err = environment.GetFunds(ctx, env, miner)
+	err = env.GetFunds(ctx, miner)
 	require.NoError(t, err)
 
-	err = environment.GetFunds(ctx, env, client)
+	err = env.GetFunds(ctx, client)
 	require.NoError(t, err)
 
 	RunRetrievalTest(ctx, t, miner, client, sectorSize)

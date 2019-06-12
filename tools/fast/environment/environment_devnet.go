@@ -148,40 +148,39 @@ func (e *Devnet) TeardownProcess(ctx context.Context, p *fast.Filecoin) error {
 }
 
 // GetFunds retrieves a fixed amount of tokens from an environment
-func GetFunds(ctx context.Context, env Environment, p *fast.Filecoin) error {
-	switch devenv := env.(type) {
-	case *Devnet:
-		var toAddr address.Address
-		if err := p.ConfigGet(ctx, "wallet.defaultAddress", &toAddr); err != nil {
-			return err
-		}
+func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
+	e.processesMu.Lock()
+	defer e.processesMu.Unlock()
 
-		data := url.Values{}
-		data.Set("target", toAddr.String())
-
-		uri := url.URL{
-			Host:   fmt.Sprintf("faucet.%s.kittyhawk.wtf", devenv.network),
-			Path:   "tap",
-			Scheme: "https",
-		}
-
-		resp, err := http.PostForm(uri.String(), data)
-		if err != nil {
-			return err
-		}
-
-		msgcid := resp.Header.Get("Message-Cid")
-		mcid, err := cid.Decode(msgcid)
-		if err != nil {
-			return err
-		}
-
-		if _, err := p.MessageWait(ctx, mcid); err != nil {
-			return err
-		}
-
-		return nil
+	e.log.Infof("GetFunds for process: %s", p.String())
+	var toAddr address.Address
+	if err := p.ConfigGet(ctx, "wallet.defaultAddress", &toAddr); err != nil {
+		return err
 	}
 
-	return fmt.Errorf("environment [%T] does not support GetFunds", env)
+	data := url.Values{}
+	data.Set("target", toAddr.String())
+
+	uri := url.URL{
+		Host:   fmt.Sprintf("faucet.%s.kittyhawk.wtf", e.network),
+		Path:   "tap",
+		Scheme: "https",
+	}
+
+	resp, err := http.PostForm(uri.String(), data)
+	if err != nil {
+		return err
+	}
+
+	msgcid := resp.Header.Get("Message-Cid")
+	mcid, err := cid.Decode(msgcid)
+	if err != nil {
+		return err
+	}
+
+	if _, err := p.MessageWait(ctx, mcid); err != nil {
+		return err
+	}
+
+	return nil
 }

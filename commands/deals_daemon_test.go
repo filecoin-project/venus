@@ -20,7 +20,7 @@ import (
 func TestDealsRedeem(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))

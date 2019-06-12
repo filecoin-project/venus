@@ -61,4 +61,7 @@ type Environment interface {
 	// TeardownProcess runs anything that the environment may need to do
 	// to remove a process from the environment in a clean way.
 	TeardownProcess(context.Context, *fast.Filecoin) error
+
+	// GetFunds retrieves a fixed amount of tokens from the environment.
+	GetFunds(context.Context, *fast.Filecoin) error
 }
