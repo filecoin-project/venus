@@ -121,6 +121,11 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, b1.Ticket, tsTicket)
 	})
 
+	t.Run("min timestamp", func(t *testing.T) {
+		tsTime, _ := RequireNewTipSet(t, b1, b2, b3).MinTimestamp()
+		assert.Equal(t, b1.Timestamp, tsTime)
+	})
+
 	t.Run("equality", func(t *testing.T) {
 		ts1a := RequireNewTipSet(t, b3, b2, b1)
 		ts1b := RequireNewTipSet(t, b1, b2, b3)
