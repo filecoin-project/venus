@@ -21,6 +21,25 @@ func TestIntSet(t *testing.T) {
 		assert.False(t, is.Contains(2))
 	})
 
+	t.Run("IsSubset", func(t *testing.T) {
+		is0 := types.NewIntSet(1, 2, 3)
+		is1 := types.NewIntSet()
+
+		// {} ⊆ {1, 2, 3}
+		assert.True(t, is0.IsSubset(is1))
+		assert.False(t, is1.IsSubset(is0))
+
+		// {3} ⊆ {1, 2, 3}
+		is1.Add(3)
+		assert.True(t, is0.IsSubset(is1))
+		assert.False(t, is1.IsSubset(is0))
+
+		// {3, 4} ⊈ {1, 2, 3}
+		is1.Add(4)
+		assert.False(t, is0.IsSubset(is1))
+		assert.False(t, is1.IsSubset(is0))
+	})
+
 	t.Run("Union", func(t *testing.T) {
 		is0 := types.NewIntSet(1)
 		is1 := types.NewIntSet(2)

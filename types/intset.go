@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/golang-collections/go-datastructures/bitarray"
+	"github.com/Workiva/go-datastructures/bitarray"
 )
 
 // IntSet is a space-efficient set of uint64
@@ -9,7 +9,7 @@ type IntSet struct {
 	ba bitarray.BitArray
 }
 
-// NewIntSet returns an new IntSet, optionally initialized with integers
+// NewIntSet returns a new IntSet, optionally initialized with integers
 func NewIntSet(ints ...uint64) IntSet {
 	out := IntSet{ba: bitarray.NewSparseBitArray()}
 	for _, i := range ints {
@@ -29,6 +29,13 @@ func (is IntSet) Contains(i uint64) bool {
 	// Ignoring errors as we are using SparseBitArrays, which never return errors
 	isSet, _ := is.ba.GetBit(i)
 	return isSet
+}
+
+// IsSubset returns true if every element in other is also in the receiver
+func (is IntSet) IsSubset(other IntSet) bool {
+	// The method we're calling here seems weird, but in bitarray (https://github.com/Workiva/go-datastructures/blob/f07cbe3f82ca2fd6e5ab94afce65fe43319f675f/bitarray/block.go#L97)
+	// "intersect" means, "wholly contained within"
+	return is.ba.Intersects(other.ba)
 }
 
 // Union returns a new IntSet, the result of a set union of the receiver and other
