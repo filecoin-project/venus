@@ -178,7 +178,7 @@ func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr addres
 	require.Equal(trp.t, []interface{}{
 		trp.expectedVoucher.Payer,
 		&trp.expectedVoucher.Channel,
-		&trp.expectedVoucher.Amount,
+		trp.expectedVoucher.Amount,
 		&trp.expectedVoucher.ValidAt,
 		trp.expectedVoucher.Condition,
 		[]byte(trp.expectedVoucher.Signature),
@@ -187,14 +187,14 @@ func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr addres
 	return trp.gasPrice, nil
 }
 
-func (trp *testRedeemPlumbing) MessageSendWithDefaultAddress(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ *types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (trp *testRedeemPlumbing) MessageSendWithDefaultAddress(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	require.Equal(trp.t, trp.fromAddr, fromAddr)
 	require.Equal(trp.t, address.PaymentBrokerAddress, actorAddr)
 	require.Equal(trp.t, "redeem", method)
 	require.Equal(trp.t, []interface{}{
 		trp.expectedVoucher.Payer,
 		&trp.expectedVoucher.Channel,
-		&trp.expectedVoucher.Amount,
+		trp.expectedVoucher.Amount,
 		&trp.expectedVoucher.ValidAt,
 		trp.expectedVoucher.Condition,
 		[]byte(trp.expectedVoucher.Signature),
@@ -216,19 +216,19 @@ func TestDealRedeem(t *testing.T) {
 	tooSmallVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(1),
+		Amount:  types.NewAttoFILFromFIL(1),
 		ValidAt: *types.NewBlockHeight(10),
 	}
 	expectedVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(2),
+		Amount:  types.NewAttoFILFromFIL(2),
 		ValidAt: *types.NewBlockHeight(20),
 	}
 	notYetValidVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(3),
+		Amount:  types.NewAttoFILFromFIL(3),
 		ValidAt: *types.NewBlockHeight(30),
 	}
 	vouchers := []*types.PaymentVoucher{
@@ -246,7 +246,7 @@ func TestDealRedeem(t *testing.T) {
 		vouchers:        vouchers,
 	}
 
-	resultCid, err := porcelain.DealRedeem(context.Background(), plumbing, fromAddr, dealCid, *types.NewAttoFILFromFIL(0), types.NewGasUnits(0))
+	resultCid, err := porcelain.DealRedeem(context.Background(), plumbing, fromAddr, dealCid, types.NewAttoFILFromFIL(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 
 	assert.Equal(t, messageCid, resultCid)
@@ -264,19 +264,19 @@ func TestDealRedeemPreview(t *testing.T) {
 	tooSmallVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(1),
+		Amount:  types.NewAttoFILFromFIL(1),
 		ValidAt: *types.NewBlockHeight(10),
 	}
 	expectedVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(2),
+		Amount:  types.NewAttoFILFromFIL(2),
 		ValidAt: *types.NewBlockHeight(20),
 	}
 	notYetValidVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
 		Channel: channelID,
-		Amount:  *types.NewAttoFILFromFIL(3),
+		Amount:  types.NewAttoFILFromFIL(3),
 		ValidAt: *types.NewBlockHeight(30),
 	}
 	vouchers := []*types.PaymentVoucher{
