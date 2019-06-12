@@ -30,12 +30,10 @@ func TestDescribe(t *testing.T) {
 
 	expected := `MetadataFormatJSONtoCBOR migrates the storage repo from version 1 to 2.
 
-    This migration changes the chain store metadata serialization from JSON to CBOR.
+    This migration changes chain store metadata serialization from JSON to CBOR.
     The chain store metadata will be read in as JSON and rewritten as CBOR. 
 	Chain store metadata consists of associations between tipset keys and state 
-	root cids and the tipset key of the head of the chain.
-	No other repo data is changed.  Migrations are performed on a copy of the
-	chain store.
+	root cids and the tipset key of the head of the chain. No other repo data is changed.
 `
 	assert.Equal(t, expected, mig.Describe())
 }

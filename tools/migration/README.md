@@ -14,4 +14,4 @@ If your changes have broken migration tests, then one of the following scenarios
         <br>OR
     * include your changes in the other migration.
 2. The migration is recent but applies to a previous release. In this case you need to write a new migration and backport the old code.
-3. The previous migration version is enough versions behind that no nodes should even be running it by now. Consider invalidating this migration.
+3. The previous migration version is enough versions behind that no nodes should even be running it by now. Consider invalidating the broken migration.
