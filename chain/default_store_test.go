@@ -21,7 +21,7 @@ import (
 )
 
 // Note: many of these tests use the test chain defined in the init function of default_syncer_test.
-func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestParams) {
+func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -34,14 +34,14 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *DefaultSyncerTestPar
 	requireSetTestChain(t, con, true, dstP)
 }
 
-func newChainStore(dstP *DefaultSyncerTestParams) *chain.Store {
+func newChainStore(dstP *SyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
 	return chain.NewStore(ds, dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
-func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *DefaultSyncerTestParams) {
+func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *SyncerTestParams) {
 	ctx := context.Background()
 	genTsas := &chain.TipSetAndState{
 		TipSet:          dstP.genTS,

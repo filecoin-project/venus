@@ -14,7 +14,7 @@ import (
 )
 
 // setupGetAncestorTests initializes genesis and chain store for tests.
-func setupGetAncestorTests(t *testing.T, dstP *DefaultSyncerTestParams) (context.Context, *th.TestFetcher, *chain.Store) {
+func setupGetAncestorTests(t *testing.T, dstP *SyncerTestParams) (context.Context, *th.TestFetcher, *chain.Store) {
 	_, chainStore, _, blockSource := initSyncTestDefault(t, dstP)
 	return context.Background(), blockSource, chainStore
 }
@@ -28,7 +28,7 @@ type requireGrowChainStore interface {
 
 // requireGrowChain grows the given store numBlocks single block tipsets from
 // its head.
-func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore requireGrowChainStore, numBlocks uint, dstP *DefaultSyncerTestParams) {
+func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFetcher, chainStore requireGrowChainStore, numBlocks uint, dstP *SyncerTestParams) {
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)

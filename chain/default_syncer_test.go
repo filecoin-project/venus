@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type DefaultSyncerTestParams struct {
+type SyncerTestParams struct {
 	// Chain diagram below.  Note that blocks in the same tipset are in parentheses.
 	//
 	// genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (link4blk1, link4blk2)
@@ -51,7 +51,7 @@ type DefaultSyncerTestParams struct {
 	minerPeerID       peer.ID
 }
 
-func initDSTParams() *DefaultSyncerTestParams {
+func initDSTParams() *SyncerTestParams {
 	var err error
 	minerAddress, err := address.NewActorAddress([]byte("miner"))
 	if err != nil {
@@ -81,7 +81,7 @@ func initDSTParams() *DefaultSyncerTestParams {
 
 	genStateRoot := genesis.StateRoot
 
-	return &DefaultSyncerTestParams{
+	return &SyncerTestParams{
 		minerAddress:      minerAddress,
 		minerOwnerAddress: minerOwnerAddress,
 		minerPeerID:       minerPeerID,
@@ -96,7 +96,7 @@ func initDSTParams() *DefaultSyncerTestParams {
 // This function sets global variables according to the tests needs.  The
 // test chain's basic structure is always the same, but some tests want
 // mocked stateRoots or parent weight calculations from different consensus protocols.
-func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bool, dstP *DefaultSyncerTestParams) {
+func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bool, dstP *SyncerTestParams) {
 
 	var err error
 	// see powerTableForWidenTest
@@ -190,7 +190,7 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 }
 
 // loadSyncerFromRepo creates a store and syncer from an existing repo.
-func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *th.TestFetcher) {
+func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*chain.Syncer, *th.TestFetcher) {
 	powerTable := &th.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
@@ -204,7 +204,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -214,7 +214,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *DefaultSyncerTestParams
 
 // initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -233,7 +233,7 @@ func initSyncTestDefault(t *testing.T, dstP *DefaultSyncerTestParams) (*chain.De
 // store, syncer, etc) needed to run tests. It also mutates the chain syncer to
 // use the specified sync mode for easier testing of caught up and syncing mode
 // behavior.
-func initSyncTestWithMode(t *testing.T, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (consensus.Protocol, *chain.DefaultSyncer, *th.TestFetcher) {
+func initSyncTestWithMode(t *testing.T, dstP *SyncerTestParams, syncMode chain.SyncMode) (consensus.Protocol, *chain.Syncer, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
@@ -251,7 +251,7 @@ func initSyncTestWithMode(t *testing.T, dstP *DefaultSyncerTestParams, syncMode 
 
 // initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
 // needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *DefaultSyncerTestParams) (*chain.DefaultSyncer, *chain.Store, consensus.Protocol, *th.TestFetcher) {
+func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, consensus.Protocol, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -266,7 +266,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	return sync, testchain, con, fetcher
 }
 
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *DefaultSyncerTestParams, syncMode chain.SyncMode) (*chain.DefaultSyncer, *chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *SyncerTestParams, syncMode chain.SyncMode) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -276,7 +276,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -1087,7 +1087,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
-	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource, chain.Syncing)
+	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
