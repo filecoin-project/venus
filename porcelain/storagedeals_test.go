@@ -144,13 +144,19 @@ func TestDealMinerLs(t *testing.T) {
 type testRedeemPlumbing struct {
 	t *testing.T
 
-	blockHeight     *types.BlockHeight
-	dealCid         cid.Cid
-	expectedVoucher *types.PaymentVoucher
-	fromAddr        address.Address
-	gasPrice        types.GasUnits
-	messageCid      cid.Cid
-	vouchers        []*types.PaymentVoucher
+	blockHeight *types.BlockHeight
+	dealCid     cid.Cid
+	gasPrice    types.GasUnits
+	messageCid  cid.Cid
+	vouchers    []*types.PaymentVoucher
+
+	ResultingFromAddr       address.Address
+	ResultingActorAddr      address.Address
+	ResultingMethod         string
+	ResultingVoucherPayer   address.Address
+	ResultingVoucherChannel *types.ChannelID
+	ResultingVoucherAmount  types.AttoFIL
+	ResultingVoucherValidAt *types.BlockHeight
 }
 
 func (trp *testRedeemPlumbing) ChainBlockHeight() (*types.BlockHeight, error) {
@@ -172,34 +178,24 @@ func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagede
 }
 
 func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr address.Address, actorAddr address.Address, method string, params ...interface{}) (types.GasUnits, error) {
-	require.Equal(trp.t, trp.fromAddr, fromAddr)
-	require.Equal(trp.t, address.PaymentBrokerAddress, actorAddr)
-	require.Equal(trp.t, "redeem", method)
-	require.Equal(trp.t, []interface{}{
-		trp.expectedVoucher.Payer,
-		&trp.expectedVoucher.Channel,
-		trp.expectedVoucher.Amount,
-		&trp.expectedVoucher.ValidAt,
-		trp.expectedVoucher.Condition,
-		[]byte(trp.expectedVoucher.Signature),
-		[]interface{}{},
-	}, params)
+	trp.ResultingFromAddr = fromAddr
+	trp.ResultingActorAddr = actorAddr
+	trp.ResultingMethod = method
+	trp.ResultingVoucherPayer = params[0].(address.Address)
+	trp.ResultingVoucherChannel = params[1].(*types.ChannelID)
+	trp.ResultingVoucherAmount = params[2].(types.AttoFIL)
+	trp.ResultingVoucherValidAt = params[3].(*types.BlockHeight)
 	return trp.gasPrice, nil
 }
 
 func (trp *testRedeemPlumbing) MessageSendWithDefaultAddress(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	require.Equal(trp.t, trp.fromAddr, fromAddr)
-	require.Equal(trp.t, address.PaymentBrokerAddress, actorAddr)
-	require.Equal(trp.t, "redeem", method)
-	require.Equal(trp.t, []interface{}{
-		trp.expectedVoucher.Payer,
-		&trp.expectedVoucher.Channel,
-		trp.expectedVoucher.Amount,
-		&trp.expectedVoucher.ValidAt,
-		trp.expectedVoucher.Condition,
-		[]byte(trp.expectedVoucher.Signature),
-		[]interface{}{},
-	}, params)
+	trp.ResultingFromAddr = fromAddr
+	trp.ResultingActorAddr = actorAddr
+	trp.ResultingMethod = method
+	trp.ResultingVoucherPayer = params[0].(address.Address)
+	trp.ResultingVoucherChannel = params[1].(*types.ChannelID)
+	trp.ResultingVoucherAmount = params[2].(types.AttoFIL)
+	trp.ResultingVoucherValidAt = params[3].(*types.BlockHeight)
 	return trp.messageCid, nil
 }
 
@@ -212,22 +208,22 @@ func TestDealRedeem(t *testing.T) {
 	messageCid := cidGetter()
 	fromAddr := addressGetter()
 	payerAddr := addressGetter()
-	channelID := *types.NewChannelID(0)
+	channelID := types.NewChannelID(0)
 	tooSmallVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(1),
 		ValidAt: *types.NewBlockHeight(10),
 	}
 	expectedVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(2),
 		ValidAt: *types.NewBlockHeight(20),
 	}
 	notYetValidVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(3),
 		ValidAt: *types.NewBlockHeight(30),
 	}
@@ -237,17 +233,23 @@ func TestDealRedeem(t *testing.T) {
 		notYetValidVoucher,
 	}
 	plumbing := &testRedeemPlumbing{
-		t:               t,
-		blockHeight:     types.NewBlockHeight(25),
-		dealCid:         dealCid,
-		expectedVoucher: expectedVoucher,
-		fromAddr:        fromAddr,
-		messageCid:      messageCid,
-		vouchers:        vouchers,
+		t:           t,
+		blockHeight: types.NewBlockHeight(25),
+		dealCid:     dealCid,
+		messageCid:  messageCid,
+		vouchers:    vouchers,
 	}
 
 	resultCid, err := porcelain.DealRedeem(context.Background(), plumbing, fromAddr, dealCid, types.NewAttoFILFromFIL(0), types.NewGasUnits(0))
 	require.NoError(t, err)
+
+	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
+	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
+	assert.Equal(t, "redeem", plumbing.ResultingMethod)
+	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
+	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)
+	assert.Equal(t, types.NewAttoFILFromFIL(2), plumbing.ResultingVoucherAmount)
+	assert.Equal(t, types.NewBlockHeight(20), plumbing.ResultingVoucherValidAt)
 
 	assert.Equal(t, messageCid, resultCid)
 }
@@ -260,22 +262,22 @@ func TestDealRedeemPreview(t *testing.T) {
 	dealCid := cidGetter()
 	fromAddr := addressGetter()
 	payerAddr := addressGetter()
-	channelID := *types.NewChannelID(0)
+	channelID := types.NewChannelID(0)
 	tooSmallVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(1),
 		ValidAt: *types.NewBlockHeight(10),
 	}
 	expectedVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(2),
 		ValidAt: *types.NewBlockHeight(20),
 	}
 	notYetValidVoucher := &types.PaymentVoucher{
 		Payer:   payerAddr,
-		Channel: channelID,
+		Channel: *channelID,
 		Amount:  types.NewAttoFILFromFIL(3),
 		ValidAt: *types.NewBlockHeight(30),
 	}
@@ -285,17 +287,23 @@ func TestDealRedeemPreview(t *testing.T) {
 		notYetValidVoucher,
 	}
 	plumbing := &testRedeemPlumbing{
-		t:               t,
-		blockHeight:     types.NewBlockHeight(25),
-		dealCid:         dealCid,
-		expectedVoucher: expectedVoucher,
-		fromAddr:        fromAddr,
-		gasPrice:        types.NewGasUnits(42),
-		vouchers:        vouchers,
+		t:           t,
+		blockHeight: types.NewBlockHeight(25),
+		dealCid:     dealCid,
+		gasPrice:    types.NewGasUnits(42),
+		vouchers:    vouchers,
 	}
 
 	resultGasPrice, err := porcelain.DealRedeemPreview(context.Background(), plumbing, fromAddr, dealCid)
 	require.NoError(t, err)
+
+	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
+	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
+	assert.Equal(t, "redeem", plumbing.ResultingMethod)
+	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
+	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)
+	assert.Equal(t, types.NewAttoFILFromFIL(2), plumbing.ResultingVoucherAmount)
+	assert.Equal(t, types.NewBlockHeight(20), plumbing.ResultingVoucherValidAt)
 
 	assert.Equal(t, types.NewGasUnits(42), resultGasPrice)
 }
