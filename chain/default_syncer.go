@@ -117,8 +117,6 @@ type DefaultSyncer struct {
 	syncMode SyncMode
 }
 
-var _ Syncer = (*DefaultSyncer)(nil)
-
 // NewDefaultSyncer constructs a DefaultSyncer ready for use.
 func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *DefaultSyncer {
 	return &DefaultSyncer{

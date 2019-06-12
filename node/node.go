@@ -94,6 +94,10 @@ type nodeChainReader interface {
 	Stop()
 }
 
+type nodeChainSyncer interface {
+	HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
@@ -101,7 +105,7 @@ type Node struct {
 
 	Consensus   consensus.Protocol
 	ChainReader nodeChainReader
-	Syncer      chain.Syncer
+	Syncer      nodeChainSyncer
 	PowerTable  consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
