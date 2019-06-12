@@ -57,6 +57,7 @@ type clientPorcelainAPI interface {
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
 	DealClientLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
+	BlockTime() time.Duration
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
@@ -70,17 +71,15 @@ type clientPorcelainAPI interface {
 // Client is used to make deals directly with storage miners.
 type Client struct {
 	api                 clientPorcelainAPI
-	blockTime           time.Duration
 	host                host.Host
 	log                 logging.EventLogger
 	ProtocolRequestFunc func(ctx context.Context, protocol protocol.ID, peer peer.ID, host host.Host, request interface{}, response interface{}) error
 }
 
 // NewClient creates a new storage client.
-func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) *Client {
+func NewClient(host host.Host, api clientPorcelainAPI) *Client {
 	smc := &Client{
 		api:                 api,
-		blockTime:           blockTime,
 		host:                host,
 		log:                 logging.Logger("storage/client"),
 		ProtocolRequestFunc: MakeProtocolRequest,
@@ -91,7 +90,7 @@ func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.GetBlockTime())
+	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.api.BlockTime())
 	defer cancel()
 
 	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
@@ -265,11 +264,6 @@ func (smc *Client) minerForProposal(ctx context.Context, c cid.Cid) (address.Add
 		return address.Undef, errors.Wrapf(err, "failed to fetch deal: %s", c)
 	}
 	return storageDeal.Miner, nil
-}
-
-// GetBlockTime returns the blocktime this node is configured with.
-func (smc *Client) GetBlockTime() time.Duration {
-	return smc.blockTime
 }
 
 // QueryDeal queries an in-progress proposal.

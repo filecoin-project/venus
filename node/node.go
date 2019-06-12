@@ -126,7 +126,6 @@ type Node struct {
 
 	// Mining stuff.
 	AddNewlyMinedBlock newBlockFunc
-	blockTime          time.Duration
 	cancelMining       context.CancelFunc
 	MiningWorker       mining.Worker
 	MiningScheduler    mining.Scheduler
@@ -410,9 +409,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &proofs.RustVerifier{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &proofs.RustVerifier{}, nc.BlockTime)
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
 	}
 
 	// Set up libp2p network
@@ -443,6 +442,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
+		Expected:     nodeConsensus,
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
@@ -470,7 +470,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
-		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
 
@@ -753,19 +752,9 @@ func (node *Node) miningAddress() (address.Address, error) {
 // Note this is mocked behavior, in production this time is determined by how
 // long it takes to generate PoSTs.
 func (node *Node) MiningTimes() (time.Duration, time.Duration) {
-	mineDelay := node.GetBlockTime() / mining.MineDelayConversionFactor
-	return node.GetBlockTime(), mineDelay
-}
-
-// GetBlockTime returns the current block time.
-// TODO this should be surfaced somewhere in the plumbing API.
-func (node *Node) GetBlockTime() time.Duration {
-	return node.blockTime
-}
-
-// SetBlockTime sets the block time.
-func (node *Node) SetBlockTime(blockTime time.Duration) {
-	node.blockTime = blockTime
+	blockTime := node.PorcelainAPI.BlockTime()
+	mineDelay := blockTime / mining.MineDelayConversionFactor
+	return blockTime, mineDelay
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -1026,11 +1015,11 @@ func (node *Node) setupProtocols() error {
 	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime, node.PorcelainAPI))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.PorcelainAPI))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api
-	smc := storage.NewClient(node.blockTime, node.host, node.PorcelainAPI)
+	smc := storage.NewClient(node.host, node.PorcelainAPI)
 	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
@@ -1059,7 +1048,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 	return mining.NewDefaultWorker(
 		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
 		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
-		node.Wallet, node.blockTime), nil
+		node.Wallet, node.PorcelainAPI), nil
 }
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
