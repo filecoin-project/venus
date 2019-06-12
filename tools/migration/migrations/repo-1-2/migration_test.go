@@ -64,7 +64,7 @@ func TestMigrateSomeRepo(t *testing.T) {
 	defer repo.RequireRemoveAll(t, path.Join(curDir, "repo-1"))
 
 	// make a symlink
-	repoDir := path.Join(curDir, "repo-1", "repo-20190530-132738-v001")
+	repoDir := path.Join(curDir, "repo-1", "repo-20190612-152655-v001")
 	repoSymLink := path.Join(curDir, "repo-1", "repo")
 	require.NoError(t, os.Symlink(repoDir, repoSymLink))
 
