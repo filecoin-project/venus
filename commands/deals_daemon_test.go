@@ -51,6 +51,9 @@ func TestDealsRedeem(t *testing.T) {
 	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Posted)
 	require.NoError(t, err)
 
+	// Stop mining to guarantee the miner doesn't receive any block rewards
+	require.NoError(t, minerDaemon.MiningStop(ctx))
+
 	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
 	require.NoError(t, err)
 	minerOwnerAddress := minerOwnerAddresses[0]
@@ -67,6 +70,6 @@ func TestDealsRedeem(t *testing.T) {
 	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
-	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance).String()
-	assert.Equal(t, "11.8999999999999998", actualBalanceDiff)
+	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
+	assert.Equal(t, "11.9", actualBalanceDiff.String())
 }
