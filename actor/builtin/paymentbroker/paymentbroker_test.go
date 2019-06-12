@@ -125,7 +125,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should succeed if condition is met", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
@@ -136,7 +136,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should fail if condition is _NOT_ met", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		badAddressParam := address.Undef
 		badParams := []interface{}{badAddressParam, sectorIdParam}
@@ -152,7 +152,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should fail if condition goes to non-existent actor", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		badToAddress := addrGetter()
 
@@ -167,7 +167,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should fail if condition goes to non-existent method", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		badMethod := "nonexistentMethod"
 
@@ -182,7 +182,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should fail if condition has the wrong number of condition parameters", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		badParams := []interface{}{}
 
@@ -197,7 +197,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 
 	t.Run("Redeem should fail if condition has the wrong number of supplied parameters", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		badRedeemerParams := []interface{}{}
 
@@ -225,7 +225,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem should set the redeemed flag to true on success", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the redeemed flag is false on init
 		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
@@ -246,7 +246,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem should set cached condition on success", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Expect that the condition is nil on init
 		paymentBroker := state.MustGetActor(sys.st, address.PaymentBrokerAddress)
@@ -272,7 +272,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem should set cached condition back to nil when no condition is provided", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Successfully redeem the payment channel with condition
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -300,7 +300,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem should update the cached condition with new params when initial redeem condition is nil", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 
 		// Successfully redeem the payment channel with no condition
@@ -331,7 +331,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem should update the cached condition with new params when provided", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 
 		// Successfully redeem the payment channel with condition
@@ -366,7 +366,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	t.Run("Redeem uses cached condition in subsequent calls", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		// Redeem without params expects an invalid condition error
 		condition := &types.Predicate{To: toAddress, Method: method}
@@ -621,7 +621,7 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 
 	t.Run("Close should succeed if condition is met", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
 
@@ -632,7 +632,7 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 
 	t.Run("Close should fail if condition is _NOT_ met", func(t *testing.T) {
 		sys := setup(t)
-		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
 
@@ -656,7 +656,7 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 	// Close without params and expect a panic
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -838,7 +838,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -862,7 +862,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing
 	toAddress := addrGetter()
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 	// Successfully redeem the payment channel with params
 	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil)
@@ -890,7 +890,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	redeemerParams := []interface{}{blockHeightParam}
 
 	sys := setup(t)
-	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.NewZeroAttoFIL())))
+	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
@@ -996,7 +996,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1009,7 +1009,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, *sys.channelID, voucher.Channel)
 		assert.Equal(t, sys.payer, voucher.Payer)
 		assert.Equal(t, sys.target, voucher.Target)
-		assert.Equal(t, *voucherAmount, voucher.Amount)
+		assert.Equal(t, voucherAmount, voucher.Amount)
 		assert.Nil(t, voucher.Condition)
 	})
 
@@ -1032,7 +1032,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", args)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", args)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NotEqual(t, uint8(0), res.Receipt.ExitCode)
@@ -1051,7 +1051,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
-		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, nil, "voucher", pdata)
+		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1064,7 +1064,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, *sys.channelID, voucher.Channel)
 		assert.Equal(t, sys.payer, voucher.Payer)
 		assert.Equal(t, sys.target, voucher.Target)
-		assert.Equal(t, *voucherAmount, voucher.Amount)
+		assert.Equal(t, voucherAmount, voucher.Amount)
 	})
 }
 
@@ -1103,7 +1103,7 @@ func TestSignVoucher(t *testing.T) {
 	})
 }
 
-func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt *types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := core.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -1186,7 +1186,7 @@ func setup(t *testing.T) system {
 	}
 }
 
-func (sys *system) Signature(amt *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
+func (sys *system) Signature(amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, error) {
 	sig, err := SignVoucher(sys.channelID, amt, validAt, sys.payer, condition, mockSigner)
 	if err != nil {
 		return nil, err

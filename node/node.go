@@ -841,7 +841,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						node.miningCtx,
 						minerOwnerAddr,
 						minerAddr,
-						nil,
+						types.ZeroAttoFIL,
 						gasPrice,
 						gasUnits,
 						"commitSector",

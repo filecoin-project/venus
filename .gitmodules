@@ -4,3 +4,7 @@
 [submodule "proofs/rust-fil-proofs"]
 	path = proofs/rust-fil-proofs
 	url = https://github.com/filecoin-project/rust-fil-proofs.git
+[submodule "proofs/rust-fil-sector-builder"]
+	path = proofs/rust-fil-sector-builder
+	url = https://github.com/filecoin-project/rust-fil-sector-builder.git
+	branch = master

@@ -69,10 +69,10 @@ type FunctionSignature struct {
 type VMContext interface {
 	Message() *types.Message
 	Storage() Storage
-	Send(to address.Address, method string, value *types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
-	MyBalance() *types.AttoFIL
+	MyBalance() types.AttoFIL
 	IsFromAccountActor() bool
 	Charge(cost types.GasUnits) error
 	SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error)

@@ -150,7 +150,7 @@ var balanceCmd = &cmds.Command{
 	},
 	Type: &types.AttoFIL{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b *types.AttoFIL) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, b types.AttoFIL) error {
 			return PrintString(w, b)
 		}),
 	},

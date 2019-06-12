@@ -63,7 +63,7 @@ func PaymentChannelVoucher(
 	plumbing pcvPlumbing,
 	fromAddr address.Address,
 	channel *types.ChannelID,
-	amount *types.AttoFIL,
+	amount types.AttoFIL,
 	validAt *types.BlockHeight,
 	condition *types.Predicate,
 ) (voucher *types.PaymentVoucher, err error) {

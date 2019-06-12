@@ -123,6 +123,7 @@ func deps() {
 		cmd("go mod download"),
 		// Download and build proofs.
 		cmd("./scripts/install-rust-fil-proofs.sh"),
+		cmd("./scripts/install-rust-fil-sector-builder.sh"),
 		cmd("./scripts/install-bls-signatures.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
 	}

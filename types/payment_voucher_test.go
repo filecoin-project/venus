@@ -24,7 +24,7 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 		Channel:   *NewChannelID(5),
 		Payer:     addr1,
 		Target:    addr2,
-		Amount:    *NewAttoFILFromFIL(100),
+		Amount:    NewAttoFILFromFIL(100),
 		ValidAt:   *NewBlockHeight(25),
 		Condition: condition,
 	}

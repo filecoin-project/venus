@@ -19,7 +19,7 @@ import (
 )
 
 type wbTestPlumbing struct {
-	balance *types.AttoFIL
+	balance types.AttoFIL
 }
 
 type wdaTestPlumbing struct {

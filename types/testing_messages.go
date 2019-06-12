@@ -28,7 +28,7 @@ func NewMessageMaker(t *testing.T, keys []KeyInfo) *MessageMaker {
 		addresses[i] = addr
 	}
 
-	return &MessageMaker{*ZeroAttoFIL, NewGasUnits(0), &signer, 0, t}
+	return &MessageMaker{ZeroAttoFIL, NewGasUnits(0), &signer, 0, t}
 }
 
 // Addresses returns the addresses for which this maker can sign messages.
@@ -51,7 +51,7 @@ func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *Si
 		from,
 		to,
 		nonce,
-		NewAttoFILFromFIL(0),
+		ZeroAttoFIL,
 		"method"+fmt.Sprintf("%d", seq),
 		[]byte("params"))
 	signed, err := NewSignedMessage(*msg, mm.signer, mm.DefaultGasPrice, mm.DefaultGasUnits)

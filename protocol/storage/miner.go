@@ -79,7 +79,7 @@ type minerPorcelain interface {
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
 
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 
@@ -236,7 +236,7 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	lastValidAt := expectedFirstPayment
 	for _, v := range p.Payment.Vouchers {
 		// confirm signature is valid against expected actor and channel id
-		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, &v.Amount, &v.ValidAt, v.Condition, v.Signature) {
+		if !paymentbroker.VerifyVoucherSignature(p.Payment.Payer, p.Payment.Channel, v.Amount, &v.ValidAt, v.Condition, v.Signature) {
 			return errors.New("invalid signature in voucher")
 		}
 
@@ -273,14 +273,14 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	return nil
 }
 
-func (sm *Miner) getStoragePrice() (*types.AttoFIL, error) {
+func (sm *Miner) getStoragePrice() (types.AttoFIL, error) {
 	storagePrice, err := sm.porcelainAPI.ConfigGet("mining.storagePrice")
 	if err != nil {
-		return nil, err
+		return types.ZeroAttoFIL, err
 	}
-	storagePriceAF, ok := storagePrice.(*types.AttoFIL)
+	storagePriceAF, ok := storagePrice.(types.AttoFIL)
 	if !ok {
-		return nil, errors.New("Could not retrieve storagePrice from config")
+		return types.ZeroAttoFIL, errors.New("Could not retrieve storagePrice from config")
 	}
 	return storagePriceAF, nil
 }

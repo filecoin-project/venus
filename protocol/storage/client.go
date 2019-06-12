@@ -176,13 +176,13 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
 		From:            fromAddress,
 		To:              minerOwner,
-		Value:           *price.MulBigInt(big.NewInt(int64(size * duration))),
+		Value:           price.MulBigInt(big.NewInt(int64(size * duration))),
 		Duration:        duration,
 		MinerAddress:    miner,
 		CommP:           commP,
 		PaymentInterval: VoucherInterval,
 		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
-		GasPrice:        *types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
+		GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
 		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
 	})
 	if err != nil {

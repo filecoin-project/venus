@@ -46,8 +46,7 @@ func NewMessageQueue() *MessageQueue {
 // Enqueue appends a new message for an address. If the queue already contains any messages for
 // from same address, the new message's nonce must be exactly one greater than the largest nonce
 // present.
-func (mq *MessageQueue) Enqueue(msg *types.SignedMessage, stamp uint64) error {
-	ctx := context.TODO()
+func (mq *MessageQueue) Enqueue(ctx context.Context, msg *types.SignedMessage, stamp uint64) error {
 	defer func() {
 		mqSizeGa.Set(ctx, mq.Size())
 		mqOldestGa.Set(ctx, int64(mq.Oldest()))
@@ -72,8 +71,7 @@ func (mq *MessageQueue) Enqueue(msg *types.SignedMessage, stamp uint64) error {
 // (indicating the message had already been removed).
 // Returns an error if the expected nonce is greater than the smallest in the queue.
 // The caller may wish to check that the returned message is equal to that expected (not just in nonce value).
-func (mq *MessageQueue) RemoveNext(sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error) {
-	ctx := context.TODO()
+func (mq *MessageQueue) RemoveNext(ctx context.Context, sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error) {
 	defer func() {
 		mqSizeGa.Set(ctx, mq.Size())
 		mqOldestGa.Set(ctx, int64(mq.Oldest()))
@@ -99,8 +97,7 @@ func (mq *MessageQueue) RemoveNext(sender address.Address, expectedNonce uint64)
 
 // Clear removes all messages for a single sender address.
 // Returns whether the queue was non-empty before being cleared.
-func (mq *MessageQueue) Clear(sender address.Address) bool {
-	ctx := context.TODO()
+func (mq *MessageQueue) Clear(ctx context.Context, sender address.Address) bool {
 	defer func() {
 		mqSizeGa.Set(ctx, mq.Size())
 		mqOldestGa.Set(ctx, int64(mq.Oldest()))

@@ -25,7 +25,7 @@ type ActorView struct {
 	Address   string          `json:"address"`
 	Code      cid.Cid         `json:"code,omitempty"`
 	Nonce     uint64          `json:"nonce"`
-	Balance   *types.AttoFIL  `json:"balance"`
+	Balance   types.AttoFIL   `json:"balance"`
 	Exports   readableExports `json:"exports"`
 	Head      cid.Cid         `json:"head,omitempty"`
 }
