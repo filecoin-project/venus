@@ -41,13 +41,13 @@ func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 
 // RequireNewEmptyActor creates a new empty actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewEmptyActor(value *types.AttoFIL) *actor.Actor {
+func RequireNewEmptyActor(value types.AttoFIL) *actor.Actor {
 	return &actor.Actor{Balance: value}
 }
 
 // RequireNewAccountActor creates a new account actor with the given starting
 // value and requires that its steps succeed.
-func RequireNewAccountActor(t *testing.T, value *types.AttoFIL) *actor.Actor {
+func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {
 	act, err := account.NewActor(value)
 	require.NoError(t, err)
 	return act
@@ -55,7 +55,7 @@ func RequireNewAccountActor(t *testing.T, value *types.AttoFIL) *actor.Actor {
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll *types.AttoFIL) *actor.Actor {
+func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, key []byte, pledge uint64, pid peer.ID, coll types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, coll)
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, key, pid, types.OneKiBSectorSize)
@@ -73,7 +73,7 @@ func RequireNewFakeActor(t *testing.T, vms vm.StorageMap, addr address.Address, 
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt *types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})

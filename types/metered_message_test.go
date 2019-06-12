@@ -26,7 +26,7 @@ func TestMeteredMessageMessage(t *testing.T) {
 			[]byte("foobar"),
 		)
 
-		mmsg := NewMeteredMessage(*inner, *NewAttoFILFromFIL(2), NewGasUnits(300))
+		mmsg := NewMeteredMessage(*inner, NewAttoFILFromFIL(2), NewGasUnits(300))
 
 		// This check requests that you add a non-zero value for new fields above,
 		// then update the field count below.

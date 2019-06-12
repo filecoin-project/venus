@@ -20,7 +20,7 @@ const verifyPieceInclusionMethod = "verifyPieceInclusion"
 type cpPlumbing interface {
 	ChainBlockHeight() (*types.BlockHeight, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
-	MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
@@ -75,7 +75,7 @@ type CreatePaymentsReturn struct {
 	ChannelMsgCid cid.Cid
 
 	// GasAttoFIL is the amount spent on gas creating the channel
-	GasAttoFIL *types.AttoFIL
+	GasAttoFIL types.AttoFIL
 
 	// Vouchers are the payment vouchers created to pay the target at regular intervals.
 	Vouchers []*types.PaymentVoucher
@@ -119,7 +119,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	response.ChannelMsgCid, err = plumbing.MessageSend(ctx,
 		config.From,
 		address.PaymentBrokerAddress,
-		&config.Value,
+		config.Value,
 		config.GasPrice,
 		config.GasLimit,
 		"createChannel",
@@ -147,7 +147,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	intervalAsBigInt := big.NewInt(int64(config.PaymentInterval))
 	// Convert to AttoFIL, because values have to be the same type.
 	durationAsAttoFIL := types.NewAttoFIL(big.NewInt(int64(config.Duration)))
-	valuePerPayment := *config.Value.MulBigInt(intervalAsBigInt).DivCeil(durationAsAttoFIL)
+	valuePerPayment := config.Value.MulBigInt(intervalAsBigInt).DivCeil(durationAsAttoFIL)
 
 	// condition is a condition that requires that the miner has the client's piece and is currently proving on it
 	condition := &types.Predicate{
@@ -160,9 +160,9 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	response.Vouchers = []*types.PaymentVoucher{}
 	voucherAmount := types.ZeroAttoFIL
 	for i := 0; uint64(i+1)*config.PaymentInterval < config.Duration; i++ {
-		voucherAmount = voucherAmount.Add(&valuePerPayment)
-		if voucherAmount.GreaterThan(&config.Value) {
-			voucherAmount = &config.Value
+		voucherAmount = voucherAmount.Add(valuePerPayment)
+		if voucherAmount.GreaterThan(config.Value) {
+			voucherAmount = config.Value
 		}
 
 		validAt := currentHeight.Add(types.NewBlockHeight(uint64(i+1) * config.PaymentInterval))
@@ -174,7 +174,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 
 	// create last payment
 	validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
-	err = createPayment(ctx, plumbing, response, &config.Value, validAt, nil)
+	err = createPayment(ctx, plumbing, response, config.Value, validAt, nil)
 	if err != nil {
 		return response, err
 	}
@@ -182,7 +182,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	return response, nil
 }
 
-func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount *types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
+func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
 		address.PaymentBrokerAddress,

@@ -236,6 +236,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	e2 := json.Unmarshal(marshalled, &unmarshalled)
 	assert.NoError(t, e2)
 
+	assert.Equal(t, child, unmarshalled)
 	AssertHaveSameCid(t, &child, &unmarshalled)
 	assert.True(t, child.Equals(&unmarshalled))
 

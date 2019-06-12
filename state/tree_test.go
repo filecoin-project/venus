@@ -24,9 +24,9 @@ func TestStatePutGet(t *testing.T) {
 	cst := hamt.NewCborStore()
 	tree := NewEmptyStateTree(cst)
 
-	act1 := actor.NewActor(types.AccountActorCodeCid, nil)
+	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act1.IncNonce()
-	act2 := actor.NewActor(types.AccountActorCodeCid, nil)
+	act2 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act2.IncNonce()
 	act2.IncNonce()
 

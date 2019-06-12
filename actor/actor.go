@@ -43,11 +43,11 @@ type Actor struct {
 	// Messages are processed in strict, contiguous nonce order.
 	Nonce types.Uint64
 	// Balance is the amount of FIL in the actor's account.
-	Balance *types.AttoFIL
+	Balance types.AttoFIL
 }
 
 // NewActor constructs a new actor.
-func NewActor(code cid.Cid, balance *types.AttoFIL) *Actor {
+func NewActor(code cid.Cid, balance types.AttoFIL) *Actor {
 	return &Actor{
 		Code:    code,
 		Head:    cid.Undef,

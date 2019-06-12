@@ -25,7 +25,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
@@ -43,7 +43,7 @@ func MinerCreate(
 	gasLimit types.GasUnits,
 	sectorSize *types.BytesAmount,
 	pid peer.ID,
-	collateral *types.AttoFIL,
+	collateral types.AttoFIL,
 ) (_ *address.Address, err error) {
 	if minerOwnerAddr == (address.Address{}) {
 		minerOwnerAddr, err = plumbing.WalletDefaultAddress()
@@ -172,7 +172,7 @@ func MinerPreviewCreate(
 type mspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -181,13 +181,13 @@ type MinerSetPriceResponse struct {
 	AddAskCid cid.Cid
 	BlockCid  cid.Cid
 	MinerAddr address.Address
-	Price     *types.AttoFIL
+	Price     types.AttoFIL
 }
 
 // MinerSetPrice configures the price of storage, then sends an ask advertising that price and waits for it to be mined.
 // If minerAddr is empty, the default miner will be used.
 // This method is non-transactional in the sense that it will set the price whether or not it creates the ask successfully.
-func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price *types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
+func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
 	res := MinerSetPriceResponse{
 		Price: price,
 	}
@@ -216,7 +216,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// create ask
-	res.AddAskCid, err = plumbing.MessageSendWithDefaultAddress(ctx, from, res.MinerAddr, types.NewZeroAttoFIL(), gasPrice, gasLimit, "addAsk", price, expiry)
+	res.AddAskCid, err = plumbing.MessageSendWithDefaultAddress(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "addAsk", price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}
@@ -242,7 +242,7 @@ type mpspAPI interface {
 
 // MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
 // This method accepts all the same arguments as MinerSetPrice.
-func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Address, miner address.Address, price *types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
+func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Address, miner address.Address, price types.AttoFIL, expiry *big.Int) (types.GasUnits, error) {
 	// get miner address if not provided
 	if miner.Empty() {
 		minerValue, err := plumbing.ConfigGet("mining.minerAddress")

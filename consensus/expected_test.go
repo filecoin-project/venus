@@ -54,13 +54,13 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 
 		ownerPubKeys[i] = kis[i].PublicKey()
 
-		ownerActor := th.RequireNewAccountActor(t, types.NewZeroAttoFIL())
+		ownerActor := th.RequireNewAccountActor(t, types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, addr, ownerActor))
 
 		minerAddrs[i], err = address.NewActorAddress([]byte(fmt.Sprintf("%s%s", name, "Miner")))
 		require.NoError(t, err)
 		minerActor := th.RequireNewMinerActor(t, vms, minerAddrs[i], addr,
-			ownerPubKeys[i], 10000, th.RequireRandomPeerID(t), types.NewZeroAttoFIL())
+			ownerPubKeys[i], 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, minerAddrs[i], minerActor))
 	}
 	stateRoot, err := tree.Flush(ctx)

@@ -31,6 +31,8 @@ func TestMessageReceiptMarshal(t *testing.T) {
 		err = cbor.DecodeInto(bytes, &actual)
 
 		assert.NoError(t, err)
-		assert.Equal(t, expected, actual)
+		assert.Equal(t, expected.ExitCode, actual.ExitCode)
+		assert.Equal(t, expected.Return, actual.Return)
+		assert.True(t, expected.GasAttoFIL.Equal(actual.GasAttoFIL))
 	}
 }

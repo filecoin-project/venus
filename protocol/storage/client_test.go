@@ -99,7 +99,7 @@ func TestProposeDeal(t *testing.T) {
 			assert.Equal(t, testAPI.channelID, &voucher.Channel)
 			assert.True(t, voucher.ValidAt.GreaterThan(lastValidAt))
 			assert.Equal(t, testAPI.target, voucher.Target)
-			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), &voucher.Amount)
+			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), voucher.Amount)
 			assert.Equal(t, testAPI.payer, voucher.Payer)
 			assert.Equal(t, minerAddr, voucher.Condition.To)
 			assert.Equal(t, commP[:], voucher.Condition.Params[0])
@@ -158,7 +158,7 @@ type clientTestAPI struct {
 	msgCid      cid.Cid
 	payer       address.Address
 	target      address.Address
-	perPayment  *types.AttoFIL
+	perPayment  types.AttoFIL
 	testing     *testing.T
 	deals       map[cid.Cid]*storagedeal.Deal
 }
@@ -197,7 +197,7 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 			Channel: *ctp.channelID,
 			Payer:   ctp.payer,
 			Target:  ctp.target,
-			Amount:  *ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
+			Amount:  ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
 			ValidAt: *ctp.blockHeight.Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
 			Condition: &types.Predicate{
 				To:     config.MinerAddress,

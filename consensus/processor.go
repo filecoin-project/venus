@@ -31,7 +31,7 @@ type BlockRewarder interface {
 	BlockReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address) error
 
 	// GasReward pays gas from the sender to the miner
-	GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, cost *types.AttoFIL) error
+	GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -372,7 +372,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 		From:   from,
 		To:     to,
 		Nonce:  0,
-		Value:  nil,
+		Value:  types.ZeroAttoFIL,
 		Method: method,
 		Params: params,
 	}
@@ -410,7 +410,7 @@ func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, t
 		From:   from,
 		To:     to,
 		Nonce:  0,
-		Value:  nil,
+		Value:  types.ZeroAttoFIL,
 		Method: method,
 		Params: params,
 	}
@@ -586,7 +586,7 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 }
 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
-func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, gas *types.AttoFIL) error {
+func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
 	cachedTree := state.NewCachedStateTree(st)
 	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, gas, cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
@@ -597,12 +597,12 @@ func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, mi
 // BlockRewardAmount returns the max FIL value miners can claim as the block reward.
 // TODO this is one of the system parameters that should be configured as part of
 // https://github.com/filecoin-project/go-filecoin/issues/884.
-func (br *DefaultBlockRewarder) BlockRewardAmount() *types.AttoFIL {
+func (br *DefaultBlockRewarder) BlockRewardAmount() types.AttoFIL {
 	return types.NewAttoFILFromFIL(1000)
 }
 
 // rewardTransfer retrieves two actors from the given addresses and attempts to transfer the given value from the balance of the first's to the second.
-func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value *types.AttoFIL, st *state.CachedTree) error {
+func rewardTransfer(ctx context.Context, fromAddr, toAddr address.Address, value types.AttoFIL, st *state.CachedTree) error {
 	fromActor, err := st.GetActor(ctx, fromAddr)
 	if err != nil {
 		return errors.FaultErrorWrap(err, "could not retrieve from actor for reward transfer.")

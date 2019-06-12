@@ -27,7 +27,7 @@ type paymentsTestPlumbing struct {
 	height *types.BlockHeight
 	msgCid cid.Cid
 
-	messageSend  func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	messageSend  func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
@@ -41,7 +41,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	return &paymentsTestPlumbing{
 		msgCid: msgCid,
 		height: types.NewBlockHeight(startingBlock),
-		messageSend: func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+		messageSend: func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
 			return msgCid, nil
@@ -58,7 +58,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 				Channel:   *channelID,
 				Payer:     payer,
 				Target:    target,
-				Amount:    *params[1].(*types.AttoFIL),
+				Amount:    params[1].(types.AttoFIL),
 				ValidAt:   *params[2].(*types.BlockHeight),
 				Condition: params[3].(*types.Predicate),
 			}
@@ -71,7 +71,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	}
 }
 
-func (ptp *paymentsTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (ptp *paymentsTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return ptp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
@@ -102,13 +102,13 @@ func validPaymentsConfig() CreatePaymentsParams {
 	return CreatePaymentsParams{
 		From:            from,
 		To:              to,
-		Value:           *types.NewAttoFILFromFIL(93),
+		Value:           types.NewAttoFILFromFIL(93),
 		Duration:        50,
 		MinerAddress:    minerAddress,
 		CommP:           commP,
 		PaymentInterval: paymentInterval,
 		ChannelExpiry:   *types.NewBlockHeight(500),
-		GasPrice:        *types.NewAttoFILFromFIL(3),
+		GasPrice:        types.NewAttoFILFromFIL(3),
 		GasLimit:        types.NewGasUnits(300),
 	}
 }
@@ -144,7 +144,7 @@ func TestCreatePayments(t *testing.T) {
 			assert.Equal(t, config.From, voucher.Payer)
 			assert.Equal(t, config.To, voucher.Target)
 			assert.Equal(t, *types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
-			assert.Equal(t, *expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
+			assert.Equal(t, expectedValuePerPayment.MulBigInt(big.NewInt(int64(i+1))), voucher.Amount)
 
 			// assert all vouchers other than the last have a valid condition
 			assert.NotNil(t, voucher.Condition)
@@ -181,7 +181,7 @@ func TestCreatePayments(t *testing.T) {
 		for i := 0; i < 9; i++ {
 			voucher := paymentResponse.Vouchers[i]
 			assert.Equal(t, *types.NewBlockHeight(startingBlock).Add(types.NewBlockHeight(config.PaymentInterval * uint64(i+1))), voucher.ValidAt)
-			assert.Equal(t, *expectedValuePerPayment.MulBigInt(big.NewInt(int64(i + 1))), voucher.Amount)
+			assert.Equal(t, expectedValuePerPayment.MulBigInt(big.NewInt(int64(i+1))), voucher.Amount)
 
 			// assert all vouchers other than the last have a valid condition
 			assert.NotNil(t, voucher.Condition)
@@ -242,7 +242,7 @@ func TestCreatePayments(t *testing.T) {
 
 	t.Run("Errors creating channel are surfaced", func(t *testing.T) {
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			return cid.Cid{}, errors.New("Error in MessageSend")
 		}
 

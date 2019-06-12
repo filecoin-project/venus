@@ -24,7 +24,7 @@ func TestTransfer(t *testing.T) {
 
 	actor1 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(100))
 	actor2 := actor.NewActor(cid.Undef, types.NewAttoFILFromFIL(50))
-	actor3 := actor.NewActor(cid.Undef, nil)
+	actor3 := actor.NewActor(cid.Undef, types.ZeroAttoFIL)
 
 	t.Run("success", func(t *testing.T) {
 		assert.NoError(t, Transfer(actor1, actor2, types.NewAttoFILFromFIL(10)))
@@ -60,7 +60,7 @@ func TestSendErrorHandling(t *testing.T) {
 		msg.Value = types.NewAttoFILFromFIL(1) // exact value doesn't matter - needs to be non-nil
 
 		deps := sendDeps{
-			transfer: func(_ *actor.Actor, _ *actor.Actor, _ *types.AttoFIL) error {
+			transfer: func(_ *actor.Actor, _ *actor.Actor, _ types.AttoFIL) error {
 				return transferErr
 			},
 		}
@@ -85,7 +85,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 	t.Run("returns right exit code and a revert error if we can't load the recipient actor's code", func(t *testing.T) {
 		msg := newMsg()
-		msg.Value = nil // such that we don't transfer
+		msg.Value = types.ZeroAttoFIL // such that we don't transfer
 
 		deps := sendDeps{}
 
@@ -109,7 +109,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 	t.Run("returns exit code 1 and a revert error if code doesn't export a matching method", func(t *testing.T) {
 		msg := newMsg()
-		msg.Value = nil // such that we don't transfer
+		msg.Value = types.ZeroAttoFIL // such that we don't transfer
 		msg.Method = "bar"
 
 		assert.False(t, actor.FakeActorExports.Has(msg.Method))

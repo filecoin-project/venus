@@ -45,7 +45,7 @@ func TestOutbox(t *testing.T) {
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
-		actr, _ := account.NewActor(types.NewZeroAttoFIL())
+		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
 
@@ -53,7 +53,7 @@ func TestOutbox(t *testing.T) {
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "")
 		require.NoError(t, err)
 		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
 		assert.NotNil(t, publisher.message)
@@ -75,7 +75,7 @@ func TestOutbox(t *testing.T) {
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
-		actr, _ := account.NewActor(types.NewZeroAttoFIL())
+		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
 
@@ -85,7 +85,7 @@ func TestOutbox(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
-				_, err := s.Send(ctx, sender, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
 				require.NoError(t, err)
 			}
 		}
@@ -129,7 +129,7 @@ func TestOutbox(t *testing.T) {
 
 		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.NewZeroAttoFIL(), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})

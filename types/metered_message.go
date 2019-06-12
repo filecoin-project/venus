@@ -46,7 +46,7 @@ func (msg *MeteredMessage) Marshal() ([]byte, error) {
 
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
-	return *NewAttoFIL(big.NewInt(price))
+	return NewAttoFIL(big.NewInt(price))
 }
 
 // NewGasUnits constructs a new GasUnits from the given number.
@@ -57,6 +57,6 @@ func NewGasUnits(cost uint64) GasUnits {
 // Equals tests whether two metered messages are equal
 func (msg *MeteredMessage) Equals(other *MeteredMessage) bool {
 	return msg.Message.Equals(&other.Message) &&
-		msg.GasPrice.Equal(&other.GasPrice) &&
+		msg.GasPrice.Equal(other.GasPrice) &&
 		msg.GasLimit == other.GasLimit
 }

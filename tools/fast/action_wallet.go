@@ -12,10 +12,10 @@ import (
 )
 
 // WalletBalance run the wallet balance command against the filecoin process.
-func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (*types.AttoFIL, error) {
-	var balance *types.AttoFIL
+func (f *Filecoin) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
+	var balance types.AttoFIL
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &balance, "go-filecoin", "wallet", "balance", addr.String()); err != nil {
-		return nil, err
+		return types.ZeroAttoFIL, err
 	}
 	return balance, nil
 }

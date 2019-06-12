@@ -360,7 +360,7 @@ func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr 
 	return nil, nil
 }
 
-func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val *types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
 }
 
@@ -479,7 +479,7 @@ func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, 
 			Channel:   *porcelainAPI.channelID,
 			Payer:     porcelainAPI.payerAddress,
 			Target:    porcelainAPI.targetAddress,
-			Amount:    *amount,
+			Amount:    amount,
 			ValidAt:   *validAt,
 			Signature: signature,
 		}

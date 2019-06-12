@@ -21,7 +21,7 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
-	testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+	testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 	t.Run("Put adds to storage", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
@@ -100,7 +100,7 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 func TestGetAndPutWithDataInStorage(t *testing.T) {
 	tf.UnitTest(t)
 
-	testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+	testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := NewStorageMap(bs)
@@ -147,7 +147,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
 	t.Run("Committing changes head", func(t *testing.T) {
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -166,7 +166,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	})
 
 	t.Run("Committing a non existent chunk is an error", func(t *testing.T) {
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -178,7 +178,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 	})
 
 	t.Run("Committing out of sequence is an error", func(t *testing.T) {
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
@@ -214,7 +214,7 @@ func TestDatastoreBacking(t *testing.T) {
 		// add a value to underlying datastore
 		require.NoError(t, bs.Put(memory2))
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		stage := NewStorageMap(bs).NewStorage(address.TestAddress, testActor)
 
 		chunk, err := stage.Get(memory2.Cid())
@@ -225,7 +225,7 @@ func TestDatastoreBacking(t *testing.T) {
 	t.Run("Flush adds chunks to underlying store", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -249,7 +249,7 @@ func TestDatastoreBacking(t *testing.T) {
 	t.Run("Flush ignores chunks not referenced through head", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -279,7 +279,7 @@ func TestDatastoreBacking(t *testing.T) {
 	t.Run("Flush includes non-head chunks that are referenced in node", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -317,7 +317,7 @@ func TestValidationAndPruning(t *testing.T) {
 	t.Run("Linking to a non-existent cid fails in Commit", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 
@@ -337,7 +337,7 @@ func TestValidationAndPruning(t *testing.T) {
 	t.Run("Prune removes unlinked chunks from stage", func(t *testing.T) {
 		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.NewZeroAttoFIL())
+		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 		storage := NewStorageMap(bs)
 		stage := storage.NewStorage(address.TestAddress, testActor)
 

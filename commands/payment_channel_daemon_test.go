@@ -157,7 +157,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	voucher, err := types.DecodeVoucher(voucherStr)
 	require.NoError(t, err)
 
-	assert.Equal(t, voucherAmount, &voucher.Amount)
+	assert.Equal(t, voucherAmount, voucher.Amount)
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {
@@ -501,7 +501,7 @@ func requireNewPaychResource(ctx context.Context, t *testing.T, env *fastesting.
 	}
 }
 
-func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, t *testing.T, amt *types.AttoFIL, eol *types.BlockHeight) (*types.ChannelID, *types.AttoFIL) {
+func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, t *testing.T, amt types.AttoFIL, eol *types.BlockHeight) (*types.ChannelID, types.AttoFIL) {
 	mcid, err := rsrc.payer.PaychCreate(ctx, rsrc.targetAddr, amt, eol, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 

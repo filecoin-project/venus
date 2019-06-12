@@ -73,7 +73,7 @@ func (ob *Outbox) Queue() *MessageQueue {
 }
 
 // Send marshals and sends a message, retaining it in the outbound message queue.
-func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value *types.AttoFIL,
+func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (out cid.Cid, err error) {
 	defer func() {
 		if err != nil {
