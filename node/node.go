@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -382,7 +383,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	pingService := ping.NewPingService(peerHost)
 
 	// setup block validation
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime)
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewBlockClock())
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
