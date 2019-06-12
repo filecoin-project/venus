@@ -52,6 +52,7 @@ const (
 )
 
 type clientPorcelainAPI interface {
+	BlockTime() time.Duration
 	ChainBlockHeight() (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(cid.Cid) *storagedeal.Deal
@@ -70,17 +71,15 @@ type clientPorcelainAPI interface {
 // Client is used to make deals directly with storage miners.
 type Client struct {
 	api                 clientPorcelainAPI
-	blockTime           time.Duration
 	host                host.Host
 	log                 logging.EventLogger
 	ProtocolRequestFunc func(ctx context.Context, protocol protocol.ID, peer peer.ID, host host.Host, request interface{}, response interface{}) error
 }
 
 // NewClient creates a new storage client.
-func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) *Client {
+func NewClient(host host.Host, api clientPorcelainAPI) *Client {
 	smc := &Client{
 		api:                 api,
-		blockTime:           blockTime,
 		host:                host,
 		log:                 logging.Logger("storage/client"),
 		ProtocolRequestFunc: MakeProtocolRequest,
@@ -91,7 +90,7 @@ func NewClient(blockTime time.Duration, host host.Host, api clientPorcelainAPI) 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
 func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.GetBlockTime())
+	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.api.BlockTime())
 	defer cancel()
 
 	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
@@ -256,11 +255,6 @@ func (smc *Client) minerForProposal(c cid.Cid) (address.Address, error) {
 	}
 
 	return storageDeal.Miner, nil
-}
-
-// GetBlockTime returns the blocktime this node is configured with.
-func (smc *Client) GetBlockTime() time.Duration {
-	return smc.blockTime
 }
 
 // QueryDeal queries an in-progress proposal.

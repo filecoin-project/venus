@@ -35,7 +35,7 @@ type Client struct {
 }
 
 // NewClient produces a new Client.
-func NewClient(host host.Host, blockTime time.Duration, api clientPorcelainAPI) *Client {
+func NewClient(host host.Host, api clientPorcelainAPI) *Client {
 	return &Client{
 		api:  api,
 		host: host,

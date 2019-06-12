@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -57,6 +58,11 @@ type TicketSigner interface {
 	SignBytes(data []byte, signerAddr address.Address) (types.Signature, error)
 }
 
+// DefaultBlockTime is the estimated proving period time.
+// We define this so that we can fake mining in the current incomplete system.
+// We also use this to enforce a soft block validation.
+const DefaultBlockTime = 30 * time.Second
+
 // TODO none of these parameters are chosen correctly
 // with respect to analysis under a security model:
 // https://github.com/filecoin-project/go-filecoin/issues/1846
@@ -103,15 +109,18 @@ type Expected struct {
 	genesisCid cid.Cid
 
 	verifier proofs.Verifier
+
+	blockTime time.Duration
 }
 
 // Ensure Expected satisfies the Protocol interface at compile time.
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier, bt time.Duration) *Expected {
 	return &Expected{
 		cstore:         cs,
+		blockTime:      bt,
 		bstore:         bs,
 		processor:      processor,
 		PwrTableView:   pt,
@@ -146,6 +155,11 @@ func (c *Expected) validateBlockStructure(ctx context.Context, b *types.Block) e
 	}
 
 	return nil
+}
+
+// BlockTime returns the block time used by the consensus protocol.
+func (c *Expected) BlockTime() time.Duration {
+	return c.blockTime
 }
 
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point

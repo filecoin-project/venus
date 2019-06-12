@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// BlockTimeTest is the block time used by workers during testing
+// BlockTimeTest is the block time used by workers during testing.
 const BlockTimeTest = time.Second
 
 // CreateMinerMessage creates a message to create a miner.
@@ -35,6 +35,21 @@ func CommitSectorMessage(miner, from address.Address, nonce, sectorID uint64, co
 	}
 
 	return types.NewMessage(from, miner, nonce, types.NewZeroAttoFIL(), "commitSector", params), nil
+}
+
+// TestWorkerPorcelainAPI implements the WorkerPorcelainAPI>
+type TestWorkerPorcelainAPI struct {
+	blockTime time.Duration
+}
+
+// NewDefaultTestWorkerPorcelainAPI returns a TestWrokerPorcelainAPI.
+func NewDefaultTestWorkerPorcelainAPI() *TestWorkerPorcelainAPI {
+	return &TestWorkerPorcelainAPI{blockTime: BlockTimeTest}
+}
+
+// BlockTime returns the blocktime TestWrokerPorcelainAPI si configured with.
+func (t *TestWorkerPorcelainAPI) BlockTime() time.Duration {
+	return t.blockTime
 }
 
 // MakeCommitment creates a random commitment.

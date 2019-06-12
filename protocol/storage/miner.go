@@ -88,7 +88,6 @@ type minerPorcelain interface {
 // are moving off of node and into the porcelain api (see porcelainAPI). Eventually this
 // dependency on node should go away, fully replaced by the dependency on the porcelain api.
 type node interface {
-	GetBlockTime() time.Duration
 	BlockService() bserv.BlockService
 	Host() host.Host
 	SectorBuilder() sectorbuilder.SectorBuilder

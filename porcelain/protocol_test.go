@@ -2,6 +2,7 @@ package porcelain_test
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -11,6 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 )
+
+const protocolTestParamBlockTime = time.Second
 
 type testProtocolParamsPlumbing struct {
 	testing          *testing.T
@@ -26,6 +29,10 @@ func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFro
 	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }
 
+func (tppp *testProtocolParamsPlumbing) BlockTime() time.Duration {
+	return protocolTestParamBlockTime
+}
+
 func TestProtocolParams(t *testing.T) {
 	t.Parallel()
 
@@ -39,6 +46,7 @@ func TestProtocolParams(t *testing.T) {
 
 		expected := &porcelain.ProtocolParams{
 			AutoSealInterval: 120,
+			BlockTime:        protocolTestParamBlockTime,
 			SectorSizes:      []uint64{1016},
 		}
 
