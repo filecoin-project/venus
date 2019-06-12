@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -78,7 +77,7 @@ func TestDealsRedeem(t *testing.T) {
 	assert.Equal(t, "11.9", actualBalanceDiff.String())
 }
 
-func TestListDeals(t *testing.T) {
+func TestDealsList(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	clientDaemon := th.NewDaemon(t,
@@ -100,58 +99,41 @@ func TestListDeals(t *testing.T) {
 
 	minerDaemon.ConnectSuccess(clientDaemon)
 
+	// Create a deal from the client daemon to the miner daemon
 	addAskCid := minerDaemon.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
 	clientDaemon.WaitForMessageRequireSuccess(addAskCid)
 	dataCid := clientDaemon.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
 	proposeDealOutput := clientDaemon.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStdoutTrimNewlines()
-
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 	dealCid := splitOnSpace[len(splitOnSpace)-1]
 
-	expectedClientOutput := fmt.Sprintf(`{
-	"minerAddress": "%s",
-	"pieceCid": {
-		"/": "QmbHmUVAkqZjQXgifDady7m5cYprX1fgtGaTYxUBBTX3At"
-	},
-	"proposalCid": {
-		"/": "%s"
-	},
-	"state": 2
-}`, fixtures.TestMiners[0], dealCid)
-
-	expectedMinerOutput := fmt.Sprintf(`{
-	"minerAddress": "%s",
-	"pieceCid": {
-		"/": "QmbHmUVAkqZjQXgifDady7m5cYprX1fgtGaTYxUBBTX3At"
-	},
-	"proposalCid": {
-		"/": "%s"
-	},
-	"state": 7
-}`, fixtures.TestMiners[0], dealCid)
-
 	t.Run("with no filters", func(t *testing.T) {
-		listClientDealsOutput := clientDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
-		assert.Equal(t, expectedClientOutput, listClientDealsOutput)
+		// Client sees the deal
+		clientOutput := clientDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
+		assert.Contains(t, clientOutput, dealCid)
 
-		listMinerDealsOutput := minerDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
-		assert.Equal(t, expectedMinerOutput, listMinerDealsOutput)
+		// Miner sees the deal
+		minerOutput := minerDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
+		assert.Contains(t, minerOutput, dealCid)
 	})
 
 	t.Run("with --miner", func(t *testing.T) {
-		listClientDealsOutput := clientDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
-		assert.Equal(t, "", listClientDealsOutput)
+		// Client does not see the deal
+		clientOutput := clientDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
+		assert.NotContains(t, clientOutput, dealCid)
 
-		listMinerDealsOutput := minerDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
-		assert.Equal(t, expectedMinerOutput, listMinerDealsOutput)
+		// Miner sees the deal
+		minerOutput := minerDaemon.RunSuccess("deals", "list", "--miner").ReadStdoutTrimNewlines()
+		assert.Contains(t, minerOutput, dealCid)
 	})
 
 	t.Run("with --client", func(t *testing.T) {
-		listClientDealsOutput := clientDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
-		assert.Equal(t, expectedClientOutput, listClientDealsOutput)
+		// Client sees the deal
+		clientOutput := clientDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
+		assert.Contains(t, clientOutput, dealCid)
 
-		listMinerDealsOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
-		assert.Equal(t, "", listMinerDealsOutput)
+		// Miner does not see the deal
+		minerOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
+		assert.NotContains(t, minerOutput, dealCid)
 	})
 }
