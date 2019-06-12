@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "checking if node was restarted"
-jq -r -e '.mining .minerAddress | length > 0' /var/local/filecoin/config.json > /dev/null 2>@1
+jq -r -e '.mining .minerAddress | length > 0' /var/local/filecoin/repo/config.json > /dev/null 2>@1
 if [ "$?" -eq "0" ]; then
   echo "minerAddress exists, likely restart"
   (/usr/local/bin/node_restart)&
