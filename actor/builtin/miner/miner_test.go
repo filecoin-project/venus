@@ -292,7 +292,8 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		commRStar := th.MakeCommitment()
 		commD := th.MakeCommitment()
 
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 42, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		blockHeight := uint64(42)
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, blockHeight, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -311,7 +312,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		end, ok := endVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(20042), end)
+		assert.Equal(t, types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)+blockHeight), end)
 	})
 }
 
