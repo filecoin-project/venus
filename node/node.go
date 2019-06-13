@@ -94,6 +94,10 @@ type nodeChainReader interface {
 	Stop()
 }
 
+type nodeChainSyncer interface {
+	HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
@@ -101,7 +105,7 @@ type Node struct {
 
 	Consensus   consensus.Protocol
 	ChainReader nodeChainReader
-	Syncer      chain.Syncer
+	Syncer      nodeChainSyncer
 	PowerTable  consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
@@ -427,7 +431,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewDefaultSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, chain.Syncing)
+	chainSyncer := chain.NewSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, chain.Syncing)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
 

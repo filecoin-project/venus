@@ -76,20 +76,20 @@ type syncFetcher interface {
 	GetBlocks(context.Context, []cid.Cid) ([]*types.Block, error)
 }
 
-// DefaultSyncer updates its chain.Store according to the methods of its
+// Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
-// blocks to traverse during chain collection.  The DefaultSyncer can query the
-// network for blocks.  The DefaultSyncer maintains the following invariant on
+// blocks to traverse during chain collection.  The Syncer can query the
+// network for blocks.  The Syncer maintains the following invariant on
 // its store: all tipsets that pass the syncer's validity checks are added to the
 // chain store, and their state is added to stateStore.
 //
 // Ideally the code that syncs the chain according to consensus rules should
 // be independent of any particular implementation of consensus.  Currently the
-// DefaultSyncer is coupled to details of Expected Consensus. This dependence
+// Syncer is coupled to details of Expected Consensus. This dependence
 // exists in the widen function, the fact that widen is called on only one
 // tipset in the incoming chain, and assumptions regarding the existence of
 // grandparent state in the store.
-type DefaultSyncer struct {
+type Syncer struct {
 	// This mutex ensures at most one call to HandleNewTipset executes at
 	// any time.  This is important because at least two sections of the
 	// code otherwise have races:
@@ -117,11 +117,9 @@ type DefaultSyncer struct {
 	syncMode SyncMode
 }
 
-var _ Syncer = (*DefaultSyncer)(nil)
-
-// NewDefaultSyncer constructs a DefaultSyncer ready for use.
-func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *DefaultSyncer {
-	return &DefaultSyncer{
+// NewSyncer constructs a Syncer ready for use.
+func NewSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *Syncer {
+	return &Syncer{
 		fetcher:    f,
 		stateStore: cst,
 		badTipSets: &badTipSetCache{
@@ -140,7 +138,7 @@ func NewDefaultSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerCha
 // otherwise resolved over the network.  This method will timeout if blocks
 // are unavailable.  This method is all or nothing, it will error if any of the
 // blocks cannot be resolved.
-func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
+func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
 
@@ -156,8 +154,8 @@ func (syncer *DefaultSyncer) getBlksMaybeFromNet(ctx context.Context, blkCids []
 // blocks that do not form a tipset, or if any tipset has already been recorded
 // as the head of an invalid chain.  collectChain is the entrypoint to the code
 // that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) (ts []types.TipSet, err error) {
-	ctx, span := trace.StartSpan(ctx, "DefaultSyncer.collectChain")
+func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) (ts []types.TipSet, err error) {
+	ctx, span := trace.StartSpan(ctx, "Syncer.collectChain")
 	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
@@ -212,7 +210,7 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 
 // tipSetState returns the state resulting from applying the input tipset to
 // the chain.  Precondition: the tipset must be in the store
-func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
+func (syncer *Syncer) tipSetState(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
 	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
@@ -235,7 +233,7 @@ func (syncer *DefaultSyncer) tipSetState(ctx context.Context, tsKey types.Sorted
 //
 // Precondition: the caller of syncOne must hold the syncer's lock (syncer.mu) to
 // ensure head is not modified by another goroutine during run.
-func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
+func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) error {
 	head := syncer.chainStore.GetHead()
 
 	// if tipset is already head, we've been here before. do nothing.
@@ -319,7 +317,7 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	return nil
 }
 
-func (syncer *DefaultSyncer) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
+func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
 	curHeadIter := IterAncestors(ctx, syncer.chainStore, curHead)
 	newHeadIter := IterAncestors(ctx, syncer.chainStore, newHead)
 	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
@@ -347,7 +345,7 @@ func (syncer *DefaultSyncer) logReorg(ctx context.Context, curHead, newHead type
 // returns the union of the input tipset and the biggest tipset with the same
 // parents from the store.
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
-func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet, error) {
+func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet, error) {
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {
@@ -408,9 +406,9 @@ func (syncer *DefaultSyncer) widen(ctx context.Context, ts types.TipSet) (types.
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) (err error) {
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tipsetCids)
-	ctx, span := trace.StartSpan(ctx, "DefaultSyncer.HandleNewTipset")
+	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
 	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
@@ -476,7 +474,7 @@ func (syncer *DefaultSyncer) HandleNewTipset(ctx context.Context, tipsetCids typ
 	return nil
 }
 
-func (syncer *DefaultSyncer) exceedsFinalityLimit(chain []types.TipSet) bool {
+func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) bool {
 	if len(chain) == 0 {
 		return false
 	}
