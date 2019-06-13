@@ -126,7 +126,7 @@ func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr addres
 	return trp.gasPrice, nil
 }
 
-func (trp *testRedeemPlumbing) MessageSendWithDefaultAddress(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	trp.ResultingFromAddr = fromAddr
 	trp.ResultingActorAddr = actorAddr
 	trp.ResultingMethod = method

@@ -90,7 +90,7 @@ type dealRedeemPlumbing interface {
 	ChainBlockHeight() (*types.BlockHeight, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	MessagePreview(context.Context, address.Address, address.Address, string, ...interface{}) (types.GasUnits, error)
-	MessageSendWithDefaultAddress(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)
+	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)
 }
 
 // DealRedeem redeems a voucher for the deal with the given cid and returns
@@ -101,7 +101,7 @@ func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr addre
 		return cid.Undef, err
 	}
 
-	return plumbing.MessageSendWithDefaultAddress(
+	return plumbing.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
