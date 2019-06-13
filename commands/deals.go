@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
 const (
@@ -31,10 +30,10 @@ var dealsCmd = &cmds.Command{
 
 // DealsListResult represents the subset of deal data returned by deals list
 type DealsListResult struct {
-	Miner       address.Address   `json:"minerAddress"`
-	PieceCid    cid.Cid           `json:"pieceCid"`
-	ProposalCid cid.Cid           `json:"proposalCid"`
-	State       storagedeal.State `json:"state"`
+	Miner       address.Address `json:"minerAddress"`
+	PieceCid    cid.Cid         `json:"pieceCid"`
+	ProposalCid cid.Cid         `json:"proposalCid"`
+	State       string          `json:"state"`
 }
 
 var dealsListCmd = &cmds.Command{
@@ -73,7 +72,7 @@ deals, active deals, finished deals and cancelled deals.
 				Miner:       deal.Deal.Miner,
 				PieceCid:    deal.Deal.Proposal.PieceRef,
 				ProposalCid: deal.Deal.Response.ProposalCid,
-				State:       deal.Deal.Response.State,
+				State:       deal.Deal.Response.State.String(),
 			}
 			if err = re.Emit(out); err != nil {
 				return err
