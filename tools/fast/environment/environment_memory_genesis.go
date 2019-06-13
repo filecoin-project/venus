@@ -71,7 +71,9 @@ func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMo
 	return env, nil
 }
 
-// GetFunds retrieves a fixed amount of tokens from an environment
+// GetFunds retrieves a fixed amount of tokens from the environment to the
+// Filecoin processes default wallet address.
+// GetFunds will cause the genesis node to send 1000 filecoin to process `p`.
 func (e *MemoryGenesis) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()

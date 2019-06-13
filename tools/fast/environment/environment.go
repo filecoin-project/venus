@@ -62,6 +62,7 @@ type Environment interface {
 	// to remove a process from the environment in a clean way.
 	TeardownProcess(context.Context, *fast.Filecoin) error
 
-	// GetFunds retrieves a fixed amount of tokens from the environment.
+	// GetFunds retrieves a fixed amount of tokens from the environment to the
+	// Filecoin processes default wallet address.
 	GetFunds(context.Context, *fast.Filecoin) error
 }

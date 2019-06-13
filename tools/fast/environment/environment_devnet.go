@@ -7,6 +7,7 @@ package environment
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -147,7 +148,10 @@ func (e *Devnet) TeardownProcess(ctx context.Context, p *fast.Filecoin) error {
 	return os.RemoveAll(p.Dir())
 }
 
-// GetFunds retrieves a fixed amount of tokens from an environment
+// GetFunds retrieves a fixed amount of tokens from the environment to the
+// Filecoin processes default wallet address.
+// GetFunds will send a request to the Faucet, the amount of tokens returned and
+// number of requests permitted is determined by the Faucet configuration.
 func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
@@ -172,15 +176,27 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 		return err
 	}
 
-	msgcid := resp.Header.Get("Message-Cid")
-	mcid, err := cid.Decode(msgcid)
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+	switch resp.StatusCode {
+	case 200:
+		msgcid := resp.Header.Get("Message-Cid")
+		mcid, err := cid.Decode(msgcid)
+		if err != nil {
+			return err
+		}
 
-	if _, err := p.MessageWait(ctx, mcid); err != nil {
-		return err
+		if _, err := p.MessageWait(ctx, mcid); err != nil {
+			return err
+		}
+		return nil
+	case 400:
+		return fmt.Errorf("Bad Request: %s", string(b))
+	case 429:
+		return fmt.Errorf("Rate Limit: %s", string(b))
+	default:
+		return fmt.Errorf("Unhandled Status: %s", resp.Status)
 	}
-
-	return nil
 }
