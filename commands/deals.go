@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"io"
 	"strconv"
 
@@ -8,6 +9,13 @@ import (
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/address"
+)
+
+const (
+	clientOnly = "client"
+	minerOnly  = "miner"
 )
 
 var dealsCmd = &cmds.Command{
@@ -15,7 +23,71 @@ var dealsCmd = &cmds.Command{
 		Tagline: "Manage and inspect deals made by or with this node",
 	},
 	Subcommands: map[string]*cmds.Command{
+		"list":   dealsListCmd,
 		"redeem": dealsRedeemCmd,
+	},
+}
+
+// DealsListResult represents the subset of deal data returned by deals list
+type DealsListResult struct {
+	Miner       address.Address `json:"minerAddress"`
+	PieceCid    cid.Cid         `json:"pieceCid"`
+	ProposalCid cid.Cid         `json:"proposalCid"`
+	State       string          `json:"state"`
+}
+
+var dealsListCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "List all deals",
+		ShortDescription: `
+Lists all recorded deals made by or with this node. This may include pending
+deals, active deals, finished deals and cancelled deals.
+`,
+	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption(clientOnly, "c", "only return deals made as a client"),
+		cmdkit.BoolOption(minerOnly, "m", "only return deals made as a miner"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddress, _ := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
+		dealsCh, err := GetPorcelainAPI(env).DealsLs(req.Context)
+		if err != nil {
+			return err
+		}
+
+		filterForMiner, _ := req.Options[minerOnly].(bool)
+		filterForClient, _ := req.Options[clientOnly].(bool)
+
+		for deal := range dealsCh {
+			if deal.Err != nil {
+				return deal.Err
+			}
+			if filterForMiner && deal.Deal.Miner != minerAddress {
+				continue
+			}
+			if filterForClient && deal.Deal.Miner == minerAddress {
+				continue
+			}
+			out := &DealsListResult{
+				Miner:       deal.Deal.Miner,
+				PieceCid:    deal.Deal.Proposal.PieceRef,
+				ProposalCid: deal.Deal.Response.ProposalCid,
+				State:       deal.Deal.Response.State.String(),
+			}
+			if err = re.Emit(out); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	},
+	Type: DealsListResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *DealsListResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(res)
+		}),
 	},
 }
 

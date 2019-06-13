@@ -8,6 +8,27 @@ import (
 	"github.com/filecoin-project/go-filecoin/commands"
 )
 
+// DealsList runs the `deals list` command against the filecoin process
+func (f *Filecoin) DealsList(ctx context.Context, client bool, miner bool) (*commands.DealsListResult, error) {
+	var out commands.DealsListResult
+
+	args := []string{"go-filecoin", "deals", "list"}
+
+	if client {
+		args = append(args, "--client")
+	}
+
+	if miner {
+		args = append(args, "--miner")
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
 // DealsRedeem runs the `deals redeem` command against the filecoin process.
 func (f *Filecoin) DealsRedeem(ctx context.Context, dealCid cid.Cid, options ...ActionOption) (cid.Cid, error) {
 	var out commands.RedeemResult

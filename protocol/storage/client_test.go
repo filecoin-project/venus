@@ -276,7 +276,7 @@ func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol
 	return nil
 }
 
-func (ctp *clientTestAPI) DealClientLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {
+func (ctp *clientTestAPI) DealsLs(_ context.Context) (<-chan *porcelain.StorageDealLsResult, error) {
 	results := make(chan *porcelain.StorageDealLsResult)
 	go func() {
 		for _, deal := range ctp.deals {

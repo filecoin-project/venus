@@ -51,13 +51,13 @@ const (
 )
 
 type clientPorcelainAPI interface {
+	BlockTime() time.Duration
 	ChainBlockHeight() (*types.BlockHeight, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DealPut(*storagedeal.Deal) error
-	DealClientLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
-	BlockTime() time.Duration
+	DealsLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
@@ -289,7 +289,7 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 }
 
 func (smc *Client) isMaybeDupDeal(ctx context.Context, p *storagedeal.Proposal) bool {
-	dealsCh, err := smc.api.DealClientLs(ctx)
+	dealsCh, err := smc.api.DealsLs(ctx)
 	if err != nil {
 		return false
 	}

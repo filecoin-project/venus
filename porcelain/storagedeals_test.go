@@ -79,68 +79,6 @@ func TestDealGetNotFound(t *testing.T) {
 	assert.Nil(t, resultDeal)
 }
 
-func TestDealClientLs(t *testing.T) {
-	tf.UnitTest(t)
-
-	addrGetter := address.NewForTestGetter()
-	ownAddress := addrGetter()
-	clientDeal := &storagedeal.Deal{
-		Miner: addrGetter(),
-	}
-	minerDeal := &storagedeal.Deal{
-		Miner: ownAddress,
-	}
-
-	plumbing := &testDealLsPlumbing{
-		deals: []*storagedeal.Deal{
-			clientDeal,
-			minerDeal,
-		},
-		minerAddress: ownAddress,
-	}
-
-	var results []*storagedeal.Deal
-	resultsCh, err := porcelain.DealClientLs(context.Background(), plumbing)
-	require.NoError(t, err)
-	for result := range resultsCh {
-		require.NoError(t, result.Err)
-		results = append(results, &result.Deal)
-	}
-	assert.Contains(t, results, clientDeal)
-	assert.NotContains(t, results, minerDeal)
-}
-
-func TestDealMinerLs(t *testing.T) {
-	tf.UnitTest(t)
-
-	addrGetter := address.NewForTestGetter()
-	ownAddress := addrGetter()
-	clientDeal := &storagedeal.Deal{
-		Miner: addrGetter(),
-	}
-	minerDeal := &storagedeal.Deal{
-		Miner: ownAddress,
-	}
-
-	plumbing := &testDealLsPlumbing{
-		deals: []*storagedeal.Deal{
-			clientDeal,
-			minerDeal,
-		},
-		minerAddress: ownAddress,
-	}
-
-	var results []*storagedeal.Deal
-	resultsCh, err := porcelain.DealMinerLs(context.Background(), plumbing)
-	require.NoError(t, err)
-	for result := range resultsCh {
-		require.NoError(t, result.Err)
-		results = append(results, &result.Deal)
-	}
-	assert.NotContains(t, results, clientDeal)
-	assert.Contains(t, results, minerDeal)
-}
-
 type testRedeemPlumbing struct {
 	t *testing.T
 
