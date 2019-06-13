@@ -183,6 +183,11 @@ func (z AttoFIL) IsZero() bool {
 	return z.Equal(ZeroAttoFIL)
 }
 
+// InDelta returns true if z is less than delta larger or smaller than y
+func (z AttoFIL) InDelta(y AttoFIL, delta AttoFIL) bool {
+	return z.Sub(y).LessThan(delta) && y.Sub(z).LessThan(delta)
+}
+
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z AttoFIL) Bytes() []byte {
 	return leb128.FromBigInt(&z.val)

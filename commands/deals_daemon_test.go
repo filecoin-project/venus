@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestDealsRedeem(t *testing.T) {
@@ -70,6 +71,9 @@ func TestDealsRedeem(t *testing.T) {
 	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
+	// InDelta is necessary because sometimes the big.Int math can be off by 2 attoFIL
+	expectedBalanceDiff, _ := types.NewAttoFILFromFILString("11.9")
 	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
-	assert.Equal(t, "11.9", actualBalanceDiff.String())
+	tolerance, _ := types.NewAttoFILFromFILString("0.0000000000000002")
+	assert.True(t, expectedBalanceDiff.InDelta(actualBalanceDiff, tolerance))
 }
