@@ -30,6 +30,25 @@ func TestBlockDaemon(t *testing.T) {
 		assert.Contains(t, output, "Weight: 0")
 		assert.Contains(t, output, "Height: 1")
 		assert.Contains(t, output, "Nonce:  0")
+		assert.Contains(t, output, "Timestamp:  ")
+	})
+
+	t.Run("show block --messages <cid-of-genesis-block> returns human readable output for the filecoin block including messages", func(t *testing.T) {
+		d := makeTestDaemonWithMinerAndStart(t)
+		defer d.ShutdownSuccess()
+
+		// mine a block and get its CID
+		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
+
+		// get the mined block by its CID
+		output := d.RunSuccess("show", "block", "--messages", minedBlockCidStr).ReadStdoutTrimNewlines()
+
+		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "Weight: 0")
+		assert.Contains(t, output, "Height: 1")
+		assert.Contains(t, output, "Nonce:  0")
+		assert.Contains(t, output, "Timestamp:  ")
+		assert.Contains(t, output, "Messages:  ")
 	})
 
 	t.Run("show block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {

@@ -31,6 +31,9 @@ all other block properties will be included as well.`,
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("cid", true, false, "CID of block to show"),
 	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption("messages", "m", "show messages in block"),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
 		if err != nil {
@@ -57,12 +60,22 @@ Miner:  %s
 Weight: %s
 Height: %s
 Nonce:  %s
+Timestamp:  %s
 `,
 				block.Miner,
 				wStr,
 				strconv.FormatUint(uint64(block.Height), 10),
 				strconv.FormatUint(uint64(block.Nonce), 10),
+				strconv.FormatUint(uint64(block.Timestamp), 10),
 			)
+			if err != nil {
+				return err
+			}
+
+			showMessages, _ := req.Options["messages"].(bool)
+			if showMessages == true {
+				_, err = fmt.Fprintf(w, `Messages:  %s`+"\n", block.Messages)
+			}
 			return err
 		}),
 	},
