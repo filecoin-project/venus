@@ -1,11 +1,9 @@
 package types
 
 import (
-	"fmt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multibase"
 	"sort"
-	"strings"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
