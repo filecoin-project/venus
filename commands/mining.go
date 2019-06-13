@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
@@ -14,9 +15,10 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"once":  miningOnceCmd,
-		"start": miningStartCmd,
-		"stop":  miningStopCmd,
+		"once":   miningOnceCmd,
+		"start":  miningStartCmd,
+		"status": miningStatusCmd,
+		"stop":   miningStopCmd,
 	},
 }
 
@@ -45,6 +47,14 @@ var miningStartCmd = &cmds.Command{
 		return re.Emit("Started mining")
 	},
 	Type:     "",
+	Encoders: stringEncoderMap,
+}
+
+var miningStatusCmd = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		isMining := GetBlockAPI(env).MiningStatus()
+		return re.Emit(strconv.FormatBool(isMining))
+	},
 	Encoders: stringEncoderMap,
 }
 

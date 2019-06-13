@@ -17,6 +17,7 @@ type miningChainReader interface {
 type MiningAPI struct {
 	addNewBlockFunc  func(context.Context, *types.Block) (err error)
 	chainReader      miningChainReader
+	isMiningFunc     func() bool
 	mineDelay        time.Duration
 	startMiningFunc  func(context.Context) error
 	stopMiningFunc   func(context.Context)
@@ -27,6 +28,7 @@ type MiningAPI struct {
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
 	chainReader miningChainReader,
+	isMiningFunc func() bool,
 	blockMineDelay time.Duration,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
@@ -35,6 +37,7 @@ func New(
 	return MiningAPI{
 		addNewBlockFunc:  addNewBlockFunc,
 		chainReader:      chainReader,
+		isMiningFunc:     isMiningFunc,
 		mineDelay:        blockMineDelay,
 		startMiningFunc:  startMiningFunc,
 		stopMiningFunc:   stopMiningfunc,
@@ -72,6 +75,11 @@ func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
 // MiningStart calls the node's StartMining function
 func (a *MiningAPI) MiningStart(ctx context.Context) error {
 	return a.startMiningFunc(ctx)
+}
+
+// MiningStatus calls the node's IsMining function
+func (a *MiningAPI) MiningStatus() bool {
+	return a.isMiningFunc()
 }
 
 // MiningStop calls the node's StopMining function
