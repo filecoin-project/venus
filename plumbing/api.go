@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -47,6 +48,7 @@ type API struct {
 	chain        *cst.ChainStateProvider
 	config       *cfg.Config
 	dag          *dag.DAG
+	expected     consensus.Protocol
 	msgPool      *core.MessagePool
 	msgPreviewer *msg.Previewer
 	msgQueryer   *msg.Queryer
@@ -64,6 +66,7 @@ type APIDeps struct {
 	Config       *cfg.Config
 	DAG          *dag.DAG
 	Deals        *strgdls.Store
+	Expected     consensus.Protocol
 	MsgPool      *core.MessagePool
 	MsgPreviewer *msg.Previewer
 	MsgQueryer   *msg.Queryer
@@ -82,6 +85,7 @@ func New(deps *APIDeps) *API {
 		chain:        deps.Chain,
 		config:       deps.Config,
 		dag:          deps.DAG,
+		expected:     deps.Expected,
 		msgPool:      deps.MsgPool,
 		msgPreviewer: deps.MsgPreviewer,
 		msgQueryer:   deps.MsgQueryer,
@@ -108,6 +112,11 @@ func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address
 // ActorLs returns a channel with actors from the latest state on the chain
 func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
 	return api.chain.LsActors(ctx)
+}
+
+// BlockTime returns the block time used by the consensus protocol.
+func (api *API) BlockTime() time.Duration {
+	return api.expected.BlockTime()
 }
 
 // ConfigSet sets the given parameters at the given path in the local config.

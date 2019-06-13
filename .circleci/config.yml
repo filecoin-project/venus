@@ -478,6 +478,9 @@ jobs:
           branch: filecoin-nightly
       - update_badge:
           filename: "nightly-devnet.json"
+      - run:
+          name: cleanup nightly releases
+          command: ./tools/prerelease-tool/prerelease-tool --dry-run
 
 
   trigger_devnet_deploy:
