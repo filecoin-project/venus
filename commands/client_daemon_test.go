@@ -279,7 +279,7 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 func TestSelfDialStorageGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.EnvironmentOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)

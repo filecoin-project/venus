@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +21,7 @@ import (
 
 // TestEnvironment provides common setup for writing tests using FAST
 type TestEnvironment struct {
-	fast.Environment
+	environment.Environment
 
 	t   *testing.T
 	ctx context.Context
@@ -28,20 +29,20 @@ type TestEnvironment struct {
 	pluginName string
 	pluginOpts map[string]string
 
-	fastenvOpts fast.EnvironmentOpts
+	fastenvOpts fast.FilecoinOpts
 
 	GenesisMiner *fast.Filecoin
 }
 
 // NewTestEnvironment creates a TestEnvironment with a basic setup for writing tests using the FAST library.
-func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.EnvironmentOpts) (context.Context, *TestEnvironment) {
+func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.FilecoinOpts) (context.Context, *TestEnvironment) {
 	// Create a directory for the test using the test name (mostly for FAST)
 	// Replace the forward slash as tempdir can't handle them
 	dir, err := ioutil.TempDir("", strings.Replace(t.Name(), "/", ".", -1))
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := fast.NewEnvironmentMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
+	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(t, err)
 
 	defer func() {
@@ -58,7 +59,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.Envi
 	genesisMiner, err := env.GenesisMiner()
 	require.NoError(t, err)
 
-	fastenvOpts = fast.EnvironmentOpts{
+	fastenvOpts = fast.FilecoinOpts{
 		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
 		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)}, fastenvOpts.DaemonOpts...),
 	}

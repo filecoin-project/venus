@@ -58,7 +58,7 @@ func TestRunCmds(t *testing.T) {
 	fc, ok := c.(IPTBCoreExt)
 	require.True(t, ok)
 
-	mfc := NewFilecoinProcess(ctx, fc, EnvironmentOpts{})
+	mfc := NewFilecoinProcess(ctx, fc, FilecoinOpts{})
 
 	t.Run("test RunCmdWithStdin", func(t *testing.T) {
 		out, err := mfc.RunCmdWithStdin(ctx, nil, "")
@@ -105,7 +105,7 @@ func TestInitDaemon(t *testing.T) {
 
 	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
 
-		fastenvOpts := EnvironmentOpts{
+		fastenvOpts := FilecoinOpts{
 			InitOpts: []ProcessInitOption{POGenesisFile("http://example.com/genesis.car")},
 		}
 
@@ -135,7 +135,7 @@ func TestStartDaemon(t *testing.T) {
 
 	t.Run("providing both InitDaemon options and environment options", func(t *testing.T) {
 
-		fastenvOpts := EnvironmentOpts{
+		fastenvOpts := FilecoinOpts{
 			DaemonOpts: []ProcessDaemonOption{POBlockTime(time.Second)},
 		}
 

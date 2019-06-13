@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
 )
@@ -169,7 +170,7 @@ func main() {
 		return
 	}
 
-	env, err := fast.NewEnvironmentMemoryGenesis(&balance, workdir, getProofsMode(smallSectors))
+	env, err := environment.NewMemoryGenesis(&balance, workdir, getProofsMode(smallSectors))
 	if err != nil {
 		exitcode = handleError(err)
 		return
@@ -191,7 +192,7 @@ func main() {
 		return
 	}
 
-	fastenvOpts := fast.EnvironmentOpts{
+	fastenvOpts := fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI)},
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(blocktime)},
 	}

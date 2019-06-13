@@ -1,4 +1,4 @@
-package fast
+package environment
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
 	mockplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/mock"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -30,7 +31,7 @@ func init() {
 	}
 }
 
-func TestEnvironmentMemoryGenesis(t *testing.T) {
+func TestMemoryGenesis(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("SetupTeardown", func(t *testing.T) {
@@ -42,8 +43,8 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 			require.NoError(t, os.RemoveAll(testDir))
 		}()
 
-		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
-		localenv := env.(*EnvironmentMemoryGenesis)
+		env, err := NewMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
+		localenv := env.(*MemoryGenesis)
 		assert.NoError(t, err)
 		assert.NotNil(t, env)
 		assert.Equal(t, testDir, localenv.location)
@@ -68,23 +69,23 @@ func TestEnvironmentMemoryGenesis(t *testing.T) {
 			require.NoError(t, os.RemoveAll(testDir))
 		}()
 
-		env, err := NewEnvironmentMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
+		env, err := NewMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
 		require.NoError(t, err)
 
-		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, EnvironmentOpts{})
+		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, fast.FilecoinOpts{})
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 		assert.Equal(t, 1, len(env.Processes()))
 
 		// did we create the process dir correctly?
-		_, err = os.Stat(p.core.Dir())
+		_, err = os.Stat(p.Dir())
 		assert.NoError(t, err)
 
 		assert.NoError(t, env.TeardownProcess(ctx, p))
 		assert.Equal(t, 0, len(env.Processes()))
 
 		// did we teardown the process correctly?
-		_, existsErr := os.Stat(p.core.Dir())
+		_, existsErr := os.Stat(p.Dir())
 		assert.True(t, os.IsNotExist(existsErr))
 	})
 }

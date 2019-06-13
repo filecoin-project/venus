@@ -71,7 +71,7 @@ func TestBlockDaemon(t *testing.T) {
 func TestShowDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	fastenvOpts := fast.EnvironmentOpts{}
+	fastenvOpts := fast.FilecoinOpts{}
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastenvOpts)
 	defer func() {

@@ -1,4 +1,4 @@
-package fast
+package environment
 
 import (
 	"bytes"
@@ -18,15 +18,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	iptb "github.com/ipfs/iptb/testbed"
 )
 
-// EnvironmentMemoryGenesis is a FAST lib environment that is meant to be used
+// MemoryGenesis is a FAST lib environment that is meant to be used
 // when working locally, on the same network / machine. It's great for writing
 // functional tests!
-type EnvironmentMemoryGenesis struct {
+type MemoryGenesis struct {
 	genesisCar        []byte
 	genesisMinerOwner commands.WalletSerializeResult
 	genesisMinerAddr  address.Address
@@ -39,16 +41,16 @@ type EnvironmentMemoryGenesis struct {
 	log logging.EventLogger
 
 	processesMu sync.Mutex
-	processes   []*Filecoin
+	processes   []*fast.Filecoin
 
 	proofsMode types.ProofsMode
 }
 
-// NewEnvironmentMemoryGenesis builds an environment with a local genesis that can be used
+// NewMemoryGenesis builds an environment with a local genesis that can be used
 // to initialize nodes and create a genesis node. The genesis file is provided by an http
 // server.
-func NewEnvironmentMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMode) (Environment, error) {
-	env := &EnvironmentMemoryGenesis{
+func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMode) (Environment, error) {
+	env := &MemoryGenesis{
 		location:   location,
 		log:        logging.Logger("environment"),
 		proofsMode: proofsMode,
@@ -69,8 +71,19 @@ func NewEnvironmentMemoryGenesis(funds *big.Int, location string, proofsMode typ
 	return env, nil
 }
 
+// GetFunds retrieves a fixed amount of tokens from the environment to the
+// Filecoin processes default wallet address.
+// GetFunds will cause the genesis node to send 1000 filecoin to process `p`.
+func (e *MemoryGenesis) GetFunds(ctx context.Context, p *fast.Filecoin) error {
+	e.processesMu.Lock()
+	defer e.processesMu.Unlock()
+
+	e.log.Infof("GetFunds for process: %s", p.String())
+	return series.SendFilecoinDefaults(ctx, e.Processes()[0], p, 1000)
+}
+
 // GenesisCar provides a url where the genesis file can be fetched from
-func (e *EnvironmentMemoryGenesis) GenesisCar() string {
+func (e *MemoryGenesis) GenesisCar() string {
 	uri := url.URL{
 		Host:   e.genesisServerAddr,
 		Path:   "genesis.car",
@@ -82,7 +95,7 @@ func (e *EnvironmentMemoryGenesis) GenesisCar() string {
 
 // GenesisMiner provides required information to create a genesis node and
 // load the wallet.
-func (e *EnvironmentMemoryGenesis) GenesisMiner() (*GenesisMiner, error) {
+func (e *MemoryGenesis) GenesisMiner() (*GenesisMiner, error) {
 	owner, err := json.Marshal(e.genesisMinerOwner)
 	if err != nil {
 		return nil, err
@@ -95,13 +108,13 @@ func (e *EnvironmentMemoryGenesis) GenesisMiner() (*GenesisMiner, error) {
 }
 
 // Log returns the logger for the environment.
-func (e *EnvironmentMemoryGenesis) Log() logging.EventLogger {
+func (e *MemoryGenesis) Log() logging.EventLogger {
 	return e.log
 }
 
 // NewProcess builds a iptb process of the given type and options passed. The
 // process is tracked by the environment and returned.
-func (e *EnvironmentMemoryGenesis) NewProcess(ctx context.Context, processType string, options map[string]string, eo EnvironmentOpts) (*Filecoin, error) {
+func (e *MemoryGenesis) NewProcess(ctx context.Context, processType string, options map[string]string, eo fast.FilecoinOpts) (*fast.Filecoin, error) {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
@@ -123,31 +136,31 @@ func (e *EnvironmentMemoryGenesis) NewProcess(ctx context.Context, processType s
 	}
 
 	// We require a slightly more extended core interface
-	fc, ok := c.(IPTBCoreExt)
+	fc, ok := c.(fast.IPTBCoreExt)
 	if !ok {
 		return nil, fmt.Errorf("%s does not implement the extended IPTB.Core interface IPTBCoreExt", processType)
 	}
 
-	p := NewFilecoinProcess(ctx, fc, eo)
+	p := fast.NewFilecoinProcess(ctx, fc, eo)
 	e.processes = append(e.processes, p)
 	return p, nil
 }
 
 // Processes returns all processes the environment knows about.
-func (e *EnvironmentMemoryGenesis) Processes() []*Filecoin {
+func (e *MemoryGenesis) Processes() []*fast.Filecoin {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 	return e.processes[:]
 }
 
 // Teardown stops all of the nodes and cleans up the environment.
-func (e *EnvironmentMemoryGenesis) Teardown(ctx context.Context) error {
+func (e *MemoryGenesis) Teardown(ctx context.Context) error {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
 	e.log.Info("Teardown environment")
 	for _, p := range e.processes {
-		if err := p.core.Stop(ctx); err != nil {
+		if err := p.StopDaemon(ctx); err != nil {
 			return err
 		}
 	}
@@ -161,12 +174,12 @@ func (e *EnvironmentMemoryGenesis) Teardown(ctx context.Context) error {
 
 // TeardownProcess stops the running process and removes it from the
 // environment.
-func (e *EnvironmentMemoryGenesis) TeardownProcess(ctx context.Context, p *Filecoin) error {
+func (e *MemoryGenesis) TeardownProcess(ctx context.Context, p *fast.Filecoin) error {
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
-	e.log.Infof("Teardown process: %s", p.core.String())
-	if err := p.core.Stop(ctx); err != nil {
+	e.log.Infof("Teardown process: %s", p.String())
+	if err := p.StopDaemon(ctx); err != nil {
 		return err
 	}
 
@@ -178,12 +191,12 @@ func (e *EnvironmentMemoryGenesis) TeardownProcess(ctx context.Context, p *Filec
 	}
 
 	// remove the provess from the process list
-	return os.RemoveAll(p.core.Dir())
+	return os.RemoveAll(p.Dir())
 }
 
 // startGenesisServer builds and starts a server which will serve the genesis
 // file, the url for the genesis.car is returned by GenesisCar()
-func (e *EnvironmentMemoryGenesis) startGenesisServer() error {
+func (e *MemoryGenesis) startGenesisServer() error {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/genesis.car", func(w http.ResponseWriter, req *http.Request) {
 		car := bytes.NewBuffer(e.genesisCar)
@@ -211,7 +224,7 @@ func (e *EnvironmentMemoryGenesis) startGenesisServer() error {
 }
 
 // buildGenesis builds a genesis with the specified funds.
-func (e *EnvironmentMemoryGenesis) buildGenesis(funds *big.Int) error {
+func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 	cfg := &gengen.GenesisCfg{
 		Keys: 1,
 		PreAlloc: []string{
