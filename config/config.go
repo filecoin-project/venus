@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -17,6 +18,8 @@ import (
 
 // Config is an in memory representation of the filecoin configuration file
 type Config struct {
+	lock *sync.Mutex
+
 	API           *APIConfig           `json:"api"`
 	Bootstrap     *BootstrapConfig     `json:"bootstrap"`
 	Datastore     *DatastoreConfig     `json:"datastore"`
@@ -234,6 +237,7 @@ func newDefaultSectorbaseConfig() *SectorBaseConfig {
 // their default values
 func NewDefaultConfig() *Config {
 	return &Config{
+		lock:          &sync.Mutex{},
 		API:           newDefaultAPIConfig(),
 		Bootstrap:     newDefaultBootstrapConfig(),
 		Datastore:     newDefaultDatastoreConfig(),
@@ -292,6 +296,9 @@ func ReadFile(file string) (*Config, error) {
 // Set sets the config sub-struct referenced by `key`, e.g. 'api.address'
 // or 'datastore' to the json key value pair encoded in jsonVal.
 func (cfg *Config) Set(dottedKey string, jsonString string) error {
+	cfg.lock.Lock()
+	defer cfg.lock.Unlock()
+
 	if !json.Valid([]byte(jsonString)) {
 		jsonBytes, _ := json.Marshal(jsonString)
 		jsonString = string(jsonBytes)
@@ -314,6 +321,9 @@ func (cfg *Config) Set(dottedKey string, jsonString string) error {
 
 // Get gets the config sub-struct referenced by `key`, e.g. 'api.address'
 func (cfg *Config) Get(key string) (interface{}, error) {
+	cfg.lock.Lock()
+	defer cfg.lock.Unlock()
+
 	v := reflect.Indirect(reflect.ValueOf(cfg))
 	keyTags := strings.Split(key, ".")
 OUTER:
