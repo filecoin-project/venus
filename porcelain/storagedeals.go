@@ -8,7 +8,9 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	errors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var (
@@ -139,4 +141,85 @@ func filterDealChannel(dealCh <-chan *StorageDealLsResult, filterFunc func(*stor
 	}()
 
 	return outCh
+}
+
+type dealRedeemPlumbing interface {
+	ChainBlockHeight() (*types.BlockHeight, error)
+	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
+	MessagePreview(context.Context, address.Address, address.Address, string, ...interface{}) (types.GasUnits, error)
+	MessageSendWithDefaultAddress(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)
+}
+
+// DealRedeem redeems a voucher for the deal with the given cid and returns
+// either the cid of the created redeem message or an error
+func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr address.Address, dealCid cid.Cid, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
+	params, err := buildDealRedeemParams(ctx, plumbing, dealCid)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return plumbing.MessageSendWithDefaultAddress(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		types.NewAttoFILFromFIL(0),
+		gasPrice,
+		gasLimit,
+		"redeem",
+		params...,
+	)
+}
+
+// DealRedeemPreview previews the redeem method for a deal and returns the
+// expected gas used
+func DealRedeemPreview(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr address.Address, dealCid cid.Cid) (types.GasUnits, error) {
+	params, err := buildDealRedeemParams(ctx, plumbing, dealCid)
+	if err != nil {
+		return types.NewGasUnits(0), err
+	}
+
+	return plumbing.MessagePreview(
+		ctx,
+		fromAddr,
+		address.PaymentBrokerAddress,
+		"redeem",
+		params...,
+	)
+}
+
+func buildDealRedeemParams(ctx context.Context, plumbing dealRedeemPlumbing, dealCid cid.Cid) ([]interface{}, error) {
+	deal, err := plumbing.DealGet(ctx, dealCid)
+	if err != nil {
+		return []interface{}{}, err
+	}
+
+	currentBlockHeight, err := plumbing.ChainBlockHeight()
+	if err != nil {
+		return []interface{}{}, err
+	}
+
+	var voucher *types.PaymentVoucher
+	for _, v := range deal.Proposal.Payment.Vouchers {
+		if currentBlockHeight.LessThan(&v.ValidAt) {
+			continue
+		}
+		if voucher != nil && v.Amount.LessThan(voucher.Amount) {
+			continue
+		}
+		voucher = v
+	}
+
+	if voucher == nil {
+		return []interface{}{}, errors.New("no remaining redeemable vouchers found")
+	}
+
+	return []interface{}{
+		voucher.Payer,
+		&voucher.Channel,
+		voucher.Amount,
+		&voucher.ValidAt,
+		voucher.Condition,
+		[]byte(voucher.Signature),
+		[]interface{}{},
+	}, nil
 }
