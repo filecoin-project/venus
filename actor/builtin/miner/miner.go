@@ -33,7 +33,7 @@ func init() {
 // largest sector size - this constant and consensus.AncestorRoundsNeeded will
 // need to be reconsidered.
 // https://github.com/filecoin-project/specs/pull/318
-const LargestSectorSizeProvingPeriodBlocks = 20000
+const LargestSectorSizeProvingPeriodBlocks = 1000
 
 // LargestSectorGenerationAttackThresholdBlocks defines the number of blocks
 // after a proving period ends after which a miner using the largest sector size
