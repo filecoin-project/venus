@@ -136,4 +136,10 @@ func TestDealsList(t *testing.T) {
 		minerOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
 		assert.NotContains(t, minerOutput, dealCid)
 	})
+
+	t.Run("with --help", func(t *testing.T) {
+		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
+		assert.Contains(t, clientOutput, "only return deals made as a client")
+		assert.Contains(t, clientOutput, "only return deals made as a miner")
+	})
 }
