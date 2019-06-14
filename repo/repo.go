@@ -1,13 +1,14 @@
 package repo
 
 import (
-	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
+
+	"github.com/filecoin-project/go-filecoin/config"
 )
 
 // Version is the version of repo schema that this code understands.
-const Version uint = 1
+const Version uint = 2
 
 // Datastore is the datastore interface provided by the repo
 type Datastore interface {

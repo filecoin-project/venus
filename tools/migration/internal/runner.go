@@ -135,11 +135,14 @@ func (m *MigrationRunner) Run() RunResult {
 func (m *MigrationRunner) runCommand(mig Migration) error {
 	var err error
 
-	_, to := mig.Versions()
+	from, to := mig.Versions()
 
 	switch m.command {
 	case "describe":
-		m.logger.Print(mig.Describe())
+		// Describe is not expected to be run by a script, but by a human, so
+		// ignore the logger & print to stdout.
+		fmt.Printf("\n   Migration from %d to %d:", from, to)
+		fmt.Println(mig.Describe())
 	case "migrate":
 		if m.newRepoPath, err = CloneRepo(m.oldRepoOpt, to); err != nil {
 			return errors.Wrap(err, "clone repo failed")

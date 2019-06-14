@@ -10,6 +10,7 @@ fixtures/test
 !fixtures/test/.gitkeep
 fixtures/live
 !fixtures/live/.gitkeep
+tools/fast/bin/localnet
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server

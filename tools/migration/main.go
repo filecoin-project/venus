@@ -21,33 +21,28 @@ USAGE
 	go-filecoin-migrate install --old-repo=<repolink> --new-repo=<migrated-repo> [-v|--verbose]
 
 COMMANDS
-	describe
-		prints a description of what the current migration will do
-	buildonly
-		runs the migration and validations, but does not install the newly migrated repo
-		at the --old-repo symlink
-	migrate
-		runs migration, validations, and installs newly migrated repo at --old-repo symlink
-	install
-		installs a newly migrated repo
+	describe	prints a description of what the current migration will do
+
+	buildonly	runs the migration and validations, but does not install the newly migrated 
+				repo at the --old-repo symlink
+
+	migrate		runs migration, validations, and installs newly migrated repo at 
+				--old-repo symlink
+
+	install		installs a newly migrated repo
 
 REQUIRED ARGUMENTS
-	--old-repo
-		The symlink location of this node's filecoin home directory. This is required even for the
-		'describe' command, as its repo version helps determine which migration to run. This
-		must be a symbolic link or migration will not proceed.
+	--old-repo	the symlink location of this node's filecoin home directory. This is required
+		even for the 'describe' command, as its repo version helps determine which migration 
+		to run. This must be a symbolic link or migration will not proceed.
 
-	--new-repo
-		the location of a newly migrated repo. This is required only for the install command and
-		otherwise ignored.
+	--new-repo	the location of a newly migrated repo. This is required only for the 
+		install command and otherwise ignored.
 
 OPTIONS
-	-h, --help
-		This message
-	-v --verbose
-		Print diagnostic messages to stdout
-        --log-file
-                The path of the file for writing detailed log output
+	-h, --help     This message
+	-v --verbose   Print diagnostic messages to stdout
+	--log-file     The path of the file for writing detailed log output
 
 EXAMPLES
 	for a migration from version 1 to 2:
@@ -78,17 +73,28 @@ func main() { // nolint: deadcode
 	switch command {
 	case "-h", "--help":
 		showUsageAndExit(0)
-	case "describe", "buildonly", "migrate", "install":
-		logFile, err := openLogFile()
+	case "describe":
+		logger, err := newLoggerWithVerbose(true)
 		if err != nil {
 			exitErr(err.Error())
 		}
-		logger := internal.NewLogger(logFile, getVerbose())
-		oldRepoOpt, found := findOpt("old-repo", os.Args)
-		if !found {
-			exitErrCloseLogger(fmt.Sprintf("--old-repo is required\n%s\n", USAGE), logger)
+
+		oldRepoOpt := findOldRepoOrExit(logger)
+
+		// Errors are handled inside runRunner
+		_ = runRunner(logger, command, oldRepoOpt, "")
+
+	case "buildonly", "migrate", "install":
+		logger, err := newLoggerWithVerbose(getVerbose())
+		if err != nil {
+			exitErr(err.Error())
 		}
+
+		oldRepoOpt := findOldRepoOrExit(logger)
+
 		var newRepoOpt string
+		var found bool
+
 		if command == "install" {
 			newRepoOpt, found = findOpt("new-repo", os.Args)
 			if !found {
@@ -96,14 +102,7 @@ func main() { // nolint: deadcode
 			}
 		}
 
-		runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
-		if err != nil {
-			exitErrCloseLogger(err.Error(), logger)
-		}
-		runResult := runner.Run()
-		if runResult.Err != nil {
-			exitErrCloseLogger(runResult.Err.Error(), logger)
-		}
+		runResult := runRunner(logger, command, oldRepoOpt, newRepoOpt)
 		if runResult.NewRepoPath != "" {
 			logger.Printf("New repo location: %s", runResult.NewRepoPath)
 		}
@@ -117,6 +116,26 @@ func main() { // nolint: deadcode
 	default:
 		exitErr(fmt.Sprintf("invalid command: %s\n%s\n", command, USAGE))
 	}
+}
+
+func runRunner(logger *internal.Logger, command string, oldRepoOpt string, newRepoOpt string) internal.RunResult {
+	runner, err := internal.NewMigrationRunner(logger, command, oldRepoOpt, newRepoOpt)
+	if err != nil {
+		exitErrCloseLogger(err.Error(), logger)
+	}
+	runResult := runner.Run()
+	if runResult.Err != nil {
+		exitErrCloseLogger(runResult.Err.Error(), logger)
+	}
+	return runResult
+}
+
+func findOldRepoOrExit(logger *internal.Logger) string {
+	oldRepoOpt, found := findOpt("old-repo", os.Args)
+	if !found {
+		exitErrCloseLogger(fmt.Sprintf("--old-repo is required\n%s\n", USAGE), logger)
+	}
+	return oldRepoOpt
 }
 
 // exitError exit(1)s the executable with the given error String
@@ -150,13 +169,18 @@ func getVerbose() bool {
 	return res
 }
 
-// openLogFile opens the log file from getLogFilePath
-func openLogFile() (*os.File, error) {
+// newLoggerWithVerbose opens a new logger & logfile with verboseness set to `verb`
+func newLoggerWithVerbose(verb bool) (*internal.Logger, error) {
 	path, err := getLogFilePath()
 	if err != nil {
 		return nil, err
 	}
-	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	logFile, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return internal.NewLogger(logFile, verb), nil
 }
 
 // getLogFilePath returns the path of the logfile.

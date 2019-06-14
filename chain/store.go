@@ -2,14 +2,15 @@ package chain
 
 import (
 	"context"
-	"encoding/json"
 	"runtime/debug"
 	"sync"
 
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -167,7 +168,7 @@ func (store *Store) loadHead() (types.SortedCidSet, error) {
 	}
 
 	var cids types.SortedCidSet
-	err = json.Unmarshal(bb, &cids)
+	err = cbor.DecodeInto(bb, &cids)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
 	}
@@ -187,7 +188,7 @@ func (store *Store) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 	}
 
 	var stateRoot cid.Cid
-	err = json.Unmarshal(bb, &stateRoot)
+	err = cbor.DecodeInto(bb, &stateRoot)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
 	}
@@ -344,7 +345,7 @@ func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) erro
 // writeHead writes the given cid set as head to disk.
 func (store *Store) writeHead(ctx context.Context, cids types.SortedCidSet) error {
 	logStore.Debugf("WriteHead %s", cids.String())
-	val, err := json.Marshal(cids)
+	val, err := cbor.DumpObject(cids)
 	if err != nil {
 		return err
 	}
@@ -355,7 +356,11 @@ func (store *Store) writeHead(ctx context.Context, cids types.SortedCidSet) erro
 // writeTipSetAndState writes the tipset key and the state root id to the
 // datastore.
 func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
-	val, err := json.Marshal(tsas.TipSetStateRoot)
+	if tsas.TipSetStateRoot == cid.Undef {
+		return errors.New("attempting to write state root cid.Undef")
+	}
+
+	val, err := cbor.DumpObject(tsas.TipSetStateRoot)
 	if err != nil {
 		return err
 	}
