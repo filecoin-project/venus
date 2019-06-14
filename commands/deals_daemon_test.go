@@ -63,8 +63,10 @@ func TestDealsRedeem(t *testing.T) {
 
 	// Stop mining to guarantee the miner doesn't receive any block rewards
 	require.NoError(t, minerDaemon.MiningStop(ctx))
-	// Wait to allow any remaining block rewards to be processed
-	time.Sleep(1 * time.Second)
+	// Wait for 1 blocktime to allow any remaining block rewards to be processed
+	protocolDetails, err := minerDaemon.Protocol(ctx)
+	require.NoError(t, err)
+	time.Sleep(protocolDetails.BlockTime)
 
 	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
 	require.NoError(t, err)
