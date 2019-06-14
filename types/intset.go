@@ -11,31 +11,30 @@ type IntSet struct {
 
 // NewIntSet returns a new IntSet, optionally initialized with integers
 func NewIntSet(ints ...uint64) IntSet {
+	// We are ignoring errors from SetBit, GetBit since SparseBitArrays never return errors for those methods
 	out := IntSet{ba: bitarray.NewSparseBitArray()}
 	for _, i := range ints {
-		out.Add(i)
+		_ = out.ba.SetBit(i)
 	}
 	return out
 }
 
-// Add adds an integer to this IntSet
-func (is IntSet) Add(i uint64) {
-	// Ignoring errors as we are using SparseBitArrays, which never return errors
-	_ = is.ba.SetBit(i)
-}
-
-// Contains returns whether an integer exists in this IntSet
-func (is IntSet) Contains(i uint64) bool {
-	// Ignoring errors as we are using SparseBitArrays, which never return errors
+// Has returns whether an integer exists in this IntSet
+func (is IntSet) Has(i uint64) bool {
 	isSet, _ := is.ba.GetBit(i)
 	return isSet
 }
 
-// IsSubset returns true if every element in other is also in the receiver
-func (is IntSet) IsSubset(other IntSet) bool {
+// HasSubset returns true if every element in other is also in the receiver
+func (is IntSet) HasSubset(other IntSet) bool {
 	// The method we're calling here seems weird, but in bitarray (https://github.com/Workiva/go-datastructures/blob/f07cbe3f82ca2fd6e5ab94afce65fe43319f675f/bitarray/block.go#L97)
 	// "intersect" means, "wholly contained within"
 	return is.ba.Intersects(other.ba)
+}
+
+// Add returns a new IntSet, the result of adding i to the receiver
+func (is IntSet) Add(i uint64) IntSet {
+	return is.Union(NewIntSet(i))
 }
 
 // Union returns a new IntSet, the result of a set union of the receiver and other
@@ -53,8 +52,8 @@ func (is IntSet) Difference(other IntSet) IntSet {
 	out := NewIntSet()
 
 	for _, i := range is.ba.ToNums() {
-		if !other.Contains(i) {
-			out.Add(i)
+		if !other.Has(i) {
+			_ = out.ba.SetBit(i)
 		}
 	}
 
