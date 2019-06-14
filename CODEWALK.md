@@ -443,8 +443,8 @@ and installs them in the same hardcoded locations required by the Go build.
 
 The build or tarball contains:
 - `libsector_builder_ffi.a` (a static library)
-- `libsector_builder_ffi.h` (corresponding C-header file)
-- `libsector_builder_ffi.pc` (a pkg-config manifest, used to specify linker dependencies)
+- `sector_builder_ffi.h` (corresponding C-header file)
+- `sector_builder_ffi.pc` (a pkg-config manifest, used to specify linker dependencies)
 - `paramcache` (populates Groth parameter-cache
 - `paramfetch` (fetches Groth parameters from IPFS gateway into cache)
 - `parameters.json` (contains the most recently-published Groth parameters)
