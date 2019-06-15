@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -46,6 +47,9 @@ func TestDealsRedeem(t *testing.T) {
 	minerDaemon := env.RequireNewNodeWithFunds(10000)
 
 	require.NoError(t, clientDaemon.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, clientDaemon.MiningStop(ctx))
+	}()
 
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(1))
@@ -124,6 +128,12 @@ func TestDealsList(t *testing.T) {
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 	dealCid := splitOnSpace[len(splitOnSpace)-1]
 
+	t.Run("with --help", func(t *testing.T) {
+		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
+		assert.Contains(t, clientOutput, "only return deals made as a client")
+		assert.Contains(t, clientOutput, "only return deals made as a miner")
+	})
+
 	t.Run("with no filters", func(t *testing.T) {
 		// Client sees the deal
 		clientOutput := clientDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
@@ -153,26 +163,21 @@ func TestDealsList(t *testing.T) {
 		minerOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
 		assert.NotContains(t, minerOutput, dealCid)
 	})
-
-	t.Run("with --help", func(t *testing.T) {
-		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
-		assert.Contains(t, clientOutput, "only return deals made as a client")
-		assert.Contains(t, clientOutput, "only return deals made as a miner")
-	})
 }
 
 func TestShowDeal(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	fastenvOpts := fast.FilecoinOpts{}
-
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastenvOpts)
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, clientNode.MiningStop(ctx))
+	}()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
@@ -186,27 +191,33 @@ func TestShowDeal(t *testing.T) {
 
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
 	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, minerNode.MiningStop(ctx))
+	}()
 
 	// Create some data that is the full sector size and make it autoseal asap
 
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
+
+	// Duration is 10
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
 	t.Run("showDeal outputs correct information", func(t *testing.T) {
-		showDeal, err := clientNode.DealsShow(ctx, deal.ProposalCid)
+		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
 		require.NoError(t, err)
 
-		assert.Equal(t, ask.Miner, showDeal.Miner)
-		assert.Equal(t, storagedeal.Accepted, showDeal.Response.State)
+		assert.Equal(t, uint64(10), res.Duration)
+		assert.Equal(t, ask.Miner.String(), res.Miner.String())
+		assert.Equal(t, storagedeal.Accepted, res.State)
 
-		duri64 := int64(showDeal.Proposal.Duration)
+		duri64 := int64(res.Duration)
 		foo := big.NewInt(duri64 * maxBytesi64)
 
 		totalPrice := ask.Price.MulBigInt(foo)
 
-		assert.Equal(t, totalPrice, showDeal.Proposal.TotalPrice)
+		assert.True(t, totalPrice.Equal(*res.TotalPrice))
 	})
 
 	t.Run("When deal does not exist says deal not found", func(t *testing.T) {
@@ -214,6 +225,84 @@ func TestShowDeal(t *testing.T) {
 		showDeal, err := clientNode.DealsShow(ctx, deal.ProposalCid)
 		assert.Error(t, err, "Error: deal not found")
 		assert.Nil(t, showDeal)
+	})
+
+}
+
+func TestShowDealPaymentVouchers(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	// Teardown after test ends
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+
+	clientNode := env.GenesisMiner
+	require.NoError(t, clientNode.MiningStart(ctx))
+	defer require.NoError(t, clientNode.MiningStop(ctx))
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+
+	// Connect the clientNode and the minerNode
+	require.NoError(t, series.Connect(ctx, clientNode, minerNode))
+
+	// Create a minerNode
+	collateral := big.NewInt(500)           // FIL
+	price := big.NewFloat(0.000000001)      // price per byte/block
+	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
+
+	// This also starts the Miner
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
+	require.NoError(t, err)
+	defer assert.NoError(t, minerNode.MiningStop(ctx))
+
+	// Create some data that is the full sector size and make it autoseal asap
+	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
+	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
+
+	duration := types.NewBlockHeight(2000)
+
+	var clientAddr address.Address
+	err = clientNode.ConfigGet(ctx, "wallet.defaultAddress", &clientAddr)
+	require.NoError(t, err)
+
+	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
+	require.NoError(t, err)
+
+	t.Run("Vouchers output as JSON have the correct info", func(t *testing.T) {
+		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
+		require.NoError(t, err)
+
+		totalPrice := calcTotalPrice(duration.AsBigInt(), maxBytesi64, &ask.Price)
+
+		expected := []*commands.PaymenVoucherResult{
+			{
+				Index:   0,
+				Amount:  totalPrice,
+				Channel: types.NewChannelID(4),
+				Condition: &types.Predicate{
+					Method: "verifyPieceInclusion",
+					To:     ask.Miner,
+				},
+				Payer:   &clientAddr,
+				ValidAt: types.NewBlockHeight(1005),
+			},
+			{
+				Index:     1,
+				Amount:    totalPrice,
+				Channel:   types.NewChannelID(4),
+				Condition: nil,
+				Payer:     &clientAddr,
+				ValidAt:   duration.Add(types.NewBlockHeight(5)),
+			},
+		}
+
+		assertEqualVoucherResults(t, expected, res.PaymentVouchers)
+
+		assert.NotNil(t, res.PaymentVouchers[0].EncodedAs)
+		assert.NotNil(t, res.PaymentVouchers[1].EncodedAs)
+		assert.NotEqual(t, res.PaymentVouchers[0].EncodedAs, res.PaymentVouchers[1].EncodedAs)
 	})
 }
 
@@ -225,4 +314,22 @@ func requireTestCID(t *testing.T, data []byte) cid.Cid {
 	hash, err := multihash.Sum(data, multihash.SHA2_256, -1)
 	require.NoError(t, err)
 	return cid.NewCidV1(cid.DagCBOR, hash)
+}
+
+func calcTotalPrice(duration *big.Int, maxBytes int64, price *types.AttoFIL) *types.AttoFIL {
+	bXB := duration.Mul(duration, big.NewInt(maxBytes))
+	res := price.MulBigInt(bXB)
+	return &res
+}
+
+func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.PaymenVoucherResult) {
+	require.Len(t, actual, len(expected))
+	for i, vr := range expected {
+		assert.Equal(t, vr.Index, actual[i].Index)
+		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
+		assert.True(t, vr.ValidAt.Equal(actual[i].ValidAt))
+		assert.True(t, vr.Channel.Equal(actual[i].Channel))
+		assert.Equal(t, vr.Payer.String(), actual[i].Payer.String())
+		assert.EqualValues(t, vr.Condition, actual[i].Condition)
+	}
 }

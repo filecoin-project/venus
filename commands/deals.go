@@ -2,7 +2,6 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"strconv"
 
@@ -13,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 const (
@@ -163,6 +163,30 @@ Redeem vouchers for FIL on the storage deal specified with the given deal CID.
 	},
 }
 
+// DealsShowResult contains Deal output with Payment Vouchers.
+type DealsShowResult struct {
+	DealCID         cid.Cid                `json:"deal_cid"`
+	State           storagedeal.State      `json:"state"`
+	Miner           *address.Address       `json:"miner_ddress"`
+	Duration        uint64                 `json:"duration_blocks"`
+	Size            *types.BytesAmount     `json:"deal_size"`
+	TotalPrice      *types.AttoFIL         `json:"total_price"`
+	PaymentVouchers []*PaymenVoucherResult `json:"payment_vouchers"`
+}
+
+// PaymenVoucherResult is selected PaymentVoucher fields,
+// the Index of each when sorted by increasing ValidAt,
+// and the string encoded version of the PaymentVoucher
+type PaymenVoucherResult struct {
+	Index     uint64             `json:"index"`
+	Amount    *types.AttoFIL     `json:"amount"`
+	Channel   *types.ChannelID   `json:"channel_id"`
+	Condition *types.Predicate   `json:"condition"`
+	Payer     *address.Address   `json:"payer"`
+	ValidAt   *types.BlockHeight `json:"valid_at_block"`
+	EncodedAs string             `json:"encoded_as"`
+}
+
 var dealsShowCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show deal details for CID <cid>",
@@ -181,32 +205,56 @@ var dealsShowCmd = &cmds.Command{
 			return err
 		}
 
-		return re.Emit(deal)
-	},
-	Type: storagedeal.Deal{},
-	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, deal *storagedeal.Deal) error {
-			emptyDeal := storagedeal.Deal{}
-			if *deal == emptyDeal {
-				return fmt.Errorf("deal not found: %s", req.Arguments[0])
-			}
-
-			_, err := fmt.Fprintf(w, `Deal details
-CID: %s
-State: %s
-Miner: %s
-Duration: %d blocks
-Size: %s bytes
-Total Price: %s FIL
-`,
-				deal.Response.ProposalCid,
-				deal.Response.State,
-				deal.Miner.String(),
-				deal.Proposal.Duration,
-				deal.Proposal.Size,
-				deal.Proposal.TotalPrice,
-			)
+		vouchers, err := paymentVouchersResult(deal.Proposal.Payment.Vouchers)
+		if err != nil {
 			return err
+		}
+
+		out := &DealsShowResult{
+			DealCID:         deal.Response.ProposalCid,
+			State:           deal.Response.State,
+			Miner:           &deal.Miner,
+			Duration:        deal.Proposal.Duration,
+			Size:            deal.Proposal.Size,
+			TotalPrice:      &deal.Proposal.TotalPrice,
+			PaymentVouchers: vouchers,
+		}
+
+		if err := re.Emit(out); err != nil {
+			return err
+		}
+		return nil
+	},
+	Type: DealsShowResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, dealResult *DealsShowResult) error {
+			encoder := json.NewEncoder(w)
+			encoder.SetIndent("", "\t")
+			return encoder.Encode(dealResult)
 		}),
 	},
+}
+
+func paymentVouchersResult(vouchers []*types.PaymentVoucher) (pvres []*PaymenVoucherResult, err error) {
+	if len(vouchers) == 0 {
+		return pvres, nil
+	}
+	sorted := types.SortVouchersByValidAt(vouchers)
+
+	for i, voucher := range sorted {
+		encodedVoucher, err := voucher.Encode()
+		if err != nil {
+			return pvres, err
+		}
+		pvres = append(pvres, &PaymenVoucherResult{
+			Index:     uint64(i),
+			Amount:    &voucher.Amount,
+			Channel:   &voucher.Channel,
+			Condition: voucher.Condition,
+			Payer:     &voucher.Payer,
+			ValidAt:   &voucher.ValidAt,
+			EncodedAs: encodedVoucher,
+		})
+	}
+	return pvres, nil
 }

@@ -64,7 +64,7 @@ func TestSortVouchersByValidAt(t *testing.T) {
 			Channel:   *NewChannelID(uint64(5)),
 			Payer:     addrGetter(),
 			Target:    addrGetter(),
-			Amount:    *NewAttoFILFromFIL(100),
+			Amount:    NewAttoFILFromFIL(100),
 			ValidAt:   *NewBlockHeight(validAts[i]),
 			Condition: condition,
 		}
