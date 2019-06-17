@@ -213,9 +213,9 @@ func TestDealsShow(t *testing.T) {
 		assert.Equal(t, storagedeal.Accepted, res.State)
 
 		duri64 := int64(res.Duration)
-		foo := big.NewInt(duri64 * maxBytesi64)
+		durXmax := big.NewInt(duri64 * maxBytesi64)
 
-		totalPrice := ask.Price.MulBigInt(foo)
+		totalPrice := ask.Price.MulBigInt(durXmax)
 
 		assert.True(t, totalPrice.Equal(*res.TotalPrice))
 	})
@@ -284,8 +284,8 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 
 		totalPrice := calcTotalPrice(big.NewInt(int64(durationui64)), maxBytesi64, &ask.Price)
 
-		foo, _ := types.NewAttoFILFromString("2", 10)
-		firstAmount := totalPrice.DivCeil(foo)
+		provingPeriods, _ := types.NewAttoFILFromString("2", 10)
+		firstAmount := totalPrice.DivCeil(provingPeriods)
 
 		// ValidAt block height should be at least as high as the (period index + 1) * duration / # of proving periods
 		// so if there are 2 periods, 1 is valid at block height >= 1*duration/2,
