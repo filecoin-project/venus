@@ -240,7 +240,9 @@ func TestShowDealPaymentVouchers(t *testing.T) {
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
-	defer require.NoError(t, clientNode.MiningStop(ctx))
+	defer func() {
+		assert.NoError(t, clientNode.MiningStop(ctx))
+	}()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
@@ -255,38 +257,49 @@ func TestShowDealPaymentVouchers(t *testing.T) {
 	// This also starts the Miner
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
 	require.NoError(t, err)
-	defer assert.NoError(t, minerNode.MiningStop(ctx))
+	defer func() {
+		assert.NoError(t, minerNode.MiningStop(ctx))
+	}()
 
 	// Create some data that is the full sector size and make it autoseal asap
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
 
-	duration := types.NewBlockHeight(2000)
-
 	var clientAddr address.Address
 	err = clientNode.ConfigGet(ctx, "wallet.defaultAddress", &clientAddr)
 	require.NoError(t, err)
 
-	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
+	durationui64 := uint64(2000)
+
+	_, deal, err := series.ImportAndStoreWithDuration(ctx, clientNode, ask, durationui64, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
+
+	require.NoError(t, minerNode.MiningStop(ctx))
+	require.NoError(t, clientNode.MiningStop(ctx))
 
 	t.Run("Vouchers output as JSON have the correct info", func(t *testing.T) {
 		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
 		require.NoError(t, err)
 
-		totalPrice := calcTotalPrice(duration.AsBigInt(), maxBytesi64, &ask.Price)
+		totalPrice := calcTotalPrice(big.NewInt(int64(durationui64)), maxBytesi64, &ask.Price)
 
+		foo, _ := types.NewAttoFILFromString("2", 10)
+		firstAmount := totalPrice.DivCeil(foo)
+
+		// ValidAt block height should be at least as high as the (period index + 1) * duration / # of proving periods
+		// so if there are 2 periods, 1 is valid at block height >= 1*duration/2,
+		// 2 is valid at 2*duration/2
 		expected := []*commands.PaymenVoucherResult{
 			{
 				Index:   0,
-				Amount:  totalPrice,
+				Amount:  &firstAmount,
 				Channel: types.NewChannelID(4),
 				Condition: &types.Predicate{
 					Method: "verifyPieceInclusion",
 					To:     ask.Miner,
 				},
 				Payer:   &clientAddr,
-				ValidAt: types.NewBlockHeight(1005),
+				ValidAt: types.NewBlockHeight(durationui64 / 2),
 			},
 			{
 				Index:     1,
@@ -294,7 +307,7 @@ func TestShowDealPaymentVouchers(t *testing.T) {
 				Channel:   types.NewChannelID(4),
 				Condition: nil,
 				Payer:     &clientAddr,
-				ValidAt:   duration.Add(types.NewBlockHeight(5)),
+				ValidAt:   types.NewBlockHeight(durationui64),
 			},
 		}
 
@@ -326,10 +339,19 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 	require.Len(t, actual, len(expected))
 	for i, vr := range expected {
 		assert.Equal(t, vr.Index, actual[i].Index)
-		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
-		assert.True(t, vr.ValidAt.Equal(actual[i].ValidAt))
-		assert.True(t, vr.Channel.Equal(actual[i].Channel))
 		assert.Equal(t, vr.Payer.String(), actual[i].Payer.String())
-		assert.EqualValues(t, vr.Condition, actual[i].Condition)
+
+		if vr.Condition != nil {
+			assert.Equal(t, vr.Condition.Method, actual[i].Condition.Method)
+			assert.Equal(t, vr.Condition.To.String(), actual[i].Condition.To.String())
+		} else {
+			assert.Nil(t, actual[i].Condition)
+		}
+
+		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
+
+		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt))
+
+		assert.True(t, vr.Channel.Equal(actual[i].Channel))
 	}
 }
