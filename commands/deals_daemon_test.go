@@ -68,7 +68,7 @@ func TestDealsRedeem(t *testing.T) {
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, 1, true)
 	require.NoError(t, err)
 
-	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Posted)
+	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete)
 	require.NoError(t, err)
 
 	// Stop mining to guarantee the miner doesn't receive any block rewards

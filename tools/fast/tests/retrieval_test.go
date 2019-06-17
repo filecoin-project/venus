@@ -211,7 +211,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	require.NoError(t, err)
 
 	// Wait for the deal to be posted
-	err = series.WaitForDealState(ctx, client, deal, storagedeal.Posted)
+	err = series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
 	require.NoError(t, err)
 
 	// Retrieve the stored piece of data
