@@ -121,7 +121,16 @@ type Ask struct {
 
 // State is the miner actors storage.
 type State struct {
+	// Owner is the address of the account that owns this miner. Income and returned
+	// collateral are paid to this address. This address is also allowed to change the
+	// worker address for the miner.
 	Owner address.Address
+
+	// Worker is the address of the worker account for this miner.
+	// This will be the key that is used to sign blocks created by this miner, and
+	// sign messages sent on behalf of this miner to commit sectors, submit PoSts, and
+	// other day to day miner activities.
+	Worker address.Address
 
 	// PeerID references the libp2p identity that the miner is operating.
 	PeerID peer.ID
@@ -167,6 +176,7 @@ func NewActor() *actor.Actor {
 func NewState(owner address.Address, key []byte, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
+		Worker:            owner,
 		PeerID:            pid,
 		PublicKey:         key,
 		SectorCommitments: make(map[string]types.Commitments),
@@ -290,7 +300,7 @@ func (ma *Actor) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int
 
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		if ctx.Message().From != state.Owner {
+		if ctx.Message().From != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -536,7 +546,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		}
 
 		// verify that the caller is authorized to perform update
-		if ctx.Message().From != state.Owner {
+		if ctx.Message().From != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -684,7 +694,7 @@ func (ma *Actor) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 	var storage State
 	_, err := actor.WithState(ctx, &storage, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
-		if ctx.Message().From != storage.Owner {
+		if ctx.Message().From != storage.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
@@ -733,7 +743,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
-		if sender != state.Owner {
+		if sender != state.Worker {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 

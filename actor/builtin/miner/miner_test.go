@@ -191,7 +191,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("other public key"), th.RequireRandomPeerID(t))
 
-		// update peer ID and expect authorization failure (TestAddress2 doesn't owner miner)
+		// update peer ID and expect authorization failure (TestAddress2 isn't the miner's worker address)
 		updatePeerIdMsg := types.NewMessage(
 			address.TestAddress2,
 			minerAddr,
