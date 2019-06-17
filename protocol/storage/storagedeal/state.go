@@ -8,7 +8,7 @@ import (
 type State int
 
 const (
-	// This implies a programmer error and should never appear in an actual message.
+	// Unset indicates a programmer error and should never appear in an actual message.
 	Unset = State(iota)
 
 	// Unknown signifies an unknown negotiation
@@ -26,10 +26,10 @@ const (
 	// Failed means the deal has failed for some reason
 	Failed
 
-	// The data has been received and staged into a sector, but is not sealed yet.
+	// Staged means that data has been received and staged into a sector, but is not sealed yet.
 	Staged
 
-	// Deal is complete, and the sector that the deal is contained in has been sealed and its commitment posted on chain.
+	// Complete means that the sector that the deal is contained in has been sealed and its commitment posted on chain.
 	Complete
 )
 
