@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -Eeo pipefail
+
 source "$(dirname "${BASH_SOURCE[0]}")/install-shared.bash"
 
 subm_dir="proofs/rust-fil-proofs"
@@ -19,7 +21,7 @@ else
     mkdir -p proofs/bin
     mkdir -p proofs/misc
 
-    cp "${subm_dir}/parameters.json" ./proofs/misc/
-    cp "${subm_dir}/target/release/paramcache" ./proofs/bin/
-    cp "${subm_dir}/target/release/paramfetch" ./proofs/bin/
+    find "${subm_dir}" -type f -name parameters.json -exec mv -- "{}" ./proofs/misc/ \;
+    find "${subm_dir}" -type f -name paramcache -exec cp -- "{}" ./proofs/bin/ \;
+    find "${subm_dir}" -type f -name paramfetch -exec cp -- "{}" ./proofs/bin/ \;
 fi
