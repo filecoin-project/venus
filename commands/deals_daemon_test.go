@@ -128,12 +128,6 @@ func TestDealsList(t *testing.T) {
 	splitOnSpace := strings.Split(proposeDealOutput, " ")
 	dealCid := splitOnSpace[len(splitOnSpace)-1]
 
-	t.Run("with --help", func(t *testing.T) {
-		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
-		assert.Contains(t, clientOutput, "only return deals made as a client")
-		assert.Contains(t, clientOutput, "only return deals made as a miner")
-	})
-
 	t.Run("with no filters", func(t *testing.T) {
 		// Client sees the deal
 		clientOutput := clientDaemon.RunSuccess("deals", "list").ReadStdoutTrimNewlines()
@@ -163,9 +157,15 @@ func TestDealsList(t *testing.T) {
 		minerOutput := minerDaemon.RunSuccess("deals", "list", "--client").ReadStdoutTrimNewlines()
 		assert.NotContains(t, minerOutput, dealCid)
 	})
+
+	t.Run("with --help", func(t *testing.T) {
+		clientOutput := clientDaemon.RunSuccess("deals", "list", "--help").ReadStdoutTrimNewlines()
+		assert.Contains(t, clientOutput, "only return deals made as a client")
+		assert.Contains(t, clientOutput, "only return deals made as a miner")
+	})
 }
 
-func TestShowDeal(t *testing.T) {
+func TestDealsShow(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
@@ -229,7 +229,7 @@ func TestShowDeal(t *testing.T) {
 
 }
 
-func TestShowDealPaymentVouchers(t *testing.T) {
+func TestDealsShowPaymentVouchers(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
@@ -269,6 +269,7 @@ func TestShowDealPaymentVouchers(t *testing.T) {
 	err = clientNode.ConfigGet(ctx, "wallet.defaultAddress", &clientAddr)
 	require.NoError(t, err)
 
+	// Use a longer duration so we can have >1 voucher to test
 	durationui64 := uint64(2000)
 
 	_, deal, err := series.ImportAndStoreWithDuration(ctx, clientNode, ask, durationui64, files.NewReaderFile(dataReader))
@@ -349,9 +350,7 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 		}
 
 		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
-
 		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt))
-
 		assert.True(t, vr.Channel.Equal(actual[i].Channel))
 	}
 }

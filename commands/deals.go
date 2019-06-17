@@ -167,7 +167,7 @@ Redeem vouchers for FIL on the storage deal specified with the given deal CID.
 type DealsShowResult struct {
 	DealCID         cid.Cid                `json:"deal_cid"`
 	State           storagedeal.State      `json:"state"`
-	Miner           *address.Address       `json:"miner_ddress"`
+	Miner           *address.Address       `json:"miner_address"`
 	Duration        uint64                 `json:"duration_blocks"`
 	Size            *types.BytesAmount     `json:"deal_size"`
 	TotalPrice      *types.AttoFIL         `json:"total_price"`

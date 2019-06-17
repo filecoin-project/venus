@@ -45,7 +45,7 @@ func (f *Filecoin) DealsRedeem(ctx context.Context, dealCid cid.Cid, options ...
 	return out.Cid, nil
 }
 
-// DealsShow runs the `show deal` command against the filecoin process
+// DealsShow runs the `deals show` command against the filecoin process
 func (f *Filecoin) DealsShow(ctx context.Context, propCid cid.Cid) (*commands.DealsShowResult, error) {
 
 	var out commands.DealsShowResult
