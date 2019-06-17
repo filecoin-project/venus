@@ -18,7 +18,7 @@ func TestMessageQueue(t *testing.T) {
 	tf.UnitTest(t)
 
 	// Individual tests share a MessageMaker so not parallel (but quick)
-	keys := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]

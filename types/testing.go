@@ -60,9 +60,30 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 // NewMockSignersAndKeyInfo is a convenience function to generate a mock
 // signers with some keys.
 func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
-	ki := MustGenerateKeyInfo(numSigners, GenerateKeyInfoSeed())
+	ki := MustGenerateKeyInfo(numSigners, 42)
 	signer := NewMockSigner(ki)
 	return signer, ki
+}
+
+// MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.
+// The result is deterministic (for stable tests), don't use this for real keys!
+func MustGenerateKeyInfo(n int, seed byte) []KeyInfo {
+	token := bytes.Repeat([]byte{seed}, 512)
+	var keyinfos []KeyInfo
+	for i := 0; i < n; i++ {
+		token[0] = byte(i)
+		prv, err := crypto.GenerateKeyFromSeed(bytes.NewReader(token))
+		if err != nil {
+			panic(err)
+		}
+
+		ki := &KeyInfo{
+			PrivateKey: prv,
+			Curve:      SECP256K1,
+		}
+		keyinfos = append(keyinfos, *ki)
+	}
+	return keyinfos
 }
 
 // SignBytes cryptographically signs `data` using the Address `addr`.
