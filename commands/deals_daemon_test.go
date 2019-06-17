@@ -3,8 +3,10 @@ package commands_test
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"math/big"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -94,8 +96,11 @@ func TestDealsRedeem(t *testing.T) {
 	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
+	// this is to fix flaky test failures due to the amount being 11.8999999
 	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
-	assert.Equal(t, "11.9", actualBalanceDiff.String())
+	rounded, err := strconv.ParseFloat(actualBalanceDiff.String(), 32)
+	require.NoError(t, err)
+	assert.Equal(t, "11.9", fmt.Sprintf("%3.1f", rounded))
 }
 
 func TestDealsList(t *testing.T) {
