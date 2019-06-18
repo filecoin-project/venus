@@ -205,7 +205,6 @@ func TestDealsShow(t *testing.T) {
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
 
-	// Duration is 10
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
