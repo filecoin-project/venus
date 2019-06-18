@@ -3,13 +3,10 @@ package commands_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"io"
 	"math/big"
-	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -245,7 +242,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
 	defer func() {
-		assert.NoError(t, clientNode.MiningStop(ctx))
+		require.NoError(t, clientNode.MiningStop(ctx))
 	}()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
@@ -262,7 +259,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
 	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, minerNode.MiningStop(ctx))
+		require.NoError(t, minerNode.MiningStop(ctx))
 	}()
 
 	// Create some data that is the full sector size and make it autoseal asap
@@ -278,9 +275,6 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 
 	_, deal, err := series.ImportAndStoreWithDuration(ctx, clientNode, ask, durationui64, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
-
-	require.NoError(t, minerNode.MiningStop(ctx))
-	require.NoError(t, clientNode.MiningStop(ctx))
 
 	t.Run("Vouchers output as JSON have the correct info", func(t *testing.T) {
 		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
