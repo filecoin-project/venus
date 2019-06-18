@@ -1,7 +1,6 @@
 package clock
 
 import (
-	"sync"
 	"time"
 )
 
@@ -27,8 +26,7 @@ func (bc *BlockClock) Now() time.Time {
 // MockClock returns a mocked clock implementation that may be manually
 // set for testing things related to time.
 type MockClock struct {
-	nowMu sync.Mutex
-	now   time.Time
+	now time.Time
 }
 
 // NewMockClock returns a mocked clock implementation that may be manually
@@ -41,14 +39,10 @@ func NewMockClock(n time.Time) *MockClock {
 
 // Now returns the current value of the MockClock.
 func (mc *MockClock) Now() time.Time {
-	mc.nowMu.Lock()
-	defer mc.nowMu.Unlock()
 	return mc.now
 }
 
 // Set sets the current time value of the MockClock.
 func (mc *MockClock) Set(t time.Time) {
-	mc.nowMu.Lock()
-	defer mc.nowMu.Unlock()
 	mc.now = t
 }

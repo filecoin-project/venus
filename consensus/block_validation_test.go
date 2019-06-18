@@ -30,7 +30,6 @@ func TestBlockValidSemantic(t *testing.T) {
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
-	//panic(fmt.Sprintf("ts: %d, addedTo: %d", tbt(ts), tbt(ts.Add(blockTime))))
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		c := &types.Block{Height: 1, Timestamp: tbt(ts)}

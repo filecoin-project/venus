@@ -125,7 +125,7 @@ func (ts TipSet) MinTimestamp() (Uint64, error) {
 		return 0, errUndefTipSet
 	}
 	min := ts.blocks[0].Timestamp
-	for i := 0; i < len(ts.blocks[0:]); i++ {
+	for i := 1; i < len(ts.blocks); i++ {
 		if ts.blocks[i].Timestamp < min {
 			min = ts.blocks[i].Timestamp
 		}
