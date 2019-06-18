@@ -210,7 +210,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
-	// Wait for the deal to be posted
+	// Wait for the deal to be complete
 	err = series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
 	require.NoError(t, err)
 

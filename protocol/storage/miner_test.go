@@ -273,7 +273,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		// retrieve deal response
 		dealResponse := miner.Query(context.Background(), proposal.Proposal.PieceRef)
 
-		assert.Equal(t, storagedeal.Complete, dealResponse.State, "deal should be in posted state")
+		assert.Equal(t, storagedeal.Complete, dealResponse.State, "deal should be in complete state")
 		require.NotNil(t, dealResponse.ProofInfo, "deal should have proof info")
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
@@ -290,7 +290,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		// retrieve deal response
 		dealResponse := miner.Query(context.Background(), proposal.Proposal.PieceRef)
 
-		assert.Equal(t, storagedeal.Complete, dealResponse.State, "deal should be in posted state")
+		assert.Equal(t, storagedeal.Complete, dealResponse.State, "deal should be in complete state")
 
 		// expect proof to be nil because it wasn't provided
 		assert.Nil(t, dealResponse.ProofInfo.PieceInclusionProof)

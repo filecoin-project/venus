@@ -50,7 +50,7 @@ func (s State) String() string {
 	case Staged:
 		return "staged"
 	case Complete:
-		return "posted"
+		return "complete"
 	default:
 		return fmt.Sprintf("<unrecognized %d>", s)
 	}

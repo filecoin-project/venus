@@ -250,7 +250,7 @@ func main() {
 	// 8. Genesis proposes a storage deal with miner
 	//
 	// WaitForDealState
-	// 9. Query deal till posted
+	// 9. Query deal till complete
 
 	var deals []*storagedeal.Response
 
