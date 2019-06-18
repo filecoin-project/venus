@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -62,6 +63,10 @@ func TestDealsRedeem(t *testing.T) {
 
 	// Stop mining to guarantee the miner doesn't receive any block rewards
 	require.NoError(t, minerDaemon.MiningStop(ctx))
+	// Wait for 1 blocktime to allow any remaining block rewards to be processed
+	protocolDetails, err := minerDaemon.Protocol(ctx)
+	require.NoError(t, err)
+	time.Sleep(protocolDetails.BlockTime)
 
 	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
 	require.NoError(t, err)
