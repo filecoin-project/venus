@@ -11,8 +11,8 @@ import (
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/lib/pkgconfig/libsector_builder_ffi.pc
-// #include "./include/libsector_builder_ffi.h"
+// #cgo pkg-config: ${SRCDIR}/lib/pkgconfig/sector_builder_ffi.pc
+// #include "./include/sector_builder_ffi.h"
 import "C"
 
 var log = logging.Logger("fps") // nolint: deadcode
@@ -53,7 +53,7 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 	defer C.free(sectorIDCbytes)
 
 	// a mutable pointer to a VerifySealResponse C-struct
-	resPtr := (*C.VerifySealResponse)(unsafe.Pointer(C.verify_seal(
+	resPtr := (*C.sector_builder_ffi_VerifySealResponse)(unsafe.Pointer(C.sector_builder_ffi_verify_seal(
 		C.uint64_t(req.SectorSize.Uint64()),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
@@ -63,7 +63,7 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 		(*C.uint8_t)(proofCBytes),
 		C.size_t(len(req.Proof)),
 	)))
-	defer C.destroy_verify_seal_response(resPtr)
+	defer C.sector_builder_ffi_destroy_verify_seal_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return VerifySealResponse{}, errors.New(C.GoString(resPtr.error_msg))
@@ -107,8 +107,8 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoStRequest) (VerifyPoSTResponse, e
 	faultsPtr, faultsSize := cUint64s(req.Faults)
 	defer C.free(unsafe.Pointer(faultsPtr))
 
-	// a mutable pointer to a VerifyPoSTResponse C-struct
-	resPtr := (*C.VerifyPoSTResponse)(unsafe.Pointer(C.verify_post(
+	// a mutable pointer to a VerifyPoStResponse C-struct
+	resPtr := (*C.sector_builder_ffi_VerifyPoStResponse)(unsafe.Pointer(C.sector_builder_ffi_verify_post(
 		C.uint64_t(req.SectorSize.Uint64()),
 		proofPartitions,
 		(*C.uint8_t)(flattenedCommRsCBytes),
@@ -119,7 +119,7 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoStRequest) (VerifyPoSTResponse, e
 		faultsPtr,
 		faultsSize,
 	)))
-	defer C.destroy_verify_post_response(resPtr)
+	defer C.sector_builder_ffi_destroy_verify_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return VerifyPoSTResponse{}, errors.New(C.GoString(resPtr.error_msg))
@@ -134,5 +134,5 @@ func (rp *RustVerifier) VerifyPoST(req VerifyPoStRequest) (VerifyPoSTResponse, e
 // into a staged sector. Due to bit-padding, the number of user bytes that will
 // fit into the staged sector will be less than number of bytes in sectorSize.
 func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
-	return types.NewBytesAmount(uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
+	return types.NewBytesAmount(uint64(C.sector_builder_ffi_get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
 }

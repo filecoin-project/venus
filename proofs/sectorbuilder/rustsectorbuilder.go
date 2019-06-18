@@ -20,8 +20,8 @@ import (
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libsector_builder_ffi.pc
-// #include "../include/libsector_builder_ffi.h"
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/sector_builder_ffi.pc
+// #include "../include/sector_builder_ffi.h"
 import "C"
 
 var log = logging.Logger("sectorbuilder") // nolint: deadcode
@@ -57,7 +57,7 @@ type RustSectorBuilder struct {
 	// knows about.
 	sealStatusPoller *sealStatusPoller
 
-	// SectorClass configures behavior of libsector_builder_ffi, including sector
+	// SectorClass configures behavior of sector_builder_ffi, including sector
 	// packing, sector sizes, sealing and PoSt generation performance.
 	SectorClass types.SectorClass
 }
@@ -99,7 +99,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		return nil, errors.Wrap(err, "failed to get sector class")
 	}
 
-	resPtr := (*C.InitSectorBuilderResponse)(unsafe.Pointer(C.init_sector_builder(
+	resPtr := (*C.sector_builder_ffi_InitSectorBuilderResponse)(unsafe.Pointer(C.sector_builder_ffi_init_sector_builder(
 		class,
 		C.uint64_t(cfg.LastUsedSectorID),
 		cMetadataDir,
@@ -108,7 +108,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 		cStagedSectorDir,
 		C.uint8_t(MaxNumStagedSectors),
 	)))
-	defer C.destroy_init_sector_builder_response(resPtr)
+	defer C.sector_builder_ffi_destroy_init_sector_builder_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return nil, errors.New(C.GoString(resPtr.error_msg))
@@ -198,13 +198,13 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 		cSinkPath := C.CString(sink.ID())
 		defer C.free(unsafe.Pointer(cSinkPath))
 
-		resPtr := (*C.AddPieceResponse)(unsafe.Pointer(C.add_piece(
-			(*C.SectorBuilder)(sb.ptr),
+		resPtr := (*C.sector_builder_ffi_AddPieceResponse)(unsafe.Pointer(C.sector_builder_ffi_add_piece(
+			(*C.sector_builder_ffi_SectorBuilder)(sb.ptr),
 			cPieceKey,
 			C.uint64_t(pieceSize),
 			cSinkPath,
 		)))
-		defer C.destroy_add_piece_response(resPtr)
+		defer C.sector_builder_ffi_destroy_add_piece_response(resPtr)
 
 		if resPtr.status_code != 0 {
 			msg := "CGO add_piece returned an error (error_msg=%s, sinkPath=%s)"
@@ -238,8 +238,8 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 }
 
 func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {
-	resPtr := (*C.GetSealStatusResponse)(unsafe.Pointer(C.get_seal_status((*C.SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
-	defer C.destroy_get_seal_status_response(resPtr)
+	resPtr := (*C.sector_builder_ffi_GetSealStatusResponse)(unsafe.Pointer(C.sector_builder_ffi_get_seal_status((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
+	defer C.sector_builder_ffi_destroy_get_seal_status_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return nil, errors.New(C.GoString(resPtr.error_msg))
@@ -302,8 +302,8 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Rea
 	cPieceKey := C.CString(pieceCid.String())
 	defer C.free(unsafe.Pointer(cPieceKey))
 
-	resPtr := (*C.ReadPieceFromSealedSectorResponse)(unsafe.Pointer(C.read_piece_from_sealed_sector((*C.SectorBuilder)(sb.ptr), cPieceKey)))
-	defer C.destroy_read_piece_from_sealed_sector_response(resPtr)
+	resPtr := (*C.sector_builder_ffi_ReadPieceFromSealedSectorResponse)(unsafe.Pointer(C.sector_builder_ffi_read_piece_from_sealed_sector((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), cPieceKey)))
+	defer C.sector_builder_ffi_destroy_read_piece_from_sealed_sector_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return nil, errors.New(C.GoString(resPtr.error_msg))
@@ -314,8 +314,8 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Rea
 
 // SealAllStagedSectors schedules sealing of all staged sectors.
 func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
-	resPtr := (*C.SealAllStagedSectorsResponse)(unsafe.Pointer(C.seal_all_staged_sectors((*C.SectorBuilder)(sb.ptr))))
-	defer C.destroy_seal_all_staged_sectors_response(resPtr)
+	resPtr := (*C.sector_builder_ffi_SealAllStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_seal_all_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))))
+	defer C.sector_builder_ffi_destroy_seal_all_staged_sectors_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return errors.New(C.GoString(resPtr.error_msg))
@@ -326,14 +326,14 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 
 // stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
 func (sb *RustSectorBuilder) stagedSectors() ([]*stagedSectorMetadata, error) {
-	resPtr := (*C.GetStagedSectorsResponse)(unsafe.Pointer(C.get_staged_sectors((*C.SectorBuilder)(sb.ptr))))
-	defer C.destroy_get_staged_sectors_response(resPtr)
+	resPtr := (*C.sector_builder_ffi_GetStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_get_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))))
+	defer C.sector_builder_ffi_destroy_get_staged_sectors_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	meta, err := goStagedSectorMetadata((*C.FFIStagedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
+	meta, err := goStagedSectorMetadata((*C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 // it unusable for I/O.
 func (sb *RustSectorBuilder) Close() error {
 	sb.sealStatusPoller.stop()
-	C.destroy_sector_builder((*C.SectorBuilder)(sb.ptr))
+	C.sector_builder_ffi_destroy_sector_builder((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))
 	sb.ptr = nil
 
 	return nil
@@ -375,8 +375,8 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 	challengeSeedPtr := unsafe.Pointer(&(req.ChallengeSeed)[0])
 
 	// a mutable pointer to a GeneratePoStResponse C-struct
-	resPtr := (*C.GeneratePoStResponse)(unsafe.Pointer(C.generate_post((*C.SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
-	defer C.destroy_generate_post_response(resPtr)
+	resPtr := (*C.sector_builder_ffi_GeneratePoStResponse)(unsafe.Pointer(C.sector_builder_ffi_generate_post((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
+	defer C.sector_builder_ffi_destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return GeneratePoStResponse{}, errors.New(C.GoString(resPtr.error_msg))

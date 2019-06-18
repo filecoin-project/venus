@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -Eeo pipefail
+
 source "$(dirname "${BASH_SOURCE[0]}")/install-shared.bash"
 
 subm_dir="proofs/rust-fil-sector-builder"
@@ -19,7 +21,7 @@ else
     mkdir -p proofs/include
     mkdir -p proofs/lib/pkgconfig
 
-    cp "${subm_dir}/target/release/libsector_builder_ffi.h" ./proofs/include/libsector_builder_ffi.h
-    cp "${subm_dir}/target/release/libsector_builder_ffi.a" ./proofs/lib/libsector_builder_ffi.a
-    cp "${subm_dir}/target/release/libsector_builder_ffi.pc" ./proofs/lib/pkgconfig/libsector_builder_ffi.pc
+    find "${subm_dir}" -type f -name sector_builder_ffi.h -exec mv -- "{}" ./proofs/include/ \;
+    find "${subm_dir}" -type f -name libsector_builder_ffi.a -exec cp -- "{}" ./proofs/lib/ \;
+    find "${subm_dir}" -type f -name sector_builder_ffi.pc -exec cp -- "{}" ./proofs/lib/pkgconfig/ \;
 fi

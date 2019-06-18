@@ -8,8 +8,8 @@ import (
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/libsector_builder_ffi.pc
-// #include "../include/libsector_builder_ffi.h"
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/sector_builder_ffi.pc
+// #include "../include/sector_builder_ffi.h"
 import "C"
 
 func goBytes(src *C.uint8_t, size C.size_t) []byte {
@@ -43,13 +43,13 @@ func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
 	return out
 }
 
-func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*stagedSectorMetadata, error) {
+func goStagedSectorMetadata(src *C.sector_builder_ffi_FFIStagedSectorMetadata, size C.size_t) ([]*stagedSectorMetadata, error) {
 	sectors := make([]*stagedSectorMetadata, size)
 	if src == nil || size == 0 {
 		return sectors, nil
 	}
 
-	sectorPtrs := (*[1 << 30]C.FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
+	sectorPtrs := (*[1 << 30]C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
 		sectors[i] = &stagedSectorMetadata{
 			sectorID: uint64(sectorPtrs[i].sector_id),
@@ -59,13 +59,13 @@ func goStagedSectorMetadata(src *C.FFIStagedSectorMetadata, size C.size_t) ([]*s
 	return sectors, nil
 }
 
-func goPieceInfos(src *C.FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) {
+func goPieceInfos(src *C.sector_builder_ffi_FFIPieceMetadata, size C.size_t) ([]*PieceInfo, error) {
 	ps := make([]*PieceInfo, size)
 	if src == nil || size == 0 {
 		return ps, nil
 	}
 
-	ptrs := (*[1 << 30]C.FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
+	ptrs := (*[1 << 30]C.sector_builder_ffi_FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
 		ref, err := cid.Decode(C.GoString(ptrs[i].piece_key))
 		if err != nil {
@@ -85,8 +85,8 @@ func goPoStProofPartitions(partitions C.uint8_t) (types.PoStProofPartitions, err
 	return types.NewPoStProofPartitions(int(partitions))
 }
 
-func cSectorClass(c types.SectorClass) (C.FFISectorClass, error) {
-	return C.FFISectorClass{
+func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, error) {
+	return C.sector_builder_ffi_FFISectorClass{
 		sector_size:            C.uint64_t(c.SectorSize().Uint64()),
 		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
 		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
