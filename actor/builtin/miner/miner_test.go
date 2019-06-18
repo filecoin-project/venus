@@ -304,11 +304,15 @@ func TestMinerCommitSector(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period matches
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodStart", nil)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodEnd", nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
+
+		// provingPeriodEnd is block height plus proving period
+		provingPeriod := ProvingPeriodDuration(types.OneKiBSectorSize)
+
 		// blockheight was 3
-		require.Equal(t, types.NewBlockHeight(3), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
+		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
 
 		// fail because commR already exists
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
@@ -336,6 +340,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	firstCommitBlockHeight := uint64(3)
 	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	secondProvingPeriodEnd := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	lastPossibleSubmission := secondProvingPeriodStart + LargestSectorSizeProvingPeriodBlocks + LargestSectorGenerationAttackThresholdBlocks
 
 	// add a sector
@@ -358,10 +363,10 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period is now the next one
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriodStart", ancestors)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriodEnd", ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(secondProvingPeriodStart))
+		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(secondProvingPeriodEnd))
 	})
 
 	t.Run("after generation attack grace period rejected", func(t *testing.T) {
@@ -547,8 +552,6 @@ func TestGetProofsMode(t *testing.T) {
 		assert.Equal(t, types.LiveProofsMode, mode)
 	})
 }
-
-
 
 func TestLatePoStFee(t *testing.T) {
 	pledgeCollateral := af(1000)

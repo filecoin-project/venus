@@ -10,19 +10,18 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
-	cid "github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
-	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -586,12 +585,12 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 // currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
 // the miner actor's current proving period.
 func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (types.PoStChallengeSeed, error) {
-	currentProvingPeriodStart, err := sm.getProvingPeriodStart()
+	currentProvingPeriodEnd, err := sm.getProvingPeriodEnd()
 	if err != nil {
 		return types.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
 	}
 
-	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodEnd)
 	if err != nil {
 		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
 	}
@@ -706,16 +705,16 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		return
 	}
 
-	provingPeriodStart, err := sm.getProvingPeriodStart()
+	provingPeriodEnd, err := sm.getProvingPeriodEnd()
 	if err != nil {
-		log.Errorf("failed to get provingPeriodStart: %s", err)
+		log.Errorf("failed to get provingPeriodEnd: %s", err)
 		return
 	}
 
 	sm.postInProcessLk.Lock()
 	defer sm.postInProcessLk.Unlock()
 
-	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodStart) {
+	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodEnd) {
 		// post is already being generated for this period, nothing to do
 		return
 	}
@@ -726,22 +725,13 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		return
 	}
 
-	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
-	if err != nil {
-		log.Errorf("failed to get miner's sector size: %s", err)
-		return
-	}
-
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
-	// compute the block height at which the miner's current proving period ends
-	provingPeriodEnd := provingPeriodStart.Add(types.NewBlockHeight(miner.ProvingPeriodDuration(sectorSize)))
-
-	if h.GreaterEqual(provingPeriodStart) {
+	if h.GreaterEqual(provingPeriodEnd) {
 		if h.LessThan(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
-			sm.postInProcess = provingPeriodStart
+			sm.postInProcess = provingPeriodEnd
 
 			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx)
 			if err != nil {
@@ -749,21 +739,21 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 				return
 			}
 
-			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
+			go sm.submitPoSt(provingPeriodEnd, provingPeriodEnd, seed, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
-			log.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
+			log.Errorf("too late start=%s  end=%s current=%s", provingPeriodEnd, provingPeriodEnd, h)
 		}
 	}
 }
 
-func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
+func (sm *Miner) getProvingPeriodEnd() (*types.BlockHeight, error) {
 	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
-		"getProvingPeriodStart",
+		"getProvingPeriodEnd",
 	)
 	if err != nil {
 		return nil, err

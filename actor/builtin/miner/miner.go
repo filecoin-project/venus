@@ -253,7 +253,7 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
-	"getProvingPeriodStart": &exec.FunctionSignature{
+	"getProvingPeriodEnd": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight},
 	},
@@ -557,7 +557,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
 
 		if state.Power.Equal(types.NewBytesAmount(0)) {
-			state.ProvingPeriodEnd = ctx.BlockHeight()
+			state.ProvingPeriodEnd = ctx.BlockHeight().Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
 		inc := state.SectorSize
 		state.Power = state.Power.Add(inc)
@@ -820,8 +820,8 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 	return 0, nil
 }
 
-// GetProvingPeriodStart returns the current ProvingPeriodEnd value.
-func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
+// GetProvingPeriodEnd returns the current ProvingPeriodEnd value.
+func (ma *Actor) GetProvingPeriodEnd(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
