@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -26,7 +26,7 @@ func TestBlockValidSemantic(t *testing.T) {
 
 	blockTime := consensus.DefaultBlockTime
 	ts := time.Now()
-	mclock := clock.NewMockClock(ts)
+	mclock := th.NewMockClock(ts)
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
@@ -90,7 +90,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	loc, _ := time.LoadLocation("America/New_York")
 	ts := time.Date(2019, time.April, 1, 0, 0, 0, 0, loc)
-	mclock := clock.NewMockClock(ts)
+	mclock := th.NewMockClock(ts)
 
 	ctx := context.Background()
 
