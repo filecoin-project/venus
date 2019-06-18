@@ -23,11 +23,10 @@ import (
 )
 
 func createTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
-	return createTestMinerWith(100, types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, key, pid)
+	return createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, key, pid)
 }
 
 func createTestMinerWith(
-	pledge uint64,
 	collateral types.AttoFIL,
 	t *testing.T,
 	stateTree state.Tree,
@@ -216,7 +215,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
 			[]byte("my public key"), th.RequireRandomPeerID(t))
 
 		// retrieve power (trivial result for no proven sectors)
@@ -263,7 +262,7 @@ func TestMinerCommitSector(t *testing.T) {
 		amtCollateralForPledge := MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(numSectorsToPledge))
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := createTestMinerWith(numSectorsToPledge, amtCollateralForPledge, t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMinerWith(amtCollateralForPledge, t, st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
@@ -293,7 +292,7 @@ func TestMinerCommitSector(t *testing.T) {
 		st, vms := core.CreateStorages(ctx, t)
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := createTestMinerWith(100, types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, []byte("my public key"), origPid)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
@@ -326,40 +325,75 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	ancestors := th.RequireTipSetChain(t, 10)
-
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+	proof := th.MakeRandomPoStProofForTest()
+
+	miner := state.MustGetActor(st, minerAddr)
+	minerBalance := miner.Balance
+	owner := state.MustGetActor(st, address.TestAddress)
+	ownerBalance := owner.Balance
+
+	firstCommitBlockHeight := uint64(3)
+	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	lastPossibleSubmission := secondProvingPeriodStart + LargestSectorSizeProvingPeriodBlocks + LargestSectorGenerationAttackThresholdBlocks
 
 	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	// add another sector
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-	// submit post
-	proof := th.MakeRandomPoStProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 8, "submitPoSt", ancestors, []types.PoStProof{proof})
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+	t.Run("on-time PoSt succeeds", func(t *testing.T) {
+		// submit post
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, "submitPoSt", ancestors, []types.PoStProof{proof})
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-	// check that the proving period is now the next one
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 9, "getProvingPeriodStart", ancestors)
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	require.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(20003))
+		// check that the proving period is now the next one
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriodStart", ancestors)
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(secondProvingPeriodStart))
+	})
 
-	// fail to submit inside the proving period (plus generation attack threshold)
-	proof = th.MakeRandomPoStProofForTest()
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 40108, "submitPoSt", ancestors, []types.PoStProof{proof})
-	require.NoError(t, err)
-	require.EqualError(t, res.ExecutionError, "submitted PoSt late, need to pay a fee")
+	t.Run("after generation attack grace period rejected", func(t *testing.T) {
+		// Rejected one block late
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, []types.PoStProof{proof})
+		assert.NoError(t, err)
+		assert.Error(t, res.ExecutionError)
+	})
+
+	t.Run("late submission charged fee", func(t *testing.T) {
+		// Rejected on the deadline with message value not carrying sufficient fees
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "submitPoSt", ancestors, []types.PoStProof{proof})
+		assert.NoError(t, err)
+		assert.Error(t, res.ExecutionError)
+
+		// Accepted on the deadline with a fee
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, "submitPoSt", ancestors, []types.PoStProof{proof})
+		assert.NoError(t, err)
+		assert.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		// Check miner's balance unchanged (because it's topped up from message value then fee burnt).
+		postedCollateral := MinimumCollateralPerSector.Add(MinimumCollateralPerSector) // 2 sectors
+		fee := LatePoStFee(postedCollateral, bh(secondProvingPeriodStart+LargestSectorSizeProvingPeriodBlocks), bh(lastPossibleSubmission), bh(LargestSectorGenerationAttackThresholdBlocks))
+		miner := state.MustGetActor(st, minerAddr)
+		assert.Equal(t, minerBalance.String(), miner.Balance.String())
+
+		// Check  change was refunded to owner, balance is now reduced by fee.
+		owner, err := st.GetActor(ctx, address.TestAddress)
+		assert.NoError(t, err)
+		assert.Equal(t, ownerBalance.Sub(fee).String(), owner.Balance.String())
+	})
 }
 
 func TestVerifyPIP(t *testing.T) {
@@ -514,6 +548,40 @@ func TestGetProofsMode(t *testing.T) {
 	})
 }
 
-func parseAbiBoolean(bytes []byte) bool {
-	return bytes[0] == 1
+
+
+func TestLatePoStFee(t *testing.T) {
+	pledgeCollateral := af(1000)
+
+	t.Run("on time charges no fee", func(t *testing.T) {
+		assert.True(t, types.ZeroAttoFIL.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(999), bh(100))))
+		assert.True(t, types.ZeroAttoFIL.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1000), bh(100))))
+	})
+
+	t.Run("fee proportional to lateness", func(t *testing.T) {
+		// 1 block late is 1% of 100 allowable
+		assert.True(t, af(10).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1001), bh(100))))
+		// 5 blocks late of 100 allowable
+		assert.True(t, af(50).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1005), bh(100))))
+
+		// 2 blocks late of 10000 allowable, fee rounds down to zero
+		assert.True(t, af(0).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1002), bh(10000))))
+		// 9 blocks late of 10000 allowable, fee rounds down to zero
+		assert.True(t, af(0).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1009), bh(10000))))
+		// 10 blocks late of 10000 allowable is 1/1000
+		assert.True(t, af(1).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1010), bh(10000))))
+	})
+
+	t.Run("fee capped at total pledge", func(t *testing.T) {
+		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1100), bh(100))))
+		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(2000), bh(100))))
+	})
+}
+
+func af(h int64) types.AttoFIL {
+	return types.NewAttoFIL(big.NewInt(h))
+}
+
+func bh(h uint64) *types.BlockHeight {
+	return types.NewBlockHeight(uint64(h))
 }
