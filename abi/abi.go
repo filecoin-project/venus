@@ -56,6 +56,8 @@ const (
 	PoRepProof
 	// PoStProof is a dynamic length array of the PoSt proof-bytes
 	PoStProof
+	// PoStChallengeSeed is a fixed length array of challenge seed bytes
+	PoStChallengeSeed
 	// Predicate is subset of a message used to ask an actor about a condition
 	Predicate
 	// Parameters is a slice of individually encodable parameters
@@ -100,6 +102,8 @@ func (t Type) String() string {
 		return "types.PoRepProof"
 	case PoStProof:
 		return "types.PoStProof"
+	case PoStChallengeSeed:
+		return "types.PoStChallengeSeed"
 	case Predicate:
 		return "*types.Predicate"
 	case Parameters:
@@ -153,6 +157,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(types.PoRepProof))
 	case PoStProof:
 		return fmt.Sprint(av.Val.(types.PoStProof))
+	case PoStChallengeSeed:
+		return fmt.Sprint(av.Val.(types.PoStChallengeSeed))
 	case Predicate:
 		return fmt.Sprint(av.Val.(*types.Predicate))
 	case Parameters:
@@ -294,6 +300,12 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.PoStProof{}, av.Val}
 		}
 		return b, nil
+	case PoStChallengeSeed:
+		b, ok := av.Val.(types.PoStChallengeSeed)
+		if !ok {
+			return nil, &typeError{types.PoStChallengeSeed{}, av.Val}
+		}
+		return b[:], nil
 	case Predicate:
 		p, ok := av.Val.(*types.Predicate)
 		if !ok {
@@ -357,6 +369,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: PoRepProof, Val: v})
 		case types.PoStProof:
 			out = append(out, &Value{Type: PoStProof, Val: v})
+		case types.PoStChallengeSeed:
+			out = append(out, &Value{Type: PoStChallengeSeed, Val: v})
 		case *types.Predicate:
 			out = append(out, &Value{Type: Predicate, Val: v})
 		case []interface{}:
@@ -497,6 +511,13 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  append(types.PoStProof{}, data[:]...),
 		}, nil
+	case PoStChallengeSeed:
+		seed := types.PoStChallengeSeed{}
+		copy(seed[:], data)
+		return &Value{
+			Type: t,
+			Val:  seed,
+		}, nil
 	case Predicate:
 		var predicate *types.Predicate
 		if err := cbor.DecodeInto(data, &predicate); err != nil {
@@ -523,25 +544,26 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address:        reflect.TypeOf(address.Address{}),
-	AttoFIL:        reflect.TypeOf(types.AttoFIL{}),
-	Bytes:          reflect.TypeOf([]byte{}),
-	BytesAmount:    reflect.TypeOf(&types.BytesAmount{}),
-	ChannelID:      reflect.TypeOf(&types.ChannelID{}),
-	BlockHeight:    reflect.TypeOf(&types.BlockHeight{}),
-	Integer:        reflect.TypeOf(&big.Int{}),
-	String:         reflect.TypeOf(string("")),
-	UintArray:      reflect.TypeOf([]uint64{}),
-	PeerID:         reflect.TypeOf(peer.ID("")),
-	SectorID:       reflect.TypeOf(uint64(0)),
-	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
-	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
-	Boolean:        reflect.TypeOf(false),
-	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
-	PoRepProof:     reflect.TypeOf(types.PoRepProof{}),
-	PoStProof:      reflect.TypeOf(types.PoStProof{}),
-	Predicate:      reflect.TypeOf(&types.Predicate{}),
-	Parameters:     reflect.TypeOf([]interface{}{}),
+	Address:           reflect.TypeOf(address.Address{}),
+	AttoFIL:           reflect.TypeOf(types.AttoFIL{}),
+	Bytes:             reflect.TypeOf([]byte{}),
+	BytesAmount:       reflect.TypeOf(&types.BytesAmount{}),
+	ChannelID:         reflect.TypeOf(&types.ChannelID{}),
+	BlockHeight:       reflect.TypeOf(&types.BlockHeight{}),
+	Integer:           reflect.TypeOf(&big.Int{}),
+	String:            reflect.TypeOf(string("")),
+	UintArray:         reflect.TypeOf([]uint64{}),
+	PeerID:            reflect.TypeOf(peer.ID("")),
+	SectorID:          reflect.TypeOf(uint64(0)),
+	CommitmentsMap:    reflect.TypeOf(map[string]types.Commitments{}),
+	PoStProofs:        reflect.TypeOf([]types.PoStProof{}),
+	Boolean:           reflect.TypeOf(false),
+	ProofsMode:        reflect.TypeOf(types.TestProofsMode),
+	PoRepProof:        reflect.TypeOf(types.PoRepProof{}),
+	PoStProof:         reflect.TypeOf(types.PoStProof{}),
+	PoStChallengeSeed: reflect.TypeOf(types.PoStChallengeSeed{}),
+	Predicate:         reflect.TypeOf(&types.Predicate{}),
+	Parameters:        reflect.TypeOf([]interface{}{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

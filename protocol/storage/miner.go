@@ -585,18 +585,18 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 // currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
 // the miner actor's current proving period.
 func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (types.PoStChallengeSeed, error) {
-	currentProvingPeriodEnd, err := sm.getProvingPeriodEnd()
+	returnValues, err := sm.porcelainAPI.MessageQuery(
+		ctx,
+		address.Address{},
+		sm.minerAddr,
+		"getPoStChallengeSeed",
+	)
 	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
-	}
-
-	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodEnd)
-	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
+		return types.PoStChallengeSeed{}, errors.Wrap(err, "getPoStChallengeSeed failed")
 	}
 
 	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
+	copy(seed[:], returnValues[0])
 
 	return seed, nil
 }
@@ -705,7 +705,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		return
 	}
 
-	provingPeriodEnd, err := sm.getProvingPeriodEnd()
+	provingPeriodStart, provingPeriodEnd, err := sm.getProvingPeriod()
 	if err != nil {
 		log.Errorf("failed to get provingPeriodEnd: %s", err)
 		return
@@ -728,7 +728,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
-	if h.GreaterEqual(provingPeriodEnd) {
+	if h.GreaterEqual(provingPeriodStart) {
 		if h.LessThan(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
@@ -739,7 +739,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 				return
 			}
 
-			go sm.submitPoSt(provingPeriodEnd, provingPeriodEnd, seed, inputs)
+			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -748,18 +748,18 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	}
 }
 
-func (sm *Miner) getProvingPeriodEnd() (*types.BlockHeight, error) {
+func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
 	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
-		"getProvingPeriodEnd",
+		"isInProvingPeriod",
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return types.NewBlockHeightFromBytes(res[0]), nil
+	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
 // generatePoSt creates the required PoSt, given a list of sector ids and

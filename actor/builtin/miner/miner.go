@@ -269,6 +269,14 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
 	},
+	"getPoStChallengeSeed": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.PoStChallengeSeed},
+	},
+	"getProvingPeriod": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
+	},
 }
 
 // Exports returns the miner actors exported functions.
@@ -778,7 +786,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
+			seed, _, err := GetPoStChallengeSeed(ctx)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
@@ -848,6 +856,44 @@ func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
 	return err
 }
 
+// GetProvingPeriod returns the proving period start and proving period end
+func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return nil, nil, errors.CodeError(err), err
+	}
+
+	var state State
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return nil, nil, errors.CodeError(err), err
+	}
+
+	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+}
+
+// GetPoStChallengeSeed(ctx ex
+func GetPoStChallengeSeed(ctx exec.VMContext) (types.PoStChallengeSeed, uint8, error) {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return types.PoStChallengeSeed{}, errors.CodeError(err), err
+	}
+
+	var state State
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return types.PoStChallengeSeed{}, errors.CodeError(err), err
+	}
+
+	randomness, err := ctx.SampleChainRandomness(provingPeriodStart(state))
+	if err != nil {
+		return types.PoStChallengeSeed{}, 1, err
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], randomness)
+
+	return seed, 0, nil
+}
+
 //
 // Exported free functions.
 //
@@ -871,6 +917,16 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	// TODO: Replace this function with the baseline pro-rata construction.
 	// https://github.com/filecoin-project/go-filecoin/issues/2866
 	return MinimumCollateralPerSector
+}
+
+// determines whether the block height is between the proving period start and proving period end
+func inProvingPeriod(state State, height *types.BlockHeight) bool {
+	return provingPeriodStart(state).LessEqual(height) && state.ProvingPeriodEnd.GreaterThan(height)
+}
+
+// calculates proving period start from the proving period end and the proving period duration
+func provingPeriodStart(state State) *types.BlockHeight {
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 }
 
 // GenerationAttackTime is the number of blocks after a proving period ends
