@@ -37,14 +37,14 @@ type PolicyTarget interface {
 // ends up childless (in contrast to the message pool).
 type DefaultQueuePolicy struct {
 	// Provides blocks for chain traversal.
-	store chain.BlockProvider
+	store chain.TipSetProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(store chain.BlockProvider, maxAge uint64) *DefaultQueuePolicy {
+func NewMessageQueuePolicy(store chain.TipSetProvider, maxAge uint64) *DefaultQueuePolicy {
 	return &DefaultQueuePolicy{store, maxAge}
 }
 
