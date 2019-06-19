@@ -5,17 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/types"
-)
-
-var (
-	// ErrTooSoon is returned when a block is generated too soon after its parent.
-	ErrTooSoon = errors.New("block was generated too soon")
-	// ErrInvalidHeight is returned when a block has an invliad height.
-	ErrInvalidHeight = errors.New("block has invalid height")
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -65,7 +56,7 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 	}
 
 	if uint64(child.Height) <= ph {
-		return ErrInvalidHeight
+		return fmt.Errorf("block %s has invalid height %d", child.Cid().String(), child.Height)
 	}
 
 	// check that child is appropriately delayed from its parents including
@@ -73,25 +64,25 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 	// TODO replace check on height when #2222 lands
 	limit := uint64(pmin) + uint64(dv.BlockTime().Seconds())*(uint64(child.Height)-ph)
 	if uint64(child.Timestamp) < limit {
-		//return errors.Wrapf(ErrTooSoon, "limit: %d, childTs: %d", limit, child.Timestamp)
-		return ErrTooSoon
+		return fmt.Errorf("block %s with timestamp %d generated too far in future", child.Cid().String(), child.Timestamp)
 	}
 	return nil
 }
 
 // ValidateSyntax validates a single block is correctly formed.
 func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
-	if uint64(blk.Timestamp) > uint64(dv.Now().Unix()) {
-		return fmt.Errorf("block generate in future")
+	now := uint64(dv.Now().Unix())
+	if uint64(blk.Timestamp) > now {
+		return fmt.Errorf("block %s with timestamp %d generate in future at time %d", blk.Cid().String(), blk.Timestamp, now)
 	}
 	if !blk.StateRoot.Defined() {
-		return fmt.Errorf("block has nil StateRoot")
+		return fmt.Errorf("block %s has nil StateRoot", blk.Cid().String())
 	}
 	if blk.Miner.Empty() {
-		return fmt.Errorf("block has nil miner address")
+		return fmt.Errorf("block %s has nil miner address", blk.Miner.String())
 	}
 	if len(blk.Ticket) == 0 {
-		return fmt.Errorf("block has nil ticket")
+		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
 	}
 	// TODO validate block signature: 1054
 	return nil
