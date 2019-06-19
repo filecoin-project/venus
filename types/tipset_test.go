@@ -32,7 +32,7 @@ func requireTipSetAdd(t *testing.T, blk *Block, ts TipSet) {
 	require.NoError(t, err)
 }
 
-func block(t *testing.T, height int, parentCid cid.Cid, parentWeight uint64, msg string) *Block {
+func block(t *testing.T, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
 	addrGetter := address.NewForTestGetter()
 
 	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
@@ -48,15 +48,16 @@ func block(t *testing.T, height int, parentCid cid.Cid, parentWeight uint64, msg
 		Messages:        []*SignedMessage{sm1},
 		StateRoot:       SomeCid(),
 		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
+		Timestamp:       Uint64(timestamp),
 	}
 }
 
 func TestTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
-	b1 := block(t, 1, cid1, uint64(1137), "1")
-	b2 := block(t, 1, cid1, uint64(1137), "2")
-	b3 := block(t, 1, cid1, uint64(1137), "3")
+	b1 := block(t, 1, cid1, uint64(1137), 1, "1")
+	b2 := block(t, 1, cid1, uint64(1137), 2, "2")
+	b3 := block(t, 1, cid1, uint64(1137), 3, "3")
 
 	ts := TipSet{}
 	ts[b1.Cid()] = b1
@@ -89,11 +90,11 @@ func TestTipSet(t *testing.T) {
 func RequireTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	pW := uint64(1337000)
 
-	b1 := block(t, 1, cid1, pW, "1")
+	b1 := block(t, 1, cid1, pW, 1, "1")
 	b1.Ticket = []byte{0}
-	b2 := block(t, 1, cid1, pW, "2")
+	b2 := block(t, 1, cid1, pW, 2, "2")
 	b2.Ticket = []byte{1}
-	b3 := block(t, 1, cid1, pW, "3")
+	b3 := block(t, 1, cid1, pW, 3, "3")
 	b3.Ticket = []byte{0}
 	return b1, b2, b3
 }
