@@ -64,7 +64,7 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 	// TODO replace check on height when #2222 lands
 	limit := uint64(pmin) + uint64(dv.BlockTime().Seconds())*(uint64(child.Height)-ph)
 	if uint64(child.Timestamp) < limit {
-		return fmt.Errorf("block %s with timestamp %d generated too far in future", child.Cid().String(), child.Timestamp)
+		return fmt.Errorf("block %s with timestamp %d generated too far past parent, expected timestamp < %d", child.Cid().String(), child.Timestamp, limit)
 	}
 	return nil
 }

@@ -54,7 +54,7 @@ func TestBlockValidSemantic(t *testing.T) {
 		c = &types.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
 		err := validator.ValidateSemantic(ctx, c, &parents)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "too far in future")
+		assert.Contains(t, err.Error(), "too far")
 
 	})
 
@@ -70,13 +70,13 @@ func TestBlockValidSemantic(t *testing.T) {
 		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		err = validator.ValidateSemantic(ctx, c, &parents)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "too far in future")
+		assert.Contains(t, err.Error(), "too far")
 
 		// fail with same timestamp as parent
 		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Unix())}
 		err = validator.ValidateSemantic(ctx, c, &parents)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "too far in future")
+		assert.Contains(t, err.Error(), "too far")
 
 	})
 }
