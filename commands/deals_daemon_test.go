@@ -28,6 +28,12 @@ import (
 )
 
 func TestDealsRedeem(t *testing.T) {
+	// DISABLED: this test has nondeterministic rounding errors
+	// https://github.com/filecoin-project/go-filecoin/issues/2960
+	// It also takes many minutes due to waiting for real sector sealing. This is unacceptable
+	// for an integration test (possibly ok for a functional test).
+	// https://github.com/filecoin-project/go-filecoin/issues/2965
+	t.Skipf("Flaky and slow: #2960, #2965")
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
