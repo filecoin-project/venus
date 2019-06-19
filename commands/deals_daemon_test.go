@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -93,11 +94,8 @@ func TestDealsRedeem(t *testing.T) {
 	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
-	// this is to fix flaky test failures due to the amount being 11.8999999
 	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
-	rounded, err := strconv.ParseFloat(actualBalanceDiff.String(), 32)
-	require.NoError(t, err)
-	assert.Equal(t, "11.9", fmt.Sprintf("%3.1f", rounded))
+	assert.Equal(t, "11.9", actualBalanceDiff.String())
 }
 
 func TestDealsList(t *testing.T) {
