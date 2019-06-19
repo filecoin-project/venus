@@ -98,16 +98,21 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
+type storageFaultMonitor interface {
+	HandleNewTipSet(context.Context, *types.BlockHeight) error
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
-	Consensus    consensus.Protocol
-	ChainReader  nodeChainReader
-	MessageStore *chain.MessageStore
-	Syncer       nodeChainSyncer
-	PowerTable   consensus.PowerTableView
+	Consensus           consensus.Protocol
+	ChainReader         nodeChainReader
+	StorageFaultMonitor storageFaultMonitor
+	MessageStore        *chain.MessageStore
+	Syncer              nodeChainSyncer
+	PowerTable          consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -734,9 +739,22 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 			prevHead = newHead
 
 			if node.StorageMiner != nil {
-				err := node.StorageMiner.OnNewHeaviestTipSet(newHead)
-				if err != nil {
+				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
+				}
+				if node.StorageFaultMonitor != nil {
+					height, err := newHead.Height()
+					if err != nil {
+						log.Error("can't get height of new tipset", err)
+					} else {
+						bh := types.NewBlockHeight(height)
+						err := node.StorageFaultMonitor.HandleNewTipSet(ctx, bh)
+						if err != nil {
+							log.Error("fault monitoring new block from network", err)
+						}
+					}
+				} else {
+					log.Error("node.StorageFaultMonitor is not set -- cannot start fault monitoring")
 				}
 			}
 		case <-ctx.Done():
@@ -875,6 +893,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to initialize storage miner")
 	}
 	node.StorageMiner = storageMiner
+	node.StorageFaultMonitor = consensus.NewStorageFaultMonitor(node.PorcelainAPI, node.Outbox, minerOwnerAddr)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
