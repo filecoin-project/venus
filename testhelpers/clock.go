@@ -4,26 +4,26 @@ import (
 	"time"
 )
 
-// MockClock returns a mocked clock implementation that may be manually
+// FakeSystemClock returns a mocked clock implementation that may be manually
 // set for testing things related to time.
-type MockClock struct {
+type FakeSystemClock struct {
 	now time.Time
 }
 
-// NewMockClock returns a mocked clock implementation that may be manually
+// NewFakeSystemClock returns a mocked clock implementation that may be manually
 // set for testing things related to time.
-func NewMockClock(n time.Time) *MockClock {
-	return &MockClock{
+func NewFakeSystemClock(n time.Time) *FakeSystemClock {
+	return &FakeSystemClock{
 		now: n,
 	}
 }
 
-// Now returns the current value of the MockClock.
-func (mc *MockClock) Now() time.Time {
+// Now returns the current value of the FakeSystemClock.
+func (mc *FakeSystemClock) Now() time.Time {
 	return mc.now
 }
 
-// Set sets the current time value of the MockClock.
-func (mc *MockClock) Set(t time.Time) {
+// Set sets the current time value of the FakeSystemClock.
+func (mc *FakeSystemClock) Set(t time.Time) {
 	mc.now = t
 }

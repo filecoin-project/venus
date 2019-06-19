@@ -21,7 +21,7 @@ func TestBlockValidSemantic(t *testing.T) {
 
 	blockTime := consensus.DefaultBlockTime
 	ts := time.Unix(1234567890, 0)
-	mclock := th.NewMockClock(ts)
+	mclock := th.NewFakeSystemClock(ts)
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
@@ -86,7 +86,8 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	blockTime := consensus.DefaultBlockTime
 	ts := time.Unix(1234567890, 0)
-	mclock := th.NewMockClock(ts)
+	mclock := th.NewFakeSystemClock(ts)
+
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
