@@ -16,111 +16,119 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// to block time converts a time to block timestamp
-func tbt(t time.Time) types.Uint64 {
-	return types.Uint64(t.Unix())
-}
-
 func TestBlockValidSemantic(t *testing.T) {
 	tf.UnitTest(t)
 
 	blockTime := consensus.DefaultBlockTime
-	ts := time.Now()
+	ts := time.Unix(1234567890, 0)
 	mclock := th.NewMockClock(ts)
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
-		c := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		p := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		parents, err := types.NewTipSet(p)
-		require.NoError(t, err)
+		// passes with valid height
+		c := &types.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
+		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
+		parents := consensus.RequireNewTipSet(require.New(t), p)
+		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents))
 
-		err = validator.ValidateSemantic(ctx, c, &parents)
-		assert.Equal(t, consensus.ErrInvalidHeight, err)
+		// invalidate parent by matching child height
+		p = &types.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
+		parents = consensus.RequireNewTipSet(require.New(t), p)
+
+		err := validator.ValidateSemantic(ctx, c, &parents)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid height")
+
 	})
 
 	t.Run("reject block mined too soon after parent", func(t *testing.T) {
-		c := &types.Block{Height: 2, Timestamp: tbt(ts)}
-		p := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		parents, err := types.NewTipSet(p)
-		require.NoError(t, err)
+		// Passes with correct timestamp
+		c := &types.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
+		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
+		parents := consensus.RequireNewTipSet(require.New(t), p)
+		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents))
 
-		err = validator.ValidateSemantic(ctx, c, &parents)
-		assert.Equal(t, consensus.ErrTooSoon, err)
+		// fails with invalid timestamp
+		c = &types.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
+		err := validator.ValidateSemantic(ctx, c, &parents)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "too far in future")
+
 	})
 
 	t.Run("reject block mined too soon after parent with one null block", func(t *testing.T) {
-		c := &types.Block{Height: 3, Timestamp: tbt(ts)}
-		p := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		parents, err := types.NewTipSet(p)
+		// Passes with correct timestamp
+		c := &types.Block{Height: 3, Timestamp: types.Uint64(ts.Add(2 * blockTime).Unix())}
+		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
+		parents := consensus.RequireNewTipSet(require.New(t), p)
+		err := validator.ValidateSemantic(ctx, c, &parents)
 		require.NoError(t, err)
 
+		// fail when nul block calc is off by one blocktime
+		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		err = validator.ValidateSemantic(ctx, c, &parents)
-		assert.Equal(t, consensus.ErrTooSoon, err)
-	})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "too far in future")
 
-	t.Run("accept block mined one block time after parent", func(t *testing.T) {
-		c := &types.Block{Height: 2, Timestamp: tbt(ts.Add(blockTime))}
-		p := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		parents, err := types.NewTipSet(p)
-		require.NoError(t, err)
-
+		// fail with same timestamp as parent
+		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Unix())}
 		err = validator.ValidateSemantic(ctx, c, &parents)
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "too far in future")
+
 	})
-
-	t.Run("accept block mined one block time after parent with one null block", func(t *testing.T) {
-		c := &types.Block{Height: 3, Timestamp: tbt(ts.Add(2 * blockTime))}
-		p := &types.Block{Height: 1, Timestamp: tbt(ts)}
-		parents, err := types.NewTipSet(p)
-		require.NoError(t, err)
-
-		err = validator.ValidateSemantic(ctx, c, &parents)
-		assert.NoError(t, err)
-	})
-
 }
 
 func TestBlockValidSyntax(t *testing.T) {
 	tf.UnitTest(t)
 
 	blockTime := consensus.DefaultBlockTime
-
-	loc, _ := time.LoadLocation("America/New_York")
-	ts := time.Date(2019, time.April, 1, 0, 0, 0, 0, loc)
+	ts := time.Unix(1234567890, 0)
 	mclock := th.NewMockClock(ts)
-
 	ctx := context.Background()
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
 
-	t.Run("reject block generated in future", func(t *testing.T) {
-		blk := &types.Block{
-			Timestamp: types.Uint64(ts.Add(time.Second * 1).Unix()),
-		}
-		assert.Error(t, validator.ValidateSyntax(ctx, blk))
-	})
+	validTs := types.Uint64(ts.Unix())
+	validSt := types.NewCidForTestGetter()()
+	validAd := address.NewForTestGetter()()
+	validTi := []byte{1}
+	// create a valid block
+	blk := &types.Block{
+		Timestamp: validTs,
+		StateRoot: validSt,
+		Miner:     validAd,
+		Ticket:    validTi,
+	}
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
-	t.Run("reject block with undef StateRoot", func(t *testing.T) {
-		blk := &types.Block{
-			StateRoot: cid.Undef,
-		}
-		assert.Error(t, validator.ValidateSyntax(ctx, blk))
-	})
+	// below we will invalidate each part of the block, assert that it fails
+	// validation, then revalidate the block
 
-	t.Run("reject block with undef miner address", func(t *testing.T) {
-		blk := &types.Block{
-			Miner: address.Undef,
-		}
-		assert.Error(t, validator.ValidateSyntax(ctx, blk))
-	})
+	// invalidate timestamp
+	blk.Timestamp = types.Uint64(ts.Add(time.Second).Unix())
+	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.Timestamp = validTs
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
-	t.Run("reject block with empty ticket", func(t *testing.T) {
-		blk := &types.Block{
-			Ticket: []byte{},
-		}
-		assert.Error(t, validator.ValidateSyntax(ctx, blk))
-	})
+	// invalidate statetooy
+	blk.StateRoot = cid.Undef
+	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.StateRoot = validSt
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
+
+	// invalidate miner address
+	blk.Miner = address.Undef
+	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.Miner = validAd
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
+
+	// invalidate ticket
+	blk.Ticket = []byte{}
+	require.Error(t, validator.ValidateSyntax(ctx, blk))
+	blk.Ticket = validTi
+	require.NoError(t, validator.ValidateSyntax(ctx, blk))
+
 }
