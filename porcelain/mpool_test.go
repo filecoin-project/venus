@@ -43,7 +43,7 @@ func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Sub
 func TestMessagePoolWait(t *testing.T) {
 	tf.UnitTest(t)
 
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())
+	ki := types.MustGenerateKeyInfo(1, 42)
 	signer := types.NewMockSigner(ki)
 
 	t.Run("empty", func(t *testing.T) {

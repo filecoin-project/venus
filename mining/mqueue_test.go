@@ -13,8 +13,7 @@ import (
 func TestMessageQueueOrder(t *testing.T) {
 	tf.UnitTest(t)
 
-	var seed = types.GenerateKeyInfoSeed()
-	var ki = types.MustGenerateKeyInfo(10, seed)
+	var ki = types.MustGenerateKeyInfo(10, 42)
 	var mockSigner = types.NewMockSigner(ki)
 
 	a0 := mockSigner.Addresses[0]

@@ -150,7 +150,7 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	chanid, _ := rsrc.requirePaymentChannel(ctx, t, channelAmount, channelExpiry)
 
 	voucherAmount := types.NewAttoFILFromFIL(10)
-	voucherValidAt := types.NewBlockHeight(0)
+	voucherValidAt := types.NewBlockHeight(1)
 	voucherStr, err := rsrc.payer.PaychVoucher(ctx, chanid, voucherAmount, fast.AOFromAddr(rsrc.payerAddr), fast.AOValidAt(voucherValidAt))
 	require.NoError(t, err)
 
@@ -158,6 +158,9 @@ func TestPaymentChannelVoucherSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, voucherAmount, voucher.Amount)
+	assert.True(t, voucherValidAt.Equal(&voucher.ValidAt))
+	assert.Equal(t, rsrc.payerAddr, voucher.Payer)
+	assert.Equal(t, rsrc.targetAddr, voucher.Target)
 }
 
 func TestPaymentChannelRedeemSuccess(t *testing.T) {

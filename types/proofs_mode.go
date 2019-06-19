@@ -1,7 +1,7 @@
 package types
 
 // ProofsMode configures sealing, sector packing, PoSt generation and other
-// behaviors of libsector_builder_ffi. Use Test mode to seal and generate PoSts
+// behaviors of sector_builder_ffi. Use Test mode to seal and generate PoSts
 // quickly over tiny sectors. Use Live when operating a real Filecoin node.
 type ProofsMode int
 

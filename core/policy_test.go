@@ -1,10 +1,12 @@
 package core_test
 
 import (
+	"bytes"
 	"context"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -21,7 +23,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	// Individual tests share a MessageMaker so not parallel (but quick)
 	ctx := context.Background()
 
-	keys := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
@@ -34,7 +36,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	}
 
 	t.Run("old block does nothing", func(t *testing.T) {
-		blocks := th.NewFakeBlockProvider()
+		blocks := th.NewFakeChainProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(blocks, 10)
 
@@ -53,7 +55,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("removes mined messages", func(t *testing.T) {
-		blocks := th.NewFakeBlockProvider()
+		blocks := th.NewFakeChainProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(blocks, 10)
 
@@ -98,7 +100,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("expires old messages", func(t *testing.T) {
-		blocks := th.NewFakeBlockProvider()
+		blocks := th.NewFakeChainProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(blocks, 10)
 
@@ -132,7 +134,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 
 	t.Run("fails when messages out of nonce order", func(t *testing.T) {
-		blocks := th.NewFakeBlockProvider()
+		blocks := th.NewFakeChainProvider()
 		q := core.NewMessageQueue()
 		policy := core.NewMessageQueuePolicy(blocks, 10)
 
@@ -147,6 +149,47 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 		b1 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{msgs[1]}, root)
 		err := policy.HandleNewHead(ctx, q, requireTipset(t, root), requireTipset(t, b1))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nonce 1, expected 2")
+	})
+
+	t.Run("removes sequential messages in peer blocks", func(t *testing.T) {
+		blocks := th.NewFakeChainProvider()
+		q := core.NewMessageQueue()
+		policy := core.NewMessageQueuePolicy(blocks, 10)
+
+		msgs := []*types.SignedMessage{
+			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
+			requireEnqueue(q, mm.NewSignedMessage(alice, 2), 101),
+		}
+
+		root := blocks.NewBlock(0)
+		root.Height = 100
+
+		// Construct two blocks at the same height, each with one message. The messages must
+		// have been mined in nonce order. The canonical tipset block ordering
+		// is given by block ticket, which hence must match this nonce order.
+		// These blocks are constructed so that their CIDs would order them
+		// in the *opposite* order (blocks used to be ordered by CID).
+		b1 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{msgs[0]}, root)
+		b2 := blocks.NewBlockWithMessages(1, []*types.SignedMessage{msgs[1]}, root)
+		b1.Ticket = []byte{0}
+		b2.Ticket = []byte{1}
+		b2.Timestamp = 0 // Tweak to force CID ordering to be opposite to ticket ordering.
+		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)
+
+		// With blocks ordered [b1, b2], everything is ok.
+		err := policy.HandleNewHead(ctx, q, requireTipset(t, root), requireTipset(t, b1, b2))
+		require.NoError(t, err)
+		assert.Empty(t, q.List(alice))
+
+		// With blocks ordered [b2, b1], this fails. This demonstrates that the policy is
+		// processing the blocks in canonical (ticket) order.
+		requireEnqueue(q, msgs[0], 200)
+		requireEnqueue(q, msgs[1], 201)
+		b1.Ticket = []byte{1}
+		b2.Ticket = []byte{0}
+		err = policy.HandleNewHead(ctx, q, requireTipset(t, root), requireTipset(t, b1, b2))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})

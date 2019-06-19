@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/core"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/core"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestUpdateMessagePool(t *testing.T) {
@@ -406,6 +408,11 @@ func (p *fakeChainProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.B
 		return nil, errors.Wrapf(err, "failed to get block %s", cid)
 	}
 	return &blk, nil
+}
+
+func (p *fakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+	ctx := context.TODO() // Should GetTipSet require a context everywhere?
+	return chain.LoadTipSetBlocks(ctx, p, tsKey)
 }
 
 func (p *fakeChainProvider) BlockHeight() (uint64, error) {

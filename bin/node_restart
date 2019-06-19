@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-filecoin_repo="/var/local/filecoin"
+filecoin_repo="/var/local/filecoin/repo"
 filecoin_exec="go-filecoin --repodir=${filecoin_repo}"
 
 

@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
 )
 
 // InboxMaxAgeTipsets is maximum age (in non-empty tipsets) to permit messages to stay in the pool after reception.
@@ -26,7 +27,7 @@ type Inbox struct {
 // InboxChainProvider provides chain access for updating the message pool in response to new heads.
 // Exported for testing.
 type InboxChainProvider interface {
-	chain.BlockProvider
+	chain.TipSetProvider
 	BlockHeight() (uint64, error)
 }
 
@@ -58,31 +59,37 @@ func (ib *Inbox) Pool() *MessagePool {
 // We think that the right model for keeping the message pool up to date is
 // to think about it like a garbage collector.
 func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSet) error {
-	oldBlocks, newBlocks, err := CollectBlocksToCommonAncestor(ctx, ib.chain, oldHead, newHead)
+	oldTips, newTips, err := CollectTipsToCommonAncestor(ctx, ib.chain, oldHead, newHead)
 	if err != nil {
 		return err
 	}
 
-	// Add all message from the old blocks to the message pool, so they can be mined again.
-	for _, blk := range oldBlocks {
-		for _, msg := range blk.Messages {
-			_, err = ib.pool.Add(ctx, msg, uint64(blk.Height))
-			if err != nil {
-				log.Info(err)
+	// Add all message from the old tipsets to the message pool, so they can be mined again.
+	// The tipsets are iterated in reverse height order, but the order doesn't matter here.
+	for _, tipset := range oldTips {
+		for i := 0; i < tipset.Len(); i++ {
+			block := tipset.At(i)
+			for _, msg := range block.Messages {
+				_, err = ib.pool.Add(ctx, msg, uint64(block.Height))
+				if err != nil {
+					log.Info(err)
+				}
 			}
 		}
 	}
 
-	// Remove all messages in the new blocks from the pool, now mined.
+	// Remove all messages in the new tipsets from the pool, now mined.
 	// Cid() can error, so collect all the CIDs up front.
 	var removeCids []cid.Cid
-	for _, blk := range newBlocks {
-		for _, msg := range blk.Messages {
-			cid, err := msg.Cid()
-			if err != nil {
-				return err
+	for _, tipset := range newTips {
+		for i := 0; i < tipset.Len(); i++ {
+			for _, msg := range tipset.At(i).Messages {
+				cid, err := msg.Cid()
+				if err != nil {
+					return err
+				}
+				removeCids = append(removeCids, cid)
 			}
-			removeCids = append(removeCids, cid)
 		}
 	}
 	for _, c := range removeCids {
@@ -98,25 +105,21 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 // height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
 // Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
 // sets than to the expected block time over short timescales.
-func timeoutMessages(ctx context.Context, pool *MessagePool, chains chain.BlockProvider, head types.TipSet, maxAgeTipsets uint) error {
+func timeoutMessages(ctx context.Context, pool *MessagePool, chains chain.TipSetProvider, head types.TipSet, maxAgeTipsets uint) error {
 	var err error
 
-	lowestTipSet := head
-	minimumHeight, err := lowestTipSet.Height()
+	var minimumHeight uint64
+	itr := chain.IterAncestors(ctx, chains, head)
+
+	// Walk back maxAgeTipsets+1 tipsets to determine lowest block height to prune.
+	for i := uint(0); err == nil && i <= maxAgeTipsets && !itr.Complete(); i++ {
+		minimumHeight, err = itr.Value().Height()
+		if err == nil {
+			err = itr.Next()
+		}
+	}
 	if err != nil {
 		return err
-	}
-
-	// walk back MessageTimeout tip sets to arrive at the lowest viable block height
-	for i := uint(0); minimumHeight > 0 && i < maxAgeTipsets; i++ {
-		lowestTipSet, err = chain.GetParentTipSet(ctx, chains, lowestTipSet)
-		if err != nil {
-			return err
-		}
-		minimumHeight, err = lowestTipSet.Height()
-		if err != nil {
-			return err
-		}
 	}
 
 	// remove all messages added before minimumHeight
