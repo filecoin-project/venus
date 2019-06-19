@@ -37,41 +37,40 @@ type PolicyTarget interface {
 // ends up childless (in contrast to the message pool).
 type DefaultQueuePolicy struct {
 	// Provides blocks for chain traversal.
-	store chain.BlockProvider
+	store chain.TipSetProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(store chain.BlockProvider, maxAge uint64) *DefaultQueuePolicy {
+func NewMessageQueuePolicy(store chain.TipSetProvider, maxAge uint64) *DefaultQueuePolicy {
 	return &DefaultQueuePolicy{store, maxAge}
 }
 
 // HandleNewHead updates the policy target in response to a new head tipset.
 func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldHead, newHead types.TipSet) error {
-	_, newBlocks, err := CollectBlocksToCommonAncestor(ctx, p.store, oldHead, newHead)
+	_, newTips, err := CollectTipsToCommonAncestor(ctx, p.store, oldHead, newHead)
 	if err != nil {
 		return err
 	}
 
 	// Remove from the queue all messages that have now been mined in new blocks.
-
-	// Rearrange the blocks in increasing height order so messages are discovered in order.
-	// Note: this is imperfect until CollectBlocksToCommonAncestor is updated to return blocks
-	// at the same height in canonical (ticket) order.
-	reverse(newBlocks)
-	for _, block := range newBlocks {
-		for _, minedMsg := range block.Messages {
-			removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
-			if err != nil {
-				return err
+	// Rearrange the tipsets into increasing height order so messages are discovered in nonce order.
+	reverse(newTips)
+	for _, tipset := range newTips {
+		for i := 0; i < tipset.Len(); i++ {
+			for _, minedMsg := range tipset.At(i).Messages {
+				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
+				if err != nil {
+					return err
+				}
+				if found && !minedMsg.Equals(removed) {
+					log.Errorf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
+				}
+				// Else if not found, the message was not sent by this node, or has already been removed
+				// from the queue (e.g. a blockchain re-org).
 			}
-			if found && !minedMsg.Equals(removed) {
-				log.Errorf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
-			}
-			// Else if not found, the message was not sent by this node, or has already been removed
-			// from the queue (e.g. a blockchain re-org).
 		}
 	}
 
@@ -89,7 +88,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	return nil
 }
 
-func reverse(list []*types.Block) {
+func reverse(list []types.TipSet) {
 	// https://github.com/golang/go/wiki/SliceTricks#reversing
 	for i := len(list)/2 - 1; i >= 0; i-- {
 		opp := len(list) - 1 - i
