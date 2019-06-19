@@ -67,7 +67,12 @@ build_from_source() {
 
     cargo --version
     cargo update
-    cargo build --release --all
+
+    if [[ -f "./scripts/build-release.sh" ]]; then
+        ./scripts/build-release.sh $(cat rust-toolchain)
+    else
+        cargo build --release --all
+    fi
 
     popd
 }

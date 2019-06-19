@@ -13,11 +13,18 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var reorgCnt *metrics.Int64Counter
+
+func init() {
+	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occured.")
+}
 
 // The amount of time the syncer will wait while fetching the blocks of a
 // tipset over the network.
@@ -330,6 +337,7 @@ func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead types.TipSe
 
 	reorg := IsReorg(curHead, newHead, commonAncestor)
 	if reorg {
+		reorgCnt.Inc(ctx, 1)
 		dropped, added, err := ReorgDiff(curHead, newHead, commonAncestor)
 		if err == nil {
 			logSyncer.Infof("reorg dropping %d height and adding %d height from %s to %s", dropped, added, curHead.String(), newHead.String())
