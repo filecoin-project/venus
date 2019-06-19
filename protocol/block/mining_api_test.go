@@ -77,7 +77,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	nd := node.MakeNodeWithChainSeed(t, seed, configOpts,
 		node.AutoSealIntervalSecondsOpt(1),
 	)
-	bt := nd.GetBlockTime()
+	bt := nd.PorcelainAPI.BlockTime()
 	seed.GiveKey(t, nd, 0)
 	mAddr, moAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, moAddr, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)

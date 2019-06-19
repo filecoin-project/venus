@@ -2,6 +2,7 @@ package porcelain
 
 import (
 	"context"
+	"time"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -11,15 +12,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// ProtocolParams TODO(rosa)
+// ProtocolParams contains parameters that modify the filecoin nodes protocol
 type ProtocolParams struct {
 	AutoSealInterval uint
+	BlockTime        time.Duration
 	SectorSizes      []uint64
 }
 
 type protocolParamsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	BlockTime() time.Duration
 }
 
 // ProtocolParameters TODO(rosa)
@@ -41,6 +44,7 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 
 	return &ProtocolParams{
 		AutoSealInterval: autoSealInterval,
+		BlockTime:        plumbing.BlockTime(),
 		SectorSizes:      []uint64{sectorSize},
 	}, nil
 }

@@ -184,7 +184,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo) (*chain.DefaultSyncer, *th.Te
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	verifier := proofs.NewFakeVerifier(true, nil)
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), powerTable, genCid, verifier)
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, genCid, verifier, th.BlockTimeTest)
 
 	calcGenBlk, err := initGenesis(cst, bs) // flushes state
 	require.NoError(t, err)
@@ -210,7 +210,7 @@ func initSyncTestDefault(t *testing.T) (*chain.DefaultSyncer, chain.Store, repo.
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	verifier := proofs.NewFakeVerifier(true, nil)
-	con := consensus.NewExpected(cst, bs, processor, powerTable, genCid, verifier)
+	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false)
 	return initSyncTest(t, con, initGenesis, cst, bs, r)
 }
@@ -223,7 +223,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
 	verifier := proofs.NewFakeVerifier(true, nil)
-	con := consensus.NewExpected(cst, bs, processor, powerTable, genCid, verifier)
+	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false)
 	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesis, cst, bs, r)
 	return sync, testchain, con, fetcher
@@ -932,7 +932,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	chainStore := chain.NewDefaultStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
 
 	verifier := proofs.NewFakeVerifier(true, nil)
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), &th.TestView{}, calcGenBlk.Cid(), verifier)
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
 
 	// Initialize stores to contain genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, &calcGenBlk)
@@ -951,7 +951,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = proofs.NewFakeVerifier(true, nil)
-	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier)
+	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
 	syncer := chain.NewDefaultSyncer(cst, con, chainStore, blockSource)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, len(baseTS))

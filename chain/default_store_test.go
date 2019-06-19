@@ -26,7 +26,7 @@ func initStoreTest(ctx context.Context, t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), powerTable, genCid, proofs.NewFakeVerifier(true, nil))
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, genCid, proofs.NewFakeVerifier(true, nil), th.BlockTimeTest)
 	initSyncTest(t, con, initGenesis, cst, bs, r)
 	requireSetTestChain(t, con, true)
 }

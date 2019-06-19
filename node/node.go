@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -115,7 +116,6 @@ type Node struct {
 
 	// Mining stuff.
 	AddNewlyMinedBlock newBlockFunc
-	blockTime          time.Duration
 	cancelMining       context.CancelFunc
 	GetAncestorsFunc   mining.GetAncestors
 	GetStateTreeFunc   mining.GetStateTree
@@ -370,12 +370,16 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up pinger
 	pingService := ping.NewPingService(peerHost)
 
+	// setup block validation
+	// TODO when #2961 is resolved do the needful here.
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
+
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
-	fetcher := net.NewFetcher(ctx, bservice)
+	fetcher := net.NewFetcher(ctx, bservice, blkValid)
 
 	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
@@ -398,9 +402,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, &proofs.RustVerifier{})
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &proofs.RustVerifier{}, nc.BlockTime)
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, powerTable, genCid, nc.Verifier)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
 	}
 
 	// only the syncer gets the storage which is online connected
@@ -425,6 +429,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Config:       cfg.NewConfig(nc.Repo),
 		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
+		Expected:     nodeConsensus,
 		MsgPool:      msgPool,
 		MsgPreviewer: msg.NewPreviewer(fcWallet, chainStore, &cstOffline, bs),
 		MsgQueryer:   msg.NewQueryer(nc.Repo, fcWallet, chainStore, &cstOffline, bs),
@@ -453,7 +458,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,
-		blockTime:    nc.BlockTime,
 		Router:       router,
 	}
 
@@ -758,19 +762,9 @@ func (node *Node) miningAddress() (address.Address, error) {
 // Note this is mocked behavior, in production this time is determined by how
 // long it takes to generate PoSTs.
 func (node *Node) MiningTimes() (time.Duration, time.Duration) {
-	mineDelay := node.GetBlockTime() / mining.MineDelayConversionFactor
-	return node.GetBlockTime(), mineDelay
-}
-
-// GetBlockTime returns the current block time.
-// TODO this should be surfaced somewhere in the plumbing API.
-func (node *Node) GetBlockTime() time.Duration {
-	return node.blockTime
-}
-
-// SetBlockTime sets the block time.
-func (node *Node) SetBlockTime(blockTime time.Duration) {
-	node.blockTime = blockTime
+	blockTime := node.PorcelainAPI.BlockTime()
+	mineDelay := blockTime / mining.MineDelayConversionFactor
+	return blockTime, mineDelay
 }
 
 // StartMining causes the node to start feeding blocks to the mining worker and initializes
@@ -1058,11 +1052,11 @@ func (node *Node) setupProtocols() error {
 	node.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.blockTime, node.PorcelainAPI))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.host, node.PorcelainAPI))
 	node.RetrievalAPI = &retapi
 
 	// set up storage client and api
-	smc := storage.NewClient(node.blockTime, node.host, node.PorcelainAPI)
+	smc := storage.NewClient(node.host, node.PorcelainAPI)
 	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
@@ -1091,7 +1085,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 	return mining.NewDefaultWorker(
 		node.MsgPool, node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
 		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
-		node.Wallet, node.blockTime), nil
+		node.Wallet, node.PorcelainAPI), nil
 }
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey

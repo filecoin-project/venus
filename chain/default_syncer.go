@@ -141,10 +141,8 @@ func (syncer *DefaultSyncer) collectChain(ctx context.Context, tipsetCids types.
 			return nil, err
 		}
 
-		ts, err := syncer.consensus.NewValidTipSet(ctx, blks)
+		ts, err := types.NewTipSet(blks...)
 		if err != nil {
-			syncer.badTipSets.Add(tsKey)
-			syncer.badTipSets.AddChain(chain)
 			return nil, err
 		}
 
@@ -193,6 +191,12 @@ func (syncer *DefaultSyncer) syncOne(ctx context.Context, parent, next types.Tip
 	// if tipset is already head, we've been here before. do nothing.
 	if head.Equals(next.ToSortedCidSet()) {
 		return nil
+	}
+
+	for _, b := range next.ToSlice() {
+		if err := syncer.consensus.ValidateSemantic(ctx, b, &parent); err != nil {
+			return err
+		}
 	}
 
 	// Lookup parent state. It is guaranteed by the syncer that it is in

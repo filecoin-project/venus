@@ -56,9 +56,11 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	con := consensus.NewExpected(cst,
 		bs,
 		NewTestProcessor(),
+		NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
-		proofs.NewFakeVerifier(true, nil))
+		proofs.NewFakeVerifier(true, nil),
+		BlockTimeTest)
 	params.Consensus = con
 	return MkFakeChildWithCon(params)
 }
