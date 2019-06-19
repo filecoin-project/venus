@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -Eeo pipefail
 
 fetch_params() {
   ./proofs/bin/paramfetch --all --verbose --json=./proofs/misc/parameters.json || true

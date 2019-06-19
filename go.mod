@@ -7,6 +7,7 @@ require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
+	github.com/Workiva/go-datastructures v1.0.50
 	github.com/cskr/pubsub v1.0.2
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
@@ -75,7 +76,6 @@ require (
 	github.com/multiformats/go-multistream v0.0.1
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/otiai10/copy v1.0.1
 	github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95 // indirect
 	github.com/pkg/errors v0.8.1

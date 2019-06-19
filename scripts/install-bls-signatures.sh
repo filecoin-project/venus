@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -Eeo pipefail
+
 source "$(dirname "${BASH_SOURCE[0]}")/install-shared.bash"
 
 subm_dir="bls-signatures/bls-signatures"
@@ -19,7 +21,7 @@ else
     mkdir -p bls-signatures/include
     mkdir -p bls-signatures/lib/pkgconfig
 
-    cp "${subm_dir}/target/release/libbls_signatures.h" ./bls-signatures/include/libbls_signatures.h
-    cp "${subm_dir}/target/release/libbls_signatures_ffi.a" ./bls-signatures/lib/libbls_signatures.a
-    cp "${subm_dir}/target/release/libbls_signatures.pc" ./bls-signatures/lib/pkgconfig/libbls_signatures.pc
+    find "${subm_dir}" -type f -name libbls_signatures.h -exec mv -- "{}" ./bls-signatures/include/ \;
+    find "${subm_dir}" -type f -name libbls_signatures_ffi.a -exec cp -- "{}" ./bls-signatures/lib/ \;
+    find "${subm_dir}" -type f -name libbls_signatures.pc -exec cp -- "{}" ./bls-signatures/lib/pkgconfig/ \;
 fi
