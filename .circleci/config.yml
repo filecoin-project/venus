@@ -480,7 +480,7 @@ jobs:
           filename: "nightly-devnet.json"
       - run:
           name: cleanup nightly releases
-          command: ./tools/prerelease-tool/prerelease-tool --dry-run
+          command: ./tools/prerelease-tool/prerelease-tool
 
 
   trigger_devnet_deploy:
