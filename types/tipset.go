@@ -119,6 +119,20 @@ func (ts TipSet) MinTicket() (Signature, error) {
 	return ts.blocks[0].Ticket, nil
 }
 
+// MinTimestamp returns the smallest timestamp of all blocks in the tipset.
+func (ts TipSet) MinTimestamp() (Uint64, error) {
+	if len(ts.blocks) == 0 {
+		return 0, errUndefTipSet
+	}
+	min := ts.blocks[0].Timestamp
+	for i := 1; i < len(ts.blocks); i++ {
+		if ts.blocks[i].Timestamp < min {
+			min = ts.blocks[i].Timestamp
+		}
+	}
+	return min, nil
+}
+
 // Height returns the height of a tipset.
 func (ts TipSet) Height() (uint64, error) {
 	if len(ts.blocks) == 0 {

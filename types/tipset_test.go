@@ -28,7 +28,7 @@ func init() {
 	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
 }
 
-func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight uint64, msg string) *Block {
+func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
 	addrGetter := address.NewForTestGetter()
 
 	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
@@ -45,6 +45,7 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Messages:        []*SignedMessage{sm1},
 		StateRoot:       SomeCid(),
 		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
+		Timestamp:       Uint64(timestamp),
 	}
 }
 
@@ -68,8 +69,8 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("order breaks ties with CID", func(t *testing.T) {
-		b1 := block(t, []byte{1}, 1, cid1, parentWeight, "1")
-		b2 := block(t, []byte{1}, 1, cid1, parentWeight, "2")
+		b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
+		b2 := block(t, []byte{1}, 1, cid1, parentWeight, 2, "2")
 
 		ts := RequireNewTipSet(t, b1, b2)
 		if bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) < 0 {
@@ -119,6 +120,11 @@ func TestTipSet(t *testing.T) {
 
 		tsTicket, _ = RequireNewTipSet(t, b3, b2, b1).MinTicket()
 		assert.Equal(t, b1.Ticket, tsTicket)
+	})
+
+	t.Run("min timestamp", func(t *testing.T) {
+		tsTime, _ := RequireNewTipSet(t, b1, b2, b3).MinTimestamp()
+		assert.Equal(t, b1.Timestamp, tsTime)
 	})
 
 	t.Run("equality", func(t *testing.T) {
@@ -198,8 +204,8 @@ func TestTipSet(t *testing.T) {
 
 // Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
 func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
-	b1 := block(t, []byte{1}, 1, cid1, parentWeight, "1")
-	b2 := block(t, []byte{2}, 1, cid1, parentWeight, "2")
-	b3 := block(t, []byte{3}, 1, cid1, parentWeight, "3")
+	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
+	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
+	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
 	return b1, b2, b3
 }
