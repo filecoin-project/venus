@@ -10,15 +10,15 @@ type Clock interface {
 	Now() time.Time
 }
 
-// BlockClock delegates calls to the time package.
-type BlockClock struct{}
+// SystemClock delegates calls to the time package.
+type SystemClock struct{}
 
-// NewBlockClock returns a BlockClock that delegates calls to the time package.
-func NewBlockClock() *BlockClock {
-	return &BlockClock{}
+// NewSystemClock returns a SystemClock that delegates calls to the time package.
+func NewSystemClock() *SystemClock {
+	return &SystemClock{}
 }
 
 // Now returns the current local time.
-func (bc *BlockClock) Now() time.Time {
+func (bc *SystemClock) Now() time.Time {
 	return time.Now()
 }

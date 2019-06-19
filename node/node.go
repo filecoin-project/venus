@@ -383,7 +383,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	pingService := ping.NewPingService(peerHost)
 
 	// setup block validation
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewBlockClock())
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
