@@ -26,7 +26,7 @@ type QueuePolicy interface {
 // PolicyTarget is outbound queue object on which the policy acts.
 type PolicyTarget interface {
 	RemoveNext(ctx context.Context, sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error)
-	ExpireBefore(stamp uint64) map[address.Address][]*types.SignedMessage
+	ExpireBefore(ctx context.Context, stamp uint64) map[address.Address][]*types.SignedMessage
 }
 
 // DefaultQueuePolicy manages a target message queue state in response to changes on the blockchain.
@@ -80,7 +80,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 		return err
 	}
 	if height >= p.maxAgeRounds { // avoid uint subtraction overflow
-		expired := target.ExpireBefore(height - p.maxAgeRounds)
+		expired := target.ExpireBefore(ctx, (height - p.maxAgeRounds))
 		for _, msg := range expired {
 			log.Errorf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
 		}
