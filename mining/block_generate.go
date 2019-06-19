@@ -86,7 +86,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		Proof:           proof,
 		StateRoot:       newStateTreeCid,
 		Ticket:          ticket,
-		Timestamp:       types.Uint64(time.Now().Unix()),
+		// TODO when #2961 is resolved do the needful here.
+		Timestamp: types.Uint64(time.Now().Unix()),
 	}
 
 	for i, msg := range res.PermanentFailures {

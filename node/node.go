@@ -383,6 +383,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	pingService := ping.NewPingService(peerHost)
 
 	// setup block validation
+	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
 
 	// set up bitswap
