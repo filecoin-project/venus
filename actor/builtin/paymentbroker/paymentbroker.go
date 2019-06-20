@@ -104,6 +104,11 @@ type PaymentChannel struct {
 // channel's creator.
 type Actor struct{}
 
+// NewActor returns a new payment broker actor.
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
+}
+
 // InitializeState stores the actor's initial data structure.
 func (pb *Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
 	// pb's default state is an empty lookup, so this method is a no-op

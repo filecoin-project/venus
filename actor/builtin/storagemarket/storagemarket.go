@@ -55,8 +55,8 @@ type State struct {
 }
 
 // NewActor returns a new storage market actor.
-func NewActor() (*actor.Actor, error) {
-	return actor.NewActor(types.StorageMarketActorCodeCid, types.ZeroAttoFIL), nil
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.StorageMarketActorCodeCid, types.ZeroAttoFIL)
 }
 
 // InitializeState stores the actor's initial data structure.
