@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -221,6 +222,72 @@ func TestMinerGetPower(t *testing.T) {
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
 		require.True(t, types.ZeroBytes.Equal(types.NewBytesAmountFromBytes(result[0])))
+	})
+}
+
+func TestMinerGetProvingPeriod(t *testing.T) {
+	tf.UnitTest(t)
+
+	t.Run("GetProvingPeriod returns unitialized values when proving period is unset", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, vms := core.CreateStorages(ctx, t)
+
+		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
+			[]byte("my public key"), th.RequireRandomPeerID(t))
+
+		// retrieve proving period
+		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
+		require.NoError(t, err)
+
+		start, ok := startVal.Val.(*types.BlockHeight)
+		require.True(t, ok)
+		assert.Equal(t, types.NewBlockHeight(0), start)
+
+		endVal, err := abi.Deserialize(result[0], abi.BlockHeight)
+		require.NoError(t, err)
+
+		end, ok := endVal.Val.(*types.BlockHeight)
+		require.True(t, ok)
+		assert.Equal(t, types.NewBlockHeight(0), end)
+	})
+
+	t.Run("GetProvingPeriod returns the start and end of the proving period", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		st, vms := core.CreateStorages(ctx, t)
+
+		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
+			[]byte("my public key"), th.RequireRandomPeerID(t))
+
+		// commit sector to set ProvingPeriodEnd
+		commR := th.MakeCommitment()
+		commRStar := th.MakeCommitment()
+		commD := th.MakeCommitment()
+
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 42, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		// retrieve proving period
+		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
+		require.NoError(t, err)
+
+		start, ok := startVal.Val.(*types.BlockHeight)
+		require.True(t, ok)
+		assert.Equal(t, types.NewBlockHeight(42), start)
+
+		endVal, err := abi.Deserialize(result[1], abi.BlockHeight)
+		require.NoError(t, err)
+
+		end, ok := endVal.Val.(*types.BlockHeight)
+		require.True(t, ok)
+		assert.Equal(t, types.NewBlockHeight(20042), end)
 	})
 }
 

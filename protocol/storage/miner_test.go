@@ -408,11 +408,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
 		api, miner, _, logger := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
-		handlers := successMessageHandlers(t)
-		handlers["getPoStChallengeSeed"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-			return nil, errors.New("test error")
-		}
-		api.messageHandlers = handlers
+		api.randError = true
+		api.messageHandlers = successMessageHandlers(t)
 
 		height := uint64(20500)
 		api.blockHeight = types.NewBlockHeight(height)
@@ -524,11 +521,6 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 	handlers["getProvingPeriod"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return mustEncodeResults(t, types.NewBlockHeight(20003), types.NewBlockHeight(40003)), nil
 	}
-	handlers["getPoStChallengeSeed"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-		seed := types.PoStChallengeSeed{}
-		copy(seed[:], []byte("42"))
-		return mustEncodeResults(t, seed), nil
-	}
 	handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return [][]byte{}, nil
 	}
@@ -633,6 +625,7 @@ type minerTestPorcelain struct {
 	blockHeight     *types.BlockHeight
 	channelEol      *types.BlockHeight
 	paymentStart    *types.BlockHeight
+	randError       bool
 	deals           map[cid.Cid]*storagedeal.Deal
 	messageHandlers map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
@@ -644,6 +637,10 @@ func (mtp *minerTestPorcelain) MinerGetSectorSize(ctx context.Context, minerAddr
 }
 
 func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	if mtp.randError {
+		return []byte{}, errors.New("failure to sample chain randomness")
+	}
+
 	bytes := make([]byte, 42)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(err)

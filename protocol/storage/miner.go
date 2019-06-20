@@ -75,6 +75,7 @@ type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
 	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
@@ -587,19 +588,14 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 
 // currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
 // the miner actor's current proving period.
-func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (types.PoStChallengeSeed, error) {
-	returnValues, err := sm.porcelainAPI.MessageQuery(
-		ctx,
-		address.Address{},
-		sm.minerAddr,
-		"getPoStChallengeSeed",
-	)
+func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context, currentProvingPeriodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "getPoStChallengeSeed failed")
+		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
 	}
 
 	seed := types.PoStChallengeSeed{}
-	copy(seed[:], returnValues[0])
+	copy(seed[:], bytes)
 
 	return seed, nil
 }
@@ -736,7 +732,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
 
-			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx)
+			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx, provingPeriodStart)
 			if err != nil {
 				sm.log.Errorf("error obtaining challenge seed: %s", err)
 				return
