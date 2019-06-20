@@ -35,6 +35,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/util/convert"
 )
 
+var log = logging.Logger("/fil/storage")
+
 const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
 const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
@@ -50,7 +52,6 @@ const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 type Miner struct {
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
-	log            logging.StandardLogger
 
 	dealsAwaitingSealDs repo.Datastore
 
@@ -110,7 +111,6 @@ func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.D
 		porcelainAPI:        porcelainAPI,
 		dealsAwaitingSealDs: dealsDs,
 		node:                nd,
-		log:                 logging.Logger("/fil/storage"),
 		proposalAcceptor:    acceptProposal,
 		proposalRejector:    rejectProposal,
 	}
@@ -132,19 +132,19 @@ func (sm *Miner) handleMakeDeal(s inet.Stream) {
 
 	var signedProposal storagedeal.SignedDealProposal
 	if err := cbu.NewMsgReader(s).ReadMsg(&signedProposal); err != nil {
-		sm.log.Errorf("received invalid proposal: %s", err)
+		log.Errorf("received invalid proposal: %s", err)
 		return
 	}
 
 	ctx := context.Background()
 	resp, err := sm.receiveStorageProposal(ctx, &signedProposal)
 	if err != nil {
-		sm.log.Errorf("failed to process proposal: %s", err)
+		log.Errorf("failed to process proposal: %s", err)
 		return
 	}
 
 	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
-		sm.log.Errorf("failed to write proposal response: %s", err)
+		log.Errorf("failed to write proposal response: %s", err)
 	}
 }
 
@@ -386,50 +386,50 @@ func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f 
 		return errors.Wrap(err, "failed to store updated deal response in datastore")
 	}
 
-	sm.log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), storageDeal.Response)
+	log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), storageDeal.Response)
 	return nil
 }
 
 func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
-	sm.log.Debugf("Miner.processStorageDeal(%s)", proposalCid.String())
+	log.Debugf("Miner.processStorageDeal(%s)", proposalCid.String())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	d, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
-		sm.log.Errorf("could not retrieve deal with proposal CID %s: %s", proposalCid.String(), err)
+		log.Errorf("could not retrieve deal with proposal CID %s: %s", proposalCid.String(), err)
 	}
 	if d.Response.State != storagedeal.Accepted {
 		// TODO: handle resumption of deal processing across miner restarts
-		sm.log.Error("attempted to process an already started deal")
+		log.Error("attempted to process an already started deal")
 		return
 	}
 
 	// 'Receive' the data, this could also be a truck full of hard drives. (TODO: proper abstraction)
 	// TODO: this is not a great way to do this. At least use a session
 	// Also, this needs to be fetched into a staging area for miners to prepare and seal in data
-	sm.log.Debug("Miner.processStorageDeal - FetchGraph")
+	log.Debug("Miner.processStorageDeal - FetchGraph")
 	if err := dag.FetchGraph(ctx, d.Proposal.PieceRef, dag.NewDAGService(sm.node.BlockService())); err != nil {
-		sm.log.Errorf("failed to fetch data: %s", err)
+		log.Errorf("failed to fetch data: %s", err)
 		err := sm.updateDealResponse(ctx, proposalCid, func(resp *storagedeal.Response) {
 			resp.Message = "Transfer failed"
 			resp.State = storagedeal.Failed
 			// TODO: signature?
 		})
 		if err != nil {
-			sm.log.Errorf("could not update to deal to 'Failed' state: %s", err)
+			log.Errorf("could not update to deal to 'Failed' state: %s", err)
 		}
 		return
 	}
 
 	fail := func(message, logerr string) {
-		sm.log.Errorf(logerr)
+		log.Errorf(logerr)
 		err := sm.updateDealResponse(ctx, proposalCid, func(resp *storagedeal.Response) {
 			resp.Message = message
 			resp.State = storagedeal.Failed
 		})
 		if err != nil {
-			sm.log.Errorf("could not update to deal to 'Failed' state in fail callback: %s", err)
+			log.Errorf("could not update to deal to 'Failed' state in fail callback: %s", err)
 		}
 	}
 
@@ -466,14 +466,14 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 		resp.State = storagedeal.Staged
 	})
 	if err != nil {
-		sm.log.Errorf("could update to 'Staged': %s", err)
+		log.Errorf("could update to 'Staged': %s", err)
 	}
 
 	// Careful: this might update state to success or failure so it should go after
 	// updating state to Staged.
 	sm.dealsAwaitingSeal.attachDealToSector(ctx, sectorID, proposalCid)
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
-		sm.log.Errorf("could not save deal awaiting seal: %s", err)
+		log.Errorf("could not save deal awaiting seal: %s", err)
 	}
 }
 
@@ -509,17 +509,17 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 func (sm *Miner) OnCommitmentSent(sector *sectorbuilder.SealedSectorMetadata, msgCid cid.Cid, err error) {
 	ctx := context.Background()
 	sectorID := sector.SectorID
-	sm.log.Debug("Miner.OnCommitmentSent")
+	log.Debug("Miner.OnCommitmentSent")
 
 	if err != nil {
-		sm.log.Errorf("failed sealing sector: %d: %s:", sectorID, err)
+		log.Errorf("failed sealing sector: %d: %s:", sectorID, err)
 		errMsg := fmt.Sprintf("failed sealing sector: %d", sectorID)
 		sm.dealsAwaitingSeal.onSealFail(ctx, sector.SectorID, errMsg)
 	} else {
 		sm.dealsAwaitingSeal.onSealSuccess(ctx, sector, msgCid)
 	}
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
-		sm.log.Errorf("failed persisting deals awaiting seal: %s", err)
+		log.Errorf("failed persisting deals awaiting seal: %s", err)
 		sm.dealsAwaitingSeal.onSealFail(ctx, sector.SectorID, "failed persisting deals awaiting seal")
 	}
 }
@@ -528,13 +528,13 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 	pieceInfo, err := sm.findPieceInfo(ctx, dealCid, sector)
 	if err != nil {
 		// log error, but continue to update deal with the information we have
-		sm.log.Errorf("commit succeeded, but could not find piece info %s", err)
+		log.Errorf("commit succeeded, but could not find piece info %s", err)
 	}
 
 	// failure to locate commitmentMessage should not block update
 	commitMessageCid, ok := sm.dealsAwaitingSeal.commitMessageCid(sector.SectorID)
 	if !ok {
-		sm.log.Errorf("commit succeeded, but could not find commit message cid.")
+		log.Errorf("commit succeeded, but could not find commit message cid.")
 	}
 
 	// update response
@@ -549,7 +549,7 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 		}
 	})
 	if err != nil {
-		sm.log.Errorf("commit succeeded but could not update to deal 'Complete' state: %s", err)
+		log.Errorf("commit succeeded but could not update to deal 'Complete' state: %s", err)
 	}
 }
 
@@ -579,7 +579,7 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 		resp.Message = message
 		resp.State = storagedeal.Failed
 	})
-	sm.log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
+	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
 // poStChallengeSeedAtBlockHeight produces a PoSt challenge seed for the proving period starting at the given height.
@@ -658,32 +658,30 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 // OnNewHeaviestTipSet is a callback called by node, every time the the latest
 // head is updated. It is used to check if we are in a new proving period and
 // need to trigger PoSt submission.
-func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
+func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	ctx := context.Background()
 
 	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
 	if err != nil {
-		sm.log.Errorf("could not determine if actor created for bootstrapping: %s", err)
-		return
+		return errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
 	}
 
 	if isBootstrapMinerActor {
-		sm.log.Info("bootstrap miner actor skips PoSt-generation flow")
-		return
+		// this is not an error condition, so log quietly
+		log.Info("bootstrap miner actor skips PoSt-generation flow")
+		return nil
 	}
 
 	commitments, err := sm.getActorSectorCommitments(ctx)
 	if err != nil {
-		sm.log.Errorf("failed to get miner actor commitments: %s", err)
-		return
+		return errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
 
 	var inputs []generatePostInput
 	for k, v := range commitments {
 		n, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
-			sm.log.Errorf("failed to parse commitment sector id to uint64: %s", err)
-			return
+			return errors.Errorf("failed to parse commitment sector id to uint64: %s", err)
 		}
 
 		inputs = append(inputs, generatePostInput{
@@ -696,13 +694,12 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 
 	if len(inputs) == 0 {
 		// no sector sealed, nothing to do
-		return
+		return nil
 	}
 
 	provingPeriodStart, provingPeriodEnd, err := sm.getProvingPeriod()
 	if err != nil {
-		sm.log.Errorf("failed to get proving period: %s", err)
-		return
+		return errors.Errorf("failed to get proving period: %s", err)
 	}
 
 	sm.postInProcessLk.Lock()
@@ -710,13 +707,12 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 
 	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodEnd) {
 		// post is already being generated for this period, nothing to do
-		return
+		return nil
 	}
 
 	height, err := ts.Height()
 	if err != nil {
-		sm.log.Errorf("failed to get block height: %s", err)
-		return
+		return errors.Errorf("failed to get block height: %s", err)
 	}
 
 	// the block height of the new heaviest tipset
@@ -729,17 +725,17 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 
 			seed, err := sm.poStChallengeSeedAtBlockHeight(ctx, provingPeriodStart)
 			if err != nil {
-				sm.log.Errorf("error obtaining challenge seed: %s", err)
-				return
+				return errors.Errorf("error obtaining challenge seed: %s", err)
 			}
 
 			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
-			sm.log.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
+			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
+	return nil
 }
 
 func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
@@ -782,29 +778,29 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChalle
 
 	proofs, faults, err := sm.generatePoSt(sortedCommRs, seed)
 	if err != nil {
-		sm.log.Errorf("failed to generate PoSts: %s", err)
+		log.Errorf("failed to generate PoSts: %s", err)
 		return
 	}
 	if len(faults) != 0 {
-		sm.log.Warningf("some faults when generating PoSt: %v", faults)
+		log.Warningf("some faults when generating PoSt: %v", faults)
 		// TODO: proper fault handling
 	}
 
 	height, err := sm.porcelainAPI.ChainBlockHeight()
 	if err != nil {
-		sm.log.Errorf("failed to submit PoSt, as the current block height can not be determined: %s", err)
+		log.Errorf("failed to submit PoSt, as the current block height can not be determined: %s", err)
 		// TODO: what should happen in this case?
 		return
 	}
 	if height.LessThan(start) {
 		// TODO: what to do here? not sure this can happen, maybe through reordering?
-		sm.log.Errorf("PoSt generation time took negative block time: %s < %s", height, start)
+		log.Errorf("PoSt generation time took negative block time: %s < %s", height, start)
 		return
 	}
 
 	if height.GreaterEqual(end) {
 		// TODO: we are too late, figure out faults and decide if we want to still submit
-		sm.log.Errorf("PoSt generation was too slow height=%s end=%s", height, end)
+		log.Errorf("PoSt generation was too slow height=%s end=%s", height, end)
 		return
 	}
 
@@ -818,11 +814,11 @@ func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChalle
 
 	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", proofs)
 	if err != nil {
-		sm.log.Errorf("failed to submit PoSt: %s", err)
+		log.Errorf("failed to submit PoSt: %s", err)
 		return
 	}
 
-	sm.log.Debug("submitted PoSt")
+	log.Debug("submitted PoSt")
 }
 
 // Query responds to a query for the proposal referenced by the given cid
@@ -845,13 +841,13 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 
 	var q storagedeal.QueryRequest
 	if err := cbu.NewMsgReader(s).ReadMsg(&q); err != nil {
-		sm.log.Errorf("received invalid query: %s", err)
+		log.Errorf("received invalid query: %s", err)
 		return
 	}
 
 	resp := sm.Query(ctx, q.Cid)
 
 	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
-		sm.log.Errorf("failed to write query response: %s", err)
+		log.Errorf("failed to write query response: %s", err)
 	}
 }
