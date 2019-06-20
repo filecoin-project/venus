@@ -338,7 +338,7 @@ func MinerGetWorker(ctx context.Context, plumbing minerQueryAndDeserialize, mine
 		return address.Undef, err
 	}
 
-	return address.NewActorAddress(res[0])
+	return address.NewFromBytes(res[0])
 }
 
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
