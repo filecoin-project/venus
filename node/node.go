@@ -680,7 +680,10 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			head = newHead
 
 			if node.StorageMiner != nil {
-				node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				err := node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				if err != nil {
+					log.Error(err)
+				}
 			}
 			node.HeaviestTipSetHandled()
 		case <-ctx.Done():
