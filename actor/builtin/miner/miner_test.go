@@ -2,7 +2,6 @@ package miner_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/abi"
 	"math/big"
 	"testing"
 
@@ -261,8 +260,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// retrieve proving period
 		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -287,8 +285,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// commit sector to set ProvingPeriodEnd
 		commR := th.MakeCommitment()
