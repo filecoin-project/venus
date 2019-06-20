@@ -276,6 +276,10 @@ func (ma *Actor) Exports() exec.Exports {
 	return minerExports
 }
 
+//
+// Exported actor methods
+//
+
 // AddAsk adds an ask to this miners ask list
 func (ma *Actor) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
@@ -583,14 +587,6 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
-// CollateralForSector returns the collateral required to commit a sector of the
-// given size.
-func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
-	// TODO: Replace this function with the baseline pro-rata construction.
-	// https://github.com/filecoin-project/go-filecoin/issues/2866
-	return MinimumCollateralPerSector
-}
-
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
 func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
@@ -731,19 +727,51 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
+	chainHeight := ctx.BlockHeight()
+	sender := ctx.Message().From
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// verify that the caller is authorized to perform update
-		if ctx.Message().From != state.Owner {
+		if sender != state.Owner {
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
-		// Check if we submitted it in time
+		// Calcuate any penalties for late submission
 		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
-		if ctx.BlockHeight().GreaterThan(provingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))) {
-			// Not great.
-			// TODO: charge penalty
-			return nil, errors.NewRevertErrorf("submitted PoSt late, need to pay a fee")
+		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
+		if chainHeight.GreaterThan(provingPeriodEnd.Add(generationAttackGracePeriod)) {
+			// The PoSt has been submitted after the generation attack time.
+			// The miner can expect to be slashed, and so for now the PoSt is rejected.
+			// An alternative would be to apply the penalties here, duplicating the behaviour
+			// of SlashStorageFault.
+			return nil, errors.NewRevertErrorf("PoSt submitted later than grace period of %s rounds after proving period end",
+				generationAttackGracePeriod)
+		}
+
+		feeRequired := LatePoStFee(state.ActiveCollateral, provingPeriodEnd, chainHeight, generationAttackGracePeriod)
+
+		// The message value has been added to the actor's balance.
+		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
+		// balance (whichs forms pledge & storage collateral) is not less than it was before.
+		messageValue := ctx.Message().Value
+		if messageValue.LessThan(feeRequired) {
+			return nil, errors.NewRevertErrorf("PoSt message requires value of at least %s attofil to cover fees, got %s", feeRequired, messageValue)
+		}
+
+		// Since the message value was at least equal to this fee, this burn should not fail due to
+		// insufficient balance.
+		err := ma.burnFunds(ctx, feeRequired)
+		if err != nil {
+			return nil, errors.RevertErrorWrapf(err, "Failed to burn fee %s", feeRequired)
+		}
+
+		// Refund any overpayment of fees to the owner.
+		if messageValue.GreaterThan(feeRequired) {
+			overpayment := messageValue.Sub(feeRequired)
+			_, _, err := ctx.Send(sender, "", overpayment, []interface{}{})
+			if err != nil {
+				return nil, errors.NewRevertErrorf("Failed to refund overpayment of %s to %s", overpayment, sender)
+			}
 		}
 
 		// As with commitSector messages, bootstrap miner actors don't verify
@@ -782,7 +810,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 
 		// transition to the next proving period
 		state.ProvingPeriodStart = provingPeriodEnd
-		state.LastPoSt = ctx.BlockHeight()
+		state.LastPoSt = chainHeight
 
 		return nil, nil
 	})
@@ -812,17 +840,18 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 	return state.ProvingPeriodStart, 0, nil
 }
 
-func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
-	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
-	if err != nil {
-		return types.PoStChallengeSeed{}, err
-	}
+//
+// Un-exported methods
+//
 
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-
-	return seed, nil
+func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
+	_, _, err := ctx.Send(address.BurntFundsAddress, "", amount, []interface{}{})
+	return err
 }
+
+//
+// Exported free functions.
+//
 
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
@@ -837,17 +866,12 @@ func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
 	return proofsMode, nil
 }
 
-// TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
-// see https://github.com/filecoin-project/go-filecoin/issues/2629
-func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
-	if len(proof) != 2*int(types.CommitmentBytesLen) {
-		return false, errors.NewRevertError("malformed inclusion proof")
-	}
-	combined := []byte{}
-	combined = append(combined, commP[:]...)
-	combined = append(combined, commD[:]...)
-
-	return bytes.Equal(combined, proof), nil
+// CollateralForSector returns the collateral required to commit a sector of the
+// given size.
+func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
+	// TODO: Replace this function with the baseline pro-rata construction.
+	// https://github.com/filecoin-project/go-filecoin/issues/2866
+	return MinimumCollateralPerSector
 }
 
 // GenerationAttackTime is the number of blocks after a proving period ends
@@ -866,4 +890,53 @@ func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
 // https://github.com/filecoin-project/specs/issues/321
 func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 	return LargestSectorSizeProvingPeriodBlocks
+}
+
+// LatePostFee calculates the fee from pledge collateral that a miner must pay for submitting a PoSt
+// after the proving period has ended.
+// The fee is calculated as a linear proportion of pledge collateral given by the lateness as a
+// fraction of the maximum possible lateness (i.e. the generation attack grace period).
+// If the submission is on-time, the fee is zero. If the submission is after the maximum allowed lateness
+// the fee amounts to the entire pledge collateral.
+func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
+	roundsLate := chainHeight.Sub(provingPeriodEnd)
+	if roundsLate.GreaterEqual(maxRoundsLate) {
+		return pledgeCollateral
+	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+		// fee = collateral * (roundsLate / maxRoundsLate)
+		var fee big.Int
+		fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
+		fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
+		return types.NewAttoFIL(&fee)
+	}
+	return types.ZeroAttoFIL
+}
+
+//
+// Internal functions
+//
+
+func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
+	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
+	if err != nil {
+		return types.PoStChallengeSeed{}, err
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+
+	return seed, nil
+}
+
+// TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
+// see https://github.com/filecoin-project/go-filecoin/issues/2629
+func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
+	if len(proof) != 2*int(types.CommitmentBytesLen) {
+		return false, errors.NewRevertError("malformed inclusion proof")
+	}
+	combined := []byte{}
+	combined = append(combined, commP[:]...)
+	combined = append(combined, commD[:]...)
+
+	return bytes.Equal(combined, proof), nil
 }
