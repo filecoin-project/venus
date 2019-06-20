@@ -304,7 +304,7 @@ func TestMinerCommitSector(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period matches
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriodEnd", nil)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriod", nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 
@@ -312,7 +312,7 @@ func TestMinerCommitSector(t *testing.T) {
 		provingPeriod := ProvingPeriodDuration(types.OneKiBSectorSize)
 
 		// blockheight was 3
-		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[0]))
+		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[1]))
 
 		// fail because commR already exists
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
@@ -363,10 +363,10 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period is now the next one
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriodEnd", ancestors)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriod", ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[0]), types.NewBlockHeight(secondProvingPeriodEnd))
+		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))
 	})
 
 	t.Run("after generation attack grace period rejected", func(t *testing.T) {

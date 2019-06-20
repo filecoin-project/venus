@@ -146,6 +146,7 @@ type State struct {
 
 	LastUsedSectorID uint64
 
+	// ProvingPeriodEnd is the block height at the end of the current proving period
 	ProvingPeriodEnd *types.BlockHeight
 	LastPoSt         *types.BlockHeight
 
@@ -252,10 +253,6 @@ var minerExports = exec.Exports{
 	"verifyPieceInclusion": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
-	},
-	"getProvingPeriodEnd": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.BlockHeight},
 	},
 	"getSectorCommitments": &exec.FunctionSignature{
 		Params: nil,
