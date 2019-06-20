@@ -24,14 +24,14 @@ import (
 //    <block_long> ::= "00" <unsigned_varint>
 //    <bit> ::= "0" | "1"
 //
-// The specification omits the byte packing order, which inferred from the reference implementation, is low-order bit first.
+// The encoding is returned as a []byte, each byte packed starting with the low-order bit (LSB0)
 func Encode(ints []uint64) ([]byte, int) {
 	v := bitvector.BitVector{BytePacking: bitvector.LSB0}
 	firstBit, runs := RunLengths(ints)
 
 	// Add version
-	//v.Push(0)
-	//v.Push(0)
+	v.Push(0)
+	v.Push(0)
 
 	v.Push(firstBit)
 
@@ -64,6 +64,8 @@ func Encode(ints []uint64) ([]byte, int) {
 // of the behavior of BitVector.Take returning 0 when the end of
 // the BitVector has been reached. This has the downside of not
 // being able to detect corrupt encodings.
+//
+// The passed []byte should be packed in LSB0 bit numbering
 func Decode(buf []byte) (ints []uint64) {
 	if len(buf) == 0 {
 		return
@@ -73,8 +75,8 @@ func Decode(buf []byte) (ints []uint64) {
 	take := v.Iterator(bitvector.LSB0)
 
 	// Read version and discard
-	//take(1)
-	//take(1)
+	take(1)
+	take(1)
 
 	curIdx := uint64(0)
 	curBit := take(1)

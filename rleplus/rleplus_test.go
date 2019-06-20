@@ -31,7 +31,7 @@ func TestRleplus(t *testing.T) {
 		}
 
 		expectedBits := []byte{
-			//0, 0, // version
+			0, 0, // version
 			1,                // first bit
 			1,                // run of 1
 			1,                // gap of 1
@@ -98,9 +98,12 @@ func TestRleplus(t *testing.T) {
 
 	t.Run("Outputs same as reference implementation", func(t *testing.T) {
 		// Encoding bitvec![LittleEndian; 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-		// in the Rust reference implementation gives an encoding of [223, 145, 136, 0]
+		// in the Rust reference implementation gives an encoding of [223, 145, 136, 0] (without version field)
 		// The bit vector is equivalent to the integer set { 0, 2, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 }
-		referenceEncoding := []byte{223, 145, 136, 0}
+
+		// This is the above reference output with a version header "00" manually added
+		referenceEncoding := []byte{124, 71, 34, 2}
+
 		expectedNumbers := []uint64{0, 2, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27}
 
 		encoded, _ := rleplus.Encode(expectedNumbers)
