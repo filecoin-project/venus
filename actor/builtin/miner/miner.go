@@ -146,8 +146,9 @@ type State struct {
 
 	LastUsedSectorID uint64
 
-	ProvingPeriodStart *types.BlockHeight
-	LastPoSt           *types.BlockHeight
+	// ProvingPeriodEnd is the block height at the end of the current proving period
+	ProvingPeriodEnd *types.BlockHeight
+	LastPoSt         *types.BlockHeight
 
 	// The amount of space committed to the network by this miner.
 	Power *types.BytesAmount
@@ -253,10 +254,6 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
-	"getProvingPeriodStart": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.BlockHeight},
-	},
 	"getSectorCommitments": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
@@ -268,6 +265,10 @@ var minerExports = exec.Exports{
 	"getSectorSize": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
+	},
+	"getProvingPeriod": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
 }
 
@@ -557,7 +558,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
 
 		if state.Power.Equal(types.NewBytesAmount(0)) {
-			state.ProvingPeriodStart = ctx.BlockHeight()
+			state.ProvingPeriodEnd = ctx.BlockHeight().Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
 		inc := state.SectorSize
 		state.Power = state.Power.Add(inc)
@@ -737,9 +738,8 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		}
 
 		// Calcuate any penalties for late submission
-		provingPeriodEnd := state.ProvingPeriodStart.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
-		if chainHeight.GreaterThan(provingPeriodEnd.Add(generationAttackGracePeriod)) {
+		if chainHeight.GreaterThan(state.ProvingPeriodEnd.Add(generationAttackGracePeriod)) {
 			// The PoSt has been submitted after the generation attack time.
 			// The miner can expect to be slashed, and so for now the PoSt is rejected.
 			// An alternative would be to apply the penalties here, duplicating the behaviour
@@ -748,7 +748,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 				generationAttackGracePeriod)
 		}
 
-		feeRequired := LatePoStFee(state.ActiveCollateral, provingPeriodEnd, chainHeight, generationAttackGracePeriod)
+		feeRequired := LatePoStFee(state.ActiveCollateral, state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
@@ -779,7 +779,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			seed, err := currentProvingPeriodPoStChallengeSeed(ctx, state)
+			seed, err := getPoStChallengeSeed(ctx, state)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
@@ -809,7 +809,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		}
 
 		// transition to the next proving period
-		state.ProvingPeriodStart = provingPeriodEnd
+		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		state.LastPoSt = chainHeight
 
 		return nil, nil
@@ -821,25 +821,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 	return 0, nil
 }
 
-// GetProvingPeriodStart returns the current ProvingPeriodStart value.
-func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	var state State
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	return state.ProvingPeriodStart, 0, nil
-}
-
 //
 // Un-exported methods
 //
@@ -847,6 +828,34 @@ func (ma *Actor) GetProvingPeriodStart(ctx exec.VMContext) (*types.BlockHeight, 
 func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
 	_, _, err := ctx.Send(address.BurntFundsAddress, "", amount, []interface{}{})
 	return err
+}
+
+// GetProvingPeriod returns the proving period start and proving period end
+func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return nil, nil, errors.CodeError(err), err
+	}
+
+	var state State
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return nil, nil, errors.CodeError(err), err
+	}
+
+	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+}
+
+// getPoStChallengeSeed returns some chain randomness
+func getPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
+	randomness, err := ctx.SampleChainRandomness(provingPeriodStart(state))
+	if err != nil {
+		return types.PoStChallengeSeed{}, err
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], randomness)
+
+	return seed, nil
 }
 
 //
@@ -872,6 +881,14 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	// TODO: Replace this function with the baseline pro-rata construction.
 	// https://github.com/filecoin-project/go-filecoin/issues/2866
 	return MinimumCollateralPerSector
+}
+
+// calculates proving period start from the proving period end and the proving period duration
+func provingPeriodStart(state State) *types.BlockHeight {
+	if state.ProvingPeriodEnd == nil {
+		return types.NewBlockHeight(0)
+	}
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 }
 
 // GenerationAttackTime is the number of blocks after a proving period ends
@@ -917,7 +934,7 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 
 func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
-	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodStart)
+	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodEnd)
 	if err != nil {
 		return types.PoStChallengeSeed{}, err
 	}

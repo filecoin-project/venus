@@ -10,19 +10,18 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
-	cid "github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
-	host "github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -583,14 +582,8 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
-// the miner actor's current proving period.
-func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context) (types.PoStChallengeSeed, error) {
-	currentProvingPeriodStart, err := sm.getProvingPeriodStart()
-	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error obtaining current proving period")
-	}
-
+// poStChallengeSeedAtBlockHeight produces a PoSt challenge seed for the proving period starting at the given height.
+func (sm *Miner) poStChallengeSeedAtBlockHeight(ctx context.Context, currentProvingPeriodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
 	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
 		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
@@ -665,32 +658,30 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 // OnNewHeaviestTipSet is a callback called by node, every time the the latest
 // head is updated. It is used to check if we are in a new proving period and
 // need to trigger PoSt submission.
-func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
+func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	ctx := context.Background()
 
 	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
 	if err != nil {
-		log.Errorf("could not determine if actor created for bootstrapping: %s", err)
-		return
+		return errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
 	}
 
 	if isBootstrapMinerActor {
+		// this is not an error condition, so log quietly
 		log.Info("bootstrap miner actor skips PoSt-generation flow")
-		return
+		return nil
 	}
 
 	commitments, err := sm.getActorSectorCommitments(ctx)
 	if err != nil {
-		log.Errorf("failed to get miner actor commitments: %s", err)
-		return
+		return errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
 
 	var inputs []generatePostInput
 	for k, v := range commitments {
 		n, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
-			log.Errorf("failed to parse commitment sector id to uint64: %s", err)
-			return
+			return errors.Errorf("failed to parse commitment sector id to uint64: %s", err)
 		}
 
 		inputs = append(inputs, generatePostInput{
@@ -703,73 +694,62 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 
 	if len(inputs) == 0 {
 		// no sector sealed, nothing to do
-		return
+		return nil
 	}
 
-	provingPeriodStart, err := sm.getProvingPeriodStart()
+	provingPeriodStart, provingPeriodEnd, err := sm.getProvingPeriod()
 	if err != nil {
-		log.Errorf("failed to get provingPeriodStart: %s", err)
-		return
+		return errors.Errorf("failed to get proving period: %s", err)
 	}
 
 	sm.postInProcessLk.Lock()
 	defer sm.postInProcessLk.Unlock()
 
-	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodStart) {
+	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodEnd) {
 		// post is already being generated for this period, nothing to do
-		return
+		return nil
 	}
 
 	height, err := ts.Height()
 	if err != nil {
-		log.Errorf("failed to get block height: %s", err)
-		return
-	}
-
-	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
-	if err != nil {
-		log.Errorf("failed to get miner's sector size: %s", err)
-		return
+		return errors.Errorf("failed to get block height: %s", err)
 	}
 
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
-	// compute the block height at which the miner's current proving period ends
-	provingPeriodEnd := provingPeriodStart.Add(types.NewBlockHeight(miner.ProvingPeriodDuration(sectorSize)))
-
 	if h.GreaterEqual(provingPeriodStart) {
-		if h.LessThan(provingPeriodEnd) {
+		if h.LessEqual(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
-			sm.postInProcess = provingPeriodStart
+			sm.postInProcess = provingPeriodEnd
 
-			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx)
+			seed, err := sm.poStChallengeSeedAtBlockHeight(ctx, provingPeriodStart)
 			if err != nil {
-				log.Errorf("error obtaining challenge seed: %s", err)
-				return
+				return errors.Errorf("error obtaining challenge seed: %s", err)
 			}
 
 			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
-			log.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
+			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
+	return nil
 }
 
-func (sm *Miner) getProvingPeriodStart() (*types.BlockHeight, error) {
+func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
 	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
-		"getProvingPeriodStart",
+		"getProvingPeriod",
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return types.NewBlockHeightFromBytes(res[0]), nil
+	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
 // generatePoSt creates the required PoSt, given a list of sector ids and
