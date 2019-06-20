@@ -56,7 +56,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
 	fromAct := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000))
 	vms := th.VMStorage()
-	minerActor := th.RequireNewMinerActor(t, vms, minerAddr, minerOwnerAddr, []byte{}, 10, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
+	minerActor := th.RequireNewMinerActor(t, vms, minerAddr, minerOwnerAddr, 10, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 	stCid, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(startingNetworkBalance)),
 		minerAddr:              minerActor,
@@ -394,7 +394,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000))
-	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -421,7 +421,7 @@ func TestProcessBlockParamsError(t *testing.T) {
 
 	addr2, addr1 := newAddress(), newAddress()
 	act1 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000))
-	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
 		addr2: act2,
@@ -449,7 +449,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		addr1 := mockSigner.Addresses[0]
 		addr2 := newAddress()
 		act1 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000))
-		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 			addr1: act1,
 			addr2: act2,
@@ -474,7 +474,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		addr2 := newAddress()
 		act1 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000))
 		act1.Nonce = 5
-		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, uint64(10), th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 			addr1: act1,
 			addr2: act2,
@@ -524,8 +524,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 		addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
-		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{},
-			10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(1000))
+		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(1000))
 
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{addr2: act2})
 
@@ -549,7 +548,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		addr1 := mockSigner.Addresses[0]
 		addr2 := newAddress()
 		act1 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000))
-		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+		act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 			addr1: act1,
 			addr2: act2,
@@ -1059,7 +1058,7 @@ func mustSetup2Actors(t *testing.T, balance1 types.AttoFIL, balance2 types.AttoF
 
 	addr1, addr2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	act1 := th.RequireNewAccountActor(t, balance1)
-	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, []byte{}, 10, th.RequireRandomPeerID(t), balance2)
+	act2 := th.RequireNewMinerActor(t, vms, addr2, addr1, 10, th.RequireRandomPeerID(t), balance2)
 
 	_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		addr1: act1,
@@ -1069,7 +1068,7 @@ func mustSetup2Actors(t *testing.T, balance1 types.AttoFIL, balance2 types.AttoF
 }
 
 func mustCreateStorageMiner(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
-	miner := th.RequireNewMinerActor(t, vms, minerAddr, minerOwner, []byte{}, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
+	miner := th.RequireNewMinerActor(t, vms, minerAddr, minerOwner, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 	require.NoError(t, st.SetActor(ctx, minerAddr, miner))
 	stCid, err := st.Flush(ctx)
 	require.NoError(t, err)

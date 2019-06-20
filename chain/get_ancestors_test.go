@@ -32,14 +32,15 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerOwner, err := ki[0].Address()
+	require.NoError(t, err)
 
 	for i := uint(0); i < numBlocks; i++ {
 		fakeChildParams := th.FakeChildParams{
 			Parent:      link,
 			GenesisCid:  dstP.genCid,
 			Signer:      signer,
-			MinerPubKey: mockSignerPubKey,
+			MinerWorker: minerOwner,
 			StateRoot:   dstP.genStateRoot,
 		}
 		linkBlock := th.RequireMkFakeChild(t, fakeChildParams)
@@ -51,7 +52,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 		}
 		require.NoError(t, chainStore.PutTipSetAndState(ctx, linkTsas))
 	}
-	err := chainStore.SetHead(ctx, link)
+	err = chainStore.SetHead(ctx, link)
 	require.NoError(t, err)
 }
 
@@ -110,7 +111,8 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	// Now add 10 null blocks and 1 tipset.
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 
 	nullBlocks := uint64(10)
 
@@ -119,7 +121,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 		GenesisCid:     dstP.genCid,
 		NullBlockCount: nullBlocks,
 		Signer:         signer,
-		MinerPubKey:    mockSignerPubKey,
+		MinerWorker:    minerWorker,
 		StateRoot:      dstP.genStateRoot,
 	}
 
@@ -131,7 +133,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 		TipSetStateRoot: dstP.genStateRoot,
 	}
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
-	err := chainStore.SetHead(ctx, afterNull)
+	err = chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
 	// Now add 19 more tipsets.
@@ -241,7 +243,8 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 
 	// Now add 10 null blocks and 1 tipset.
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 
 	nullBlocks := uint64(10)
 
@@ -251,7 +254,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		StateRoot:      dstP.genStateRoot,
 		NullBlockCount: nullBlocks,
 		Signer:         signer,
-		MinerPubKey:    mockSignerPubKey,
+		MinerWorker:    minerWorker,
 	}
 	afterNullBlock := th.RequireMkFakeChild(t, fakeChildParams)
 	requirePutBlocks(t, blockSource, afterNullBlock)
@@ -261,7 +264,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 		TipSetStateRoot: dstP.genStateRoot,
 	}
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, afterNullTsas))
-	err := chainStore.SetHead(ctx, afterNull)
+	err = chainStore.SetHead(ctx, afterNull)
 	require.NoError(t, err)
 
 	// Now add 19 more tipsets.
@@ -309,12 +312,13 @@ func TestFindCommonAncestorFork(t *testing.T) {
 
 	// make the first fork tipset
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 	fakeChildParams := th.FakeChildParams{
 		Parent:      headTipSetCA,
 		GenesisCid:  dstP.genCid,
 		Signer:      signer,
-		MinerPubKey: mockSignerPubKey,
+		MinerWorker: minerWorker,
 		StateRoot:   dstP.genStateRoot,
 		Nonce:       uint64(4),
 	}
@@ -327,7 +331,7 @@ func TestFindCommonAncestorFork(t *testing.T) {
 		TipSetStateRoot: dstP.genStateRoot,
 	}
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, firstForkTsas))
-	err := chainStore.SetHead(ctx, firstForkTS)
+	err = chainStore.SetHead(ctx, firstForkTS)
 	require.NoError(t, err)
 
 	// grow the fork by 10 blocks
@@ -381,12 +385,13 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 
 	// add a null block and another block to the head
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 	fakeChildParams := th.FakeChildParams{
 		Parent:         expectedCA,
 		GenesisCid:     dstP.genCid,
 		Signer:         signer,
-		MinerPubKey:    mockSignerPubKey,
+		MinerWorker:    minerWorker,
 		StateRoot:      dstP.genStateRoot,
 		NullBlockCount: uint64(1),
 	}

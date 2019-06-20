@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
-	w "github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
@@ -28,7 +27,6 @@ type mcAPI interface {
 	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
-	WalletGetPubKeyForAddress(addr address.Address) ([]byte, error)
 }
 
 // MinerCreate creates a new miner actor for the given account and returns its address.
@@ -65,11 +63,6 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	pubKey, err := plumbing.WalletGetPubKeyForAddress(minerOwnerAddr)
-	if err != nil {
-		return nil, err
-	}
-
 	smsgCid, err := plumbing.MessageSendWithDefaultAddress(
 		ctx,
 		minerOwnerAddr,
@@ -78,7 +71,6 @@ func MinerCreate(
 		gasPrice,
 		gasLimit,
 		"createStorageMiner",
-		pubKey,
 		sectorSize,
 		pid,
 	)
@@ -111,7 +103,6 @@ type mpcAPI interface {
 	MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error)
 	NetworkGetPeerID() peer.ID
 	WalletDefaultAddress() (address.Address, error)
-	WalletFind(address address.Address) (w.Backend, error)
 }
 
 // MinerPreviewCreate previews the Gas cost of creating a miner
@@ -142,22 +133,11 @@ func MinerPreviewCreate(
 		log.FinishWithErr(ctx, err)
 	}()
 
-	backend, err := plumbing.WalletFind(fromAddr)
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
-	info, err := backend.GetKeyInfo(fromAddr)
-	if err != nil {
-		return types.NewGasUnits(0), err
-	}
-	pubkey := info.PublicKey()
-
 	usedGas, err = plumbing.MessagePreview(
 		ctx,
 		fromAddr,
 		address.StorageMarketAddress,
 		"createStorageMiner",
-		pubkey,
 		sectorSize,
 		pid,
 	)
@@ -351,14 +331,14 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 	return lastUsedSectorID, nil
 }
 
-// MinerGetKey queries for the public key of the given miner
-func MinerGetKey(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) ([]byte, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getKey")
+// MinerGetWorker queries for the public key of the given miner
+func MinerGetWorker(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
 	if err != nil {
-		return []byte{}, err
+		return address.Undef, err
 	}
 
-	return res[0], nil
+	return address.NewActorAddress(res[0])
 }
 
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
