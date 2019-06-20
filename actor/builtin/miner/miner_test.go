@@ -92,6 +92,63 @@ func TestAskFunctions(t *testing.T) {
 	assert.Len(t, askids, 2)
 }
 
+func TestChangeWorker(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := core.CreateStorages(ctx, t)
+
+	t.Run("Change worker address", func(t *testing.T) {
+		minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+		// retrieve worker before changing it
+		result := callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+
+		addrValue, err := abi.Deserialize(result[0], abi.Address)
+		require.NoError(t, err)
+
+		addr, ok := addrValue.Val.(address.Address)
+		require.True(t, ok)
+
+		assert.Equal(t, address.TestAddress, addr)
+
+		// change worker
+		pdata := actor.MustConvertParams(address.TestAddress2)
+		msg := types.NewMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+
+		_, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
+		assert.NoError(t, err)
+
+		// retrieve worker
+		result = callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+
+		addrValue, err = abi.Deserialize(result[0], abi.Address)
+		require.NoError(t, err)
+
+		addr, ok = addrValue.Val.(address.Address)
+		require.True(t, ok)
+
+		assert.Equal(t, address.TestAddress2, addr)
+	})
+
+	t.Run("Only owner can change address", func(t *testing.T) {
+		minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+		// change worker
+		pdata := actor.MustConvertParams(address.TestAddress2)
+		badActor := address.TestAddress2
+		msg := types.NewMessage(badActor, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+
+		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
+		assert.NoError(t, err)
+		require.Error(t, result.ExecutionError)
+		assert.Contains(t, result.ExecutionError.Error(), "not authorized")
+		assert.Equal(t, uint8(ErrCallerUnauthorized), result.Receipt.ExitCode)
+	})
+}
+
 func TestGetWorker(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -102,7 +159,7 @@ func TestGetWorker(t *testing.T) {
 
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
-	// retrieve key
+	// retrieve worker
 	result := callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
 
 	addrValue, err := abi.Deserialize(result[0], abi.Address)
