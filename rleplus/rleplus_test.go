@@ -31,6 +31,7 @@ func TestRleplus(t *testing.T) {
 		}
 
 		expectedBits := []byte{
+			//0, 0, // version
 			1,                // first bit
 			1,                // run of 1
 			1,                // gap of 1

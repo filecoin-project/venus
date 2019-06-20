@@ -29,6 +29,10 @@ func Encode(ints []uint64) ([]byte, int) {
 	v := bitvector.BitVector{BytePacking: bitvector.LSB0}
 	firstBit, runs := RunLengths(ints)
 
+	// Add version
+	//v.Push(0)
+	//v.Push(0)
+
 	v.Push(firstBit)
 
 	for _, run := range runs {
@@ -67,6 +71,10 @@ func Decode(buf []byte) (ints []uint64) {
 
 	v := bitvector.NewBitVector(buf, bitvector.LSB0)
 	take := v.Iterator(bitvector.LSB0)
+
+	// Read version and discard
+	//take(1)
+	//take(1)
 
 	curIdx := uint64(0)
 	curBit := take(1)
