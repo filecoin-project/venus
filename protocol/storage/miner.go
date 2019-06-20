@@ -582,9 +582,8 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 	sm.log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// currentProvingPeriodPoStChallengeSeed produces a PoSt challenge seed for
-// the miner actor's current proving period.
-func (sm *Miner) currentProvingPeriodPoStChallengeSeed(ctx context.Context, currentProvingPeriodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
+// poStChallengeSeedAtBlockHeight produces a PoSt challenge seed for the proving period starting at the given height.
+func (sm *Miner) poStChallengeSeedAtBlockHeight(ctx context.Context, currentProvingPeriodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
 	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
 	if err != nil {
 		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
@@ -724,11 +723,11 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 	h := types.NewBlockHeight(height)
 
 	if h.GreaterEqual(provingPeriodStart) {
-		if h.LessThan(provingPeriodEnd) {
+		if h.LessEqual(provingPeriodEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
 
-			seed, err := sm.currentProvingPeriodPoStChallengeSeed(ctx, provingPeriodStart)
+			seed, err := sm.poStChallengeSeedAtBlockHeight(ctx, provingPeriodStart)
 			if err != nil {
 				sm.log.Errorf("error obtaining challenge seed: %s", err)
 				return
@@ -738,7 +737,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) {
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
-			sm.log.Errorf("too late start=%s  end=%s current=%s", provingPeriodEnd, provingPeriodEnd, h)
+			sm.log.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
 }

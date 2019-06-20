@@ -821,25 +821,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 	return 0, nil
 }
 
-// GetProvingPeriodEnd returns the current ProvingPeriodEnd value.
-func (ma *Actor) GetProvingPeriodEnd(ctx exec.VMContext) (*types.BlockHeight, uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	var state State
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return nil, errors.CodeError(err), err
-	}
-
-	return state.ProvingPeriodEnd, 0, nil
-}
-
 //
 // Un-exported methods
 //
