@@ -113,8 +113,7 @@ func (mq *MessageQueue) Clear(ctx context.Context, sender address.Address) bool 
 
 // ExpireBefore clears the queue of any sender where the first message in the queue has a stamp less than `stamp`.
 // Returns a map containing any expired address queues.
-func (mq *MessageQueue) ExpireBefore(stamp uint64) map[address.Address][]*types.SignedMessage {
-	ctx := context.TODO()
+func (mq *MessageQueue) ExpireBefore(ctx context.Context, stamp uint64) map[address.Address][]*types.SignedMessage {
 	defer func() {
 		mqSizeGa.Set(ctx, mq.Size())
 		mqOldestGa.Set(ctx, int64(mq.Oldest()))
