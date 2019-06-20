@@ -234,7 +234,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
 			[]byte("my public key"), th.RequireRandomPeerID(t))
 
 		// retrieve proving period
@@ -260,7 +260,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(120, types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
 			[]byte("my public key"), th.RequireRandomPeerID(t))
 
 		// commit sector to set ProvingPeriodEnd
