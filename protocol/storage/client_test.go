@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-protocol"
+	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -287,6 +287,15 @@ func (ctp *clientTestAPI) DealsLs(_ context.Context) (<-chan *porcelain.StorageD
 		close(results)
 	}()
 	return results, nil
+}
+
+func (ctp *clientTestAPI) DealHas(s *storagedeal.Proposal) (bool, error) {
+	proposalCid, err := convert.ToCid(s)
+	if err != nil {
+		return false, err
+	}
+	_, ok := ctp.deals[proposalCid]
+	return ok, nil
 }
 
 func (ctp *clientTestAPI) DealGet(_ context.Context, dealCid cid.Cid) (*storagedeal.Deal, error) {
