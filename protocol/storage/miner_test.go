@@ -578,17 +578,6 @@ type testLogger struct {
 	WarningMessages []string
 }
 
-func newTestLogger() *testLogger {
-	return &testLogger{
-		DebugMessages:   []string{},
-		ErrorMessages:   []string{},
-		FatalMessages:   []string{},
-		InfoMessages:    []string{},
-		PanicMessages:   []string{},
-		WarningMessages: []string{},
-	}
-}
-
 func (tl *testLogger) Debug(args ...interface{}) { tl.Debugf("%v", args[0]) }
 func (tl *testLogger) Debugf(f string, args ...interface{}) {
 	tl.DebugMessages = append(tl.DebugMessages, fmt.Sprintf(f, args...))

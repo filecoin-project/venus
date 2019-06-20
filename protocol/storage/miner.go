@@ -46,10 +46,6 @@ const waitForPaymentChannelDuration = 2 * time.Minute
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
-// minerSectorbuilder is the functions the miner needs from sectorbuilder
-type minerSectorbuilder interface {
-}
-
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr      address.Address
