@@ -540,7 +540,7 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 
 	// update response
 	err = sm.updateDealResponse(ctx, dealCid, func(resp *storagedeal.Response) {
-		resp.State = storagedeal.Posted
+		resp.State = storagedeal.Complete
 		resp.ProofInfo = &storagedeal.ProofInfo{
 			SectorID:          sector.SectorID,
 			CommitmentMessage: commitMessageCid,
@@ -550,7 +550,7 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 		}
 	})
 	if err != nil {
-		log.Errorf("commit succeeded but could not update to deal 'Posted' state: %s", err)
+		log.Errorf("commit succeeded but could not update to deal 'Complete' state: %s", err)
 	}
 }
 

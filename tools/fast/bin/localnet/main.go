@@ -250,7 +250,7 @@ func main() {
 	// 8. Genesis proposes a storage deal with miner
 	//
 	// WaitForDealState
-	// 9. Query deal till posted
+	// 9. Query deal till complete
 
 	var deals []*storagedeal.Response
 
@@ -292,7 +292,7 @@ func main() {
 	}
 
 	for _, deal := range deals {
-		err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Posted)
+		err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Complete)
 		if err != nil {
 			exitcode = handleError(err, "failed series.WaitForDealState;")
 			return
