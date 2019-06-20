@@ -1021,17 +1021,19 @@ func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Add
 	return ownerAddr, nil
 }
 
+var subscriptionLogger = logging.Logger("node/subscription")
+
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
 	for {
 		pubSubMsg, err := s.Next(ctx)
 		if err != nil {
-			log.Errorf("%s.Next(): %s", sname, err)
+			subscriptionLogger.Errorf("%s.Next(): %s", sname, err)
 			return
 		}
 
 		if err := f(ctx, pubSubMsg); err != nil {
 			if err != context.Canceled {
-				log.Errorf("%s(): %s", fname, err)
+				subscriptionLogger.Warningf("%s(): %s", fname, err)
 			}
 		}
 	}
