@@ -120,6 +120,11 @@ func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address)
 	return MinerGetSectorSize(ctx, a, minerAddr)
 }
 
+// MinerGetPledgeCollateralRequirement queries for the required pledge collateral to be posted by a miner.
+func (a *API) MinerGetPledgeCollateralRequirement(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error) {
+	return MinerGetPledgeCollateralRequirement(ctx, a, minerAddr)
+}
+
 // MinerGetLastCommittedSectorID queries for the sector size of the given miner.
 func (a *API) MinerGetLastCommittedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
 	return MinerGetLastCommittedSectorID(ctx, a, minerAddr)

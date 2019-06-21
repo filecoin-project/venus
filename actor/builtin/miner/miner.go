@@ -165,7 +165,8 @@ type State struct {
 
 	LastUsedSectorID uint64
 
-	// ProvingPeriodEnd is the block height at the end of the current proving period
+	// ProvingPeriodEnd is the block height at the end of the current proving period.
+	// This is the last round in which a proof will be considered to be on-time.
 	ProvingPeriodEnd *types.BlockHeight
 	LastPoSt         *types.BlockHeight
 
@@ -293,6 +294,10 @@ var minerExports = exec.Exports{
 	"getProvingPeriod": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
+	},
+	"getPledgeCollateralRequirement": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.AttoFIL},
 	},
 	"getActiveCollateral": &exec.FunctionSignature{
 		Params: []abi.Type{},
@@ -942,15 +947,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 	return 0, nil
 }
 
-//
-// Un-exported methods
-//
-
-func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
-	_, _, err := ctx.Send(address.BurntFundsAddress, "", amount, []interface{}{})
-	return err
-}
-
 // GetProvingPeriod returns the proving period start and proving period end
 func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	chunk, err := ctx.ReadStorage()
@@ -964,6 +960,38 @@ func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *type
 	}
 
 	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+}
+
+// GetPledgeCollateralRequirement returns the pledge collateral balance required to be maintained
+// by this actor.
+func (ma *Actor) GetPledgeCollateralRequirement(ctx exec.VMContext) (types.AttoFIL, uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return types.ZeroAttoFIL, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.ActiveCollateral, nil
+	})
+	if err != nil {
+		return types.ZeroAttoFIL, errors.CodeError(err), err
+	}
+
+	amt, ok := out.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, 1, errors.NewFaultErrorf("expected a types.AttoFIL, but got %T instead", out)
+	}
+
+	return amt, 0, nil
+}
+
+//
+// Un-exported methods
+//
+
+func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
+	_, _, err := ctx.Send(address.BurntFundsAddress, "", amount, []interface{}{})
+	return err
 }
 
 // getPoStChallengeSeed returns some chain randomness
@@ -1002,14 +1030,6 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	// TODO: Replace this function with the baseline pro-rata construction.
 	// https://github.com/filecoin-project/go-filecoin/issues/2866
 	return MinimumCollateralPerSector
-}
-
-// calculates proving period start from the proving period end and the proving period duration
-func provingPeriodStart(state State) *types.BlockHeight {
-	if state.ProvingPeriodEnd == nil {
-		return types.NewBlockHeight(0)
-	}
-	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 }
 
 // GenerationAttackTime is the number of blocks after a proving period ends
@@ -1055,6 +1075,14 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 // Internal functions
 //
+
+// calculates proving period start from the proving period end and the proving period duration
+func provingPeriodStart(state State) *types.BlockHeight {
+	if state.ProvingPeriodEnd == nil {
+		return types.NewBlockHeight(0)
+	}
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
+}
 
 // lateState determines whether given a proving period and chain height, what is the
 // degree of lateness and how many rounds they are late

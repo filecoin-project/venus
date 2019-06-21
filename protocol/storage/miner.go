@@ -38,20 +38,23 @@ import (
 
 var log = logging.Logger("/fil/storage")
 
-const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
-const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
+const (
+	makeDealProtocol  = protocol.ID("/fil/storage/mk/1.0.0")
+	queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
-// TODO: replace this with a queries to pick reasonable gas price and limits.
-const submitPostGasPrice = 1
+	// TODO: replace this with a queries to pick reasonable gas price and limits.
+	submitPostGasPrice = 1
 
-const waitForPaymentChannelDuration = 2 * time.Minute
+	waitForPaymentChannelDuration = 2 * time.Minute
+)
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
 // Miner represents a storage miner.
 type Miner struct {
-	minerAddr      address.Address
-	minerOwnerAddr address.Address
+	minerAddr  address.Address
+	ownerAddr  address.Address
+	workerAddr address.Address
 
 	dealsAwaitingSealDs repo.Datastore
 
@@ -68,6 +71,9 @@ type Miner struct {
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
+// A subset of this is required only for the prover; the prover should be injected rather than
+// have its deps plumbed through here.
+// FIXME change prover deps to match porcelain inject object
 type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
@@ -82,7 +88,9 @@ type minerPorcelain interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 
+	WalletBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
+	MinerGetPledgeCollateralRequirement(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -99,10 +107,11 @@ var _ ProofReader = (*Miner)(nil)
 var _ ProofCalculator = (*Miner)(nil)
 
 // NewMiner is
-func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
-		minerOwnerAddr:      minerOwnerAddr,
+		ownerAddr:           ownerAddr,
+		workerAddr:          workerAddr,
 		porcelainAPI:        porcelainAPI,
 		dealsAwaitingSealDs: dealsDs,
 		node:                nd,
@@ -199,8 +208,8 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	}
 
 	// confirm we are target of channel
-	if channel.Target != sm.minerOwnerAddr {
-		return fmt.Errorf("miner account (%s) is not target of payment channel (%s)", sm.minerOwnerAddr.String(), channel.Target.String())
+	if channel.Target != sm.ownerAddr {
+		return fmt.Errorf("miner account (%s) is not target of payment channel (%s)", sm.ownerAddr.String(), channel.Target.String())
 	}
 
 	// confirm channel contains enough funds
@@ -714,6 +723,10 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	if err != nil {
 		return errors.Errorf("failed to get proving period: %s", err)
 	}
+	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
+	if err != nil {
+		return errors.Errorf("failed to get sector size: %s", err)
+	}
 
 	sm.postInProcessLk.Lock()
 	defer sm.postInProcessLk.Unlock()
@@ -736,7 +749,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
 
-			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, inputs)
+			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, sectorSize, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -760,8 +773,8 @@ func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, err
 	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
-func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {
-	prover := NewProver(sm.minerAddr, sm.minerOwnerAddr, sm, sm)
+func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight,  sectorSize *types.BytesAmount, inputs []PoStInputs) {
+	prover := NewProver(sm.minerAddr, sm.workerAddr, sectorSize, sm, sm)
 	submission, err := prover.CalculatePoSt(ctx, start, end, inputs)
 	if err != nil {
 		log.Errorf("failed to calculate PoSt: %s", err)
@@ -772,7 +785,7 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, done)
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return
@@ -800,6 +813,16 @@ func (sm *Miner) ChallengeSeed(ctx context.Context, periodStart *types.BlockHeig
 	seed := types.PoStChallengeSeed{}
 	copy(seed[:], bytes)
 	return seed, nil
+}
+
+// PledgeCollateralRequirement returns a miner's collateral requirement.
+func (sm *Miner) PledgeCollateralRequirement(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
+	return sm.porcelainAPI.MinerGetPledgeCollateralRequirement(ctx, addr)
+}
+
+// WalletBalance returns an actor's balance.
+func (sm *Miner) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
+	return sm.porcelainAPI.WalletBalance(ctx, addr)
 }
 
 //

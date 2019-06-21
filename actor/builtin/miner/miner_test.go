@@ -494,6 +494,12 @@ func TestMinerCommitSector(t *testing.T) {
 		// blockheight was 3
 		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[1]))
 
+		// check that the collateral requirement as expected
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getPledgeCollateralRequirement", nil)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, MinimumCollateralPerSector.String(), types.NewAttoFILFromBytes(res.Receipt.Return[0]).String())
+
 		// fail because commR already exists
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)

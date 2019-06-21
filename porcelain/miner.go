@@ -318,6 +318,21 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 	return sectorSize, nil
 }
 
+// MinerGetPledgeCollateralRequirement queries for the pledge collateral requirement for a miner.
+func MinerGetPledgeCollateralRequirement(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (types.AttoFIL, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getPledgeCollateralRequirement")
+	if err != nil {
+		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	coll, ok := abiVal.Val.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, errors.New("failed to convert returned ABI value")
+	}
+
+	return coll, nil
+}
+
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
 func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {

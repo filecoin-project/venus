@@ -943,12 +943,13 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
 
-	miningOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
+	ownerAddress, err := node.miningOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
+	workerAddress := ownerAddress
 
-	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
+	miner, err := storage.NewMiner(minerAddr, ownerAddress, workerAddress, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

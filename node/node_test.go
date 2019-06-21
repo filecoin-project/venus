@@ -138,8 +138,8 @@ func TestNodeStartMining(t *testing.T) {
 	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
 
 	seed.GiveKey(t, minerNode, 0)
-	mineraddr, minerOwnerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(mineraddr, minerOwnerAddr, minerNode, minerNode.Repo.DealsDatastore(), nil)
+	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
+	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, minerNode, minerNode.Repo.DealsDatastore(), nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, minerNode.Start(ctx))
