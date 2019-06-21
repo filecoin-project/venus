@@ -119,7 +119,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
 	fakeNetAct := th.RequireNewFakeActorWithTokens(t, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
-	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, []byte{}, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	minerOwner := th.RequireNewFakeActor(t, vms, addr5, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
@@ -473,9 +473,9 @@ func makeExplodingGetStateTree(st state.Tree) func(context.Context, types.TipSet
 	}
 }
 
-func setupSigner() (types.MockSigner, []byte) {
+func setupSigner() (types.MockSigner, address.Address) {
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(10)
 
-	signerPubKey := mockSigner.PubKeys[len(mockSigner.Addresses)-1]
-	return mockSigner, signerPubKey
+	signerAddr := mockSigner.Addresses[len(mockSigner.Addresses)-1]
+	return mockSigner, signerAddr
 }

@@ -76,12 +76,13 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore *chain.St
 	if c > 0 {
 		// make the first fork tipset (need to do manually to set nonce)
 		signer, ki := types.NewMockSignersAndKeyInfo(1)
-		mockSignerPubKey := ki[0].PublicKey()
+		minerWorker, err := ki[0].Address()
+		require.NoError(t, err)
 		fakeChildParams := th.FakeChildParams{
 			Parent:      commonAncestor,
 			GenesisCid:  dstP.genCid,
 			Signer:      signer,
-			MinerPubKey: mockSignerPubKey,
+			MinerWorker: minerWorker,
 			StateRoot:   dstP.genStateRoot,
 			Nonce:       uint64(1),
 		}
@@ -94,7 +95,7 @@ func getForkOldNewCommon(ctx context.Context, t *testing.T, chainStore *chain.St
 			TipSetStateRoot: dstP.genStateRoot,
 		}
 		require.NoError(t, chainStore.PutTipSetAndState(ctx, firstForkTsas))
-		err := chainStore.SetHead(ctx, firstForkTs)
+		err = chainStore.SetHead(ctx, firstForkTs)
 		require.NoError(t, err)
 
 		// grow the fork by (c - 1) blocks (c total)
@@ -125,10 +126,11 @@ func getSubsetOldNewCommon(ctx context.Context, t *testing.T, chainStore *chain.
 	headBlock := oldHead.ToSlice()[0]
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 	block2 := th.RequireMkFakeChild(t, th.FakeChildParams{
 		Parent:      commonAncestor,
-		MinerPubKey: mockSignerPubKey,
+		MinerWorker: minerWorker,
 		Signer:      signer,
 		GenesisCid:  dstP.genCid,
 		StateRoot:   dstP.genStateRoot})

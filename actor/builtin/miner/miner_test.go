@@ -23,8 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-func createTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, key []byte, pid peer.ID) address.Address {
-	return createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, key, pid)
+func createTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
+	return createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid)
 }
 
 func createTestMinerWith(
@@ -33,10 +33,9 @@ func createTestMinerWith(
 	stateTree state.Tree,
 	vms vm.StorageMap,
 	minerOwnerAddr address.Address,
-	key []byte,
 	peerId peer.ID,
 ) address.Address {
-	pdata := actor.MustConvertParams(key, types.OneKiBSectorSize, peerId)
+	pdata := actor.MustConvertParams(types.OneKiBSectorSize, peerId)
 	nonce := core.MustGetNonce(stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
@@ -56,7 +55,7 @@ func TestAskFunctions(t *testing.T) {
 
 	st, vms := core.CreateStorages(ctx, t)
 
-	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("abcd123"), th.RequireRandomPeerID(t))
+	minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
@@ -118,7 +117,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Len(t, askids, 2)
 }
 
-func TestGetKey(t *testing.T) {
+func TestGetWorker(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -126,18 +125,46 @@ func TestGetKey(t *testing.T) {
 
 	st, vms := core.CreateStorages(ctx, t)
 
-	signature := []byte("my public key")
-	minerAddr := createTestMiner(t, st, vms, address.TestAddress, signature, th.RequireRandomPeerID(t))
+	minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 	// retrieve key
-	result := callQueryMethodSuccess("getKey", ctx, t, st, vms, address.TestAddress, minerAddr)
-	assert.Equal(t, result[0], signature)
+	result := callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+
+	addrValue, err := abi.Deserialize(result[0], abi.Address)
+	require.NoError(t, err)
+
+	addr, ok := addrValue.Val.(address.Address)
+	require.True(t, ok)
+
+	assert.Equal(t, address.TestAddress, addr)
+}
+
+func TestGetOwner(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := core.CreateStorages(ctx, t)
+
+	minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+	// retrieve key
+	result := callQueryMethodSuccess("getOwner", ctx, t, st, vms, address.TestAddress, minerAddr)
+
+	addrValue, err := abi.Deserialize(result[0], abi.Address)
+	require.NoError(t, err)
+
+	addr, ok := addrValue.Val.(address.Address)
+	require.True(t, ok)
+
+	assert.Equal(t, address.TestAddress, addr)
 }
 
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, []byte{}, th.RequireRandomPeerID(t), types.OneKiBSectorSize)
+	state := NewState(address.TestAddress, address.TestAddress, th.RequireRandomPeerID(t), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},
@@ -161,7 +188,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		st, vms := core.CreateStorages(ctx, t)
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMiner(t, st, vms, address.TestAddress, origPid)
 
 		// retrieve peer ID
 		resultA := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -189,9 +216,9 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("other public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
-		// update peer ID and expect authorization failure (TestAddress2 doesn't owner miner)
+		// update peer ID and expect authorization failure (TestAddress2 isn't the miner's worker address)
 		updatePeerIdMsg := types.NewMessage(
 			address.TestAddress2,
 			minerAddr,
@@ -216,8 +243,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -234,8 +260,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// retrieve proving period
 		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -260,8 +285,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := core.CreateStorages(ctx, t)
 
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress,
-			[]byte("my public key"), th.RequireRandomPeerID(t))
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// commit sector to set ProvingPeriodEnd
 		commR := th.MakeCommitment()
@@ -329,7 +353,7 @@ func TestMinerCommitSector(t *testing.T) {
 		amtCollateralForPledge := MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(numSectorsToPledge))
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := createTestMinerWith(amtCollateralForPledge, t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMinerWith(amtCollateralForPledge, t, st, vms, address.TestAddress, origPid)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
@@ -359,7 +383,7 @@ func TestMinerCommitSector(t *testing.T) {
 		st, vms := core.CreateStorages(ctx, t)
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+		minerAddr := createTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, origPid)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
@@ -397,7 +421,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	ancestors := th.RequireTipSetChain(t, 10)
 	origPid := th.RequireRandomPeerID(t)
-	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+	minerAddr := createTestMiner(t, st, vms, address.TestAddress, origPid)
 	proof := th.MakeRandomPoStProofForTest()
 
 	miner := state.MustGetActor(st, minerAddr)
@@ -477,7 +501,7 @@ func TestVerifyPIP(t *testing.T) {
 	ancestors := th.RequireTipSetChain(t, 10)
 
 	origPid := th.RequireRandomPeerID(t)
-	minerAddr := createTestMiner(t, st, vms, address.TestAddress, []byte("my public key"), origPid)
+	minerAddr := createTestMiner(t, st, vms, address.TestAddress, origPid)
 
 	sectorId := uint64(1)
 	commD := th.MakeCommitment()

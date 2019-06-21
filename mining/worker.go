@@ -79,7 +79,7 @@ type DefaultWorker struct {
 	createPoSTFunc DoSomeWorkFunc
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
-	minerPubKey    []byte
+	minerWorker    address.Address
 	workerSigner   consensus.TicketSigner
 
 	// consensus things
@@ -106,7 +106,7 @@ func NewDefaultWorker(messageSource MessageSource,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
 	minerOwner address.Address,
-	minerPubKey []byte,
+	minerWorker address.Address,
 	workerSigner consensus.TicketSigner,
 	api workerPorcelainAPI) *DefaultWorker {
 
@@ -120,7 +120,7 @@ func NewDefaultWorker(messageSource MessageSource,
 		cst,
 		miner,
 		minerOwner,
-		minerPubKey,
+		minerWorker,
 		workerSigner,
 		api,
 		func() {})
@@ -143,7 +143,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 	cst *hamt.CborIpldStore,
 	miner address.Address,
 	minerOwner address.Address,
-	minerPubKey []byte,
+	minerWorker address.Address,
 	workerSigner consensus.TicketSigner,
 	api workerPorcelainAPI,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
@@ -160,7 +160,7 @@ func NewDefaultWorkerWithDeps(messageSource MessageSource,
 		createPoSTFunc: createPoST,
 		minerAddr:      miner,
 		minerOwnerAddr: minerOwner,
-		minerPubKey:    minerPubKey,
+		minerWorker:    minerWorker,
 		workerSigner:   workerSigner,
 	}
 }
@@ -214,7 +214,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		proof := append(types.PoStProof{}, prChRead[:]...)
-		ticket, err = consensus.CreateTicket(proof, w.minerPubKey, w.workerSigner)
+		ticket, err = consensus.CreateTicket(proof, w.minerWorker, w.workerSigner)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)
 			return false

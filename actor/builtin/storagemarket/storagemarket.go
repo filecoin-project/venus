@@ -89,7 +89,7 @@ func (sma *Actor) Exports() exec.Exports {
 
 var storageMarketExports = exec.Exports{
 	"createStorageMiner": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.PeerID},
+		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
 	"updatePower": &exec.FunctionSignature{
@@ -108,7 +108,7 @@ var storageMarketExports = exec.Exports{
 
 // CreateStorageMiner creates a new miner which will commit sectors of the
 // given size. The miners collateral is set by the value in the message.
-func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
+func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -124,7 +124,7 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, publicKey []byte, sec
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerInitializationParams := miner.NewState(vmctx.Message().From, publicKey, pid, sectorSize)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, vmctx.Message().From, pid, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
