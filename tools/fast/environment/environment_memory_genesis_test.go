@@ -72,7 +72,7 @@ func TestMemoryGenesis(t *testing.T) {
 		env, err := NewMemoryGenesis(big.NewInt(100000), testDir, types.TestProofsMode)
 		require.NoError(t, err)
 
-		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, fast.FilecoinOpts{})
+		p, err := env.NewProcess(ctx, mockplugin.PluginName, nil, fast.FilecoinDefaultOpts)
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 		assert.Equal(t, 1, len(env.Processes()))

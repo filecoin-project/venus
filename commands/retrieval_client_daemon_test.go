@@ -19,7 +19,7 @@ import (
 func TestSelfDialRetrievalGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinDefaultOpts)
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)
