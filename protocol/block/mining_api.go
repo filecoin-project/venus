@@ -17,6 +17,7 @@ type miningChainReader interface {
 type MiningAPI struct {
 	addNewBlockFunc  func(context.Context, *types.Block) (err error)
 	chainReader      miningChainReader
+	isMiningFunc     func() bool
 	mineDelay        time.Duration
 	startMiningFunc  func(context.Context) error
 	stopMiningFunc   func(context.Context)
@@ -27,6 +28,7 @@ type MiningAPI struct {
 func New(
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
 	chainReader miningChainReader,
+	isMiningFunc func() bool,
 	blockMineDelay time.Duration,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
@@ -35,11 +37,17 @@ func New(
 	return MiningAPI{
 		addNewBlockFunc:  addNewBlockFunc,
 		chainReader:      chainReader,
+		isMiningFunc:     isMiningFunc,
 		mineDelay:        blockMineDelay,
 		startMiningFunc:  startMiningFunc,
 		stopMiningFunc:   stopMiningfunc,
 		createWorkerFunc: createWorkerFunc,
 	}
+}
+
+// MiningIsActive calls the node's IsMining function
+func (a *MiningAPI) MiningIsActive() bool {
+	return a.isMiningFunc()
 }
 
 // MiningOnce mines a single block in the given context, and returns the new block.

@@ -54,6 +54,24 @@ func TestMiningAPI_MiningStart(t *testing.T) {
 	nd.StopMining(ctx)
 }
 
+func TestMiningAPI_MiningIsActive(t *testing.T) {
+	tf.UnitTest(t)
+
+	assert := ast.New(t)
+	require := req.New(t)
+	ctx := context.Background()
+	api, nd := newAPI(t, assert)
+	require.NoError(nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	require.NoError(nd.StartMining(ctx))
+	assert.True(api.MiningIsActive())
+	nd.StopMining(ctx)
+	assert.False(api.MiningIsActive())
+
+	nd.StopMining(ctx)
+}
+
 func TestMiningAPI_MiningStop(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -85,6 +103,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	return bapi.New(
 		nd.AddNewBlock,
 		nd.ChainReader,
+		nd.IsMining,
 		bt,
 		nd.StartMining,
 		nd.StopMining,

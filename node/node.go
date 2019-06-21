@@ -1016,6 +1016,7 @@ func (node *Node) setupProtocols() error {
 	blockMiningAPI := block.New(
 		node.AddNewBlock,
 		node.ChainReader,
+		node.IsMining,
 		mineDelay,
 		node.StartMining,
 		node.StopMining,
