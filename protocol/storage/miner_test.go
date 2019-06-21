@@ -403,25 +403,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to get block height")
 	})
 
-	t.Run("Errors if cannot get challenge seed", func(t *testing.T) {
-		// create new miner with deal in the accepted state and mapped to a sector
-		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
-
-		api.randError = true
-		api.messageHandlers = successMessageHandlers(t)
-
-		height := uint64(20500)
-		api.blockHeight = types.NewBlockHeight(height)
-		block := &types.Block{Height: types.Uint64(height)}
-		ts, err := types.NewTipSet(block)
-		require.NoError(t, err)
-
-		err = miner.OnNewHeaviestTipSet(ts)
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error obtaining challenge seed")
-	})
-
 	t.Run("calls SubmitsPoSt when in proving period", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
@@ -744,7 +725,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	}
 
 	// Simulates miner.acceptProposal without going to the network to fetch the data by storing the deal.
-	// Mapping the proposalCid to a sectorID simulates staging the sector.
+	// Mapping the proposal CID to a sector ID simulates staging the sector.
 	require.NoError(t, porcelainAPI.DealPut(storageDeal))
 	miner.dealsAwaitingSeal.attachDealToSector(context.Background(), sectorID, proposalCid)
 

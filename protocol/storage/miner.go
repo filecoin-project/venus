@@ -42,7 +42,6 @@ const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
 // TODO: replace this with a queries to pick reasonable gas price and limits.
 const submitPostGasPrice = 1
-const submitPostGasLimit = 300
 
 const waitForPaymentChannelDuration = 2 * time.Minute
 
@@ -94,14 +93,9 @@ type node interface {
 	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// generatePostInput is a struct containing sector id and related commitments
-// used to generate a proof-of-spacetime
-type generatePostInput struct {
-	commD     types.CommD
-	commR     types.CommR
-	commRStar types.CommRStar
-	sectorID  uint64
-}
+// Static check that miner implements the needs of the Prover
+var _ ProofReader = (*Miner)(nil)
+var _ ProofCalculator = (*Miner)(nil)
 
 // NewMiner is
 func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
@@ -582,19 +576,6 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// poStChallengeSeedAtBlockHeight produces a PoSt challenge seed for the proving period starting at the given height.
-func (sm *Miner) poStChallengeSeedAtBlockHeight(ctx context.Context, currentProvingPeriodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, currentProvingPeriodStart)
-	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
-	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-
-	return seed, nil
-}
-
 // isBootstrapMinerActor is a convenience method used to determine if the miner
 // actor was created when bootstrapping the network. If it was,
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
@@ -655,6 +636,37 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 	return commitments, nil
 }
 
+// Query responds to a query for the proposal referenced by the given cid
+func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.Response {
+	storageDeal, err := sm.porcelainAPI.DealGet(ctx, c)
+	if err != nil {
+		return &storagedeal.Response{
+			State:   storagedeal.Unknown,
+			Message: "no such deal",
+		}
+	}
+
+	return storageDeal.Response
+}
+
+func (sm *Miner) handleQueryDeal(s inet.Stream) {
+	defer s.Close() // nolint: errcheck
+
+	ctx := context.Background()
+
+	var q storagedeal.QueryRequest
+	if err := cbu.NewMsgReader(s).ReadMsg(&q); err != nil {
+		log.Errorf("received invalid query: %s", err)
+		return
+	}
+
+	resp := sm.Query(ctx, q.Cid)
+
+	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
+		log.Errorf("failed to write query response: %s", err)
+	}
+}
+
 // OnNewHeaviestTipSet is a callback called by node, every time the the latest
 // head is updated. It is used to check if we are in a new proving period and
 // need to trigger PoSt submission.
@@ -677,18 +689,18 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 		return errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
 
-	var inputs []generatePostInput
+	var inputs []PoStInputs
 	for k, v := range commitments {
 		n, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
 			return errors.Errorf("failed to parse commitment sector id to uint64: %s", err)
 		}
 
-		inputs = append(inputs, generatePostInput{
-			commD:     v.CommD,
-			commR:     v.CommR,
-			commRStar: v.CommRStar,
-			sectorID:  n,
+		inputs = append(inputs, PoStInputs{
+			CommD:     v.CommD,
+			CommR:     v.CommR,
+			CommRStar: v.CommRStar,
+			SectorID:  n,
 		})
 	}
 
@@ -723,12 +735,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
 
-			seed, err := sm.poStChallengeSeedAtBlockHeight(ctx, provingPeriodStart)
-			if err != nil {
-				return errors.Errorf("error obtaining challenge seed: %s", err)
-			}
-
-			go sm.submitPoSt(provingPeriodStart, provingPeriodEnd, seed, inputs)
+			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -752,10 +759,51 @@ func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, err
 	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
-// generatePoSt creates the required PoSt, given a list of sector ids and
-// matching seeds. It returns the Snark Proof for the PoSt, and a list of
-// sectors that faulted, if there were any faults.
-func (sm *Miner) generatePoSt(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {
+	prover := NewProver(sm.minerAddr, sm.minerOwnerAddr, sm, sm)
+	submission, err := prover.CalculatePoSt(ctx, start, end, inputs)
+	if err != nil {
+		log.Errorf("failed to calculate PoSt: %s", err)
+		return
+	}
+
+	gasPrice := types.NewGasPrice(submitPostGasPrice)
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs)
+	if err != nil {
+		log.Errorf("failed to submit PoSt: %s", err)
+		return
+	}
+
+	log.Info("submitted PoSt")
+}
+
+//
+// Implementation of ProofReader.
+//
+
+// ChainHeight provides the chain height to the Prover.
+func (sm *Miner) ChainHeight() (*types.BlockHeight, error) {
+	return sm.porcelainAPI.ChainBlockHeight()
+}
+
+// ChallengeSeed provides a challenge seed to the Prover.
+func (sm *Miner) ChallengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, periodStart)
+	if err != nil {
+		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+	return seed, nil
+}
+
+//
+// Implementation of ProofCalculator.
+//
+
+// CalculatePost calls the sector builder to compute a proof.
+func (sm *Miner) CalculatePost(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
 	req := sectorbuilder.GeneratePoStRequest{
 		SortedCommRs:  sortedCommRs,
 		ChallengeSeed: seed,
@@ -766,88 +814,4 @@ func (sm *Miner) generatePoSt(sortedCommRs proofs.SortedCommRs, seed types.PoStC
 	}
 
 	return res.Proofs, res.Faults, nil
-}
-
-func (sm *Miner) submitPoSt(start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []generatePostInput) {
-	commRs := make([]types.CommR, len(inputs))
-	for i, input := range inputs {
-		commRs[i] = input.commR
-	}
-
-	sortedCommRs := proofs.NewSortedCommRs(commRs...)
-
-	proofs, faults, err := sm.generatePoSt(sortedCommRs, seed)
-	if err != nil {
-		log.Errorf("failed to generate PoSts: %s", err)
-		return
-	}
-	if len(faults) != 0 {
-		log.Warningf("some faults when generating PoSt: %v", faults)
-		// TODO: proper fault handling
-	}
-
-	height, err := sm.porcelainAPI.ChainBlockHeight()
-	if err != nil {
-		log.Errorf("failed to submit PoSt, as the current block height can not be determined: %s", err)
-		// TODO: what should happen in this case?
-		return
-	}
-	if height.LessThan(start) {
-		// TODO: what to do here? not sure this can happen, maybe through reordering?
-		log.Errorf("PoSt generation time took negative block time: %s < %s", height, start)
-		return
-	}
-
-	if height.GreaterEqual(end) {
-		// TODO: we are too late, figure out faults and decide if we want to still submit
-		log.Errorf("PoSt generation was too slow height=%s end=%s", height, end)
-		return
-	}
-
-	// TODO: figure out a more sensible timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	// TODO: algorithmically determine appropriate values for these
-	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	gasLimit := types.NewGasUnits(submitPostGasLimit)
-
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "submitPoSt", proofs)
-	if err != nil {
-		log.Errorf("failed to submit PoSt: %s", err)
-		return
-	}
-
-	log.Debug("submitted PoSt")
-}
-
-// Query responds to a query for the proposal referenced by the given cid
-func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.Response {
-	storageDeal, err := sm.porcelainAPI.DealGet(ctx, c)
-	if err != nil {
-		return &storagedeal.Response{
-			State:   storagedeal.Unknown,
-			Message: "no such deal",
-		}
-	}
-
-	return storageDeal.Response
-}
-
-func (sm *Miner) handleQueryDeal(s inet.Stream) {
-	defer s.Close() // nolint: errcheck
-
-	ctx := context.Background()
-
-	var q storagedeal.QueryRequest
-	if err := cbu.NewMsgReader(s).ReadMsg(&q); err != nil {
-		log.Errorf("received invalid query: %s", err)
-		return
-	}
-
-	resp := sm.Query(ctx, q.Cid)
-
-	if err := cbu.NewMsgWriter(s).WriteMsg(resp); err != nil {
-		log.Errorf("failed to write query response: %s", err)
-	}
 }
