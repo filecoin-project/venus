@@ -28,7 +28,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	st, vms := core.CreateStorages(ctx, t)
 
 	pid := th.RequireRandomPeerID(t)
-	pdata := actor.MustConvertParams([]byte{}, types.OneKiBSectorSize, pid)
+	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	pdata := actor.MustConvertParams([]byte{}, types.OneKiBSectorSize, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams(types.OneKiBSectorSize, th.RequireRandomPeerID(t))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -86,23 +86,6 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 
 	// miner balance should be sum of messages
 	assert.Equal(t, types.NewAttoFILFromFIL(300).String(), miner.Balance.String())
-}
-
-func TestStorageMarkeCreateStorageMinerErrorsOnInvalidKey(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	st, vms := core.CreateStorages(ctx, t)
-
-	publicKey := []byte("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567")
-	pdata := actor.MustConvertParams(publicKey, types.OneKiBSectorSize, th.RequireRandomPeerID(t))
-
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
-	require.NoError(t, err)
-	assert.Contains(t, result.ExecutionError.Error(), miner.Errors[miner.ErrPublicKeyTooBig].Error())
 }
 
 func TestProofsMode(t *testing.T) {

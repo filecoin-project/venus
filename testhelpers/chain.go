@@ -28,7 +28,7 @@ type FakeChildParams struct {
 	Parent         types.TipSet
 	StateRoot      cid.Cid
 	Signer         consensus.TicketSigner
-	MinerPubKey    []byte
+	MinerWorker    address.Address
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -74,7 +74,7 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
-		params.MinerPubKey,
+		params.MinerWorker,
 		params.Signer,
 		wFun)
 }
@@ -86,7 +86,7 @@ func MkFakeChildCore(parent types.TipSet,
 	nonce uint64,
 	nullBlockCount uint64,
 	minerAddr address.Address,
-	minerPubKey []byte,
+	minerWorker address.Address,
 	signer consensus.TicketSigner,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
@@ -105,7 +105,7 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
+	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
@@ -156,7 +156,7 @@ func RequireMkFakeChildCore(t *testing.T,
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
-		params.MinerPubKey,
+		params.MinerWorker,
 		params.Signer,
 		wFun)
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
 	var ticket types.Signature
 
@@ -186,7 +186,7 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmoun
 
 	for {
 		poStProof = MakeRandomPoStProofForTest()
-		ticket, err := consensus.CreateTicket(poStProof, signerPubKey, signer)
+		ticket, err := consensus.CreateTicket(poStProof, signerAddr, signer)
 		if err != nil {
 			errStr := fmt.Sprintf("error creating ticket: %s", err)
 			panic(errStr)

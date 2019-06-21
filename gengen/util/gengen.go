@@ -248,10 +248,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			return nil, err
 		}
 
-		// create miner
-		pubkey := keys[m.Owner].PublicKey()
-
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", pubkey[:], types.NewBytesAmount(m.SectorSize), pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", types.NewBytesAmount(m.SectorSize), pid)
 		if err != nil {
 			return nil, err
 		}

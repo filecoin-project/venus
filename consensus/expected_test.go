@@ -46,13 +46,14 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 
 	// iterate over the keypairs and set up owner actors and miner actors with their own addresses
 	// and add them to the state tree
-	ownerPubKeys := make([][]byte, 3)
+	minerWorkers := make([]address.Address, 3)
 	minerAddrs := make([]address.Address, 3)
 	for i, name := range kis {
 		addr, err := kis[i].Address()
 		require.NoError(t, err)
 
-		ownerPubKeys[i] = kis[i].PublicKey()
+		minerWorkers[i], err = kis[i].Address()
+		require.NoError(t, err)
 
 		ownerActor := th.RequireNewAccountActor(t, types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, addr, ownerActor))
@@ -60,16 +61,16 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 		minerAddrs[i], err = address.NewActorAddress([]byte(fmt.Sprintf("%s%s", name, "Miner")))
 		require.NoError(t, err)
 		minerActor := th.RequireNewMinerActor(t, vms, minerAddrs[i], addr,
-			ownerPubKeys[i], 10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
+			10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, minerAddrs[i], minerActor))
 	}
 	stateRoot, err := tree.Flush(ctx)
 	require.NoError(t, err)
 
 	blocks := []*types.Block{
-		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[0], ownerPubKeys[0], mockSigner),
-		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[1], ownerPubKeys[1], mockSigner),
-		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[2], ownerPubKeys[2], mockSigner),
+		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[0], minerWorkers[0], mockSigner),
+		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[1], minerWorkers[1], mockSigner),
+		th.NewValidTestBlockFromTipSet(pTipSet, stateRoot, 1, minerAddrs[2], minerWorkers[2], mockSigner),
 	}
 	return blocks
 }
