@@ -3,15 +3,22 @@ package storage
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"testing"
+	"time"
 
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -297,18 +304,263 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 	})
 }
 
+func TestOnNewHeaviestTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
+	cidGetter := types.NewCidForTestGetter()
+	proposalCid := cidGetter()
+
+	sector := testSectorMetadata(proposalCid)
+
+	t.Run("Errors if miner cannot get bootstrap miner flag", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		// return true, indicating this miner is a bootstrap miner
+		api.messageHandlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return [][]byte{}, errors.New("test error")
+		}
+
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "bootstrapping")
+	})
+
+	t.Run("Exits early if miner is bootstrap miner", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		// return true, indicating this miner is a bootstrap miner
+		api.messageHandlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return mustEncodeResults(t, true), nil
+		}
+
+		// empty TipSet causes error if bootstrap miner is not set (see "Errors if tipset has no blocks")
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		require.NoError(t, err)
+	})
+
+	t.Run("Errors if it cannot retrieve sector commitments", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		handlers := successMessageHandlers(t)
+		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return nil, errors.New("test error")
+		}
+		api.messageHandlers = handlers
+
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
+	})
+
+	t.Run("Errors if it commitments contains a bad id", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		handlers := successMessageHandlers(t)
+		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			commitments := map[string]types.Commitments{}
+			commitments["notanumber"] = types.Commitments{}
+			return mustEncodeResults(t, commitments), nil
+		}
+		api.messageHandlers = handlers
+
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
+	})
+
+	t.Run("Errors if it cannot retrieve post period", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		handlers := successMessageHandlers(t)
+		handlers["getProvingPeriod"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return nil, errors.New("test error")
+		}
+		api.messageHandlers = handlers
+
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get proving period")
+	})
+
+	t.Run("Errors if tipset has no blocks", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		api.messageHandlers = successMessageHandlers(t)
+
+		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get block height")
+	})
+
+	t.Run("calls SubmitsPoSt when in proving period", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		postParams := []interface{}{}
+
+		handlers := successMessageHandlers(t)
+		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			postParams = p
+			return [][]byte{}, nil
+		}
+		api.messageHandlers = handlers
+
+		height := uint64(20500)
+		api.blockHeight = types.NewBlockHeight(height)
+		block := &types.Block{Height: types.Uint64(height)}
+		ts, err := types.NewTipSet(block)
+		require.NoError(t, err)
+
+		err = miner.OnNewHeaviestTipSet(ts)
+		require.NoError(t, err)
+
+		// OnNewHeaviestTipSet spawns a goroutine that should exit immediately dependencies are faked out
+		time.Sleep(1 * time.Second)
+
+		// assert proof generated in sector builder is sent to submitPoSt
+		require.Equal(t, 1, len(postParams))
+		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
+	})
+
+	t.Run("Does not post if block height is too low", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		handlers := successMessageHandlers(t)
+		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			t.Error("Should not have called submit post")
+			return [][]byte{}, nil
+		}
+		api.messageHandlers = handlers
+
+		height := uint64(10500)
+		api.blockHeight = types.NewBlockHeight(height)
+		block := &types.Block{Height: types.Uint64(height)}
+		ts, err := types.NewTipSet(block)
+		require.NoError(t, err)
+
+		err = miner.OnNewHeaviestTipSet(ts)
+
+		// too early is not an error
+		require.NoError(t, err)
+
+		// Wait to make sure submitPoSt is not called
+		time.Sleep(1 * time.Second)
+	})
+
+	t.Run("Errors if past proving period", func(t *testing.T) {
+		// create new miner with deal in the accepted state and mapped to a sector
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+		handlers := successMessageHandlers(t)
+		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			t.Error("Should not have called submit post")
+			return [][]byte{}, nil
+		}
+		api.messageHandlers = handlers
+
+		height := uint64(50500)
+		api.blockHeight = types.NewBlockHeight(height)
+		block := &types.Block{Height: types.Uint64(height)}
+		ts, err := types.NewTipSet(block)
+		require.NoError(t, err)
+
+		err = miner.OnNewHeaviestTipSet(ts)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "too late start")
+
+		// Sleep to ensure submit post is not called
+		time.Sleep(1 * time.Second)
+	})
+}
+
+func successMessageHandlers(t *testing.T) messageHandlerMap {
+	handlers := messageHandlerMap{}
+	handlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		return mustEncodeResults(t, false), nil
+	}
+
+	handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		commitments := map[string]types.Commitments{}
+		commitments["42"] = types.Commitments{}
+		return mustEncodeResults(t, commitments), nil
+	}
+	handlers["getProvingPeriod"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		return mustEncodeResults(t, types.NewBlockHeight(20003), types.NewBlockHeight(40003)), nil
+	}
+	handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		return [][]byte{}, nil
+	}
+	return handlers
+}
+
+type testNode struct{}
+
+func (tn *testNode) BlockService() bserv.BlockService           { return nil }
+func (tn *testNode) Host() host.Host                            { return nil }
+func (tn *testNode) SectorBuilder() sectorbuilder.SectorBuilder { return &testSectorBuilder{} }
+
+type testSectorBuilder struct{}
+
+func (tsb *testSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, err error) {
+	return 0, nil
+}
+func (tsb *testSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
+	return nil, nil
+}
+func (tsb *testSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
+	return nil
+}
+func (tsb *testSectorBuilder) SectorSealResults() <-chan sectorbuilder.SectorSealResult {
+	return nil
+}
+func (tsb *testSectorBuilder) GeneratePoSt(gpr sectorbuilder.GeneratePoStRequest) (sectorbuilder.GeneratePoStResponse, error) {
+	return sectorbuilder.GeneratePoStResponse{
+		Proofs: []types.PoStProof{[]byte("test proof")},
+	}, nil
+}
+func (tsb *testSectorBuilder) Close() error {
+	return nil
+}
+
+func mustEncodeResults(t *testing.T, results ...interface{}) [][]byte {
+	out := make([][]byte, len(results))
+	values, err := abi.ToValues(results)
+	require.NoError(t, err)
+
+	for i, value := range values {
+		encoded, err := value.Serialize()
+		require.NoError(t, err)
+		out[i] = encoded
+	}
+	return out
+}
+
 type minerTestPorcelain struct {
-	config        *cfg.Config
-	payerAddress  address.Address
-	targetAddress address.Address
-	channelID     *types.ChannelID
-	messageCid    *cid.Cid
-	signer        types.MockSigner
-	noChannels    bool
-	blockHeight   *types.BlockHeight
-	channelEol    *types.BlockHeight
-	paymentStart  *types.BlockHeight
-	deals         map[cid.Cid]*storagedeal.Deal
+	config          *cfg.Config
+	payerAddress    address.Address
+	targetAddress   address.Address
+	channelID       *types.ChannelID
+	messageCid      *cid.Cid
+	signer          types.MockSigner
+	noChannels      bool
+	blockHeight     *types.BlockHeight
+	channelEol      *types.BlockHeight
+	paymentStart    *types.BlockHeight
+	randError       bool
+	deals           map[cid.Cid]*storagedeal.Deal
+	messageHandlers map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 	testing *testing.T
 }
@@ -318,6 +570,10 @@ func (mtp *minerTestPorcelain) MinerGetSectorSize(ctx context.Context, minerAddr
 }
 
 func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	if mtp.randError {
+		return []byte{}, errors.New("failure to sample chain randomness")
+	}
+
 	bytes := make([]byte, 42)
 	if _, err := rand.Read(bytes); err != nil {
 		panic(err)
@@ -325,6 +581,8 @@ func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sample
 
 	return bytes, nil
 }
+
+type messageHandlerMap map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
@@ -341,30 +599,40 @@ func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
 
 	blockHeight := types.NewBlockHeight(773)
 	return &minerTestPorcelain{
-		config:        config,
-		payerAddress:  payerAddr,
-		targetAddress: addressGetter(),
-		channelID:     types.NewChannelID(73),
-		messageCid:    &messageCid,
-		signer:        mockSigner,
-		noChannels:    false,
-		channelEol:    types.NewBlockHeight(13773),
-		blockHeight:   blockHeight,
-		paymentStart:  blockHeight,
-		testing:       t,
-		deals:         make(map[cid.Cid]*storagedeal.Deal),
+		config:          config,
+		payerAddress:    payerAddr,
+		targetAddress:   addressGetter(),
+		channelID:       types.NewChannelID(73),
+		messageCid:      &messageCid,
+		signer:          mockSigner,
+		noChannels:      false,
+		channelEol:      types.NewBlockHeight(13773),
+		blockHeight:     blockHeight,
+		paymentStart:    blockHeight,
+		messageHandlers: messageHandlerMap{},
+		testing:         t,
+		deals:           make(map[cid.Cid]*storagedeal.Deal),
 	}
 }
 
 func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return nil, nil
+	return builtin.Actors[types.MinerActorCodeCid].Exports()[method], nil
 }
 
 func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+	handler, ok := mtp.messageHandlers[method]
+	if ok {
+		_, err := handler(to, val, params...)
+		return cid.Cid{}, err
+	}
 	return cid.Cid{}, nil
 }
 
 func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	handler, ok := mtp.messageHandlers[method]
+	if ok {
+		return handler(to, types.ZeroAttoFIL, params...)
+	}
 	if method == "getProofsMode" {
 		return messageQueryGetProofsMode()
 	}
@@ -430,6 +698,9 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	// start with miner and signed proposal
 	porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
+	// give miner a test node that will return a test sector builder
+	miner.node = &testNode{}
+
 	// give the miner some place to store the deal
 	miner.dealsAwaitingSealDs = repo.NewInMemoryRepo().DealsDs
 
@@ -454,7 +725,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	}
 
 	// Simulates miner.acceptProposal without going to the network to fetch the data by storing the deal.
-	// Mapping the proposalCid to a sectorID simulates staging the sector.
+	// Mapping the proposal CID to a sector ID simulates staging the sector.
 	require.NoError(t, porcelainAPI.DealPut(storageDeal))
 	miner.dealsAwaitingSeal.attachDealToSector(context.Background(), sectorID, proposalCid)
 
@@ -463,7 +734,8 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 
 func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) (*Miner, *storagedeal.SignedDealProposal) {
 	vouchers := testPaymentVouchers(porcelainAPI, voucherInterval, amountInc)
-	return newTestMiner(porcelainAPI), testSignedDealProposal(porcelainAPI, vouchers, 1000)
+	miner := newTestMiner(porcelainAPI)
+	return miner, testSignedDealProposal(porcelainAPI, vouchers, 1000)
 }
 
 func testPaymentVouchers(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) []*types.PaymentVoucher {
