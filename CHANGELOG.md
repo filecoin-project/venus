@@ -2,7 +2,7 @@
 
 ## go-filecoin 0.2.4
 
-We're happy to announce go-filecoin 0.2.4. This is a patch release with block validation improvements. As a placeholder before full implementation of block validation, block time was hardcoded to 30 seconds. It was also possible to manually configure a shorter block time via the CLI — an unfair block mining advantage. Over the past few weeks, a handful of enterprising devnet participants¹ 😉 increasingly used this undocumented option to the point of severely degrading the devnet for everyone else. To get the devnet running smoothly again, we are releasing partial [block validation](https://github.com/filecoin-project/specs/pull/289).
+We're happy to announce go-filecoin 0.2.4. This is a patch release with block validation improvements. As a placeholder before full implementation of block validation, block time was hardcoded to 30 seconds. It was also possible to manually configure a shorter block time via the CLI — miners who did this gained an unfair block mining advantage. Over the past few weeks, a handful of enterprising devnet participants¹ 😉 increasingly used this undocumented option to the point of severely degrading the devnet for everyone else. To get the devnet running smoothly again, we are releasing partial [block validation](https://github.com/filecoin-project/specs/pull/289).
 
 #### 🌳 Features
 
