@@ -36,8 +36,7 @@ type BitVector struct {
 
 // NewBitVector constructs a new BitVector from a slice of bytes.
 //
-// The bytePacking parameter is required to know how to interpret the
-// bit ordering within the bytes.
+// The bytePacking parameter is required to know how to interpret the bit ordering within the bytes.
 func NewBitVector(buf []byte, bytePacking BitNumbering) *BitVector {
 	return &BitVector{
 		BytePacking: bytePacking,
@@ -48,8 +47,7 @@ func NewBitVector(buf []byte, bytePacking BitNumbering) *BitVector {
 
 // Push adds a single bit to the BitVector.
 //
-// Although it takes a byte, only the low-order
-// bit is used, so just use 0 or 1.
+// Although it takes a byte, only the low-order bit is used, so just use 0 or 1.
 func (v *BitVector) Push(val byte) {
 	if v.Len%8 == 0 {
 		v.Buf = append(v.Buf, 0)
@@ -66,7 +64,7 @@ func (v *BitVector) Push(val byte) {
 	v.Len++
 }
 
-// Get returns byte either 0, 1
+// Get returns a single bit as a byte -- either 0 or 1
 func (v *BitVector) Get(idx int) (byte, error) {
 	if idx >= v.Len {
 		return 0, ErrOutOfRange
@@ -84,8 +82,8 @@ func (v *BitVector) Get(idx int) (byte, error) {
 // Extend adds up to 8 bits to the receiver
 //
 // Given a byte b == 0b11010101
-// v.Extend(b, 4, LSB0) would add <1, 0, 1, 0>
-// v.Extend(b, 4, MSB0) would add <1, 1, 0, 1>
+// v.Extend(b, 4, LSB0) would add < 1, 0, 1, 0 >
+// v.Extend(b, 4, MSB0) would add < 1, 1, 0, 1 >
 func (v *BitVector) Extend(val byte, count uint, order BitNumbering) {
 	if count > 8 {
 		count = 8
