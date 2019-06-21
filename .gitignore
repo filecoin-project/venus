@@ -19,10 +19,7 @@ tools/prerelease-tool/prerelease-tool
 proofs/misc/parameters.json
 proofs/bin/paramcache
 proofs/bin/paramfetch
-proofs/include/libsector_builder_ffi.h
-proofs/lib/libsector_builder_ffi.a
-proofs/lib/pkgconfig/libsector_builder_ffi.pc
 proofs/misc/
-bls-signatures/include/libbls_signatures.h
-bls-signatures/lib/libbls_signatures.a
-bls-signatures/lib/pkgconfig/libbls_signatures.pc
+**/*.h
+**/*.a
+**/*.pc

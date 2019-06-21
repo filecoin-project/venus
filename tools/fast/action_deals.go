@@ -6,7 +6,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 )
 
 // DealsList runs the `deals list` command against the filecoin process
@@ -47,8 +46,9 @@ func (f *Filecoin) DealsRedeem(ctx context.Context, dealCid cid.Cid, options ...
 }
 
 // DealsShow runs the `deals show` command against the filecoin process
-func (f *Filecoin) DealsShow(ctx context.Context, propCid cid.Cid) (*storagedeal.Deal, error) {
-	var out storagedeal.Deal
+func (f *Filecoin) DealsShow(ctx context.Context, propCid cid.Cid) (*commands.DealsShowResult, error) {
+
+	var out commands.DealsShowResult
 
 	err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "deals", "show", propCid.String())
 	if err != nil {

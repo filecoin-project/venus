@@ -56,6 +56,10 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	log.Infof("Received new block from network cid: %s", blk.Cid().String())
 	log.Debugf("Received new block from network: %s", blk)
 
+	// The block we went to all that effort decoding is dropped on the floor!
+	// Don't be too quick to change that, though: the syncer re-fetching the block
+	// is currently critical to reliable validation.
+	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	err = node.Syncer.HandleNewTipset(ctx, types.NewSortedCidSet(blk.Cid()))
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")

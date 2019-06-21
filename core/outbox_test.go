@@ -124,7 +124,7 @@ func TestOutbox(t *testing.T) {
 		provider := &fakeProvider{}
 
 		blk := types.NewBlockForTest(nil, 1)
-		actr, _ := storagemarket.NewActor() // Not an account actor
+		actr := storagemarket.NewActor() // Not an account actor
 		provider.Set(t, blk, sender, actr)
 
 		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)

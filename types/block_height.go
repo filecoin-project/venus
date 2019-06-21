@@ -118,6 +118,8 @@ func (z *BlockHeight) Sub(y *BlockHeight) *BlockHeight {
 }
 
 // AsBigInt returns the blockheight as a big.Int
-func (z *BlockHeight) AsBigInt() *big.Int {
-	return z.val
+func (z *BlockHeight) AsBigInt() (out *big.Int) {
+	out = &big.Int{}
+	out.Set(z.val)
+	return
 }

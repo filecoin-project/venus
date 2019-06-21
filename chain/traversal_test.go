@@ -13,43 +13,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestGetParentTipSet(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx := context.Background()
-	store := th.NewFakeBlockProvider()
-
-	root := store.NewBlock(0)
-	b11 := store.NewBlock(1, root)
-	b12 := store.NewBlock(2, root)
-	b21 := store.NewBlock(3, b11, b12)
-
-	t.Run("root has empty parent", func(t *testing.T) {
-		ts := requireTipset(t, root)
-		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(t, e)
-		assert.Empty(t, parent)
-	})
-	t.Run("plural tipset", func(t *testing.T) {
-		ts := requireTipset(t, b11, b12)
-		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(t, e)
-		assert.True(t, requireTipset(t, root).Equals(parent))
-	})
-	t.Run("plural parent", func(t *testing.T) {
-		ts := requireTipset(t, b21)
-		parent, e := chain.GetParentTipSet(ctx, store, ts)
-		require.NoError(t, e)
-		assert.True(t, requireTipset(t, b11, b12).Equals(parent))
-	})
-}
-
 func TestIterAncestors(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("iterates", func(t *testing.T) {
 		ctx := context.Background()
-		store := th.NewFakeBlockProvider()
+		store := th.NewFakeChainProvider()
 
 		root := store.NewBlock(0)
 		b11 := store.NewBlock(1, root)
@@ -78,7 +47,7 @@ func TestIterAncestors(t *testing.T) {
 
 	t.Run("respects context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		store := th.NewFakeBlockProvider()
+		store := th.NewFakeChainProvider()
 
 		root := store.NewBlock(0)
 		b11 := store.NewBlock(1, root)

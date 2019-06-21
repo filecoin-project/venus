@@ -166,7 +166,8 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 		return errors.Wrap(err, "failed to add validated block to TipSet")
 	}
 
-	for iter := chain.IterAncestors(ctx, m.store, headTs); !iter.Complete(); err = iter.Next() {
+	tipsetProvider := chain.TipSetProviderFromBlocks(ctx, m.store)
+	for iter := chain.IterAncestors(ctx, tipsetProvider, headTs); !iter.Complete(); err = iter.Next() {
 		if err != nil {
 			return err
 		}
@@ -322,8 +323,8 @@ func compareChainStores(ctx context.Context, oldStore *migrationChainStore, newS
 		return errors.New("new and old head tipsets not equal")
 	}
 
-	oldIt := chain.IterAncestors(ctx, oldStore, oldHeadTs)
-	for newIt := chain.IterAncestors(ctx, newStore, newHeadTs); !newIt.Complete(); err = newIt.Next() {
+	oldIt := chain.IterAncestors(ctx, chain.TipSetProviderFromBlocks(ctx, oldStore), oldHeadTs)
+	for newIt := chain.IterAncestors(ctx, chain.TipSetProviderFromBlocks(ctx, newStore), newHeadTs); !newIt.Complete(); err = newIt.Next() {
 		if err != nil {
 			return err
 		}

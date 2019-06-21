@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -382,7 +383,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	pingService := ping.NewPingService(peerHost)
 
 	// setup block validation
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime)
+	// TODO when #2961 is resolved do the needful here.
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
@@ -678,7 +680,10 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			head = newHead
 
 			if node.StorageMiner != nil {
-				node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				err := node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				if err != nil {
+					log.Error(err)
+				}
 			}
 			node.HeaviestTipSetHandled()
 		case <-ctx.Done():

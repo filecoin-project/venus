@@ -8,17 +8,23 @@ import (
 	"go.opencensus.io/stats/view"
 )
 
-// NewTimer creates a Float64Timer that wraps an opencensus float64 measurement.
-// The time defaults to milliseconds.
-func NewTimer(name, desc string) *Float64Timer {
+// NewTimerMs creates a Float64Timer with units of milliseconds and a default set of aggregation
+// bounds for latencies up to a few seconds.
+func NewTimerMs(name, desc string) *Float64Timer {
+	// [>=0ms, >=25ms, >=50ms, >=75ms, >=100ms, >=200ms, >=400ms, >=600ms, >=800ms, >=1s, >=2s, >=4s, >=8s]
+	defaultBounds := []float64{25, 50, 75, 100, 200, 400, 600, 800, 1000, 2000, 4000, 8000}
+	return NewTimerWithBuckets(name, desc, stats.UnitMilliseconds, defaultBounds)
+}
+
+// NewTimerWithBuckets creates a Float64Timer wrapping an opencensus float64 measurement.
+func NewTimerWithBuckets(name, desc, unit string, bounds []float64) *Float64Timer {
 	log.Infof("registering timer: %s - %s", name, desc)
-	fMeasure := stats.Float64(name, desc, stats.UnitMilliseconds)
+	fMeasure := stats.Float64(name, desc, unit)
 	fView := &view.View{
 		Name:        name,
 		Measure:     fMeasure,
 		Description: desc,
-		// [>=0ms, >=25ms, >=50ms, >=75ms, >=100ms, >=200ms, >=400ms, >=600ms, >=800ms, >=1s, >=2s, >=4s, >=8s]
-		Aggregation: view.Distribution(25, 50, 75, 100, 200, 400, 600, 800, 1000, 2000, 4000, 8000),
+		Aggregation: view.Distribution(bounds...),
 	}
 	if err := view.Register(fView); err != nil {
 		// a panic here indicates a developer error when creating a view.
