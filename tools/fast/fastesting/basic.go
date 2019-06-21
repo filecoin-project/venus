@@ -35,6 +35,8 @@ type TestEnvironment struct {
 }
 
 // NewTestEnvironment creates a TestEnvironment with a basic setup for writing tests using the FAST library.
+// NOTE: If you provide non-empty DaemonOpts, it should include a block time option,
+// or the go-filecoin default will be used.
 func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.FilecoinOpts) (context.Context, *TestEnvironment) {
 
 	// Create a directory for the test using the test name (mostly for FAST)
@@ -60,14 +62,17 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	genesisMiner, err := env.GenesisMiner()
 	require.NoError(t, err)
 
-	fcOpts := fast.FilecoinOpts{
-		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
-		DaemonOpts: fastenvOpts.DaemonOpts,
+	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
+
+	// The old method appended a default blocktime and this caused a bug when callers set blocktime
+	// as well. See Issue
+	if len(fastenvOpts.DaemonOpts) == 0 {
+		fastenvOpts.DaemonOpts = []fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}
 	}
 
 	// Setup the first node which is used to help coordinate the other nodes by providing
 	// funds, mining for the network, etc
-	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fcOpts)
+	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
 	require.NoError(t, err)
 
 	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))

@@ -13,15 +13,25 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 )
 
-func TestReproduceFASTFailure(t *testing.T) {
+func TestSetFilecoinOpts(t *testing.T) {
 	tf.IntegrationTest(t)
 	log.SetDebugLogging()
 
 	fastOpts := fast.FilecoinOpts{
-		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(time.Second)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(10 * time.Millisecond)},
 	}
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastOpts)
+
+	clientNode := env.GenesisMiner
+	require.NoError(t, clientNode.MiningStart(ctx))
+}
+
+func TestNoFilecoinOpts(t *testing.T) {
+	tf.IntegrationTest(t)
+	log.SetDebugLogging()
+
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))

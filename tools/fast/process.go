@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	logging "github.com/ipfs/go-log"
 	iptb "github.com/ipfs/iptb/testbed"
@@ -33,11 +32,6 @@ var (
 type FilecoinOpts struct {
 	InitOpts   []ProcessInitOption
 	DaemonOpts []ProcessDaemonOption
-}
-
-// FilecoinDefaultOpts is a convenience struct containing only a default blocktime.
-var FilecoinDefaultOpts = FilecoinOpts{
-	DaemonOpts: []ProcessDaemonOption{POBlockTime(1 * time.Millisecond)},
 }
 
 // must register all filecoin iptb plugins first.
