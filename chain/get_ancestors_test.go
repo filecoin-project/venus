@@ -32,7 +32,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 	link := requireHeadTipset(t, chainStore)
 
 	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	minerOwner, err := ki[0].Address()
+	minerWorker, err := ki[0].Address()
 	require.NoError(t, err)
 
 	for i := uint(0); i < numBlocks; i++ {
@@ -40,7 +40,7 @@ func requireGrowChain(ctx context.Context, t *testing.T, blockSource *th.TestFet
 			Parent:      link,
 			GenesisCid:  dstP.genCid,
 			Signer:      signer,
-			MinerWorker: minerOwner,
+			MinerWorker: minerWorker,
 			StateRoot:   dstP.genStateRoot,
 		}
 		linkBlock := th.RequireMkFakeChild(t, fakeChildParams)
