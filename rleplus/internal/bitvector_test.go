@@ -9,10 +9,11 @@ import (
 	"gotest.tools/assert"
 )
 
-func assertBitVector(t *testing.T, expected []byte, actual bitvector.BitVector) {
-	assert.Equal(t, len(expected), actual.Len)
+// Note: When using this helper assertion, expectedBits should *only* be 0s and 1s.
+func assertBitVector(t *testing.T, expectedBits []byte, actual bitvector.BitVector) {
+	assert.Equal(t, len(expectedBits), actual.Len)
 
-	for idx, bit := range expected {
+	for idx, bit := range expectedBits {
 		actualBit, err := actual.Get(idx)
 		assert.NilError(t, err)
 		assert.Equal(t, bit, actualBit)
@@ -93,7 +94,7 @@ func TestBitVector(t *testing.T) {
 			v.Push(bit)
 		}
 
-		assert.Equal(t, byte(11), v.Take(4, 4, bitvector.MSB0))
+		assert.Equal(t, byte(176), v.Take(4, 4, bitvector.MSB0))
 		assert.Equal(t, byte(13), v.Take(4, 4, bitvector.LSB0))
 	})
 
