@@ -3,11 +3,11 @@ package commands_test
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"math/big"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -29,12 +29,6 @@ import (
 )
 
 func TestDealsRedeem(t *testing.T) {
-	// DISABLED: this test has nondeterministic rounding errors
-	// https://github.com/filecoin-project/go-filecoin/issues/2960
-	// It also takes many minutes due to waiting for real sector sealing. This is unacceptable
-	// for an integration test (possibly ok for a functional test).
-	// https://github.com/filecoin-project/go-filecoin/issues/2965
-	t.Skipf("Flaky and slow: #2960, #2965")
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
@@ -60,31 +54,40 @@ func TestDealsRedeem(t *testing.T) {
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)
+	dataPriceOneBlock := uint64(12)
 
 	var minerAddress address.Address
 	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
 	require.NoError(t, err)
 
-	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, 1, true)
-	require.NoError(t, err)
-
-	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete)
-	require.NoError(t, err)
-
-	// Stop mining to guarantee the miner doesn't receive any block rewards
-	require.NoError(t, minerDaemon.MiningStop(ctx))
-	// Wait for 1 blocktime to allow any remaining block rewards to be processed
-	protocolDetails, err := minerDaemon.Protocol(ctx)
-	require.NoError(t, err)
-	time.Sleep(protocolDetails.BlockTime)
-
 	minerOwnerAddresses, err := minerDaemon.AddressLs(ctx)
 	require.NoError(t, err)
 	minerOwnerAddress := minerOwnerAddresses[0]
 
+	dealDuration := uint64(5)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration, true)
+	require.NoError(t, err)
+
+	// atLeastStartH is either the start height of the deal or a height after the deal has started.
+	atLeastStartH, err := series.GetHeadBlockHeight(ctx, clientDaemon)
+	require.NoError(t, err)
+
+	// Wait until deal is accepted so miner has redeemable vouchers.
+	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Staged)
+	require.NoError(t, err)
+
+	// Wait until deal period is complete.
+	err = series.WaitForBlockHeight(ctx, minerDaemon, types.NewBlockHeight(dealDuration).Add(atLeastStartH))
+	require.NoError(t, err)
+
 	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
+	// Note: we are racing against sealing here.  If sealing were to finish
+	// after the wallet query but before we issue the redeem message then
+	// our math will be off due to commitSector message gas and possible
+	// block rewards.  In practice sealing takes much longer so we never
+	// lose the race.
 	redeemCid, err := minerDaemon.DealsRedeem(ctx, dealResponse.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
 	require.NoError(t, err)
 
@@ -94,8 +97,12 @@ func TestDealsRedeem(t *testing.T) {
 	newWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
 
+	expectedGasCost := 0.1
+	expectedBalanceDiff := float64(dealDuration*dataPriceOneBlock) - expectedGasCost
+	expectedBalanceStr := fmt.Sprintf("%.1f", expectedBalanceDiff)
+
 	actualBalanceDiff := newWalletBalance.Sub(oldWalletBalance)
-	assert.Equal(t, "11.9", actualBalanceDiff.String())
+	assert.Equal(t, expectedBalanceStr, actualBalanceDiff.String())
 }
 
 func TestDealsList(t *testing.T) {
