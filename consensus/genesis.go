@@ -63,7 +63,7 @@ func ActorAccount(addr address.Address, amt types.AttoFIL) GenOption {
 func MinerActor(addr address.Address, owner address.Address, pid peer.ID, coll types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &minerActorConfig{
-			state:   miner.NewState(owner, pid, sectorSize),
+			state:   miner.NewState(owner, owner, pid, sectorSize),
 			balance: coll,
 		}
 		return nil

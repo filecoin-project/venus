@@ -164,7 +164,7 @@ func TestGetOwner(t *testing.T) {
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
-	state := NewState(address.TestAddress, th.RequireRandomPeerID(t), types.OneKiBSectorSize)
+	state := NewState(address.TestAddress, address.TestAddress, th.RequireRandomPeerID(t), types.OneKiBSectorSize)
 
 	state.SectorCommitments["1"] = types.Commitments{
 		CommD:     types.CommD{},

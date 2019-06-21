@@ -166,10 +166,10 @@ func NewActor() *actor.Actor {
 }
 
 // NewState creates a miner state struct
-func NewState(owner address.Address, pid peer.ID, sectorSize *types.BytesAmount) *State {
+func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
 		Owner:             owner,
-		Worker:            owner,
+		Worker:            worker,
 		PeerID:            pid,
 		SectorCommitments: make(map[string]types.Commitments),
 		Power:             types.NewBytesAmount(0),

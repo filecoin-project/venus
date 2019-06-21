@@ -124,7 +124,7 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, sectorSize *types.Byt
 			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
 		}
 
-		minerInitializationParams := miner.NewState(vmctx.Message().From, pid, sectorSize)
+		minerInitializationParams := miner.NewState(vmctx.Message().From, vmctx.Message().From, pid, sectorSize)
 
 		actorCodeCid := types.MinerActorCodeCid
 		if vmctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
