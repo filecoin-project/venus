@@ -1,5 +1,22 @@
 # go-filecoin changelog
 
+## go-filecoin 0.2.4
+
+We're happy to announce go-filecoin 0.2.4. This is a patch release with block validation improvements. As a placeholder before full implementation of block validation, block time was hardcoded to 30 seconds. It was also possible to manually configure a shorter block time via the CLI — miners who did this gained an unfair block mining advantage. Over the past few weeks, a handful of enterprising devnet participants¹ 😉 increasingly used this undocumented option to the point of severely degrading the devnet for everyone else. To get the devnet running smoothly again, we are releasing partial [block validation](https://github.com/filecoin-project/specs/pull/289).
+
+#### 🌳 Features
+
+- Timestamp block | [go-filecoin #2897](https://github.com/filecoin-project/go-filecoin/pull/2897)
+- Partial Block validation | [go-filecoin #2899](https://github.com/filecoin-project/go-filecoin/pull/2899), [go-filecoin #2882](https://github.com/filecoin-project/go-filecoin/pull/2882), [go-filecoin #2914](https://github.com/filecoin-project/go-filecoin/pull/2914)
+
+#### ☝🏽 Upgrade notice
+
+As a reminder, only the latest version of go-filecoin will connect to the user devnet until protocol upgrade work is complete. Users will need to upgrade to 0.2.4 to connect to the user devnet.
+
+[1] If that was you, we’d love to collaborate to see if you can find other ways to break our implementation! Please email us at [mining@filecoin.io](mailto:mining@filecoin.io).
+
+---
+
 ## go-filecoin 0.2.2
 
 We're happy to announce go-filecoin 0.2.2. This is a maintenance release with bug fixes and debugging improvements. After the 0.2.1 release, we found a bug in the dht ([#2753](https://github.com/filecoin-project/go-filecoin/issues/2753)) that caused some nodes to panic. This was fixed in [#2754](https://github.com/filecoin-project/go-filecoin/pull/2754) by bumping the [go-libp2p-kad-dht](https://github.com/libp2p/go-libp2p-kad-dht) version from 0.0.4 to 0.0.8.
