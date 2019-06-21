@@ -318,9 +318,9 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 	return sectorSize, nil
 }
 
-// MinerGetPledgeCollateralRequirement queries for the pledge collateral requirement for a miner.
-func MinerGetPledgeCollateralRequirement(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (types.AttoFIL, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getPledgeCollateralRequirement")
+// MinerCalculateLateFee calculates the fee due if a miner's PoSt were to be mined at `height`.
+func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "calculateLateFee", height)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
 	}

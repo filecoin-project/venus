@@ -223,25 +223,14 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var minerExports = exec.Exports{
+	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
 	"addAsk": &exec.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
-	"getAsks": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.UintArray},
-	},
-	"getAsk": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
-		Return: []abi.Type{abi.Bytes},
-	},
 	"getOwner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
-	},
-	"getLastUsedSectorID": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
 		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
@@ -271,9 +260,32 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{},
 	},
+	// verifyPieceInclusion is not in spec, but should be.
 	"verifyPieceInclusion": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
+	},
+	"getSectorSize": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.BytesAmount},
+	},
+
+	// Non-exported methods below here.
+	// These methods are not part of the actor's protocol specification and should not be exported,
+	// but are because we lack a mechanism to invoke actor methods without going through the
+	// queryMessage infrastructure. These should be removed when we have another way of invoking
+	// them from worker code. https://github.com/filecoin-project/go-filecoin/issues/2973
+	"getAsks": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.UintArray},
+	},
+	"getAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getLastUsedSectorID": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
 	},
 	"getSectorCommitments": &exec.FunctionSignature{
 		Params: nil,
@@ -287,16 +299,12 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Integer},
 	},
-	"getSectorSize": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.BytesAmount},
-	},
 	"getProvingPeriod": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
-	"getPledgeCollateralRequirement": &exec.FunctionSignature{
-		Params: nil,
+	"calculateLateFee": &exec.FunctionSignature{
+		Params: []abi.Type{abi.BlockHeight},
 		Return: []abi.Type{abi.AttoFIL},
 	},
 	"getActiveCollateral": &exec.FunctionSignature{
@@ -847,7 +855,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				generationAttackGracePeriod)
 		}
 
-		feeRequired := LatePoStFee(state.ActiveCollateral, state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
+		feeRequired := latePoStFee(ma.getPledgeCollateralRequirement(state, chainHeight), state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
@@ -949,49 +957,45 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 // GetProvingPeriod returns the proving period start and proving period end
 func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return nil, nil, errors.CodeError(err), err
-	}
-
 	var state State
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+	err := loadState(ctx, &state)
+	if err != nil {
 		return nil, nil, errors.CodeError(err), err
 	}
 
 	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
 }
 
-// GetPledgeCollateralRequirement returns the pledge collateral balance required to be maintained
-// by this actor.
-func (ma *Actor) GetPledgeCollateralRequirement(ctx exec.VMContext) (types.AttoFIL, uint8, error) {
-	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return types.ZeroAttoFIL, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
-	}
-
+// CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current
+// power and proving period.
+func (ma *Actor) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return state.ActiveCollateral, nil
-	})
+	err := loadState(ctx, &state)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.CodeError(err), err
 	}
 
-	amt, ok := out.(types.AttoFIL)
-	if !ok {
-		return types.ZeroAttoFIL, 1, errors.NewFaultErrorf("expected a types.AttoFIL, but got %T instead", out)
-	}
-
-	return amt, 0, nil
+	collateral := ma.getPledgeCollateralRequirement(state, ctx.BlockHeight())
+	gracePeriod := GenerationAttackTime(state.SectorSize)
+	fee := latePoStFee(collateral, state.ProvingPeriodEnd, height, gracePeriod)
+	return fee, 0, nil
 }
 
 //
 // Un-exported methods
+// These are methods, rather than free functions, even when they don't use the actor struct in
+// expectation of this being important for future protocol upgrade mechanisms.
 //
 
 func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
 	_, _, err := ctx.Send(address.BurntFundsAddress, "", amount, []interface{}{})
 	return err
+}
+
+func (ma *Actor) getPledgeCollateralRequirement(state State, height *types.BlockHeight) types.AttoFIL {
+	// The pledge collateral is expected to be a function of power and block height, but is currently
+	// a state variable.
+	return state.ActiveCollateral
 }
 
 // getPoStChallengeSeed returns some chain randomness
@@ -1056,7 +1060,7 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 // fraction of the maximum possible lateness (i.e. the generation attack grace period).
 // If the submission is on-time, the fee is zero. If the submission is after the maximum allowed lateness
 // the fee amounts to the entire pledge collateral.
-func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
+func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
 	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
 
 	if lateState == PoStStateAfterGenerationAttackThreshold {
@@ -1075,6 +1079,19 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 // Internal functions
 //
+
+// Loads the actor's state into `state`.
+func loadState(ctx exec.VMContext, state *State) error {
+	chunk, err := ctx.ReadStorage()
+	if err != nil {
+		return err
+	}
+
+	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
+		return err
+	}
+	return nil
+}
 
 // calculates proving period start from the proving period end and the proving period duration
 func provingPeriodStart(state State) *types.BlockHeight {

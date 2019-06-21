@@ -27,7 +27,6 @@ import (
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
@@ -63,6 +62,9 @@ type Miner struct {
 
 	dealsAwaitingSeal *dealsAwaitingSeal
 
+	prover     prover
+	sectorSize *types.BytesAmount
+
 	porcelainAPI minerPorcelain
 	node         node
 
@@ -71,14 +73,10 @@ type Miner struct {
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
-// A subset of this is required only for the prover; the prover should be injected rather than
-// have its deps plumbed through here.
-// FIXME change prover deps to match porcelain inject object
 type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
 	ChainBlockHeight() (*types.BlockHeight, error)
-	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
@@ -87,10 +85,11 @@ type minerPorcelain interface {
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+}
 
-	WalletBalance(ctx context.Context, address address.Address) (types.AttoFIL, error)
-	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
-	MinerGetPledgeCollateralRequirement(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error)
+// prover computes PoSts for submission by a miner.
+type prover interface {
+	CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -102,18 +101,16 @@ type node interface {
 	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// Static check that miner implements the needs of the Prover
-var _ ProofReader = (*Miner)(nil)
-var _ ProofCalculator = (*Miner)(nil)
-
 // NewMiner is
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
 		workerAddr:          workerAddr,
 		porcelainAPI:        porcelainAPI,
 		dealsAwaitingSealDs: dealsDs,
+		prover:              prover,
+		sectorSize:          sectorSize,
 		node:                nd,
 		proposalAcceptor:    acceptProposal,
 		proposalRejector:    rejectProposal,
@@ -169,12 +166,7 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, err.Error())
 	}
 
-	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
-	if err != nil {
-		return sm.proposalRejector(sm, p, "failed to get miner's sector size")
-	}
-
-	maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+	maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sm.sectorSize.Uint64()))
 	if sp.Size.GreaterThan(maxUserBytes) {
 		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
 	}
@@ -723,10 +715,6 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	if err != nil {
 		return errors.Errorf("failed to get proving period: %s", err)
 	}
-	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
-	if err != nil {
-		return errors.Errorf("failed to get sector size: %s", err)
-	}
 
 	sm.postInProcessLk.Lock()
 	defer sm.postInProcessLk.Unlock()
@@ -749,7 +737,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingPeriodEnd
 
-			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, sectorSize, inputs)
+			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, inputs)
 		} else {
 			// we are too late
 			// TODO: figure out faults and payments here
@@ -773,9 +761,8 @@ func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, err
 	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
-func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight,  sectorSize *types.BytesAmount, inputs []PoStInputs) {
-	prover := NewProver(sm.minerAddr, sm.workerAddr, sectorSize, sm, sm)
-	submission, err := prover.CalculatePoSt(ctx, start, end, inputs)
+func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {
+	submission, err := sm.prover.CalculatePoSt(ctx, start, end, inputs)
 	if err != nil {
 		log.Errorf("failed to calculate PoSt: %s", err)
 		return
@@ -792,53 +779,4 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	}
 
 	log.Info("submitted PoSt")
-}
-
-//
-// Implementation of ProofReader.
-//
-
-// ChainHeight provides the chain height to the Prover.
-func (sm *Miner) ChainHeight() (*types.BlockHeight, error) {
-	return sm.porcelainAPI.ChainBlockHeight()
-}
-
-// ChallengeSeed provides a challenge seed to the Prover.
-func (sm *Miner) ChallengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, periodStart)
-	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
-	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-	return seed, nil
-}
-
-// PledgeCollateralRequirement returns a miner's collateral requirement.
-func (sm *Miner) PledgeCollateralRequirement(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
-	return sm.porcelainAPI.MinerGetPledgeCollateralRequirement(ctx, addr)
-}
-
-// WalletBalance returns an actor's balance.
-func (sm *Miner) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
-	return sm.porcelainAPI.WalletBalance(ctx, addr)
-}
-
-//
-// Implementation of ProofCalculator.
-//
-
-// CalculatePost calls the sector builder to compute a proof.
-func (sm *Miner) CalculatePost(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
-	req := sectorbuilder.GeneratePoStRequest{
-		SortedCommRs:  sortedCommRs,
-		ChallengeSeed: seed,
-	}
-	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to generate PoSt")
-	}
-
-	return res.Proofs, res.Faults, nil
 }

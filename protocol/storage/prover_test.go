@@ -12,20 +12,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var zeroSeed types.PoStChallengeSeed
-
 func TestProver(t *testing.T) {
+	tf.UnitTest(t)
 	ctx := context.Background()
 	makeAddress := address.NewForTestGetter()
 	actorAddress := makeAddress()
 	workerAddress := makeAddress()
 	sectorSize := types.OneKiBSectorSize
 
-	var fakeSeed types.PoStChallengeSeed
-	fakeSeed[0] = 1
+	fakeSeed := []byte{1, 2, 3, 4}
 	var fakeInputs []storage.PoStInputs
 	start := types.NewBlockHeight(100)
 	end := types.NewBlockHeight(200)
@@ -38,7 +37,7 @@ func TestProver(t *testing.T) {
 			seed:          fakeSeed,
 			actorAddress:  actorAddress,
 			workerAddress: workerAddress,
-			collateral:    collateralRequirement,
+			lateFee:       types.ZeroAttoFIL,
 			balance:       collateralRequirement,
 			proofs:        []types.PoStProof{{1, 2, 3, 4}},
 			faults:        []uint64{},
@@ -54,35 +53,25 @@ func TestProver(t *testing.T) {
 		assert.Equal(t, types.ZeroAttoFIL, submission.Fee)
 	})
 
-	t.Run("attaches a fee some buffer before lateness", func(t *testing.T) {
+	t.Run("attaches a fee", func(t *testing.T) {
 		pc := makeProofContext()
-		pc.height = end.Sub(types.NewBlockHeight(5)) // a few rounds before on-time window ends
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
-		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
-		require.NoError(t, e)
-		assert.Equal(t, pc.proofs, submission.Proofs)
-		// A fee is attached to allow for the proof being mined in the future, when it might be late.
-		assert.True(t, submission.Fee.GreaterThan(types.ZeroAttoFIL))
-	})
+		pc.lateFee = types.NewAttoFILFromFIL(1)
+		// The following block heights should all be capable of attaching a fee if the actor
+		// code indicates it should.
+		heights := []*types.BlockHeight{
+			end.Sub(types.NewBlockHeight(5)),      // A few rounds before on-time window ends
+			deadline.Sub(types.NewBlockHeight(5)), // well before deadline
+			deadline.Sub(types.NewBlockHeight(1)), // just before deadline
+		}
 
-	t.Run("attaches max fee at deadline", func(t *testing.T) {
-		pc := makeProofContext()
-		pc.height = deadline.Sub(types.NewBlockHeight(1)) // just before deadline
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
-		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
-		require.NoError(t, e)
-		assert.Equal(t, pc.proofs, submission.Proofs)
-		assert.Equal(t, collateralRequirement, submission.Fee)
-	})
-
-	t.Run("attaches max fee at some buffer before deadline", func(t *testing.T) {
-		pc := makeProofContext()
-		pc.height = deadline.Sub(types.NewBlockHeight(5)) // well before deadline
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
-		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
-		require.NoError(t, e)
-		assert.Equal(t, pc.proofs, submission.Proofs)
-		assert.Equal(t, collateralRequirement, submission.Fee)
+		for _, height := range heights {
+			pc.height = height
+			prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+			submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+			require.NoError(t, e)
+			assert.Equal(t, pc.proofs, submission.Proofs)
+			assert.True(t, submission.Fee.GreaterThan(types.ZeroAttoFIL))
+		}
 	})
 
 	t.Run("abandons proof after deadline", func(t *testing.T) {
@@ -114,7 +103,7 @@ func TestProver(t *testing.T) {
 
 	t.Run("fails without challenge seed", func(t *testing.T) {
 		pc := makeProofContext()
-		pc.seed = zeroSeed
+		pc.seed = nil
 
 		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
@@ -124,34 +113,31 @@ func TestProver(t *testing.T) {
 
 type fakeProverContext struct {
 	height        *types.BlockHeight
-	seed          types.PoStChallengeSeed
+	seed          []byte
 	actorAddress  address.Address
 	workerAddress address.Address
-	collateral    types.AttoFIL
+	lateFee       types.AttoFIL
 	balance       types.AttoFIL
 	proofs        []types.PoStProof
 	faults        []uint64
 }
 
-func (f *fakeProverContext) ChainHeight() (*types.BlockHeight, error) {
+func (f *fakeProverContext) ChainBlockHeight() (*types.BlockHeight, error) {
 	if f.height != nil {
 		return f.height, nil
 	}
 	return nil, errors.New("no height")
 }
 
-func (f *fakeProverContext) ChallengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	if f.seed != zeroSeed {
+func (f *fakeProverContext) ChainSampleRandomness(ctx context.Context, periodStart *types.BlockHeight) ([]byte, error) {
+	if f.seed != nil {
 		return f.seed, nil
 	}
-	return zeroSeed, errors.New("no seed")
+	return nil, errors.New("no seed")
 }
 
-func (f *fakeProverContext) PledgeCollateralRequirement(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
-	if addr == f.actorAddress && !f.collateral.IsZero() {
-		return f.collateral, nil
-	}
-	return types.ZeroAttoFIL, errors.New("no collateral for actor")
+func (f *fakeProverContext) MinerCalculateLateFee(ctx context.Context, addr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	return f.lateFee, nil
 }
 
 func (f *fakeProverContext) WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error) {
@@ -161,6 +147,6 @@ func (f *fakeProverContext) WalletBalance(ctx context.Context, addr address.Addr
 	return types.ZeroAttoFIL, errors.New("no balance for worker")
 }
 
-func (f *fakeProverContext) CalculatePost(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
 	return f.proofs, f.faults, nil
 }

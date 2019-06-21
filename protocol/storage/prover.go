@@ -23,21 +23,21 @@ const (
 
 // ProofReader provides information about the blockchain to the proving process.
 type ProofReader interface {
-	// ChainHeight returns the current height of the best chain.
-	ChainHeight() (*types.BlockHeight, error)
-	// ChallengeSeed returns the PoSt challenge seed for a proving period.
-	ChallengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error)
-	// PledgeCollateralRequirement returns the pledge collateral required to be posted by a miner.
-	PledgeCollateralRequirement(ctx context.Context, addr address.Address) (types.AttoFIL, error)
+	// ChainBlockHeight returns the current height of the best chain.
+	ChainBlockHeight() (*types.BlockHeight, error)
+	// ChainSampleRandomness returns bytes derived from the blockchain before `sampleHeight`.
+	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
+	// MinerCalculateLateFee calculates the fee due for a proof submitted at some height.
+	MinerCalculateLateFee(ctx context.Context, addr address.Address, height *types.BlockHeight) (types.AttoFIL, error)
 	// WalletBalance returns the balance for an actor.
 	WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error)
 }
 
 // ProofCalculator creates the proof-of-spacetime bytes.
 type ProofCalculator interface {
-	// CalculatePost computes a proof-of-spacetime for a list of sector ids and matching seeds.
+	// CalculatePoSt computes a proof-of-spacetime for a list of sector ids and matching seeds.
 	// It returns the Snark Proof for the PoSt and a list of sector ids that failed.
-	CalculatePost(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error)
+	CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error)
 }
 
 // Prover orchestrates the calculation and submission of a proof-of-spacetime.
@@ -78,7 +78,7 @@ func NewProver(actor address.Address, worker address.Address, sectorSize *types.
 // CalculatePoSt computes and returns a proof-of-spacetime ready for posting on chain.
 func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error) {
 	// Gather PoSt request inputs.
-	seed, err := p.chain.ChallengeSeed(ctx, start)
+	seed, err := p.challengeSeed(ctx, start)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch PoSt challenge seed")
 	}
@@ -88,7 +88,7 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 	for i, input := range inputs {
 		commRs[i] = input.CommR
 	}
-	proofs, faults, err := p.calculator.CalculatePost(proofs.NewSortedCommRs(commRs...), seed)
+	proof, faults, err := p.calculator.CalculatePoSt(ctx, proofs.NewSortedCommRs(commRs...), seed)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to calculate PoSt")
 	}
@@ -104,7 +104,7 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		return nil, errors.Wrapf(err, "failed to check wallet balance for %s", p.workerAddress)
 	}
 
-	height, err := p.chain.ChainHeight()
+	height, err := p.chain.ChainBlockHeight()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to check chain height")
 	}
@@ -122,12 +122,25 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 	}
 
 	return &PoStSubmission{
-		Proofs:   proofs,
+		Proofs:   proof,
 		Fee:      feeDue,
 		GasLimit: types.NewGasUnits(submitPostGasLimit),
 	}, nil
 }
 
+// challengeSeed returns the PoSt challenge seed for a proving period.
+func (p *Prover) challengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	bytes, err := p.chain.ChainSampleRandomness(ctx, periodStart)
+	if err != nil {
+		return types.PoStChallengeSeed{}, err
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+	return seed, nil
+}
+
+// calculateFee calculates any fees due with a proof submission due to faults or lateness.
 func (p *Prover) calculateFee(ctx context.Context, height *types.BlockHeight, end *types.BlockHeight) (types.AttoFIL, error) {
 	gracePeriod := miner.GenerationAttackTime(p.sectorSize)
 	deadline := end.Add(gracePeriod)
@@ -138,14 +151,11 @@ func (p *Prover) calculateFee(ctx context.Context, height *types.BlockHeight, en
 		return types.ZeroAttoFIL, errors.Errorf("PoSt generation was too slow height=%s end=%s deadline=%s", height, end, deadline)
 	}
 
-	collateral, err := p.chain.PledgeCollateralRequirement(ctx, p.actorAddress)
+	expectedProofHeight := height.Add(types.NewBlockHeight(postSubmissionDelayBufferRounds))
+	fee, err := p.chain.MinerCalculateLateFee(ctx, p.actorAddress, expectedProofHeight)
 	if err != nil {
-		return types.ZeroAttoFIL, errors.Errorf("Failed to check pledge collateral requirement for %s", p.actorAddress)
+		return types.ZeroAttoFIL, errors.Errorf("Failed to calculate late fee for %s", p.actorAddress)
 	}
 
-	// Compute any fee due for lateness of the proof, leaving room for the proof to actually
-	// land on chain some number of rounds in the future.
-	expectedProofHeight := height.Add(types.NewBlockHeight(postSubmissionDelayBufferRounds))
-	feeDue := miner.LatePoStFee(collateral, end, expectedProofHeight, gracePeriod)
-	return feeDue, nil
+	return fee, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/libp2p/go-libp2p-peerstore"
@@ -139,7 +140,7 @@ func TestNodeStartMining(t *testing.T) {
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, minerNode, minerNode.Repo.DealsDatastore(), nil)
+	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), nil)
 	assert.NoError(t, err)
 
 	assert.NoError(t, minerNode.Start(ctx))
