@@ -42,6 +42,12 @@ var (
 	ErrUnexpectedStoreState = errors.New("the chain store is in an unexpected state")
 )
 
+var syncOneTimer *metrics.Float64Timer
+
+func init() {
+	syncOneTimer = metrics.NewTimerMs("syncer/sync_one", "Duration of single tipset validation in milliseconds")
+}
+
 var logSyncer = logging.Logger("chain.syncer")
 
 // SyncMode represents which behavior mode the chain syncer is currently in. By
@@ -247,6 +253,9 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	if head.Equals(next.ToSortedCidSet()) {
 		return nil
 	}
+
+	stopwatch := syncOneTimer.Start(ctx)
+	defer stopwatch.Stop(ctx)
 
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the chainStore.

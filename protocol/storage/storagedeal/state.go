@@ -8,8 +8,11 @@ import (
 type State int
 
 const (
+	// Unset indicates a programmer error and should never appear in an actual message.
+	Unset = State(iota)
+
 	// Unknown signifies an unknown negotiation
-	Unknown = State(iota)
+	Unknown
 
 	// Rejected means the deal was rejected for some reason
 	Rejected
@@ -23,19 +26,17 @@ const (
 	// Failed means the deal has failed for some reason
 	Failed
 
-	// Posted means the deal has been posted to the blockchain
-	Posted
-
-	// Complete means the deal is complete
-	// TODO: distinguish this from 'Posted'
-	Complete
-
-	// Staged means that the data in the deal has been staged into a sector
+	// Staged means that data has been received and staged into a sector, but is not sealed yet.
 	Staged
+
+	// Complete means that the sector that the deal is contained in has been sealed and its commitment posted on chain.
+	Complete
 )
 
 func (s State) String() string {
 	switch s {
+	case Unset:
+		return "unset"
 	case Unknown:
 		return "unknown"
 	case Rejected:
@@ -46,12 +47,10 @@ func (s State) String() string {
 		return "started"
 	case Failed:
 		return "failed"
-	case Posted:
-		return "posted"
-	case Complete:
-		return "complete"
 	case Staged:
 		return "staged"
+	case Complete:
+		return "complete"
 	default:
 		return fmt.Sprintf("<unrecognized %d>", s)
 	}

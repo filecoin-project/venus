@@ -21,17 +21,22 @@ func init() {
 		panic(err)
 	}
 
-	NetworkAddress, err = NewActorAddress([]byte("filecoin"))
+	NetworkAddress, err = NewIDAddress(1)
 	if err != nil {
 		panic(err)
 	}
 
-	StorageMarketAddress, err = NewActorAddress([]byte("storage"))
+	StorageMarketAddress, err = NewIDAddress(2)
 	if err != nil {
 		panic(err)
 	}
 
-	PaymentBrokerAddress, err = NewActorAddress([]byte("payments"))
+	PaymentBrokerAddress, err = NewIDAddress(3)
+	if err != nil {
+		panic(err)
+	}
+
+	BurntFundsAddress, err = NewIDAddress(99)
 	if err != nil {
 		panic(err)
 	}
@@ -43,12 +48,14 @@ var (
 	// TestAddress2 is an account with some initial funds in it.
 	TestAddress2 Address
 
-	// NetworkAddress is the filecoin network.
+	// NetworkAddress is the filecoin network treasury.
 	NetworkAddress Address
-	// StorageMarketAddress is the hard-coded address of the filecoin storage market.
+	// StorageMarketAddress is the hard-coded address of the filecoin storage market actor.
 	StorageMarketAddress Address
-	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker.
+	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker actor.
 	PaymentBrokerAddress Address
+	// BurntFundsAddress is the hard-coded address of the burnt funds account actor.
+	BurntFundsAddress Address
 )
 
 var (

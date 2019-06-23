@@ -28,7 +28,7 @@ type FakeChildParams struct {
 	Parent         types.TipSet
 	StateRoot      cid.Cid
 	Signer         consensus.TicketSigner
-	MinerPubKey    []byte
+	MinerWorker    address.Address
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -74,7 +74,7 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
-		params.MinerPubKey,
+		params.MinerWorker,
 		params.Signer,
 		wFun)
 }
@@ -86,7 +86,7 @@ func MkFakeChildCore(parent types.TipSet,
 	nonce uint64,
 	nullBlockCount uint64,
 	minerAddr address.Address,
-	minerPubKey []byte,
+	minerWorker address.Address,
 	signer consensus.TicketSigner,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
@@ -105,7 +105,7 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.ToSortedCidSet()
 
-	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerPubKey, signer)
+	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
@@ -156,7 +156,7 @@ func RequireMkFakeChildCore(t *testing.T,
 		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
-		params.MinerPubKey,
+		params.MinerWorker,
 		params.Signer,
 		wFun)
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
 	var ticket types.Signature
 
@@ -186,7 +186,7 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmoun
 
 	for {
 		poStProof = MakeRandomPoStProofForTest()
-		ticket, err := consensus.CreateTicket(poStProof, signerPubKey, signer)
+		ticket, err := consensus.CreateTicket(poStProof, signerAddr, signer)
 		if err != nil {
 			errStr := fmt.Sprintf("error creating ticket: %s", err)
 			panic(errStr)
@@ -197,33 +197,37 @@ func MakeProofAndWinningTicket(signerPubKey []byte, minerPower *types.BytesAmoun
 	}
 }
 
-///// Fake traversal block provider implementation
+///// Fake traversal chain provider implementation
 
-// FakeBlockProvider is a fake block provider.
-type FakeBlockProvider struct {
+// FakeChainProvider is a fake chain provider.
+type FakeChainProvider struct {
 	blocks map[cid.Cid]*types.Block
 	seq    int
 }
 
-// NewFakeBlockProvider returns a new, empty fake block provider.
-func NewFakeBlockProvider() *FakeBlockProvider {
-	return &FakeBlockProvider{
+// NewFakeChainProvider returns a new, empty fake chain provider.
+func NewFakeChainProvider() *FakeChainProvider {
+	return &FakeChainProvider{
 		make(map[cid.Cid]*types.Block),
 		0,
 	}
 }
 
-// GetBlock implements BlockProvider.GetBlock to return a block by CID.
-func (bs *FakeBlockProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
-	block, ok := bs.blocks[cid]
-	if ok {
-		return block, nil
+// GetTipSet returns a tipset by key.
+func (bs *FakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+	var blocks []*types.Block
+	for it := tsKey.Iter(); !it.Complete(); it.Next() {
+		block, ok := bs.blocks[it.Value()]
+		if !ok {
+			return types.UndefTipSet, errors.New("no such block")
+		}
+		blocks = append(blocks, block)
 	}
-	return nil, errors.New("no such block")
+	return types.NewTipSet(blocks...)
 }
 
 // NewBlockWithMessages creates and stores a new block in this provider.
-func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
+func (bs *FakeChainProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
 	b := &types.Block{
 		Nonce:    types.Uint64(nonce),
 		Messages: messages,
@@ -242,6 +246,6 @@ func (bs *FakeBlockProvider) NewBlockWithMessages(nonce uint64, messages []*type
 }
 
 // NewBlock creates and stores a new block in this provider.
-func (bs *FakeBlockProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
+func (bs *FakeChainProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
 	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
 }

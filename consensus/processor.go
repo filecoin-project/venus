@@ -21,8 +21,8 @@ var pbTimer *metrics.Float64Timer
 var amTimer *metrics.Float64Timer
 
 func init() {
-	amTimer = metrics.NewTimer("consensus/apply_message", "Duration of message application in milliseconds")
-	pbTimer = metrics.NewTimer("consensus/process_block", "Duration of block processing in milliseconds")
+	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds")
+	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
 }
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas

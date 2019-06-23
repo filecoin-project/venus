@@ -183,6 +183,13 @@ func (z AttoFIL) IsZero() bool {
 	return z.Equal(ZeroAttoFIL)
 }
 
+// AsBigInt returns the value as a big.Int
+func (z AttoFIL) AsBigInt() (out *big.Int) {
+	out = &big.Int{}
+	out.Set(&z.val)
+	return
+}
+
 // Bytes returns the absolute value of x as a big-endian byte slice.
 func (z AttoFIL) Bytes() []byte {
 	return leb128.FromBigInt(&z.val)

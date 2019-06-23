@@ -136,7 +136,7 @@ func TestWaitConflicting(t *testing.T) {
 	ctx := context.Background()
 
 	addr1, addr2, addr3 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2]
-	pubkey1, pubkey2 := mockSigner.PubKeys[0], mockSigner.PubKeys[1]
+	worker1, worker2 := mockSigner.Addresses[0], mockSigner.Addresses[1]
 	// create a valid miner
 	minerAddr := mockSigner.Addresses[3]
 
@@ -144,7 +144,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-		consensus.MinerActor(minerAddr, addr3, []byte{}, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
+		consensus.MinerActor(minerAddr, addr3, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)
 	cst, chainStore, waiter := setupTestWithGif(t, testGen)
 
@@ -173,7 +173,7 @@ func TestWaitConflicting(t *testing.T) {
 			GenesisCid:  chainStore.GenesisCid(),
 			StateRoot:   baseBlock.StateRoot,
 			Signer:      mockSigner,
-			MinerPubKey: pubkey1,
+			MinerWorker: worker1,
 		})
 	b1.Messages = []*types.SignedMessage{sm1}
 	b1.Ticket = []byte{0} // block 1 comes first in message application
@@ -186,7 +186,7 @@ func TestWaitConflicting(t *testing.T) {
 			GenesisCid:  chainStore.GenesisCid(),
 			StateRoot:   baseBlock.StateRoot,
 			Signer:      mockSigner,
-			MinerPubKey: pubkey2,
+			MinerWorker: worker2,
 			Nonce:       uint64(1)})
 	b2.Messages = []*types.SignedMessage{sm2}
 	b2.Ticket = []byte{1}

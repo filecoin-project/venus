@@ -61,7 +61,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	fastenvOpts = fast.FilecoinOpts{
 		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
-		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)}, fastenvOpts.DaemonOpts...),
+		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)}, fastenvOpts.DaemonOpts...),
 	}
 
 	// Setup the first node which is used to help coordinate the other nodes by providing

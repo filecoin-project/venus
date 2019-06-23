@@ -27,9 +27,10 @@ var (
 
 func init() {
 	defaultAccounts = map[address.Address]types.AttoFIL{
-		address.NetworkAddress: types.NewAttoFILFromFIL(10000000000),
-		address.TestAddress:    types.NewAttoFILFromFIL(50000),
-		address.TestAddress2:   types.NewAttoFILFromFIL(60000),
+		address.NetworkAddress:    types.NewAttoFILFromFIL(10000000000),
+		address.BurntFundsAddress: types.NewAttoFILFromFIL(0),
+		address.TestAddress:       types.NewAttoFILFromFIL(50000),
+		address.TestAddress2:      types.NewAttoFILFromFIL(60000),
 	}
 }
 
@@ -59,10 +60,10 @@ func ActorAccount(addr address.Address, amt types.AttoFIL) GenOption {
 }
 
 // MinerActor returns a config option that sets up an miner actor account.
-func MinerActor(addr address.Address, owner address.Address, key []byte, pid peer.ID, coll types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
+func MinerActor(addr address.Address, owner address.Address, pid peer.ID, coll types.AttoFIL, sectorSize *types.BytesAmount) GenOption {
 	return func(gc *Config) error {
 		gc.miners[addr] = &minerActorConfig{
-			state:   miner.NewState(owner, key, pid, sectorSize),
+			state:   miner.NewState(owner, owner, pid, sectorSize),
 			balance: coll,
 		}
 		return nil
@@ -210,12 +211,8 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		}
 	}
 
-	stAct, err := storagemarket.NewActor()
-	if err != nil {
-		return err
-	}
-
-	err = (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
+	stAct := storagemarket.NewActor()
+	err := (&storagemarket.Actor{}).InitializeState(storageMap.NewStorage(address.StorageMarketAddress, stAct), storeType)
 	if err != nil {
 		return err
 	}
@@ -223,13 +220,10 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		return err
 	}
 
-	pbAct := actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
+	pbAct := paymentbroker.NewActor()
 	err = (&paymentbroker.Actor{}).InitializeState(storageMap.NewStorage(address.PaymentBrokerAddress, pbAct), nil)
 	if err != nil {
 		return err
 	}
-
-	pbAct.Balance = types.NewAttoFILFromFIL(0)
-
 	return st.SetActor(ctx, address.PaymentBrokerAddress, pbAct)
 }

@@ -77,10 +77,6 @@ func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
 	return wallet.NewAddress(mpc.wallet)
 }
 
-func (mpc *minerCreate) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) {
-	return mpc.wallet.GetPubKeyForAddress(addr)
-}
-
 func TestMinerCreate(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -151,10 +147,6 @@ func (mpc *minerPreviewCreate) NetworkGetPeerID() peer.ID {
 
 func (mpc *minerPreviewCreate) WalletDefaultAddress() (address.Address, error) {
 	return wallet.NewAddress(mpc.wallet)
-}
-
-func (mpc *minerPreviewCreate) WalletFind(address address.Address) (wallet.Backend, error) {
-	return mpc.wallet.Find(address)
 }
 
 func TestMinerPreviewCreate(t *testing.T) {

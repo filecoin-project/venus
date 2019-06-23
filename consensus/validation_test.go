@@ -17,8 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var seed = types.GenerateKeyInfoSeed()
-var keys = types.MustGenerateKeyInfo(2, seed)
+var keys = types.MustGenerateKeyInfo(2, 42)
 var signer = types.NewMockSigner(keys)
 var addresses = make([]address.Address, len(keys))
 

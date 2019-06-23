@@ -680,7 +680,10 @@ func (node *Node) handleNewHeaviestTipSet(ctx context.Context, head types.TipSet
 			head = newHead
 
 			if node.StorageMiner != nil {
-				node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				err := node.StorageMiner.OnNewHeaviestTipSet(newHead)
+				if err != nil {
+					log.Error(err)
+				}
 			}
 			node.HeaviestTipSetHandled()
 		case <-ctx.Done():
@@ -1013,6 +1016,7 @@ func (node *Node) setupProtocols() error {
 	blockMiningAPI := block.New(
 		node.AddNewBlock,
 		node.ChainReader,
+		node.IsMining,
 		mineDelay,
 		node.StartMining,
 		node.StopMining,
@@ -1041,7 +1045,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerPubKey, err := node.PorcelainAPI.MinerGetKey(ctx, minerAddr)
+	minerWorker, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get key from miner actor")
 	}
@@ -1053,7 +1057,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 	}
 	return mining.NewDefaultWorker(
 		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
-		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerPubKey,
+		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerWorker,
 		node.Wallet, node.PorcelainAPI), nil
 }
 

@@ -395,17 +395,11 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 
 // CreateTicket computes a valid ticket.
 // 	params:  proof  []byte, the proof to sign
-// 			 signerPubKey []byte, the public key for the signer. Must exist in the signer
+// 			 signerAddr address.Address, the the signer's address. Must exist in the wallet
 //      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
 //  returns:  types.Signature ( []byte ), error
-func CreateTicket(proof types.PoStProof, signerPubKey []byte, signer TicketSigner) (types.Signature, error) {
+func CreateTicket(proof types.PoStProof, signerAddr address.Address, signer TicketSigner) (types.Signature, error) {
 
-	var ticket types.Signature
-
-	signerAddr, err := signer.GetAddressForPubKey(signerPubKey)
-	if err != nil {
-		return ticket, errors.Wrap(err, "could not get address for signerPubKey")
-	}
 	buf := append(proof[:], signerAddr.Bytes()...)
 	// Don't hash it here; it gets hashed in walletutil.Sign
 	return signer.SignBytes(buf[:], signerAddr)

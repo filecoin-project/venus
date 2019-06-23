@@ -18,7 +18,7 @@ func TestMessageQueue(t *testing.T) {
 	tf.UnitTest(t)
 
 	// Individual tests share a MessageMaker so not parallel (but quick)
-	keys := types.MustGenerateKeyInfo(2, types.GenerateKeyInfoSeed())
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 
 	alice := mm.Addresses()[0]
@@ -57,7 +57,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.False(t, found)
 		assert.NoError(t, err)
 
-		assert.Empty(t, q.ExpireBefore(math.MaxUint64))
+		assert.Empty(t, q.ExpireBefore(ctx, math.MaxUint64))
 
 		nonce, found := q.LargestNonce(alice)
 		assert.False(t, found)
@@ -262,14 +262,14 @@ func TestMessageQueue(t *testing.T) {
 		assert.Equal(t, &core.QueuedMessage{Msg: fromAlice[0], Stamp: 100}, q.List(alice)[0])
 		assert.Equal(t, &core.QueuedMessage{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
 
-		expired := q.ExpireBefore(0)
+		expired := q.ExpireBefore(ctx, 0)
 		assert.Empty(t, expired)
 
-		expired = q.ExpireBefore(100)
+		expired = q.ExpireBefore(ctx, 100)
 		assert.Empty(t, expired)
 
 		// Alice's whole queue expires as soon as the first one does
-		expired = q.ExpireBefore(101)
+		expired = q.ExpireBefore(ctx, 101)
 		assert.Equal(t, map[address.Address][]*types.SignedMessage{
 			alice: {fromAlice[0], fromAlice[1]},
 		}, expired)
@@ -279,7 +279,7 @@ func TestMessageQueue(t *testing.T) {
 		assert.Equal(t, &core.QueuedMessage{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
 		assertLargestNonce(q, bob, 11)
 
-		expired = q.ExpireBefore(300)
+		expired = q.ExpireBefore(ctx, 300)
 		assert.Equal(t, map[address.Address][]*types.SignedMessage{
 			bob: {fromBob[0], fromBob[1]},
 		}, expired)

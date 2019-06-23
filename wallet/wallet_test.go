@@ -208,20 +208,18 @@ func TestWallet_CreateTicket(t *testing.T) {
 	w := wallet.New(fs)
 	addr, err := wallet.NewAddress(w)
 	require.NoError(t, err)
-	pubKey, err := w.GetPubKeyForAddress(addr)
-	require.NoError(t, err)
 
 	t.Run("Returns real ticket and nil error with good params", func(t *testing.T) {
 		proof := types.PoStProof{0xbb}
-		ticket, err := consensus.CreateTicket(proof, pubKey, w)
+		ticket, err := consensus.CreateTicket(proof, addr, w)
 		assert.NoError(t, err)
 		assert.NotNil(t, ticket)
 	})
 
 	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
 		proof := types.PoStProof{0xc0}
-		badPubKey := []byte{0xf0}
-		ticket, err := consensus.CreateTicket(proof, badPubKey, w)
+		badAddress := address.TestAddress
+		ticket, err := consensus.CreateTicket(proof, badAddress, w)
 		assert.Error(t, err, "t, SignBytes error in CreateTicket: public key not found")
 		assert.Equal(t, types.Signature(nil), ticket)
 	})

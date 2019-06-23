@@ -25,7 +25,7 @@ func TestMessagePropagation(t *testing.T) {
 	defer cancel()
 
 	// Generate a key and install an account actor at genesis which will be able to send messages.
-	ki := types.MustGenerateKeyInfo(1, types.GenerateKeyInfoSeed())[0]
+	ki := types.MustGenerateKeyInfo(1, 42)[0]
 	senderAddress, err := ki.Address()
 	require.NoError(t, err)
 	genesis := consensus.MakeGenesisFunc(

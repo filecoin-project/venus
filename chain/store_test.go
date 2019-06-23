@@ -187,7 +187,8 @@ func TestGetMultipleByParent(t *testing.T) {
 	chainStore := newChainStore(dstP)
 
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
-	mockSignerPubKey := ki[0].PublicKey()
+	minerWorker, err := ki[0].Address()
+	require.NoError(t, err)
 
 	fakeChildParams := th.FakeChildParams{
 		Parent:      dstP.genTS,
@@ -196,7 +197,7 @@ func TestGetMultipleByParent(t *testing.T) {
 		MinerAddr:   dstP.minerAddress,
 		Nonce:       uint64(5),
 		Signer:      mockSigner,
-		MinerPubKey: mockSignerPubKey,
+		MinerWorker: minerWorker,
 	}
 
 	requirePutTestChain(t, chainStore, dstP)

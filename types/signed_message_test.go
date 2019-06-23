@@ -11,7 +11,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
-var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, GenerateKeyInfoSeed()))
+var mockSigner = NewMockSigner(MustGenerateKeyInfo(1, 42))
 
 func TestSignedMessageString(t *testing.T) {
 	tf.UnitTest(t)
