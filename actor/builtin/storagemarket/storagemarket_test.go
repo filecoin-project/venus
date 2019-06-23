@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -25,7 +24,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, vms := core.CreateStorages(ctx, t)
+	st, vms := th.RequireCreateStorages(ctx, t)
 
 	pid := th.RequireRandomPeerID(t)
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
@@ -59,7 +58,7 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, vms := core.CreateStorages(ctx, t)
+	st, vms := th.RequireCreateStorages(ctx, t)
 
 	// create account of future miner actor by sending FIL to the predicted address
 	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
@@ -92,7 +91,7 @@ func TestProofsMode(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	st, vms := core.CreateStorages(ctx, t)
+	st, vms := th.RequireCreateStorages(ctx, t)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
@@ -106,6 +105,116 @@ func TestProofsMode(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, types.TestProofsMode, proofsMode)
+}
+
+func TestUpdateStorage(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	t.Run("add storage power", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
+		// Create miner so that update can pass checks
+		pid := th.RequireRandomPeerID(t)
+		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, pid)
+
+		// Add update to total storage
+		update := types.NewBytesAmount(uint64(3000000))
+		res, err := th.CreateAndApplyTestMessageFrom(
+			t,
+			st,
+			vms,
+			minerAddr,
+			address.StorageMarketAddress,
+			0,
+			0,
+			"updateStorage",
+			nil,
+			update,
+		)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		// Tracked storage has increased
+		res, err = th.CreateAndApplyTestMessage(
+			t,
+			st,
+			vms,
+			address.StorageMarketAddress,
+			0,
+			0,
+			"getTotalStorage",
+			nil,
+		)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+		require.Equal(t, 1, len(res.Receipt.Return))
+		totalStorage := types.NewBytesAmountFromBytes(res.Receipt.Return[0])
+		assert.True(t, update.Equal(totalStorage))
+	})
+
+	t.Run("remove storage power", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
+		// Create miner so that update can pass checks
+		pid := th.RequireRandomPeerID(t)
+		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, pid)
+
+		// Add plus (positive number) and minus (negative number) to total storage
+		plus := types.NewBytesAmount(uint64(3000000))
+		minus := types.NewBytesAmount(uint64(0)).Sub(types.NewBytesAmount(uint64(1000000)))
+
+		resPlus, err := th.CreateAndApplyTestMessageFrom(
+			t,
+			st,
+			vms,
+			minerAddr,
+			address.StorageMarketAddress,
+			0,
+			0,
+			"updateStorage",
+			nil,
+			plus,
+		)
+		require.NoError(t, err)
+		require.NoError(t, resPlus.ExecutionError)
+		require.Equal(t, uint8(0), resPlus.Receipt.ExitCode)
+
+		resMinus, err := th.CreateAndApplyTestMessageFrom(
+			t,
+			st,
+			vms,
+			minerAddr,
+			address.StorageMarketAddress,
+			0,
+			0,
+			"updateStorage",
+			nil,
+			minus,
+		)
+		require.NoError(t, err)
+		require.NoError(t, resMinus.ExecutionError)
+		require.Equal(t, uint8(0), resMinus.Receipt.ExitCode)
+
+		// Tracked storage is plus + minus
+		res, err := th.CreateAndApplyTestMessage(
+			t,
+			st,
+			vms,
+			address.StorageMarketAddress,
+			0,
+			0,
+			"getTotalStorage",
+			nil,
+		)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		require.Equal(t, uint8(0), res.Receipt.ExitCode)
+		require.Equal(t, 1, len(res.Receipt.Return))
+		totalStorage := types.NewBytesAmountFromBytes(res.Receipt.Return[0])
+		expected := plus.Add(minus)
+		assert.True(t, expected.Equal(totalStorage))
+	})
 }
 
 // this is used to simulate an attack where someone derives the likely address of another miner's

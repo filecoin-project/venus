@@ -145,6 +145,15 @@ func TestBytesAmountSubtraction(t *testing.T) {
 
 }
 
+func TestBytesAmountNegative(t *testing.T) {
+	tf.UnitTest(t)
+
+	a, ok := NewBytesAmountFromString("-300", 10)
+	assert.True(t, ok)
+
+	assert.Equal(t, NewBytesAmount(100), a.Add(NewBytesAmount(400)))
+}
+
 func TestBytesAmountCborMarshaling(t *testing.T) {
 	tf.UnitTest(t)
 

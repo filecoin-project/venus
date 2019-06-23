@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -125,4 +126,61 @@ func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage
 		smsgs = append(smsgs, sm)
 	}
 	return smsgs
+}
+
+// CreateTestMiner creates a new test miner with the given peerID and miner
+// owner address within the state tree defined by st and vms with 100 FIL as
+// collateral.
+func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
+	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid)
+}
+
+// CreateTestMinerWith creates a new test miner with the given peerID miner
+// owner address and collateral within the state tree defined by st and vms.
+func CreateTestMinerWith(
+	collateral types.AttoFIL,
+	t *testing.T,
+	stateTree state.Tree,
+	vms vm.StorageMap,
+	minerOwnerAddr address.Address,
+	pid peer.ID,
+) address.Address {
+	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
+	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
+	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
+
+	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
+	require.NoError(t, err)
+
+	addr, err := address.NewFromBytes(result.Receipt.Return[0])
+	require.NoError(t, err)
+	return addr
+}
+
+// RequireGetNonce returns the next nonce of the actor at address a within
+// state tree st, failing on error.
+func RequireGetNonce(t *testing.T, st state.Tree, a address.Address) uint64 {
+	ctx := context.Background()
+	actr, err := st.GetActor(ctx, a)
+	require.NoError(t, err)
+
+	nonce, err := actor.NextNonce(actr)
+	require.NoError(t, err)
+	return nonce
+}
+
+// RequireCreateStorages creates an empty state tree and storage map.
+func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
+	cst := hamt.NewCborStore()
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+	blk, err := consensus.DefaultGenesis(cst, bs)
+	require.NoError(t, err)
+
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	require.NoError(t, err)
+
+	vms := vm.NewStorageMap(bs)
+
+	return st, vms
 }

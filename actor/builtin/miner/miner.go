@@ -568,7 +568,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(comms.CommRStar[:], commRStar)
 		state.LastUsedSectorID = sectorID
 		state.SectorCommitments[sectorIDstr] = comms
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updatePower", types.ZeroAttoFIL, []interface{}{inc})
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{inc})
 		if err != nil {
 			return nil, err
 		}
