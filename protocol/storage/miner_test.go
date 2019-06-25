@@ -429,7 +429,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// assert proof generated in sector builder is sent to submitPoSt
-		require.Equal(t, 1, len(postParams))
+		require.Equal(t, 2, len(postParams))
 		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
 	})
 

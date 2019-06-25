@@ -3,7 +3,6 @@ package miner
 import (
 	"bytes"
 	"math/big"
-	"strconv"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -58,8 +57,8 @@ const PieceInclusionGracePeriodBlocks = 10000
 const (
 	// ErrInvalidSector indicates and invalid sector id.
 	ErrInvalidSector = 34
-	// ErrSectorCommitted indicates the sector has already been committed.
-	ErrSectorCommitted = 35
+	// ErrSectorIDInUse indicates a sector has already been committed at this ID.
+	ErrSectorIDInUse = 35
 	// ErrStoragemarketCallFailed indicates the call to commit the deal failed.
 	ErrStoragemarketCallFailed = 36
 	// ErrCallerUnauthorized signals an unauthorized caller.
@@ -81,7 +80,7 @@ const (
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
 	ErrInvalidSector:           errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
-	ErrSectorCommitted:         errors.NewCodedRevertErrorf(ErrSectorCommitted, "sector already committed"),
+	ErrSectorIDInUse:           errors.NewCodedRevertErrorf(ErrSectorIDInUse, "sector already committed at this ID"),
 	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
 	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
 	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
@@ -142,7 +141,17 @@ type State struct {
 	// stringified.
 	//
 	// See also: https://github.com/polydawn/refmt/issues/35
-	SectorCommitments map[string]types.Commitments
+	SectorCommitments SectorSet
+
+	// NextDoneSet is a set of sectorIDs reported during the last PoSt
+	// submission as being 'done'.  The collateral for them is still being
+	// held until the next PoSt submission in case early sector removal
+	// penalization is needed.
+	NextDoneSet types.IntSet
+
+	// ProvingSet is the set of sectorIDs this miner is currently proving.
+	// It is only updated when a PoSt is submitted.
+	ProvingSet types.IntSet
 
 	LastUsedSectorID uint64
 
@@ -169,7 +178,9 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		Owner:             owner,
 		Worker:            worker,
 		PeerID:            pid,
-		SectorCommitments: make(map[string]types.Commitments),
+		SectorCommitments: NewSectorSet(),
+		NextDoneSet:       types.EmptyIntSet(),
+		ProvingSet:        types.EmptyIntSet(),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
@@ -241,7 +252,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.PoStProofs},
+		Params: []abi.Type{abi.PoStProofs, abi.IntSet},
 		Return: []abi.Type{},
 	},
 	"changeWorker": &exec.FunctionSignature{
@@ -455,7 +466,7 @@ func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Comm
 
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return state.SectorCommitments, nil
+		return (map[string]types.Commitments)(state.SectorCommitments), nil
 	})
 	if err != nil {
 		return map[string]types.Commitments{}, errors.CodeError(err), err
@@ -538,13 +549,8 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
-		// TODO: use uint64 instead of this abomination, once refmt is fixed
-		// https://github.com/polydawn/refmt/issues/35
-		sectorIDstr := strconv.FormatUint(sectorID, 10)
-
-		_, ok := state.SectorCommitments[sectorIDstr]
-		if ok {
-			return nil, Errors[ErrSectorCommitted]
+		if state.SectorCommitments.Has(sectorID) {
+			return nil, Errors[ErrSectorIDInUse]
 		}
 
 		// make sure the miner has enough collateral to add more storage
@@ -568,8 +574,9 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		copy(comms.CommD[:], commD)
 		copy(comms.CommR[:], commR)
 		copy(comms.CommRStar[:], commRStar)
+
 		state.LastUsedSectorID = sectorID
-		state.SectorCommitments[sectorIDstr] = comms
+		state.SectorCommitments.Add(sectorID, comms)
 		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{inc})
 		if err != nil {
 			return nil, err
@@ -597,8 +604,7 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
 		// If miner has not committed sector id, proof is invalid
-		sectorIDstr := strconv.FormatUint(sectorID, 10)
-		commitment, ok := state.SectorCommitments[sectorIDstr]
+		commitment, ok := state.SectorCommitments.Get(sectorID)
 		if !ok {
 			return nil, errors.NewRevertError("sector not committed")
 		}
@@ -744,7 +750,7 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error)
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -833,6 +839,18 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof) (u
 		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		state.LastPoSt = chainHeight
 
+		// Update SectorSet, DoneSet and ProvingSet
+		if err = state.SectorCommitments.Drop(done.Values()); err != nil {
+			return nil, err
+		}
+		
+		sectorIDsToProve, err := state.SectorCommitments.IDs()
+		if err != nil {
+			return nil, err
+		}
+		state.ProvingSet = types.NewIntSet(sectorIDsToProve...)
+		state.NextDoneSet = done
+		
 		return nil, nil
 	})
 	if err != nil {

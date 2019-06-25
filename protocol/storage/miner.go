@@ -766,9 +766,12 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 		log.Errorf("failed to calculate PoSt: %s", err)
 		return
 	}
+	// TODO #2998. The done set should be updated by CLI users.
+	// Using the 0 value is just a placeholder until that work lands.
+	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs)
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return
