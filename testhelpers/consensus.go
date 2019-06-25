@@ -185,13 +185,19 @@ func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultPr
 	return nil, err
 }
 
-// CreateAndApplyTestMessage wraps the given parameters in a message and calls ApplyTestMessage
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+// CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
+func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMap, from address.Address, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
 	pdata := actor.MustConvertParams(params...)
-	msg := types.NewMessage(address.TestAddress, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
+	msg := types.NewMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
 	return applyTestMessageWithAncestors(st, vms, msg, types.NewBlockHeight(bh), ancestors)
+}
+
+// CreateAndApplyTestMessage wraps the given parameters in a message and calls
+// CreateAndApplyTestMessageFrom sending the message from address.TestAddress
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
 func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {

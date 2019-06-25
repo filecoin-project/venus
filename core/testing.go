@@ -2,38 +2,13 @@ package core
 
 import (
 	"context"
-	"testing"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
 )
-
-// MustGetNonce returns the next nonce for an actor at an address or panics.
-func MustGetNonce(st state.Tree, a address.Address) uint64 {
-	ctx := context.Background()
-	actr, err := st.GetActor(ctx, a)
-	if err != nil {
-		panic(err)
-	}
-
-	nonce, err := actor.NextNonce(actr)
-	if err != nil {
-		panic(err)
-	}
-	return nonce
-}
 
 // MustAdd adds the given messages to the messagepool or panics if it cannot.
 func MustAdd(p *MessagePool, height uint64, msgs ...*types.SignedMessage) {
@@ -130,20 +105,4 @@ func MustDecodeCid(cidStr string) cid.Cid {
 	}
 
 	return decode
-}
-
-// CreateStorages creates an empty state tree and storage map.
-func CreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
-	cst := hamt.NewCborStore()
-	d := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(d)
-	blk, err := consensus.DefaultGenesis(cst, bs)
-	require.NoError(t, err)
-
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
-	require.NoError(t, err)
-
-	vms := vm.NewStorageMap(bs)
-
-	return st, vms
 }

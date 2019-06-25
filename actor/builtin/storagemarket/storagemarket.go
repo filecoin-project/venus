@@ -92,7 +92,7 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
-	"updatePower": &exec.FunctionSignature{
+	"updateStorage": &exec.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
 	},
@@ -156,10 +156,10 @@ func (sma *Actor) CreateStorageMiner(vmctx exec.VMContext, sectorSize *types.Byt
 	return ret.(address.Address), 0, nil
 }
 
-// UpdatePower is called to reflect a change in the overall power of the network.
+// UpdateStorage is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
-// (via slashing or willful removal). The delta is in number of sectors.
-func (sma *Actor) UpdatePower(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
+// (via slashing, faults or willful removal). The delta is in number of bytes.
+func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
