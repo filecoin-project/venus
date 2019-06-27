@@ -2,9 +2,25 @@ package rleplus
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/filecoin-project/go-filecoin/rleplus/internal"
+)
+
+// Version is 0 <= version < 4
+const Version = 0
+
+var (
+	// ErrRunLengthTooLarge - data implies a run-length which isn't supported
+	ErrRunLengthTooLarge = fmt.Errorf("run length too large for RLE+ version %d", Version)
+
+	// ErrDecode - invalid encoding for this version
+	ErrDecode = fmt.Errorf("invalid encoding for RLE+ version %d", Version)
+
+	// ErrWrongVersion - wrong version of RLE+
+	ErrWrongVersion = errors.New("invalid RLE+ version")
 )
 
 // Encode returns the RLE+ representation of the provided integers.
@@ -24,14 +40,15 @@ import (
 //    <block_long> ::= "00" <unsigned_varint>
 //    <bit> ::= "0" | "1"
 //
+// Filecoin specific:
 // The encoding is returned as a []byte, each byte packed starting with the low-order bit (LSB0)
-func Encode(ints []uint64) ([]byte, int) {
+// The max unsigned_varint that can be encoded is 2^14 - 1
+func Encode(ints []uint64) ([]byte, int, error) {
 	v := bitvector.BitVector{BytePacking: bitvector.LSB0}
 	firstBit, runs := RunLengths(ints)
 
-	// Add version
-	v.Push(0)
-	v.Push(0)
+	// Add version header
+	v.Extend(Version, 2, bitvector.LSB0)
 
 	v.Push(firstBit)
 
@@ -43,7 +60,7 @@ func Encode(ints []uint64) ([]byte, int) {
 			v.Push(0)
 			v.Push(1)
 			v.Extend(byte(run), 4, bitvector.LSB0)
-		case run >= 16:
+		case run >= 16 && run < (1<<14):
 			v.Push(0)
 			v.Push(0)
 			buf := make([]byte, 10)
@@ -51,22 +68,24 @@ func Encode(ints []uint64) ([]byte, int) {
 			for i := 0; i < numBytes; i++ {
 				v.Extend(buf[i], 8, bitvector.LSB0)
 			}
+		default:
+			return nil, 0, ErrRunLengthTooLarge
 		}
 	}
 
-	return v.Buf, v.Len
+	return v.Buf, v.Len, nil
 }
 
 // Decode returns integers represented by the given RLE+ encoding
 //
 // The length of the encoding is not specified.  It is inferred by
-// reading zeroes from the (possibly empty) BitVector, by virtue
-// of the behavior of BitVector.Take returning 0 when the end of
+// reading zeroes from the (possibly depleted) BitVector, by virtue
+// of the behavior of BitVector.Take() returning 0 when the end of
 // the BitVector has been reached. This has the downside of not
 // being able to detect corrupt encodings.
 //
 // The passed []byte should be packed in LSB0 bit numbering
-func Decode(buf []byte) (ints []uint64) {
+func Decode(buf []byte) (ints []uint64, err error) {
 	if len(buf) == 0 {
 		return
 	}
@@ -74,9 +93,12 @@ func Decode(buf []byte) (ints []uint64) {
 	v := bitvector.NewBitVector(buf, bitvector.LSB0)
 	take := v.Iterator(bitvector.LSB0)
 
-	// Read version and discard
-	take(1)
-	take(1)
+	// Read version and check
+	// Version check
+	ver := take(2)
+	if ver != Version {
+		return nil, ErrWrongVersion
+	}
 
 	curIdx := uint64(0)
 	curBit := take(1)
@@ -100,8 +122,13 @@ func Decode(buf []byte) (ints []uint64) {
 				for {
 					b := take(8)
 					buf = append(buf, b)
+
 					if b&0x80 == 0 {
 						break
+					}
+
+					if len(buf) > 2 {
+						return nil, ErrDecode
 					}
 				}
 				x, _ := binary.Uvarint(buf)
@@ -134,6 +161,8 @@ func Decode(buf []byte) (ints []uint64) {
 // representing lengths of runs alternating between 1 and 0, starting
 // with a first bit of 1.
 //
+// Duplicated numbers are ignored.
+//
 // This is a helper function for Encode()
 func RunLengths(ints []uint64) (firstBit byte, runs []uint64) {
 	if len(ints) == 0 {
@@ -143,21 +172,21 @@ func RunLengths(ints []uint64) (firstBit byte, runs []uint64) {
 	// Sort our incoming numbers
 	sort.Slice(ints, func(i, j int) bool { return ints[i] < ints[j] })
 
-	last := ints[0]
+	prev := ints[0]
 
 	// Initialize our return value
-	if last == 0 {
+	if prev == 0 {
 		firstBit = 1
 	}
 
 	if firstBit == 0 {
 		// first run of zeroes
-		runs = append(runs, last)
+		runs = append(runs, prev)
 	}
 	runs = append(runs, 1)
 
 	for _, cur := range ints[1:] {
-		delta := cur - last
+		delta := cur - prev
 		switch {
 		case delta == 1:
 			runs[len(runs)-1]++
@@ -168,7 +197,7 @@ func RunLengths(ints []uint64) (firstBit byte, runs []uint64) {
 		default:
 			// repeated number?
 		}
-		last = cur
+		prev = cur
 	}
 	return
 }

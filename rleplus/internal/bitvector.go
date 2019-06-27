@@ -29,9 +29,14 @@ const (
 
 // BitVector is used to manipulate ordered collections of bits
 type BitVector struct {
+	Buf []byte
+
+	// BytePacking is the bit ordering within bytes
 	BytePacking BitNumbering
-	Buf         []byte
-	Len         int
+
+	// Len is the logical number of bits in the vector.
+	// The last byte in Buf may have undefined bits if Len is not a multiple of 8
+	Len int
 }
 
 // NewBitVector constructs a new BitVector from a slice of bytes.

@@ -49,8 +49,10 @@ func TestRleplus(t *testing.T) {
 		for _, bit := range expectedBits {
 			v.Push(bit)
 		}
-		actualBytes, _ := rleplus.Encode(ints)
+		actualBytes, _, err := rleplus.Encode(ints)
+		assert.NilError(t, err)
 
+		assert.Equal(t, len(v.Buf), len(actualBytes))
 		for idx, expected := range v.Buf {
 			assert.Equal(
 				t,
@@ -60,7 +62,18 @@ func TestRleplus(t *testing.T) {
 		}
 	})
 
-	t.Run("Encode Decode Symmetry", func(t *testing.T) {
+	t.Run("Encode limits run lengths to 2^14", func(t *testing.T) {
+		// Create a run larger than 2^14
+		var ints []uint64
+		for i := 0; i <= 1<<14; i++ {
+			ints = append(ints, uint64(i))
+		}
+
+		_, _, err := rleplus.Encode(ints)
+		assert.Error(t, err, "run length too large for RLE+ version 0")
+	})
+
+	t.Run("Decode", func(t *testing.T) {
 		testCases := [][]uint64{
 			{},
 			{1},
@@ -82,8 +95,11 @@ func TestRleplus(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			encoded, _ := rleplus.Encode(tc)
-			result := rleplus.Decode(encoded)
+			encoded, _, err := rleplus.Encode(tc)
+			assert.NilError(t, err)
+
+			result, err := rleplus.Decode(encoded)
+			assert.NilError(t, err)
 
 			sort.Slice(tc, func(i, j int) bool { return tc[i] < tc[j] })
 			sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
@@ -96,7 +112,18 @@ func TestRleplus(t *testing.T) {
 		}
 	})
 
-	t.Run("Outputs same as reference implementation", func(t *testing.T) {
+	t.Run("Decode version check", func(t *testing.T) {
+		_, err := rleplus.Decode([]byte{0xff})
+		assert.Error(t, err, "invalid RLE+ version")
+	})
+
+	t.Run("Decode returns an error with a bad encoding", func(t *testing.T) {
+		// create an encoding with a buffer with a run which is too long
+		_, err := rleplus.Decode([]byte{0xe0, 0xff, 0xff, 0xff})
+		assert.Error(t, err, "invalid encoding for RLE+ version 0")
+	})
+
+	t.Run("outputs same as reference implementation", func(t *testing.T) {
 		// Encoding bitvec![LittleEndian; 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		// in the Rust reference implementation gives an encoding of [223, 145, 136, 0] (without version field)
 		// The bit vector is equivalent to the integer set { 0, 2, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 }
@@ -106,7 +133,8 @@ func TestRleplus(t *testing.T) {
 
 		expectedNumbers := []uint64{0, 2, 4, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27}
 
-		encoded, _ := rleplus.Encode(expectedNumbers)
+		encoded, _, err := rleplus.Encode(expectedNumbers)
+		assert.NilError(t, err)
 
 		// Our encoded bytes are the same as the ref bytes
 		assert.Equal(t, len(referenceEncoding), len(encoded))
@@ -114,7 +142,8 @@ func TestRleplus(t *testing.T) {
 			assert.Equal(t, expected, encoded[idx])
 		}
 
-		decoded := rleplus.Decode(referenceEncoding)
+		decoded, err := rleplus.Decode(referenceEncoding)
+		assert.NilError(t, err)
 
 		// Our decoded integers are the same as expected
 		sort.Slice(decoded, func(i, j int) bool { return decoded[i] < decoded[j] })

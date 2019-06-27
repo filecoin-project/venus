@@ -1,7 +1,6 @@
 package bitvector_test
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/rleplus/internal"
@@ -9,21 +8,10 @@ import (
 	"gotest.tools/assert"
 )
 
-// Note: When using this helper assertion, expectedBits should *only* be 0s and 1s.
-func assertBitVector(t *testing.T, expectedBits []byte, actual bitvector.BitVector) {
-	assert.Equal(t, len(expectedBits), actual.Len)
-
-	for idx, bit := range expectedBits {
-		actualBit, err := actual.Get(idx)
-		assert.NilError(t, err)
-		assert.Equal(t, bit, actualBit)
-	}
-}
-
 func TestBitVector(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("Zero Value", func(t *testing.T) {
+	t.Run("zero value", func(t *testing.T) {
 		var v bitvector.BitVector
 
 		assert.Equal(t, bitvector.LSB0, v.BytePacking)
@@ -99,11 +87,14 @@ func TestBitVector(t *testing.T) {
 	})
 
 	t.Run("Iterator", func(t *testing.T) {
-		var v bitvector.BitVector
+		var buf []byte
 
-		for i := 0; i < 256; i++ {
-			v.Push(byte(rand.Int() & 1))
+		// make a bitvector of 256 sample bits
+		for i := 0; i < 32; i++ {
+			buf = append(buf, 128+32)
 		}
+
+		v := bitvector.NewBitVector(buf, bitvector.LSB0)
 
 		next := v.Iterator(bitvector.LSB0)
 
@@ -122,4 +113,15 @@ func TestBitVector(t *testing.T) {
 		assert.Equal(t, next(5), v.Take(0, 5, bitvector.LSB0))
 		assert.Equal(t, next(8), v.Take(5, 8, bitvector.LSB0))
 	})
+}
+
+// Note: When using this helper assertion, expectedBits should *only* be 0s and 1s.
+func assertBitVector(t *testing.T, expectedBits []byte, actual bitvector.BitVector) {
+	assert.Equal(t, len(expectedBits), actual.Len)
+
+	for idx, bit := range expectedBits {
+		actualBit, err := actual.Get(idx)
+		assert.NilError(t, err)
+		assert.Equal(t, bit, actualBit)
+	}
 }
