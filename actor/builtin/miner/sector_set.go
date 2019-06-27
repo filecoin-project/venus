@@ -63,6 +63,11 @@ func (ss SectorSet) IDs() ([]uint64, error) {
 	return ids, nil
 }
 
+// Size returns the number of sectorIDs in the SectorSet.
+func (ss SectorSet) Size() int {
+	return len(ss)
+}
+
 // TODO: use uint64 as map keys instead of this abomination, once refmt is fixed.
 // https://github.com/polydawn/refmt/issues/35
 func idStr(sectorID uint64) string {

@@ -90,4 +90,22 @@ func TestIntSet(t *testing.T) {
 
 		assert.Equal(t, ints, result)
 	})
+
+	t.Run("Size", func(t *testing.T) {
+		intsA := make([]uint64, 33)
+		for idx := range intsA {
+			intsA[idx] = rand.Uint64()
+		}
+
+		assert.Equal(t, 33, types.NewIntSet(intsA...).Size())
+
+		intsB := make([]uint64, 1024)
+		for idx := range intsB {
+			intsB[idx] = rand.Uint64()
+		}
+
+		assert.Equal(t, 1024, types.NewIntSet(intsB...).Size())
+
+		assert.Equal(t, 0, types.EmptyIntSet().Size())
+	})
 }

@@ -137,20 +137,22 @@ type State struct {
 	NextAskID *big.Int
 
 	// SectorCommitments maps sector id to commitments, for all sectors this
-	// miner has committed. Due to a bug in refmt, the sector id-keys need to be
+	// miner has committed.  Sector ids are removed from this collection
+	// when they are included in the done or fault parameters of submitPoSt.
+	// Due to a bug in refmt, the sector id-keys need to be
 	// stringified.
 	//
 	// See also: https://github.com/polydawn/refmt/issues/35
 	SectorCommitments SectorSet
 
-	// NextDoneSet is a set of sectorIDs reported during the last PoSt
+	// NextDoneSet is a set of sector ids reported during the last PoSt
 	// submission as being 'done'.  The collateral for them is still being
 	// held until the next PoSt submission in case early sector removal
 	// penalization is needed.
 	NextDoneSet types.IntSet
 
-	// ProvingSet is the set of sectorIDs this miner is currently proving.
-	// It is only updated when a PoSt is submitted.
+	// ProvingSet is the set of sector ids of sectors this miner is 
+	// currently required to prove.
 	ProvingSet types.IntSet
 
 	LastUsedSectorID uint64
@@ -159,7 +161,8 @@ type State struct {
 	ProvingPeriodEnd *types.BlockHeight
 	LastPoSt         *types.BlockHeight
 
-	// The amount of space committed to the network by this miner.
+	// The amount of space proven to the network by this miner in the
+	// latest proving period.
 	Power *types.BytesAmount
 
 	// SectorSize is the amount of space in each sector committed to the network
@@ -561,11 +564,18 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
 
-		if state.Power.Equal(types.NewBytesAmount(0)) {
+		// Case 1: If the miner is not currently proving any sectors,
+		// start proving immediately on this sector.
+		//
+		// Case 2: If the miner is adding sectors during genesis
+		// construction all committed sectors accumulate in their
+		// proving set.  This  allows us to add power immediately in
+		// genesis with commitSector and submitPoSt calls without 
+		// adding special casing for bootstrappers.
+		if state.ProvingSet.Size() == 0 || ctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
+			state.ProvingSet = state.ProvingSet.Add(sectorID)
 			state.ProvingPeriodEnd = ctx.BlockHeight().Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
-		inc := state.SectorSize
-		state.Power = state.Power.Add(inc)
 		comms := types.Commitments{
 			CommD:     types.CommD{},
 			CommR:     types.CommR{},
@@ -577,13 +587,6 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 		state.LastUsedSectorID = sectorID
 		state.SectorCommitments.Add(sectorID, comms)
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{inc})
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
-		}
 		return nil, nil
 	})
 	if err != nil {
@@ -839,18 +842,33 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		state.LastPoSt = chainHeight
 
+		// Update miner power to the amount of data actually proved
+		// during the last proving period.
+		oldPower := state.Power
+		// TODO subtract total faulted size from ProvingSet size #2889
+		newPower := types.NewBytesAmount(uint64(state.ProvingSet.Size())).Mul(state.SectorSize)
+		state.Power = newPower
+		delta := newPower.Sub(oldPower)
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
+		if err != nil {
+			return nil, err
+		}
+		if ret != 0 {
+			return nil, Errors[ErrStoragemarketCallFailed]
+		}
+
 		// Update SectorSet, DoneSet and ProvingSet
 		if err = state.SectorCommitments.Drop(done.Values()); err != nil {
 			return nil, err
 		}
-		
+
 		sectorIDsToProve, err := state.SectorCommitments.IDs()
 		if err != nil {
 			return nil, err
 		}
 		state.ProvingSet = types.NewIntSet(sectorIDsToProve...)
 		state.NextDoneSet = done
-		
+
 		return nil, nil
 	})
 	if err != nil {
