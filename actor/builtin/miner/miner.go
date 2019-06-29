@@ -56,8 +56,6 @@ var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
 const PieceInclusionGracePeriodBlocks = 10000
 
 const (
-	// ErrPublicKeyTooBig indicates an invalid public key.
-	ErrPublicKeyTooBig = 33
 	// ErrInvalidSector indicates and invalid sector id.
 	ErrInvalidSector = 34
 	// ErrSectorCommitted indicates the sector has already been committed.
@@ -244,6 +242,10 @@ var minerExports = exec.Exports{
 	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProofs},
+		Return: []abi.Type{},
+	},
+	"changeWorker": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{},
 	},
 	"verifyPieceInclusion": &exec.FunctionSignature{
@@ -627,6 +629,29 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID
 	})
 
 	return errors.CodeError(err), err
+}
+
+// ChangeWorker alters the worker address in state
+func (ma *Actor) ChangeWorker(ctx exec.VMContext, worker address.Address) (uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		if ctx.Message().From != state.Owner {
+			return nil, Errors[ErrCallerUnauthorized]
+		}
+
+		state.Worker = worker
+
+		return nil, nil
+	})
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
 }
 
 // GetWorker returns the worker address for this miner.
