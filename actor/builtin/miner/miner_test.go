@@ -146,7 +146,7 @@ func TestChangeWorker(t *testing.T) {
 	})
 
 	t.Run("Errors when gas cost too low", func(t *testing.T) {
-		minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		// change worker
