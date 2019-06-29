@@ -2,6 +2,7 @@ package miner_test
 
 import (
 	"context"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"math/big"
 	"testing"
 
@@ -142,6 +143,24 @@ func TestChangeWorker(t *testing.T) {
 		require.Error(t, result.ExecutionError)
 		assert.Contains(t, result.ExecutionError.Error(), "not authorized")
 		assert.Equal(t, uint8(ErrCallerUnauthorized), result.Receipt.ExitCode)
+	})
+
+	t.Run("Errors when gas cost too low", func(t *testing.T) {
+		minerAddr := createTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+
+		// change worker
+		pdata := actor.MustConvertParams(address.TestAddress2)
+		msg := types.NewMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata)
+
+		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
+		gasLimit := types.NewGasUnits(10)
+		result, err := th.ApplyTestMessageWithGas(st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		assert.NoError(t, err)
+
+		require.Error(t, result.ExecutionError)
+		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
+		assert.Equal(t, uint8(exec.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
 }
 
