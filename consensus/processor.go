@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -17,13 +18,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-var pbTimer *metrics.Float64Timer
-var amTimer *metrics.Float64Timer
+var (
+	// Tags
+	msgMethodKey = tag.MustNewKey("consensus/keys/message_method")
 
-func init() {
-	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds")
+	// Timers
+	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds", msgMethodKey)
 	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
-}
+)
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
@@ -278,6 +280,13 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
+	}
+
+	ctx, err = tag.New(ctx,
+		tag.Insert(msgMethodKey, msg.Method),
+	)
+	if err != nil {
+		log.Debugf("failed to insert tag for message method: %s", err.Error())
 	}
 
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ApplyMessage")
