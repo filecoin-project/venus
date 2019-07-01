@@ -32,6 +32,16 @@ func MakeCommitment() []byte {
 	return MakeRandomBytes(32)
 }
 
+// MakeCommitments creates three random commitments for constructing a
+// types.Commitments.
+func MakeCommitments() types.Commitments {
+	comms := types.Commitments{}
+	copy(comms.CommD[:], MakeCommitment()[:])
+	copy(comms.CommR[:], MakeCommitment()[:])
+	copy(comms.CommRStar[:], MakeCommitment()[:])
+	return comms
+}
+
 // MakeRandomBytes generates a randomized byte slice of size 'size'
 func MakeRandomBytes(size int) []byte {
 	comm := make([]byte, size)

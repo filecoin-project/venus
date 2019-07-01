@@ -60,6 +60,8 @@ const (
 	Predicate
 	// Parameters is a slice of individually encodable parameters
 	Parameters
+	// IntSet is a set of uint64
+	IntSet
 )
 
 func (t Type) String() string {
@@ -104,6 +106,8 @@ func (t Type) String() string {
 		return "*types.Predicate"
 	case Parameters:
 		return "[]interface{}"
+	case IntSet:
+		return "types.IntSet"
 	default:
 		return "<unknown type>"
 	}
@@ -157,6 +161,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(*types.Predicate))
 	case Parameters:
 		return fmt.Sprint(av.Val.([]interface{}))
+	case IntSet:
+		return av.Val.(types.IntSet).String()
 	default:
 		return "<unknown type>"
 	}
@@ -308,6 +314,12 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(p)
+	case IntSet:
+		is, ok := av.Val.(types.IntSet)
+		if !ok {
+			return nil, &typeError{types.IntSet{}, av.Val}
+		}
+		return cbor.DumpObject(is)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -361,6 +373,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Predicate, Val: v})
 		case []interface{}:
 			out = append(out, &Value{Type: Parameters, Val: v})
+		case types.IntSet:
+			out = append(out, &Value{Type: IntSet, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -391,7 +405,6 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		return &Value{
 			Type: t,
 			Val:  addr,
@@ -445,7 +458,6 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		return &Value{
 			Type: t,
 			Val:  id,
@@ -515,6 +527,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  parameters,
 		}, nil
+	case IntSet:
+		var is types.IntSet
+		if err := cbor.DecodeInto(data, &is); err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  is,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -542,6 +563,7 @@ var typeTable = map[Type]reflect.Type{
 	PoStProof:      reflect.TypeOf(types.PoStProof{}),
 	Predicate:      reflect.TypeOf(&types.Predicate{}),
 	Parameters:     reflect.TypeOf([]interface{}{}),
+	IntSet:         reflect.TypeOf(types.IntSet{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

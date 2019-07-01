@@ -1,8 +1,34 @@
 package types
 
 import (
+	"fmt"
 	"github.com/Workiva/go-datastructures/bitarray"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/polydawn/refmt/obj/atlas"
 )
+
+func init() {
+	cbor.RegisterCborType(intSetAtlasEntry)
+}
+
+var intSetAtlasEntry = atlas.BuildEntry(IntSet{}).Transform().
+	TransformMarshal(atlas.MakeMarshalTransformFunc(
+		func(is IntSet) ([]byte, error) {
+			// TODO #2889: we should be using RLE+ to serialize intsets when it lands,
+			// not the CBOR serialization of the slice of integers in the set.
+			return cbor.DumpObject(is.Values())
+		})).
+	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
+		func(x []byte) (IntSet, error) {
+			// TODO #2889: we must decode from RLE+ instead of the
+			// serialization of the slice of integers in the set.
+			var ints []uint64
+			if err := cbor.DecodeInto(x, &ints); err != nil {
+				return EmptyIntSet(), err
+			}
+			return NewIntSet(ints...), nil
+		})).
+	Complete()
 
 // IntSet is a space-efficient set of uint64
 type IntSet struct {
@@ -63,4 +89,14 @@ func (is IntSet) Difference(other IntSet) IntSet {
 // Values returns a slice with all integers in this IntSet
 func (is IntSet) Values() []uint64 {
 	return is.ba.ToNums()
+}
+
+// String returns a printable string of the IntSet.
+func (is IntSet) String() string {
+	return fmt.Sprintf("%d", is.Values())
+}
+
+// EmptyIntSet returns an empty IntSet.
+func EmptyIntSet() IntSet {
+	return IntSet{ba: bitarray.NewSparseBitArray()}
 }
