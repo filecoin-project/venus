@@ -111,7 +111,7 @@ func TestBitVector(t *testing.T) {
 
 		// compare to Get()
 		for i := uint(0); i < v.Len; i++ {
-			expected, _ := v.Get(uint(i))
+			expected, _ := v.Get(i)
 			assert.Equal(t, expected, next(1))
 		}
 

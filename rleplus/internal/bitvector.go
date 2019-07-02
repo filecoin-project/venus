@@ -64,9 +64,9 @@ func (v *BitVector) Push(val byte) {
 
 	switch v.BytePacking {
 	case LSB0:
-		v.Buf[lastIdx] |= (val & 1) << uint(v.Len%8)
+		v.Buf[lastIdx] |= (val & 1) << (v.Len % 8)
 	default:
-		v.Buf[lastIdx] |= (val & 1) << uint(7-(v.Len%8))
+		v.Buf[lastIdx] |= (val & 1) << (7 - (v.Len % 8))
 	}
 
 	v.Len++
@@ -81,9 +81,9 @@ func (v *BitVector) Get(idx uint) (byte, error) {
 
 	switch v.BytePacking {
 	case LSB0:
-		return v.Buf[blockIdx] >> uint(idx%8) & 1, nil
+		return v.Buf[blockIdx] >> (idx % 8) & 1, nil
 	default:
-		return v.Buf[blockIdx] >> uint(7-idx%8) & 1, nil
+		return v.Buf[blockIdx] >> (7 - idx%8) & 1, nil
 	}
 }
 
@@ -126,9 +126,9 @@ func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) 
 
 		switch order {
 		case LSB0:
-			out |= val << uint(i)
+			out |= val << i
 		default:
-			out |= val << uint(7-i)
+			out |= val << (7 - i)
 		}
 	}
 	return
