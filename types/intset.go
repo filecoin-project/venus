@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"github.com/Workiva/go-datastructures/bitarray"
+	"github.com/filecoin-project/go-filecoin/rleplus"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 )
@@ -14,16 +15,13 @@ func init() {
 var intSetAtlasEntry = atlas.BuildEntry(IntSet{}).Transform().
 	TransformMarshal(atlas.MakeMarshalTransformFunc(
 		func(is IntSet) ([]byte, error) {
-			// TODO #2889: we should be using RLE+ to serialize intsets when it lands,
-			// not the CBOR serialization of the slice of integers in the set.
-			return cbor.DumpObject(is.Values())
+			bytes, _, err := rleplus.Encode(is.Values())
+			return bytes, err
 		})).
 	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
 		func(x []byte) (IntSet, error) {
-			// TODO #2889: we must decode from RLE+ instead of the
-			// serialization of the slice of integers in the set.
-			var ints []uint64
-			if err := cbor.DecodeInto(x, &ints); err != nil {
+			ints, err := rleplus.Decode(x)
+			if err != nil {
 				return EmptyIntSet(), err
 			}
 			return NewIntSet(ints...), nil
