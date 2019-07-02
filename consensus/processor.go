@@ -282,9 +282,11 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	ctx, err = tag.New(ctx,
-		tag.Insert(msgMethodKey, msg.Method),
-	)
+	tagMethod := msg.Method
+	if tagMethod == "" {
+		tagMethod = "sendFIL"
+	}
+	ctx, err = tag.New(ctx, tag.Insert(msgMethodKey, tagMethod))
 	if err != nil {
 		log.Debugf("failed to insert tag for message method: %s", err.Error())
 	}
