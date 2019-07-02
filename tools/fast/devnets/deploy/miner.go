@@ -68,7 +68,6 @@ func NewMinerProfile(configfile string) (Profile, error) {
 			InitOpts: []fast.ProcessInitOption{
 				fast.POGenesisFile(config.GenesisCarFile),
 				NetworkPO(config.Network),
-				fast.POPeerKeyFile(config.PeerkeyFile), // Needs to be last
 			},
 			DaemonOpts: []fast.ProcessDaemonOption{
 				fast.POBlockTime(blocktime),
@@ -183,6 +182,7 @@ func (p *MinerProfile) Post() error {
 	return nil
 }
 
+// GetClientNode return a new node that is used to make deals with the miner so it can have power
 func GetClientNode(ctx context.Context, foobar Foobar) (*fast.Filecoin, error) {
 	tmpdir, err := ioutil.TempDir("", "deal-maker")
 	if err != nil {
