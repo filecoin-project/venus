@@ -43,7 +43,7 @@ var (
 // Filecoin specific:
 // The encoding is returned as a []byte, each byte packed starting with the low-order bit (LSB0)
 // The max unsigned_varint that can be encoded is 2^14 - 1
-func Encode(ints []uint64) ([]byte, int, error) {
+func Encode(ints []uint64) ([]byte, uint, error) {
 	v := bitvector.BitVector{BytePacking: bitvector.LSB0}
 	firstBit, runs := RunLengths(ints)
 

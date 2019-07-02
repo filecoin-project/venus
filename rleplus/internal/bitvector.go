@@ -1,6 +1,9 @@
 package bitvector
 
-import "errors"
+import (
+	"errors"
+	"log"
+)
 
 var (
 	// ErrOutOfRange - the index passed is out of range for the BitVector
@@ -36,7 +39,7 @@ type BitVector struct {
 
 	// Len is the logical number of bits in the vector.
 	// The last byte in Buf may have undefined bits if Len is not a multiple of 8
-	Len int
+	Len uint
 }
 
 // NewBitVector constructs a new BitVector from a slice of bytes.
@@ -46,7 +49,7 @@ func NewBitVector(buf []byte, bytePacking BitNumbering) *BitVector {
 	return &BitVector{
 		BytePacking: bytePacking,
 		Buf:         buf,
-		Len:         len(buf) * 8,
+		Len:         uint(len(buf) * 8),
 	}
 }
 
@@ -70,7 +73,7 @@ func (v *BitVector) Push(val byte) {
 }
 
 // Get returns a single bit as a byte -- either 0 or 1
-func (v *BitVector) Get(idx int) (byte, error) {
+func (v *BitVector) Get(idx uint) (byte, error) {
 	if idx >= v.Len {
 		return 0, ErrOutOfRange
 	}
@@ -89,9 +92,11 @@ func (v *BitVector) Get(idx int) (byte, error) {
 // Given a byte b == 0b11010101
 // v.Extend(b, 4, LSB0) would add < 1, 0, 1, 0 >
 // v.Extend(b, 4, MSB0) would add < 1, 1, 0, 1 >
+//
+// Panics if count is out of range
 func (v *BitVector) Extend(val byte, count uint, order BitNumbering) {
 	if count > 8 {
-		count = 8
+		log.Panicf("invalid count")
 	}
 
 	for i := uint(0); i < count; i++ {
@@ -109,12 +114,14 @@ func (v *BitVector) Extend(val byte, count uint, order BitNumbering) {
 // Given a BitVector < 1, 1, 0, 1, 0, 1, 0, 1 >
 // v.Take(0, 4, LSB0) would return 0b00001011
 // v.Take(0, 4, MSB0) would return 0b11010000
-func (v *BitVector) Take(index int, count int, order BitNumbering) (out byte) {
+//
+// Panics if count is out of range
+func (v *BitVector) Take(index uint, count uint, order BitNumbering) (out byte) {
 	if count > 8 {
-		count = 8
+		log.Panicf("invalid count")
 	}
 
-	for i := 0; i < count; i++ {
+	for i := uint(0); i < count; i++ {
 		val, _ := v.Get(index + i)
 
 		switch order {
@@ -131,9 +138,15 @@ func (v *BitVector) Take(index int, count int, order BitNumbering) (out byte) {
 // of bits requested, and increments an internal cursor.
 //
 // When the end of the BitVector is reached, it returns zeroes indefinitely
-func (v *BitVector) Iterator(order BitNumbering) func(int) byte {
-	cursor := 0
-	return func(count int) (out byte) {
+//
+// Panics if count is out of range
+func (v *BitVector) Iterator(order BitNumbering) func(uint) byte {
+	cursor := uint(0)
+	return func(count uint) (out byte) {
+		if count > 8 {
+			log.Panicf("invalid count")
+		}
+
 		out = v.Take(cursor, count, order)
 		cursor += count
 		return

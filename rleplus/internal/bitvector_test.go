@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/rleplus/internal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBitVector(t *testing.T) {
@@ -48,7 +48,7 @@ func TestBitVector(t *testing.T) {
 			}
 
 			for idx, expected := range bits {
-				actual, _ := v.Get(idx)
+				actual, _ := v.Get(uint(idx))
 				assert.Equal(t, expected, actual)
 			}
 		}
@@ -72,6 +72,17 @@ func TestBitVector(t *testing.T) {
 		assertBitVector(t, []byte{1, 1, 0, 1}, v)
 		v.Extend(val, 5, bitvector.LSB0)
 		assertBitVector(t, []byte{1, 1, 0, 1, 1, 1, 0, 1, 0}, v)
+	})
+
+	t.Run("invalid counts to Take/Extend/Iterator cause panics", func(t *testing.T) {
+		v := bitvector.BitVector{BytePacking: bitvector.LSB0}
+
+		assert.Panics(t, func() { v.Extend(0xff, 9, bitvector.LSB0) })
+
+		assert.Panics(t, func() { v.Take(0, 9, bitvector.LSB0) })
+
+		next := v.Iterator(bitvector.LSB0)
+		assert.Panics(t, func() { next(9) })
 	})
 
 	t.Run("Take", func(t *testing.T) {
@@ -99,8 +110,8 @@ func TestBitVector(t *testing.T) {
 		next := v.Iterator(bitvector.LSB0)
 
 		// compare to Get()
-		for i := 0; i < v.Len; i++ {
-			expected, _ := v.Get(i)
+		for i := uint(0); i < v.Len; i++ {
+			expected, _ := v.Get(uint(i))
 			assert.Equal(t, expected, next(1))
 		}
 
@@ -117,11 +128,11 @@ func TestBitVector(t *testing.T) {
 
 // Note: When using this helper assertion, expectedBits should *only* be 0s and 1s.
 func assertBitVector(t *testing.T, expectedBits []byte, actual bitvector.BitVector) {
-	assert.Equal(t, len(expectedBits), actual.Len)
+	assert.Equal(t, uint(len(expectedBits)), actual.Len)
 
 	for idx, bit := range expectedBits {
-		actualBit, err := actual.Get(idx)
-		assert.NilError(t, err)
+		actualBit, err := actual.Get(uint(idx))
+		assert.NoError(t, err)
 		assert.Equal(t, bit, actualBit)
 	}
 }
