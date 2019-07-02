@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/rleplus/internal"
 )
 
-// Version is 0 <= version < 4
+// Version is the 2 lowest bits of this constant
 const Version = 0
 
 var (
