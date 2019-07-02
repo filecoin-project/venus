@@ -1,7 +1,6 @@
 {
   "WorkingDir": "/var/filecoin",
   "GenesisCarFile":"/opt/filecoin/genesis.car",
-  "PeerkeyFile": "/opt/filecoin/peer4.key",
   "FaucetURL": "http://172.19.0.5:9797/tap",
   "AutoSealInterval": 120,
   "Network": "user",
