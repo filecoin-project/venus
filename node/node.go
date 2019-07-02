@@ -29,7 +29,6 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	p2pmetrics "github.com/libp2p/go-libp2p-metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-peer"
-	dhtprotocol "github.com/libp2p/go-libp2p-protocol"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-routing"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -69,10 +68,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
-)
-
-const (
-	filecoinDHTProtocol dhtprotocol.ID = "/fil/kad/1.0.0"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
@@ -360,7 +355,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 				h,
 				dhtopts.Datastore(nc.Repo.Datastore()),
 				dhtopts.NamespacedValidator("v", validator),
-				dhtopts.Protocols(filecoinDHTProtocol),
+				dhtopts.Protocols(net.FilecoinDHT),
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to setup routing")
@@ -439,7 +434,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	msgQueue := core.NewMessageQueue()
 	outboxPolicy := core.NewMessageQueuePolicy(chainStore, core.OutboxMaxAgeRounds)
-	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), core.Topic, msgPool)
+	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
@@ -538,14 +533,14 @@ func (node *Node) Start(ctx context.Context) error {
 	node.RetrievalMiner = retrieval.NewMiner(node)
 
 	// subscribe to block notifications
-	blkSub, err := node.PorcelainAPI.PubSubSubscribe(BlockTopic)
+	blkSub, err := node.PorcelainAPI.PubSubSubscribe(net.BlockTopic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to blocks topic")
 	}
 	node.BlockSub = blkSub
 
 	// subscribe to message notifications
-	msgSub, err := node.PorcelainAPI.PubSubSubscribe(core.Topic)
+	msgSub, err := node.PorcelainAPI.PubSubSubscribe(net.MessageTopic)
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe to message topic")
 	}

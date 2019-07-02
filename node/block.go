@@ -7,12 +7,10 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 )
-
-// BlockTopic is the pubsub topic identifier on which new blocks are announced.
-const BlockTopic = "/fil/blocks"
 
 // AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
 func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
@@ -35,7 +33,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	// TODO: should this just be a cid? Right now receivers ask to fetch
 	// the block over bitswap anyway.
-	return node.PorcelainAPI.PubSubPublish(BlockTopic, b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(net.BlockTopic, b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
