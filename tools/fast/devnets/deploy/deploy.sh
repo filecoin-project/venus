@@ -12,21 +12,6 @@ mkdir -p $(pwd)/devnet-repo/{0,1,2,3,4}
 
 docker network create --subnet 172.19.0.0/24 filecoin
 
-# Faucet
-docker run -d --name faucet                                           \
-  --net filecoin --ip 172.19.0.5                                      \
-  devnet-faucet:latest                                                \
-  -fil-api genesis:3453 -fil-wallet t1ld7pd7uszknlrlhpwpd2337uqx6jwy2m5ux6e5y -faucet-val 1000
-
-# Genesis container
-docker run -d --name genesis                                          \
-  --net filecoin --ip 172.19.0.10                                     \
-  -v $(pwd)/devnet-data:/opt/filecoin:ro                              \
-  -v $(pwd)/devnet-repo/0:/var/filecoin                               \
-  -v $FILECOIN_PARAMETER_CACHE:/var/filecoin-proof-parameters:ro      \
-  devnet-base:latest                                                  \
-  -profile genesis -profile-config /opt/filecoin/genesis.json
-
 # Bootstrap1 container
 docker run -d --name bootstrap1                                       \
   --net filecoin --ip 172.19.0.20                                     \
@@ -53,6 +38,21 @@ docker run -d --name bootstrap3                                       \
   -v $FILECOIN_PARAMETER_CACHE:/var/filecoin-proof-parameters:ro      \
   devnet-base:latest                                                  \
   -profile bootstrap -profile-config /opt/filecoin/bootstrap3.json
+
+# Faucet
+docker run -d --name faucet                                           \
+  --net filecoin --ip 172.19.0.5                                      \
+  devnet-faucet:latest                                                \
+  -fil-api genesis:3453 -fil-wallet t1ld7pd7uszknlrlhpwpd2337uqx6jwy2m5ux6e5y -faucet-val 1000
+
+# Genesis container
+docker run -d --name genesis                                          \
+  --net filecoin --ip 172.19.0.10                                     \
+  -v $(pwd)/devnet-data:/opt/filecoin:ro                              \
+  -v $(pwd)/devnet-repo/0:/var/filecoin                               \
+  -v $FILECOIN_PARAMETER_CACHE:/var/filecoin-proof-parameters:ro      \
+  devnet-base:latest                                                  \
+  -profile genesis -profile-config /opt/filecoin/genesis.json
 
 # Miner1 container
 docker run -d --name miner1                                           \
