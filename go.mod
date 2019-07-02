@@ -15,7 +15,6 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
 	github.com/golang/mock v1.2.0 // indirect
-	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/golangci/golangci-lint v1.15.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
@@ -88,7 +87,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.1.0
-	go.opencensus.io v0.21.0
+	go.opencensus.io v0.22.0
 	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
 	golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
