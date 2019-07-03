@@ -49,7 +49,7 @@ func TestMiner(t *testing.T) {
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
 
-	assert.True(t, expected.Equal(actual))
+	assert.Equal(t, expected, actual)
 }
 
 func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {

@@ -260,12 +260,10 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
-	// This also starts the Miner
+	// Calls MiningOnce on genesis (client). This also starts the Miner.
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry)
 	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, minerNode.MiningStop(ctx))
-	}()
+	require.NoError(t, minerNode.MiningStop(ctx))
 
 	// Create some data that is the full sector size and make it autoseal asap
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
@@ -280,6 +278,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 
 	_, deal, err := series.ImportAndStoreWithDuration(ctx, clientNode, ask, durationui64, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
+	require.NoError(t, clientNode.MiningStop(ctx))
 
 	t.Run("Vouchers output as JSON have the correct info", func(t *testing.T) {
 		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
@@ -293,11 +292,14 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 		// ValidAt block height should be at least as high as the (period index + 1) * duration / # of proving periods
 		// so if there are 2 periods, 1 is valid at block height >= 1*duration/2,
 		// 2 is valid at 2*duration/2
+		// The channelID == message nonce, which happens to be 5
+		msgNonceChID := uint64(5)
+
 		expected := []*commands.PaymenVoucherResult{
 			{
 				Index:   0,
 				Amount:  &firstAmount,
-				Channel: types.NewChannelID(4),
+				Channel: types.NewChannelID(msgNonceChID),
 				Condition: &types.Predicate{
 					Method: "verifyPieceInclusion",
 					To:     ask.Miner,
@@ -308,7 +310,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 			{
 				Index:     1,
 				Amount:    totalPrice,
-				Channel:   types.NewChannelID(4),
+				Channel:   types.NewChannelID(msgNonceChID),
 				Condition: nil,
 				Payer:     &clientAddr,
 				ValidAt:   types.NewBlockHeight(durationui64),
@@ -353,7 +355,7 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 		}
 
 		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
-		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt))
-		assert.True(t, vr.Channel.Equal(actual[i].Channel))
+		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt), "expva %s, actualva %s", vr.ValidAt.String(), actual[i].Channel.String())
+		assert.True(t, vr.Channel.Equal(actual[i].Channel), "expch %s, actualch %s", vr.Channel.String(), actual[i].Channel.String())
 	}
 }

@@ -96,6 +96,20 @@ func (is IntSet) String() string {
 	return fmt.Sprintf("%d", is.Values())
 }
 
+// Size returns the size of an IntSet.  It should be more efficient than
+// len(is.Values()).
+func (is IntSet) Size() int {
+	var size int
+	it := is.ba.Blocks()
+	// it.Next() must be called to point it at the first block
+	for it.Next() {
+		_, bitBlock := it.Value()
+		bm := bitarray.Bitmap64(bitBlock)
+		size += bm.PopCount()
+	}
+	return size
+}
+
 // EmptyIntSet returns an empty IntSet.
 func EmptyIntSet() IntSet {
 	return IntSet{ba: bitarray.NewSparseBitArray()}

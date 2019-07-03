@@ -461,103 +461,347 @@ func TestMinerCommitSector(t *testing.T) {
 	})
 }
 
-func TestMinerSubmitPoStSectorSetUpdates(t *testing.T) {
-	tf.UnitTest(t)
+// minerActorLiason provides a set of test friendly calls for setting up, reading
+// internals, and transitioning the portion of the filecoin state machine
+// related to a particular miner actor.
+type minerActorLiason struct {
+	st state.Tree
+	vms vm.StorageMap
+	ancestors []types.TipSet
+	minerAddr address.Address
+	t *testing.T
+	currentHeight uint64
+}
 
+func (mal *minerActorLiason) requireHeightNotPast(blockHeight uint64) {
+	require.True(mal.t, blockHeight >= mal.currentHeight)
+	mal.currentHeight = blockHeight
+}
+
+func (mal *minerActorLiason) requireCommit(blockHeight, sectorID uint64) {
+	mal.requireHeightNotPast(blockHeight)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "commitSector", mal.ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	require.NoError(mal.t, err)
+	require.NoError(mal.t, res.ExecutionError)
+	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
+}
+
+func (mal *minerActorLiason) requirePoSt(blockHeight uint64, done types.IntSet) {
+	mal.requireHeightNotPast(blockHeight)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, []types.PoStProof{th.MakeRandomPoStProofForTest()}, done)
+	assert.NoError(mal.t, err)
+	assert.NoError(mal.t, res.ExecutionError)
+	assert.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
+}
+
+func (mal *minerActorLiason) requireReadState() State {
+	miner := state.MustGetActor(mal.st, mal.minerAddr)
+	storage := mal.vms.NewStorage(mal.minerAddr, miner)
+	stateBytes, err := storage.Get(storage.Head())
+	require.NoError(mal.t, err)
+	var minerState State
+	err = actor.UnmarshalStorage(stateBytes, &minerState)
+	require.NoError(mal.t, err)
+	return minerState
+}
+
+func (mal *minerActorLiason) requirePower(queryHeight uint64) *types.BytesAmount {
+	mal.requireHeightNotPast(queryHeight)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, "getPower", mal.ancestors)
+	require.NoError(mal.t, err)
+	require.NoError(mal.t, res.ExecutionError)
+	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
+	require.Equal(mal.t, 1, len(res.Receipt.Return))
+	return types.NewBytesAmountFromBytes(res.Receipt.Return[0])
+}
+
+func (mal *minerActorLiason) requireTotalStorage(queryHeight uint64) *types.BytesAmount {
+	mal.requireHeightNotPast(queryHeight)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, address.StorageMarketAddress, 0, queryHeight, "getTotalStorage", mal.ancestors)
+	require.NoError(mal.t, err)
+	require.NoError(mal.t, res.ExecutionError)
+	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
+	require.Equal(mal.t, 1, len(res.Receipt.Return))
+	return types.NewBytesAmountFromBytes(res.Receipt.Return[0])
+}
+
+func (mal *minerActorLiason) assertPoStFail(blockHeight uint64, done types.IntSet, exitCode uint8) {
+	mal.requireHeightNotPast(blockHeight)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, []types.PoStProof{th.MakeRandomPoStProofForTest()}, done)
+	assert.NoError(mal.t, err)
+	assert.Error(mal.t, res.ExecutionError)
+	assert.Equal(mal.t, exitCode, res.Receipt.ExitCode)
+}
+
+func newMinerActorLiason(t *testing.T, st state.Tree, vms vm.StorageMap, ancestors []types.TipSet, minerAddr address.Address ) *minerActorLiason {
+	return &minerActorLiason{
+		t:             t,
+		st:            st,
+		vms:           vms,
+		ancestors:     ancestors,
+		minerAddr:     minerAddr,
+		currentHeight: 0,
+	}
+}
+
+func setupMinerActorLiason(t *testing.T) *minerActorLiason {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
 	ancestors := th.RequireTipSetChain(t, 10)
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
-	proof := th.MakeRandomPoStProofForTest()
-	done := types.EmptyIntSet()
+	return newMinerActorLiason(t, st, vms, ancestors, minerAddr)	
+}
+
+func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
+	tf.UnitTest(t)
 
 	firstCommitBlockHeight := uint64(3)
 	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	thirdProvingPeriodStart := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	fourthProvingPeriodStart := 3*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
-
-	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	require.Equal(t, uint8(0), res.Receipt.ExitCode)
-
-	// add another sector
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
-	require.NoError(t, err)
-	require.NoError(t, res.ExecutionError)
-	require.Equal(t, uint8(0), res.Receipt.ExitCode)
-
-	t.Run("proving-set updates to newly added sectors", func(t *testing.T) {
-		// submit post
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, "submitPoSt", ancestors, []types.PoStProof{proof}, done)
-		assert.NoError(t, err)
-		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
-
-		// Check that state.ProvingSet is now [1, 2] and NextDoneSet is []
-		mSt := requireReadMinerActorState(t, vms, st, minerAddr)
-		assert.Equal(t, types.NewIntSet(1, 2).Values(), mSt.ProvingSet.Values())
-		assert.Equal(t, types.EmptyIntSet().Values(), mSt.NextDoneSet.Values())
-	})
-
-	t.Run("proving-set updates across proving periods", func(t *testing.T) {
-		// commit sector in new proving period
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart + 1, "commitSector", ancestors, uint64(5), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
-		require.NoError(t, err)
-		require.NoError(t, res.ExecutionError)
-		require.Equal(t, uint8(0), res.Receipt.ExitCode)		
+	t.Run("power is 0 until first PoSt", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
 		
-		// submit post
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart + 2, "submitPoSt", ancestors, []types.PoStProof{proof}, done)
-		assert.NoError(t, err)
-		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
-
-		// Check that state.ProvingSet is now [1, 2, 5] and NextDone set is []
-		mSt := requireReadMinerActorState(t, vms, st, minerAddr)
-		assert.Equal(t, types.NewIntSet(1, 2, 5).Values(), mSt.ProvingSet.Values())
-		assert.Equal(t, types.EmptyIntSet().Values(), mSt.NextDoneSet.Values())
-	})	
-
-	t.Run("submitPoSt fails if miner does not have done ids stored", func(t *testing.T) {
-		failingDone := done.Add(uint64(30))
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart + 2, "submitPoSt", ancestors, []types.PoStProof{proof}, failingDone)
-		assert.NoError(t, err)
-		assert.Error(t, res.ExecutionError)
-		assert.Equal(t, uint8(ErrInvalidSector), res.Receipt.ExitCode)
+		// commit several sectors
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(3))
+		
+		power := mal.requirePower(firstCommitBlockHeight+2)
+		assert.Equal(t, types.NewBytesAmount(0), power)		
 	})
+	
+	t.Run("power is 1 after first PoSt", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// commit several sectors
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(3))
 
-	t.Run("next-done-set and proving-set update on non-empty done", func(t *testing.T) {
-		// finish sectors
-		done = done.Add(1)
-		done = done.Add(5)
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart + 2, "submitPoSt", ancestors, []types.PoStProof{proof}, done)		
-		assert.NoError(t, err)
-		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
+		// submit PoSt and add some power.
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
 
-		// Check that state.ProvingSet is now [2] and NextDone set is [1, 5]
-		mSt := requireReadMinerActorState(t, vms, st, minerAddr)
-		assert.Equal(t, types.NewIntSet(2).Values(), mSt.ProvingSet.Values())
-		assert.Equal(t, types.NewIntSet(1, 5).Values(), mSt.NextDoneSet.Values())				
+		power := mal.requirePower(firstCommitBlockHeight+5)
+		assert.Equal(t, types.OneKiBSectorSize, power)
 	})
+	
+	t.Run("power accumulates over multiple proving periods", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+		power := mal.requirePower(firstCommitBlockHeight+6)
+		assert.Equal(t, types.OneKiBSectorSize, power)
 
-	t.Run("submiting empty done clears next done set", func(t *testing.T) {
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, fourthProvingPeriodStart + 2, "submitPoSt", ancestors, []types.PoStProof{proof}, types.EmptyIntSet())		
-		assert.NoError(t, err)
-		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
+		// Period 2 commit and prove
+		mal.requireCommit(secondProvingPeriodStart+1, uint64(16))
+		mal.requireCommit(secondProvingPeriodStart+2, uint64(17))
+		mal.requirePoSt(secondProvingPeriodStart+5, done)
+		power = mal.requirePower(secondProvingPeriodStart+6)
+		assert.Equal(t, types.NewBytesAmount(2).Mul(types.OneKiBSectorSize), power)		
 
-		// Check that state.ProvingSet is now [2] and NextDone set is []
-		mSt := requireReadMinerActorState(t, vms, st, minerAddr)
-		assert.Equal(t, types.NewIntSet(2).Values(), mSt.ProvingSet.Values())
-		assert.Equal(t, types.EmptyIntSet().Values(), mSt.NextDoneSet.Values())				
+		// Period 3 prove over 4 sectors and measure power
+		mal.requirePoSt(thirdProvingPeriodStart+5, done)
+		power = mal.requirePower(thirdProvingPeriodStart+6)
+		assert.Equal(t, types.NewBytesAmount(4).Mul(types.OneKiBSectorSize), power)
 	})
+	
+	t.Run("power removed with sectors", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+
+		// Period 2 commit and prove
+		mal.requireCommit(secondProvingPeriodStart+1, uint64(16))
+		mal.requireCommit(secondProvingPeriodStart+2, uint64(17))
+		mal.requirePoSt(secondProvingPeriodStart+5, done)
+
+		// Period 3 prove and drop 1 and 2
+		done = types.NewIntSet(1,2)
+		mal.requirePoSt(thirdProvingPeriodStart+5, done)
+		
+		// power lags removal by a proving period
+		power := mal.requirePower(thirdProvingPeriodStart+6)
+		assert.Equal(t, types.NewBytesAmount(4).Mul(types.OneKiBSectorSize), power)
+		
+		// next period power is removed
+		done = types.EmptyIntSet()
+		mal.requirePoSt(fourthProvingPeriodStart+1, done)
+		power = mal.requirePower(fourthProvingPeriodStart+2)
+		assert.Equal(t, types.NewBytesAmount(2).Mul(types.OneKiBSectorSize), power)
+	})			
 }
 
+func TestMinerSubmitPoStProvingSet(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	thirdProvingPeriodStart := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+
+	t.Run("empty proving set before first commit", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.EmptyIntSet().Values(), mSt.ProvingSet.Values())
+	})
+
+	t.Run("only one sector added to proving set during first period", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		// commit several sectors
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(3))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(4))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(16))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(17))						
+
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.NewIntSet(1).Values(), mSt.ProvingSet.Values())		
+	})
+
+	t.Run("all committed sectors added to proving set after PoSt submission", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// commit several sectors
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(16))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(17))
+
+		// submit PoSt to update proving set
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.NewIntSet(1,2,16,17).Values(), mSt.ProvingSet.Values())				
+	})
+
+	t.Run("committed sectors acrue across multiple PoSt submissions", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+
+		// Period 2 commit and prove
+		mal.requireCommit(secondProvingPeriodStart+1, uint64(16))
+		mal.requireCommit(secondProvingPeriodStart+2, uint64(17))
+		mal.requirePoSt(secondProvingPeriodStart+5, done)
+
+		// Period 3 commit and prove
+		mal.requireCommit(thirdProvingPeriodStart+1, uint64(4))
+		mal.requirePoSt(thirdProvingPeriodStart+5, done)
+
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.NewIntSet(1,2,4,16,17).Values(), mSt.ProvingSet.Values())						
+	})
+
+	t.Run("done sectors removed from proving set", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// commit several sectors
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(17))
+
+		// submit PoSt to update proving set and remove sector 17
+		done := types.NewIntSet(17)
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.NewIntSet(1,2).Values(), mSt.ProvingSet.Values())
+	})
+
+}
+
+func TestMinerSubmitPoStNextDoneSet(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	thirdProvingPeriodStart := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+
+	t.Run("next done set empty when done arg empty", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(17))
+
+		// submit PoSt to update proving set with no done sectors
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)		
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.EmptyIntSet().Values(), mSt.NextDoneSet.Values())
+	})
+
+	t.Run("next done set updates when sectors completed", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(3))		
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+
+		// Period 2 remove id 2 and 3
+		done = types.NewIntSet(2, 3)
+		mal.requirePoSt(secondProvingPeriodStart+5, done)
+		mSt := mal.requireReadState()
+		assert.Equal(t, done.Values(), mSt.NextDoneSet.Values())								
+	})
+
+	t.Run("next done set resets after additional post", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(3))		
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+
+		// Period 2 remove id 2 and 3
+		done = types.NewIntSet(2, 3)
+		mal.requirePoSt(secondProvingPeriodStart+5, done)
+
+		// Period 3 commit and prove
+		done = types.EmptyIntSet()
+		mal.requirePoSt(thirdProvingPeriodStart+5, done)
+
+		mSt := mal.requireReadState()
+		assert.Equal(t, types.EmptyIntSet().Values(), mSt.NextDoneSet.Values())								
+
+	})
+
+	t.Run("submitPoSt fails if miner does not have done ids stored", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		
+		// Period 1 commit and prove
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(3))		
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+		
+		failingDone := done.Add(uint64(30))
+		mal.assertPoStFail(secondProvingPeriodStart+5, failingDone, uint8(ErrInvalidSector))
+	})
+
+}
+	
 func TestMinerSubmitPoSt(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -829,16 +1073,6 @@ func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
 	return addr
 }
 
-func requireReadMinerActorState(t *testing.T, vms vm.StorageMap, st state.Tree, minerAddr address.Address) State {
-	miner := state.MustGetActor(st, minerAddr)
-	storage := vms.NewStorage(minerAddr, miner)
-	stateBytes, err := storage.Get(storage.Head())
-	require.NoError(t, err)
-	var minerState State
-	err = actor.UnmarshalStorage(stateBytes, &minerState)
-	require.NoError(t, err)
-	return minerState
-}
 
 func af(h int64) types.AttoFIL {
 	return types.NewAttoFIL(big.NewInt(h))
