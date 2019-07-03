@@ -106,6 +106,7 @@ func validPaymentsConfig() CreatePaymentsParams {
 		Duration:        50,
 		MinerAddress:    minerAddress,
 		CommP:           commP,
+		PieceSize:       types.NewBytesAmount(127),
 		PaymentInterval: paymentInterval,
 		ChannelExpiry:   *types.NewBlockHeight(500),
 		GasPrice:        types.NewAttoFILFromFIL(3),

@@ -216,7 +216,7 @@ func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]by
 }
 
 // Verifier returns an interface to the proof verification code
-func (ctx *Context) Verifier() exec.Verifier {
+func (ctx *Context) Verifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 

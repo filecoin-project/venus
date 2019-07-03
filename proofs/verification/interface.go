@@ -35,8 +35,25 @@ type VerifySealResponse struct {
 	IsValid bool
 }
 
+// VerifyPieceInclusionProofRequest represents a request to verify a piece
+// inclusion proof.
+type VerifyPieceInclusionProofRequest struct {
+	CommD               types.CommD
+	CommP               types.CommP
+	PieceInclusionProof []byte
+	PieceSize           *types.BytesAmount
+	SectorSize          *types.BytesAmount
+}
+
+// VerifyPieceInclusionProofResponse communicates the validity of a provided
+// piece inclusion proof.
+type VerifyPieceInclusionProofResponse struct {
+	IsValid bool
+}
+
 // Verifier provides an interface to the proving subsystem.
 type Verifier interface {
 	VerifyPoSt(VerifyPoStRequest) (VerifyPoStResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
+	VerifyPieceInclusionProof(VerifyPieceInclusionProofRequest) (VerifyPieceInclusionProofResponse, error)
 }

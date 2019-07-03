@@ -49,6 +49,7 @@ type PieceMetadata struct {
 	Key            string
 	Size           uint64
 	InclusionProof []byte
+	CommP          [32]byte
 }
 
 // VerifySeal returns true if the sealing operation from which its inputs were
@@ -413,4 +414,53 @@ func GeneratePoSt(
 	}
 
 	return proofs, goUint64s(resPtr.faults_ptr, resPtr.faults_len), nil
+}
+
+// VerifyPieceInclusionProof returns true if the piece inclusion proof is valid
+// with the given arguments.
+func VerifyPieceInclusionProof(sectorSize uint64, pieceSize uint64, commP [32]byte, commD [32]byte, proof []byte) (bool, error) {
+	commDCBytes := C.CBytes(commD[:])
+	defer C.free(commDCBytes)
+
+	commPCBytes := C.CBytes(commP[:])
+	defer C.free(commPCBytes)
+
+	pieceInclusionProofCBytes := C.CBytes(proof)
+	defer C.free(pieceInclusionProofCBytes)
+
+	resPtr := C.sector_builder_ffi_verify_piece_inclusion_proof(
+		(*[32]C.uint8_t)(commDCBytes),
+		(*[32]C.uint8_t)(commPCBytes),
+		(*C.uint8_t)(pieceInclusionProofCBytes),
+		C.size_t(len(proof)),
+		C.uint64_t(pieceSize),
+		C.uint64_t(sectorSize),
+	)
+	defer C.sector_builder_ffi_destroy_verify_piece_inclusion_proof_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return false, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return bool(resPtr.is_valid), nil
+}
+
+// GeneratePieceCommitment produces a piece commitment for the provided data
+// stored at a given piece path.
+func GeneratePieceCommitment(piecePath string, pieceSize uint64) (commP [32]byte, err error) {
+	cPiecePath := C.CString(piecePath)
+	defer C.free(unsafe.Pointer(cPiecePath))
+
+	resPtr := C.sector_builder_ffi_generate_piece_commitment(cPiecePath, C.uint64_t(pieceSize))
+	defer C.sector_builder_ffi_destroy_generate_piece_commitment_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return [32]byte{}, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	commPSlice := goBytes(&resPtr.comm_p[0], 32)
+	var commitment [32]byte
+	copy(commitment[:], commPSlice)
+
+	return commitment, nil
 }

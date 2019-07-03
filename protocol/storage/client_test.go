@@ -1,7 +1,9 @@
 package storage_test
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"math/big"
 	"testing"
 	"time"
@@ -48,7 +50,9 @@ func TestProposeDeal(t *testing.T) {
 		}, nil
 	})
 
-	testAPI := newTestClientAPI(t)
+	pieceSize := uint64(7)
+	pieceReader := bytes.NewReader(make([]byte, pieceSize))
+	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -58,10 +62,6 @@ func TestProposeDeal(t *testing.T) {
 	duration := uint64(10000)
 	dealResponse, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
 	require.NoError(t, err)
-
-	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
-	var commP types.CommP
-	copy(commP[:], dataCid.Bytes())
 
 	t.Run("and creates proposal from parameters", func(t *testing.T) {
 		assert.Equal(t, dataCid, proposal.PieceRef)
@@ -102,7 +102,6 @@ func TestProposeDeal(t *testing.T) {
 			assert.Equal(t, testAPI.perPayment.MulBigInt(big.NewInt(int64(i+1))), voucher.Amount)
 			assert.Equal(t, testAPI.payer, voucher.Payer)
 			assert.Equal(t, minerAddr, voucher.Condition.To)
-			assert.Equal(t, commP[:], voucher.Condition.Params[0])
 			lastValidAt = &voucher.ValidAt
 		}
 	})
@@ -126,7 +125,9 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 	addressCreator := address.NewForTestGetter()
 
 	// Create API and set miner's price to zero
-	testAPI := newTestClientAPI(t)
+	pieceSize := uint64(7)
+	pieceReader := bytes.NewReader(make([]byte, pieceSize))
+	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	testAPI.askPrice = types.ZeroAttoFIL
 
 	client := NewClient(th.NewFakeHost(), testAPI)
@@ -177,7 +178,9 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 		}, nil
 	})
 
-	testAPI := newTestClientAPI(t)
+	pieceSize := uint64(7)
+	pieceReader := bytes.NewReader(make([]byte, pieceSize))
+	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -202,9 +205,11 @@ type clientTestAPI struct {
 	perPayment     types.AttoFIL
 	testing        *testing.T
 	deals          map[cid.Cid]*storagedeal.Deal
+	pieceReader    io.Reader
+	pieceSize      uint64
 }
 
-func newTestClientAPI(t *testing.T) *clientTestAPI {
+func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *clientTestAPI {
 	cidGetter := types.NewCidForTestGetter()
 	addressGetter := address.NewForTestGetter()
 
@@ -219,6 +224,8 @@ func newTestClientAPI(t *testing.T) *clientTestAPI {
 		perPayment:     types.NewAttoFILFromFIL(10),
 		testing:        t,
 		deals:          make(map[cid.Cid]*storagedeal.Deal),
+		pieceReader:    pieceReader,
+		pieceSize:      pieceSize,
 	}
 }
 
@@ -258,7 +265,11 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 }
 
 func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, error) {
-	return 1016, nil
+	return ctp.pieceSize, nil
+}
+
+func (ctp *clientTestAPI) DAGCat(context.Context, cid.Cid) (io.Reader, error) {
+	return ctp.pieceReader, nil
 }
 
 func (ctp *clientTestAPI) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error) {

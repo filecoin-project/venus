@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
@@ -230,7 +231,12 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 func TestSelfDialStorageGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	// set block time sufficiently high that client can import its piece
+	// and generate a commitment before the deal proposing context expires
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
+	})
+
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)

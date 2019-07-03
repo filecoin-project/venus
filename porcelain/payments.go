@@ -49,6 +49,9 @@ type CreatePaymentsParams struct {
 	// CommP is the client's data commitment. It will be the basis of piece inclusion conditions added to the payments.
 	CommP types.CommP
 
+	// PieceSize represents the size of the user-provided piece, in bytes.
+	PieceSize *types.BytesAmount
+
 	// PaymentInterval is the time between payments (in block height)
 	PaymentInterval uint64
 
@@ -153,7 +156,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	condition := &types.Predicate{
 		To:     config.MinerAddress,
 		Method: verifyPieceInclusionMethod,
-		Params: []interface{}{config.CommP[:]},
+		Params: []interface{}{config.CommP[:], config.PieceSize},
 	}
 
 	// generate payments

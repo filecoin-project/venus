@@ -81,9 +81,15 @@ func goPieceMetadata(src *C.sector_builder_ffi_FFIPieceMetadata, size C.size_t) 
 
 	ptrs := (*[1 << 30]C.sector_builder_ffi_FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
+		commPSlice := goBytes(&ptrs[i].comm_p[0], 32)
+		var commP [32]byte
+		copy(commP[:], commPSlice)
+
 		ps[i] = PieceMetadata{
-			Key:  C.GoString(ptrs[i].piece_key),
-			Size: uint64(ptrs[i].num_bytes),
+			Key:            C.GoString(ptrs[i].piece_key),
+			Size:           uint64(ptrs[i].num_bytes),
+			CommP:          commP,
+			InclusionProof: goBytes(ptrs[i].piece_inclusion_proof_ptr, ptrs[i].piece_inclusion_proof_len),
 		}
 	}
 

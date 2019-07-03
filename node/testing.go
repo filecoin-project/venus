@@ -191,7 +191,11 @@ func MakeOfflineNode(t *testing.T) *Node {
 // DefaultTestingConfig returns default configuration for testing
 func DefaultTestingConfig() []ConfigOpt {
 	return []ConfigOpt{
-		VerifierConfigOption(verification.NewFakeVerifier(true, nil)),
+		VerifierConfigOption(verification.NewFakeVerifier(verification.FakeVerifierConfig{
+			VerifyPoStValid:                true,
+			VerifyPieceInclusionProofValid: true,
+			VerifySealValid:                true,
+		})),
 	}
 }
 
