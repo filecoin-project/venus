@@ -14,9 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Topic is the network pubsub topic identifier on which new messages are announced.
-const Topic = "/fil/msgs"
-
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.
 type Outbox struct {
 	// Signs messages
