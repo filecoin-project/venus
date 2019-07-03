@@ -56,7 +56,7 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, errors.New("Test Error")
 	}
@@ -184,7 +184,7 @@ func newMinerSetPricePlumbing(t *testing.T) *minerSetPricePlumbing {
 	}
 }
 
-func (mtp *minerSetPricePlumbing) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerSetPricePlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mtp.failSend {
 		return cid.Cid{}, errors.New("Test error in MessageSend")
 	}

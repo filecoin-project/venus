@@ -47,7 +47,7 @@ func TestPreview(t *testing.T) {
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
-		previewer := NewPreviewer(deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
+		previewer := NewPreviewer(deps.chainStore, deps.cst, deps.blockstore)
 		returnValue, err := previewer.Preview(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)

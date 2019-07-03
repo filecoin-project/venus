@@ -50,7 +50,7 @@ func TestQuery(t *testing.T) {
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
-		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
+		queryer := NewQueryer(deps.chainStore, deps.cst, deps.blockstore)
 		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)
@@ -87,7 +87,7 @@ func TestQuery(t *testing.T) {
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
-		queryer := NewQueryer(deps.repo, deps.wallet, deps.chainStore, deps.cst, deps.blockstore)
+		queryer := NewQueryer(deps.chainStore, deps.cst, deps.blockstore)
 		_, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "42")

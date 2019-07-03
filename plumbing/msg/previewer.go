@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // Abstracts over a store of blockchain state.
@@ -26,7 +25,6 @@ type previewerChainReader interface {
 
 // Previewer calculates the amount of Gas needed for a command
 type Previewer struct {
-	wallet *wallet.Wallet
 	// To get the head tipset state root.
 	chainReader previewerChainReader
 	// To load the tree for the head tipset state root.
@@ -36,8 +34,8 @@ type Previewer struct {
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(wallet *wallet.Wallet, chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
-	return &Previewer{wallet, chainReader, cst, bs}
+func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
+	return &Previewer{chainReader, cst, bs}
 }
 
 // Preview sends a read-only message to an actor.

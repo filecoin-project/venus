@@ -71,14 +71,9 @@ var msgSendCmd = &cmds.Command{
 			return errors.New("mal-formed value")
 		}
 
-		o := req.Options["from"]
-		var fromAddr address.Address
-		if o != nil {
-			var err error
-			fromAddr, err = address.NewFromString(o.(string))
-			if err != nil {
-				return errors.Wrap(err, "invalid from address")
-			}
+		fromAddr, err := fromAddrOrDefault(req, env)
+		if err != nil {
+			return err
 		}
 
 		gasPrice, gasLimit, preview, err := parseGasOptions(req)
@@ -108,7 +103,7 @@ var msgSendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			target,

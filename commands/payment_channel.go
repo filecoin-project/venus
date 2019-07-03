@@ -54,7 +54,7 @@ message to be mined to get the channelID.`,
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ message to be mined to get the channelID.`,
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -141,7 +141,7 @@ var lsCmd = &cmds.Command{
 		cmdkit.StringOption("payer", "Address for which to retrieve channels (defaults to from if omitted)"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -192,7 +192,7 @@ var voucherCmd = &cmds.Command{
 		cmdkit.StringOption("validat", "Smallest block height at which target can redeem"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -253,7 +253,7 @@ var redeemCmd = &cmds.Command{
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -289,7 +289,7 @@ var redeemCmd = &cmds.Command{
 				params...,
 			)
 		} else {
-			result.Cid, err = GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			result.Cid, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -341,7 +341,7 @@ var reclaimCmd = &cmds.Command{
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -374,7 +374,7 @@ var reclaimCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -428,7 +428,7 @@ var closeCmd = &cmds.Command{
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -464,7 +464,7 @@ var closeCmd = &cmds.Command{
 				params...,
 			)
 		} else {
-			result.Cid, err = GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+			result.Cid, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -518,7 +518,7 @@ var extendCmd = &cmds.Command{
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -561,7 +561,7 @@ var extendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -615,7 +615,7 @@ var cancelCmd = &cmds.Command{
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -648,7 +648,7 @@ var cancelCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
 
@@ -20,11 +21,13 @@ import (
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+var log = logging.Logger("porcelain")
+
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -63,7 +66,7 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	smsgCid, err := plumbing.MessageSendWithDefaultAddress(
+	smsgCid, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		address.StorageMarketAddress,
@@ -152,7 +155,7 @@ func MinerPreviewCreate(
 type mspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -196,7 +199,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// create ask
-	res.AddAskCid, err = plumbing.MessageSendWithDefaultAddress(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "addAsk", price, expiry)
+	res.AddAskCid, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "addAsk", price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}

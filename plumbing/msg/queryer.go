@@ -12,10 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
 // Abstracts over a store of blockchain state.
@@ -27,9 +25,6 @@ type queryerChainReader interface {
 
 // Queryer knows how to send read-only messages for querying actor state.
 type Queryer struct {
-	// For getting the default address. Lame.
-	repo   repo.Repo
-	wallet *wallet.Wallet
 	// To get the head tipset state root.
 	chainReader queryerChainReader
 	// To load the tree for the head tipset state root.
@@ -39,8 +34,8 @@ type Queryer struct {
 }
 
 // NewQueryer constructs a Queryer.
-func NewQueryer(repo repo.Repo, wallet *wallet.Wallet, chainReader queryerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
-	return &Queryer{repo, wallet, chainReader, cst, bs}
+func NewQueryer(chainReader queryerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Queryer {
+	return &Queryer{chainReader, cst, bs}
 }
 
 // Query sends a read-only message to an actor.
