@@ -66,7 +66,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(t, 0, len(nodes[0].Inbox.Pool().Pending()))
 
 	t.Run("message propagates", func(t *testing.T) {
-		_, err = sender.PorcelainAPI.MessageSendWithDefaultAddress(
+		_, err = sender.PorcelainAPI.MessageSend(
 			ctx,
 			senderAddress,
 			address.NetworkAddress,

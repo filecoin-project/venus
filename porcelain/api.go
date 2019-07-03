@@ -82,31 +82,6 @@ func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.
 	return MessagePoolWait(ctx, a, messageCount)
 }
 
-// MessageSendWithDefaultAddress calls MessageSend but with a default from
-// address if none is provided
-func (a *API) MessageSendWithDefaultAddress(
-	ctx context.Context,
-	from,
-	to address.Address,
-	value types.AttoFIL,
-	gasPrice types.AttoFIL,
-	gasLimit types.GasUnits,
-	method string,
-	params ...interface{},
-) (cid.Cid, error) {
-	return MessageSendWithDefaultAddress(
-		ctx,
-		a,
-		from,
-		to,
-		value,
-		gasPrice,
-		gasLimit,
-		method,
-		params...,
-	)
-}
-
 // MinerCreate creates a miner
 func (a *API) MinerCreate(
 	ctx context.Context,
