@@ -72,7 +72,9 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 			for _, msg := range block.Messages {
 				_, err = ib.pool.Add(ctx, msg, uint64(block.Height))
 				if err != nil {
-					log.Info(err)
+					// Messages from the removed chain are frequently invalidated, e.g. because that
+					// same message is already mined on the new chain.
+					log.Debug(err)
 				}
 			}
 		}
