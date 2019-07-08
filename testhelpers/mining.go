@@ -52,21 +52,21 @@ func MakeRandomBytes(size int) []byte {
 	return comm
 }
 
-// RequireTipSetChain produces a chain of TipSet of the requested length. The
-// TipSet with greatest height will be at the front of the returned slice.
-func RequireTipSetChain(t *testing.T, numTipSets int) []types.TipSet {
+// RequireTipSetChain produces a chain of singleton tipsets up to the requested height (i.e. of
+// length height+1). The tipset with greatest height will be at the front of the returned slice.
+func RequireTipSetChain(t *testing.T, toHeight int) []types.TipSet {
 	var tipSetsDescBlockHeight []types.TipSet
 	// setup ancestor chain
 	head := types.NewBlockForTest(nil, uint64(0))
 	head.Ticket = []byte(strconv.Itoa(0))
-	for i := 0; i < numTipSets; i++ {
+	for i := 0; i < toHeight; i++ {
 		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
 		newBlock := types.NewBlockForTest(head, uint64(0))
 		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
 		head = newBlock
 	}
 
+	// The final tipset has height `toHeight`.
 	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
-
 	return tipSetsDescBlockHeight
 }

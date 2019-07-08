@@ -990,18 +990,6 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 // Internal functions
 //
 
-func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
-	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodEnd)
-	if err != nil {
-		return types.PoStChallengeSeed{}, err
-	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-
-	return seed, nil
-}
-
 // TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
 // see https://github.com/filecoin-project/go-filecoin/issues/2629
 func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
