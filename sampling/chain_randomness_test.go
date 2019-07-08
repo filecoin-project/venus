@@ -20,7 +20,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 	require.Equal(t, sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
 
 	t.Run("happy path", func(t *testing.T) {
-
+		// The tipsets are in descending height order. Each block's ticket is its stringified height (as bytes).
 		chain := testhelpers.RequireTipSetChain(t, 20)
 
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(20)), chain)
@@ -36,51 +36,63 @@ func TestSamplingChainRandomness(t *testing.T) {
 		assert.Equal(t, []byte(strconv.Itoa(7)), r)
 	})
 
-	t.Run("faults with height out of range", func(t *testing.T) {
-
+	t.Run("skips missing tipsets", func(t *testing.T) {
 		chain := testhelpers.RequireTipSetChain(t, 20)
 
-		// edit chain to include null blocks at heights 21 through 24
-		baseBlock := chain[1].ToSlice()[0]
-		afterNull := types.NewBlockForTest(baseBlock, uint64(0))
-		afterNull.Height += types.Uint64(uint64(5))
-		afterNull.Ticket = []byte(strconv.Itoa(int(afterNull.Height)))
-		chain = append([]types.TipSet{types.RequireNewTipSet(t, afterNull)}, chain...)
+		// Sample height after the head falls back to the head, and then looks back from there
+		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(25)), chain)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(17)), r)
 
-		// ancestor block heights:
-		//
-		// 25 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
-		//
-		// no tip set with height 30 exists in ancestors
-		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(30)), chain)
-		assert.Error(t, err)
+		// Add new head so as to produce null blocks between 20 and 25
+		// i.e.: 25 20 19 18 ... 0
+		headAfterNulls := types.NewBlockForTest(chain[0].ToSlice()[0], uint64(0))
+		headAfterNulls.Height = types.Uint64(uint64(25))
+		headAfterNulls.Ticket = []byte(strconv.Itoa(int(headAfterNulls.Height)))
+		chain = append([]types.TipSet{types.RequireNewTipSet(t, headAfterNulls)}, chain...)
+
+		// Sampling in the nulls falls back to the last non-null
+		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(24)), chain)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(17)), r)
+
+		// When sampling immediately after the nulls, the look-back skips the nulls (not counting them).
+		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(25)), chain)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(18)), r)
 	})
 
-	t.Run("faults with lookback out of range", func(t *testing.T) {
-
+	t.Run("fails when chain insufficient", func(t *testing.T) {
+		// Chain: 20, 19, 18, 17, 16
+		// The final tipset is not of height zero (genesis)
 		chain := testhelpers.RequireTipSetChain(t, 20)[:5]
 
-		// ancestor block heights:
-		//
-		// 20, 19, 18, 17, 16
-		//
-		// going back in time by `LookbackParameter`-number of tip sets from
-		// block height 17 does not find us the genesis block
-		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(17)), chain)
+		// Sample is out of range
+		_, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(15)), chain)
 		assert.Error(t, err)
+
+		// Sample minus lookback is out of range
+		_, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(16)), chain)
+		assert.Error(t, err)
+		_, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(18)), chain)
+		assert.Error(t, err)
+
+		// Ok when the chain is just sufficiently long.
+		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(19)), chain)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(16)), r)
 	})
 
 	t.Run("falls back to genesis block", func(t *testing.T) {
-
 		chain := testhelpers.RequireTipSetChain(t, 5)
 
-		// ancestor block heights:
-		//
-		// 5, 3, 2, 1, 0
-		//
-		// going back in time by `LookbackParameter`-number of tip sets from 1
-		// would put us into the negative - so fall back to genesis block
+		// Three blocks back from "1"
 		r, err := sampling.SampleChainRandomness(types.NewBlockHeight(uint64(1)), chain)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte(strconv.Itoa(0)), r)
+
+		// Sample height can be zero.
+		r, err = sampling.SampleChainRandomness(types.NewBlockHeight(uint64(0)), chain)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte(strconv.Itoa(0)), r)
 	})
