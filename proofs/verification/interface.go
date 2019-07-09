@@ -1,4 +1,4 @@
-package verifier
+package verification
 
 import (
 	"github.com/filecoin-project/go-filecoin/proofs"

@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs/verifier"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -191,7 +191,7 @@ func MakeOfflineNode(t *testing.T) *Node {
 // DefaultTestingConfig returns default configuration for testing
 func DefaultTestingConfig() []ConfigOpt {
 	return []ConfigOpt{
-		VerifierConfigOption(verifier.NewFakeVerifier(true, nil)),
+		VerifierConfigOption(verification.NewFakeVerifier(true, nil)),
 	}
 }
 

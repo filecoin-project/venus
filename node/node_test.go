@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
-	"github.com/filecoin-project/go-filecoin/proofs/verifier"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
 
@@ -191,7 +191,7 @@ func TestNodeConfig(t *testing.T) {
 	defaultCfg := config.NewDefaultConfig()
 
 	// fake mining
-	verifier := verifier.NewFakeVerifier(true, nil)
+	verifier := verification.NewFakeVerifier(true, nil)
 
 	configBlockTime := 99
 

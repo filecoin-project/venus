@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs/verifier"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -265,13 +265,13 @@ func TestCreateChallenge(t *testing.T) {
 	}
 }
 
-func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, verifier.Verifier) {
+func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, verification.Verifier) {
 	mds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(mds)
 	offl := offline.Exchange(bs)
 	blkserv := blockservice.New(bs, offl)
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
-	pv := verifier.NewFakeVerifier(true, nil)
+	pv := verification.NewFakeVerifier(true, nil)
 	return cis, bs, pv
 }
 

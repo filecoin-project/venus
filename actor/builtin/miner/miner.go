@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/proofs/verifier"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -530,7 +530,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			req := verifier.VerifySealRequest{}
+			req := verification.VerifySealRequest{}
 			copy(req.CommD[:], commD)
 			copy(req.CommR[:], commR)
 			copy(req.CommRStar[:], commRStar)
@@ -539,7 +539,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 			req.SectorSize = state.SectorSize
 
-			res, err := (&verifier.RustVerifier{}).VerifySeal(req)
+			res, err := (&verification.RustVerifier{}).VerifySeal(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
 			}
@@ -822,7 +822,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 			sortedCommRs := proofs.NewSortedCommRs(commRs...)
 
-			req := verifier.VerifyPoStRequest{
+			req := verification.VerifyPoStRequest{
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        []uint64{},
@@ -830,7 +830,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				SectorSize:    state.SectorSize,
 			}
 
-			res, err := (&verifier.RustVerifier{}).VerifyPoSt(req)
+			res, err := (&verification.RustVerifier{}).VerifyPoSt(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}
