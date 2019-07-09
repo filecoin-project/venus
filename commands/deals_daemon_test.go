@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -326,7 +326,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {

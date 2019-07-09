@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verifier"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -58,7 +58,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 		NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
-		proofs.NewFakeVerifier(true, nil),
+		verifier.NewFakeVerifier(true, nil),
 		BlockTimeTest)
 	params.Consensus = con
 	return MkFakeChildWithCon(params)

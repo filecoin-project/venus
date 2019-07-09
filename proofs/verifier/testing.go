@@ -1,4 +1,4 @@
-package proofs
+package verifier
 
 // FakeVerifier is a simple mock Verifier for testing
 type FakeVerifier struct {

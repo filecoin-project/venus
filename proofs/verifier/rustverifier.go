@@ -1,6 +1,6 @@
-package proofs
+package verifier
 
-import "C"
+import "github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 
 // RustVerifier provides proof-verification methods.
 type RustVerifier struct{}
@@ -10,7 +10,7 @@ var _ Verifier = &RustVerifier{}
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
 func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
-	isValid, err := VerifySeal(req.SectorSize.Uint64(), req.CommR, req.CommD, req.CommRStar, req.ProverID, req.SectorID, req.Proof)
+	isValid, err := libsectorbuilder.VerifySeal(req.SectorSize.Uint64(), req.CommR, req.CommD, req.CommRStar, req.ProverID, req.SectorID, req.Proof)
 	if err != nil {
 		return VerifySealResponse{}, err
 	}
@@ -34,7 +34,7 @@ func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, e
 		asSlices[idx] = append(proof[:0:0], proof...)
 	}
 
-	isValid, err := VerifyPoSt(req.SectorSize.Uint64(), asArrays, req.ChallengeSeed, asSlices, req.Faults)
+	isValid, err := libsectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), asArrays, req.ChallengeSeed, asSlices, req.Faults)
 	if err != nil {
 		return VerifyPoStResponse{}, err
 	}

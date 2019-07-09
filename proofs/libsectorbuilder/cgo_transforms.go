@@ -1,12 +1,12 @@
-package proofs
+package libsectorbuilder
 
 import (
 	"unsafe"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/lib/pkgconfig/sector_builder_ffi.pc
-// #include "./include/sector_builder_ffi.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/sector_builder_ffi.pc
+// #include "../include/sector_builder_ffi.h"
 import "C"
 
 const SingleProofPartitionProofLen = 192

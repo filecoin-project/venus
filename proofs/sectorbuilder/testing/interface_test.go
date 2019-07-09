@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/proofs/verifier"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -203,7 +204,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, val.SealingErr)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
-			res, err := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
+			res, err := (&verifier.RustVerifier{}).VerifySeal(verifier.VerifySealRequest{
 				CommD:      val.SealingResult.CommD,
 				CommR:      val.SealingResult.CommR,
 				CommRStar:  val.SealingResult.CommRStar,
@@ -316,7 +317,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, val.SealingErr)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 
-			sres, serr := (&proofs.RustVerifier{}).VerifySeal(proofs.VerifySealRequest{
+			sres, serr := (&verifier.RustVerifier{}).VerifySeal(verifier.VerifySealRequest{
 				CommD:      val.SealingResult.CommD,
 				CommR:      val.SealingResult.CommR,
 				CommRStar:  val.SealingResult.CommRStar,
@@ -342,7 +343,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, gerr)
 
 			// verify the proof-of-spacetime
-			vres, verr := (&proofs.RustVerifier{}).VerifyPoSt(proofs.VerifyPoStRequest{
+			vres, verr := (&verifier.RustVerifier{}).VerifyPoSt(verifier.VerifyPoStRequest{
 				ChallengeSeed: challengeSeed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,

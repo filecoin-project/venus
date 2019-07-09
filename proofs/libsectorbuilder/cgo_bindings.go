@@ -1,6 +1,6 @@
 // +build !windows
 
-package proofs
+package libsectorbuilder
 
 import (
 	"time"
@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/lib/pkgconfig/sector_builder_ffi.pc
-// #include "./include/sector_builder_ffi.h"
+// #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
+// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/sector_builder_ffi.pc
+// #include "../include/sector_builder_ffi.h"
 import "C"
 
 var log = logging.Logger("libsectorbuilder") // nolint: deadcode

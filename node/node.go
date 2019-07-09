@@ -56,8 +56,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/proofs/verifier"
 	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
@@ -187,7 +187,7 @@ type Config struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
-	Verifier    proofs.Verifier
+	Verifier    verifier.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
 	IsRelay     bool
@@ -233,7 +233,7 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 }
 
 // VerifierConfigOption returns a function that sets the verifier to use in the node consensus
-func VerifierConfigOption(verifier proofs.Verifier) ConfigOpt {
+func VerifierConfigOption(verifier verifier.Verifier) ConfigOpt {
 	return func(c *Config) error {
 		c.Verifier = verifier
 		return nil
@@ -410,7 +410,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &proofs.RustVerifier{}, nc.BlockTime)
+		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &verifier.RustVerifier{}, nc.BlockTime)
 	} else {
 		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
 	}

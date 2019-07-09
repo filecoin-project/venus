@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verifier"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -112,7 +112,7 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
-	verifier proofs.Verifier
+	verifier verifier.Verifier
 
 	blockTime time.Duration
 }
@@ -121,7 +121,7 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier, bt time.Duration) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier verifier.Verifier, bt time.Duration) *Expected {
 	return &Expected{
 		cstore:         cs,
 		blockTime:      bt,

@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	v "github.com/filecoin-project/go-filecoin/proofs/verifier"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -194,7 +194,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	powerTable := &th.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	verifier := proofs.NewFakeVerifier(true, nil)
+	verifier := v.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 
 	calcGenBlk, err := initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs) // flushes state
@@ -220,7 +220,7 @@ func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	verifier := proofs.NewFakeVerifier(true, nil)
+	verifier := v.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
@@ -239,7 +239,7 @@ func initSyncTestWithMode(t *testing.T, dstP *SyncerTestParams, syncMode chain.S
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	verifier := proofs.NewFakeVerifier(true, nil)
+	verifier := v.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
@@ -256,7 +256,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
-	verifier := proofs.NewFakeVerifier(true, nil)
+	verifier := v.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
@@ -1074,7 +1074,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	chainStore := chain.NewStore(r.ChainDatastore(), calcGenBlk.Cid())
 
-	verifier := proofs.NewFakeVerifier(true, nil)
+	verifier := v.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
 
 	// Initialize stores to contain dstP.genesis block and state
@@ -1093,7 +1093,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	blockSource := th.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
-	verifier = proofs.NewFakeVerifier(true, nil)
+	verifier = v.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
 	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners

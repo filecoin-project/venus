@@ -1,6 +1,7 @@
-package proofs
+package verifier
 
 import (
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -18,7 +19,7 @@ type VerifySealRequest struct {
 // VerifyPoStRequest represents a request to generate verify a proof-of-spacetime.
 type VerifyPoStRequest struct {
 	ChallengeSeed types.PoStChallengeSeed
-	SortedCommRs  SortedCommRs
+	SortedCommRs  proofs.SortedCommRs
 	Faults        []uint64
 	Proofs        []types.PoStProof
 	SectorSize    *types.BytesAmount
