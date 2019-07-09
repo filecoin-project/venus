@@ -52,3 +52,19 @@ func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, err
 func goBytes(src *C.uint8_t, size C.size_t) []byte {
 	return C.GoBytes(unsafe.Pointer(src), C.int(size))
 }
+
+func goStagedSectorMetadata(src *C.sector_builder_ffi_FFIStagedSectorMetadata, size C.size_t) ([]*StagedSectorMetadata, error) {
+	sectors := make([]*StagedSectorMetadata, size)
+	if src == nil || size == 0 {
+		return sectors, nil
+	}
+
+	sectorPtrs := (*[1 << 30]C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
+		sectors[i] = &StagedSectorMetadata{
+			SectorID: uint64(sectorPtrs[i].sector_id),
+		}
+	}
+
+	return sectors, nil
+}

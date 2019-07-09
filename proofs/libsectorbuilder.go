@@ -26,6 +26,13 @@ func elapsed(what string) func() {
 	}
 }
 
+// StagedSectorMetadata is a sector into which we write user piece-data before
+// sealing. Note: SectorID is unique across all staged and sealed sectors for a
+// storage miner actor.
+type StagedSectorMetadata struct {
+	SectorID uint64
+}
+
 // VerifySeal returns true if the sealing operation from which its inputs were
 // derived was valid, and false if not.
 func VerifySeal(
@@ -192,6 +199,13 @@ func InitSectorBuilder(
 	return unsafe.Pointer(resPtr.sector_builder), nil
 }
 
+// DestroySectorBuilder deallocates the sector builder associated with the
+// provided pointer. This function will panic if the provided pointer is null
+// or if the sector builder has been previously deallocated.
+func DestroySectorBuilder(sectorBuilderPtr unsafe.Pointer) {
+	C.sector_builder_ffi_destroy_sector_builder((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))
+}
+
 // AddPiece writes the given piece into an unsealed sector and returns the id
 // of that sector.
 func AddPiece(sectorBuilderPtr unsafe.Pointer, pieceKey string, pieceSize uint64, piecePath string) (sectorID uint64, retErr error) {
@@ -233,4 +247,33 @@ func ReadPieceFromSealedSector(sectorBuilderPtr unsafe.Pointer, pieceKey string)
 	}
 
 	return goBytes(resPtr.data_ptr, resPtr.data_len), nil
+}
+
+// SealAllStagedSectors schedules sealing of all staged sectors.
+func SealAllStagedSectors(sectorBuilderPtr unsafe.Pointer) error {
+	resPtr := (*C.sector_builder_ffi_SealAllStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_seal_all_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))))
+	defer C.sector_builder_ffi_destroy_seal_all_staged_sectors_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return nil
+}
+
+// GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder.
+func GetAllStagedSectors(sectorBuilderPtr unsafe.Pointer) ([]*StagedSectorMetadata, error) {
+	resPtr := (*C.sector_builder_ffi_GetStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_get_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))))
+	defer C.sector_builder_ffi_destroy_get_staged_sectors_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	meta, err := goStagedSectorMetadata((*C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
+	if err != nil {
+		return nil, err
+	}
+
+	return meta, nil
 }

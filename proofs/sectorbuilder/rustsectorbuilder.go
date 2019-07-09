@@ -31,13 +31,6 @@ var log = logging.Logger("sectorbuilder") // nolint: deadcode
 // be open and accepting data at any time.
 const MaxNumStagedSectors = 1
 
-// stagedSectorMetadata is a sector into which we write user piece-data before
-// sealing. Note: sectorID is unique across all staged and sealed sectors for a
-// miner.
-type stagedSectorMetadata struct {
-	sectorID uint64
-}
-
 func elapsed(what string) func() {
 	start := time.Now()
 	return func() {
@@ -99,7 +92,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 
 	stagedSectorIDs := make([]uint64, len(metadata))
 	for idx, m := range metadata {
-		stagedSectorIDs[idx] = m.sectorID
+		stagedSectorIDs[idx] = m.SectorID
 	}
 
 	sb.sealStatusPoller = newSealStatusPoller(stagedSectorIDs, sb.sectorSealResults, sb.findSealedSectorMetadata)
@@ -266,31 +259,12 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Rea
 
 // SealAllStagedSectors schedules sealing of all staged sectors.
 func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
-	resPtr := (*C.sector_builder_ffi_SealAllStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_seal_all_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))))
-	defer C.sector_builder_ffi_destroy_seal_all_staged_sectors_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	return nil
+	return proofs.SealAllStagedSectors(sb.ptr)
 }
 
 // stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) stagedSectors() ([]*stagedSectorMetadata, error) {
-	resPtr := (*C.sector_builder_ffi_GetStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_get_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))))
-	defer C.sector_builder_ffi_destroy_get_staged_sectors_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return nil, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	meta, err := goStagedSectorMetadata((*C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(resPtr.sectors_ptr)), resPtr.sectors_len)
-	if err != nil {
-		return nil, err
-	}
-
-	return meta, nil
+func (sb *RustSectorBuilder) stagedSectors() ([]*proofs.StagedSectorMetadata, error) {
+	return proofs.GetAllStagedSectors(sb.ptr)
 }
 
 // SectorSealResults returns an unbuffered channel that is sent a value whenever
@@ -303,7 +277,7 @@ func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 // it unusable for I/O.
 func (sb *RustSectorBuilder) Close() error {
 	sb.sealStatusPoller.stop()
-	C.sector_builder_ffi_destroy_sector_builder((*C.sector_builder_ffi_SectorBuilder)(sb.ptr))
+	proofs.DestroySectorBuilder(sb.ptr)
 	sb.ptr = nil
 
 	return nil
