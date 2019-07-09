@@ -57,7 +57,7 @@ type RustSectorBuilderConfig struct {
 
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
 func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
-	ptr, err := proofs.InitSectorBuilder(cfg.SectorClass, cfg.LastUsedSectorID, cfg.MetadataDir, AddressToProverID(cfg.MinerAddr), cfg.SealedSectorDir, cfg.StagedSectorDir, MaxNumStagedSectors)
+	ptr, err := proofs.InitSectorBuilder(cfg.SectorClass.SectorSize().Uint64(), uint8(cfg.SectorClass.PoRepProofPartitions().Int()), uint8(cfg.SectorClass.PoStProofPartitions().Int()), cfg.LastUsedSectorID, cfg.MetadataDir, AddressToProverID(cfg.MinerAddr), cfg.SealedSectorDir, cfg.StagedSectorDir, MaxNumStagedSectors)
 	if err != nil {
 		return nil, err
 	}
@@ -260,13 +260,23 @@ func (sb *RustSectorBuilder) Close() error {
 
 // GeneratePoSt produces a proof-of-spacetime for the provided replica commitments.
 func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoStResponse, error) {
-	proofs, faults, err := proofs.GeneratePoSt(sb.ptr, req.SortedCommRs, req.ChallengeSeed)
+	asArrays := make([][32]byte, len(req.SortedCommRs.Values()))
+	for idx, comm := range req.SortedCommRs.Values() {
+		copy(asArrays[idx][:], comm[:])
+	}
+
+	proofs, faults, err := proofs.GeneratePoSt(sb.ptr, asArrays, req.ChallengeSeed)
 	if err != nil {
 		return GeneratePoStResponse{}, err
 	}
 
+	poStProofs := make([]types.PoStProof, len(proofs))
+	for idx, proof := range proofs {
+		poStProofs[idx] = append(proof[:0:0], proof...)
+	}
+
 	return GeneratePoStResponse{
-		Proofs: proofs,
 		Faults: faults,
+		Proofs: poStProofs,
 	}, nil
 }

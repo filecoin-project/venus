@@ -1,7 +1,6 @@
 package proofs
 
 import (
-	"github.com/filecoin-project/go-filecoin/types"
 	"unsafe"
 )
 
@@ -10,7 +9,9 @@ import (
 // #include "./include/sector_builder_ffi.h"
 import "C"
 
-func cPoStProofs(src []types.PoStProof) (C.uint8_t, *C.uint8_t, C.size_t) {
+const SingleProofPartitionProofLen = 192
+
+func cPoStProofs(src [][]byte) (C.uint8_t, *C.uint8_t, C.size_t) {
 	proofSize := len(src[0])
 
 	flattenedLen := C.size_t(proofSize * len(src))
@@ -21,7 +22,7 @@ func cPoStProofs(src []types.PoStProof) (C.uint8_t, *C.uint8_t, C.size_t) {
 		copy(flattened[(proofSize*idx):(proofSize*(1+idx))], proof[:])
 	}
 
-	proofPartitions := proofSize / types.OnePoStProofPartition.ProofLen()
+	proofPartitions := proofSize / SingleProofPartitionProofLen
 
 	return C.uint8_t(proofPartitions), (*C.uint8_t)(C.CBytes(flattened)), flattenedLen
 }
@@ -41,11 +42,11 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	return (*C.uint64_t)(cUint64s), srcCSizeT
 }
 
-func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, error) {
+func cSectorClass(sectorSize uint64, poRepProofPartitions uint8, poStProofPartitions uint8) (C.sector_builder_ffi_FFISectorClass, error) {
 	return C.sector_builder_ffi_FFISectorClass{
-		sector_size:            C.uint64_t(c.SectorSize().Uint64()),
-		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
-		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
+		sector_size:            C.uint64_t(sectorSize),
+		porep_proof_partitions: C.uint8_t(poRepProofPartitions),
+		post_proof_partitions:  C.uint8_t(poStProofPartitions),
 	}, nil
 }
 
@@ -86,20 +87,15 @@ func goPieceMetadata(src *C.sector_builder_ffi_FFIPieceMetadata, size C.size_t) 
 	return ps, nil
 }
 
-func goPoStProofs(partitions C.uint8_t, src *C.uint8_t, size C.size_t) ([]types.PoStProof, error) {
+func goPoStProofs(partitions C.uint8_t, src *C.uint8_t, size C.size_t) ([][]byte, error) {
 	tmp := goBytes(src, size)
 
-	ppp, err := goPoStProofPartitions(partitions)
-	if err != nil {
-		return nil, err
-	}
-
 	arraySize := len(tmp)
-	chunkSize := ppp.ProofLen()
+	chunkSize := int(partitions) * SingleProofPartitionProofLen
 
-	out := make([]types.PoStProof, arraySize/chunkSize)
+	out := make([][]byte, arraySize/chunkSize)
 	for i := 0; i < len(out); i++ {
-		out[i] = append(types.PoStProof{}, tmp[i*chunkSize:(i+1)*chunkSize]...)
+		out[i] = append([]byte{}, tmp[i*chunkSize:(i+1)*chunkSize]...)
 	}
 
 	return out, nil
@@ -111,8 +107,4 @@ func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
 		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
 	}
 	return out
-}
-
-func goPoStProofPartitions(partitions C.uint8_t) (types.PoStProofPartitions, error) {
-	return types.NewPoStProofPartitions(int(partitions))
 }

@@ -56,13 +56,13 @@ type PieceMetadata struct {
 // VerifySeal returns true if the sealing operation from which its inputs were
 // derived was valid, and false if not.
 func VerifySeal(
-	sectorSize *types.BytesAmount,
-	commR types.CommR,
-	commD types.CommD,
-	commRStar types.CommRStar,
+	sectorSize uint64,
+	commR [32]byte,
+	commD [32]byte,
+	commRStar [32]byte,
 	proverID [31]byte,
 	sectorID [31]byte,
-	proof types.PoRepProof,
+	proof []byte,
 ) (bool, error) {
 	defer elapsed("VerifySeal")()
 
@@ -86,7 +86,7 @@ func VerifySeal(
 
 	// a mutable pointer to a VerifySealResponse C-struct
 	resPtr := (*C.sector_builder_ffi_VerifySealResponse)(unsafe.Pointer(C.sector_builder_ffi_verify_seal(
-		C.uint64_t(sectorSize.Uint64()),
+		C.uint64_t(sectorSize),
 		(*[32]C.uint8_t)(commRCBytes),
 		(*[32]C.uint8_t)(commDCBytes),
 		(*[32]C.uint8_t)(commRStarCBytes),
@@ -107,10 +107,10 @@ func VerifySeal(
 // VerifyPoSt returns true if the PoSt-generation operation from which its
 // inputs were derived was valid, and false if not.
 func VerifyPoSt(
-	sectorSize *types.BytesAmount,
-	sortedCommRs SortedCommRs,
-	challengeSeed types.PoStChallengeSeed,
-	proofs []types.PoStProof,
+	sectorSize uint64,
+	sortedCommRs [][32]byte,
+	challengeSeed [32]byte,
+	proofs [][]byte,
 	faults []uint64,
 ) (bool, error) {
 	defer elapsed("VerifyPoSt")()
@@ -122,7 +122,7 @@ func VerifyPoSt(
 
 	// CommRs must be provided to C.verify_post in the same order that they were
 	// provided to the C.generate_post
-	commRs := sortedCommRs.Values()
+	commRs := sortedCommRs
 
 	// flattening the byte slice makes it easier to copy into the C heap
 	flattened := make([]byte, 32*len(commRs))
@@ -146,7 +146,7 @@ func VerifyPoSt(
 
 	// a mutable pointer to a VerifyPoStResponse C-struct
 	resPtr := (*C.sector_builder_ffi_VerifyPoStResponse)(unsafe.Pointer(C.sector_builder_ffi_verify_post(
-		C.uint64_t(sectorSize.Uint64()),
+		C.uint64_t(sectorSize),
 		proofPartitions,
 		(*C.uint8_t)(flattenedCommRsCBytes),
 		C.size_t(len(flattened)),
@@ -176,7 +176,9 @@ func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesA
 
 // InitSectorBuilder allocates and returns a pointer to a sector builder.
 func InitSectorBuilder(
-	sectorClass types.SectorClass,
+	sectorSize uint64,
+	poRepProofPartitions uint8,
+	poStProofPartitions uint8,
 	lastUsedSectorID uint64,
 	metadataDir string,
 	proverID [31]byte,
@@ -198,7 +200,7 @@ func InitSectorBuilder(
 	cSealedSectorDir := C.CString(sealedSectorDir)
 	defer C.free(unsafe.Pointer(cSealedSectorDir))
 
-	class, err := cSectorClass(sectorClass)
+	class, err := cSectorClass(sectorSize, poRepProofPartitions, poStProofPartitions)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get sector class")
 	}
@@ -232,7 +234,12 @@ func DestroySectorBuilder(sectorBuilderPtr unsafe.Pointer) {
 
 // AddPiece writes the given piece into an unsealed sector and returns the id
 // of that sector.
-func AddPiece(sectorBuilderPtr unsafe.Pointer, pieceKey string, pieceSize uint64, piecePath string) (sectorID uint64, retErr error) {
+func AddPiece(
+	sectorBuilderPtr unsafe.Pointer,
+	pieceKey string,
+	pieceSize uint64,
+	piecePath string,
+) (sectorID uint64, retErr error) {
 	defer elapsed("AddPiece")()
 
 	cPieceKey := C.CString(pieceKey)
@@ -363,11 +370,15 @@ func GetSectorSealingStatusByID(sectorBuilderPtr unsafe.Pointer, sectorID uint64
 }
 
 // GeneratePoSt produces a proof-of-spacetime for the provided replica commitments.
-func GeneratePoSt(sectorBuilderPtr unsafe.Pointer, sortedCommRs SortedCommRs, challengeSeed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+func GeneratePoSt(
+	sectorBuilderPtr unsafe.Pointer,
+	sortedCommRs [][32]byte,
+	challengeSeed [32]byte,
+) ([][]byte, []uint64, error) {
 	defer elapsed("GeneratePoSt")()
 
 	// flattening the byte slice makes it easier to copy into the C heap
-	commRs := sortedCommRs.Values()
+	commRs := sortedCommRs
 	flattened := make([]byte, 32*len(commRs))
 	for idx, commR := range commRs {
 		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
