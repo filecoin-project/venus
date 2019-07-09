@@ -36,7 +36,7 @@ var protocolCmd = &cmds.Command{
 				sectorSize = types.TwoHundredFiftySixMiBSectorSize
 			}
 
-			maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize)
+			maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
 
 			_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorSize.Uint64())), readableBytesAmount(float64(maxUserBytes.Uint64())))
 			if err != nil {

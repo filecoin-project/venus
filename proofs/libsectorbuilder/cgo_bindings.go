@@ -8,8 +8,6 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
@@ -37,13 +35,13 @@ type StagedSectorMetadata struct {
 // sector has progressed.
 type SectorSealingStatus struct {
 	SectorID       uint64
-	SealStatusCode uint8            // Sealed = 0, Pending = 1, Failed = 2, Sealing = 3
-	SealErrorMsg   string           // will be nil unless SealStatusCode == 2
-	CommD          types.CommD      // will be empty unless SealStatusCode == 0
-	CommR          types.CommR      // will be empty unless SealStatusCode == 0
-	CommRStar      types.CommRStar  // will be empty unless SealStatusCode == 0
-	Proof          types.PoRepProof // will be empty unless SealStatusCode == 0
-	Pieces         []PieceMetadata  // will be empty unless SealStatusCode == 0
+	SealStatusCode uint8           // Sealed = 0, Pending = 1, Failed = 2, Sealing = 3
+	SealErrorMsg   string          // will be nil unless SealStatusCode == 2
+	CommD          [32]byte        // will be empty unless SealStatusCode == 0
+	CommR          [32]byte        // will be empty unless SealStatusCode == 0
+	CommRStar      [32]byte        // will be empty unless SealStatusCode == 0
+	Proof          []byte          // will be empty unless SealStatusCode == 0
+	Pieces         []PieceMetadata // will be empty unless SealStatusCode == 0
 }
 
 // PieceMetadata represents a piece stored by the sector builder.
@@ -168,10 +166,10 @@ func VerifyPoSt(
 // GetMaxUserBytesPerStagedSector returns the number of user bytes that will fit
 // into a staged sector. Due to bit-padding, the number of user bytes that will
 // fit into the staged sector will be less than number of bytes in sectorSize.
-func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
+func GetMaxUserBytesPerStagedSector(sectorSize uint64) uint64 {
 	defer elapsed("GetMaxUserBytesPerStagedSector")()
 
-	return types.NewBytesAmount(uint64(C.sector_builder_ffi_get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
+	return uint64(C.sector_builder_ffi_get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize)))
 }
 
 // InitSectorBuilder allocates and returns a pointer to a sector builder.
@@ -336,15 +334,15 @@ func GetSectorSealingStatusByID(sectorBuilderPtr unsafe.Pointer, sectorID uint64
 		return SectorSealingStatus{SealStatusCode: 3}, nil
 	} else if resPtr.seal_status_code == C.Sealed {
 		commRSlice := goBytes(&resPtr.comm_r[0], 32)
-		var commR types.CommR
+		var commR [32]byte
 		copy(commR[:], commRSlice)
 
 		commDSlice := goBytes(&resPtr.comm_d[0], 32)
-		var commD types.CommD
+		var commD [32]byte
 		copy(commD[:], commDSlice)
 
 		commRStarSlice := goBytes(&resPtr.comm_r_star[0], 32)
-		var commRStar types.CommRStar
+		var commRStar [32]byte
 		copy(commRStar[:], commRStarSlice)
 
 		proof := goBytes(resPtr.proof_ptr, resPtr.proof_len)

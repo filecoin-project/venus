@@ -88,7 +88,7 @@ func (b *Builder) Build() Harness {
 	})
 	require.NoError(b.t, err)
 
-	max := libsectorbuilder.GetMaxUserBytesPerStagedSector(class.SectorSize())
+	max := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(class.SectorSize().Uint64()))
 	require.NoError(b.t, err)
 
 	return Harness{

@@ -326,7 +326,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
 }
 
 func requireTestCID(t *testing.T, data []byte) cid.Cid {

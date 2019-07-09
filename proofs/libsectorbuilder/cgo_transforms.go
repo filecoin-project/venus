@@ -9,6 +9,9 @@ import (
 // #include "../include/sector_builder_ffi.h"
 import "C"
 
+// SingleProofPartitionProofLen denotes the number of bytes in a proof generated
+// with a single partition. The number of bytes in a proof increases linearly
+// with the number of partitions used when creating that proof.
 const SingleProofPartitionProofLen = 192
 
 func cPoStProofs(src [][]byte) (C.uint8_t, *C.uint8_t, C.size_t) {

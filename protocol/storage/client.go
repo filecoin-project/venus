@@ -118,7 +118,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to get sector size")
 	}
 
-	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize).Uint64()
+	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
 	if size > maxUserBytes {
 		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, maxUserBytes)
 	}

@@ -350,7 +350,7 @@ func main() {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
 }
 
 func handleError(err error, msg ...string) int {

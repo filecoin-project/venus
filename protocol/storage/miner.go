@@ -165,7 +165,7 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, "failed to get miner's sector size")
 	}
 
-	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize)
+	maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
 	if sp.Size.GreaterThan(maxUserBytes) {
 		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
 	}
