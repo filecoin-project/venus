@@ -480,8 +480,8 @@ var minerCollateralCmd = &cmds.Command{
 	},
 	Type: types.AttoFIL{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
-			return PrintString(w, a)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, af types.AttoFIL) error {
+			return PrintString(w, af)
 		}),
 	},	
 }
