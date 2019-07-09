@@ -4,7 +4,7 @@ filecoin_repo="/var/local/filecoin/repo"
 filecoin_exec="go-filecoin --repodir=${filecoin_repo}"
 
 
-while [ ! -f "${filecoin_repo}/api" ]
+while ! ${filecoin_exec} id >&2 2> /dev/null
 do
   echo "Waiting for daemon to start..." && sleep 1
 done
