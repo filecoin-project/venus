@@ -774,7 +774,7 @@ func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, 
 	if !ok {
 		return types.ZeroAttoFIL, 1, errors.NewFaultErrorf("expected types.AttoFIL to be returned, but got %T instead", ret)
 	}
-	
+
 	return collateral, 0, nil
 }
 

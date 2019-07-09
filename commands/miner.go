@@ -454,7 +454,7 @@ Values will be output as a ratio where the first number is the miner power and s
 
 var minerCollateralCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Get the active collateral of a miner",
+		Tagline:          "Get the active collateral of a miner",
 		ShortDescription: `Check the actively staked collateral of a given miner. Values reported in attoFIL`,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
@@ -483,5 +483,5 @@ var minerCollateralCmd = &cmds.Command{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, af types.AttoFIL) error {
 			return PrintString(w, af)
 		}),
-	},	
+	},
 }
