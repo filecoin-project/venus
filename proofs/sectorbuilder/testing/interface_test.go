@@ -31,7 +31,7 @@ const MaxTimeToSealASector = time.Second * 360
 const MaxTimeToGenerateSectorPoSt = time.Second * 360
 
 func TestSectorBuilder(t *testing.T) {
-	tf.UnitTest(t)
+	tf.SectorBuilderTest(t)
 
 	t.Run("concurrent AddPiece and SealAllStagedSectors", func(t *testing.T) {
 		h := NewBuilder(t).Build()
