@@ -11,10 +11,10 @@ func NewFakeVerifier(isValid bool, err error) FakeVerifier {
 	return FakeVerifier{isValid, err}
 }
 
-// VerifyPoST returns the valid of verifyPostValid and verifyPostError.
+// VerifyPoSt returns the valid of verifyPostValid and verifyPostError.
 // It fulfils a requirement for the Verifier interface
-func (fp FakeVerifier) VerifyPoST(VerifyPoStRequest) (VerifyPoSTResponse, error) {
-	return VerifyPoSTResponse{IsValid: fp.verifyPostValid}, fp.verifyPostError
+func (fp FakeVerifier) VerifyPoSt(VerifyPoStRequest) (VerifyPoStResponse, error) {
+	return VerifyPoStResponse{IsValid: fp.verifyPostValid}, fp.verifyPostError
 }
 
 // VerifySeal panics. It fulfils a requirement for the Verifier interface

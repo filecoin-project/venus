@@ -24,8 +24,8 @@ type VerifyPoStRequest struct {
 	SectorSize    *types.BytesAmount
 }
 
-// VerifyPoSTResponse communicates the validity of a provided proof-of-spacetime.
-type VerifyPoSTResponse struct {
+// VerifyPoStResponse communicates the validity of a provided proof-of-spacetime.
+type VerifyPoStResponse struct {
 	IsValid bool
 }
 
@@ -36,6 +36,6 @@ type VerifySealResponse struct {
 
 // Verifier provides an interface to the proving subsystem.
 type Verifier interface {
-	VerifyPoST(VerifyPoStRequest) (VerifyPoSTResponse, error)
+	VerifyPoSt(VerifyPoStRequest) (VerifyPoStResponse, error)
 	VerifySeal(VerifySealRequest) (VerifySealResponse, error)
 }

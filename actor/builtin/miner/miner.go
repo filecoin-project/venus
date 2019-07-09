@@ -151,7 +151,7 @@ type State struct {
 	// penalization is needed.
 	NextDoneSet types.IntSet
 
-	// ProvingSet is the set of sector ids of sectors this miner is 
+	// ProvingSet is the set of sector ids of sectors this miner is
 	// currently required to prove.
 	ProvingSet types.IntSet
 
@@ -570,7 +570,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		// Case 2: If the miner is adding sectors during genesis
 		// construction all committed sectors accumulate in their
 		// proving set.  This  allows us to add power immediately in
-		// genesis with commitSector and submitPoSt calls without 
+		// genesis with commitSector and submitPoSt calls without
 		// adding special casing for bootstrappers.
 		if state.ProvingSet.Size() == 0 || ctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
 			state.ProvingSet = state.ProvingSet.Add(sectorID)
@@ -829,7 +829,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				SectorSize:    state.SectorSize,
 			}
 
-			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
+			res, err := (&proofs.RustVerifier{}).VerifyPoSt(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}

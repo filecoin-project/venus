@@ -342,7 +342,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, gerr)
 
 			// verify the proof-of-spacetime
-			vres, verr := (&proofs.RustVerifier{}).VerifyPoST(proofs.VerifyPoStRequest{
+			vres, verr := (&proofs.RustVerifier{}).VerifyPoSt(proofs.VerifyPoStRequest{
 				ChallengeSeed: challengeSeed,
 				SortedCommRs:  sortedCommRs,
 				Faults:        gres.Faults,
