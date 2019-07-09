@@ -283,6 +283,10 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
+	"getActiveCollateral": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.AttoFIL},
+	},
 }
 
 // Exports returns the miner actors exported functions.
@@ -750,6 +754,28 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error)
 	}
 
 	return power, 0, nil
+}
+
+// GetActiveCollateral returns the active collateral a miner is holding to
+// protect storage.
+func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return types.ZeroAttoFIL, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.ActiveCollateral, nil
+	})
+	if err != nil {
+		return types.ZeroAttoFIL, errors.CodeError(err), err
+	}
+
+	collateral, ok := ret.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, 1, errors.NewFaultErrorf("expected types.AttoFIL to be returned, but got %T instead", ret)
+	}
+	
+	return collateral, 0, nil
 }
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain

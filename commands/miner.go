@@ -28,6 +28,7 @@ var minerCmd = &cmds.Command{
 		"power":         minerPowerCmd,
 		"set-price":     minerSetPriceCmd,
 		"update-peerid": minerUpdatePeerIDCmd,
+		"collateral":    minerCollateralCmd,
 	},
 }
 
@@ -449,4 +450,38 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}),
 	},
+}
+
+var minerCollateralCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Get the active collateral of a miner",
+		ShortDescription: `Check the actively staked collateral of a given miner. Values reported in attoFIL`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		bytes, err := GetPorcelainAPI(env).MessageQuery(
+			req.Context,
+			address.Undef,
+			minerAddr,
+			"getActiveCollateral",
+		)
+		if err != nil {
+			return err
+		}
+		collateral := types.NewAttoFILFromBytes(bytes[0])
+		return re.Emit(collateral)
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "The address of the miner"),
+	},
+	Type: types.AttoFIL{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *address.Address) error {
+			return PrintString(w, a)
+		}),
+	},	
 }

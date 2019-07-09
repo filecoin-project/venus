@@ -208,6 +208,26 @@ func TestGetOwner(t *testing.T) {
 	assert.Equal(t, address.TestAddress, addr)
 }
 
+func TestGetActiveCollateral(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	st, vms := th.RequireCreateStorages(ctx, t)
+
+	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+	result := callQueryMethodSuccess("getActiveCollateral", ctx, t, st, vms, address.TestAddress, minerAddr)
+	attoFILValue, err := abi.Deserialize(result[0], abi.AttoFIL)
+	require.NoError(t, err)
+
+	coll, ok := attoFILValue.Val.(types.AttoFIL)
+	require.True(t, ok)
+
+	assert.Equal(t, types.ZeroAttoFIL, coll)
+}
+
 func TestCBOREncodeState(t *testing.T) {
 	tf.UnitTest(t)
 
