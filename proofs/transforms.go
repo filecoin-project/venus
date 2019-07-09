@@ -39,3 +39,11 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 
 	return (*C.uint64_t)(cUint64s), srcCSizeT
 }
+
+func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, error) {
+	return C.sector_builder_ffi_FFISectorClass{
+		sector_size:            C.uint64_t(c.SectorSize().Uint64()),
+		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
+		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
+	}, nil
+}

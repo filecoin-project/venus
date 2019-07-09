@@ -142,3 +142,50 @@ func VerifyPoSt(
 func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
 	return types.NewBytesAmount(uint64(C.sector_builder_ffi_get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
 }
+
+// InitSectorBuilder allocates and returns a pointer to a sector builder.
+func InitSectorBuilder(
+	sectorClass types.SectorClass,
+	lastUsedSectorId uint64,
+	metadataDir string,
+	proverId [31]byte,
+	sealedSectorDir string,
+	stagedSectorDir string,
+	maxNumOpenStagedSectors uint8,
+) (unsafe.Pointer, error) {
+	defer elapsed("InitSectorBuilder")()
+
+	cMetadataDir := C.CString(metadataDir)
+	defer C.free(unsafe.Pointer(cMetadataDir))
+
+	proverIDCBytes := C.CBytes(proverId[:])
+	defer C.free(proverIDCBytes)
+
+	cStagedSectorDir := C.CString(stagedSectorDir)
+	defer C.free(unsafe.Pointer(cStagedSectorDir))
+
+	cSealedSectorDir := C.CString(sealedSectorDir)
+	defer C.free(unsafe.Pointer(cSealedSectorDir))
+
+	class, err := cSectorClass(sectorClass)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get sector class")
+	}
+
+	resPtr := (*C.sector_builder_ffi_InitSectorBuilderResponse)(unsafe.Pointer(C.sector_builder_ffi_init_sector_builder(
+		class,
+		C.uint64_t(lastUsedSectorId),
+		cMetadataDir,
+		(*[31]C.uint8_t)(proverIDCBytes),
+		cSealedSectorDir,
+		cStagedSectorDir,
+		C.uint8_t(maxNumOpenStagedSectors),
+	)))
+	defer C.sector_builder_ffi_destroy_init_sector_builder_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return unsafe.Pointer(resPtr.sector_builder), nil
+}

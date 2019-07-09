@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/bytesink"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -78,45 +79,14 @@ type RustSectorBuilderConfig struct {
 
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
 func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
-	defer elapsed("NewRustSectorBuilder")()
-
-	cMetadataDir := C.CString(cfg.MetadataDir)
-	defer C.free(unsafe.Pointer(cMetadataDir))
-
-	proverID := AddressToProverID(cfg.MinerAddr)
-
-	proverIDCBytes := C.CBytes(proverID[:])
-	defer C.free(proverIDCBytes)
-
-	cStagedSectorDir := C.CString(cfg.StagedSectorDir)
-	defer C.free(unsafe.Pointer(cStagedSectorDir))
-
-	cSealedSectorDir := C.CString(cfg.SealedSectorDir)
-	defer C.free(unsafe.Pointer(cSealedSectorDir))
-
-	class, err := cSectorClass(cfg.SectorClass)
+	ptr, err := proofs.InitSectorBuilder(cfg.SectorClass, cfg.LastUsedSectorID, cfg.MetadataDir, AddressToProverID(cfg.MinerAddr), cfg.SealedSectorDir, cfg.StagedSectorDir, MaxNumStagedSectors)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get sector class")
-	}
-
-	resPtr := (*C.sector_builder_ffi_InitSectorBuilderResponse)(unsafe.Pointer(C.sector_builder_ffi_init_sector_builder(
-		class,
-		C.uint64_t(cfg.LastUsedSectorID),
-		cMetadataDir,
-		(*[31]C.uint8_t)(proverIDCBytes),
-		cSealedSectorDir,
-		cStagedSectorDir,
-		C.uint8_t(MaxNumStagedSectors),
-	)))
-	defer C.sector_builder_ffi_destroy_init_sector_builder_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return nil, errors.New(C.GoString(resPtr.error_msg))
+		return nil, err
 	}
 
 	sb := &RustSectorBuilder{
 		blockService:      cfg.BlockService,
-		ptr:               unsafe.Pointer(resPtr.sector_builder),
+		ptr:               unsafe.Pointer(ptr),
 		sectorSealResults: make(chan SectorSealResult),
 		SectorClass:       cfg.SectorClass,
 	}
