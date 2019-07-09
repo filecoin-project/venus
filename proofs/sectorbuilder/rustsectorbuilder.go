@@ -86,7 +86,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 
 	sb := &RustSectorBuilder{
 		blockService:      cfg.BlockService,
-		ptr:               unsafe.Pointer(ptr),
+		ptr:               ptr,
 		sectorSealResults: make(chan SectorSealResult),
 		SectorClass:       cfg.SectorClass,
 	}

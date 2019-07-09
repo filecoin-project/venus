@@ -31,8 +31,8 @@ func VerifySeal(
 	commR types.CommR,
 	commD types.CommD,
 	commRStar types.CommRStar,
-	proverId [31]byte,
-	sectorId [31]byte,
+	proverID [31]byte,
+	sectorID [31]byte,
 	proof types.PoRepProof,
 ) (bool, error) {
 	defer elapsed("VerifySeal")()
@@ -49,10 +49,10 @@ func VerifySeal(
 	proofCBytes := C.CBytes(proof[:])
 	defer C.free(proofCBytes)
 
-	proverIDCBytes := C.CBytes(proverId[:])
+	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
 
-	sectorIDCbytes := C.CBytes(sectorId[:])
+	sectorIDCbytes := C.CBytes(sectorID[:])
 	defer C.free(sectorIDCbytes)
 
 	// a mutable pointer to a VerifySealResponse C-struct
@@ -146,9 +146,9 @@ func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesA
 // InitSectorBuilder allocates and returns a pointer to a sector builder.
 func InitSectorBuilder(
 	sectorClass types.SectorClass,
-	lastUsedSectorId uint64,
+	lastUsedSectorID uint64,
 	metadataDir string,
-	proverId [31]byte,
+	proverID [31]byte,
 	sealedSectorDir string,
 	stagedSectorDir string,
 	maxNumOpenStagedSectors uint8,
@@ -158,7 +158,7 @@ func InitSectorBuilder(
 	cMetadataDir := C.CString(metadataDir)
 	defer C.free(unsafe.Pointer(cMetadataDir))
 
-	proverIDCBytes := C.CBytes(proverId[:])
+	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
 
 	cStagedSectorDir := C.CString(stagedSectorDir)
@@ -174,7 +174,7 @@ func InitSectorBuilder(
 
 	resPtr := (*C.sector_builder_ffi_InitSectorBuilderResponse)(unsafe.Pointer(C.sector_builder_ffi_init_sector_builder(
 		class,
-		C.uint64_t(lastUsedSectorId),
+		C.uint64_t(lastUsedSectorID),
 		cMetadataDir,
 		(*[31]C.uint8_t)(proverIDCBytes),
 		cSealedSectorDir,

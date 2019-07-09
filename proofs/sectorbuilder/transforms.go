@@ -84,11 +84,3 @@ func goPieceInfos(src *C.sector_builder_ffi_FFIPieceMetadata, size C.size_t) ([]
 func goPoStProofPartitions(partitions C.uint8_t) (types.PoStProofPartitions, error) {
 	return types.NewPoStProofPartitions(int(partitions))
 }
-
-func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, error) {
-	return C.sector_builder_ffi_FFISectorClass{
-		sector_size:            C.uint64_t(c.SectorSize().Uint64()),
-		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
-		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
-	}, nil
-}
