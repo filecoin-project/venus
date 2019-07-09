@@ -112,7 +112,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {
 	defer elapsed("AddPiece")()
 
-	sink, err := bytesink.NewFifo()
+	buffer, err := bytesink.NewFifo()
 	if err != nil {
 		return 0, err
 	}
@@ -128,26 +128,26 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	// CGO call completes.
 	sectorIDCh := make(chan uint64, 1)
 
-	// goroutine attempts to copy bytes from piece's reader to the sink
+	// goroutine attempts to copy bytes from piece's reader to the buffer
 	go func() {
-		// opening the sink blocks the goroutine until a reader is opened on the
+		// opening the buffer blocks the goroutine until a reader is opened on the
 		// other end of the FIFO pipe
-		err := sink.Open()
+		err := buffer.Open()
 		if err != nil {
-			errCh <- errors.Wrap(err, "failed to open sink")
+			errCh <- errors.Wrap(err, "failed to open buffer")
 			return
 		}
 
-		// closing the sink signals to the reader that we're done writing, which
+		// closing the buffer signals to the reader that we're done writing, which
 		// unblocks the reader
 		defer func() {
-			err := sink.Close()
+			err := buffer.Close()
 			if err != nil {
-				log.Warningf("failed to close sink: %s", err)
+				log.Warningf("failed to close buffer: %s", err)
 			}
 		}()
 
-		n, err := io.Copy(sink, pieceReader)
+		n, err := io.Copy(buffer, pieceReader)
 		if err != nil {
 			errCh <- errors.Wrap(err, "failed to copy to pipe")
 			return
@@ -165,7 +165,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 		cPieceKey := C.CString(pieceRef.String())
 		defer C.free(unsafe.Pointer(cPieceKey))
 
-		cSinkPath := C.CString(sink.ID())
+		cSinkPath := C.CString(buffer.ID())
 		defer C.free(unsafe.Pointer(cSinkPath))
 
 		resPtr := (*C.sector_builder_ffi_AddPieceResponse)(unsafe.Pointer(C.sector_builder_ffi_add_piece(
@@ -178,7 +178,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 
 		if resPtr.status_code != 0 {
 			msg := "CGO add_piece returned an error (error_msg=%s, sinkPath=%s)"
-			log.Errorf(msg, C.GoString(resPtr.error_msg), sink.ID())
+			log.Errorf(msg, C.GoString(resPtr.error_msg), buffer.ID())
 			errCh <- errors.New(C.GoString(resPtr.error_msg))
 			return
 		}
@@ -190,18 +190,18 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	case <-ctx.Done():
 		errStr := "context completed before CGO call could return"
 		strFmt := "%s (sinkPath=%s)"
-		log.Errorf(strFmt, errStr, sink.ID())
+		log.Errorf(strFmt, errStr, buffer.ID())
 
 		return 0, errors.New(errStr)
 	case err := <-errCh:
 		errStr := "error streaming piece-bytes"
 		strFmt := "%s (sinkPath=%s)"
-		log.Errorf(strFmt, errStr, sink.ID())
+		log.Errorf(strFmt, errStr, buffer.ID())
 
 		return 0, errors.Wrap(err, errStr)
 	case sectorID := <-sectorIDCh:
 		go sb.sealStatusPoller.addSectorID(sectorID)
-		log.Infof("add piece complete (pieceRef=%s, sectorID=%d, sinkPath=%s)", pieceRef.String(), sectorID, sink.ID())
+		log.Infof("add piece complete (pieceRef=%s, sectorID=%d, sinkPath=%s)", pieceRef.String(), sectorID, buffer.ID())
 
 		return sectorID, nil
 	}
