@@ -3,10 +3,17 @@ set -e
 filecoin_repo="/var/local/filecoin/repo"
 filecoin_exec="go-filecoin --repodir=${filecoin_repo}"
 
-
+# Number of time to check before giving up
+limit=3600
+count=0
 while ! ${filecoin_exec} id >&2 2> /dev/null
 do
   echo "Waiting for daemon to start..." && sleep 1
+  ((i++))
+  if (( $count > $limit )); then
+    echo "API did not come online in $limit seconds"
+    exit 1
+  fi
 done
 
 for node_addr in $(cat /var/filecoin/car/peers.txt)
