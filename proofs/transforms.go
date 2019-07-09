@@ -53,18 +53,66 @@ func goBytes(src *C.uint8_t, size C.size_t) []byte {
 	return C.GoBytes(unsafe.Pointer(src), C.int(size))
 }
 
-func goStagedSectorMetadata(src *C.sector_builder_ffi_FFIStagedSectorMetadata, size C.size_t) ([]*StagedSectorMetadata, error) {
-	sectors := make([]*StagedSectorMetadata, size)
+func goStagedSectorMetadata(src *C.sector_builder_ffi_FFIStagedSectorMetadata, size C.size_t) ([]StagedSectorMetadata, error) {
+	sectors := make([]StagedSectorMetadata, size)
 	if src == nil || size == 0 {
 		return sectors, nil
 	}
 
 	sectorPtrs := (*[1 << 30]C.sector_builder_ffi_FFIStagedSectorMetadata)(unsafe.Pointer(src))[:size:size]
 	for i := 0; i < int(size); i++ {
-		sectors[i] = &StagedSectorMetadata{
+		sectors[i] = StagedSectorMetadata{
 			SectorID: uint64(sectorPtrs[i].sector_id),
 		}
 	}
 
 	return sectors, nil
+}
+
+func goPieceMetadata(src *C.sector_builder_ffi_FFIPieceMetadata, size C.size_t) ([]PieceMetadata, error) {
+	ps := make([]PieceMetadata, size)
+	if src == nil || size == 0 {
+		return ps, nil
+	}
+
+	ptrs := (*[1 << 30]C.sector_builder_ffi_FFIPieceMetadata)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
+		ps[i] = PieceMetadata{
+			Key:  C.GoString(ptrs[i].piece_key),
+			Size: uint64(ptrs[i].num_bytes),
+		}
+	}
+
+	return ps, nil
+}
+
+func goPoStProofs(partitions C.uint8_t, src *C.uint8_t, size C.size_t) ([]types.PoStProof, error) {
+	tmp := goBytes(src, size)
+
+	ppp, err := goPoStProofPartitions(partitions)
+	if err != nil {
+		return nil, err
+	}
+
+	arraySize := len(tmp)
+	chunkSize := ppp.ProofLen()
+
+	out := make([]types.PoStProof, arraySize/chunkSize)
+	for i := 0; i < len(out); i++ {
+		out[i] = append(types.PoStProof{}, tmp[i*chunkSize:(i+1)*chunkSize]...)
+	}
+
+	return out, nil
+}
+
+func goUint64s(src *C.uint64_t, size C.size_t) []uint64 {
+	out := make([]uint64, size)
+	if src != nil {
+		copy(out, (*(*[1 << 30]uint64)(unsafe.Pointer(src)))[:size:size])
+	}
+	return out
+}
+
+func goPoStProofPartitions(partitions C.uint8_t) (types.PoStProofPartitions, error) {
+	return types.NewPoStProofPartitions(int(partitions))
 }

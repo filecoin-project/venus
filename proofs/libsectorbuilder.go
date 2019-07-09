@@ -33,6 +33,26 @@ type StagedSectorMetadata struct {
 	SectorID uint64
 }
 
+// SectorSealingStatus communicates how far along in the sealing process a
+// sector has progressed.
+type SectorSealingStatus struct {
+	SectorID       uint64
+	SealStatusCode uint8            // Sealed = 0, Pending = 1, Failed = 2, Sealing = 3
+	SealErrorMsg   string           // will be nil unless SealStatusCode == 2
+	CommD          types.CommD      // will be empty unless SealStatusCode == 0
+	CommR          types.CommR      // will be empty unless SealStatusCode == 0
+	CommRStar      types.CommRStar  // will be empty unless SealStatusCode == 0
+	Proof          types.PoRepProof // will be empty unless SealStatusCode == 0
+	Pieces         []PieceMetadata  // will be empty unless SealStatusCode == 0
+}
+
+// PieceMetadata represents a piece stored by the sector builder.
+type PieceMetadata struct {
+	Key            string
+	Size           uint64
+	InclusionProof []byte
+}
+
 // VerifySeal returns true if the sealing operation from which its inputs were
 // derived was valid, and false if not.
 func VerifySeal(
@@ -149,6 +169,8 @@ func VerifyPoSt(
 // into a staged sector. Due to bit-padding, the number of user bytes that will
 // fit into the staged sector will be less than number of bytes in sectorSize.
 func GetMaxUserBytesPerStagedSector(sectorSize *types.BytesAmount) *types.BytesAmount {
+	defer elapsed("GetMaxUserBytesPerStagedSector")()
+
 	return types.NewBytesAmount(uint64(C.sector_builder_ffi_get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize.Uint64()))))
 }
 
@@ -203,6 +225,8 @@ func InitSectorBuilder(
 // provided pointer. This function will panic if the provided pointer is null
 // or if the sector builder has been previously deallocated.
 func DestroySectorBuilder(sectorBuilderPtr unsafe.Pointer) {
+	defer elapsed("DestroySectorBuilder")()
+
 	C.sector_builder_ffi_destroy_sector_builder((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))
 }
 
@@ -236,6 +260,8 @@ func AddPiece(sectorBuilderPtr unsafe.Pointer, pieceKey string, pieceSize uint64
 // associated with the provided key. If the key is not associated with any piece
 // yet sealed into a sector, an error will be returned.
 func ReadPieceFromSealedSector(sectorBuilderPtr unsafe.Pointer, pieceKey string) ([]byte, error) {
+	defer elapsed("ReadPieceFromSealedSector")()
+
 	cPieceKey := C.CString(pieceKey)
 	defer C.free(unsafe.Pointer(cPieceKey))
 
@@ -251,6 +277,8 @@ func ReadPieceFromSealedSector(sectorBuilderPtr unsafe.Pointer, pieceKey string)
 
 // SealAllStagedSectors schedules sealing of all staged sectors.
 func SealAllStagedSectors(sectorBuilderPtr unsafe.Pointer) error {
+	defer elapsed("SealAllStagedSectors")()
+
 	resPtr := (*C.sector_builder_ffi_SealAllStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_seal_all_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))))
 	defer C.sector_builder_ffi_destroy_seal_all_staged_sectors_response(resPtr)
 
@@ -262,7 +290,9 @@ func SealAllStagedSectors(sectorBuilderPtr unsafe.Pointer) error {
 }
 
 // GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder.
-func GetAllStagedSectors(sectorBuilderPtr unsafe.Pointer) ([]*StagedSectorMetadata, error) {
+func GetAllStagedSectors(sectorBuilderPtr unsafe.Pointer) ([]StagedSectorMetadata, error) {
+	defer elapsed("GetAllStagedSectors")()
+
 	resPtr := (*C.sector_builder_ffi_GetStagedSectorsResponse)(unsafe.Pointer(C.sector_builder_ffi_get_staged_sectors((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr))))
 	defer C.sector_builder_ffi_destroy_get_staged_sectors_response(resPtr)
 
@@ -276,4 +306,91 @@ func GetAllStagedSectors(sectorBuilderPtr unsafe.Pointer) ([]*StagedSectorMetada
 	}
 
 	return meta, nil
+}
+
+// GetSectorSealingStatusByID produces sector sealing status (staged, sealing in
+// progress, sealed, failed) for the provided sector id if it exists, otherwise
+// an error.
+func GetSectorSealingStatusByID(sectorBuilderPtr unsafe.Pointer, sectorID uint64) (SectorSealingStatus, error) {
+	defer elapsed("GetSectorSealingStatusByID")()
+
+	resPtr := (*C.sector_builder_ffi_GetSealStatusResponse)(unsafe.Pointer(C.sector_builder_ffi_get_seal_status((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), C.uint64_t(sectorID))))
+	defer C.sector_builder_ffi_destroy_get_seal_status_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return SectorSealingStatus{}, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	if resPtr.seal_status_code == C.Failed {
+		return SectorSealingStatus{SealStatusCode: 2, SealErrorMsg: C.GoString(resPtr.seal_error_msg)}, nil
+	} else if resPtr.seal_status_code == C.Pending {
+		return SectorSealingStatus{SealStatusCode: 1}, nil
+	} else if resPtr.seal_status_code == C.Sealing {
+		return SectorSealingStatus{SealStatusCode: 3}, nil
+	} else if resPtr.seal_status_code == C.Sealed {
+		commRSlice := goBytes(&resPtr.comm_r[0], 32)
+		var commR types.CommR
+		copy(commR[:], commRSlice)
+
+		commDSlice := goBytes(&resPtr.comm_d[0], 32)
+		var commD types.CommD
+		copy(commD[:], commDSlice)
+
+		commRStarSlice := goBytes(&resPtr.comm_r_star[0], 32)
+		var commRStar types.CommRStar
+		copy(commRStar[:], commRStarSlice)
+
+		proof := goBytes(resPtr.proof_ptr, resPtr.proof_len)
+
+		ps, err := goPieceMetadata(resPtr.pieces_ptr, resPtr.pieces_len)
+		if err != nil {
+			return SectorSealingStatus{}, errors.Wrap(err, "failed to marshal from string to cid")
+		}
+
+		return SectorSealingStatus{
+			SectorID:       sectorID,
+			SealStatusCode: 0,
+			CommD:          commD,
+			CommR:          commR,
+			CommRStar:      commRStar,
+			Proof:          proof,
+			Pieces:         ps,
+		}, nil
+	} else {
+		// unknown
+		return SectorSealingStatus{}, errors.New("unexpected seal status")
+	}
+}
+
+// GeneratePoSt produces a proof-of-spacetime for the provided replica commitments.
+func GeneratePoSt(sectorBuilderPtr unsafe.Pointer, sortedCommRs SortedCommRs, challengeSeed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+	defer elapsed("GeneratePoSt")()
+
+	// flattening the byte slice makes it easier to copy into the C heap
+	commRs := sortedCommRs.Values()
+	flattened := make([]byte, 32*len(commRs))
+	for idx, commR := range commRs {
+		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
+	}
+
+	// copy the Go byte slice into C memory
+	cflattened := C.CBytes(flattened)
+	defer C.free(cflattened)
+
+	challengeSeedPtr := unsafe.Pointer(&(challengeSeed)[0])
+
+	// a mutable pointer to a GeneratePoStResponse C-struct
+	resPtr := (*C.sector_builder_ffi_GeneratePoStResponse)(unsafe.Pointer(C.sector_builder_ffi_generate_post((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
+	defer C.sector_builder_ffi_destroy_generate_post_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	proofs, err := goPoStProofs(resPtr.proof_partitions, resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to convert to []PoStProof")
+	}
+
+	return proofs, goUint64s(resPtr.faults_ptr, resPtr.faults_len), nil
 }

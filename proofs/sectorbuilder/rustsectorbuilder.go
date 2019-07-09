@@ -1,42 +1,27 @@
-// +build !windows
-
 package sectorbuilder
 
 import (
 	"bytes"
 	"context"
 	"io"
-	"time"
 	"unsafe"
 
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/bytesink"
 	"github.com/filecoin-project/go-filecoin/types"
+	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/../lib -lsector_builder_ffi
-// #cgo pkg-config: ${SRCDIR}/../lib/pkgconfig/sector_builder_ffi.pc
-// #include "../include/sector_builder_ffi.h"
-import "C"
-
-var log = logging.Logger("sectorbuilder") // nolint: deadcode
+var log = logging.Logger("rustsectorbuilder") // nolint: deadcode
 
 // MaxNumStagedSectors configures the maximum number of staged sectors which can
 // be open and accepting data at any time.
 const MaxNumStagedSectors = 1
-
-func elapsed(what string) func() {
-	start := time.Now()
-	return func() {
-		log.Debugf("%s took %v\n", what, time.Since(start))
-	}
-}
 
 // RustSectorBuilder is a struct which serves as a proxy for a SectorBuilder in Rust.
 type RustSectorBuilder struct {
@@ -103,8 +88,6 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 // AddPiece writes the given piece into an unsealed sector and returns the id
 // of that sector.
 func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {
-	defer elapsed("AddPiece")()
-
 	fifoFile, err := bytesink.NewFifo()
 	if err != nil {
 		return 0, err
@@ -188,58 +171,50 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 }
 
 func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {
-	resPtr := (*C.sector_builder_ffi_GetSealStatusResponse)(unsafe.Pointer(C.sector_builder_ffi_get_seal_status((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), C.uint64_t(sectorID))))
-	defer C.sector_builder_ffi_destroy_get_seal_status_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return nil, errors.New(C.GoString(resPtr.error_msg))
+	status, err := proofs.GetSectorSealingStatusByID(sb.ptr, sectorID)
+	if err != nil {
+		return nil, err
 	}
 
-	if resPtr.seal_status_code == C.Failed {
-		return nil, errors.New(C.GoString(resPtr.seal_error_msg))
-	} else if resPtr.seal_status_code == C.Pending {
-		return nil, nil
-	} else if resPtr.seal_status_code == C.Sealing {
-		return nil, nil
-	} else if resPtr.seal_status_code == C.Sealed {
-		commRSlice := goBytes(&resPtr.comm_r[0], 32)
-		var commR types.CommR
-		copy(commR[:], commRSlice)
-
-		commDSlice := goBytes(&resPtr.comm_d[0], 32)
-		var commD types.CommD
-		copy(commD[:], commDSlice)
-
-		commRStarSlice := goBytes(&resPtr.comm_r_star[0], 32)
-		var commRStar types.CommRStar
-		copy(commRStar[:], commRStarSlice)
-
-		proof := goBytes(resPtr.proof_ptr, resPtr.proof_len)
-
-		ps, err := goPieceInfos(resPtr.pieces_ptr, resPtr.pieces_len)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to marshal from string to cid")
-		}
-
+	if status.SealStatusCode == 0 {
+		info := make([]*PieceInfo, len(status.Pieces))
 		// TODO: These piece inclusion proofs are fake, remove this when proofs are available
 		// The fake proof uses the piece cid as a fake CommP and concatenates CommP with CommD
 		// see https://github.com/filecoin-project/go-filecoin/issues/2629
-		for _, pieceInfo := range ps {
+		for idx, pieceMetadata := range status.Pieces {
+			p := &PieceInfo{Size: pieceMetadata.Size}
+
+			// decode piece key-string to CID
+			ref, err := cid.Decode(pieceMetadata.Key)
+			if err != nil {
+				return nil, err
+			}
+			p.Ref = ref
+
 			var commP types.CommP
-			copy(commP[:], pieceInfo.Ref.Bytes())
-			pieceInfo.InclusionProof = []byte{}
-			pieceInfo.InclusionProof = append(pieceInfo.InclusionProof, commP[:]...)
-			pieceInfo.InclusionProof = append(pieceInfo.InclusionProof, commD[:]...)
+			copy(commP[:], p.Ref.Bytes())
+			p.InclusionProof = []byte{}
+			p.InclusionProof = append(p.InclusionProof, commP[:]...)
+			p.InclusionProof = append(p.InclusionProof, status.CommD[:]...)
+
+			info[idx] = p
 		}
 
+		// complete
 		return &SealedSectorMetadata{
-			CommD:     commD,
-			CommR:     commR,
-			CommRStar: commRStar,
-			Pieces:    ps,
-			Proof:     proof,
-			SectorID:  sectorID,
+			CommD:     status.CommD,
+			CommR:     status.CommR,
+			CommRStar: status.CommRStar,
+			Pieces:    info,
+			Proof:     status.Proof,
+			SectorID:  status.SectorID,
 		}, nil
+	} else if status.SealStatusCode == 1 || status.SealStatusCode == 3 {
+		// staged or currently being sealed
+		return nil, nil
+	} else if status.SealStatusCode == 2 {
+		// failed
+		return nil, errors.New(status.SealErrorMsg)
 	} else {
 		// unknown
 		return nil, errors.New("unexpected seal status")
@@ -263,7 +238,7 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 }
 
 // stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) stagedSectors() ([]*proofs.StagedSectorMetadata, error) {
+func (sb *RustSectorBuilder) stagedSectors() ([]proofs.StagedSectorMetadata, error) {
 	return proofs.GetAllStagedSectors(sb.ptr)
 }
 
@@ -283,38 +258,15 @@ func (sb *RustSectorBuilder) Close() error {
 	return nil
 }
 
-// GeneratePoSt produces a proof-of-spacetime for the provided commitment replicas.
+// GeneratePoSt produces a proof-of-spacetime for the provided replica commitments.
 func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoStResponse, error) {
-	defer elapsed("GeneratePoSt")()
-
-	// flattening the byte slice makes it easier to copy into the C heap
-	commRs := req.SortedCommRs.Values()
-	flattened := make([]byte, 32*len(commRs))
-	for idx, commR := range commRs {
-		copy(flattened[(32*idx):(32*(1+idx))], commR[:])
-	}
-
-	// copy the Go byte slice into C memory
-	cflattened := C.CBytes(flattened)
-	defer C.free(cflattened)
-
-	challengeSeedPtr := unsafe.Pointer(&(req.ChallengeSeed)[0])
-
-	// a mutable pointer to a GeneratePoStResponse C-struct
-	resPtr := (*C.sector_builder_ffi_GeneratePoStResponse)(unsafe.Pointer(C.sector_builder_ffi_generate_post((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))))
-	defer C.sector_builder_ffi_destroy_generate_post_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return GeneratePoStResponse{}, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	proofs, err := goPoStProofs(resPtr.proof_partitions, resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len)
+	proofs, faults, err := proofs.GeneratePoSt(sb.ptr, req.SortedCommRs, req.ChallengeSeed)
 	if err != nil {
-		return GeneratePoStResponse{}, errors.Wrap(err, "failed to convert to []PoStProof")
+		return GeneratePoStResponse{}, err
 	}
 
 	return GeneratePoStResponse{
 		Proofs: proofs,
-		Faults: goUint64s(resPtr.faults_ptr, resPtr.faults_len),
+		Faults: faults,
 	}, nil
 }
