@@ -1,3 +1,5 @@
+// +build !windows
+
 package proofs
 
 import (
@@ -188,4 +190,47 @@ func InitSectorBuilder(
 	}
 
 	return unsafe.Pointer(resPtr.sector_builder), nil
+}
+
+// AddPiece writes the given piece into an unsealed sector and returns the id
+// of that sector.
+func AddPiece(sectorBuilderPtr unsafe.Pointer, pieceKey string, pieceSize uint64, piecePath string) (sectorID uint64, retErr error) {
+	defer elapsed("AddPiece")()
+
+	cPieceKey := C.CString(pieceKey)
+	defer C.free(unsafe.Pointer(cPieceKey))
+
+	cPiecePath := C.CString(piecePath)
+	defer C.free(unsafe.Pointer(cPiecePath))
+
+	resPtr := (*C.sector_builder_ffi_AddPieceResponse)(unsafe.Pointer(C.sector_builder_ffi_add_piece(
+		(*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr),
+		cPieceKey,
+		C.uint64_t(pieceSize),
+		cPiecePath,
+	)))
+	defer C.sector_builder_ffi_destroy_add_piece_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return 0, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return uint64(resPtr.sector_id), nil
+}
+
+// ReadPieceFromSealedSector produces a byte buffer containing the piece
+// associated with the provided key. If the key is not associated with any piece
+// yet sealed into a sector, an error will be returned.
+func ReadPieceFromSealedSector(sectorBuilderPtr unsafe.Pointer, pieceKey string) ([]byte, error) {
+	cPieceKey := C.CString(pieceKey)
+	defer C.free(unsafe.Pointer(cPieceKey))
+
+	resPtr := (*C.sector_builder_ffi_ReadPieceFromSealedSectorResponse)(unsafe.Pointer(C.sector_builder_ffi_read_piece_from_sealed_sector((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), cPieceKey)))
+	defer C.sector_builder_ffi_destroy_read_piece_from_sealed_sector_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return goBytes(resPtr.data_ptr, resPtr.data_len), nil
 }

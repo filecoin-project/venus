@@ -112,7 +112,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, retErr error) {
 	defer elapsed("AddPiece")()
 
-	buffer, err := bytesink.NewFifo()
+	fifoFile, err := bytesink.NewFifo()
 	if err != nil {
 		return 0, err
 	}
@@ -128,26 +128,26 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	// CGO call completes.
 	sectorIDCh := make(chan uint64, 1)
 
-	// goroutine attempts to copy bytes from piece's reader to the buffer
+	// goroutine attempts to copy bytes from piece's reader to the fifoFile
 	go func() {
-		// opening the buffer blocks the goroutine until a reader is opened on the
+		// opening the fifoFile blocks the goroutine until a reader is opened on the
 		// other end of the FIFO pipe
-		err := buffer.Open()
+		err := fifoFile.Open()
 		if err != nil {
-			errCh <- errors.Wrap(err, "failed to open buffer")
+			errCh <- errors.Wrap(err, "failed to open fifoFile")
 			return
 		}
 
-		// closing the buffer signals to the reader that we're done writing, which
+		// closing the fifoFile signals to the reader that we're done writing, which
 		// unblocks the reader
 		defer func() {
-			err := buffer.Close()
+			err := fifoFile.Close()
 			if err != nil {
-				log.Warningf("failed to close buffer: %s", err)
+				log.Warningf("failed to close fifoFile: %s", err)
 			}
 		}()
 
-		n, err := io.Copy(buffer, pieceReader)
+		n, err := io.Copy(fifoFile, pieceReader)
 		if err != nil {
 			errCh <- errors.Wrap(err, "failed to copy to pipe")
 			return
@@ -162,46 +162,33 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	// goroutine makes CGO call, which blocks until FIFO pipe opened for writing
 	// from within other goroutine
 	go func() {
-		cPieceKey := C.CString(pieceRef.String())
-		defer C.free(unsafe.Pointer(cPieceKey))
-
-		cSinkPath := C.CString(buffer.ID())
-		defer C.free(unsafe.Pointer(cSinkPath))
-
-		resPtr := (*C.sector_builder_ffi_AddPieceResponse)(unsafe.Pointer(C.sector_builder_ffi_add_piece(
-			(*C.sector_builder_ffi_SectorBuilder)(sb.ptr),
-			cPieceKey,
-			C.uint64_t(pieceSize),
-			cSinkPath,
-		)))
-		defer C.sector_builder_ffi_destroy_add_piece_response(resPtr)
-
-		if resPtr.status_code != 0 {
-			msg := "CGO add_piece returned an error (error_msg=%s, sinkPath=%s)"
-			log.Errorf(msg, C.GoString(resPtr.error_msg), buffer.ID())
-			errCh <- errors.New(C.GoString(resPtr.error_msg))
+		id, err := proofs.AddPiece(sb.ptr, pieceRef.String(), pieceSize, fifoFile.ID())
+		if err != nil {
+			msg := "CGO add_piece returned an error (err=%s, fifo path=%s)"
+			log.Errorf(msg, err, fifoFile.ID())
+			errCh <- err
 			return
 		}
 
-		sectorIDCh <- uint64(resPtr.sector_id)
+		sectorIDCh <- id
 	}()
 
 	select {
 	case <-ctx.Done():
 		errStr := "context completed before CGO call could return"
 		strFmt := "%s (sinkPath=%s)"
-		log.Errorf(strFmt, errStr, buffer.ID())
+		log.Errorf(strFmt, errStr, fifoFile.ID())
 
 		return 0, errors.New(errStr)
 	case err := <-errCh:
 		errStr := "error streaming piece-bytes"
 		strFmt := "%s (sinkPath=%s)"
-		log.Errorf(strFmt, errStr, buffer.ID())
+		log.Errorf(strFmt, errStr, fifoFile.ID())
 
 		return 0, errors.Wrap(err, errStr)
 	case sectorID := <-sectorIDCh:
 		go sb.sealStatusPoller.addSectorID(sectorID)
-		log.Infof("add piece complete (pieceRef=%s, sectorID=%d, sinkPath=%s)", pieceRef.String(), sectorID, buffer.ID())
+		log.Infof("add piece complete (pieceRef=%s, sectorID=%d, sinkPath=%s)", pieceRef.String(), sectorID, fifoFile.ID())
 
 		return sectorID, nil
 	}
@@ -269,17 +256,12 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 // ReadPieceFromSealedSector produces a Reader used to get original piece-bytes
 // from a sealed sector.
 func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
-	cPieceKey := C.CString(pieceCid.String())
-	defer C.free(unsafe.Pointer(cPieceKey))
-
-	resPtr := (*C.sector_builder_ffi_ReadPieceFromSealedSectorResponse)(unsafe.Pointer(C.sector_builder_ffi_read_piece_from_sealed_sector((*C.sector_builder_ffi_SectorBuilder)(sb.ptr), cPieceKey)))
-	defer C.sector_builder_ffi_destroy_read_piece_from_sealed_sector_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return nil, errors.New(C.GoString(resPtr.error_msg))
+	buffer, err := proofs.ReadPieceFromSealedSector(sb.ptr, pieceCid.String())
+	if err != nil {
+		return nil, err
 	}
 
-	return bytes.NewReader(goBytes(resPtr.data_ptr, resPtr.data_len)), nil
+	return bytes.NewReader(buffer), err
 }
 
 // SealAllStagedSectors schedules sealing of all staged sectors.

@@ -2,6 +2,7 @@ package proofs
 
 import (
 	"github.com/filecoin-project/go-filecoin/types"
+	"unsafe"
 )
 
 // #cgo LDFLAGS: -L${SRCDIR}/lib -lsector_builder_ffi
@@ -46,4 +47,8 @@ func cSectorClass(c types.SectorClass) (C.sector_builder_ffi_FFISectorClass, err
 		porep_proof_partitions: C.uint8_t(c.PoRepProofPartitions().Int()),
 		post_proof_partitions:  C.uint8_t(c.PoStProofPartitions().Int()),
 	}, nil
+}
+
+func goBytes(src *C.uint8_t, size C.size_t) []byte {
+	return C.GoBytes(unsafe.Pointer(src), C.int(size))
 }
