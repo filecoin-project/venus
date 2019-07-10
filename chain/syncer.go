@@ -87,6 +87,7 @@ type syncerChainReader interface {
 
 type syncFetcher interface {
 	GetBlocks(context.Context, []cid.Cid) ([]*types.Block, error)
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -151,11 +152,20 @@ func NewSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReade
 // otherwise resolved over the network.  This method will timeout if blocks
 // are unavailable.  This method is all or nothing, it will error if any of the
 // blocks cannot be resolved.
-func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]*types.Block, error) {
+func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, error) {
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
 
-	return syncer.fetcher.GetBlocks(ctx, blkCids)
+	tss, err := syncer.fetcher.FetchTipSets(ctx, types.NewTipSetKey(blkCids...), 1)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tss) > 1 {
+		panic("programmer error, FetchTipSets ignored recur parameter, returned more than 1 tipset")
+	}
+
+	return tss, nil
 }
 
 // collectChain resolves the cids of the head tipset and its ancestors to
@@ -195,12 +205,9 @@ func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.TipSetK
 			return nil, ErrChainHasBadTipSet
 		}
 
-		blks, err := syncer.getBlksMaybeFromNet(ctx, tipsetCids.ToSlice())
-		if err != nil {
-			return nil, err
-		}
-
-		ts, err := types.NewTipSet(blks...)
+		// This will return a single tipset, error if not found and panic
+		// if more than 1 tipset is returned
+		ts, err := syncer.getBlksMaybeFromNet(ctx, tipsetCids.ToSlice())
 		if err != nil {
 			return nil, err
 		}
@@ -211,8 +218,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.TipSetK
 		}
 
 		// Update values to traverse next tipset
-		chain = append([]types.TipSet{ts}, chain...)
-		tipsetCids, err = ts.Parents()
+		chain = append(ts, chain...)
+		tipsetCids, err = ts[0].Parents()
 		if err != nil {
 			return nil, err
 		}
