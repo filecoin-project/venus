@@ -158,7 +158,7 @@ type Node struct {
 	sectorBuilder sectorbuilder.SectorBuilder
 
 	// Fetcher is the interface for fetching data from nodes.
-	Fetcher *net.Fetcher
+	Fetcher net.Fetcher
 
 	// Exchange is the interface for fetching data from other nodes.
 	Exchange exchange.Interface
@@ -386,7 +386,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
-	fetcher := net.NewFetcher(ctx, bservice, blkValid)
+	fetcher := net.NewBitswapFetcher(ctx, bservice, blkValid)
 
 	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())

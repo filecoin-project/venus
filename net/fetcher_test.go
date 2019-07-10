@@ -28,7 +28,7 @@ func TestFetchHappyPath(t *testing.T) {
 	tf.UnitTest(t)
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
+	fetcher := net.NewBitswapFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
 	block1 := types.NewBlockForTest(nil, uint64(0))
 	block2 := types.NewBlockForTest(nil, uint64(1))
 	block3 := types.NewBlockForTest(nil, uint64(3))
@@ -54,7 +54,7 @@ func TestFetchNoBlockFails(t *testing.T) {
 	tf.UnitTest(t)
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
+	fetcher := net.NewBitswapFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
 	block1 := types.NewBlockForTest(nil, uint64(0))
 	block2 := types.NewBlockForTest(nil, uint64(1))
 
@@ -71,7 +71,7 @@ func TestFetchNotBlockFormat(t *testing.T) {
 	tf.UnitTest(t)
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	fetcher := net.NewFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
+	fetcher := net.NewBitswapFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
 	notABlock := types.NewMsgs(1)[0]
 	notABlockObj, err := notABlock.ToNode()
 	require.NoError(t, err)
