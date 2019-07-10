@@ -477,23 +477,21 @@ func (ma *Actor) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
 	return ma.Bootstrap, 0, nil
 }
 
-// GetPoStState returns whether the miner's last submitPoSt within the proving period,
+// GetPoStState returns whether the miner's last submitPoSt is within the proving period,
 // late or after the generation attack threshold.
 func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
-
 	var state State
-	bh := ctx.BlockHeight()
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
 		// Don't check lateness unless there is storage to prove
-		if len(state.ProvingSet.Values()) == 0 {
+		if state.ProvingSet.Size() == 0 {
 			return int64(PoStStateNoStorage), nil
 		}
-		lateState, _ := lateState(state.ProvingPeriodEnd, bh, generationAttackGracePeriod)
+		lateState, _ := lateState(state.ProvingPeriodEnd, ctx.BlockHeight(), GenerationAttackTime(state.SectorSize))
 		return lateState, nil
 	})
 
 	if err != nil {
+		return nil, errors.CodeError(err), err
 		return nil, errors.CodeError(err), err
 	}
 

@@ -1120,6 +1120,9 @@ func TestMinerGetPoStState(t *testing.T) {
 
 	firstCommitBlockHeight := uint64(3)
 
+	lastHeightOfFirstPeriod := firstCommitBlockHeight + LargestSectorSizeProvingPeriodBlocks
+	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + LargestSectorGenerationAttackThresholdBlocks
+
 	t.Run("is reported as not late within the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
@@ -1130,7 +1133,6 @@ func TestMinerGetPoStState(t *testing.T) {
 		done := types.EmptyIntSet()
 		mal.requirePoSt(firstCommitBlockHeight+5, done)
 		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight)
-		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight+1)
 		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight+6)
 	})
 
@@ -1138,23 +1140,21 @@ func TestMinerGetPoStState(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(PoStStateAfterProvingPeriod, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
+		mal.assertPoStStateAtHeight(PoStStateAfterProvingPeriod, lastHeightOfFirstPeriod+1)
 	})
 	t.Run("is reported as PoStStateAfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(PoStStateAfterGenerationAttackThreshold, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
+		mal.assertPoStStateAtHeight(PoStStateAfterGenerationAttackThreshold, lastHeightOfSecondPeriod)
 	})
 
 	t.Run("is reported as PoStStateNoStorage when actor has empty proving set", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight)
-		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
-		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
-
+		mal.assertPoStStateAtHeight(PoStStateNoStorage, lastHeightOfFirstPeriod+1)
+		mal.assertPoStStateAtHeight(PoStStateNoStorage, lastHeightOfSecondPeriod+1)
 	})
-
 }
 
 func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
