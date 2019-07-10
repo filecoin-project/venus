@@ -142,6 +142,33 @@ func (f *TestFetcher) AddSourceBlocks(blocks ...*types.Block) {
 	}
 }
 
+// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
+// FetchTipSets will fetch `recur` partens of `tsKey`. FetchTipSets does not return partial results.
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
+	var out []types.TipSet
+	cur := tsKey
+	for i := 0; i < recur; i++ {
+		res, err := f.GetBlocks(ctx, cur.ToSlice())
+		if err != nil {
+			return nil, err
+		}
+
+		ts, err := types.NewTipSet(res...)
+		if err != nil {
+			return nil, err
+		}
+
+		cur, err = ts.Parents()
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, ts)
+	}
+
+	return out, nil
+}
+
 // GetBlocks returns any blocks in the source with matching cids.
 func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
 	var ret []*types.Block
