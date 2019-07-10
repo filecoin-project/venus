@@ -356,6 +356,45 @@ func TestMinerPower(t *testing.T) {
 	assert.Equal(t, "3072 / 6144", power)
 }
 
+func TestMinerActiveCollateral(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	fi, err := ioutil.TempFile("", "gengentest")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = fi.Close()
+
+	d := th.NewDaemon(t, th.GenesisFile(fi.Name())).Start()
+	defer d.ShutdownSuccess()
+
+	actorLsOutput := d.RunSuccess("actor", "ls")
+
+	scanner := bufio.NewScanner(strings.NewReader(actorLsOutput.ReadStdout()))
+	var addressStruct struct{ Address string }
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "MinerActor") {
+			err = json.Unmarshal([]byte(line), &addressStruct)
+			assert.NoError(t, err)
+			break
+		}
+	}
+
+	collateralOutput := d.RunSuccess("miner", "collateral", addressStruct.Address)
+	collateral, ok := types.NewAttoFILFromFILString(collateralOutput.ReadStdoutTrimNewlines())
+	require.True(t, ok)
+
+	expectedCollateral := miner.MinimumCollateralPerSector.MulBigInt(big.NewInt(3))
+	assert.Equal(t, expectedCollateral, collateral)
+}
+
 var testConfig = &gengen.GenesisCfg{
 	ProofsMode: types.TestProofsMode,
 	Keys:       4,
