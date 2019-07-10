@@ -388,7 +388,6 @@ func TestMinerActiveCollateral(t *testing.T) {
 	}
 
 	collateralOutput := d.RunSuccess("miner", "collateral", addressStruct.Address)
-	fmt.Printf("collateral out: %s\n", collateralOutput.ReadStdoutTrimNewlines())
 	collateral, ok := types.NewAttoFILFromFILString(collateralOutput.ReadStdoutTrimNewlines())
 	require.True(t, ok)
 

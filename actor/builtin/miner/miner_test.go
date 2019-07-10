@@ -218,6 +218,7 @@ func TestGetActiveCollateral(t *testing.T) {
 
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
+	// Check 0 collateral
 	result := callQueryMethodSuccess("getActiveCollateral", ctx, t, st, vms, address.TestAddress, minerAddr)
 	attoFILValue, err := abi.Deserialize(result[0], abi.AttoFIL)
 	require.NoError(t, err)
@@ -226,6 +227,26 @@ func TestGetActiveCollateral(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, types.ZeroAttoFIL, coll)
+
+	// Commit a sector.
+	commR := th.MakeCommitment()
+	commRStar := th.MakeCommitment()
+	commD := th.MakeCommitment()
+
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(0), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
+	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+	// Check updated collateral
+	result = callQueryMethodSuccess("getActiveCollateral", ctx, t, st, vms, address.TestAddress, minerAddr)
+	attoFILValue, err = abi.Deserialize(result[0], abi.AttoFIL)
+	require.NoError(t, err)
+
+	coll, ok = attoFILValue.Val.(types.AttoFIL)
+	require.True(t, ok)
+
+	assert.Equal(t, MinimumCollateralPerSector, coll)
 }
 
 func TestCBOREncodeState(t *testing.T) {

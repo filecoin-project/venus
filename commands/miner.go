@@ -463,7 +463,7 @@ var minerCollateralCmd = &cmds.Command{
 			return err
 		}
 
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
+		rets, err := GetPorcelainAPI(env).MessageQuery(
 			req.Context,
 			address.Undef,
 			minerAddr,
@@ -472,7 +472,7 @@ var minerCollateralCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		collateral := types.NewAttoFILFromBytes(bytes[0])
+		collateral := types.NewAttoFILFromBytes(rets[0])
 		return re.Emit(collateral)
 	},
 	Arguments: []cmdkit.Argument{
