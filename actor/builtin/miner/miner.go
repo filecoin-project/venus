@@ -92,6 +92,13 @@ var Errors = map[uint8]error{
 	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
 }
 
+const (
+	PoStStateNoStorage = iota
+	PoStStateWithinProvingPeriod
+	PoStStateAfterProvingPeriod
+	PoStStateAfterGenerationAttackThreshold
+)
+
 // Actor is the miner actor.
 //
 // If `Bootstrap` is `true`, the miner will not verify seal proofs. This is
@@ -470,12 +477,6 @@ func (ma *Actor) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
 	return ma.Bootstrap, 0, nil
 }
 
-const (
-	WithinProvingPeriod = iota
-	AfterProvingPeriod
-	AfterGenerationAttackThreshold
-)
-
 // GetPoStState returns whether the miner's last submitPoSt within the proving period,
 // late or after the generation attack threshold.
 func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
@@ -484,6 +485,10 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 	bh := ctx.BlockHeight()
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
+		// Don't check lateness unless there is storage to prove
+		if len(state.ProvingSet.Values()) == 0 {
+			return int64(PoStStateNoStorage), nil
+		}
 		lateState, _ := lateState(state.ProvingPeriodEnd, bh, generationAttackGracePeriod)
 		return lateState, nil
 	})
@@ -494,7 +499,7 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 	result, ok := out.(int64)
 	if !ok {
-		return nil, 1, errors.NewFaultErrorf("expected a *big.Int, but got %T instead", out)
+		return nil, 1, errors.NewFaultErrorf("expected a int64, but got %T instead", out)
 	}
 
 	return big.NewInt(result), 0, nil
@@ -1036,25 +1041,16 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
 	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
 
-	if lateState == AfterGenerationAttackThreshold {
+	if lateState == PoStStateAfterGenerationAttackThreshold {
 		return pledgeCollateral
-	} else if lateState == AfterProvingPeriod {
+	} else if lateState == PoStStateAfterProvingPeriod {
 		// fee = collateral * (roundsLate / maxRoundsLate)
 		var fee big.Int
 		fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
 		fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
 		return types.NewAttoFIL(&fee)
 	}
-	//roundsLate := chainHeight.Sub(provingPeriodEnd)
-	//if roundsLate.GreaterEqual(maxRoundsLate) {
-	//	return pledgeCollateral
-	//} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
-	//	// fee = collateral * (roundsLate / maxRoundsLate)
-	//	var fee big.Int
-	//	fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
-	//	fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
-	//	return types.NewAttoFIL(&fee)
-	//}
+
 	return types.ZeroAttoFIL
 }
 
@@ -1067,11 +1063,11 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 func lateState(provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) (int64, *types.BlockHeight) {
 	roundsLate := chainHeight.Sub(provingPeriodEnd)
 	if roundsLate.GreaterEqual(maxRoundsLate) {
-		return AfterGenerationAttackThreshold, roundsLate
+		return PoStStateAfterGenerationAttackThreshold, roundsLate
 	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
-		return AfterProvingPeriod, roundsLate
+		return PoStStateAfterProvingPeriod, roundsLate
 	}
-	return WithinProvingPeriod, roundsLate
+	return PoStStateWithinProvingPeriod, roundsLate
 }
 
 // TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs

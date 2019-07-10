@@ -1115,12 +1115,10 @@ func TestLatePoStFee(t *testing.T) {
 	})
 }
 
-func TestActor_GetPoStState(t *testing.T) {
+func TestMinerGetPoStState(t *testing.T) {
 	tf.UnitTest(t)
 
 	firstCommitBlockHeight := uint64(3)
-	//secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
-	//thirdProvingPeriodStart := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 
 	t.Run("is reported as not late within the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
@@ -1131,22 +1129,30 @@ func TestActor_GetPoStState(t *testing.T) {
 		// submit PoSt to update proving set with no done sectors
 		done := types.EmptyIntSet()
 		mal.requirePoSt(firstCommitBlockHeight+5, done)
-		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight)
-		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight+1)
-		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight+6)
+		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight)
+		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight+1)
+		mal.assertPoStStateAtHeight(PoStStateWithinProvingPeriod, firstCommitBlockHeight+6)
 	})
 
-	t.Run("is reported as AfterProvingPeriod after the proving period", func(t *testing.T) {
+	t.Run("is reported as PoStStateAfterProvingPeriod after the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(AfterProvingPeriod, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
+		mal.assertPoStStateAtHeight(PoStStateAfterProvingPeriod, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
 	})
-	t.Run("is reported as AfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
+	t.Run("is reported as PoStStateAfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(AfterGenerationAttackThreshold, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
+		mal.assertPoStStateAtHeight(PoStStateAfterGenerationAttackThreshold, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
+	})
+
+	t.Run("is reported as PoStStateNoStorage when actor has empty proving set", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight)
+		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
+		mal.assertPoStStateAtHeight(PoStStateNoStorage, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
+
 	})
 
 }
