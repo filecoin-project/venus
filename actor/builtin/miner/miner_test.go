@@ -574,6 +574,17 @@ func (mal *minerActorLiason) assertPoStFail(blockHeight uint64, done types.IntSe
 	assert.Equal(mal.t, exitCode, res.Receipt.ExitCode)
 }
 
+func (mal *minerActorLiason) assertPoStStateAtHeight(expected int64, queryHeight uint64) {
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, "getPoStState", mal.ancestors)
+	assert.NoError(mal.t, err)
+	require.NotNil(mal.t, res)
+
+	ret, err := abi.Deserialize(res.Receipt.Return[0], abi.Integer)
+	require.NoError(mal.t, err)
+
+	assert.Equal(mal.t, big.NewInt(expected), ret.Val)
+}
+
 func newMinerActorLiason(t *testing.T, st state.Tree, vms vm.StorageMap, ancestors []types.TipSet, minerAddr address.Address) *minerActorLiason {
 	return &minerActorLiason{
 		t:             t,
@@ -1102,6 +1113,42 @@ func TestLatePoStFee(t *testing.T) {
 		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1100), bh(100))))
 		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(2000), bh(100))))
 	})
+}
+
+func TestActor_GetPoStState(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	//secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	//thirdProvingPeriodStart := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+
+	t.Run("is reported as not late within the proving period", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(17))
+
+		// submit PoSt to update proving set with no done sectors
+		done := types.EmptyIntSet()
+		mal.requirePoSt(firstCommitBlockHeight+5, done)
+		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight)
+		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight+1)
+		mal.assertPoStStateAtHeight(WithinProvingPeriod, firstCommitBlockHeight+6)
+	})
+
+	t.Run("is reported as AfterProvingPeriod after the proving period", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+
+		mal.assertPoStStateAtHeight(AfterProvingPeriod, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+1)
+	})
+	t.Run("is reported as AfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
+		mal := setupMinerActorLiason(t)
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+
+		mal.assertPoStStateAtHeight(AfterGenerationAttackThreshold, firstCommitBlockHeight+LargestSectorSizeProvingPeriodBlocks+LargestSectorGenerationAttackThresholdBlocks+1)
+	})
+
 }
 
 func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {

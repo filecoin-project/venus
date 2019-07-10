@@ -275,6 +275,10 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Boolean},
 	},
+	"getPoStState": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Integer},
+	},
 	"getSectorSize": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
@@ -464,6 +468,36 @@ func (ma *Actor) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) 
 // genesis block, i.e. used to bootstrap the network
 func (ma *Actor) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
 	return ma.Bootstrap, 0, nil
+}
+
+const (
+	WithinProvingPeriod = iota
+	AfterProvingPeriod
+	AfterGenerationAttackThreshold
+)
+
+// GetPoStState returns whether the miner's last submitPoSt within the proving period,
+// late or after the generation attack threshold.
+func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
+
+	var state State
+	bh := ctx.BlockHeight()
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
+		lateState, _ := lateState(state.ProvingPeriodEnd, bh, generationAttackGracePeriod)
+		return lateState, nil
+	})
+
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	result, ok := out.(int64)
+	if !ok {
+		return nil, 1, errors.NewFaultErrorf("expected a *big.Int, but got %T instead", out)
+	}
+
+	return big.NewInt(result), 0, nil
 }
 
 // GetSectorCommitments returns all sector commitments posted by this miner.
@@ -1000,22 +1034,45 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 // If the submission is on-time, the fee is zero. If the submission is after the maximum allowed lateness
 // the fee amounts to the entire pledge collateral.
 func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
-	roundsLate := chainHeight.Sub(provingPeriodEnd)
-	if roundsLate.GreaterEqual(maxRoundsLate) {
+	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
+
+	if lateState == AfterGenerationAttackThreshold {
 		return pledgeCollateral
-	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+	} else if lateState == AfterProvingPeriod {
 		// fee = collateral * (roundsLate / maxRoundsLate)
 		var fee big.Int
 		fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
 		fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
 		return types.NewAttoFIL(&fee)
 	}
+	//roundsLate := chainHeight.Sub(provingPeriodEnd)
+	//if roundsLate.GreaterEqual(maxRoundsLate) {
+	//	return pledgeCollateral
+	//} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+	//	// fee = collateral * (roundsLate / maxRoundsLate)
+	//	var fee big.Int
+	//	fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
+	//	fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
+	//	return types.NewAttoFIL(&fee)
+	//}
 	return types.ZeroAttoFIL
 }
 
 //
 // Internal functions
 //
+
+// lateState determines whether given a proving period and chain height, what is the
+// degree of lateness and how many rounds they are late
+func lateState(provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) (int64, *types.BlockHeight) {
+	roundsLate := chainHeight.Sub(provingPeriodEnd)
+	if roundsLate.GreaterEqual(maxRoundsLate) {
+		return AfterGenerationAttackThreshold, roundsLate
+	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+		return AfterProvingPeriod, roundsLate
+	}
+	return WithinProvingPeriod, roundsLate
+}
 
 // TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
 // see https://github.com/filecoin-project/go-filecoin/issues/2629
