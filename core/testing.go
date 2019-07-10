@@ -61,7 +61,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
 				Height:  types.Uint64(height),
-				Parents: parents.ToSortedCidSet(),
+				Parents: parents.Key(),
 			}
 			MustPut(store, child)
 			blocks = append(blocks, child)
@@ -69,7 +69,7 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 		for _, msgs := range tsMsgs {
 			child := &types.Block{
 				Messages:  msgs,
-				Parents:   parents.ToSortedCidSet(),
+				Parents:   parents.Key(),
 				Height:    types.Uint64(height),
 				StateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}

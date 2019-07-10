@@ -38,7 +38,7 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 
 	return &Block{
 		Ticket:          ticket,
-		Parents:         NewSortedCidSet(parentCid),
+		Parents:         NewTipSetKey(parentCid),
 		ParentWeight:    Uint64(parentWeight),
 		Height:          Uint64(42 + uint64(height)),
 		Nonce:           7,
@@ -91,9 +91,9 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("key", func(t *testing.T) {
-		assert.Equal(t, NewSortedCidSet(b1.Cid()), RequireNewTipSet(t, b1).ToSortedCidSet())
-		assert.Equal(t, NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid()),
-			RequireNewTipSet(t, b1, b2, b3).ToSortedCidSet())
+		assert.Equal(t, NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
+		assert.Equal(t, NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
+			RequireNewTipSet(t, b1, b2, b3).Key())
 	})
 
 	t.Run("height", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestTipSet(t *testing.T) {
 		// datastore key and depends on the format exactly.
 		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
 
-		expected := NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid()).String()
+		expected := NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
 		assert.Equal(t, expected, RequireNewTipSet(t, b3, b2, b1).String())
 	})
 
@@ -187,7 +187,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("mismatched parents fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.Parents = NewSortedCidSet(cid1, cid2)
+		b1.Parents = NewTipSetKey(cid1, cid2)
 		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
@@ -202,7 +202,7 @@ func TestTipSet(t *testing.T) {
 	})
 }
 
-// Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
+// Test methods: String, Key, ToSlice, MinTicket, Height, NewTipSet, Equals
 func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
 	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")

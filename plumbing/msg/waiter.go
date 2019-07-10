@@ -25,9 +25,9 @@ var log = logging.Logger("messageimpl")
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 }
 
@@ -182,7 +182,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		// TODO: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
-		j, err := msgIndexOfTipSet(msgCid, ts, types.SortedCidSet{})
+		j, err := msgIndexOfTipSet(msgCid, ts, make(map[cid.Cid]struct{}))
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +227,8 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	}
 
 	// If this is a failing conflict message there is no application receipt.
-	if res.Failures.Has(msgCid) {
+	_, failed := res.Failures[msgCid]
+	if failed {
 		return nil, nil
 	}
 
@@ -246,8 +247,8 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet) (int, error) {
-	var duplicates types.SortedCidSet
+func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails map[cid.Cid]struct{}) (int, error) {
+	duplicates := make(map[cid.Cid]struct{})
 	var msgCnt int
 	for i := 0; i < ts.Len(); i++ {
 		for _, msg := range ts.At(i).Messages {
@@ -255,13 +256,15 @@ func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails types.SortedCidSet)
 			if err != nil {
 				return -1, err
 			}
-			if fails.Has(c) {
+			_, failed := fails[c]
+			if failed {
 				continue
 			}
-			if duplicates.Has(c) {
+			_, isDup := duplicates[c]
+			if isDup {
 				continue
 			}
-			(&duplicates).Add(c)
+			duplicates[c] = struct{}{}
 			if c.Equals(msgCid) {
 				return msgCnt, nil
 			}

@@ -9,8 +9,8 @@ import (
 )
 
 type miningChainReader interface {
-	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 // MiningAPI provides an interface to the block mining protocol.

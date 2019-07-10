@@ -35,13 +35,13 @@ type Outbox struct {
 }
 
 type outboxChainProvider interface {
-	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(ctx context.Context, tipset types.SortedCidSet, addr address.Address) (*actor.Actor, error)
+	GetActorAt(ctx context.Context, tipset types.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
 type publisher interface {
@@ -148,7 +148,7 @@ func nextNonce(act *actor.Actor, queue *MessageQueue, address address.Address) (
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider outboxChainProvider, key types.SortedCidSet) (uint64, error) {
+func tipsetHeight(provider outboxChainProvider, key types.TipSetKey) (uint64, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err

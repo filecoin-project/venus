@@ -185,7 +185,7 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 	ts, err := types.NewTipSet(&types.Block{
 		Miner:           address.NewForTestGetter()(),
 		Ticket:          nil,
-		Parents:         types.SortedCidSet{},
+		Parents:         types.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
 		Nonce:           0,

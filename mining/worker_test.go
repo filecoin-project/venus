@@ -214,7 +214,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
 		&th.TestView{}, bs, cst, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
 
-	parents := types.NewSortedCidSet(newCid())
+	parents := types.NewTipSetKey(newCid())
 	stateRoot := newCid()
 	baseBlock1 := types.Block{
 		Parents:      parents,
@@ -300,7 +300,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	require.NoError(t, err)
 
 	baseBlock := types.Block{
-		Parents:   types.NewSortedCidSet(newCid()),
+		Parents:   types.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: stateRoot,
 		Proof:     types.PoStProof{},
@@ -383,7 +383,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
-		Parents:   types.NewSortedCidSet(newCid()),
+		Parents:   types.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 		Proof:     types.PoStProof{},
@@ -424,7 +424,7 @@ func TestGenerateError(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 1)
 	baseBlock := types.Block{
-		Parents:   types.NewSortedCidSet(newCid()),
+		Parents:   types.NewTipSetKey(newCid()),
 		Height:    types.Uint64(100),
 		StateRoot: newCid(),
 		Proof:     types.PoStProof{},

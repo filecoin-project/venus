@@ -68,7 +68,7 @@ func TestTriangleEncoding(t *testing.T) {
 			Nonce:           3,
 			Messages:        []*SignedMessage{newSignedMessage()},
 			MessageReceipts: []*MessageReceipt{{ExitCode: 1}},
-			Parents:         NewSortedCidSet(SomeCid()),
+			Parents:         NewTipSetKey(SomeCid()),
 			ParentWeight:    Uint64(1000),
 			Proof:           NewTestPoSt(),
 			StateRoot:       SomeCid(),
@@ -89,7 +89,7 @@ func TestBlockIsParentOf(t *testing.T) {
 	assert.False(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
 
-	c.Parents.Add(p.Cid())
+	c.Parents = NewTipSetKey(p.Cid())
 	assert.True(t, p.IsParentOf(c))
 	assert.False(t, c.IsParentOf(p))
 }
@@ -142,7 +142,7 @@ func TestDecodeBlock(t *testing.T) {
 		before := &Block{
 			Miner:     addrGetter(),
 			Ticket:    []uint8{},
-			Parents:   NewSortedCidSet(c1),
+			Parents:   NewTipSetKey(c1),
 			Height:    2,
 			Messages:  []*SignedMessage{newSignedMessage(), newSignedMessage()},
 			StateRoot: c2,
@@ -176,10 +176,10 @@ func TestEquals(t *testing.T) {
 	var n1 Uint64 = 1234
 	var n2 Uint64 = 9876
 
-	b1 := &Block{Parents: NewSortedCidSet(c1), Nonce: n1}
-	b2 := &Block{Parents: NewSortedCidSet(c1), Nonce: n1}
-	b3 := &Block{Parents: NewSortedCidSet(c1), Nonce: n2}
-	b4 := &Block{Parents: NewSortedCidSet(c2), Nonce: n1}
+	b1 := &Block{Parents: NewTipSetKey(c1), Nonce: n1}
+	b2 := &Block{Parents: NewTipSetKey(c1), Nonce: n1}
+	b3 := &Block{Parents: NewTipSetKey(c1), Nonce: n2}
+	b4 := &Block{Parents: NewTipSetKey(c2), Nonce: n1}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -210,7 +210,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Miner = address.NewForTestGetter()()
 	child.Height = 1
 	child.Nonce = Uint64(2)
-	child.Parents = NewSortedCidSet(parent.Cid())
+	child.Parents = NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 
 	message := newSignedMessage()

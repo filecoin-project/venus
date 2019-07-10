@@ -82,16 +82,16 @@ type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 type nodeChainReader interface {
 	GenesisCid() cid.Cid
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) error
+	HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey) error
 }
 
 // Node represents a full Filecoin node.
@@ -518,7 +518,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Start up 'hello' handshake service
 	syncCallBack := func(pid libp2ppeer.ID, cids []cid.Cid, height uint64) {
-		cidSet := types.NewSortedCidSet(cids...)
+		cidSet := types.NewTipSetKey(cids...)
 		err := node.Syncer.HandleNewTipset(context.Background(), cidSet)
 		if err != nil {
 			log.Infof("error handling blocks: %s", cidSet.String())
@@ -1049,7 +1049,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 }
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
-func (node *Node) getStateFromKey(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
+func (node *Node) getStateFromKey(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error) {
 	stateCid, err := node.ChainReader.GetTipSetStateRoot(tsKey)
 	if err != nil {
 		return nil, err
@@ -1059,7 +1059,7 @@ func (node *Node) getStateFromKey(ctx context.Context, tsKey types.SortedCidSet)
 
 // getStateTree is the default GetStateTree function for the mining worker.
 func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-	return node.getStateFromKey(ctx, ts.ToSortedCidSet())
+	return node.getStateFromKey(ctx, ts.Key())
 }
 
 // getWeight is the default GetWeight function for the mining worker.

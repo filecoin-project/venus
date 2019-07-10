@@ -26,7 +26,7 @@ type Block struct {
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
 	// holders for an epoch.
-	Parents SortedCidSet `json:"parents"`
+	Parents TipSetKey `json:"parents"`
 
 	// ParentWeight is the aggregate chain weight of the parent set.
 	ParentWeight Uint64 `json:"parentWeight"`

@@ -19,8 +19,8 @@ import (
 // Abstracts over a store of blockchain state.
 type queryerChainReader interface {
 	BlockHeight() (uint64, error)
-	GetHead() types.SortedCidSet
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 }
 
 // Queryer knows how to send read-only messages for querying actor state.

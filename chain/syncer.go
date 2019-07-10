@@ -74,9 +74,9 @@ const (
 type syncerChainReader interface {
 	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
 	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
 	SetHead(ctx context.Context, s types.TipSet) error
@@ -167,7 +167,7 @@ func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid
 // blocks that do not form a tipset, or if any tipset has already been recorded
 // as the head of an invalid chain.  collectChain is the entrypoint to the code
 // that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.SortedCidSet) (ts []types.TipSet, err error) {
+func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.TipSetKey) (ts []types.TipSet, err error) {
 	ctx, span := trace.StartSpan(ctx, "Syncer.collectChain")
 	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -223,7 +223,7 @@ func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.SortedC
 
 // tipSetState returns the state resulting from applying the input tipset to
 // the chain.  Precondition: the tipset must be in the store
-func (syncer *Syncer) tipSetState(ctx context.Context, tsKey types.SortedCidSet) (state.Tree, error) {
+func (syncer *Syncer) tipSetState(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error) {
 	if !syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil, errors.Wrap(ErrUnexpectedStoreState, "parent tipset must be in the store")
 	}
@@ -250,7 +250,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	head := syncer.chainStore.GetHead()
 
 	// if tipset is already head, we've been here before. do nothing.
-	if head.Equals(next.ToSortedCidSet()) {
+	if head.Equals(next.Key()) {
 		return nil
 	}
 
@@ -259,7 +259,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 
 	// Lookup parent state. It is guaranteed by the syncer that it is in
 	// the chainStore.
-	st, err := syncer.tipSetState(ctx, parent.ToSortedCidSet())
+	st, err := syncer.tipSetState(ctx, parent.Key())
 	if err != nil {
 		return err
 	}
@@ -297,7 +297,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 
 	// TipSet is validated and added to store, now check if it is the heaviest.
 	// If it is the heaviest update the chainStore.
-	nextParentSt, err := syncer.tipSetState(ctx, parent.ToSortedCidSet()) // call again to get a copy
+	nextParentSt, err := syncer.tipSetState(ctx, parent.Key()) // call again to get a copy
 	if err != nil {
 		return err
 	}
@@ -423,7 +423,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.SortedCidSet) (err error) {
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tipsetCids)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
 	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ipfs/go-cid"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 
@@ -50,8 +51,8 @@ type ApplicationResult struct {
 // of message conflicts.
 type ProcessTipSetResponse struct {
 	Results   []*ApplicationResult
-	Successes types.SortedCidSet
-	Failures  types.SortedCidSet
+	Successes map[cid.Cid]struct{}
+	Failures  map[cid.Cid]struct{}
 }
 
 // DefaultProcessor handles all block processing.
@@ -149,14 +150,16 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	var res ProcessTipSetResponse
-	var emptyRes ProcessTipSetResponse
 	h, err := ts.Height()
 	if err != nil {
-		return &emptyRes, errors.FaultErrorWrap(err, "processing empty tipset")
+		return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "processing empty tipset")
 	}
 	bh := types.NewBlockHeight(h)
 	msgFilter := make(map[string]struct{})
+
+	var res ProcessTipSetResponse
+	res.Failures = make(map[cid.Cid]struct{})
+	res.Successes = make(map[cid.Cid]struct{})
 
 	// TODO: this can be made slightly more efficient by reusing the validation
 	// transition of the first validated block (change would reach here and
@@ -166,7 +169,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		// find miner's owner address
 		minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
 		if err != nil {
-			return &emptyRes, err
+			return &ProcessTipSetResponse{}, err
 		}
 
 		// filter out duplicates within TipSet
@@ -174,7 +177,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		for _, msg := range blk.Messages {
 			mCid, err := msg.Cid()
 			if err != nil {
-				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
 			}
 			if _, ok := msgFilter[mCid.String()]; ok {
 				continue
@@ -186,29 +189,29 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		}
 		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, minerOwnerAddr, bh, ancestors)
 		if err != nil {
-			return &emptyRes, err
+			return &ProcessTipSetResponse{}, err
 		}
 		res.Results = append(res.Results, amRes.Results...)
 		for _, msg := range amRes.SuccessfulMessages {
 			mCid, err := msg.Cid()
 			if err != nil {
-				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
 			}
-			(&res.Successes).Add(mCid)
+			res.Successes[mCid] = struct{}{}
 		}
 		for _, msg := range amRes.PermanentFailures {
 			mCid, err := msg.Cid()
 			if err != nil {
-				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
 			}
-			(&res.Failures).Add(mCid)
+			res.Failures[mCid] = struct{}{}
 		}
 		for _, msg := range amRes.TemporaryFailures {
 			mCid, err := msg.Cid()
 			if err != nil {
-				return &emptyRes, errors.FaultErrorWrap(err, "error getting message cid")
+				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
 			}
-			(&res.Failures).Add(mCid)
+			res.Failures[mCid] = struct{}{}
 		}
 	}
 

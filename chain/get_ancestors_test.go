@@ -20,8 +20,8 @@ func setupGetAncestorTests(t *testing.T, dstP *SyncerTestParams) (context.Contex
 }
 
 type requireGrowChainStore interface {
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	PutTipSetAndState(context.Context, *chain.TipSetAndState) error
 	SetHead(context.Context, types.TipSet) error
 }

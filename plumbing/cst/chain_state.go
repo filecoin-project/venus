@@ -20,9 +20,9 @@ import (
 type chainReader interface {
 	BlockHeight() (uint64, error)
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 }
 
 // ChainStateProvider composes a chain and a state store to provide access to
@@ -89,7 +89,7 @@ func (chn *ChainStateProvider) GetActor(ctx context.Context, addr address.Addres
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
+func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	stateCid, err := chn.reader.GetTipSetStateRoot(tipKey)
 	if err != nil {
 		return nil, err

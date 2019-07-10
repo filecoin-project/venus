@@ -103,7 +103,7 @@ func MkFakeChildCore(parent types.TipSet,
 	}
 	height := pHeight + uint64(1) + nullBlockCount
 
-	pIDs := parent.ToSortedCidSet()
+	pIDs := parent.Key()
 
 	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
 
@@ -214,7 +214,7 @@ func NewFakeChainProvider() *FakeChainProvider {
 }
 
 // GetTipSet returns a tipset by key.
-func (bs *FakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+func (bs *FakeChainProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	var blocks []*types.Block
 	for it := tsKey.Iter(); !it.Complete(); it.Next() {
 		block, ok := bs.blocks[it.Value()]
@@ -234,11 +234,13 @@ func (bs *FakeChainProvider) NewBlockWithMessages(nonce uint64, messages []*type
 	}
 
 	if len(parents) > 0 {
+		var cids []cid.Cid
 		b.Height = parents[0].Height + 1
 		b.StateRoot = parents[0].StateRoot
 		for _, p := range parents {
-			b.Parents.Add(p.Cid())
+			cids = append(cids, p.Cid())
 		}
+		b.Parents = types.NewTipSetKey(cids...)
 	}
 
 	bs.blocks[b.Cid()] = b
