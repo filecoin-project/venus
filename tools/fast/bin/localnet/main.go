@@ -27,7 +27,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
@@ -350,7 +350,7 @@ func main() {
 }
 
 func getMaxUserBytesPerStagedSector() uint64 {
-	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
+	return libsectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
 }
 
 func handleError(err error, msg ...string) int {

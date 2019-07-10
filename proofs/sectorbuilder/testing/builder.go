@@ -9,7 +9,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -88,7 +88,7 @@ func (b *Builder) Build() Harness {
 	})
 	require.NoError(b.t, err)
 
-	max := proofs.GetMaxUserBytesPerStagedSector(class.SectorSize())
+	max := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(class.SectorSize().Uint64()))
 	require.NoError(b.t, err)
 
 	return Harness{

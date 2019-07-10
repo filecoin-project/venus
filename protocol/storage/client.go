@@ -19,7 +19,7 @@ import (
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
@@ -118,7 +118,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to get sector size")
 	}
 
-	maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize).Uint64()
+	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
 	if size > maxUserBytes {
 		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, maxUserBytes)
 	}
