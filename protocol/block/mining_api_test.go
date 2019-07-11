@@ -4,6 +4,8 @@ import (
 	"context"
 	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/types"
+
 	ast "github.com/stretchr/testify/assert"
 	req "github.com/stretchr/testify/require"
 	"testing"
@@ -97,8 +99,8 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	)
 	bt := nd.PorcelainAPI.BlockTime()
 	seed.GiveKey(t, nd, 0)
-	mAddr, moAddr := seed.GiveMiner(t, nd, 0)
-	_, err := storage.NewMiner(mAddr, moAddr, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
+	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
+	_, err := storage.NewMiner(mAddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
 	assert.NoError(err)
 	return bapi.New(
 		nd.AddNewBlock,

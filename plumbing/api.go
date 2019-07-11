@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -44,36 +45,38 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	bitswap      exchange.Interface
-	chain        *cst.ChainStateProvider
-	config       *cfg.Config
-	dag          *dag.DAG
-	expected     consensus.Protocol
-	msgPool      *core.MessagePool
-	msgPreviewer *msg.Previewer
-	msgQueryer   *msg.Queryer
-	msgWaiter    *msg.Waiter
-	network      *net.Network
-	outbox       *core.Outbox
-	storagedeals *strgdls.Store
-	wallet       *wallet.Wallet
+	bitswap       exchange.Interface
+	chain         *cst.ChainStateProvider
+	config        *cfg.Config
+	dag           *dag.DAG
+	expected      consensus.Protocol
+	msgPool       *core.MessagePool
+	msgPreviewer  *msg.Previewer
+	msgQueryer    *msg.Queryer
+	msgWaiter     *msg.Waiter
+	network       *net.Network
+	outbox        *core.Outbox
+	sectorBuilder func() sectorbuilder.SectorBuilder
+	storagedeals  *strgdls.Store
+	wallet        *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Bitswap      exchange.Interface
-	Chain        *cst.ChainStateProvider
-	Config       *cfg.Config
-	DAG          *dag.DAG
-	Deals        *strgdls.Store
-	Expected     consensus.Protocol
-	MsgPool      *core.MessagePool
-	MsgPreviewer *msg.Previewer
-	MsgQueryer   *msg.Queryer
-	MsgWaiter    *msg.Waiter
-	Network      *net.Network
-	Outbox       *core.Outbox
-	Wallet       *wallet.Wallet
+	Bitswap       exchange.Interface
+	Chain         *cst.ChainStateProvider
+	Config        *cfg.Config
+	DAG           *dag.DAG
+	Deals         *strgdls.Store
+	Expected      consensus.Protocol
+	MsgPool       *core.MessagePool
+	MsgPreviewer  *msg.Previewer
+	MsgQueryer    *msg.Queryer
+	MsgWaiter     *msg.Waiter
+	Network       *net.Network
+	Outbox        *core.Outbox
+	SectorBuilder func() sectorbuilder.SectorBuilder
+	Wallet        *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -81,19 +84,20 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		bitswap:      deps.Bitswap,
-		chain:        deps.Chain,
-		config:       deps.Config,
-		dag:          deps.DAG,
-		expected:     deps.Expected,
-		msgPool:      deps.MsgPool,
-		msgPreviewer: deps.MsgPreviewer,
-		msgQueryer:   deps.MsgQueryer,
-		msgWaiter:    deps.MsgWaiter,
-		network:      deps.Network,
-		outbox:       deps.Outbox,
-		storagedeals: deps.Deals,
-		wallet:       deps.Wallet,
+		bitswap:       deps.Bitswap,
+		chain:         deps.Chain,
+		config:        deps.Config,
+		dag:           deps.DAG,
+		expected:      deps.Expected,
+		msgPool:       deps.MsgPool,
+		msgPreviewer:  deps.MsgPreviewer,
+		msgQueryer:    deps.MsgQueryer,
+		msgWaiter:     deps.MsgWaiter,
+		network:       deps.Network,
+		outbox:        deps.Outbox,
+		sectorBuilder: deps.SectorBuilder,
+		storagedeals:  deps.Deals,
+		wallet:        deps.Wallet,
 	}
 }
 
@@ -349,4 +353,9 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 // BitswapGetStats returns bitswaps stats.
 func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
 	return api.bitswap.(*bitswap.Bitswap).Stat()
+}
+
+// SectorBuilder returns the sector builder
+func (api *API) SectorBuilder() sectorbuilder.SectorBuilder {
+	return api.sectorBuilder()
 }

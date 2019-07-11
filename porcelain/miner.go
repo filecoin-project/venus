@@ -318,6 +318,21 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 	return sectorSize, nil
 }
 
+// MinerCalculateLateFee calculates the fee due if a miner's PoSt were to be mined at `height`.
+func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "calculateLateFee", height)
+	if err != nil {
+		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	coll, ok := abiVal.Val.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, errors.New("failed to convert returned ABI value")
+	}
+
+	return coll, nil
+}
+
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
 func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {

@@ -2,9 +2,10 @@ package miner_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"math/big"
 	"testing"
+
+	"github.com/filecoin-project/go-filecoin/exec"
 
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
@@ -62,8 +63,8 @@ func TestAskFunctions(t *testing.T) {
 	pdata = actor.MustConvertParams(big.NewInt(3453))
 	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
-	assert.Equal(t, Errors[ErrAskNotFound], result.ExecutionError)
 	assert.NoError(t, err)
+	assert.Equal(t, Errors[ErrAskNotFound], result.ExecutionError)
 
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
@@ -287,7 +288,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 
 		// update peer ID
 		newPid := th.RequireRandomPeerID(t)
-		updatePeerIdSuccess(ctx, t, st, vms, address.TestAddress, minerAddr, newPid)
+		updatePeerIdSuccess(t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
 		resultB := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -404,7 +405,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 	})
 }
 
-func updatePeerIdSuccess(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
+func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
 	updatePeerIdMsg := types.NewMessage(
 		fromAddr,
 		minerAddr,
@@ -916,14 +917,17 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Error(t, res.ExecutionError)
 
 		// Accepted on the deadline with a fee
+		// Must calculate fee before submitting the PoSt, since submission will reset the proving period.
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "calculateLateFee", ancestors, lastPossibleSubmission)
+		fee := types.NewAttoFILFromBytes(res.Receipt.Return[0])
+		require.False(t, fee.IsZero())
+
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, "submitPoSt", ancestors, []types.PoStProof{proof}, doneDefault)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// Check miner's balance unchanged (because it's topped up from message value then fee burnt).
-		postedCollateral := MinimumCollateralPerSector.Add(MinimumCollateralPerSector) // 2 sectors
-		fee := LatePoStFee(postedCollateral, bh(secondProvingPeriodStart+LargestSectorSizeProvingPeriodBlocks), bh(lastPossibleSubmission), bh(LargestSectorGenerationAttackThresholdBlocks))
 		miner := state.MustGetActor(st, minerAddr)
 		assert.Equal(t, minerBalance.String(), miner.Balance.String())
 
@@ -1087,34 +1091,6 @@ func TestGetProofsMode(t *testing.T) {
 	})
 }
 
-func TestLatePoStFee(t *testing.T) {
-	pledgeCollateral := af(1000)
-
-	t.Run("on time charges no fee", func(t *testing.T) {
-		assert.True(t, types.ZeroAttoFIL.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(999), bh(100))))
-		assert.True(t, types.ZeroAttoFIL.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1000), bh(100))))
-	})
-
-	t.Run("fee proportional to lateness", func(t *testing.T) {
-		// 1 block late is 1% of 100 allowable
-		assert.True(t, af(10).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1001), bh(100))))
-		// 5 blocks late of 100 allowable
-		assert.True(t, af(50).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1005), bh(100))))
-
-		// 2 blocks late of 10000 allowable, fee rounds down to zero
-		assert.True(t, af(0).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1002), bh(10000))))
-		// 9 blocks late of 10000 allowable, fee rounds down to zero
-		assert.True(t, af(0).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1009), bh(10000))))
-		// 10 blocks late of 10000 allowable is 1/1000
-		assert.True(t, af(1).Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1010), bh(10000))))
-	})
-
-	t.Run("fee capped at total pledge", func(t *testing.T) {
-		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(1100), bh(100))))
-		assert.True(t, pledgeCollateral.Equal(LatePoStFee(pledgeCollateral, bh(1000), bh(2000), bh(100))))
-	})
-}
-
 func TestMinerGetPoStState(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -1167,9 +1143,6 @@ func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
 	return addr
 }
 
-func af(h int64) types.AttoFIL {
-	return types.NewAttoFIL(big.NewInt(h))
-}
 
 func bh(h uint64) *types.BlockHeight {
 	return types.NewBlockHeight(uint64(h))

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -120,6 +121,11 @@ func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address)
 	return MinerGetSectorSize(ctx, a, minerAddr)
 }
 
+// MinerCalculateLateFee queries for the fee required for a PoSt submitted at some height.
+func (a *API) MinerCalculateLateFee(ctx context.Context, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	return MinerCalculateLateFee(ctx, a, minerAddr, height)
+}
+
 // MinerGetLastCommittedSectorID queries for the sector size of the given miner.
 func (a *API) MinerGetLastCommittedSectorID(ctx context.Context, minerAddr address.Address) (uint64, error) {
 	return MinerGetLastCommittedSectorID(ctx, a, minerAddr)
@@ -192,6 +198,11 @@ func (a *API) PaymentChannelVoucher(
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
+}
+
+// CalculatePoSt invokes the sector builder to calculate a proof-of-spacetime.
+func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+	return CalculatePoSt(ctx, a, sortedCommRs, seed)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given

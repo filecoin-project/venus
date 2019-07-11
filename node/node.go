@@ -437,22 +437,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
-	PorcelainAPI := porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Bitswap:      bswap,
-		Chain:        chainState,
-		Config:       cfg.NewConfig(nc.Repo),
-		DAG:          dag.NewDAG(merkledag.NewDAGService(bservice)),
-		Deals:        strgdls.New(nc.Repo.DealsDatastore()),
-		Expected:     nodeConsensus,
-		MsgPool:      msgPool,
-		MsgPreviewer: msg.NewPreviewer(chainStore, &cstOffline, bs),
-		MsgQueryer:   msg.NewQueryer(chainStore, &cstOffline, bs),
-		MsgWaiter:    msg.NewWaiter(chainStore, bs, &cstOffline),
-		Network:      net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
-		Outbox:       outbox,
-		Wallet:       fcWallet,
-	}))
-
 	nd := &Node{
 		blockservice: bservice,
 		Blockstore:   bs,
@@ -461,7 +445,6 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
-		PorcelainAPI: PorcelainAPI,
 		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
@@ -473,6 +456,23 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Wallet:       fcWallet,
 		Router:       router,
 	}
+
+	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
+		Bitswap:       bswap,
+		Chain:         chainState,
+		Config:        cfg.NewConfig(nc.Repo),
+		DAG:           dag.NewDAG(merkledag.NewDAGService(bservice)),
+		Deals:         strgdls.New(nc.Repo.DealsDatastore()),
+		Expected:      nodeConsensus,
+		MsgPool:       msgPool,
+		MsgPreviewer:  msg.NewPreviewer(chainStore, &cstOffline, bs),
+		MsgQueryer:    msg.NewQueryer(chainStore, &cstOffline, bs),
+		MsgWaiter:     msg.NewWaiter(chainStore, bs, &cstOffline),
+		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
+		Outbox:        outbox,
+		SectorBuilder: nd.SectorBuilder,
+		Wallet:        fcWallet,
+	}))
 
 	// Bootstrapping network peers.
 	periodStr := nd.Repo.Config().Bootstrap.Period
@@ -779,7 +779,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 	}
 
-	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
+	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
@@ -943,12 +943,19 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
 
-	miningOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
+	ownerAddress, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
+	workerAddress := ownerAddress
 
-	miner, err := storage.NewMiner(minerAddr, miningOwnerAddr, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
+	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch miner's sector size")
+	}
+
+	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
+	miner, err := storage.NewMiner(minerAddr, ownerAddress, workerAddress, prover, sectorSize, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
@@ -969,21 +976,6 @@ func (node *Node) StopMining(ctx context.Context) {
 	}
 
 	// TODO: stop node.StorageMiner
-}
-
-// NewAddress creates a new account address on the default wallet backend.
-func (node *Node) NewAddress() (address.Address, error) {
-	return wallet.NewAddress(node.Wallet)
-}
-
-// miningOwnerAddress returns the owner of miningAddr.
-// TODO: find a better home for this method
-func (node *Node) miningOwnerAddress(ctx context.Context, miningAddr address.Address) (address.Address, error) {
-	ownerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, miningAddr)
-	if err != nil {
-		return address.Undef, errors.Wrap(err, "failed to get miner owner address")
-	}
-	return ownerAddr, nil
 }
 
 func (node *Node) handleSubscription(ctx context.Context, f pubSubProcessorFunc, fname string, s pubsub.Subscription, sname string) {
@@ -1045,7 +1037,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, errors.Wrap(err, "could not get key from miner actor")
 	}
 
-	minerOwnerAddr, err := node.miningOwnerAddress(ctx, minerAddr)
+	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		log.Errorf("could not get owner address of miner actor")
 		return nil, err
