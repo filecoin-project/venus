@@ -139,7 +139,8 @@ func CreateTestMinerWith(
 
 	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
-
+	require.NotNil(t, result)
+	require.NoError(t, result.ExecutionError)
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return addr

@@ -118,6 +118,9 @@ func (api *API) ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, e
 	return api.chain.LsActors(ctx)
 }
 
+// StorageMinerLs returns a list of storage miner addresses
+func (api *API) StorageMinerLs(ctx context.Context) {}
+
 // BlockTime returns the block time used by the consensus protocol.
 func (api *API) BlockTime() time.Duration {
 	return api.expected.BlockTime()

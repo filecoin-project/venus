@@ -24,6 +24,8 @@ const (
 	Invalid = Type(iota)
 	// Address is a address.Address
 	Address
+	// Addresses is a *[]address.Address
+	Addresses
 	// AttoFIL is a types.AttoFIL
 	AttoFIL
 	// BytesAmount is a *types.BytesAmount
@@ -70,6 +72,8 @@ func (t Type) String() string {
 		return "<invalid>"
 	case Address:
 		return "address.Address"
+	case Addresses:
+		return "*[]address.Address"
 	case AttoFIL:
 		return "types.AttoFIL"
 	case BytesAmount:
@@ -125,6 +129,8 @@ func (av *Value) String() string {
 		return "<invalid>"
 	case Address:
 		return av.Val.(address.Address).String()
+	case Addresses:
+		return fmt.Sprint(av.Val.(*[]address.Address))
 	case AttoFIL:
 		return av.Val.(types.AttoFIL).String()
 	case BytesAmount:
@@ -188,6 +194,12 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{address.Undef, av.Val}
 		}
 		return addr.Bytes(), nil
+	case Addresses:
+		addrs, ok := av.Val.(*[]address.Address)
+		if !ok {
+			return nil, typeError{&[]address.Address{}, av.Val}
+		}
+		return cbor.DumpObject(addrs)
 	case AttoFIL:
 		ba, ok := av.Val.(types.AttoFIL)
 		if !ok {
@@ -337,6 +349,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 		switch v := v.(type) {
 		case address.Address:
 			out = append(out, &Value{Type: Address, Val: v})
+		case *[]address.Address:
+			out = append(out, &Value{Type: Addresses, Val: v})
 		case types.AttoFIL:
 			out = append(out, &Value{Type: AttoFIL, Val: v})
 		case *types.BytesAmount:
@@ -408,6 +422,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		return &Value{
 			Type: t,
 			Val:  addr,
+		}, nil
+	case Addresses:
+		var arr *[]address.Address
+		if err := cbor.DecodeInto(data, &arr); err != nil {
+			return nil, err
+
+		}
+		return &Value{
+			Type: t,
+			Val:  arr,
 		}, nil
 	case AttoFIL:
 		return &Value{
@@ -545,6 +569,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 
 var typeTable = map[Type]reflect.Type{
 	Address:        reflect.TypeOf(address.Address{}),
+	Addresses:      reflect.TypeOf(&[]address.Address{}),
 	AttoFIL:        reflect.TypeOf(types.AttoFIL{}),
 	Bytes:          reflect.TypeOf([]byte{}),
 	BytesAmount:    reflect.TypeOf(&types.BytesAmount{}),

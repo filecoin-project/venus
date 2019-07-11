@@ -92,17 +92,21 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
-	"updateStorage": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount},
-		Return: nil,
+	"getMiners": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Addresses},
+	},
+	"getProofsMode": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.ProofsMode},
 	},
 	"getTotalStorage": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	"getProofsMode": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.ProofsMode},
+	"updateStorage": &exec.FunctionSignature{
+		Params: []abi.Type{abi.BytesAmount},
+		Return: nil,
 	},
 }
 
@@ -191,6 +195,44 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 	}
 
 	return 0, nil
+}
+
+func (sma *Actor) GetMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
+	var state State
+	ctx := context.Background()
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		lu, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
+		if err != nil {
+			return nil, err
+		}
+
+		vals, err := lu.Values(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		miners := make([]address.Address, len(vals))
+
+		for i, el := range vals {
+			addr, err := address.NewFromString(el.Key)
+			if err != nil {
+				return nil, err
+			}
+			miners[i] = addr
+		}
+		return miners, nil
+	})
+
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	res, ok := ret.([]address.Address)
+	if !ok {
+		return nil, 1, fmt.Errorf("expected []address.Address to be returned, but got %T instead", ret)
+	}
+
+	return &res, 0, nil
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
