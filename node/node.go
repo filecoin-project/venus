@@ -29,6 +29,7 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	p2pmetrics "github.com/libp2p/go-libp2p-metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-routing"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -91,7 +92,7 @@ type nodeChainReader interface {
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey) error
+	HandleNewTipset(ctx context.Context, p peer.ID, tipsetCids types.TipSetKey) error
 }
 
 // Node represents a full Filecoin node.
@@ -428,7 +429,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, chain.Syncing)
+	chainSyncer := chain.NewSyncer(&cstOffline, nodeConsensus, chainStore, fetcher, chain.Bootstrap)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
 
@@ -519,7 +520,7 @@ func (node *Node) Start(ctx context.Context) error {
 	// Start up 'hello' handshake service
 	syncCallBack := func(pid libp2ppeer.ID, cids []cid.Cid, height uint64) {
 		cidSet := types.NewTipSetKey(cids...)
-		err := node.Syncer.HandleNewTipset(context.Background(), cidSet)
+		err := node.Syncer.HandleNewTipset(context.Background(), pid, cidSet)
 		if err != nil {
 			log.Infof("error handling blocks: %s", cidSet.String())
 		}

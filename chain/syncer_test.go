@@ -204,7 +204,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Bootstrap) // note we use same cst for on and offline for tests
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -226,7 +226,7 @@ func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
+	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Bootstrap)
 }
 
 // initSyncTestWithMode creates and returns the datastructures (consensus, chain
@@ -262,7 +262,7 @@ func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableVie
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
+	sync, testchain, _, fetcher := initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Bootstrap)
 	return sync, testchain, con, fetcher
 }
 

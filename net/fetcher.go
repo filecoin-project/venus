@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -24,6 +25,8 @@ type BitswapFetcher struct {
 	// session is a bitswap session that enables efficient transfer.
 	session   *bserv.Session
 	validator consensus.BlockSyntaxValidator
+
+	log logging.EventLogger
 }
 
 // NewBitswapFetcher returns a BitswapFetcher wired up to the input BlockService and a newly
@@ -32,6 +35,7 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 	return &BitswapFetcher{
 		session:   bserv.NewSession(ctx, bsrv),
 		validator: bv,
+		log:       logging.Logger("bsfetcher"),
 	}
 }
 
@@ -40,6 +44,7 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
+	bsf.log.Infof("Fetching Tipset: %s with recur: %d", tsKey.String(), recur)
 	for i := 0; i < recur; i++ {
 		res, err := bsf.GetBlocks(ctx, cur.ToSlice())
 		if err != nil {
@@ -59,19 +64,20 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 		out = append(out, ts)
 	}
 
+	bsf.log.Infof("Fetched TipSets: %s", out)
+
 	return out, nil
 }
 
 // GetBlocks fetches the blocks with the given cids from the network using the
 // BitswapFetcher's bitswap session.
-func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
+func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) (blks []*types.Block, err error) {
 	var unsanitized []blocks.Block
 	for b := range bsf.session.GetBlocks(ctx, cids) {
 		unsanitized = append(unsanitized, b)
 	}
 
 	if len(unsanitized) < len(cids) {
-		var err error
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			err = errors.Wrap(ctxErr, "failed to fetch all requested blocks")
 		} else {
@@ -79,6 +85,8 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 		}
 		return nil, err
 	}
+
+	bsf.log.Infof("Get Blocks from session: %s", unsanitized)
 
 	var blocks []*types.Block
 	for _, u := range unsanitized {
@@ -94,5 +102,6 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 
 		blocks = append(blocks, block)
 	}
+	bsf.log.Info("Get Blocks complete with: %s", blocks)
 	return blocks, nil
 }

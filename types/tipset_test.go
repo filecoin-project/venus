@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -88,6 +89,13 @@ func TestTipSet(t *testing.T) {
 		t3 := RequireNewTipSet(t, b1, b2, b3)
 		assert.True(t, t3.Defined())
 		assert.Equal(t, 3, t3.Len())
+	})
+
+	t.Run("empty key", func(t *testing.T) {
+		s := NewTipSetKey().String()
+		fmt.Println(s)
+		t3 := RequireNewTipSet(t, b1, b2, b3)
+		fmt.Println(t3.Key().String())
 	})
 
 	t.Run("key", func(t *testing.T) {

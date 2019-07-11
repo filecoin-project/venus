@@ -177,7 +177,7 @@ func main() {
 	}
 
 	// Defer the teardown, this will shuteverything down for us
-	defer env.Teardown(ctx) // nolint: errcheck
+	//defer env.Teardown(ctx) // nolint: errcheck
 
 	// Setup localfilecoin plugin options
 	options := make(map[string]string)
