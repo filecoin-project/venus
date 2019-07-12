@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -85,11 +86,6 @@ type syncerChainReader interface {
 	HasAllBlocks(ctx context.Context, cs []cid.Cid) bool
 }
 
-type syncFetcher interface {
-	GetBlocks(context.Context, []cid.Cid) ([]*types.Block, error)
-	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error)
-}
-
 // Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
 // blocks to traverse during chain collection.  The Syncer can query the
@@ -115,7 +111,7 @@ type Syncer struct {
 	mu sync.Mutex
 	// fetcher is the networked block fetching service for fetching blocks
 	// and messages.
-	fetcher syncFetcher
+	fetcher net.Fetcher
 	// stateStore is the cborStore used for reading and writing state root
 	// to ipld object mappings.
 	stateStore *hamt.CborIpldStore
@@ -132,7 +128,7 @@ type Syncer struct {
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f syncFetcher, syncMode SyncMode) *Syncer {
+func NewSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReader, f net.Fetcher, syncMode SyncMode) *Syncer {
 	return &Syncer{
 		fetcher:    f,
 		stateStore: cst,
@@ -145,27 +141,25 @@ func NewSyncer(cst *hamt.CborIpldStore, c consensus.Protocol, s syncerChainReade
 	}
 }
 
-// getBlksMaybeFromNet resolves cids of blocks.  It gets blocks through the
-// fetcher.  The fetcher wraps a bitswap session which wraps a bitswap exchange,
-// and the bitswap exchange wraps the node's shared blockstore.  So if blocks
-// are available in the node's blockstore they will be resolved locally, and
-// otherwise resolved over the network.  This method will timeout if blocks
-// are unavailable.  This method is all or nothing, it will error if any of the
-// blocks cannot be resolved.
-func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid) ([]types.TipSet, error) {
+// fetchTipSetWithTimeout resolves a TipSetKey to a TipSet. This method will
+// request the TipSet from the network if it is not found locally in the
+// blockstore. This method is all or nothing, it will error if any of the cids
+// that make up the requested tipset cannot be resolved.
+func (syncer *Syncer) fetchTipSetWithTimeout(ctx context.Context, tsKey types.TipSetKey) (types.TipSet, error) {
 	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
 	defer cancel()
 
-	tss, err := syncer.fetcher.FetchTipSets(ctx, types.NewTipSetKey(blkCids...), 1)
+	tss, err := syncer.fetcher.FetchTipSets(ctx, tsKey, 1)
 	if err != nil {
-		return nil, err
+		return types.UndefTipSet, err
 	}
 
+	// TODO remove this when we land: https://github.com/filecoin-project/go-filecoin/issues/1105
 	if len(tss) > 1 {
 		panic("programmer error, FetchTipSets ignored recur parameter, returned more than 1 tipset")
 	}
 
-	return tss, nil
+	return tss[0], nil
 }
 
 // collectChain resolves the cids of the head tipset and its ancestors to
@@ -177,37 +171,32 @@ func (syncer *Syncer) getBlksMaybeFromNet(ctx context.Context, blkCids []cid.Cid
 // blocks that do not form a tipset, or if any tipset has already been recorded
 // as the head of an invalid chain.  collectChain is the entrypoint to the code
 // that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.TipSetKey) (ts []types.TipSet, err error) {
+func (syncer *Syncer) collectChain(ctx context.Context, tsKey types.TipSetKey) (ts []types.TipSet, err error) {
 	ctx, span := trace.StartSpan(ctx, "Syncer.collectChain")
-	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
+	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	var chain []types.TipSet
 	var count uint64
-	fetchedHead := tipsetCids
-	defer logSyncer.Infof("chain fetch from network complete %v", fetchedHead)
+	defer logSyncer.Infof("chain fetch from network complete %s", tsKey.String())
 
 	// Continue collecting the chain if we're either not yet caught up or the
 	// number of new input blocks is less than the FinalityLimit constant.
 	// Otherwise, halt assuming the new blocks come from an invalid chain.
 	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
-		// check the cache for bad tipsets before doing anything
-		tsKey := tipsetCids.String()
 
 		// Finish traversal if the tipset made is tracked in the store.
-		if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
+		if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 			return chain, nil
 		}
 
-		logSyncer.Debugf("CollectChain next link: %s", tsKey)
+		logSyncer.Debugf("CollectChain next link: %s", tsKey.String())
 
-		if syncer.badTipSets.Has(tsKey) {
+		if syncer.badTipSets.Has(tsKey.String()) {
 			return nil, ErrChainHasBadTipSet
 		}
 
-		// This will return a single tipset, error if not found and panic
-		// if more than 1 tipset is returned
-		ts, err := syncer.getBlksMaybeFromNet(ctx, tipsetCids.ToSlice())
+		ts, err := syncer.fetchTipSetWithTimeout(ctx, tsKey)
 		if err != nil {
 			return nil, err
 		}
@@ -218,8 +207,8 @@ func (syncer *Syncer) collectChain(ctx context.Context, tipsetCids types.TipSetK
 		}
 
 		// Update values to traverse next tipset
-		chain = append(ts, chain...)
-		tipsetCids, err = ts[0].Parents()
+		chain = append([]types.TipSet{ts}, chain...)
+		tsKey, err = ts.Parents()
 		if err != nil {
 			return nil, err
 		}
@@ -430,10 +419,10 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey) (err error) {
-	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tipsetCids)
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey) (err error) {
+	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tsKey)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
-	span.AddAttributes(trace.StringAttribute("tipset", tipsetCids.String()))
+	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	// This lock could last a long time as we fetch all the blocks needed to block the chain.
@@ -443,14 +432,14 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.TipS
 	defer syncer.mu.Unlock()
 
 	// If the store already has all these blocks the syncer is finished.
-	if syncer.chainStore.HasAllBlocks(ctx, tipsetCids.ToSlice()) {
+	if syncer.chainStore.HasAllBlocks(ctx, tsKey.ToSlice()) {
 		return nil
 	}
 
 	// Walk the chain given by the input blocks back to a known tipset in
 	// the store. This is the only code that may go to the network to
 	// resolve cids to blocks.
-	chain, err := syncer.collectChain(ctx, tipsetCids)
+	chain, err := syncer.collectChain(ctx, tsKey)
 	if err != nil {
 		return err
 	}
@@ -491,7 +480,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tipsetCids types.TipS
 			return err
 		}
 		if i%500 == 0 {
-			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), tipsetCids.String())
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), tsKey.String())
 		}
 		parent = ts
 	}
