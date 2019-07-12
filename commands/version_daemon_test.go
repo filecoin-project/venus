@@ -51,8 +51,9 @@ func TestVersionOverHttp(t *testing.T) {
 	commit := strings.Trim(getCodeCommit(t), "\n ")
 	expected := fmt.Sprintf("{\"Commit\":\"%s\"}\n", commit)
 
-	defer res.Body.Close()
+	defer res.Body.Close() // nolint: errcheck
 	body, err := ioutil.ReadAll(res.Body)
+	require.NoError(t, err)
 	require.Equal(t, expected, string(body))
 }
 
