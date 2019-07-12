@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -31,20 +28,18 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0, m1], Chain: b[]
 		// to
 		// Msg pool: [m0],     Chain: b[m1]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		mustAdd(ib, m[0], m[1])
 
-		blk := types.Block{Height: 0}
-		parent := th.MustNewTipSet(&blk)
-
-		oldChain := core.NewChainWithMessages(store, parent, msgsSet{})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, parent, msgsSet{msgs{m[1]}})
+		newChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[1]}})
 		newTipSet := headOf(newChain)
 
 		assert.NoError(t, ib.HandleNewHead(ctx, oldTipSet, newTipSet))
@@ -55,14 +50,15 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0, m1], Chain: b[m2]
 		// to
 		// Msg pool: [m0, m1], Chain: b[m2]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		mustAdd(ib, m[0], m[1])
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[2]}})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
 		assert.NoError(t, ib.HandleNewHead(ctx, oldTipSet, oldTipSet)) // sic
@@ -73,19 +69,18 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m2, m5],     Chain: b[m0, m1]
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
 
-		blk := types.Block{Height: 0}
-		parent := th.MustNewTipSet(&blk)
-		oldChain := core.NewChainWithMessages(store, parent, msgsSet{msgs{m[0], m[1]}})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[0], m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, parent,
+		newChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[0]}},
@@ -102,20 +97,19 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m2, m5],     Chain: {b[m0], b[m1]}
 		// to
 		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
 
-		blk := types.Block{Height: 0}
-		parent := th.MustNewTipSet(&blk)
+		parent := chainProvider.headTip()
 
-		oldChain := core.NewChainWithMessages(store, parent, msgsSet{msgs{m[0]}, msgs{m[1]}})
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[0]}, msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, parent,
+		newChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}, msgs{m[0]}, msgs{}, msgs{}},
 			msgsSet{msgs{}, msgs{m[5], m[6]}},
@@ -130,17 +124,18 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m3, m5],     Chain: b[m0] -> b[m1] -> b[m2]
 		// to
 		// Msg pool: [m1, m2],     Chain: b[m0] -> b[m3] -> b[m4, m5]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		mustAdd(ib, m[3], m[5])
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}}, msgsSet{msgs{m[2]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
+		newChain := core.RequireChainWithMessages(t, builder, oldChain[0], msgsSet{msgs{m[3]}}, msgsSet{msgs{m[4], m[5]}})
 		newTipSet := headOf(newChain)
 
 		assert.NoError(t, ib.HandleNewHead(ctx, oldTipSet, newTipSet))
@@ -151,21 +146,21 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m6],         Chain: b[m0] -> b[m1] -> b[m2]
 		// to
 		// Msg pool: [m6],         Chain: b[m0] -> b[m3] -> b[m4] -> b[m5] -> b[m1, m2]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[6])
-
-		oldChain := core.NewChainWithMessages(store, types.TipSet{},
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, oldChain[0],
+		newChain := core.RequireChainWithMessages(t, builder, oldChain[0],
 			msgsSet{msgs{m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5]}},
@@ -181,20 +176,21 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m2]
 		// to
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[6])
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{},
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[0]}, msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, oldChain[0],
+		newChain := core.RequireChainWithMessages(t, builder, oldChain[0],
 			msgsSet{msgs{m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5]}, msgs{m[1], m[2]}},
@@ -209,24 +205,22 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m3, m5],     Chain: b[m0] -> b[m1] -> b[m2]
 		// to
 		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		mustAdd(ib, m[3], m[5])
 
-		blk := types.Block{Height: 0}
-		parent := th.MustNewTipSet(&blk)
-
-		oldChain := core.NewChainWithMessages(store, parent,
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
 		)
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, parent,
+		newChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[0]}, msgs{m[1]}, msgs{m[2]}},
 		)
 		newTipSet := headOf(newChain)
@@ -239,12 +233,13 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [],               Chain: b[m0] -> b[m1] -> b[m2] -> b[m3]
 		// to
 		// Msg pool: [m2, m3],         Chain: b[m0] -> b[m1]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 		m := types.NewSignedMsgs(4, mockSigner)
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{},
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent,
 			msgsSet{msgs{m[0]}},
 			msgsSet{msgs{m[1]}},
 			msgsSet{msgs{m[2]}},
@@ -261,17 +256,18 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0, m1], Chain: b[]
 		// to
 		// Msg pool: [m0],     Chain: b[] -> b[m1, m2]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		mustAdd(ib, m[0], m[1])
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{}})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
+		newChain := core.RequireChainWithMessages(t, builder, oldChain[len(oldChain)-1], msgsSet{msgs{m[1], m[2]}})
 		newTipSet := headOf(newChain)
 
 		assert.NoError(t, ib.HandleNewHead(ctx, oldTipSet, newTipSet))
@@ -282,17 +278,18 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m2, m5],     Chain: b[m0] -> b[m1]
 		// to
 		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		ib := core.NewInbox(p, 10, chainProvider)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
 
-		oldChain := core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
+		parent := chainProvider.headTip()
+		oldChain := core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{m[0]}}, msgsSet{msgs{m[1]}})
 		oldTipSet := headOf(oldChain)
 
-		newChain := core.NewChainWithMessages(store, oldChain[1],
+		newChain := core.RequireChainWithMessages(t, builder, oldChain[1],
 			msgsSet{msgs{m[2], m[3]}},
 			msgsSet{msgs{m[4]}},
 			msgsSet{msgs{m[5], m[6]}},
@@ -304,26 +301,25 @@ func TestUpdateMessagePool(t *testing.T) {
 	})
 
 	t.Run("Times out old messages", func(t *testing.T) {
-		var err error
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		maxAge := uint(10)
 		ib := core.NewInbox(p, maxAge, chainProvider)
 
 		m := types.NewSignedMsgs(maxAge, mockSigner)
 
-		head := headOf(core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{}}))
+		parent := chainProvider.headTip()
+		head := headOf(core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{}}))
 
 		// Add a message at each block height until maxAge is reached
 		for i := uint(0); i < maxAge; i++ {
-			// api.Height determines block time at which message is added
-			chainProvider.height, err = head.Height()
-			require.NoError(t, err)
+			// chainProvider's head determines block time at which message is added
+			chainProvider.setHead(head)
 
 			mustAdd(ib, m[i])
 
 			// update pool with tipset that has no messages
-			next := headOf(core.NewChainWithMessages(store, head, msgsSet{msgs{}}))
+			next := headOf(core.RequireChainWithMessages(t, builder, head, msgsSet{msgs{}}))
 			assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 
 			// assert all added messages still in pool
@@ -333,49 +329,40 @@ func TestUpdateMessagePool(t *testing.T) {
 		}
 
 		// next tipset times out first message only
-		next := headOf(core.NewChainWithMessages(store, head, msgsSet{msgs{}}))
+		next := headOf(core.RequireChainWithMessages(t, builder, head, msgsSet{msgs{}}))
 		assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 		assertPoolEquals(t, p, m[1:]...)
 
 		// adding a chain of multiple tipsets times out based on final state
 		for i := 0; i < 4; i++ {
-			next = headOf(core.NewChainWithMessages(store, next, msgsSet{msgs{}}))
+			next = headOf(core.RequireChainWithMessages(t, builder, next, msgsSet{msgs{}}))
 		}
 		assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 		assertPoolEquals(t, p, m[5:]...)
 	})
 
 	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
-		var err error
-		store, chainProvider := newStoreAndProvider(0)
+		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		maxAge := uint(10)
 		ib := core.NewInbox(p, maxAge, chainProvider)
 
 		m := types.NewSignedMsgs(maxAge, mockSigner)
-
-		head := headOf(core.NewChainWithMessages(store, types.TipSet{}, msgsSet{msgs{}}))
+		parent := chainProvider.headTip()
+		head := headOf(core.RequireChainWithMessages(t, builder, parent, msgsSet{msgs{}}))
 
 		// Add a message at each block height until maxAge is reached
 		for i := uint(0); i < maxAge; i++ {
-			// blockTimer.Height determines block time at which message is added
-			chainProvider.height, err = head.Height()
-			require.NoError(t, err)
+			// chainProvider's head determines block time at which message is added
+			chainProvider.setHead(head)
 
 			mustAdd(ib, m[i])
 
-			// update pool with tipset that has no messages
-			height, err := head.Height()
-			require.NoError(t, err)
-
-			// create a tipset at given height with one block containing no messages
-			nextHeight := types.Uint64(height + 5) // simulate 4 null blocks
-			blk := &types.Block{
-				Height:  nextHeight,
-				Parents: head.Key(),
-			}
-			core.MustPut(store, blk)
-			next := th.MustNewTipSet(blk)
+			// update pool with tipset that has no messages and four
+			// null blocks
+			next := builder.BuildOn(head, func(bb *chain.BlockBuilder) {
+				bb.IncHeight(types.Uint64(4)) // 4 null blocks
+			})
 
 			assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 
@@ -386,37 +373,34 @@ func TestUpdateMessagePool(t *testing.T) {
 		}
 
 		// next tipset times out first message only
-		next := headOf(core.NewChainWithMessages(store, head, msgsSet{msgs{}}))
+		next := headOf(core.RequireChainWithMessages(t, builder, head, msgsSet{msgs{}}))
 		assert.NoError(t, ib.HandleNewHead(ctx, head, next))
 		assertPoolEquals(t, p, m[1:]...)
 	})
 }
 
-func newStoreAndProvider(height uint64) (*hamt.CborIpldStore, *fakeChainProvider) {
-	store := hamt.NewCborStore()
-	return store, &fakeChainProvider{height, store}
+func newBuilderAndProvider(t *testing.T) (*chain.Builder, *fakeChainProvider) {
+	builder := chain.NewBuilder(t, address.Address{})
+	return builder, &fakeChainProvider{builder, builder.NewGenesis()}
 }
 
 type fakeChainProvider struct {
-	height uint64
-	store  *hamt.CborIpldStore
+	*chain.Builder
+	head types.TipSet
 }
 
-func (p *fakeChainProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error) {
-	var blk types.Block
-	if err := p.store.Get(ctx, cid, &blk); err != nil {
-		return nil, errors.Wrapf(err, "failed to get block %s", cid)
-	}
-	return &blk, nil
+func (p *fakeChainProvider) GetHead() types.TipSetKey {
+	return p.head.Key()
 }
 
-func (p *fakeChainProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
-	ctx := context.TODO() // Should GetTipSet require a context everywhere?
-	return chain.LoadTipSetBlocks(ctx, p, tsKey)
+// head is a convenience method for getting test state.
+func (p *fakeChainProvider) headTip() types.TipSet {
+	return p.head
 }
 
-func (p *fakeChainProvider) BlockHeight() (uint64, error) {
-	return p.height, nil
+// setHead is a convenience method for setting test state.
+func (p *fakeChainProvider) setHead(newHead types.TipSet) {
+	p.head = newHead
 }
 
 func mustAdd(ib *core.Inbox, msgs ...*types.SignedMessage) {

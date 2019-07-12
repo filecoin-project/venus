@@ -70,7 +70,6 @@ const (
 )
 
 type syncerChainReaderWriter interface {
-	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
@@ -188,7 +187,14 @@ func (syncer *Syncer) collectChain(ctx context.Context, tsKey types.TipSetKey) (
 	// Continue collecting the chain if we're either not yet caught up or the
 	// number of new input blocks is less than the FinalityLimit constant.
 	// Otherwise, halt assuming the new blocks come from an invalid chain.
-	for (syncer.syncMode == Syncing) || !syncer.exceedsFinalityLimit(chain) {
+	for {
+		exceedsFinality, err := syncer.exceedsFinalityLimit(chain)
+		if err != nil {
+			return nil, err
+		}
+		if syncer.syncMode != Syncing && exceedsFinality {
+			break
+		}
 
 		// Finish traversal if the tipset made is tracked in the store.
 		if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
@@ -472,12 +478,22 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	return nil
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) bool {
+func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) (bool, error) {
 	if len(chain) == 0 {
-		return false
+		return false, nil
 	}
-	blockHeight, _ := syncer.chainStore.BlockHeight()
-	finalityHeight := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
-	chainHeight, _ := chain[0].Height()
-	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight)
+	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	if err != nil {
+		return false, err
+	}
+	headHeight, err := head.Height()
+	if err != nil {
+		return false, err
+	}
+	finalityHeight := types.NewBlockHeight(headHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	chainHeight, err := chain[0].Height()
+	if err != nil {
+		return false, err
+	}
+	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight), nil
 }

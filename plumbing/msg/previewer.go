@@ -17,9 +17,9 @@ import (
 
 // Abstracts over a store of blockchain state.
 type previewerChainReader interface {
-	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
 	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
 // Previewer calculates the amount of Gas needed for a command
@@ -41,16 +41,20 @@ func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs 
 func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "couldnt encode message params")
+		return types.NewGasUnits(0), errors.Wrap(err, "failed to encode message params")
 	}
 
 	st, err := p.chainReader.GetTipSetState(ctx, p.chainReader.GetHead())
 	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
+		return types.NewGasUnits(0), errors.Wrap(err, "failed to load tree for latest state root")
 	}
-	h, err := p.chainReader.BlockHeight()
+	head, err := p.chainReader.GetTipSet(p.chainReader.GetHead())
 	if err != nil {
-		return types.NewGasUnits(0), errors.Wrap(err, "couldnt get base tipset height")
+		return types.NewGasUnits(0), errors.Wrap(err, "failed to get head tipset ")
+	}
+	h, err := head.Height()
+	if err != nil {
+		return types.NewGasUnits(0), errors.Wrap(err, "failed to get head tipset height")
 	}
 
 	vms := vm.NewStorageMap(p.bs)
