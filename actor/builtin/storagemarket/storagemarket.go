@@ -104,7 +104,7 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.ProofsMode},
 	},
-	"getMiners": &exec.FunctionSignature{
+	"getSlashableMiners": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Addresses},
 	},
@@ -197,7 +197,7 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 	return 0, nil
 }
 
-func (sma *Actor) GetMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
+func (sma *Actor) GetSlashableMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
 	var state State
 	ctx := context.Background()
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {

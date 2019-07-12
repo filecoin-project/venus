@@ -117,7 +117,7 @@ func TestStorageMarketGetMiners(t *testing.T) {
 	st, vms := th.RequireCreateStorages(ctx, t)
 
 	t.Run("returns empty slice if no miners", func(t *testing.T) {
-		addrs := *assertGetMiners(t, st, vms)
+		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
@@ -129,7 +129,7 @@ func TestStorageMarketGetMiners(t *testing.T) {
 			mustCreateStorageMiner(t, st, vms, 2),
 		}
 
-		addrs := *assertGetMiners(t, st, vms)
+		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
@@ -153,7 +153,7 @@ func TestStorageMarketGetMiners(t *testing.T) {
 		requireMakeCommitment(t, st, vms, expected[1], blockHeight, sectorID)
 
 		// expect the miner address that made the commitment will be returned
-		addrs := *assertGetMiners(t, st, vms)
+		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 2)
 	})
 }
@@ -314,9 +314,9 @@ func mustCreateStorageMiner(t *testing.T, st state.Tree, vms vm.StorageMap, heig
 	return minerAddr
 }
 
-// assertGetMiners calls "getMiners" message / method, deserializes the result and returns the
+// assertGetSlashableMiners calls "getSlashableMiners" message / method, deserializes the result and returns the
 // addresses of miners in storage
-func assertGetMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
+func assertGetSlashableMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getMiners", nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
