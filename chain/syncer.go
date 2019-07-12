@@ -69,7 +69,7 @@ const (
 	CaughtUp
 )
 
-type syncerChainReader interface {
+type syncerChainReaderWriter interface {
 	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
@@ -119,10 +119,12 @@ type Syncer struct {
 	fetcher net.Fetcher
 	// badTipSetCache is used to filter out collections of invalid blocks.
 	badTipSets *badTipSetCache
+
 	// Evaluates tipset messages and stores the resulting states.
 	stateEvaluator syncStateEvaluator
 	// Provides and stores validated tipsets and their state roots.
-	chainStore syncerChainReader
+	chainStore syncerChainReaderWriter
+
 	// syncMode is an enumerable indicating whether the chain is currently caught
 	// up or still syncing. Presently, syncMode is always Syncing pending
 	// implementation in issue #1160.
@@ -132,7 +134,7 @@ type Syncer struct {
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReader, f net.Fetcher, syncMode SyncMode) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, syncMode SyncMode) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -286,6 +288,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	if err != nil {
 		return err
 	}
+
 	var headParentStateID cid.Cid
 	if !headParentKey.Empty() { // head is not genesis
 		headParentStateID, err = syncer.chainStore.GetTipSetStateRoot(headParentKey)

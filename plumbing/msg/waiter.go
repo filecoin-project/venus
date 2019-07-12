@@ -11,7 +11,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/sampling"
@@ -25,8 +24,8 @@ var log = logging.Logger("messageimpl")
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
 	GetHead() types.TipSetKey
-	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
 	HeadEvents() *pubsub.PubSub
 }
 
@@ -196,11 +195,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	stateCid, err := w.chainReader.GetTipSetStateRoot(ids)
-	if err != nil {
-		return nil, err
-	}
-	st, err := state.LoadStateTree(ctx, w.cst, stateCid, builtin.Actors)
+	st, err := w.chainReader.GetTipSetState(ctx, ids)
 	if err != nil {
 		return nil, err
 	}

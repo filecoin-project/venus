@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -23,7 +22,7 @@ type chainReader interface {
 	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetStateRoot(types.TipSetKey) (cid.Cid, error)
+	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
 }
 
 // ChainStateProvider composes a chain and a state store to provide access to
@@ -99,16 +98,12 @@ func (chn *ChainStateProvider) GetActor(ctx context.Context, addr address.Addres
 
 // GetActorAt returns an actor at a specified tipset key.
 func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
-	stateCid, err := chn.reader.GetTipSetStateRoot(tipKey)
-	if err != nil {
-		return nil, err
-	}
-	tree, err := state.LoadStateTree(ctx, chn.cst, stateCid, builtin.Actors)
+	st, err := chn.reader.GetTipSetState(ctx, tipKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	actr, err := tree.GetActor(ctx, addr)
+	actr, err := st.GetActor(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no actor at address %s", addr)
 	}
@@ -117,7 +112,7 @@ func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipS
 
 // LsActors returns a channel with actors from the latest state on the chain
 func (chn *ChainStateProvider) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
+	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +134,7 @@ func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr 
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
+	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}

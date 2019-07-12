@@ -163,6 +163,11 @@ func (bb *BlockBuilder) AddMessage(msg *types.SignedMessage, rcpt *types.Message
 	bb.block.MessageReceipts = append(bb.block.MessageReceipts, rcpt)
 }
 
+// SetStateRoot sets the block's state root.
+func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
+	bb.block.StateRoot = root
+}
+
 ///// State builder /////
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
