@@ -36,12 +36,12 @@ func TestFetchHappyPath(t *testing.T) {
 	requireBlockStorePut(t, bs, block1.ToNode())
 	requireBlockStorePut(t, bs, block2.ToNode())
 	requireBlockStorePut(t, bs, block3.ToNode())
-	originalCids := types.NewSortedCidSet(block1.Cid(), block2.Cid(), block3.Cid())
+	originalCids := types.NewTipSetKey(block1.Cid(), block2.Cid(), block3.Cid())
 
 	fetchedBlocks, err := fetcher.GetBlocks(context.Background(), originalCids.ToSlice())
 	require.NoError(t, err)
 	require.Equal(t, 3, len(fetchedBlocks))
-	fetchedCids := types.NewSortedCidSet(
+	fetchedCids := types.NewTipSetKey(
 		fetchedBlocks[0].Cid(),
 		fetchedBlocks[1].Cid(),
 		fetchedBlocks[2].Cid(),
@@ -60,7 +60,7 @@ func TestFetchNoBlockFails(t *testing.T) {
 
 	// do not add block2 to the bstore
 	requireBlockStorePut(t, bs, block1.ToNode())
-	cids := types.NewSortedCidSet(block1.Cid(), block2.Cid())
+	cids := types.NewTipSetKey(block1.Cid(), block2.Cid())
 
 	blocks, err := fetcher.GetBlocks(context.Background(), cids.ToSlice())
 	require.Error(t, err)

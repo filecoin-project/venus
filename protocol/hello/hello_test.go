@@ -57,8 +57,8 @@ func TestHelloHandshake(t *testing.T) {
 	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
 	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
 
-	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
-	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
+	msc1.On("SyncCallback", b.ID(), heavy2.Key().ToSlice(), uint64(3)).Return()
+	msc2.On("SyncCallback", a.ID(), heavy1.Key().ToSlice(), uint64(2)).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
@@ -220,8 +220,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
 	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
 
-	msc1.On("SyncCallback", b.ID(), heavy2.ToSortedCidSet().ToSlice(), uint64(3)).Return()
-	msc2.On("SyncCallback", a.ID(), heavy1.ToSortedCidSet().ToSlice(), uint64(2)).Return()
+	msc1.On("SyncCallback", b.ID(), heavy2.Key().ToSlice(), uint64(3)).Return()
+	msc2.On("SyncCallback", a.ID(), heavy1.Key().ToSlice(), uint64(2)).Return()
 
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())

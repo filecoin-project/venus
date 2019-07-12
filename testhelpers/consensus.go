@@ -79,7 +79,7 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 	return &types.Block{
 		Miner:        minerAddr,
 		Ticket:       ticket,
-		Parents:      baseTipSet.ToSortedCidSet(),
+		Parents:      baseTipSet.Key(),
 		ParentWeight: types.Uint64(10000 * height),
 		Height:       types.Uint64(height),
 		Nonce:        types.Uint64(height),

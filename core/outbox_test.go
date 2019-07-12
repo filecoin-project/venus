@@ -150,24 +150,24 @@ func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessag
 
 // A chain and actor provider which provides and expects values for a single message.
 type fakeProvider struct {
-	head   types.SortedCidSet // Provided by GetHead and expected by others
-	tipset types.TipSet       // Provided by GetTipset(head)
-	addr   address.Address    // Expected by GetActorAt
-	actor  *actor.Actor       // Provided by GetActorAt(head, tipKey, addr)
+	head   types.TipSetKey // Provided by GetHead and expected by others
+	tipset types.TipSet    // Provided by GetTipset(head)
+	addr   address.Address // Expected by GetActorAt
+	actor  *actor.Actor    // Provided by GetActorAt(head, tipKey, addr)
 }
 
-func (p *fakeProvider) GetHead() types.SortedCidSet {
+func (p *fakeProvider) GetHead() types.TipSetKey {
 	return p.head
 }
 
-func (p *fakeProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+func (p *fakeProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	if !tsKey.Equals(p.head) {
 		return types.UndefTipSet, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
 	}
 	return p.tipset, nil
 }
 
-func (p *fakeProvider) GetActorAt(ctx context.Context, tsKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
+func (p *fakeProvider) GetActorAt(ctx context.Context, tsKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	if !tsKey.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", tsKey, p.head)
 	}
@@ -180,7 +180,7 @@ func (p *fakeProvider) GetActorAt(ctx context.Context, tsKey types.SortedCidSet,
 // Set sets the tipset, from address, and actor to be provided by creating a tipset with one block.
 func (p *fakeProvider) Set(t *testing.T, block *types.Block, addr address.Address, actor *actor.Actor) {
 	p.tipset = types.RequireNewTipSet(t, block)
-	tsKey := types.NewSortedCidSet(block.Cid())
+	tsKey := types.NewTipSetKey(block.Cid())
 	p.head = tsKey
 	p.addr = addr
 	p.actor = actor

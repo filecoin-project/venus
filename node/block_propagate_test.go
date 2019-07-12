@@ -63,7 +63,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
-		Parents:      baseTS.ToSortedCidSet(),
+		Parents:      baseTS.Key(),
 		Height:       types.Uint64(1),
 		ParentWeight: types.Uint64(10000),
 		StateRoot:    baseTS.ToSlice()[0].StateRoot,

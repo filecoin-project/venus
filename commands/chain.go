@@ -33,7 +33,7 @@ var chainHeadCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		return re.Emit(head.ToSortedCidSet())
+		return re.Emit(head.Key())
 	},
 	Type: []cid.Cid{},
 	Encoders: cmds.EncoderMap{

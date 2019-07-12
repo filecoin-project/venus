@@ -13,11 +13,13 @@ import (
 // ToSlice() (which involves a shallow copy) or efficiently by index with At().
 // TipSet is a lightweight value type; passing by pointer is usually unnecessary.
 //
-// Canonical tipset block ordering does not match the order of CIDs in a SortedCidSet used as
+// Canonical tipset block ordering does not match the order of CIDs in a TipSetKey used as
 // a tipset "key".
 type TipSet struct {
 	// This slice is wrapped in a struct to enforce immutability.
 	blocks []*Block
+	// Key is computed at construction and cached.
+	key TipSetKey
 }
 
 var (
@@ -41,7 +43,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 	height := first.Height
 	parents := first.Parents
 	weight := first.ParentWeight
-	cids := make(map[cid.Cid]bool)
+	cids := make([]cid.Cid, len(blocks))
 
 	sorted := make([]*Block, len(blocks))
 	for i, blk := range blocks {
@@ -56,13 +58,8 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
 		}
-		// Reject duplicate blocks (by CID).
-		c := blk.Cid()
-		if cids[c] {
-			return UndefTipSet, errors.Errorf("Duplicate block CID %s", c)
-		}
-		cids[c] = true
 		sorted[i] = blk
+		cids[i] = blk.Cid()
 	}
 
 	// Sort blocks by ticket.
@@ -75,7 +72,12 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 		return cmp < 0
 	})
 
-	return TipSet{sorted}, nil
+	// Duplicate blocks (CIDs) are rejected here, pass that error through.
+	key, err := NewTipSetKeyFromUnique(cids...)
+	if err != nil {
+		return UndefTipSet, err
+	}
+	return TipSet{sorted, key}, nil
 }
 
 // Defined checks whether the tipset is defined.
@@ -95,13 +97,9 @@ func (ts TipSet) At(i int) *Block {
 	return ts.blocks[i]
 }
 
-// ToSortedCidSet returns a SortedCidSet containing the CIDs in the tipset.
-func (ts TipSet) ToSortedCidSet() SortedCidSet {
-	s := SortedCidSet{}
-	for _, b := range ts.blocks {
-		s.Add(b.Cid())
-	}
-	return s
+// Key returns a key for the tipset.
+func (ts TipSet) Key() TipSetKey {
+	return ts.key
 }
 
 // ToSlice returns an ordered slice of pointers to the tipset's blocks.
@@ -142,9 +140,9 @@ func (ts TipSet) Height() (uint64, error) {
 }
 
 // Parents returns the CIDs of the parents of the blocks in the tipset.
-func (ts TipSet) Parents() (SortedCidSet, error) {
+func (ts TipSet) Parents() (TipSetKey, error) {
 	if len(ts.blocks) == 0 {
-		return SortedCidSet{}, errUndefTipSet
+		return TipSetKey{}, errUndefTipSet
 	}
 	return ts.blocks[0].Parents, nil
 }
@@ -160,13 +158,13 @@ func (ts TipSet) ParentWeight() (uint64, error) {
 // Equals tests whether the tipset contains the same blocks as another.
 // Equality is not tested deeply: two tipsets are considered equal if their keys (ordered block CIDs) are equal.
 func (ts TipSet) Equals(ts2 TipSet) bool {
-	return ts.ToSortedCidSet().Equals(ts2.ToSortedCidSet())
+	return ts.Key().Equals(ts2.Key())
 }
 
 // String returns a formatted string of the CIDs in the TipSet.
 // "{ <cid1> <cid2> <cid3> }"
 // Note: existing callers use this as a unique key for the tipset. We should change them
-// to use the sorted CID set explicitly
+// to use the TipSetKey explicitly
 func (ts TipSet) String() string {
-	return ts.ToSortedCidSet().String()
+	return ts.Key().String()
 }

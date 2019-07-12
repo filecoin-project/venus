@@ -15,8 +15,8 @@ import (
 
 type recentAncestorsChainReader interface {
 	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 // ErrNoCommonAncestor is returned when two chains assumed to have a common ancestor do not.

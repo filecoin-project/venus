@@ -12,8 +12,8 @@ import (
 )
 
 type latestStateChainReader interface {
-	GetHead() types.SortedCidSet
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 }
 
 // LatestState gets the latest state from the state Store.

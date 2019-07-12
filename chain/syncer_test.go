@@ -304,7 +304,7 @@ func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
 }
 
 type requireTsAddedChainStore interface {
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
 	HasBlock(context.Context, cid.Cid) bool
 }
@@ -314,7 +314,7 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	h, err := ts.Height()
 	require.NoError(t, err)
 	// Tip Index correctly updated
-	gotTs, err := chain.GetTipSet(ts.ToSortedCidSet())
+	gotTs, err := chain.GetTipSet(ts.Key())
 	require.NoError(t, err)
 	require.Equal(t, ts, gotTs)
 	parent, err := ts.Parents()
@@ -334,7 +334,7 @@ func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.T
 	h, err := ts.Height()
 	assert.NoError(t, err)
 	// Tip Index correctly updated
-	gotTs, err := chainStore.GetTipSet(ts.ToSortedCidSet())
+	gotTs, err := chainStore.GetTipSet(ts.Key())
 	assert.NoError(t, err)
 	assert.Equal(t, ts, gotTs)
 	parent, err := ts.Parents()
@@ -349,7 +349,7 @@ func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.T
 	}
 }
 
-func assertNoAdd(t *testing.T, chainStore requireTsAddedChainStore, cids types.SortedCidSet) {
+func assertNoAdd(t *testing.T, chainStore requireTsAddedChainStore, cids types.TipSetKey) {
 	ctx := context.Background()
 	// Tip Index correctly updated
 	_, err := chainStore.GetTipSet(cids)
@@ -370,14 +370,14 @@ func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	assert.Equal(t, head, headTipSet)
 }
 
-func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.SortedCidSet {
+func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
 	var cids []cid.Cid
 	for _, block := range blocks {
 		c := block.Cid()
 		cids = append(cids, c)
 	}
 	f.AddSourceBlocks(blocks...)
-	return types.NewSortedCidSet(cids...)
+	return types.NewTipSetKey(cids...)
 }
 
 /* Regular Degular syncing */
@@ -426,13 +426,13 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 	expTs1 := th.RequireNewTipSet(t, dstP.link1blk1)
 
 	_ = requirePutBlocks(t, blockSource, dstP.link1blk1, dstP.link1blk2)
-	err := syncer.HandleNewTipset(ctx, types.NewSortedCidSet(dstP.link1blk1.Cid()))
+	err := syncer.HandleNewTipset(ctx, types.NewTipSetKey(dstP.link1blk1.Cid()))
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, expTs1)
 	assertHead(t, chainStore, expTs1)
 
-	err = syncer.HandleNewTipset(ctx, types.NewSortedCidSet(dstP.link1blk2.Cid()))
+	err = syncer.HandleNewTipset(ctx, types.NewTipSetKey(dstP.link1blk2.Cid()))
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, dstP.link1)
@@ -634,7 +634,7 @@ func TestFarFutureTipsetsWhenCaughtUp(t *testing.T) {
 	totalPower := types.NewBytesAmount(100)
 
 	var err error
-	var tipsetCids types.SortedCidSet
+	var tipsetCids types.TipSetKey
 	for i := 0; i < chain.FinalityLimit+10; i++ {
 		require.NoError(t, err)
 
@@ -671,7 +671,7 @@ func TestFarFutureTipsetsWhenSyncing(t *testing.T) {
 	totalPower := types.NewBytesAmount(100)
 
 	var err error
-	var tipsetCids types.SortedCidSet
+	var tipsetCids types.TipSetKey
 	for i := 0; i < chain.FinalityLimit+1; i++ {
 		require.NoError(t, err)
 
@@ -696,7 +696,7 @@ func TestBlocksNotATipSet(t *testing.T) {
 
 	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
 	_ = requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
-	badCids := types.NewSortedCidSet(dstP.link1blk1.Cid(), dstP.link2blk1.Cid())
+	badCids := types.NewTipSetKey(dstP.link1blk1.Cid(), dstP.link2blk1.Cid())
 	err := syncer.HandleNewTipset(ctx, badCids)
 	assert.Error(t, err)
 	assertNoAdd(t, chainStore, badCids)
@@ -1215,20 +1215,20 @@ func TestTipSetWeightDeep(t *testing.T) {
 }
 
 type tipSetGetter interface {
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.SortedCidSet) types.TipSet {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.TipSetKey) types.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts
 }
 
 type tipSetStateRootGetter interface {
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 }
 
-func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key types.SortedCidSet) cid.Cid {
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key types.TipSetKey) cid.Cid {
 	stateCid, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
 	return stateCid

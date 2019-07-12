@@ -372,7 +372,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			nextHeight := types.Uint64(height + 5) // simulate 4 null blocks
 			blk := &types.Block{
 				Height:  nextHeight,
-				Parents: head.ToSortedCidSet(),
+				Parents: head.Key(),
 			}
 			core.MustPut(store, blk)
 			next := th.MustNewTipSet(blk)
@@ -410,7 +410,7 @@ func (p *fakeChainProvider) GetBlock(ctx context.Context, cid cid.Cid) (*types.B
 	return &blk, nil
 }
 
-func (p *fakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+func (p *fakeChainProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	ctx := context.TODO() // Should GetTipSet require a context everywhere?
 	return chain.LoadTipSetBlocks(ctx, p, tsKey)
 }

@@ -575,21 +575,23 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	var wg sync.WaitGroup
 
 	expHeadBlks := td.GetChainHead()
-	var expHead types.SortedCidSet
+	var expHeadCids []cid.Cid
 	for _, blk := range expHeadBlks {
-		expHead.Add(blk.Cid())
+		expHeadCids = append(expHeadCids, blk.Cid())
 	}
+	expHeadKey := types.NewTipSetKey(expHeadCids...)
 
 	for _, p := range peers {
 		wg.Add(1)
 		go func(p *TestDaemon) {
 			for {
 				actHeadBlks := p.GetChainHead()
-				var actHead types.SortedCidSet
+				var actHeadCids []cid.Cid
 				for _, blk := range actHeadBlks {
-					actHead.Add(blk.Cid())
+					actHeadCids = append(actHeadCids, blk.Cid())
 				}
-				if expHead.Equals(actHead) {
+				actHeadKey := types.NewTipSetKey(actHeadCids...)
+				if expHeadKey.Equals(actHeadKey) {
 					wg.Done()
 					return
 				}

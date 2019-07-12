@@ -11,10 +11,10 @@ import (
 // A reorg occurs when the old head is not a member of the new chain AND the
 // old head is not a subset of the new head.
 func IsReorg(old, new, commonAncestor types.TipSet) bool {
-	oldSortedSet := old.ToSortedCidSet()
-	newSortedSet := new.ToSortedCidSet()
+	oldSortedSet := old.Key()
+	newSortedSet := new.Key()
 
-	return !(&newSortedSet).Contains(&oldSortedSet) && !commonAncestor.Equals(old)
+	return !(&newSortedSet).ContainsAll(oldSortedSet) && !commonAncestor.Equals(old)
 }
 
 // ReorgDiff returns the dropped and added block heights resulting from the

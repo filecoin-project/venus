@@ -10,7 +10,7 @@ import (
 
 // TipSetProvider provides tipsets for traversal.
 type TipSetProvider interface {
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
@@ -59,7 +59,7 @@ type BlockProvider interface {
 }
 
 // LoadTipSetBlocks loads all the blocks for a tipset from the store.
-func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.SortedCidSet) (types.TipSet, error) {
+func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.TipSetKey) (types.TipSet, error) {
 	var blocks []*types.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
@@ -84,6 +84,6 @@ func TipSetProviderFromBlocks(ctx context.Context, blocks BlockProvider) TipSetP
 }
 
 // GetTipSet loads the blocks for a tipset.
-func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	return LoadTipSetBlocks(p.ctx, p.blocks, tsKey)
 }

@@ -197,7 +197,7 @@ func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	if err != nil {
 		log.Errorf("unable to fetch chain head: %s", err)
 	}
-	tipset := ts.ToSortedCidSet().String()
+	tipset := ts.Key().String()
 	height, err := ts.Height()
 	if err != nil {
 		log.Warningf("heartbeat service failed to get chain height: %s", err)

@@ -78,8 +78,8 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey stri
 }
 
 type HeadAndTipsetGetter interface {
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
 func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
@@ -116,20 +116,20 @@ func TestGetByKey(t *testing.T) {
 	chain := newChainStore(dstP)
 	requirePutTestChain(t, chain, dstP)
 
-	gotGTS := requireGetTipSet(ctx, t, chain, dstP.genTS.ToSortedCidSet())
-	gotGTSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.genTS.ToSortedCidSet())
+	gotGTS := requireGetTipSet(ctx, t, chain, dstP.genTS.Key())
+	gotGTSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.genTS.Key())
 
-	got1TS := requireGetTipSet(ctx, t, chain, dstP.link1.ToSortedCidSet())
-	got1TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link1.ToSortedCidSet())
+	got1TS := requireGetTipSet(ctx, t, chain, dstP.link1.Key())
+	got1TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link1.Key())
 
-	got2TS := requireGetTipSet(ctx, t, chain, dstP.link2.ToSortedCidSet())
-	got2TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link2.ToSortedCidSet())
+	got2TS := requireGetTipSet(ctx, t, chain, dstP.link2.Key())
+	got2TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link2.Key())
 
-	got3TS := requireGetTipSet(ctx, t, chain, dstP.link3.ToSortedCidSet())
-	got3TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link3.ToSortedCidSet())
+	got3TS := requireGetTipSet(ctx, t, chain, dstP.link3.Key())
+	got3TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link3.Key())
 
-	got4TS := requireGetTipSet(ctx, t, chain, dstP.link4.ToSortedCidSet())
-	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link4.ToSortedCidSet())
+	got4TS := requireGetTipSet(ctx, t, chain, dstP.link4.Key())
+	got4TSSR := requireGetTipSetStateRoot(ctx, t, chain, dstP.link4.Key())
 	assert.Equal(t, dstP.genTS, gotGTS)
 	assert.Equal(t, dstP.link1, got1TS)
 	assert.Equal(t, dstP.link2, got2TS)
@@ -153,7 +153,7 @@ func TestGetByParent(t *testing.T) {
 	chain := newChainStore(dstP)
 
 	requirePutTestChain(t, chain, dstP)
-	pkg := types.SortedCidSet{}.String() // empty cid set is dstP.genesis pIDs
+	pkg := types.TipSetKey{}.String() // empty cid set is dstP.genesis pIDs
 	pk1 := dstP.genTS.String()
 	pk2 := dstP.link1.String()
 	pk3 := dstP.link2.String()
@@ -238,15 +238,15 @@ func TestGetBlocks(t *testing.T) {
 
 	requirePutTestChain(t, chain, dstP)
 
-	var cids types.SortedCidSet
+	var cids []cid.Cid
 	for _, blk := range blks {
 		c := blk.Cid()
-		(&cids).Add(c)
+		cids = append(cids, c)
 		gotBlk, err := chain.GetBlock(ctx, c)
 		assert.NoError(t, err)
 		assert.Equal(t, blk.Cid(), gotBlk.Cid())
 	}
-	gotBlks, err := chain.GetBlocks(ctx, cids)
+	gotBlks, err := chain.GetBlocks(ctx, types.NewTipSetKey(cids...))
 	assert.NoError(t, err)
 	assert.Equal(t, len(blks), len(gotBlks))
 }
@@ -306,19 +306,19 @@ func TestHead(t *testing.T) {
 	requirePutTestChain(t, chain, dstP)
 
 	// Head starts as an empty cid set
-	assert.Equal(t, types.SortedCidSet{}, chain.GetHead())
+	assert.Equal(t, types.TipSetKey{}, chain.GetHead())
 
 	// Set Head
 	assertSetHead(t, chain, dstP.genTS)
-	assert.Equal(t, dstP.genTS.ToSortedCidSet(), chain.GetHead())
+	assert.Equal(t, dstP.genTS.Key(), chain.GetHead())
 
 	// Move head forward
 	assertSetHead(t, chain, dstP.link4)
-	assert.Equal(t, dstP.link4.ToSortedCidSet(), chain.GetHead())
+	assert.Equal(t, dstP.link4.Key(), chain.GetHead())
 
 	// Move head back
 	assertSetHead(t, chain, dstP.genTS)
-	assert.Equal(t, dstP.genTS.ToSortedCidSet(), chain.GetHead())
+	assert.Equal(t, dstP.genTS.Key(), chain.GetHead())
 }
 
 func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
@@ -394,7 +394,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check that chain store has index
 	// Get a tipset and state by key
-	got2 := requireGetTipSet(ctx, t, rebootChain, dstP.link2.ToSortedCidSet())
+	got2 := requireGetTipSet(ctx, t, rebootChain, dstP.link2.Key())
 	assert.Equal(t, dstP.link2, got2)
 
 	// Get another by parent key

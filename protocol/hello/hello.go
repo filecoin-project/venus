@@ -142,7 +142,7 @@ func (h *Handler) getOurHelloMessage() *Message {
 
 	return &Message{
 		GenesisHash:          h.genesis,
-		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
+		HeaviestTipSetCids:   heaviest.Key().ToSlice(),
 		HeaviestTipSetHeight: height,
 		CommitSha:            h.commitSha,
 	}

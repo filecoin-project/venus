@@ -3,12 +3,13 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/ipfs/go-cid"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -227,7 +228,7 @@ func NewBlockForTest(parent *Block, nonce uint64) *Block {
 	if parent != nil {
 		block.Height = parent.Height + 1
 		block.StateRoot = parent.StateRoot
-		block.Parents.Add(parent.Cid())
+		block.Parents = NewTipSetKey(parent.Cid())
 	}
 
 	return block
