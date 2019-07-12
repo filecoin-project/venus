@@ -116,19 +116,54 @@ func TestStorageMarketGetMiners(t *testing.T) {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	addrs := *assertGetMiners(t, st, vms)
-	assert.Len(t, addrs, 0)
+	t.Run("returns empty slice if no miners", func(t *testing.T) {
+		addrs := *assertGetMiners(t, st, vms)
+		assert.Len(t, addrs, 0)
+	})
 
-	expected := []address.Address{
-		mustCreateStorageMiner(t, st, vms, 0),
-		mustCreateStorageMiner(t, st, vms, 1),
-		mustCreateStorageMiner(t, st, vms, 2),
-	}
+	t.Run("excludes storage miners with no commitments", func(t *testing.T) {
+		// create miners without commitments
+		_ = []address.Address{
+			mustCreateStorageMiner(t, st, vms, 0),
+			mustCreateStorageMiner(t, st, vms, 1),
+			mustCreateStorageMiner(t, st, vms, 2),
+		}
 
-	addrs = *assertGetMiners(t, st, vms)
-	assert.Len(t, addrs, 3)
+		addrs := *assertGetMiners(t, st, vms)
+		assert.Len(t, addrs, 0)
+	})
 
-	assertEqualAddrs(t, expected, addrs)
+	t.Run("gets number of miners with commitments (slashable miners)", func(t *testing.T) {
+		expected := []address.Address{
+			mustCreateStorageMiner(t, st, vms, 0),
+			mustCreateStorageMiner(t, st, vms, 1),
+			mustCreateStorageMiner(t, st, vms, 2),
+		}
+
+		// make a commitment
+		blockHeight := 3
+		sectorID := uint64(1)
+		requireMakeCommitment(t, st, vms, expected[0], blockHeight, sectorID)
+
+		// TODO this is failing with :
+		// failed to verify seal proof: Bytes could not be converted to Fr
+
+		blockHeight = 4
+		sectorID = uint64(2)
+		requireMakeCommitment(t, st, vms, expected[1], blockHeight, sectorID)
+
+		// expect the miner address that made the commitment will be returned
+		addrs := *assertGetMiners(t, st, vms)
+		assert.Len(t, addrs, 2)
+	})
+}
+
+func requireMakeCommitment(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address, blockHeight int, sectorID uint64) {
+	ancestors := th.RequireTipSetChain(t, blockHeight)
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
+	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 }
 
 func TestUpdateStorage(t *testing.T) {
@@ -289,8 +324,8 @@ func assertGetMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.
 
 	dsz, err := abi.Deserialize(res.Receipt.Return[0], abi.Addresses)
 	require.NoError(t, err)
-	addrs := dsz.Val.(*[]address.Address)
-	return addrs
+	addrsPtr := dsz.Val.(*[]address.Address)
+	return addrsPtr
 }
 
 // assertEqualAddrs ensures the "expected" array of addresses is value-equal to "actual"

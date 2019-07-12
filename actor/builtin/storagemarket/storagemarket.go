@@ -92,21 +92,21 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
-	"getMiners": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.Addresses},
-	},
-	"getProofsMode": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.ProofsMode},
+	"updateStorage": &exec.FunctionSignature{
+		Params: []abi.Type{abi.BytesAmount},
+		Return: nil,
 	},
 	"getTotalStorage": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	"updateStorage": &exec.FunctionSignature{
-		Params: []abi.Type{abi.BytesAmount},
-		Return: nil,
+	"getProofsMode": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.ProofsMode},
+	},
+	"getMiners": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.Addresses},
 	},
 }
 
@@ -211,14 +211,23 @@ func (sma *Actor) GetMiners(vmctx exec.VMContext) (*[]address.Address, uint8, er
 			return nil, err
 		}
 
-		miners := make([]address.Address, len(vals))
+		miners := []address.Address{}
 
-		for i, el := range vals {
+		for _, el := range vals {
 			addr, err := address.NewFromString(el.Key)
 			if err != nil {
 				return nil, err
 			}
-			miners[i] = addr
+
+			var slashable bool
+			slashable, err = sma.getSlashableForMiner(vmctx, addr)
+			if err != nil {
+				return nil, err
+			}
+
+			if slashable {
+				miners = append(miners, addr)
+			}
 		}
 		return miners, nil
 	})
@@ -277,6 +286,19 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 	}
 
 	return size, 0, nil
+}
+
+func (sma *Actor) getSlashableForMiner(vmctx exec.VMContext, minerAddr address.Address) (bool, error) {
+	msgResult, _, err := vmctx.Send(minerAddr, "getSlashable", types.ZeroAttoFIL, nil)
+	if err != nil {
+		return false, err
+	}
+
+	slashable, err := abi.Deserialize(msgResult[0], abi.Boolean)
+	if err != nil {
+		return false, err
+	}
+	return slashable.Val.(bool), nil
 }
 
 // isSupportedSectorSize produces a boolean indicating whether or not the
