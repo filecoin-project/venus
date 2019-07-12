@@ -24,7 +24,6 @@ var log = logging.Logger("messageimpl")
 
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)

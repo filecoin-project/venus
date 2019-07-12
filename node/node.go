@@ -81,7 +81,6 @@ type pubSubProcessorFunc func(ctx context.Context, msg pubsub.Message) error
 
 type nodeChainReader interface {
 	GenesisCid() cid.Cid
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
@@ -395,7 +394,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), bs, genCid)
 	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
 	powerTable := &consensus.MarketView{}
 
@@ -1044,8 +1043,8 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 	}
 	return mining.NewDefaultWorker(
 		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
-		node.Blockstore, node.CborStore(), minerAddr, minerOwnerAddr, minerWorker,
-		node.Wallet, node.PorcelainAPI), nil
+		node.Blockstore, minerAddr, minerOwnerAddr, minerWorker, node.Wallet,
+		node.PorcelainAPI), nil
 }
 
 // getStateFromKey returns the state tree based on tipset fetched with provided key tsKey

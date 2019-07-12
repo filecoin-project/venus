@@ -74,7 +74,6 @@ const (
 
 type syncerChainReader interface {
 	BlockHeight() (uint64, error)
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
@@ -83,7 +82,6 @@ type syncerChainReader interface {
 	SetHead(ctx context.Context, s types.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool
 	GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error)
-	HasAllBlocks(ctx context.Context, cs []cid.Cid) bool
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -431,8 +429,8 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
 
-	// If the store already has all these blocks the syncer is finished.
-	if syncer.chainStore.HasAllBlocks(ctx, tsKey.ToSlice()) {
+	// If the store already has this tipset then the syncer is finished.
+	if _, err := syncer.chainStore.GetTipSet(tsKey); err == nil {
 		return nil
 	}
 

@@ -19,17 +19,16 @@ import (
 
 type chainReader interface {
 	BlockHeight() (uint64, error)
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(types.TipSetKey) (cid.Cid, error)
 }
 
 // ChainStateProvider composes a chain and a state store to provide access to
 // the state (including actors) derived from a chain.
 type ChainStateProvider struct {
-	reader chainReader         // Provides chain blocks and tipsets.
-	cst    *hamt.CborIpldStore // Provides state trees.
+	reader chainReader         // Provides chain tipsets and state roots.
+	cst    *hamt.CborIpldStore // Provides chain blocks and state trees.
 }
 
 var (
@@ -70,7 +69,9 @@ func (chn *ChainStateProvider) Ls(ctx context.Context) (*chain.TipsetIterator, e
 
 // GetBlock gets a block by CID
 func (chn *ChainStateProvider) GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return chn.reader.GetBlock(ctx, id)
+	var out types.Block
+	err := chn.cst.Get(ctx, id, &out)
+	return &out, err
 }
 
 // SampleRandomness samples randomness from the chain at the given height.

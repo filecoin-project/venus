@@ -107,7 +107,7 @@ func LoadLookup(ctx context.Context, storage exec.Storage, cid cid.Cid) (exec.Lo
 	return LoadTypedLookup(ctx, storage, cid, nil)
 }
 
-// LoadTypedLookup loads hamt-ipld node from storage if the cid exists, or creates a new on if it is nil.
+// LoadTypedLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The provided type allows the lookup to correctly unmarshal values
 func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid cid.Cid, valueType interface{}) (exec.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
