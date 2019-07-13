@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
