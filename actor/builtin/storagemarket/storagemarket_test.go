@@ -110,7 +110,7 @@ func TestProofsMode(t *testing.T) {
 	assert.Equal(t, types.TestProofsMode, proofsMode)
 }
 
-func TestStorageMarketGetMiners(t *testing.T) {
+func TestStorageMarketGetSlashableMiners(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
