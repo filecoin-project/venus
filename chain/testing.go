@@ -213,6 +213,30 @@ func (f *Builder) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block
 	return ret, nil
 }
 
+func (f *Builder) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
+	var out []types.TipSet
+	cur := tsKey
+	for i := 0; i < recur; i++ {
+		res, err := f.GetBlocks(ctx, cur.ToSlice())
+		if err != nil {
+			return nil, err
+		}
+
+		ts, err := types.NewTipSet(res...)
+		if err != nil {
+			return nil, err
+		}
+
+		cur, err = ts.Parents()
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, ts)
+	}
+	return out, nil
+}
+
 // GetTipSet returns the tipset identified by `key`.
 func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 	var blocks []*types.Block
