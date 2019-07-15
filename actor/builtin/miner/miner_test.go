@@ -5,8 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/exec"
-
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -852,7 +852,6 @@ func TestMinerSubmitPoStNextDoneSet(t *testing.T) {
 		failingDone := done.Add(uint64(30))
 		mal.assertPoStFail(secondProvingPeriodStart+5, failingDone, uint8(ErrInvalidSector))
 	})
-
 }
 
 func TestMinerSubmitPoSt(t *testing.T) {
@@ -936,6 +935,137 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ownerBalance.Sub(fee).String(), owner.Balance.String())
 	})
+}
+
+func TestActorSlashStorageFault(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	secondProvingPeriodStart := firstCommitBlockHeight + ProvingPeriodDuration(types.OneKiBSectorSize)
+	thirdProvingPeriodStart := secondProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
+	thirdProvingPeriodEnd := thirdProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
+	lastPossibleSubmission := thirdProvingPeriodEnd + LargestSectorGenerationAttackThresholdBlocks
+
+	// CreateTestMiner creates a new test miner with the given peerID and miner
+	// owner address and a given number of committed sectors
+	createMinerWithPower := func(t *testing.T) (state.Tree, vm.StorageMap, address.Address) {
+		ctx := context.Background()
+		st, vms := th.RequireCreateStorages(ctx, t)
+		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+		ancestors := th.RequireTipSetChain(t, 10)
+		proof := th.MakeRandomPoStProofForTest()
+		doneDefault := types.EmptyIntSet()
+
+		// add a sector
+		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		require.NoError(t, err)
+
+		// add another sector (not in proving set yet)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		require.NoError(t, err)
+
+		// submit post (first sector only)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart, "submitPoSt", ancestors, []types.PoStProof{proof}, doneDefault)
+		require.NoError(t, err)
+
+		// submit post (both sectors
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart, "submitPoSt", ancestors, []types.PoStProof{proof}, doneDefault)
+		assert.NoError(t, err)
+
+		return st, vms, minerAddr
+	}
+
+	t.Run("slashing charges gas", func(t *testing.T) {
+		st, vms, minerAddr := createMinerWithPower(t)
+		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+
+		// change worker
+		msg := types.NewMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{})
+
+		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
+		gasLimit := types.NewGasUnits(10)
+		result, err := th.ApplyTestMessageWithGas(st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		require.NoError(t, err)
+
+		require.Error(t, result.ExecutionError)
+		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
+		assert.Equal(t, uint8(exec.ErrInsufficientGas), result.Receipt.ExitCode)
+	})
+
+	t.Run("slashing a miner with no storage fails", func(t *testing.T) {
+		ctx := context.Background()
+		st, vms := th.RequireCreateStorages(ctx, t)
+		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "slashStorageFault", nil)
+		require.NoError(t, err)
+		assert.Contains(t, res.ExecutionError.Error(), "miner is inactive")
+		assert.Equal(t, uint8(ErrMinerNotSlashable), res.Receipt.ExitCode)
+	})
+
+	t.Run("slashing too early fails", func(t *testing.T) {
+		st, vms, minerAddr := createMinerWithPower(t)
+
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "slashStorageFault", nil)
+		require.NoError(t, err)
+		assert.Contains(t, res.ExecutionError.Error(), "miner not yet tardy")
+		assert.Equal(t, uint8(ErrMinerNotSlashable), res.Receipt.ExitCode)
+
+		// assert miner not slashed
+		assertSlashStatus(t, st, vms, minerAddr, 2*types.OneKiBSectorSize.Uint64(), nil, types.NewIntSet())
+	})
+
+	t.Run("slashing after generation attack time succeeds", func(t *testing.T) {
+		st, vms, minerAddr := createMinerWithPower(t)
+
+		// get storage power prior to fault
+		oldTotalStoragePower := th.GetTotalPower(t, st, vms)
+
+		slashTime := lastPossibleSubmission + 1
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, "slashStorageFault", nil)
+		require.NoError(t, err)
+		require.NoError(t, res.ExecutionError)
+		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
+
+		// assert miner has been slashed
+		assertSlashStatus(t, st, vms, minerAddr, 0, types.NewBlockHeight(slashTime), types.NewIntSet(1, 2))
+
+		// assert all miner power (2 small sectors worth) has been removed from totalStoragePower
+		newTotalStoragePower := th.GetTotalPower(t, st, vms)
+		assert.Equal(t, types.OneKiBSectorSize.Mul(types.NewBytesAmount(2)), oldTotalStoragePower.Sub(newTotalStoragePower))
+
+		// assert proving set and sector set are also updated
+		minerState := mustGetMinerState(st, vms, minerAddr)
+		assert.Equal(t, 0, minerState.SectorCommitments.Size(), "slashed sectors are removed from commitments")
+		assert.Equal(t, 0, minerState.ProvingSet.Size(), "slashed sectors are removed from ProvingSet")
+
+		// assert owed collateral is set to active collateral
+		assert.Equal(t, minerState.ActiveCollateral, minerState.OwedStorageCollateral)
+	})
+
+	t.Run("slashing a miner twice fails", func(t *testing.T) {
+		st, vms, minerAddr := createMinerWithPower(t)
+
+		slashTime := lastPossibleSubmission + 1
+		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, "slashStorageFault", nil)
+		require.NoError(t, err)
+
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime+1, "slashStorageFault", nil)
+		require.NoError(t, err)
+		assert.Contains(t, res.ExecutionError.Error(), "miner already slashed")
+		assert.Equal(t, uint8(ErrMinerAlreadySlashed), res.Receipt.ExitCode)
+	})
+}
+
+func assertSlashStatus(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address, power uint64,
+	slashedAt *types.BlockHeight, slashed types.IntSet) {
+	minerState := mustGetMinerState(st, vms, minerAddr)
+
+	assert.Equal(t, types.NewBytesAmount(power), minerState.Power)
+	assert.Equal(t, slashedAt, minerState.SlashedAt)
+	assert.Equal(t, slashed, minerState.SlashedSet)
+
 }
 
 func TestVerifyPIP(t *testing.T) {
@@ -1143,6 +1273,21 @@ func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
 	return addr
 }
 
-func bh(h uint64) *types.BlockHeight {
-	return types.NewBlockHeight(uint64(h))
+// mustGetMinerState returns the block of actor state represented by the head of the actor with the given address
+func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *State {
+	actor := state.MustGetActor(st, a)
+
+	storage := vms.NewStorage(a, actor)
+	data, err := storage.Get(actor.Head)
+	if err != nil {
+		panic(err)
+	}
+
+	minerState := &State{}
+	err = cbor.DecodeInto(data, minerState)
+	if err != nil {
+		panic(err)
+	}
+
+	return minerState
 }

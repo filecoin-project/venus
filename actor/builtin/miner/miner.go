@@ -76,6 +76,10 @@ const (
 	ErrGetProofsModeFailed = 42
 	// ErrInsufficientCollateral indicates that the miner does not have sufficient collateral to commit additional sectors.
 	ErrInsufficientCollateral = 43
+	// ErrMinerAlreadySlashed indicates that an attempt has been made to slash an already slashed miner
+	ErrMinerAlreadySlashed = 44
+	// ErrMinerNotSlashable indicates that an attempt has been made to slash a miner that does not meet the criteria for slashing.
+	ErrMinerNotSlashable = 45
 )
 
 // Errors map error codes to revert errors this actor may return.
@@ -177,6 +181,16 @@ type State struct {
 	// SectorSize is the amount of space in each sector committed to the network
 	// by this miner.
 	SectorSize *types.BytesAmount
+
+	// SlashedSet is a set of sector ids that have been slashed
+	SlashedSet types.IntSet
+
+	// SlashedAt is the time at which this miner was slashed
+	SlashedAt *types.BlockHeight
+
+	// OwedStorageCollateral is the collateral for sectors that have been slashed.
+	// This collateral can be collected from arbitrated deals, but not de-pledged.
+	OwedStorageCollateral types.AttoFIL
 }
 
 // NewActor returns a new miner actor with the provided balance.
@@ -254,6 +268,10 @@ var minerExports = exec.Exports{
 	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProofs, abi.IntSet},
+		Return: []abi.Type{},
+	},
+	"slashStorageFault": &exec.FunctionSignature{
+		Params: []abi.Type{},
 		Return: []abi.Type{},
 	},
 	"changeWorker": &exec.FunctionSignature{
@@ -948,6 +966,70 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 		return nil, nil
 	})
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
+// SlashStorageFault is called by an independent actor to remove power and
+// take collateral from this miner when the miner has failed to submit a
+// PoSt on time.
+func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	chainHeight := ctx.BlockHeight()
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		// You can only be slashed once for missing your PoSt.
+		if state.SlashedAt != nil {
+			return nil, errors.NewCodedRevertError(ErrMinerAlreadySlashed, "miner already slashed")
+		}
+
+		// Only a miner who is expected to prove, can be slashed.
+		if state.ProvingSet.Size() == 0 {
+			return nil, errors.NewCodedRevertError(ErrMinerNotSlashable, "miner is inactive")
+		}
+
+		// Only if the miner is actually late, they can be slashed.
+		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		if chainHeight.LessEqual(deadline) {
+			return nil, errors.NewCodedRevertError(ErrMinerNotSlashable, "miner not yet tardy")
+		}
+
+		// Strip the miner of their power.
+		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{powerDelta})
+		if err != nil {
+			return nil, err
+		}
+		if ret != 0 {
+			return nil, Errors[ErrStoragemarketCallFailed]
+		}
+		state.Power = types.NewBytesAmount(0)
+
+		// record what has been slashed
+		state.SlashedSet = state.ProvingSet
+
+		// reserve collateral for arbitration
+		// TODO: This calculation is probably not correct: https://github.com/filecoin-project/go-filecoin/issues/3050
+		state.OwedStorageCollateral = ma.getPledgeCollateralRequirement(state, chainHeight)
+
+		// remove proving set from our sectors
+		state.SectorCommitments.Drop(state.SlashedSet.Values())
+
+		// clear proving set
+		state.ProvingSet = types.NewIntSet()
+
+		// save chain height, so we know when this miner was slashed
+		state.SlashedAt = chainHeight
+
+		return nil, nil
+	})
+
 	if err != nil {
 		return errors.CodeError(err), err
 	}

@@ -88,6 +88,9 @@ func (is IntSet) Difference(other IntSet) IntSet {
 
 // Values returns a slice with all integers in this IntSet
 func (is IntSet) Values() []uint64 {
+	if is.ba == nil {
+		return []uint64{}
+	}
 	return is.ba.ToNums()
 }
 
