@@ -104,7 +104,7 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.ProofsMode},
 	},
-	"getSlashableMiners": &exec.FunctionSignature{
+	"getProvingMiners": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Addresses},
 	},
@@ -197,7 +197,7 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 	return 0, nil
 }
 
-func (sma *Actor) GetSlashableMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
+func (sma *Actor) GetProvingMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
 	var state State
 	ctx := context.Background()
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
@@ -219,13 +219,13 @@ func (sma *Actor) GetSlashableMiners(vmctx exec.VMContext) (*[]address.Address, 
 				return nil, err
 			}
 
-			var slashable bool
-			slashable, err = sma.getSlashableForMiner(vmctx, addr)
+			var isProving bool
+			isProving, err = sma.getMinerIsProving(vmctx, addr)
 			if err != nil {
 				return nil, err
 			}
 
-			if slashable {
+			if isProving {
 				miners = append(miners, addr)
 			}
 		}
@@ -288,17 +288,17 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 	return size, 0, nil
 }
 
-func (sma *Actor) getSlashableForMiner(vmctx exec.VMContext, minerAddr address.Address) (bool, error) {
-	msgResult, _, err := vmctx.Send(minerAddr, "getSlashable", types.ZeroAttoFIL, nil)
+func (sma *Actor) getMinerIsProving(vmctx exec.VMContext, minerAddr address.Address) (bool, error) {
+	msgResult, _, err := vmctx.Send(minerAddr, "isProving", types.ZeroAttoFIL, nil)
 	if err != nil {
 		return false, err
 	}
 
-	slashable, err := abi.Deserialize(msgResult[0], abi.Boolean)
+	isProving, err := abi.Deserialize(msgResult[0], abi.Boolean)
 	if err != nil {
 		return false, err
 	}
-	return slashable.Val.(bool), nil
+	return isProving.Val.(bool), nil
 }
 
 // isSupportedSectorSize produces a boolean indicating whether or not the

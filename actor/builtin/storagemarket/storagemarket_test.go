@@ -110,14 +110,15 @@ func TestProofsMode(t *testing.T) {
 	assert.Equal(t, types.TestProofsMode, proofsMode)
 }
 
-func TestStorageMarketGetSlashableMiners(t *testing.T) {
+func TestStorageMarketGetProvingMiners(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
+	coll := types.NewAttoFILFromFIL(100)
 
 	t.Run("returns empty slice if no storage miners", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
-		addrs := *assertGetSlashableMiners(t, st, vms)
+		addrs := *assertGetProvingMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
@@ -125,38 +126,36 @@ func TestStorageMarketGetSlashableMiners(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		// create miners without commitments
 		_ = []address.Address{
-			mustCreateStorageMiner(t, st, vms, 0),
-			mustCreateStorageMiner(t, st, vms, 1),
-			mustCreateStorageMiner(t, st, vms, 2),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 1),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 2),
 		}
 
-		addrs := *assertGetSlashableMiners(t, st, vms)
+		addrs := *assertGetProvingMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
-	t.Run("gets number of miners with commitments (slashable miners)", func(t *testing.T) {
+	t.Run("gets only miners with commitments", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 
 		// create 3 bootstrap miners by passing in 0 block height, so that VerifyProof is skipped
 		// Otherwise this test will fail
-		expected := []address.Address{
-			mustCreateStorageMiner(t, st, vms, 0),
-			mustCreateStorageMiner(t, st, vms, 0),
-			mustCreateStorageMiner(t, st, vms, 0),
-		}
+		addr1 := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		addr2 := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		_ = th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// 2 of the 3 miners make a commitment
 		blockHeight := 3
 		sectorID := uint64(1)
-		requireMakeCommitment(t, st, vms, expected[0], blockHeight, sectorID)
+		requireMakeCommitment(t, st, vms, addr1, blockHeight, sectorID)
 
 		blockHeight = 4
 		sectorID = uint64(2)
-		requireMakeCommitment(t, st, vms, expected[1], blockHeight, sectorID)
+		requireMakeCommitment(t, st, vms, addr2, blockHeight, sectorID)
 
-		// expect only the miner addresses that made commitments will be returned
-		addrs := *assertGetSlashableMiners(t, st, vms)
-		assert.Len(t, addrs, 2)
+		// only the miner addresses that made commitments will be returned
+		addrs := *assertGetProvingMiners(t, st, vms)
+		assertEqualAddrs(t, []address.Address{addr1, addr2}, addrs)
 	})
 }
 
@@ -300,26 +299,10 @@ func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address,
 	return address.NewActorAddress(buf.Bytes())
 }
 
-// mustCreateStorageMiner creates a storage miner for the given state tree & storage map
-// and returns the address of the created miner.
-func mustCreateStorageMiner(t *testing.T, st state.Tree, vms vm.StorageMap, height uint64) address.Address {
-	pid := th.RequireRandomPeerID(t)
-	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
-
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(height))
-	require.NoError(t, err)
-	require.Nil(t, result.ExecutionError)
-	minerAddr, err := address.NewFromBytes(result.Receipt.Return[0])
-	require.NoError(t, err)
-	require.NotNil(t, minerAddr)
-	return minerAddr
-}
-
-// assertGetSlashableMiners calls "getSlashableMiners" message / method, deserializes the result and returns the
+// assertGetProvingMiners calls "getProvingMiners" message / method, deserializes the result and returns the
 // addresses of miners in storage
-func assertGetSlashableMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getSlashableMiners", nil)
+func assertGetProvingMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getProvingMiners", nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	assert.Equal(t, uint8(0), res.Receipt.ExitCode)
