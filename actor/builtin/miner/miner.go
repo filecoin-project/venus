@@ -878,7 +878,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
-		// balance (whichs forms pledge & storage collateral) is not less than it was before.
+		// balance (which forms pledge & storage collateral) is not less than it was before.
 		messageValue := ctx.Message().Value
 		if messageValue.LessThan(feeRequired) {
 			return nil, errors.NewRevertErrorf("PoSt message requires value of at least %s attofil to cover fees, got %s", feeRequired, messageValue)
@@ -911,8 +911,12 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 			}
 
 			var commRs []types.CommR
-			for _, v := range state.SectorCommitments {
-				commRs = append(commRs, v.CommR)
+			for _, id := range state.ProvingSet.Values() {
+				commitment, found := state.SectorCommitments.Get(id)
+				if !found {
+					return nil, errors.NewFaultErrorf("miner ProvingSet contains sector id %d missing in SectorCommitments", id)
+				}
+				commRs = append(commRs, commitment.CommR)
 			}
 
 			sortedCommRs := proofs.NewSortedCommRs(commRs...)
