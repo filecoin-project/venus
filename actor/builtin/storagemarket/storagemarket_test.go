@@ -116,12 +116,12 @@ func TestStorageMarketGetSlashableMiners(t *testing.T) {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	t.Run("returns empty slice if no miners", func(t *testing.T) {
+	t.Run("returns empty slice if no storage miners", func(t *testing.T) {
 		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
-	t.Run("excludes storage miners with no commitments", func(t *testing.T) {
+	t.Run("if no storage miners have commitments, empty set", func(t *testing.T) {
 		// create miners without commitments
 		_ = []address.Address{
 			mustCreateStorageMiner(t, st, vms, 0),
@@ -152,7 +152,7 @@ func TestStorageMarketGetSlashableMiners(t *testing.T) {
 		sectorID = uint64(2)
 		requireMakeCommitment(t, st, vms, expected[1], blockHeight, sectorID)
 
-		// expect the miner address that made the commitment will be returned
+		// expect only the miner addresses that made commitments will be returned
 		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 2)
 	})
