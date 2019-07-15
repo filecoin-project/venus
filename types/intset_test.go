@@ -91,6 +91,11 @@ func TestIntSet(t *testing.T) {
 		assert.Equal(t, ints, result)
 	})
 
+	t.Run("Values when uninitialized", func(t *testing.T) {
+		result := types.IntSet{}
+		assert.Equal(t, []uint64(nil), result.Values())
+	})
+
 	t.Run("Size", func(t *testing.T) {
 		intsA := make([]uint64, 33)
 		for idx := range intsA {
