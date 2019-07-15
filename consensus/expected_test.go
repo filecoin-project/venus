@@ -106,7 +106,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
+		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -126,7 +126,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
+		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "can't check for winning ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }

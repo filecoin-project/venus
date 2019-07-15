@@ -75,7 +75,7 @@ func TestStateErrors(t *testing.T) {
 	assert.NoError(t, err)
 
 	tr2, err := LoadStateTree(ctx, cst, c, nil)
-	assert.EqualError(t, err, "failed to load node: not found")
+	assert.Error(t, err)
 	assert.Nil(t, tr2)
 }
 
