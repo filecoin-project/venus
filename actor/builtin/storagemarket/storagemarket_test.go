@@ -317,7 +317,7 @@ func mustCreateStorageMiner(t *testing.T, st state.Tree, vms vm.StorageMap, heig
 // assertGetSlashableMiners calls "getSlashableMiners" message / method, deserializes the result and returns the
 // addresses of miners in storage
 func assertGetSlashableMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getMiners", nil)
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getSlashableMiners", nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	assert.Equal(t, uint8(0), res.Receipt.ExitCode)
