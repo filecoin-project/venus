@@ -162,8 +162,16 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, fmt.Sprint("invalid deal signature"))
 	}
 
-	if err := sm.validateDealPayment(ctx, p); err != nil {
+	// compute expected total price for deal (storage price * duration * bytes)
+	price, err := sm.getStoragePrice()
+	if err != nil {
 		return sm.proposalRejector(sm, p, err.Error())
+	}
+
+	if price.GreaterThan(types.ZeroAttoFIL) {
+		if err := sm.validateDealPayment(ctx, p, price); err != nil {
+			return sm.proposalRejector(sm, p, err.Error())
+		}
 	}
 
 	maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sm.sectorSize.Uint64()))
@@ -175,13 +183,7 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 	return sm.proposalAcceptor(sm, p)
 }
 
-func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposal) error {
-	// compute expected total price for deal (storage price * duration * bytes)
-	price, err := sm.getStoragePrice()
-	if err != nil {
-		return err
-	}
-
+func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposal, price types.AttoFIL) error {
 	if p.Size == nil {
 		return fmt.Errorf("proposed deal has no size")
 	}
