@@ -33,8 +33,15 @@ var _ TipSetProvider = (*Builder)(nil)
 var _ syncFetcher = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker.
-// Blocks will have `miner` set as the miner address.
+// Blocks will have `miner` set as the miner address, or a default if empty.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
+	if miner.Empty() {
+		var err error
+		miner, err = address.NewActorAddress([]byte("miner"))
+		if err != nil {
+			panic(err)
+		}
+	}
 	return &Builder{
 		t:            t,
 		minerAddress: miner,
@@ -52,6 +59,15 @@ func (f *Builder) AppendTo(parents ...*types.Block) *types.Block {
 	return f.BuildToTip(tip, nil)
 }
 
+// AppendManyTo appends `count` blocks to the chain.
+func (f *Builder) AppendManyTo(count int, parents ...*types.Block) *types.Block {
+	tip := types.UndefTipSet
+	if len(parents) > 0 {
+		tip = types.RequireNewTipSet(f.t, parents...)
+	}
+	return f.BuildManyTo(count, tip, nil)
+}
+
 // BuildTo creates and returns a new block child of singleton tipset `parent`. See BuildToTip.
 func (f *Builder) BuildTo(parent *types.Block, build func(b *BlockBuilder)) *types.Block {
 	tip := types.UndefTipSet
@@ -59,6 +75,15 @@ func (f *Builder) BuildTo(parent *types.Block, build func(b *BlockBuilder)) *typ
 		tip = types.RequireNewTipSet(f.t, parent)
 	}
 	return f.BuildToTip(tip, build)
+}
+
+// BuildManyTo builds a chain by invoking BuildToTip `count` times.
+func (f *Builder) BuildManyTo(count int, parent types.TipSet, build func(b *BlockBuilder)) *types.Block {
+	require.True(f.t, count > 0, "")
+	for i := 0; i < count; i++ {
+		parent = types.RequireNewTipSet(f.t, f.BuildToTip(parent, build))
+	}
+	return parent.At(0)
 }
 
 // BuildToTip creates and returns anew block child of `parent`.
@@ -165,6 +190,15 @@ func (FakeStateBuilder) ComputeStateRoot(block *types.Block) (cid.Cid, error) {
 }
 
 ///// Interface implementations /////
+
+// GetBlock returns the block identified by `c`.
+func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
+	block, ok := f.blocks[c]
+	if !ok {
+		return nil, fmt.Errorf("no block %s", c)
+	}
+	return block, nil
+}
 
 // GetBlocks returns the blocks identified by `cids`.
 func (f *Builder) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {

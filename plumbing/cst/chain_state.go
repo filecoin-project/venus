@@ -4,17 +4,19 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/pkg/errors"
 )
 
 type chainReader interface {
@@ -75,7 +77,13 @@ func (chn *ChainStateProvider) GetBlock(ctx context.Context, id cid.Cid) (*types
 
 // SampleRandomness samples randomness from the chain at the given height.
 func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	tipSetBuffer, err := chain.GetRecentAncestorsOfHeaviestChain(ctx, chn.reader, sampleHeight)
+	head := chn.reader.GetHead()
+	headTipSet, err := chn.reader.GetTipSet(head)
+	if err != nil {
+		return nil, err
+	}
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
