@@ -32,7 +32,10 @@ import (
 func TestDealsRedeem(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	// Give the deal time to complete
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
+	})
 
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
