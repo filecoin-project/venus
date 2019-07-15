@@ -114,14 +114,15 @@ func TestStorageMarketGetSlashableMiners(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	st, vms := th.RequireCreateStorages(ctx, t)
 
 	t.Run("returns empty slice if no storage miners", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
 		addrs := *assertGetSlashableMiners(t, st, vms)
 		assert.Len(t, addrs, 0)
 	})
 
 	t.Run("if no storage miners have commitments, empty set", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
 		// create miners without commitments
 		_ = []address.Address{
 			mustCreateStorageMiner(t, st, vms, 0),
@@ -134,19 +135,20 @@ func TestStorageMarketGetSlashableMiners(t *testing.T) {
 	})
 
 	t.Run("gets number of miners with commitments (slashable miners)", func(t *testing.T) {
+		st, vms := th.RequireCreateStorages(ctx, t)
+
+		// create 3 bootstrap miners by passing in 0 block height, so that VerifyProof is skipped
+		// Otherwise this test will fail
 		expected := []address.Address{
 			mustCreateStorageMiner(t, st, vms, 0),
-			mustCreateStorageMiner(t, st, vms, 1),
-			mustCreateStorageMiner(t, st, vms, 2),
+			mustCreateStorageMiner(t, st, vms, 0),
+			mustCreateStorageMiner(t, st, vms, 0),
 		}
 
-		// make a commitment
+		// 2 of the 3 miners make a commitment
 		blockHeight := 3
 		sectorID := uint64(1)
 		requireMakeCommitment(t, st, vms, expected[0], blockHeight, sectorID)
-
-		// TODO this is failing with :
-		// failed to verify seal proof: Bytes could not be converted to Fr
 
 		blockHeight = 4
 		sectorID = uint64(2)
