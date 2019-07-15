@@ -23,10 +23,10 @@ func TestIterAncestors(t *testing.T) {
 		ctx := context.Background()
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendTo()
-		b11 := store.AppendTo(root)
-		b12 := store.AppendTo(root)
-		b21 := store.AppendTo(b11, b12)
+		root := store.AppendOn()
+		b11 := store.AppendOn(root)
+		b12 := store.AppendOn(root)
+		b21 := store.AppendOn(b11, b12)
 
 		t0 := types.RequireNewTipSet(t, root)
 		t1 := types.RequireNewTipSet(t, b11, b12)
@@ -52,10 +52,10 @@ func TestIterAncestors(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		store := chain.NewBuilder(t, miner)
 
-		root := store.AppendTo()
-		b11 := store.AppendTo(root)
-		b12 := store.AppendTo(root)
-		b21 := store.AppendTo(b11, b12)
+		root := store.AppendOn()
+		b11 := store.AppendOn(root)
+		b12 := store.AppendOn(root)
+		b21 := store.AppendOn(b11, b12)
 
 		types.RequireNewTipSet(t, root)
 		t1 := types.RequireNewTipSet(t, b11, b12)

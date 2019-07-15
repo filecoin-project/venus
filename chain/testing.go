@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -29,12 +30,18 @@ type Builder struct {
 	blocks map[cid.Cid]*types.Block
 }
 
+var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
-var _ syncFetcher = (*Builder)(nil)
+var _ net.Fetcher = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker.
-// Blocks will have `miner` set as the miner address.
+// Blocks will have `miner` set as the miner address, or a default if empty.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
+	if miner.Empty() {
+		var err error
+		miner, err = address.NewActorAddress([]byte("miner"))
+		require.NoError(t, err)
+	}
 	return &Builder{
 		t:            t,
 		minerAddress: miner,
@@ -43,32 +50,51 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	}
 }
 
-// AppendTo creates and returns a new block child of `parents`, with no messages.
-func (f *Builder) AppendTo(parents ...*types.Block) *types.Block {
+// AppendOn creates and returns a new block child of `parents`, with no messages.
+func (f *Builder) AppendOn(parents ...*types.Block) *types.Block {
 	tip := types.UndefTipSet
 	if len(parents) > 0 {
 		tip = types.RequireNewTipSet(f.t, parents...)
 	}
-	return f.BuildToTip(tip, nil)
+	return f.BuildOnTip(tip, nil)
 }
 
-// BuildTo creates and returns a new block child of singleton tipset `parent`. See BuildToTip.
-func (f *Builder) BuildTo(parent *types.Block, build func(b *BlockBuilder)) *types.Block {
+// AppendManyOn appends `count` blocks to the chain.
+func (f *Builder) AppendManyOn(count int, parents ...*types.Block) *types.Block {
+	tip := types.UndefTipSet
+	if len(parents) > 0 {
+		tip = types.RequireNewTipSet(f.t, parents...)
+	}
+	return f.BuildManyOn(count, tip, nil)
+}
+
+// BuildOn creates and returns a new block child of singleton tipset `parent`. See BuildOnTip.
+func (f *Builder) BuildOn(parent *types.Block, build func(b *BlockBuilder)) *types.Block {
 	tip := types.UndefTipSet
 	if parent != nil {
 		tip = types.RequireNewTipSet(f.t, parent)
 	}
-	return f.BuildToTip(tip, build)
+	return f.BuildOnTip(tip, build)
 }
 
-// BuildToTip creates and returns anew block child of `parent`.
+// BuildManyOn builds a chain by invoking BuildOnTip `count` times.
+func (f *Builder) BuildManyOn(count int, parent types.TipSet, build func(b *BlockBuilder)) *types.Block {
+	require.True(f.t, count > 0, "")
+	for i := 0; i < count; i++ {
+		parent = types.RequireNewTipSet(f.t, f.BuildOnTip(parent, build))
+	}
+	return parent.At(0)
+}
+
+// BuildOnTip creates and returns a new block child of `parent`.
 // The `build` function is invoked to modify the block before it is stored.
-func (f *Builder) BuildToTip(parent types.TipSet, build func(b *BlockBuilder)) *types.Block {
+func (f *Builder) BuildOnTip(parent types.TipSet, build func(b *BlockBuilder)) *types.Block {
 	ticket := make([]byte, binary.Size(f.seq))
 	binary.BigEndian.PutUint64(ticket, f.seq)
 	f.seq++
 
 	// Sum weight of parents' parent weight, plus one for each parent.
+	// Note: as with the state builder, we should probably factor this out.
 	parentWeight := types.Uint64(0)
 	for i := 0; i < parent.Len(); i++ {
 		parentWeight += parent.At(i).ParentWeight + 1
@@ -87,9 +113,10 @@ func (f *Builder) BuildToTip(parent types.TipSet, build func(b *BlockBuilder)) *
 		Height:          height,
 		Messages:        []*types.SignedMessage{},
 		MessageReceipts: []*types.MessageReceipt{},
+		// Omitted fields below
 		//StateRoot:       stateRoot,
-		//Proof PoStProof `json:"proof"`
-		//Timestamp Uint64 `json:"timestamp"`
+		//Proof            PoStProof
+		//Timestamp        Uint64
 	}
 	// Nonce intentionally omitted as it will go away.
 
@@ -164,7 +191,16 @@ func (FakeStateBuilder) ComputeStateRoot(block *types.Block) (cid.Cid, error) {
 	return makeCid(fakeState)
 }
 
-///// Interface implementations /////
+///// Interface and accessor implementations /////
+
+// GetBlock returns the block identified by `c`.
+func (f *Builder) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
+	block, ok := f.blocks[c]
+	if !ok {
+		return nil, fmt.Errorf("no block %s", c)
+	}
+	return block, nil
+}
 
 // GetBlocks returns the blocks identified by `cids`.
 func (f *Builder) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
@@ -191,6 +227,23 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 
 	}
 	return types.NewTipSet(blocks...)
+}
+
+// FetchTipSets returns `recur` tipsets from `key` by following parent keys.
+func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, recur int) ([]types.TipSet, error) {
+	var tips []types.TipSet
+	for i := 0; i < recur; i++ {
+		tip, err := f.GetTipSet(key)
+		if err != nil {
+			return nil, err
+		}
+		tips = append(tips, tip)
+		key, err = tip.Parents()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tips, nil
 }
 
 ///// Internals /////
