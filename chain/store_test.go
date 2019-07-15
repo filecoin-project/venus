@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
@@ -37,7 +36,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 func newChainStore(dstP *SyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewStore(ds, dstP.genCid)
+	return chain.NewStore(ds, bstore.NewBlockstore(r.Datastore()), dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
@@ -222,59 +221,6 @@ func TestGetMultipleByParent(t *testing.T) {
 	}
 }
 
-// All blocks of a tipset can be retrieved after putting their wrapping tipset.
-func TestGetBlocks(t *testing.T) {
-	tf.UnitTest(t)
-	dstP := initDSTParams()
-
-	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
-	chain := newChainStore(dstP)
-
-	blks := []*types.Block{dstP.genesis, dstP.link1blk1, dstP.link1blk2, dstP.link2blk1,
-		dstP.link2blk2, dstP.link2blk3, dstP.link3blk1, dstP.link4blk1, dstP.link4blk2}
-	_, err := chain.GetBlock(ctx, dstP.genCid)
-	assert.Error(t, err) // Get errors before put
-
-	requirePutTestChain(t, chain, dstP)
-
-	var cids []cid.Cid
-	for _, blk := range blks {
-		c := blk.Cid()
-		cids = append(cids, c)
-		gotBlk, err := chain.GetBlock(ctx, c)
-		assert.NoError(t, err)
-		assert.Equal(t, blk.Cid(), gotBlk.Cid())
-	}
-	gotBlks, err := chain.GetBlocks(ctx, types.NewTipSetKey(cids...))
-	assert.NoError(t, err)
-	assert.Equal(t, len(blks), len(gotBlks))
-}
-
-// chain.Store correctly indicates that is has all blocks in put tipsets
-func TestHasAllBlocks(t *testing.T) {
-	tf.UnitTest(t)
-	dstP := initDSTParams()
-
-	ctx := context.Background()
-	initStoreTest(ctx, t, dstP)
-	chain := newChainStore(dstP)
-
-	blks := []*types.Block{dstP.genesis, dstP.link1blk1, dstP.link1blk2, dstP.link2blk1,
-		dstP.link2blk2, dstP.link2blk3, dstP.link3blk1, dstP.link4blk1, dstP.link4blk2}
-	assert.False(t, chain.HasBlock(ctx, dstP.genCid)) // Has returns false before put
-
-	requirePutTestChain(t, chain, dstP)
-
-	var cids []cid.Cid
-	for _, blk := range blks {
-		c := blk.Cid()
-		cids = append(cids, c)
-		assert.True(t, chain.HasBlock(ctx, c))
-	}
-	assert.True(t, chain.HasAllBlocks(ctx, cids))
-}
-
 /* Head and its State is set and notified properly. */
 
 // The constructor call sets the dstP.genesis block for the chain store.
@@ -378,17 +324,26 @@ func TestLoadAndReboot(t *testing.T) {
 	ctx := context.Background()
 	initStoreTest(ctx, t, dstP)
 
-	r := repo.NewInMemoryRepo()
-	ds := r.Datastore()
-	chainStore := chain.NewStore(ds, dstP.genCid)
+	rPriv := repo.NewInMemoryRepo()
+	rGlob := repo.NewInMemoryRepo()
+	ds := rPriv.Datastore()
+	bs := bstore.NewBlockstore(rGlob.Datastore())
+	// Add blocks to blockstore
+	requirePutBlocksToBlockstore(t, bs, dstP.genTS.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link1.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link2.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link3.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link4.ToSlice()...)
+
+	chainStore := chain.NewStore(ds, bs, dstP.genCid)
 	requirePutTestChain(t, chainStore, dstP)
 	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
 	assertSetHead(t, chainStore, dstP.link4)
 	chainStore.Stop()
 
-	// rebuild chain with same datastore
-	rebootChain := chain.NewStore(ds, dstP.genCid)
+	// rebuild chain with same datastores
+	rebootChain := chain.NewStore(ds, bs, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
@@ -402,8 +357,12 @@ func TestLoadAndReboot(t *testing.T) {
 	assert.Equal(t, 1, len(got4))
 	assert.Equal(t, dstP.link4, got4[0].TipSet)
 
-	// Check that chainStore store has blocks
-	assert.True(t, rebootChain.HasBlock(ctx, dstP.link3blk1.Cid()))
-	assert.True(t, rebootChain.HasBlock(ctx, dstP.link2blk3.Cid()))
-	assert.True(t, rebootChain.HasBlock(ctx, dstP.genesis.Cid()))
+	// Check the head
+	assert.Equal(t, dstP.link4.Key(), rebootChain.GetHead())
+}
+
+func requirePutBlocksToBlockstore(t *testing.T, bs bstore.Blockstore, blocks ...*types.Block) {
+	for _, block := range blocks {
+		require.NoError(t, bs.Put(block.ToNode()))
+	}
 }

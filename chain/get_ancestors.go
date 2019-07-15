@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -14,7 +13,6 @@ import (
 )
 
 type recentAncestorsChainReader interface {
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }

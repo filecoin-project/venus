@@ -4,9 +4,11 @@ import (
 	"context"
 	"testing"
 
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -193,7 +195,7 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*chain.Syncer, *th.TestFetcher) {
 	powerTable := &th.TestView{}
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 
@@ -201,10 +203,10 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing)
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -212,14 +214,14 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	return syncer, blockSource
 }
 
-// initSyncTestDefault creates and returns the datastructures (chain store, syncer, etc)
+// initSyncTestDefault creates and returns the datastructures (syncer, store, repo, fetcher)
 // needed to run tests.  It also sets the global test variables appropriately.
 func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
@@ -229,8 +231,8 @@ func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *
 	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
 }
 
-// initSyncTestWithMode creates and returns the datastructures (consensus, chain
-// store, syncer, etc) needed to run tests. It also mutates the chain syncer to
+// initSyncTestWithMode creates and returns the datastructures (syncer, store, repo
+// fetcher) needed to run tests. It also mutates the chain syncer to
 // use the specified sync mode for easier testing of caught up and syncing mode
 // behavior.
 func initSyncTestWithMode(t *testing.T, dstP *SyncerTestParams, syncMode chain.SyncMode) (consensus.Protocol, *chain.Syncer, *th.TestFetcher) {
@@ -238,7 +240,7 @@ func initSyncTestWithMode(t *testing.T, dstP *SyncerTestParams, syncMode chain.S
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
@@ -249,13 +251,13 @@ func initSyncTestWithMode(t *testing.T, dstP *SyncerTestParams, syncMode chain.S
 	return con, sync, tf
 }
 
-// initSyncTestWithPowerTable creates and returns the datastructures (chain store, syncer, etc)
+// initSyncTestWithPowerTable creates and returns the datastructures (syncer, store, repo, fetcher)
 // needed to run tests.  It also sets the global test variables appropriately.
 func initSyncTestWithPowerTable(t *testing.T, powerTable consensus.PowerTableView, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, consensus.Protocol, *th.TestFetcher) {
 	processor := th.NewTestProcessor()
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
 	requireSetTestChain(t, con, false, dstP)
@@ -273,7 +275,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
@@ -306,11 +308,9 @@ func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
 type requireTsAddedChainStore interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
-	HasBlock(context.Context, cid.Cid) bool
 }
 
 func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
-	ctx := context.Background()
 	h, err := ts.Height()
 	require.NoError(t, err)
 	// Tip Index correctly updated
@@ -322,15 +322,9 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
 	require.NoError(t, err)
 	require.True(t, containsTipSet(childTsasSlice, ts))
-
-	// Blocks exist in store
-	for i := 0; i < ts.Len(); i++ {
-		require.True(t, chain.HasBlock(ctx, ts.At(i).Cid()))
-	}
 }
 
 func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.TipSet) {
-	ctx := context.Background()
 	h, err := ts.Height()
 	assert.NoError(t, err)
 	// Tip Index correctly updated
@@ -342,22 +336,12 @@ func assertTsAdded(t *testing.T, chainStore requireTsAddedChainStore, ts types.T
 	childTsasSlice, err := chainStore.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
 	assert.NoError(t, err)
 	assert.True(t, containsTipSet(childTsasSlice, ts))
-
-	// Blocks exist in store
-	for i := 0; i < ts.Len(); i++ {
-		require.True(t, chainStore.HasBlock(ctx, ts.At(i).Cid()))
-	}
 }
 
 func assertNoAdd(t *testing.T, chainStore requireTsAddedChainStore, cids types.TipSetKey) {
-	ctx := context.Background()
 	// Tip Index correctly updated
 	_, err := chainStore.GetTipSet(cids)
 	assert.Error(t, err)
-	// Blocks exist in store
-	for _, c := range cids.ToSlice() {
-		assert.False(t, chainStore.HasBlock(ctx, c))
-	}
 }
 
 func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
@@ -770,6 +754,16 @@ func TestLoadFork(t *testing.T) {
 	require.NoError(t, err)
 	requireHead(t, chainStore, forklink3)
 
+	// Put blocks in global IPLD blockstore
+	// TODO #2128 make this cleaner along with broad test cleanup.
+	bs := bstore.NewBlockstore(r.Datastore())
+	requirePutBlocksToBlockstore(t, bs, dstP.genTS.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link1.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, dstP.link2.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, forklink1.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, forklink2.ToSlice()...)
+	requirePutBlocksToBlockstore(t, bs, forklink3.ToSlice()...)
+
 	// Shut down store, reload and wire to syncer.
 	loadSyncer, blockSource := loadSyncerFromRepo(t, r, dstP)
 
@@ -1030,7 +1024,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := hamt.NewCborStore()
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 
 	ctx := context.Background()
 
@@ -1072,7 +1066,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewStore(r.ChainDatastore(), calcGenBlk.Cid())
+	chainStore := chain.NewStore(r.ChainDatastore(), bs, calcGenBlk.Cid())
 
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)

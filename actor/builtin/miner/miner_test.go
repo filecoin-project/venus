@@ -1143,7 +1143,6 @@ func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
 	return addr
 }
 
-
 func bh(h uint64) *types.BlockHeight {
 	return types.NewBlockHeight(uint64(h))
 }
