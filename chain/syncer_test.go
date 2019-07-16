@@ -206,7 +206,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
-	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing)
+	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
 
 	ctx := context.Background()
 	err = chainStore.Load(ctx)
@@ -278,7 +278,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
-	syncer := chain.NewSyncer(cst, con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -354,7 +354,7 @@ func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	assert.Equal(t, head, headTipSet)
 }
 
-func requirePutBlocks(t *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
+func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
 	var cids []cid.Cid
 	for _, block := range blocks {
 		c := block.Cid()
@@ -1089,7 +1089,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = verification.NewFakeVerifier(true, nil)
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
-	syncer := chain.NewSyncer(cst, con, chainStore, blockSource, chain.Syncing)
+	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot

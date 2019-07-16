@@ -187,7 +187,22 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt state.Tree) (bool, error) {
+func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
+	var aSt, bSt state.Tree
+	var err error
+	if aStateID.Defined() {
+		aSt, err = c.loadStateTree(ctx, aStateID)
+		if err != nil {
+			return false, err
+		}
+	}
+	if bStateID.Defined() {
+		bSt, err = c.loadStateTree(ctx, bStateID)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	aW, err := c.Weight(ctx, a, aSt)
 	if err != nil {
 		return false, err
@@ -229,35 +244,40 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt st
 	return cmp == 1, nil
 }
 
-// RunStateTransition is the chain transition function that goes from a
-// starting state and a tipset to a new state.  It errors if the tipset was not
-// mined according to the EC rules, or if running the messages in the tipset
-// results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, pSt state.Tree) (st state.Tree, err error) {
+// RunStateTransition applies the messages in a tipset to a state, and persists that new state.
+// It errors if the tipset was not mined according to the EC rules, or if any of the messages
+// in the tipset results in an error.
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, priorStateID cid.Cid) (root cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	for i := 0; i < ts.Len(); i++ {
 		if err := c.BlockValidator.ValidateSemantic(ctx, ts.At(i), &ancestors[0]); err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 	}
 
-	if err := c.validateMining(ctx, pSt, ts, ancestors[0]); err != nil {
-		return nil, err
+	priorState, err := c.loadStateTree(ctx, priorStateID)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0]); err != nil {
+		return cid.Undef, err
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err = c.runMessages(ctx, pSt, vms, ts, ancestors)
+	st, err := c.runMessages(ctx, priorState, vms, ts, ancestors)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 	err = vms.Flush()
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
-	return st, nil
+
+	return st.Flush(ctx)
 }
 
 // validateMining checks validity of the block ticket, proof, and miner address.
@@ -357,7 +377,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 		// state copied so changes don't propagate between block validations
-		cpySt, err = state.LoadStateTree(ctx, c.cstore, cpyCid, builtin.Actors)
+		cpySt, err = c.loadStateTree(ctx, cpyCid)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
@@ -391,6 +411,10 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		return nil, errors.Wrap(err, "error validating tipset")
 	}
 	return st, nil
+}
+
+func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
+	return state.LoadStateTree(ctx, c.cstore, id, builtin.Actors)
 }
 
 // CreateTicket computes a valid ticket.

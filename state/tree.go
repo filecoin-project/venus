@@ -51,7 +51,7 @@ var _ Tree = &tree{}
 func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
 	root, err := hamt.LoadNode(ctx, store, c)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load node")
+		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}
 	stateTree := newEmptyStateTree(store)
 	stateTree.root = root
