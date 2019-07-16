@@ -306,7 +306,7 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},
 	},
-	"getSectorCommitments": &exec.FunctionSignature{
+	"getProvingSetCommitments": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
@@ -535,15 +535,23 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 	return big.NewInt(result), 0, nil
 }
 
-// GetSectorCommitments returns all sector commitments posted by this miner.
-func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+// GetProvingSetCommitments returns all sector commitments posted by this miner.
+func (ma *Actor) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return (map[string]types.Commitments)(state.SectorCommitments), nil
+		commitments := NewSectorSet()
+		for _, sectorID := range state.ProvingSet.Values() {
+			c, found := state.SectorCommitments.Get(sectorID)
+			if !found {
+				return nil, errors.NewFaultErrorf("proving set id, %d, missing in sector commitments", sectorID)
+			}
+			commitments.Add(sectorID, c)
+		}
+		return (map[string]types.Commitments)(commitments), nil
 	})
 	if err != nil {
 		return map[string]types.Commitments{}, errors.CodeError(err), err

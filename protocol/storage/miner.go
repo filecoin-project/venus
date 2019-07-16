@@ -615,12 +615,12 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 		ctx,
 		address.Undef,
 		sm.minerAddr,
-		"getSectorCommitments",
+		"getProvingSetCommitments",
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getProvingSetCommitments")
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
