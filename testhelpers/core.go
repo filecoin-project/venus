@@ -3,6 +3,7 @@ package testhelpers
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -289,4 +290,27 @@ func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, init
 
 func (tc *FakeVMContext) Verifier() exec.Verfier {
 	return tc.TestVerifier
+}
+
+type FakeVerifier struct {
+	Valid       bool
+	Err         error
+	SealRequest verification.VerifySealRequest
+	PoStRequest verification.VerifyPoStRequest
+}
+
+func (tv *FakeVerifier) VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error) {
+	if tv.Err != nil {
+		return verification.VerifySealResponse{}, tv.Err
+	}
+	tv.SealRequest = req
+	return verification.VerifySealResponse{IsValid: tv.Valid}, nil
+}
+
+func (tv *FakeVerifier) VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error) {
+	if tv.Err != nil {
+		return verification.VerifyPoStResponse{}, tv.Err
+	}
+	tv.PoStRequest = req
+	return verification.VerifyPoStResponse{IsValid: tv.Valid}, nil
 }

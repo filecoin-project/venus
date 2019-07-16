@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -721,7 +720,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.ProvingSet = types.NewIntSet(1, 2)
 		vmctx := th.NewFakeVMContext(message, minerState)
 
-		verifier := &testVerifier{valid: true}
+		verifier := &th.FakeVerifier{Valid: true}
 		vmctx.TestVerifier = verifier
 
 		miner := Actor{Bootstrap: false}
@@ -730,24 +729,24 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		_, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
 		require.NoError(t, err)
 
-		require.NotNil(t, verifier.vpReq)
-		assert.Equal(t, types.OneKiBSectorSize, verifier.vpReq.SectorSize)
+		require.NotNil(t, verifier.PoStRequest)
+		assert.Equal(t, types.OneKiBSectorSize, verifier.PoStRequest.SectorSize)
 
 		seed := types.PoStChallengeSeed{}
 		copy(seed[:], vmctx.TestRandomness)
 
 		sortedRs := proofs.NewSortedCommRs(commR1, commR2)
 
-		assert.Equal(t, seed, verifier.vpReq.ChallengeSeed)
-		assert.Equal(t, 0, len(verifier.vpReq.Faults))
-		assert.Equal(t, 1, len(verifier.vpReq.Proofs))
-		assert.Equal(t, testProof, verifier.vpReq.Proofs)
-		assert.Equal(t, 2, len(verifier.vpReq.SortedCommRs.Values()))
-		assert.Equal(t, sortedRs.Values()[0], verifier.vpReq.SortedCommRs.Values()[0])
-		assert.Equal(t, sortedRs.Values()[1], verifier.vpReq.SortedCommRs.Values()[1])
+		assert.Equal(t, seed, verifier.PoStRequest.ChallengeSeed)
+		assert.Equal(t, 0, len(verifier.PoStRequest.Faults))
+		assert.Equal(t, 1, len(verifier.PoStRequest.Proofs))
+		assert.Equal(t, testProof, verifier.PoStRequest.Proofs)
+		assert.Equal(t, 2, len(verifier.PoStRequest.SortedCommRs.Values()))
+		assert.Equal(t, sortedRs.Values()[0], verifier.PoStRequest.SortedCommRs.Values()[0])
+		assert.Equal(t, sortedRs.Values()[1], verifier.PoStRequest.SortedCommRs.Values()[1])
 	})
 
-	t.Run("Faults if commitments is missing id from prooving set", func(t *testing.T) {
+	t.Run("Faults if proving set commitment is missing from sector commitments", func(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
 		minerState.SectorCommitments = NewSectorSet()
@@ -774,7 +773,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.ProvingSet = types.NewIntSet(1)
 		vmctx := th.NewFakeVMContext(message, minerState)
 
-		verifier := &testVerifier{err: xerrors.New("verifier error")}
+		verifier := &th.FakeVerifier{Err: xerrors.New("verifier error")}
 		vmctx.TestVerifier = verifier
 
 		miner := Actor{Bootstrap: false}
@@ -796,7 +795,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.ProvingSet = types.NewIntSet(1)
 		vmctx := th.NewFakeVMContext(message, minerState)
 
-		verifier := &testVerifier{valid: false}
+		verifier := &th.FakeVerifier{Valid: false}
 		vmctx.TestVerifier = verifier
 
 		miner := Actor{Bootstrap: false}
@@ -1426,29 +1425,6 @@ func TestGetProvingSetCommitments(t *testing.T) {
 		assert.Equal(t, "proving set id, 4, missing in sector commitments", err.Error())
 		assert.NotEqual(t, uint8(0), code)
 	})
-}
-
-type testVerifier struct {
-	valid bool
-	err   error
-	vsReq verification.VerifySealRequest
-	vpReq verification.VerifyPoStRequest
-}
-
-func (tv *testVerifier) VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error) {
-	if tv.err != nil {
-		return verification.VerifySealResponse{}, tv.err
-	}
-	tv.vsReq = req
-	return verification.VerifySealResponse{IsValid: tv.valid}, nil
-}
-
-func (tv *testVerifier) VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error) {
-	if tv.err != nil {
-		return verification.VerifyPoStResponse{}, tv.err
-	}
-	tv.vpReq = req
-	return verification.VerifyPoStResponse{IsValid: tv.valid}, nil
 }
 
 func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
