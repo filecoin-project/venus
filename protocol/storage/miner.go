@@ -691,6 +691,9 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 		return errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
 
+	// get ProvingSet
+	// iterate through ProvingSetValues pulling commitment from commitments
+
 	var inputs []PoStInputs
 	for k, v := range commitments {
 		n, err := strconv.ParseUint(k, 10, 64)

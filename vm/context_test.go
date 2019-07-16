@@ -61,14 +61,16 @@ func TestVMContextStorage(t *testing.T) {
 	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
 	assert.NoError(t, err)
 
-	assert.NoError(t, vmCtx.WriteStorage(node.RawData()))
+	cid, err := vmCtx.Storage().Put(node.RawData())
+	require.NoError(t, err)
+	err = vmCtx.Storage().Commit(cid, vmCtx.Storage().Head())
 	assert.NoError(t, cstate.Commit(ctx))
 
 	// make sure we can read it back
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
 	vmCtxParams.To = toActorBack
-	storage, err := NewVMContext(vmCtxParams).ReadStorage()
+	storage, err := vmCtx.Storage().Get(vmCtx.Storage().Head())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
 }

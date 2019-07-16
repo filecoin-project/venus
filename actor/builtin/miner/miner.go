@@ -612,7 +612,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 			req.SectorSize = state.SectorSize
 
-			res, err := (&verification.RustVerifier{}).VerifySeal(req)
+			res, err := ctx.Verifier().VerifySeal(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
 			}
@@ -767,12 +767,8 @@ func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 
 	var state State
 
-	chunk, err := ctx.ReadStorage()
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
-		return peer.ID(""), errors.CodeError(err), err
-	}
-
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 
@@ -929,7 +925,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				SectorSize:    state.SectorSize,
 			}
 
-			res, err := (&verification.RustVerifier{}).VerifyPoSt(req)
+			res, err := ctx.Verifier().VerifyPoSt(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}
@@ -1045,7 +1041,7 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 // GetProvingPeriod returns the proving period start and proving period end
 func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	var state State
-	err := loadState(ctx, &state)
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return nil, nil, errors.CodeError(err), err
 	}
@@ -1057,7 +1053,7 @@ func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *type
 // power and proving period.
 func (ma *Actor) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
-	err := loadState(ctx, &state)
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.CodeError(err), err
 	}
@@ -1166,19 +1162,6 @@ func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 // Internal functions
 //
-
-// Loads the actor's state into `state`.
-func loadState(ctx exec.VMContext, state *State) error {
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return err
-	}
-
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return err
-	}
-	return nil
-}
 
 // calculates proving period start from the proving period end and the proving period duration
 func provingPeriodStart(state State) *types.BlockHeight {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -73,24 +74,6 @@ func (ctx *Context) Message() *types.Message {
 	return ctx.message
 }
 
-// ReadStorage reads the storage from the associated to actor.
-func (ctx *Context) ReadStorage() ([]byte, error) {
-	storage := ctx.Storage()
-
-	memory, err := storage.Get(storage.Head())
-	if err != nil {
-		if err == ErrNotFound {
-			return nil, errors.NewRevertErrorf("actor state not found at cid %s", storage.Head())
-		}
-		return nil, err
-	}
-
-	out := make([]byte, len(memory))
-	copy(out, memory)
-
-	return out, nil
-}
-
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
 func (ctx *Context) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
@@ -99,23 +82,6 @@ func (ctx *Context) Charge(cost types.GasUnits) error {
 // GasUnits retrieves the gas cost so far
 func (ctx *Context) GasUnits() types.GasUnits {
 	return ctx.gasTracker.gasConsumedByMessage
-}
-
-// WriteStorage writes to the storage of the associated to actor.
-func (ctx *Context) WriteStorage(memory interface{}) error {
-	stage := ctx.Storage()
-
-	cid, err := stage.Put(memory)
-	if err != nil {
-		return errors.RevertErrorWrap(err, "Could not stage memory chunk")
-	}
-
-	err = stage.Commit(cid, stage.Head())
-	if err != nil {
-		return errors.RevertErrorWrap(err, "Could not commit actor memory")
-	}
-
-	return nil
 }
 
 // BlockHeight returns the block height of the block currently being processed
@@ -247,6 +213,11 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 // given height.
 func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
 	return sampling.SampleChainRandomness(sampleHeight, ctx.ancestors)
+}
+
+// Verifier returns an interface to the proof verification code
+func (ctx *Context) Verifier() exec.Verfier {
+	return &verification.RustVerifier{}
 }
 
 // Dependency injection setup.
