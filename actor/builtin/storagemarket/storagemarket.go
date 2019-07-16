@@ -199,6 +199,9 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 }
 
 func (sma *Actor) GetLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
 	var state State
 	ctx := context.Background()
 
@@ -239,7 +242,7 @@ func (sma *Actor) GetLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8
 
 	res, ok := ret.(*map[string]uint64)
 	if !ok {
-		return res, 1, fmt.Errorf("expected []address.Address to be returned, but got %T instead", ret)
+		return res, 1, errors.NewFaultErrorf("expected []address.Address to be returned, but got %T instead", ret)
 	}
 
 	return res, 0, nil
