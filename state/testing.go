@@ -3,13 +3,12 @@ package state
 import (
 	"context"
 	"fmt"
-	cid "github.com/ipfs/go-cid"
-
-	"github.com/stretchr/testify/mock"
-
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/mock"
 )
 
 // MustFlush flushes the StateTree or panics if it can't.
