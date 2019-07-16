@@ -210,6 +210,7 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
+		SlashedSet:        types.EmptyIntSet(),
 		ActiveCollateral:  types.ZeroAttoFIL,
 	}
 }
