@@ -2,32 +2,35 @@ package chain_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestIterAncestors(t *testing.T) {
 	tf.UnitTest(t)
+	miner, err := address.NewActorAddress([]byte(fmt.Sprintf("address")))
+	require.NoError(t, err)
 
 	t.Run("iterates", func(t *testing.T) {
 		ctx := context.Background()
-		store := th.NewFakeChainProvider()
+		store := chain.NewBuilder(t, miner)
 
-		root := store.NewBlock(0)
-		b11 := store.NewBlock(1, root)
-		b12 := store.NewBlock(2, root)
-		b21 := store.NewBlock(3, b11, b12)
+		root := store.AppendOn()
+		b11 := store.AppendOn(root)
+		b12 := store.AppendOn(root)
+		b21 := store.AppendOn(b11, b12)
 
-		t0 := requireTipset(t, root)
-		t1 := requireTipset(t, b11, b12)
-		t2 := requireTipset(t, b21)
+		t0 := types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -47,16 +50,16 @@ func TestIterAncestors(t *testing.T) {
 
 	t.Run("respects context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		store := th.NewFakeChainProvider()
+		store := chain.NewBuilder(t, miner)
 
-		root := store.NewBlock(0)
-		b11 := store.NewBlock(1, root)
-		b12 := store.NewBlock(2, root)
-		b21 := store.NewBlock(3, b11, b12)
+		root := store.AppendOn()
+		b11 := store.AppendOn(root)
+		b12 := store.AppendOn(root)
+		b21 := store.AppendOn(b11, b12)
 
-		requireTipset(t, root)
-		t1 := requireTipset(t, b11, b12)
-		t2 := requireTipset(t, b21)
+		types.RequireNewTipSet(t, root)
+		t1 := types.RequireNewTipSet(t, b11, b12)
+		t2 := types.RequireNewTipSet(t, b21)
 
 		it := chain.IterAncestors(ctx, store, t2)
 		assert.False(t, it.Complete())
@@ -70,10 +73,4 @@ func TestIterAncestors(t *testing.T) {
 
 		assert.Error(t, it.Next())
 	})
-}
-
-func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {
-	set, err := types.NewTipSet(blocks...)
-	require.NoError(t, err)
-	return set
 }
