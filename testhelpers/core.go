@@ -216,7 +216,7 @@ type FakeVMContext struct {
 	TestStorage     exec.Storage
 	TestBalance     types.AttoFIL
 	TestBlockHeight *types.BlockHeight
-	TestVerifier    exec.Verfier
+	TestVerifier    exec.Verifier
 	TestRandomness  []byte
 	Sender          func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	Addresser       func() (address.Address, error)
@@ -228,6 +228,7 @@ type FakeVMContext struct {
 
 var _ exec.VMContext = &FakeVMContext{}
 
+// NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
 func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
 	randomness := MakeRandomBytes(32)
 	return &FakeVMContext{
@@ -248,50 +249,62 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 	}
 }
 
+// Message is the message that triggered this invocation
 func (tc *FakeVMContext) Message() *types.Message {
 	return tc.TestMessage
 }
 
+// Storage provides and interface to actor state
 func (tc *FakeVMContext) Storage() exec.Storage {
 	return tc.TestStorage
 }
 
+// Send sends a message to another actor
 func (tc *FakeVMContext) Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	return tc.Sender(to, method, value, params)
 }
 
+// AddressForNewActor creates an address to be used to create a new actor
 func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
 	return tc.Addresser()
 }
 
+// BlockHeight is the current chain height
 func (tc *FakeVMContext) BlockHeight() *types.BlockHeight {
 	return tc.TestBlockHeight
 }
 
+// MyBalance is the balance of the current actor
 func (tc *FakeVMContext) MyBalance() types.AttoFIL {
 	return tc.TestBalance
 }
 
+// IsFromAccountActor returns true if the type of actor that sent the message is an account actor
 func (tc *FakeVMContext) IsFromAccountActor() bool {
 	return tc.ActorTyper()
 }
 
+// Charge charges gas for the current action
 func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
 	return tc.Charger(cost)
 }
 
+// SampleChainRandomness provides random bytes used in verification challenges
 func (tc *FakeVMContext) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
 	return tc.Sampler(sampleHeight)
 }
 
+// CreateNewActor creates an actor of a given type
 func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
 	return tc.ActorCreator(addr, code, initalizationParams)
 }
 
-func (tc *FakeVMContext) Verifier() exec.Verfier {
+// Verifier provides an interface to the proofs verifier
+func (tc *FakeVMContext) Verifier() exec.Verifier {
 	return tc.TestVerifier
 }
 
+// FakeVerifier is a fake implementation of a proof verifier
 type FakeVerifier struct {
 	Valid       bool
 	Err         error
@@ -299,6 +312,7 @@ type FakeVerifier struct {
 	PoStRequest verification.VerifyPoStRequest
 }
 
+// VerifySeal verifies that a seal proof is valid
 func (tv *FakeVerifier) VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error) {
 	if tv.Err != nil {
 		return verification.VerifySealResponse{}, tv.Err
@@ -307,6 +321,7 @@ func (tv *FakeVerifier) VerifySeal(req verification.VerifySealRequest) (verifica
 	return verification.VerifySealResponse{IsValid: tv.Valid}, nil
 }
 
+// VerifyPoSt verifies that a PoSt proof is valid
 func (tv *FakeVerifier) VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error) {
 	if tv.Err != nil {
 		return verification.VerifyPoStResponse{}, tv.Err

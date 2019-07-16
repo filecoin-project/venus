@@ -80,7 +80,7 @@ type VMContext interface {
 
 	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 
-	Verifier() Verfier
+	Verifier() Verifier
 }
 
 // Storage defines the storage module exposed to actors.
@@ -92,7 +92,7 @@ type Storage interface {
 }
 
 // Verifier is the proof verification interface
-type Verfier interface {
+type Verifier interface {
 	VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error)
 	VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error)
 }

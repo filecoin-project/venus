@@ -64,6 +64,7 @@ func TestVMContextStorage(t *testing.T) {
 	cid, err := vmCtx.Storage().Put(node.RawData())
 	require.NoError(t, err)
 	err = vmCtx.Storage().Commit(cid, vmCtx.Storage().Head())
+	require.NoError(t, err)
 	assert.NoError(t, cstate.Commit(ctx))
 
 	// make sure we can read it back
