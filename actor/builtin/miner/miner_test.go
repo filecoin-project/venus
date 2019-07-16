@@ -1041,7 +1041,8 @@ func TestActorSlashStorageFault(t *testing.T) {
 		assert.Equal(t, 0, minerState.ProvingSet.Size(), "slashed sectors are removed from ProvingSet")
 
 		// assert owed collateral is set to active collateral
-		assert.Equal(t, minerState.ActiveCollateral, minerState.OwedStorageCollateral)
+		// TODO: We currently do not know the correct amount of collateral: https://github.com/filecoin-project/go-filecoin/issues/3050
+		assert.Equal(t, types.ZeroAttoFIL, minerState.OwedStorageCollateral)
 	})
 
 	t.Run("slashing a miner twice fails", func(t *testing.T) {

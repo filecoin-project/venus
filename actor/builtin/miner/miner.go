@@ -1015,8 +1015,8 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 		state.SlashedSet = state.ProvingSet
 
 		// reserve collateral for arbitration
-		// TODO: This calculation is probably not correct: https://github.com/filecoin-project/go-filecoin/issues/3050
-		state.OwedStorageCollateral = ma.getPledgeCollateralRequirement(state, chainHeight)
+		// TODO: We currently do not know the correct amount of collateral to reserve here: https://github.com/filecoin-project/go-filecoin/issues/3050
+		state.OwedStorageCollateral = types.ZeroAttoFIL
 
 		// remove proving set from our sectors
 		state.SectorCommitments.Drop(state.SlashedSet.Values())
