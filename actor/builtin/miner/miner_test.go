@@ -1378,6 +1378,56 @@ func TestMinerGetPoStState(t *testing.T) {
 	})
 }
 
+func TestGetProvingSetCommitments(t *testing.T) {
+	tf.UnitTest(t)
+
+	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "getProvingSetCommitments", nil)
+	var commR1, commR2, commR3 types.CommR
+	copy(commR1[:], th.MakeRandomBytes(32))
+	copy(commR2[:], th.MakeRandomBytes(32))
+	copy(commR3[:], th.MakeRandomBytes(32))
+
+	commitments := NewSectorSet()
+	commitments.Add(1, types.Commitments{CommR: commR1})
+	commitments.Add(2, types.Commitments{CommR: commR2})
+	commitments.Add(3, types.Commitments{CommR: commR3})
+
+	t.Run("returns only commitments that are in proving set", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.SectorCommitments = commitments
+
+		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
+		minerState.ProvingSet = types.NewIntSet(1, 2)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		miner := Actor{}
+
+		commitments, code, err := miner.GetProvingSetCommitments(vmctx)
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		assert.Equal(t, 2, len(commitments))
+		assert.Equal(t, commR1, commitments["1"].CommR)
+		assert.Equal(t, commR2, commitments["2"].CommR)
+	})
+
+	t.Run("faults if proving set commitment not founc in sector commitments", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.SectorCommitments = commitments
+
+		minerState.ProvingSet = types.NewIntSet(4) // sector commitments has no sector 4
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		miner := Actor{}
+
+		_, code, err := miner.GetProvingSetCommitments(vmctx)
+		require.Error(t, err)
+		assert.True(t, errors.IsFault(err))
+		assert.Equal(t, "proving set id, 4, missing in sector commitments", err.Error())
+		assert.NotEqual(t, uint8(0), code)
+	})
+}
+
 type testVerifier struct {
 	valid bool
 	err   error
