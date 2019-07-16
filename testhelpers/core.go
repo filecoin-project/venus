@@ -212,18 +212,18 @@ func (ts testStorage) Head() cid.Cid {
 
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
 type FakeVMContext struct {
-	TestMessage     *types.Message
-	TestStorage     exec.Storage
-	TestBalance     types.AttoFIL
-	TestBlockHeight *types.BlockHeight
-	TestVerifier    exec.Verifier
-	TestRandomness  []byte
-	Sender          func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	Addresser       func() (address.Address, error)
-	ActorTyper      func() bool
-	Charger         func(cost types.GasUnits) error
-	Sampler         func(sampleHeight *types.BlockHeight) ([]byte, error)
-	ActorCreator    func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+	TestMessage        *types.Message
+	TestStorage        exec.Storage
+	TestBalance        types.AttoFIL
+	TestBlockHeight    *types.BlockHeight
+	TestVerifier       exec.Verifier
+	TestRandomness     []byte
+	TestIsAccountActor bool
+	Sender             func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Addresser          func() (address.Address, error)
+	Charger            func(cost types.GasUnits) error
+	Sampler            func(sampleHeight *types.BlockHeight) ([]byte, error)
+	ActorCreator       func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 }
 
 var _ exec.VMContext = &FakeVMContext{}
@@ -231,12 +231,14 @@ var _ exec.VMContext = &FakeVMContext{}
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
 func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
 	randomness := MakeRandomBytes(32)
+	addressGetter := address.NewForTestGetter()
 	return &FakeVMContext{
-		TestMessage:     message,
-		TestStorage:     &testStorage{state: state},
-		TestBlockHeight: types.NewBlockHeight(0),
-		TestBalance:     types.ZeroAttoFIL,
-		TestRandomness:  randomness,
+		TestMessage:        message,
+		TestStorage:        &testStorage{state: state},
+		TestBlockHeight:    types.NewBlockHeight(0),
+		TestBalance:        types.ZeroAttoFIL,
+		TestRandomness:     randomness,
+		TestIsAccountActor: true,
 		Charger: func(cost types.GasUnits) error {
 			return nil
 		},
@@ -245,6 +247,12 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 		},
 		Sender: func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 			return [][]byte{}, 0, nil
+		},
+		Addresser: func() (address.Address, error) {
+			return addressGetter(), nil
+		},
+		ActorCreator: func(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
+			return nil
 		},
 	}
 }
@@ -281,7 +289,7 @@ func (tc *FakeVMContext) MyBalance() types.AttoFIL {
 
 // IsFromAccountActor returns true if the actor that sent the message is an account actor
 func (tc *FakeVMContext) IsFromAccountActor() bool {
-	return tc.ActorTyper()
+	return tc.TestIsAccountActor
 }
 
 // Charge charges gas for the current action
