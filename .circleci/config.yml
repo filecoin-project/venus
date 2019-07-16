@@ -235,7 +235,7 @@ jobs:
   unit_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 3
+    parallelism: 1
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: large
     steps:
@@ -267,7 +267,7 @@ jobs:
   integration_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 3
+    parallelism: 1
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     steps:
@@ -301,7 +301,7 @@ jobs:
   functional_test_linux:
     docker:
       - image: circleci/golang:1.12.1
-    parallelism: 4
+    parallelism: 2
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     parameters:
