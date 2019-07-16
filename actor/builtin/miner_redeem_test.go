@@ -176,6 +176,7 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 		SectorCommitments: commitments,
 		NextDoneSet:       types.EmptyIntSet(),
 		ProvingSet:        types.EmptyIntSet(),
+		SlashedSet:        types.EmptyIntSet(),
 		LastPoSt:          lastPoSt,
 	}
 	executableActor := miner.Actor{}

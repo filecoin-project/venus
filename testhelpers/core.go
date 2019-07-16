@@ -113,21 +113,6 @@ func VMStorage() vm.StorageMap {
 	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
-// MustSign signs a given address with the provided mocksigner or panics if it
-// cannot.
-func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
-	var smsgs []*types.SignedMessage
-	for _, m := range msgs {
-		gasLimit := types.NewGasUnits(999)
-		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), gasLimit)
-		if err != nil {
-			panic(err)
-		}
-		smsgs = append(smsgs, sm)
-	}
-	return smsgs
-}
-
 // CreateTestMiner creates a new test miner with the given peerID and miner
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
@@ -155,6 +140,16 @@ func CreateTestMinerWith(
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return addr
+}
+
+// GetTotalPower get total miner power from storage market
+func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesAmount {
+	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getTotalStorage", nil)
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
+	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+	require.Equal(t, 1, len(res.Receipt.Return))
+	return types.NewBytesAmountFromBytes(res.Receipt.Return[0])
 }
 
 // RequireGetNonce returns the next nonce of the actor at address a within
