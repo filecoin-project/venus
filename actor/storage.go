@@ -71,10 +71,7 @@ func ReadState(ctx exec.VMContext, st interface{}) error {
 		return vmerrors.FaultErrorWrap(err, "Could not read actor storage")
 	}
 
-	chunk := make([]byte, len(memory))
-	copy(chunk, memory)
-
-	if err := UnmarshalStorage(chunk, st); err != nil {
+	if err := UnmarshalStorage(memory, st); err != nil {
 		return vmerrors.FaultErrorWrap(err, "Could not unmarshall actor storage")
 	}
 

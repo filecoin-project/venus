@@ -2,7 +2,7 @@ package miner_test
 
 import (
 	"context"
-	xerrors "errors"
+	"errors"
 	"math/big"
 	"testing"
 
@@ -24,7 +24,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
-	"github.com/filecoin-project/go-filecoin/vm/errors"
+	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func TestAskFunctions(t *testing.T) {
@@ -703,18 +703,17 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 	tf.UnitTest(t)
 
 	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", nil)
-	var commR1, commR2, commR3 types.CommR
-	copy(commR1[:], th.MakeRandomBytes(32))
-	copy(commR2[:], th.MakeRandomBytes(32))
-	copy(commR3[:], th.MakeRandomBytes(32))
+	comm1 := th.MakeCommitments()
+	comm2 := th.MakeCommitments()
+	comm3 := th.MakeCommitments()
 
 	t.Run("Sends correct parameters to post verifier", func(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
 		minerState.SectorCommitments = NewSectorSet()
-		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
-		minerState.SectorCommitments.Add(2, types.Commitments{CommR: commR2})
-		minerState.SectorCommitments.Add(3, types.Commitments{CommR: commR3})
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
+		minerState.SectorCommitments.Add(2, types.Commitments{CommR: comm2.CommR})
+		minerState.SectorCommitments.Add(3, types.Commitments{CommR: comm3.CommR})
 
 		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
 		minerState.ProvingSet = types.NewIntSet(1, 2)
@@ -726,7 +725,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		miner := Actor{Bootstrap: false}
 
 		testProof := []types.PoStProof{th.MakeRandomPoStProofForTest()}
-		_, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
+		_, err := miner.SubmitPoSt(vmctx, testProof, types.EmptyIntSet())
 		require.NoError(t, err)
 
 		require.NotNil(t, verifier.PoStRequest)
@@ -735,7 +734,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		seed := types.PoStChallengeSeed{}
 		copy(seed[:], vmctx.TestRandomness)
 
-		sortedRs := proofs.NewSortedCommRs(commR1, commR2)
+		sortedRs := proofs.NewSortedCommRs(comm1.CommR, comm2.CommR)
 
 		assert.Equal(t, seed, verifier.PoStRequest.ChallengeSeed)
 		assert.Equal(t, 0, len(verifier.PoStRequest.Faults))
@@ -760,7 +759,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
 		require.Error(t, err)
 		assert.Equal(t, "miner ProvingSet sector id 4 missing in SectorCommitments", err.Error())
-		assert.True(t, errors.IsFault(err))
+		assert.True(t, vmerrors.IsFault(err))
 		assert.Equal(t, uint8(1), code)
 	})
 
@@ -768,12 +767,12 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
 		minerState.SectorCommitments = NewSectorSet()
-		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
 		vmctx := th.NewFakeVMContext(message, minerState)
 
-		verifier := &th.FakeVerifier{Err: xerrors.New("verifier error")}
+		verifier := &th.FakeVerifier{Err: errors.New("verifier error")}
 		vmctx.TestVerifier = verifier
 
 		miner := Actor{Bootstrap: false}
@@ -782,7 +781,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "verifier error")
-		assert.True(t, errors.ShouldRevert(err))
+		assert.True(t, vmerrors.ShouldRevert(err))
 		assert.Equal(t, uint8(1), code)
 	})
 
@@ -790,7 +789,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
 		minerState.SectorCommitments = NewSectorSet()
-		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
 		vmctx := th.NewFakeVMContext(message, minerState)
@@ -804,7 +803,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
 		require.Error(t, err)
 		assert.Equal(t, Errors[ErrInvalidPoSt], err)
-		assert.True(t, errors.ShouldRevert(err))
+		assert.True(t, vmerrors.ShouldRevert(err))
 		assert.Equal(t, uint8(ErrInvalidPoSt), code)
 	})
 }
@@ -1381,15 +1380,14 @@ func TestGetProvingSetCommitments(t *testing.T) {
 	tf.UnitTest(t)
 
 	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "getProvingSetCommitments", nil)
-	var commR1, commR2, commR3 types.CommR
-	copy(commR1[:], th.MakeRandomBytes(32))
-	copy(commR2[:], th.MakeRandomBytes(32))
-	copy(commR3[:], th.MakeRandomBytes(32))
+	comm1 := th.MakeCommitments()
+	comm2 := th.MakeCommitments()
+	comm3 := th.MakeCommitments()
 
 	commitments := NewSectorSet()
-	commitments.Add(1, types.Commitments{CommR: commR1})
-	commitments.Add(2, types.Commitments{CommR: commR2})
-	commitments.Add(3, types.Commitments{CommR: commR3})
+	commitments.Add(1, types.Commitments{CommR: comm1.CommR})
+	commitments.Add(2, types.Commitments{CommR: comm2.CommR})
+	commitments.Add(3, types.Commitments{CommR: comm3.CommR})
 
 	t.Run("returns only commitments that are in proving set", func(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
@@ -1406,11 +1404,11 @@ func TestGetProvingSetCommitments(t *testing.T) {
 		require.Equal(t, uint8(0), code)
 
 		assert.Equal(t, 2, len(commitments))
-		assert.Equal(t, commR1, commitments["1"].CommR)
-		assert.Equal(t, commR2, commitments["2"].CommR)
+		assert.Equal(t, comm1.CommR, commitments["1"].CommR)
+		assert.Equal(t, comm2.CommR, commitments["2"].CommR)
 	})
 
-	t.Run("faults if proving set commitment not founc in sector commitments", func(t *testing.T) {
+	t.Run("faults if proving set commitment not found in sector commitments", func(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.SectorCommitments = commitments
 
@@ -1421,7 +1419,7 @@ func TestGetProvingSetCommitments(t *testing.T) {
 
 		_, code, err := miner.GetProvingSetCommitments(vmctx)
 		require.Error(t, err)
-		assert.True(t, errors.IsFault(err))
+		assert.True(t, vmerrors.IsFault(err))
 		assert.Equal(t, "proving set id, 4, missing in sector commitments", err.Error())
 		assert.NotEqual(t, uint8(0), code)
 	})
