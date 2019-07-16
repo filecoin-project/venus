@@ -279,7 +279,7 @@ func (tc *FakeVMContext) MyBalance() types.AttoFIL {
 	return tc.TestBalance
 }
 
-// IsFromAccountActor returns true if the type of actor that sent the message is an account actor
+// IsFromAccountActor returns true if the actor that sent the message is an account actor
 func (tc *FakeVMContext) IsFromAccountActor() bool {
 	return tc.ActorTyper()
 }
