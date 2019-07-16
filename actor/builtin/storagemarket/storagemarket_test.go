@@ -109,17 +109,30 @@ func TestProofsMode(t *testing.T) {
 
 	assert.Equal(t, types.TestProofsMode, proofsMode)
 }
-
-func TestStorageMarketGetProvingMiners(t *testing.T) {
+func TestStorageMarketGetLateMiners(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
 	coll := types.NewAttoFILFromFIL(100)
+	emptyMiners := map[string]uint64{}
 
-	t.Run("returns empty slice if no storage miners", func(t *testing.T) {
+	type testCase struct {
+		BlockHeight    uint64
+		ExpectedMiners map[string]uint64
+	}
+
+	t.Run("if no storage miners, empty set", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
-		addrs := *assertGetProvingMiners(t, st, vms)
-		assert.Len(t, addrs, 0)
+
+		tc := []testCase{
+			{BlockHeight: 2, ExpectedMiners: emptyMiners},
+			{BlockHeight: 2000, ExpectedMiners: emptyMiners},
+		}
+
+		for _, el := range tc {
+			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+			assert.Equal(t, el.ExpectedMiners, miners)
+		}
 	})
 
 	t.Run("if no storage miners have commitments, empty set", func(t *testing.T) {
@@ -131,11 +144,17 @@ func TestStorageMarketGetProvingMiners(t *testing.T) {
 			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 2),
 		}
 
-		addrs := *assertGetProvingMiners(t, st, vms)
-		assert.Len(t, addrs, 0)
+		tc := []testCase{
+			{BlockHeight: 2, ExpectedMiners: emptyMiners},
+			{BlockHeight: 2000, ExpectedMiners: emptyMiners},
+		}
+		for _, el := range tc {
+			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+			assert.Equal(t, miners, el.ExpectedMiners)
+		}
 	})
 
-	t.Run("gets only miners with commitments", func(t *testing.T) {
+	t.Run("gets only late miners with commitments", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 
 		// create 3 bootstrap miners by passing in 0 block height, so that VerifyProof is skipped
@@ -148,14 +167,29 @@ func TestStorageMarketGetProvingMiners(t *testing.T) {
 		blockHeight := 3
 		sectorID := uint64(1)
 		requireMakeCommitment(t, st, vms, addr1, blockHeight, sectorID)
-
-		blockHeight = 4
 		sectorID = uint64(2)
 		requireMakeCommitment(t, st, vms, addr2, blockHeight, sectorID)
 
-		// only the miner addresses that made commitments will be returned
-		addrs := *assertGetProvingMiners(t, st, vms)
-		assertEqualAddrs(t, []address.Address{addr1, addr2}, addrs)
+		firstCommitBlockHeight := uint64(3)
+		secondProvingPeriodStart := miner.LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+		thirdProvingPeriodStart := 2*miner.LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+
+		tc := []testCase{
+			{BlockHeight: firstCommitBlockHeight, ExpectedMiners: emptyMiners},
+			{BlockHeight: secondProvingPeriodStart, ExpectedMiners: emptyMiners},
+			{BlockHeight: secondProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
+				addr1.String(): miner.PoStStateAfterProvingPeriod,
+				addr2.String(): miner.PoStStateAfterProvingPeriod},
+			},
+			{BlockHeight: thirdProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
+				addr1.String(): miner.PoStStateAfterGenerationAttackThreshold,
+				addr2.String(): miner.PoStStateAfterGenerationAttackThreshold},
+			},
+		}
+		for _, el := range tc {
+			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+			assert.Equal(t, el.ExpectedMiners, miners)
+		}
 	})
 }
 
@@ -299,35 +333,16 @@ func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address,
 	return address.NewActorAddress(buf.Bytes())
 }
 
-// assertGetProvingMiners calls "getProvingMiners" message / method, deserializes the result and returns the
-// addresses of miners in storage
-func assertGetProvingMiners(t *testing.T, st state.Tree, vms vm.StorageMap) *[]address.Address {
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getProvingMiners", nil)
+// assertGetLateMiners calls "getLateMiners" message / method, deserializes the result and returns
+// a map of the late miners with their late states
+func assertGetLateMiners(t *testing.T, st state.Tree, vms vm.StorageMap, height uint64) *map[string]uint64 {
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, height, "getLateMiners", nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
-	dsz, err := abi.Deserialize(res.Receipt.Return[0], abi.Addresses)
+	dsz, err := abi.Deserialize(res.Receipt.Return[0], abi.MinerPoStStates)
 	require.NoError(t, err)
-	addrsPtr := dsz.Val.(*[]address.Address)
-	return addrsPtr
-}
-
-// assertEqualAddrs ensures the "expected" array of addresses is value-equal to "actual"
-// we're not going to be doing this for large arrays so it doesn't need to be efficient.
-func assertEqualAddrs(t *testing.T, expected, actual []address.Address) {
-	require.Equal(t, len(expected), len(actual))
-	for _, el := range expected {
-		assert.True(t, indexOfAddr(t, el, actual) >= 0)
-	}
-}
-
-// indexOfAddr, a standard indexOf func for a slice of address.Address
-func indexOfAddr(t *testing.T, addr address.Address, addrs []address.Address) int {
-	for i, el := range addrs {
-		if addr.String() == el.String() {
-			return i
-		}
-	}
-	return -1
+	miners := dsz.Val.(*map[string]uint64)
+	return miners
 }

@@ -3,6 +3,7 @@ package storagemarket
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -104,9 +105,9 @@ var storageMarketExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.ProofsMode},
 	},
-	"getProvingMiners": &exec.FunctionSignature{
+	"getLateMiners": &exec.FunctionSignature{
 		Params: nil,
-		Return: []abi.Type{abi.Addresses},
+		Return: []abi.Type{abi.MinerPoStStates},
 	},
 }
 
@@ -197,51 +198,51 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 	return 0, nil
 }
 
-func (sma *Actor) GetProvingMiners(vmctx exec.VMContext) (*[]address.Address, uint8, error) {
+func (sma *Actor) GetLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8, error) {
 	var state State
 	ctx := context.Background()
+
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		miners := map[string]uint64{}
 		lu, err := actor.LoadLookup(ctx, vmctx.Storage(), state.Miners)
 		if err != nil {
-			return nil, err
+			return &miners, err
 		}
 
 		vals, err := lu.Values(ctx)
 		if err != nil {
-			return nil, err
+			return &miners, err
 		}
-
-		miners := []address.Address{}
 
 		for _, el := range vals {
 			addr, err := address.NewFromString(el.Key)
 			if err != nil {
-				return nil, err
+				return &miners, err
 			}
 
-			var isProving bool
-			isProving, err = sma.getMinerIsProving(vmctx, addr)
+			var poStState uint64
+			poStState, err = sma.getMinerPoStState(vmctx, addr)
 			if err != nil {
-				return nil, err
+				return &miners, err
 			}
 
-			if isProving {
-				miners = append(miners, addr)
+			if poStState > miner.PoStStateWithinProvingPeriod {
+				miners[addr.String()] = poStState
 			}
 		}
-		return miners, nil
+		return &miners, nil
 	})
 
 	if err != nil {
 		return nil, errors.CodeError(err), err
 	}
 
-	res, ok := ret.([]address.Address)
+	res, ok := ret.(*map[string]uint64)
 	if !ok {
-		return nil, 1, fmt.Errorf("expected []address.Address to be returned, but got %T instead", ret)
+		return res, 1, fmt.Errorf("expected []address.Address to be returned, but got %T instead", ret)
 	}
 
-	return &res, 0, nil
+	return res, 0, nil
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
@@ -288,17 +289,18 @@ func (sma *Actor) GetProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, 
 	return size, 0, nil
 }
 
-func (sma *Actor) getMinerIsProving(vmctx exec.VMContext, minerAddr address.Address) (bool, error) {
-	msgResult, _, err := vmctx.Send(minerAddr, "isProving", types.ZeroAttoFIL, nil)
+func (sma *Actor) getMinerPoStState(vmctx exec.VMContext, minerAddr address.Address) (uint64, error) {
+	msgResult, _, err := vmctx.Send(minerAddr, "getPoStState", types.ZeroAttoFIL, nil)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
 
-	isProving, err := abi.Deserialize(msgResult[0], abi.Boolean)
+	res, err := abi.Deserialize(msgResult[0], abi.Integer)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return isProving.Val.(bool), nil
+	resbi := res.Val.(*big.Int)
+	return resbi.Uint64(), nil
 }
 
 // isSupportedSectorSize produces a boolean indicating whether or not the
