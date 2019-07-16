@@ -910,7 +910,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 			for _, id := range state.ProvingSet.Values() {
 				commitment, found := state.SectorCommitments.Get(id)
 				if !found {
-					return nil, errors.NewFaultErrorf("miner ProvingSet contains sector id %d missing in SectorCommitments", id)
+					return nil, errors.NewFaultErrorf("miner ProvingSet sector id %d missing in SectorCommitments", id)
 				}
 				commRs = append(commRs, commitment.CommR)
 			}

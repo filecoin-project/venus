@@ -2,6 +2,7 @@ package miner_test
 
 import (
 	"context"
+	xerrors "errors"
 	"math/big"
 	"testing"
 
@@ -17,11 +18,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
 func TestAskFunctions(t *testing.T) {
@@ -696,6 +700,116 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 	})
 }
 
+func TestMinerSubmitPoStVerification(t *testing.T) {
+	tf.UnitTest(t)
+
+	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", nil)
+	var commR1, commR2, commR3 types.CommR
+	copy(commR1[:], th.MakeRandomBytes(32))
+	copy(commR2[:], th.MakeRandomBytes(32))
+	copy(commR3[:], th.MakeRandomBytes(32))
+
+	t.Run("Sends correct parameters to post verifier", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
+		minerState.SectorCommitments = NewSectorSet()
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
+		minerState.SectorCommitments.Add(2, types.Commitments{CommR: commR2})
+		minerState.SectorCommitments.Add(3, types.Commitments{CommR: commR3})
+
+		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
+		minerState.ProvingSet = types.NewIntSet(1, 2)
+		vmctx := th.NewFakeVMContext(message, minerState)
+
+		verifier := &testVerifier{valid: true}
+		vmctx.TestVerifier = verifier
+
+		miner := Actor{Bootstrap: false}
+
+		testProof := []types.PoStProof{th.MakeRandomPoStProofForTest()}
+		_, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
+		require.NoError(t, err)
+
+		require.NotNil(t, verifier.vpReq)
+		assert.Equal(t, types.OneKiBSectorSize, verifier.vpReq.SectorSize)
+
+		seed := types.PoStChallengeSeed{}
+		copy(seed[:], vmctx.TestRandomness)
+
+		sortedRs := proofs.NewSortedCommRs(commR1, commR2)
+
+		assert.Equal(t, seed, verifier.vpReq.ChallengeSeed)
+		assert.Equal(t, 0, len(verifier.vpReq.Faults))
+		assert.Equal(t, 1, len(verifier.vpReq.Proofs))
+		assert.Equal(t, testProof, verifier.vpReq.Proofs)
+		assert.Equal(t, 2, len(verifier.vpReq.SortedCommRs.Values()))
+		assert.Equal(t, sortedRs.Values()[0], verifier.vpReq.SortedCommRs.Values()[0])
+		assert.Equal(t, sortedRs.Values()[1], verifier.vpReq.SortedCommRs.Values()[1])
+	})
+
+	t.Run("Faults if commitments is missing id from prooving set", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
+		minerState.SectorCommitments = NewSectorSet()
+
+		minerState.ProvingSet = types.NewIntSet(4)
+		vmctx := th.NewFakeVMContext(message, minerState)
+
+		miner := Actor{Bootstrap: false}
+
+		testProof := []types.PoStProof{th.MakeRandomPoStProofForTest()}
+		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
+		require.Error(t, err)
+		assert.Equal(t, "miner ProvingSet sector id 4 missing in SectorCommitments", err.Error())
+		assert.True(t, errors.IsFault(err))
+		assert.Equal(t, uint8(1), code)
+	})
+
+	t.Run("Reverts if verification errors", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
+		minerState.SectorCommitments = NewSectorSet()
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
+
+		minerState.ProvingSet = types.NewIntSet(1)
+		vmctx := th.NewFakeVMContext(message, minerState)
+
+		verifier := &testVerifier{err: xerrors.New("verifier error")}
+		vmctx.TestVerifier = verifier
+
+		miner := Actor{Bootstrap: false}
+
+		testProof := []types.PoStProof{th.MakeRandomPoStProofForTest()}
+		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "verifier error")
+		assert.True(t, errors.ShouldRevert(err))
+		assert.Equal(t, uint8(1), code)
+	})
+
+	t.Run("Reverts if proof is invalid", func(t *testing.T) {
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(ProvingPeriodDuration(types.OneKiBSectorSize))
+		minerState.SectorCommitments = NewSectorSet()
+		minerState.SectorCommitments.Add(1, types.Commitments{CommR: commR1})
+
+		minerState.ProvingSet = types.NewIntSet(1)
+		vmctx := th.NewFakeVMContext(message, minerState)
+
+		verifier := &testVerifier{valid: false}
+		vmctx.TestVerifier = verifier
+
+		miner := Actor{Bootstrap: false}
+
+		testProof := []types.PoStProof{th.MakeRandomPoStProofForTest()}
+		code, err := miner.SubmitPoSt(vmctx, testProof, types.NewIntSet())
+		require.Error(t, err)
+		assert.Equal(t, Errors[ErrInvalidPoSt], err)
+		assert.True(t, errors.ShouldRevert(err))
+		assert.Equal(t, uint8(ErrInvalidPoSt), code)
+	})
+}
+
 func TestMinerSubmitPoStProvingSet(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -1262,6 +1376,29 @@ func TestMinerGetPoStState(t *testing.T) {
 		mal.assertPoStStateAtHeight(PoStStateNoStorage, lastHeightOfFirstPeriod+1)
 		mal.assertPoStStateAtHeight(PoStStateNoStorage, lastHeightOfSecondPeriod+1)
 	})
+}
+
+type testVerifier struct {
+	valid bool
+	err   error
+	vsReq verification.VerifySealRequest
+	vpReq verification.VerifyPoStRequest
+}
+
+func (tv *testVerifier) VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error) {
+	if tv.err != nil {
+		return verification.VerifySealResponse{}, tv.err
+	}
+	tv.vsReq = req
+	return verification.VerifySealResponse{IsValid: tv.valid}, nil
+}
+
+func (tv *testVerifier) VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error) {
+	if tv.err != nil {
+		return verification.VerifyPoStResponse{}, tv.err
+	}
+	tv.vpReq = req
+	return verification.VerifyPoStResponse{IsValid: tv.valid}, nil
 }
 
 func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {

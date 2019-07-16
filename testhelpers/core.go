@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -179,4 +180,113 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 	vms := vm.NewStorageMap(bs)
 
 	return st, vms
+}
+
+type testStorage struct {
+	state interface{}
+}
+
+var _ exec.Storage = testStorage{}
+
+func (ts testStorage) Put(v interface{}) (cid.Cid, error) {
+	return cid.Cid{}, nil
+
+}
+func (ts testStorage) Get(cid.Cid) ([]byte, error) {
+	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return node.RawData(), nil
+}
+
+func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
+	return nil
+}
+
+func (ts testStorage) Head() cid.Cid {
+	return cid.Cid{}
+}
+
+// FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
+type FakeVMContext struct {
+	TestMessage     *types.Message
+	TestStorage     exec.Storage
+	TestBalance     types.AttoFIL
+	TestBlockHeight *types.BlockHeight
+	TestVerifier    exec.Verfier
+	TestRandomness  []byte
+	Sender          func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Addresser       func() (address.Address, error)
+	ActorTyper      func() bool
+	Charger         func(cost types.GasUnits) error
+	Sampler         func(sampleHeight *types.BlockHeight) ([]byte, error)
+	ActorCreator    func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+}
+
+var _ exec.VMContext = &FakeVMContext{}
+
+func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
+	randomness := MakeRandomBytes(32)
+	return &FakeVMContext{
+		TestMessage:     message,
+		TestStorage:     &testStorage{state: state},
+		TestBlockHeight: types.NewBlockHeight(0),
+		TestBalance:     types.ZeroAttoFIL,
+		TestRandomness:  randomness,
+		Charger: func(cost types.GasUnits) error {
+			return nil
+		},
+		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			return randomness, nil
+		},
+		Sender: func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+			return [][]byte{}, 0, nil
+		},
+	}
+}
+
+func (tc *FakeVMContext) Message() *types.Message {
+	return tc.TestMessage
+}
+
+func (tc *FakeVMContext) Storage() exec.Storage {
+	return tc.TestStorage
+}
+
+func (tc *FakeVMContext) Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	return tc.Sender(to, method, value, params)
+}
+
+func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
+	return tc.Addresser()
+}
+
+func (tc *FakeVMContext) BlockHeight() *types.BlockHeight {
+	return tc.TestBlockHeight
+}
+
+func (tc *FakeVMContext) MyBalance() types.AttoFIL {
+	return tc.TestBalance
+}
+
+func (tc *FakeVMContext) IsFromAccountActor() bool {
+	return tc.ActorTyper()
+}
+
+func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
+	return tc.Charger(cost)
+}
+
+func (tc *FakeVMContext) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
+	return tc.Sampler(sampleHeight)
+}
+
+func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
+	return tc.ActorCreator(addr, code, initalizationParams)
+}
+
+func (tc *FakeVMContext) Verifier() exec.Verfier {
+	return tc.TestVerifier
 }
