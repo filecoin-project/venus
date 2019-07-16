@@ -35,8 +35,6 @@ type TestEnvironment struct {
 }
 
 // NewTestEnvironment creates a TestEnvironment with a basic setup for writing tests using the FAST library.
-// NOTE: If you provide non-empty DaemonOpts, it should include a block time option,
-// or the go-filecoin default will be used.
 func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.FilecoinOpts) (context.Context, *TestEnvironment) {
 
 	// Create a directory for the test using the test name (mostly for FAST)
@@ -64,10 +62,8 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
 
-	// The old method appended a default blocktime and this caused a bug when callers set blocktime
-	// as well. See Issue
-	if len(fastenvOpts.DaemonOpts) == 0 {
-		fastenvOpts.DaemonOpts = []fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}
+	if isMissingBlockTimeOpt(fastenvOpts) {
+		fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...)
 	}
 
 	// Setup the first node which is used to help coordinate the other nodes by providing
@@ -162,4 +158,14 @@ func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 		}
 		require.NoError(t, w.Close())
 	}
+}
+
+func isMissingBlockTimeOpt(opts fast.FilecoinOpts) bool {
+	for _, fn := range opts.DaemonOpts {
+		s := fn()
+		if len(s) > 0 && s[0] == "--block-time" {
+			return false
+		}
+	}
+	return true
 }

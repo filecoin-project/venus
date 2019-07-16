@@ -25,6 +25,10 @@ func TestSetFilecoinOpts(t *testing.T) {
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(t, err)
+	}()
 }
 
 func TestNoFilecoinOpts(t *testing.T) {
@@ -35,4 +39,8 @@ func TestNoFilecoinOpts(t *testing.T) {
 
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(t, err)
+	}()
 }
