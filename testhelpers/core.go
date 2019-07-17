@@ -204,7 +204,7 @@ func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 	return node.RawData(), nil
 }
 
-// Commit satisifes the Storage interface but does nothing
+// Commit satisfies the Storage interface but does nothing
 func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 	return nil
 }
