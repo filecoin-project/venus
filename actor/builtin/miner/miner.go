@@ -542,27 +542,20 @@ func (ma *Actor) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		commitments := NewSectorSet()
-		for _, sectorID := range state.ProvingSet.Values() {
-			c, found := state.SectorCommitments.Get(sectorID)
-			if !found {
-				return nil, errors.NewFaultErrorf("proving set id, %d, missing in sector commitments", sectorID)
-			}
-			commitments.Add(sectorID, c)
-		}
-		return (map[string]types.Commitments)(commitments), nil
-	})
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return map[string]types.Commitments{}, errors.CodeError(err), err
 	}
 
-	a, ok := out.(map[string]types.Commitments)
-	if !ok {
-		return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("expected a map[string]types.Commitments, but got %T instead", out)
+	commitments := NewSectorSet()
+	for _, sectorID := range state.ProvingSet.Values() {
+		c, found := state.SectorCommitments.Get(sectorID)
+		if !found {
+			return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("proving set id, %d, missing in sector commitments", sectorID)
+		}
+		commitments.Add(sectorID, c)
 	}
-
-	return a, 0, nil
+	return (map[string]types.Commitments)(commitments), 0, nil
 }
 
 // GetSectorSize returns the size of the sectors committed to the network by
