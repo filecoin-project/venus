@@ -142,7 +142,7 @@ type Syncer struct {
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, syncMode SyncMode) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, pm PeerManager, syncMode SyncMode) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -151,7 +151,7 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, s
 		stateEvaluator: e,
 		chainStore:     s,
 		syncMode:       syncMode,
-		pm:             NewBasicPeerManager(),
+		pm:             pm,
 	}
 }
 
@@ -314,6 +314,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	// If it is the heaviest update the chainStore.
 	if heavier {
 		if err = syncer.chainStore.SetHead(ctx, next); err != nil {
+			panic(err)
 			return err
 		}
 		// Gather the entire new chain for reorg comparison and logging.
@@ -415,18 +416,17 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // help prevent DOS.
 func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey types.TipSetKey) (err error) {
 	logSyncer.Infof("HandleNewTipSet: %s from peer: %s", tsKey.String(), from.Pretty())
-	tss, err := syncer.fetcher.FetchTipSets(ctx, tsKey, 1)
+
+	// Grab the full tipset
+	blks, err := syncer.fetcher.GetBlocks(ctx, tsKey.ToSlice())
 	if err != nil {
-		panic(err)
 		return err
 	}
-	ts := tss[0]
-	syncer.pm.AddPeer(from, ts)
-
-	if !(len(syncer.pm.Peers()) >= BootstrapThreshold) {
-		logSyncer.Infof("Unable Bootstrap Sync, not enough peers to bootstrap from, current count %d", len(syncer.pm.Peers()))
-		return errors.New("Not enough peers to bootstrap")
+	ts, err := types.NewTipSet(blks...)
+	if err != nil {
+		return err
 	}
+	syncer.pm.AddPeer(from, ts)
 
 	go func() {
 		syncer.mu.Lock()
@@ -434,6 +434,11 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey t
 
 		switch syncer.syncMode {
 		case Syncing:
+			if !(len(syncer.pm.Peers()) >= BootstrapThreshold) {
+				logSyncer.Infof("Unable Bootstrap Sync, not enough peers to bootstrap from, current count %d, threshold: %d", len(syncer.pm.Peers()), BootstrapThreshold)
+				return
+			}
+
 			logSyncer.Info("Going to bootstrap")
 			if err := syncer.SyncBootstrap(ctx); err != nil {
 				logSyncer.Errorf("Bootstrap sync error: %s", err.Error())
@@ -470,18 +475,12 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		return errors.Wrap(err, "Failed to select head")
 	}
 
-	headHeight, err := syncHead.Height()
-	if err != nil {
-		logSyncer.Errorf("Aborting Bootstrap Sync, failed to read head height. Error: %s", err.Error())
-		return err
-	}
-
-	logSyncer.Infof("Bootstrap Sync selected head: %s with height: %d", syncHead.String(), headHeight)
-
 	var out []types.TipSet
 	cur := syncHead.Key()
 	for {
 		logSyncer.Infof("Bootstrap Sync requesting Tipset: %s and %d parents", cur.String(), BootstrapFetchWindow)
+		// NB: this will break in the event that we are fetching past the genesis block
+		// e.g. bootstrapping a chain of length 8 with a Window set to 10
 		tips, err := syncer.fetcher.FetchTipSets(ctx, cur, BootstrapFetchWindow)
 		if err != nil {
 			logSyncer.Errorf("Failed to fetch tipset at %s. Error: %s", cur.String(), err.Error())
@@ -497,6 +496,7 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 
 		cur, err = out[len(out)-1].Parents()
 		if err != nil {
+			panic(err)
 			return err
 		}
 	}
@@ -520,13 +520,13 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		if i == 0 {
 			wts, err := syncer.widen(ctx, ts)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to widen tipset")
 			}
 			if wts.Defined() {
 				logSyncer.Debug("attempt to sync after widen")
 				err = syncer.syncOne(ctx, parent, wts)
 				if err != nil {
-					return err
+					return errors.Wrap(err, "failed to sync widened tipset")
 				}
 			}
 		}
@@ -537,7 +537,7 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 			// there is no assumption that the running node's data is valid at all,
 			// so we don't really lose anything with this simplification.
 			syncer.badTipSets.AddChain(out[i:])
-			return err
+			return errors.Wrap(err, "failed to syncOne")
 		}
 		if i%500 == 0 {
 			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(out), syncHead.String())

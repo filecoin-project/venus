@@ -16,6 +16,7 @@ import (
 // Fetcher defines an interface that may be used to fetch data from the network.
 type Fetcher interface {
 	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error)
+	GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error)
 }
 
 // BitswapFetcher is used to fetch data over the network.  It is implemented with
