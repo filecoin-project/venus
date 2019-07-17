@@ -717,10 +717,8 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 
 		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
 		minerState.ProvingSet = types.NewIntSet(1, 2)
-		vmctx := th.NewFakeVMContext(message, minerState)
-
 		verifier := &th.FakeVerifier{Valid: true}
-		vmctx.TestVerifier = verifier
+		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
 		miner := Actor{Bootstrap: false}
 
@@ -770,10 +768,8 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
-		vmctx := th.NewFakeVMContext(message, minerState)
-
 		verifier := &th.FakeVerifier{Err: errors.New("verifier error")}
-		vmctx.TestVerifier = verifier
+		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
 		miner := Actor{Bootstrap: false}
 
@@ -792,10 +788,8 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
-		vmctx := th.NewFakeVMContext(message, minerState)
-
 		verifier := &th.FakeVerifier{Valid: false}
-		vmctx.TestVerifier = verifier
+		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
 		miner := Actor{Bootstrap: false}
 

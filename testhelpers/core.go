@@ -257,6 +257,13 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 	}
 }
 
+// NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
+func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier exec.Verifier) *FakeVMContext {
+	vmctx := NewFakeVMContext(message, state)
+	vmctx.TestVerifier = verifier
+	return vmctx
+}
+
 // Message is the message that triggered this invocation
 func (tc *FakeVMContext) Message() *types.Message {
 	return tc.TestMessage
