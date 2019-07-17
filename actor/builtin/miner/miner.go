@@ -524,7 +524,6 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 
 	if err != nil {
 		return nil, errors.CodeError(err), err
-		return nil, errors.CodeError(err), err
 	}
 
 	result, ok := out.(int64)
