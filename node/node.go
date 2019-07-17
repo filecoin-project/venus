@@ -36,7 +36,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/clock"
@@ -83,7 +82,7 @@ type nodeChainReader interface {
 	GenesisCid() cid.Cid
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetTipSetState(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()
@@ -387,15 +386,15 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	bservice := bserv.New(bs, bswap)
 	fetcher := net.NewBitswapFetcher(ctx, bservice, blkValid)
 
-	cstOffline := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
 	if err != nil {
 		return nil, err
 	}
 
 	// set up chainstore
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), bs, genCid)
-	chainState := cst.NewChainStateProvider(chainStore, &cstOffline)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, genCid)
+	chainState := cst.NewChainStateProvider(chainStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -409,9 +408,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// set up consensus
 	var nodeConsensus consensus.Protocol
 	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, &verification.RustVerifier{}, nc.BlockTime)
+		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, &verification.RustVerifier{}, nc.BlockTime)
 	} else {
-		nodeConsensus = consensus.NewExpected(&cstOffline, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
+		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
 	}
 
 	// Set up libp2p network
@@ -439,7 +438,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	nd := &Node{
 		blockservice: bservice,
 		Blockstore:   bs,
-		cborStore:    &cstOffline,
+		cborStore:    &ipldCborStore,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
@@ -464,9 +463,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		Deals:         strgdls.New(nc.Repo.DealsDatastore()),
 		Expected:      nodeConsensus,
 		MsgPool:       msgPool,
-		MsgPreviewer:  msg.NewPreviewer(chainStore, &cstOffline, bs),
-		MsgQueryer:    msg.NewQueryer(chainStore, &cstOffline, bs),
-		MsgWaiter:     msg.NewWaiter(chainStore, bs, &cstOffline),
+		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
+		MsgQueryer:    msg.NewQueryer(chainStore, &ipldCborStore, bs),
+		MsgWaiter:     msg.NewWaiter(chainStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,
 		SectorBuilder: nd.SectorBuilder,
@@ -1047,18 +1046,9 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		node.PorcelainAPI), nil
 }
 
-// getStateFromKey returns the state tree based on tipset fetched with provided key tsKey
-func (node *Node) getStateFromKey(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error) {
-	stateCid, err := node.ChainReader.GetTipSetStateRoot(tsKey)
-	if err != nil {
-		return nil, err
-	}
-	return state.LoadStateTree(ctx, node.CborStore(), stateCid, builtin.Actors)
-}
-
 // getStateTree is the default GetStateTree function for the mining worker.
 func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree, error) {
-	return node.getStateFromKey(ctx, ts.Key())
+	return node.ChainReader.GetTipSetState(ctx, ts.Key())
 }
 
 // getWeight is the default GetWeight function for the mining worker.
@@ -1071,7 +1061,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	if parent.Len() == 0 {
 		return node.Consensus.Weight(ctx, ts, nil)
 	}
-	pSt, err := node.getStateFromKey(ctx, parent)
+	pSt, err := node.ChainReader.GetTipSetState(ctx, parent)
 	if err != nil {
 		return uint64(0), err
 	}
