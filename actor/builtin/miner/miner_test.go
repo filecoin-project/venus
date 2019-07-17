@@ -335,7 +335,7 @@ func TestMinerGetPower(t *testing.T) {
 
 		st, vms := th.RequireCreateStorages(ctx, t)
 
-		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve power (trivial result for no proven sectors)
 		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -352,7 +352,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := th.RequireCreateStorages(ctx, t)
 
-		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve proving period
 		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
@@ -377,7 +377,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		st, vms := th.RequireCreateStorages(ctx, t)
 
-		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// commit sector to set ProvingPeriodEnd
 		commR := th.MakeCommitment()
@@ -446,7 +446,7 @@ func TestMinerCommitSector(t *testing.T) {
 		amtCollateralForPledge := MinimumCollateralPerSector.CalculatePrice(types.NewBytesAmount(numSectorsToPledge))
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := th.CreateTestMinerWith(amtCollateralForPledge, t, st, vms, address.TestAddress, origPid)
+		minerAddr := th.CreateTestMinerWith(amtCollateralForPledge, t, st, vms, address.TestAddress, origPid, 0)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
@@ -476,7 +476,7 @@ func TestMinerCommitSector(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 
 		origPid := th.RequireRandomPeerID(t)
-		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, origPid)
+		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, address.TestAddress, origPid, 0)
 
 		commR := th.MakeCommitment()
 		commRStar := th.MakeCommitment()
