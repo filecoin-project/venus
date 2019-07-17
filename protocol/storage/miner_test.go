@@ -28,11 +28,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var (
+const (
 	defaultAmountInc = uint64(1773)
 	defaultPieceSize = uint64(1000)
 
-	minerPriceString = ".00025"
+	defaultMinerPrice = ".00025"
 )
 
 func TestReceiveStorageProposal(t *testing.T) {
@@ -43,7 +43,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		rejected := false
 		var message string
 
-		porcelainAPI := newMinerTestPorcelain(t)
+		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		miner := Miner{
 			porcelainAPI: porcelainAPI,
 			ownerAddr:    porcelainAPI.targetAddress,
@@ -62,6 +62,39 @@ func TestReceiveStorageProposal(t *testing.T) {
 
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, defaultAmountInc)
 		proposal := testSignedDealProposal(porcelainAPI, vouchers, defaultPieceSize)
+
+		_, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		assert.True(t, accepted, "Proposal has been accepted")
+		assert.False(t, rejected, "Proposal has not been rejected")
+		assert.Equal(t, "", message)
+	})
+
+	t.Run("Accepts proposals with no payments when price is zero", func(t *testing.T) {
+		accepted := false
+		rejected := false
+		var message string
+
+		porcelainAPI := newMinerTestPorcelain(t, "0")
+		miner := Miner{
+			porcelainAPI: porcelainAPI,
+			ownerAddr:    porcelainAPI.targetAddress,
+			workerAddr:   porcelainAPI.targetAddress,
+			sectorSize:   types.OneKiBSectorSize,
+			proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
+				accepted = true
+				return &storagedeal.Response{State: storagedeal.Accepted}, nil
+			},
+			proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
+				message = reason
+				rejected = true
+				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
+			},
+		}
+
+		// do not create payment info
+		proposal := testSignedDealProposal(porcelainAPI, nil, defaultPieceSize)
 
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
@@ -145,7 +178,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 	})
 
 	t.Run("Rejects proposals with when payments start too late", func(t *testing.T) {
-		porcelainAPI := newMinerTestPorcelain(t)
+		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		porcelainAPI.paymentStart = porcelainAPI.paymentStart.Add(types.NewBlockHeight(15))
 
 		miner, _ := newMinerTestSetup(porcelainAPI, VoucherInterval, defaultAmountInc)
@@ -195,7 +228,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 	})
 
 	t.Run("Rejects proposals piece larger than sector size", func(t *testing.T) {
-		porcelainAPI := newMinerTestPorcelain(t)
+		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		miner := newTestMiner(porcelainAPI)
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, 2*defaultAmountInc)
 		proposal := testSignedDealProposal(porcelainAPI, vouchers, 2*defaultPieceSize)
@@ -529,7 +562,7 @@ var _ minerPorcelain = (*minerTestPorcelain)(nil)
 
 type messageHandlerMap map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
-func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
+func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorcelain {
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
 	payerAddr, err := ki[0].Address()
 	require.NoError(t, err, "Could not create payer address")
@@ -655,7 +688,7 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 }
 
 func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
-	papi := newMinerTestPorcelain(t)
+	papi := newMinerTestPorcelain(t, defaultMinerPrice)
 	miner, sdp := newMinerTestSetup(papi, voucherInverval, amountInc)
 	return papi, miner, sdp
 }
@@ -738,7 +771,7 @@ func testSectorMetadata(pieceRef cid.Cid) *sectorbuilder.SealedSectorMetadata {
 
 func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
 	duration := uint64(10000)
-	minerPrice, _ := types.NewAttoFILFromFILString(minerPriceString)
+	minerPrice, _ := types.NewAttoFILFromFILString(defaultMinerPrice)
 	totalPrice := minerPrice.MulBigInt(big.NewInt(int64(size * duration)))
 
 	proposal := &storagedeal.Proposal{
