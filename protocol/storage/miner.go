@@ -168,6 +168,7 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 		return sm.proposalRejector(sm, p, err.Error())
 	}
 
+	// skip payment validation (assume there is no payment) if miner is not charging for storage.
 	if price.GreaterThan(types.ZeroAttoFIL) {
 		if err := sm.validateDealPayment(ctx, p, price); err != nil {
 			return sm.proposalRejector(sm, p, err.Error())

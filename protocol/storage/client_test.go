@@ -119,6 +119,45 @@ func TestProposeDeal(t *testing.T) {
 	})
 }
 
+func TestProposeZeroPriceDeal(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	addressCreator := address.NewForTestGetter()
+
+	// Create API and set miner's price to zero
+	testAPI := newTestClientAPI(t)
+	testAPI.askPrice = types.ZeroAttoFIL
+
+	client := NewClient(th.NewFakeHost(), testAPI)
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p := request.(*storagedeal.SignedDealProposal)
+
+		// assert that client does not send payment information in deal
+		assert.Equal(t, types.ZeroAttoFIL, p.TotalPrice)
+
+		assert.Equal(t, (*types.ChannelID)(nil), p.Payment.Channel)
+		assert.Equal(t, address.Undef, p.Payment.PayChActor)
+		assert.Equal(t, address.Undef, p.Payment.Payer)
+		assert.Nil(t, p.Payment.Vouchers)
+
+		pcid, err := convert.ToCid(p.Proposal)
+		require.NoError(t, err)
+		return &storagedeal.Response{
+			State:       storagedeal.Accepted,
+			Message:     "OK",
+			ProposalCid: pcid,
+		}, nil
+	})
+	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
+
+	_, err := client.ProposeDeal(ctx, addressCreator(), types.SomeCid(), uint64(67), uint64(10000), false)
+	require.NoError(t, err)
+
+	// ensure client did not attempt to create a payment channel
+	assert.False(t, testAPI.createdPayment)
+}
+
 func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -153,14 +192,16 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 }
 
 type clientTestAPI struct {
-	blockHeight *types.BlockHeight
-	channelID   *types.ChannelID
-	msgCid      cid.Cid
-	payer       address.Address
-	target      address.Address
-	perPayment  types.AttoFIL
-	testing     *testing.T
-	deals       map[cid.Cid]*storagedeal.Deal
+	askPrice       types.AttoFIL
+	createdPayment bool
+	blockHeight    *types.BlockHeight
+	channelID      *types.ChannelID
+	msgCid         cid.Cid
+	payer          address.Address
+	target         address.Address
+	perPayment     types.AttoFIL
+	testing        *testing.T
+	deals          map[cid.Cid]*storagedeal.Deal
 }
 
 func newTestClientAPI(t *testing.T) *clientTestAPI {
@@ -168,14 +209,16 @@ func newTestClientAPI(t *testing.T) *clientTestAPI {
 	addressGetter := address.NewForTestGetter()
 
 	return &clientTestAPI{
-		blockHeight: types.NewBlockHeight(773),
-		msgCid:      cidGetter(),
-		channelID:   types.NewChannelID(23),
-		payer:       addressGetter(),
-		target:      addressGetter(),
-		perPayment:  types.NewAttoFILFromFIL(10),
-		testing:     t,
-		deals:       make(map[cid.Cid]*storagedeal.Deal),
+		askPrice:       types.NewAttoFILFromFIL(32),
+		createdPayment: false,
+		blockHeight:    types.NewBlockHeight(773),
+		msgCid:         cidGetter(),
+		channelID:      types.NewChannelID(23),
+		payer:          addressGetter(),
+		target:         addressGetter(),
+		perPayment:     types.NewAttoFILFromFIL(10),
+		testing:        t,
+		deals:          make(map[cid.Cid]*storagedeal.Deal),
 	}
 }
 
@@ -188,6 +231,7 @@ func (ctp *clientTestAPI) ChainBlockHeight() (*types.BlockHeight, error) {
 }
 
 func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error) {
+	ctp.createdPayment = true
 	resp := &porcelain.CreatePaymentsReturn{
 		CreatePaymentsParams: config,
 		Channel:              ctp.channelID,
@@ -219,7 +263,7 @@ func (ctp *clientTestAPI) DAGGetFileSize(context.Context, cid.Cid) (uint64, erro
 
 func (ctp *clientTestAPI) MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error) {
 	return miner.Ask{
-		Price:  types.NewAttoFILFromFIL(32),
+		Price:  ctp.askPrice,
 		Expiry: types.NewBlockHeight(41),
 		ID:     big.NewInt(4),
 	}, nil
