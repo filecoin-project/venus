@@ -26,7 +26,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Cbor
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
-	chainStore := NewStore(r.ChainDatastore(), bs, genesis.Cid())
+	chainStore := NewStore(r.ChainDatastore(), cst, genesis.Cid())
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetAndState{

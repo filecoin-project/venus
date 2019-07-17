@@ -8,15 +8,16 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-
-	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -31,17 +32,25 @@ var logStore = logging.Logger("chain.store")
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
 type ipldSource struct {
-	// bs is the blockstore from which IPLD objects are pulled
-	bs bstore.Blockstore
+	// cst is a store allowing access
+	// (un)marshalling and interop with go-ipld-hamt.
+	cborStore *hamt.CborIpldStore
 }
 
-// GetBlock retrieves a filecoin block by cid from the IPLD source.
+func newSource(cst *hamt.CborIpldStore) *ipldSource {
+	return &ipldSource{
+		cborStore: cst,
+	}
+}
+
+// GetBlock retrieves a filecoin block by cid from the IPLD store.
 func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
-	data, err := source.bs.Get(c)
+	var block types.Block
+	err := source.cborStore.Get(ctx, c, &block)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
 	}
-	return types.DecodeBlock(data.RawData())
+	return &block, nil
 }
 
 // Store is a generic implementation of the Store interface.
@@ -49,7 +58,7 @@ func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block
 type Store struct {
 	// ipldSource is a wrapper around ipld storage.  It is used
 	// for reading filecoin block and state objects kept by the node.
-	ipldSource *ipldSource
+	stateAndBlockSource *ipldSource
 
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
@@ -76,13 +85,13 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, bs bstore.Blockstore, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst *hamt.CborIpldStore, genesisCid cid.Cid) *Store {
 	return &Store{
-		ipldSource: &ipldSource{bs: bs},
-		ds:         ds,
-		headEvents: pubsub.New(128),
-		tipIndex:   NewTipIndex(),
-		genesis:    genesisCid,
+		stateAndBlockSource: newSource(cst),
+		ds:                  ds,
+		headEvents:          pubsub.New(128),
+		tipIndex:            NewTipIndex(),
+		genesis:             genesisCid,
 	}
 }
 
@@ -113,7 +122,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return err
 	}
 
-	headTs, err := LoadTipSetBlocks(ctx, store.ipldSource, headTsKey)
+	headTs, err := LoadTipSetBlocks(ctx, store.stateAndBlockSource, headTsKey)
 	if err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
@@ -125,7 +134,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	var genesii types.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
-	tipsetProvider := TipSetProviderFromBlocks(ctx, store.ipldSource)
+	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
 	for iterator := IterAncestors(ctx, tipsetProvider, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return err
@@ -223,7 +232,16 @@ func (store *Store) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 	return store.tipIndex.GetTipSet(key.String())
 }
 
-// GetTipSetStateRoot returns the state root CID of the tipset identified by `key`.
+// GetTipSetState returns the aggregate state of the tipset identified by `key`.
+func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (state.Tree, error) {
+	stateCid, err := store.tipIndex.GetTipSetStateRoot(key.String())
+	if err != nil {
+		return nil, err
+	}
+	return state.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
+}
+
+// GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
 func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key.String())
 }
@@ -331,12 +349,9 @@ func (store *Store) GetHead() types.TipSetKey {
 }
 
 // BlockHeight returns the chain height of the head tipset.
-// Strictly speaking, the block height is the number of tip sets that appear on chain plus
-// the number of "null blocks" that occur when a mining round fails to produce a block.
 func (store *Store) BlockHeight() (uint64, error) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
-
 	return store.head.Height()
 }
 

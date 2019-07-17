@@ -3,15 +3,14 @@ package msg
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
@@ -20,7 +19,7 @@ import (
 type previewerChainReader interface {
 	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
 }
 
 // Previewer calculates the amount of Gas needed for a command
@@ -45,7 +44,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 		return types.NewGasUnits(0), errors.Wrap(err, "couldnt encode message params")
 	}
 
-	st, err := chain.LatestState(ctx, p.chainReader, p.cst)
+	st, err := p.chainReader.GetTipSetState(ctx, p.chainReader.GetHead())
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "could load tree for latest state root")
 	}

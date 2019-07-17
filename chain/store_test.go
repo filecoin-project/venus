@@ -10,10 +10,13 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -36,7 +39,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 func newChainStore(dstP *SyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewStore(ds, bstore.NewBlockstore(r.Datastore()), dstP.genCid)
+	return chain.NewStore(ds, hamt.NewCborStore(), dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
@@ -87,7 +90,14 @@ func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
 	return headTipSet
 }
 
-/* Putting and getting tipsets into and from the store. */
+func requirePutBlocksToCborStore(t *testing.T, cst *hamt.CborIpldStore, blocks ...*types.Block) {
+	for _, block := range blocks {
+		_, err := cst.Put(context.Background(), block)
+		require.NoError(t, err)
+	}
+}
+
+/* Putting and getting tipsets and states. */
 
 // Adding tipsets to the store doesn't error.
 func TestPutTipSet(t *testing.T) {
@@ -140,6 +150,53 @@ func TestGetByKey(t *testing.T) {
 	assert.Equal(t, dstP.link2State, got2TSSR)
 	assert.Equal(t, dstP.link3State, got3TSSR)
 	assert.Equal(t, dstP.link4State, got4TSSR)
+}
+
+// Tipset state is loaded correctly
+func TestGetTipSetState(t *testing.T) {
+	ctx := context.Background()
+	cst := hamt.NewCborStore()
+
+	// setup testing state
+	fakeCode := types.SomeCid()
+	balance := types.NewAttoFILFromFIL(1000000)
+	testActor := actor.NewActor(fakeCode, balance)
+	addr := address.NewForTestGetter()()
+	st1 := state.NewEmptyStateTree(cst)
+	require.NoError(t, st1.SetActor(ctx, addr, testActor))
+	root, err := st1.Flush(ctx)
+	require.NoError(t, err)
+
+	// link testing state to test block
+	builder := chain.NewBuilder(t, address.Undef)
+	gen := builder.AppendOn()
+	testBlock := builder.BuildOn(gen, func(b *chain.BlockBuilder) {
+		b.SetStateRoot(root)
+	})
+	testTs := types.RequireNewTipSet(t, testBlock)
+
+	// setup chain store
+	r := repo.NewInMemoryRepo()
+	ds := r.Datastore()
+	store := chain.NewStore(ds, cst, gen.Cid())
+
+	// add tipset and state to chain store
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{
+		TipSet:          testTs,
+		TipSetStateRoot: root,
+	}))
+
+	// verify output of GetTipSetState
+	st2, err := store.GetTipSetState(ctx, testTs.Key())
+	assert.NoError(t, err)
+	for actRes := range state.GetAllActors(ctx, st2) {
+		assert.NoError(t, actRes.Error)
+		assert.Equal(t, addr.String(), actRes.Address)
+		assert.Equal(t, fakeCode, actRes.Actor.Code)
+		assert.Equal(t, testActor.Head, actRes.Actor.Head)
+		assert.Equal(t, types.Uint64(0), actRes.Actor.Nonce)
+		assert.Equal(t, balance, actRes.Actor.Balance)
+	}
 }
 
 // Tipsets can be retrieved by parent key (all block cids of parents).
@@ -325,25 +382,24 @@ func TestLoadAndReboot(t *testing.T) {
 	initStoreTest(ctx, t, dstP)
 
 	rPriv := repo.NewInMemoryRepo()
-	rGlob := repo.NewInMemoryRepo()
 	ds := rPriv.Datastore()
-	bs := bstore.NewBlockstore(rGlob.Datastore())
+	cst := hamt.NewCborStore()
 	// Add blocks to blockstore
-	requirePutBlocksToBlockstore(t, bs, dstP.genTS.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link1.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link2.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link3.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link4.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.genTS.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link1.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link2.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link3.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, bs, dstP.genCid)
+	chainStore := chain.NewStore(ds, cst, dstP.genCid)
 	requirePutTestChain(t, chainStore, dstP)
 	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
 	assertSetHead(t, chainStore, dstP.link4)
 	chainStore.Stop()
 
-	// rebuild chain with same datastores
-	rebootChain := chain.NewStore(ds, bs, dstP.genCid)
+	// rebuild chain with same datastore and cborstore
+	rebootChain := chain.NewStore(ds, cst, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
@@ -359,10 +415,4 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check the head
 	assert.Equal(t, dstP.link4.Key(), rebootChain.GetHead())
-}
-
-func requirePutBlocksToBlockstore(t *testing.T, bs bstore.Blockstore, blocks ...*types.Block) {
-	for _, block := range blocks {
-		require.NoError(t, bs.Put(block.ToNode()))
-	}
 }

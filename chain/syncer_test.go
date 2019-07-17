@@ -203,7 +203,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, cst, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
 	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
@@ -275,7 +275,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, bs, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, cst, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
@@ -757,12 +757,13 @@ func TestLoadFork(t *testing.T) {
 	// Put blocks in global IPLD blockstore
 	// TODO #2128 make this cleaner along with broad test cleanup.
 	bs := bstore.NewBlockstore(r.Datastore())
-	requirePutBlocksToBlockstore(t, bs, dstP.genTS.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link1.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, dstP.link2.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, forklink1.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, forklink2.ToSlice()...)
-	requirePutBlocksToBlockstore(t, bs, forklink3.ToSlice()...)
+	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	requirePutBlocksToCborStore(t, cst, dstP.genTS.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link1.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, dstP.link2.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, forklink1.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, forklink2.ToSlice()...)
+	requirePutBlocksToCborStore(t, cst, forklink3.ToSlice()...)
 
 	// Shut down store, reload and wire to syncer.
 	loadSyncer, blockSource := loadSyncerFromRepo(t, r, dstP)
@@ -1066,7 +1067,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewStore(r.ChainDatastore(), bs, calcGenBlk.Cid())
+	chainStore := chain.NewStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
 
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
