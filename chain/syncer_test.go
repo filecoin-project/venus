@@ -376,7 +376,7 @@ func TestSyncOneBlock(t *testing.T) {
 	expectedTs := th.RequireNewTipSet(t, dstP.link1blk1)
 
 	cids := requirePutBlocks(t, blockSource, dstP.link1blk1)
-	err := syncer.HandleNewTipset(ctx, cids)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids)
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, expectedTs)
@@ -392,7 +392,7 @@ func TestSyncOneTipSet(t *testing.T) {
 	ctx := context.Background()
 
 	cids := requirePutBlocks(t, blockSource, dstP.link1blk1, dstP.link1blk2)
-	err := syncer.HandleNewTipset(ctx, cids)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids)
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, dstP.link1)
@@ -410,13 +410,13 @@ func TestSyncTipSetBlockByBlock(t *testing.T) {
 	expTs1 := th.RequireNewTipSet(t, dstP.link1blk1)
 
 	_ = requirePutBlocks(t, blockSource, dstP.link1blk1, dstP.link1blk2)
-	err := syncer.HandleNewTipset(ctx, types.NewTipSetKey(dstP.link1blk1.Cid()))
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), types.NewTipSetKey(dstP.link1blk1.Cid()))
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, expTs1)
 	assertHead(t, chainStore, expTs1)
 
-	err = syncer.HandleNewTipset(ctx, types.NewTipSetKey(dstP.link1blk2.Cid()))
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), types.NewTipSetKey(dstP.link1blk2.Cid()))
 	assert.NoError(t, err)
 
 	assertTsAdded(t, chainStore, dstP.link1)
@@ -436,22 +436,22 @@ func TestSyncChainTipSetByTipSet(t *testing.T) {
 	cids3 := requirePutBlocks(t, blockSource, dstP.link3.ToSlice()...)
 	cids4 := requirePutBlocks(t, blockSource, dstP.link4.ToSlice()...)
 
-	err := syncer.HandleNewTipset(ctx, cids1)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids1)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link1)
 	assertHead(t, chainStore, dstP.link1)
 
-	err = syncer.HandleNewTipset(ctx, cids2)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids2)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link2)
 	assertHead(t, chainStore, dstP.link2)
 
-	err = syncer.HandleNewTipset(ctx, cids3)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids3)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link3)
 	assertHead(t, chainStore, dstP.link3)
 
-	err = syncer.HandleNewTipset(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids4)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link4)
 	assertHead(t, chainStore, dstP.link4)
@@ -470,7 +470,7 @@ func TestSyncChainHead(t *testing.T) {
 	_ = requirePutBlocks(t, blockSource, dstP.link3.ToSlice()...)
 	cids4 := requirePutBlocks(t, blockSource, dstP.link4.ToSlice()...)
 
-	err := syncer.HandleNewTipset(ctx, cids4)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids4)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link4)
 	assertTsAdded(t, chainStore, dstP.link3)
@@ -511,13 +511,13 @@ func TestSyncIgnoreLightFork(t *testing.T) {
 	forkCids1 := requirePutBlocks(t, blockSource, forklink1.ToSlice()...)
 
 	// Sync heaviest branch first.
-	err = syncer.HandleNewTipset(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids4)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link4)
 	assertHead(t, chainStore, dstP.link4)
 
 	// lighter fork should be processed but not change head.
-	assert.NoError(t, syncer.HandleNewTipset(ctx, forkCids1))
+	assert.NoError(t, syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), forkCids1))
 	assertTsAdded(t, chainStore, forklink1)
 	assertHead(t, chainStore, dstP.link4)
 }
@@ -582,13 +582,13 @@ func TestHeavierFork(t *testing.T) {
 	_ = requirePutBlocks(t, blockSource, forklink2.ToSlice()...)
 	forkHead := requirePutBlocks(t, blockSource, forklink3.ToSlice()...)
 
-	err = syncer.HandleNewTipset(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids4)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link4)
 	assertHead(t, chainStore, dstP.link4)
 
 	// heavier fork updates head
-	err = syncer.HandleNewTipset(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), forkHead)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, forklink1)
 	assertTsAdded(t, chainStore, forklink2)
@@ -630,7 +630,7 @@ func TestFarFutureTipsetsWhenCaughtUp(t *testing.T) {
 		tipsetCids = requirePutBlocks(t, blockSource, linkBlk)
 	}
 
-	assert.Error(t, syncer.HandleNewTipset(ctx, tipsetCids))
+	assert.Error(t, syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), tipsetCids))
 }
 
 // Syncer succeeds when input blocks massively exceed the current block height
@@ -667,7 +667,7 @@ func TestFarFutureTipsetsWhenSyncing(t *testing.T) {
 		tipsetCids = requirePutBlocks(t, blockSource, linkBlk)
 	}
 
-	assert.NoError(t, syncer.HandleNewTipset(ctx, tipsetCids))
+	assert.NoError(t, syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), tipsetCids))
 }
 
 // Syncer errors if blocks don't form a tipset
@@ -681,7 +681,7 @@ func TestBlocksNotATipSet(t *testing.T) {
 	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
 	_ = requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
 	badCids := types.NewTipSetKey(dstP.link1blk1.Cid(), dstP.link2blk1.Cid())
-	err := syncer.HandleNewTipset(ctx, badCids)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), badCids)
 	assert.Error(t, err)
 	assertNoAdd(t, chainStore, badCids)
 }
@@ -699,7 +699,7 @@ func TestLoadFork(t *testing.T) {
 	// Set up chain store to have standard chain up to dstP.link2
 	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
 	cids2 := requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
-	err := syncer.HandleNewTipset(ctx, cids2)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids2)
 	require.NoError(t, err)
 
 	// Now sync the store with a heavier fork, forking off dstP.link1.
@@ -750,7 +750,7 @@ func TestLoadFork(t *testing.T) {
 	_ = requirePutBlocks(t, blockSource, forklink1.ToSlice()...)
 	_ = requirePutBlocks(t, blockSource, forklink2.ToSlice()...)
 	forkHead := requirePutBlocks(t, blockSource, forklink3.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), forkHead)
 	require.NoError(t, err)
 	requireHead(t, chainStore, forklink3)
 
@@ -772,7 +772,7 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the repo is trimmed
 	// of non-heaviest chain blocks
 	cids3 := requirePutBlocks(t, blockSource, dstP.link3.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cids3)
+	err = loadSyncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids3)
 	assert.Error(t, err)
 
 	// Test that the syncer can sync a block on the heaviest chain
@@ -781,7 +781,7 @@ func TestLoadFork(t *testing.T) {
 	forklink4blk1 := th.RequireMkFakeChild(t, fakeChildParams)
 	forklink4 := th.RequireNewTipSet(t, forklink4blk1)
 	cidsFork4 := requirePutBlocks(t, blockSource, forklink4.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cidsFork4)
+	err = loadSyncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cidsFork4)
 	assert.NoError(t, err)
 }
 
@@ -809,7 +809,7 @@ func TestSubsetParent(t *testing.T) {
 	// Set up store to have standard chain up to dstP.link2
 	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
 	cids2 := requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
-	err := syncer.HandleNewTipset(ctx, cids2)
+	err := syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids2)
 	require.NoError(t, err)
 
 	// Sync one tipset with a parent equal to a subset of an existing
@@ -836,7 +836,7 @@ func TestSubsetParent(t *testing.T) {
 
 	forklink := th.RequireNewTipSet(t, forkblk1, forkblk2)
 	forkHead := requirePutBlocks(t, blockSource, forklink.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), forkHead)
 	assert.NoError(t, err)
 
 	// Sync another tipset with a parent equal to a subset of the tipset
@@ -848,7 +848,7 @@ func TestSubsetParent(t *testing.T) {
 	newForkblk := th.RequireMkFakeChild(t, fakeChildParams)
 	newForklink := th.RequireNewTipSet(t, newForkblk)
 	newForkHead := requirePutBlocks(t, blockSource, newForklink.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, newForkHead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), newForkHead)
 	assert.NoError(t, err)
 }
 
@@ -886,13 +886,13 @@ func TestWidenChainAncestor(t *testing.T) {
 	intersectCids := requirePutBlocks(t, blockSource, link2intersect.ToSlice()...)
 
 	// Sync the subset of dstP.link2 first
-	err = syncer.HandleNewTipset(ctx, intersectCids)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), intersectCids)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, link2intersect)
 	assertHead(t, chainStore, link2intersect)
 
 	// Sync chain with head at dstP.link4
-	err = syncer.HandleNewTipset(ctx, cids4)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), cids4)
 	assert.NoError(t, err)
 	assertTsAdded(t, chainStore, dstP.link4)
 	assertHead(t, chainStore, dstP.link4)
@@ -1001,11 +1001,11 @@ func TestHeaviestIsWidenedAncestor(t *testing.T) {
 	forkhead := requirePutBlocks(t, blockSource, forklink3.ToSlice()...)
 
 	// Put testhead
-	err = syncer.HandleNewTipset(ctx, testhead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), testhead)
 	assert.NoError(t, err)
 
 	// Put forkhead
-	err = syncer.HandleNewTipset(ctx, forkhead)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), forkhead)
 	assert.NoError(t, err)
 
 	// Assert that widened chain is the new head
@@ -1143,7 +1143,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(t, blockSource, f1b1, f2b1)
-	err = syncer.HandleNewTipset(ctx, sharedCids)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), sharedCids)
 	require.NoError(t, err)
 	assertHead(t, chainStore, tsShared)
 	measuredWeight, err := wFun(requireHeadTipset(t, chainStore))
@@ -1175,7 +1175,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f1Cids)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), f1Cids)
 	require.NoError(t, err)
 	assertHead(t, chainStore, f1)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
@@ -1200,7 +1200,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f2Cids)
+	err = syncer.HandleNewTipset(ctx, th.RequireRandomPeerID(t), f2Cids)
 	require.NoError(t, err)
 	assertHead(t, chainStore, f2)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))

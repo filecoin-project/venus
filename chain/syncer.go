@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -404,7 +405,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey) (err error) {
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey types.TipSetKey) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tsKey)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
 	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
