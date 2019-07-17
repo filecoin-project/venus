@@ -730,7 +730,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		assert.Equal(t, types.OneKiBSectorSize, verifier.PoStRequest.SectorSize)
 
 		seed := types.PoStChallengeSeed{}
-		copy(seed[:], vmctx.TestRandomness)
+		copy(seed[:], vmctx.RandomnessValue)
 
 		sortedRs := proofs.NewSortedCommRs(comm1.CommR, comm2.CommR)
 

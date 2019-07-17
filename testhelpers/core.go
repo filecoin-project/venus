@@ -189,10 +189,12 @@ type testStorage struct {
 
 var _ exec.Storage = testStorage{}
 
+// Put satisfies the Storage interface but does nothing.
 func (ts testStorage) Put(v interface{}) (cid.Cid, error) {
 	return cid.Cid{}, nil
-
 }
+
+// Get returns the internal state variable encoded into bytes
 func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
 	if err != nil {
@@ -202,43 +204,47 @@ func (ts testStorage) Get(cid.Cid) ([]byte, error) {
 	return node.RawData(), nil
 }
 
+// Commit satisifes the Storage interface but does nothing
 func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 	return nil
 }
 
+// Head returns an empty Cid to satisfy the Storage interface
 func (ts testStorage) Head() cid.Cid {
 	return cid.Cid{}
 }
 
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
 type FakeVMContext struct {
-	TestMessage        *types.Message
-	TestStorage        exec.Storage
-	TestBalance        types.AttoFIL
-	TestBlockHeight    *types.BlockHeight
-	TestVerifier       exec.Verifier
-	TestRandomness     []byte
-	TestIsAccountActor bool
-	Sender             func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
-	Addresser          func() (address.Address, error)
-	Charger            func(cost types.GasUnits) error
-	Sampler            func(sampleHeight *types.BlockHeight) ([]byte, error)
-	ActorCreator       func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+	MessageValue            *types.Message
+	StorageValue            exec.Storage
+	BalanceValue            types.AttoFIL
+	BlockHeightValue        *types.BlockHeight
+	VerifierValue           exec.Verifier
+	RandomnessValue         []byte
+	IsFromAccountActorValue bool
+	Sender                  func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Addresser               func() (address.Address, error)
+	Charger                 func(cost types.GasUnits) error
+	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
+	ActorCreator            func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 }
 
 var _ exec.VMContext = &FakeVMContext{}
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
 func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
-	randomness := MakeRandomBytes(32)
+	randomness := make([]byte, 32)
+	copy(randomness[:], []byte("only random in the figurative sense"))
+
 	addressGetter := address.NewForTestGetter()
 	return &FakeVMContext{
-		TestMessage:        message,
-		TestStorage:        &testStorage{state: state},
-		TestBlockHeight:    types.NewBlockHeight(0),
-		TestBalance:        types.ZeroAttoFIL,
-		TestRandomness:     randomness,
-		TestIsAccountActor: true,
+		MessageValue:            message,
+		StorageValue:            &testStorage{state: state},
+		BlockHeightValue:        types.NewBlockHeight(0),
+		BalanceValue:            types.ZeroAttoFIL,
+		RandomnessValue:         randomness,
+		IsFromAccountActorValue: true,
 		Charger: func(cost types.GasUnits) error {
 			return nil
 		},
@@ -260,18 +266,18 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 // NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
 func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier exec.Verifier) *FakeVMContext {
 	vmctx := NewFakeVMContext(message, state)
-	vmctx.TestVerifier = verifier
+	vmctx.VerifierValue = verifier
 	return vmctx
 }
 
 // Message is the message that triggered this invocation
 func (tc *FakeVMContext) Message() *types.Message {
-	return tc.TestMessage
+	return tc.MessageValue
 }
 
 // Storage provides and interface to actor state
 func (tc *FakeVMContext) Storage() exec.Storage {
-	return tc.TestStorage
+	return tc.StorageValue
 }
 
 // Send sends a message to another actor
@@ -286,17 +292,17 @@ func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
 
 // BlockHeight is the current chain height
 func (tc *FakeVMContext) BlockHeight() *types.BlockHeight {
-	return tc.TestBlockHeight
+	return tc.BlockHeightValue
 }
 
 // MyBalance is the balance of the current actor
 func (tc *FakeVMContext) MyBalance() types.AttoFIL {
-	return tc.TestBalance
+	return tc.BalanceValue
 }
 
 // IsFromAccountActor returns true if the actor that sent the message is an account actor
 func (tc *FakeVMContext) IsFromAccountActor() bool {
-	return tc.TestIsAccountActor
+	return tc.IsFromAccountActorValue
 }
 
 // Charge charges gas for the current action
@@ -316,13 +322,15 @@ func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, init
 
 // Verifier provides an interface to the proofs verifier
 func (tc *FakeVMContext) Verifier() exec.Verifier {
-	return tc.TestVerifier
+	return tc.VerifierValue
 }
 
 // FakeVerifier is a fake implementation of a proof verifier
 type FakeVerifier struct {
-	Valid       bool
-	Err         error
+	Valid bool
+	Err   error
+
+	// these requests will be captured by code that calls VerifySeal or VerifyPoSt.
 	SealRequest verification.VerifySealRequest
 	PoStRequest verification.VerifyPoStRequest
 }
