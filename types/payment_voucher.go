@@ -1,6 +1,8 @@
 package types
 
 import (
+	"errors"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multibase"
 	"sort"
@@ -54,13 +56,13 @@ type PaymentVoucher struct {
 func DecodeVoucher(voucherRaw string) (*PaymentVoucher, error) {
 	_, cborVoucher, err := multibase.Decode(voucherRaw)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("voucher could not be decoded")
 	}
 
 	var voucher PaymentVoucher
 	err = cbor.DecodeInto(cborVoucher, &voucher)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("voucher string could not be decoded into voucher")
 	}
 
 	return &voucher, nil
