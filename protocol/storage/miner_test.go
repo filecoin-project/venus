@@ -335,7 +335,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return nil, errors.New("test error")
 		}
 		api.messageHandlers = handlers
@@ -351,7 +351,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			commitments := map[string]types.Commitments{}
 			commitments["notanumber"] = types.Commitments{}
 			return mustEncodeResults(t, commitments), nil
@@ -480,7 +480,7 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 		return mustEncodeResults(t, false), nil
 	}
 
-	handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		commitments := map[string]types.Commitments{}
 		commitments["42"] = types.Commitments{}
 		return mustEncodeResults(t, commitments), nil

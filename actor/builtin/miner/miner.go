@@ -306,7 +306,7 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},
 	},
-	"getSectorCommitments": &exec.FunctionSignature{
+	"getProvingSetCommitments": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
@@ -535,26 +535,27 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 	return big.NewInt(result), 0, nil
 }
 
-// GetSectorCommitments returns all sector commitments posted by this miner.
-func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+// GetProvingSetCommitments returns all sector commitments posted by this miner.
+func (ma *Actor) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return (map[string]types.Commitments)(state.SectorCommitments), nil
-	})
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return map[string]types.Commitments{}, errors.CodeError(err), err
 	}
 
-	a, ok := out.(map[string]types.Commitments)
-	if !ok {
-		return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("expected a map[string]types.Commitments, but got %T instead", out)
+	commitments := NewSectorSet()
+	for _, sectorID := range state.ProvingSet.Values() {
+		c, found := state.SectorCommitments.Get(sectorID)
+		if !found {
+			return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("proving set id, %d, missing in sector commitments", sectorID)
+		}
+		commitments.Add(sectorID, c)
 	}
-
-	return a, 0, nil
+	return (map[string]types.Commitments)(commitments), 0, nil
 }
 
 // GetSectorSize returns the size of the sectors committed to the network by
@@ -612,7 +613,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 			req.SectorSize = state.SectorSize
 
-			res, err := (&verification.RustVerifier{}).VerifySeal(req)
+			res, err := ctx.Verifier().VerifySeal(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
 			}
@@ -767,12 +768,8 @@ func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 
 	var state State
 
-	chunk, err := ctx.ReadStorage()
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
-		return peer.ID(""), errors.CodeError(err), err
-	}
-
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 
@@ -878,7 +875,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
-		// balance (whichs forms pledge & storage collateral) is not less than it was before.
+		// balance (which forms pledge & storage collateral) is not less than it was before.
 		messageValue := ctx.Message().Value
 		if messageValue.LessThan(feeRequired) {
 			return nil, errors.NewRevertErrorf("PoSt message requires value of at least %s attofil to cover fees, got %s", feeRequired, messageValue)
@@ -911,8 +908,12 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 			}
 
 			var commRs []types.CommR
-			for _, v := range state.SectorCommitments {
-				commRs = append(commRs, v.CommR)
+			for _, id := range state.ProvingSet.Values() {
+				commitment, found := state.SectorCommitments.Get(id)
+				if !found {
+					return nil, errors.NewFaultErrorf("miner ProvingSet sector id %d missing in SectorCommitments", id)
+				}
+				commRs = append(commRs, commitment.CommR)
 			}
 
 			sortedCommRs := proofs.NewSortedCommRs(commRs...)
@@ -925,7 +926,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				SectorSize:    state.SectorSize,
 			}
 
-			res, err := (&verification.RustVerifier{}).VerifyPoSt(req)
+			res, err := ctx.Verifier().VerifyPoSt(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}
@@ -1041,7 +1042,7 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 // GetProvingPeriod returns the proving period start and proving period end
 func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	var state State
-	err := loadState(ctx, &state)
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return nil, nil, errors.CodeError(err), err
 	}
@@ -1053,7 +1054,7 @@ func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *type
 // power and proving period.
 func (ma *Actor) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
-	err := loadState(ctx, &state)
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.CodeError(err), err
 	}
@@ -1162,19 +1163,6 @@ func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 // Internal functions
 //
-
-// Loads the actor's state into `state`.
-func loadState(ctx exec.VMContext, state *State) error {
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return err
-	}
-
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return err
-	}
-	return nil
-}
 
 // calculates proving period start from the proving period end and the proving period duration
 func provingPeriodStart(state State) *types.BlockHeight {
