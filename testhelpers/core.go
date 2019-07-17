@@ -116,22 +116,7 @@ func VMStorage() vm.StorageMap {
 	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
-// MustSign signs a given address with the provided mocksigner or panics if it
-// cannot.
-func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
-	var smsgs []*types.SignedMessage
-	for _, m := range msgs {
-		gasLimit := types.NewGasUnits(999)
-		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), gasLimit)
-		if err != nil {
-			panic(err)
-		}
-		smsgs = append(smsgs, sm)
-	}
-	return smsgs
-}
-
-// CreateTestMiner creates a new bootstrap test miner with the given peerID and miner
+// CreateTestMiner creates a new test miner with the given peerID and miner
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
 func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
