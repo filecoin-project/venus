@@ -68,11 +68,15 @@ const (
 	// See the spec for more detail:
 	// https://github.com/filecoin-project/specs/blob/master/sync.md#caught-up-mode
 	CaughtUp
+
+	// Bad state, currently not used
+	Unknown
 )
 
 type syncerChainReaderWriter interface {
 	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
+	GenesisCid() cid.Cid
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
@@ -132,6 +136,9 @@ type Syncer struct {
 	//
 	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1160
 	syncMode SyncMode
+
+	// Peer Manager to track whoe we get tipsets from
+	pm PeerManager
 }
 
 // NewSyncer constructs a Syncer ready for use.
@@ -144,6 +151,7 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, s
 		stateEvaluator: e,
 		chainStore:     s,
 		syncMode:       syncMode,
+		pm:             NewBasicPeerManager(),
 	}
 }
 
@@ -406,19 +414,156 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
 func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey types.TipSetKey) (err error) {
-	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tsKey)
-	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
-	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
+	logSyncer.Infof("HandleNewTipSet: %s from peer: %s", tsKey.String(), from.Pretty())
+	tss, err := syncer.fetcher.FetchTipSets(ctx, tsKey, 1)
+	if err != nil {
+		panic(err)
+		return err
+	}
+	ts := tss[0]
+	syncer.pm.AddPeer(from, ts)
 
-	// This lock could last a long time as we fetch all the blocks needed to block the chain.
-	// This is justified because the app is pretty useless until it is synced.
-	// It's better for multiple calls to wait here than to try to fetch the chain independently.
-	syncer.mu.Lock()
-	defer syncer.mu.Unlock()
+	if !(len(syncer.pm.Peers()) >= BootstrapThreshold) {
+		logSyncer.Infof("Unable Bootstrap Sync, not enough peers to bootstrap from, current count %d", len(syncer.pm.Peers()))
+		return errors.New("Not enough peers to bootstrap")
+	}
 
-	// If the store already has this tipset then the syncer is finished.
-	if _, err := syncer.chainStore.GetTipSet(tsKey); err == nil {
+	go func() {
+		syncer.mu.Lock()
+		defer syncer.mu.Unlock()
+
+		switch syncer.syncMode {
+		case Syncing:
+			logSyncer.Info("Going to bootstrap")
+			if err := syncer.SyncBootstrap(ctx); err != nil {
+				logSyncer.Errorf("Bootstrap sync error: %s", err.Error())
+			}
+			return
+		case CaughtUp:
+			logSyncer.Info("Going to caught up")
+			if err := syncer.SyncCaughtUp(ctx, tsKey); err != nil {
+				logSyncer.Errorf("CaughtUp error: %s", err.Error())
+			}
+			return
+		case Unknown:
+			panic("invalid syncer state")
+		}
+	}()
+
+	return nil
+}
+
+// BootstrapThreshold is the minimum number of unique peers the syncer must know
+// of before attempting to sync bootstrap
+var BootstrapThreshold = 0
+
+// BootstrapFetchWindow is the number of tipsets that will be requested at once
+// when performing bootstrap sync
+var BootstrapFetchWindow = 1
+
+func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
+	logSyncer.Info("Starting Bootstrap Sync")
+
+	syncHead, err := syncer.pm.SelectHead()
+	if err != nil {
+		logSyncer.Errorf("Aborting Bootstrap Sync, failed to select head. Error: %s", err.Error())
+		return errors.Wrap(err, "Failed to select head")
+	}
+
+	headHeight, err := syncHead.Height()
+	if err != nil {
+		logSyncer.Errorf("Aborting Bootstrap Sync, failed to read head height. Error: %s", err.Error())
+		return err
+	}
+
+	logSyncer.Infof("Bootstrap Sync selected head: %s with height: %d", syncHead.String(), headHeight)
+
+	var out []types.TipSet
+	cur := syncHead.Key()
+	for {
+		logSyncer.Infof("Bootstrap Sync requesting Tipset: %s and %d parents", cur.String(), BootstrapFetchWindow)
+		tips, err := syncer.fetcher.FetchTipSets(ctx, cur, BootstrapFetchWindow)
+		if err != nil {
+			logSyncer.Errorf("Failed to fetch tipset at %s. Error: %s", cur.String(), err.Error())
+			return errors.Wrap(err, "Failed to fetch tipset")
+		}
+		out = append(out, tips...)
+
+		// Have we reached their genesis block yet?
+		h, err := out[len(out)-1].Height()
+		if h == 0 {
+			break
+		}
+
+		cur, err = out[len(out)-1].Parents()
+		if err != nil {
+			return err
+		}
+	}
+
+	// get the genesis block and order the list
+	out = reverse(out)
+	genesis := out[0]
+
+	// moment of truth
+	// this comparison has a bit of an odor to it.
+	if !genesis.Key().Equals(types.NewTipSetKey(syncer.chainStore.GenesisCid())) {
+		panic("ohh no wrong chain")
+	}
+
+	parent := genesis
+	// Try adding the tipsets of the chain to the store, checking for new
+	// heaviest tipsets.
+	for i, ts := range out {
+		// TODO: this "i==0" leaks EC specifics into syncer abstraction
+		// for the sake of efficiency, consider plugging up this leak.
+		if i == 0 {
+			wts, err := syncer.widen(ctx, ts)
+			if err != nil {
+				return err
+			}
+			if wts.Defined() {
+				logSyncer.Debug("attempt to sync after widen")
+				err = syncer.syncOne(ctx, parent, wts)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if err = syncer.syncOne(ctx, parent, ts); err != nil {
+			// While `syncOne` can indeed fail for reasons other than consensus,
+			// adding to the badTipSets at this point is the simplest, since we
+			// have access to the chain. If syncOne fails for non-consensus reasons,
+			// there is no assumption that the running node's data is valid at all,
+			// so we don't really lose anything with this simplification.
+			syncer.badTipSets.AddChain(out[i:])
+			return err
+		}
+		if i%500 == 0 {
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(out), syncHead.String())
+		}
+		parent = ts
+	}
+
+	// horay we got the right chain, due to the way bitswap works it has already
+	// writen all this data to a store. We may move on to validating it.
+	head := out[len(out)-1]
+	logSyncer.Infof("Bootstrap Sync Complete new head: %s", head.String())
+	syncer.syncMode = CaughtUp
+	/*
+		if err := syncer.chainStore.SetHead(ctx, head); err != nil {
+			return err
+		}
+	*/
+
+	return nil
+}
+
+func (syncer *Syncer) SyncCaughtUp(ctx context.Context, tsKey types.TipSetKey) error {
+	logSyncer.Infof("Begin fetch and sync of chain with head %v", tsKey)
+
+	// see if we have done this one before
+	if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil
 	}
 
@@ -437,7 +582,6 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey t
 	if err != nil {
 		return err
 	}
-
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
 	for i, ts := range chain {
@@ -471,6 +615,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey t
 		parent = ts
 	}
 	return nil
+
 }
 
 func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) bool {
@@ -481,4 +626,13 @@ func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) bool {
 	finalityHeight := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
 	chainHeight, _ := chain[0].Height()
 	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight)
+}
+
+func reverse(tips []types.TipSet) []types.TipSet {
+	out := make([]types.TipSet, len(tips))
+	for i := 0; i < len(tips); i++ {
+		out[i] = tips[len(tips)-(i+1)]
+	}
+	return out
+
 }
