@@ -62,6 +62,9 @@ const (
 	Parameters
 	// IntSet is a set of uint64
 	IntSet
+	// MinerPoStStates is a *map[string]uint64, where string is address.Address.String()
+	// and uint8 is a miner PoStState
+	MinerPoStStates
 )
 
 func (t Type) String() string {
@@ -108,6 +111,8 @@ func (t Type) String() string {
 		return "[]interface{}"
 	case IntSet:
 		return "types.IntSet"
+	case MinerPoStStates:
+		return "*map[string]uint64"
 	default:
 		return "<unknown type>"
 	}
@@ -163,6 +168,8 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.([]interface{}))
 	case IntSet:
 		return av.Val.(types.IntSet).String()
+	case MinerPoStStates:
+		return fmt.Sprint(av.Val.(*map[address.Address]uint8))
 	default:
 		return "<unknown type>"
 	}
@@ -320,6 +327,12 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.IntSet{}, av.Val}
 		}
 		return cbor.DumpObject(is)
+	case MinerPoStStates:
+		addrs, ok := av.Val.(*map[string]uint64)
+		if !ok {
+			return nil, &typeError{&map[string]uint64{}, av.Val}
+		}
+		return cbor.DumpObject(addrs)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -375,6 +388,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Parameters, Val: v})
 		case types.IntSet:
 			out = append(out, &Value{Type: IntSet, Val: v})
+		case *map[string]uint64:
+			out = append(out, &Value{Type: MinerPoStStates, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -536,6 +551,16 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  is,
 		}, nil
+	case MinerPoStStates:
+		var lm *map[string]uint64
+		if err := cbor.DecodeInto(data, &lm); err != nil {
+			return nil, err
+
+		}
+		return &Value{
+			Type: t,
+			Val:  lm,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -544,26 +569,27 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 }
 
 var typeTable = map[Type]reflect.Type{
-	Address:        reflect.TypeOf(address.Address{}),
-	AttoFIL:        reflect.TypeOf(types.AttoFIL{}),
-	Bytes:          reflect.TypeOf([]byte{}),
-	BytesAmount:    reflect.TypeOf(&types.BytesAmount{}),
-	ChannelID:      reflect.TypeOf(&types.ChannelID{}),
-	BlockHeight:    reflect.TypeOf(&types.BlockHeight{}),
-	Integer:        reflect.TypeOf(&big.Int{}),
-	String:         reflect.TypeOf(string("")),
-	UintArray:      reflect.TypeOf([]uint64{}),
-	PeerID:         reflect.TypeOf(peer.ID("")),
-	SectorID:       reflect.TypeOf(uint64(0)),
-	CommitmentsMap: reflect.TypeOf(map[string]types.Commitments{}),
-	PoStProofs:     reflect.TypeOf([]types.PoStProof{}),
-	Boolean:        reflect.TypeOf(false),
-	ProofsMode:     reflect.TypeOf(types.TestProofsMode),
-	PoRepProof:     reflect.TypeOf(types.PoRepProof{}),
-	PoStProof:      reflect.TypeOf(types.PoStProof{}),
-	Predicate:      reflect.TypeOf(&types.Predicate{}),
-	Parameters:     reflect.TypeOf([]interface{}{}),
-	IntSet:         reflect.TypeOf(types.IntSet{}),
+	Address:         reflect.TypeOf(address.Address{}),
+	AttoFIL:         reflect.TypeOf(types.AttoFIL{}),
+	Bytes:           reflect.TypeOf([]byte{}),
+	BytesAmount:     reflect.TypeOf(&types.BytesAmount{}),
+	ChannelID:       reflect.TypeOf(&types.ChannelID{}),
+	BlockHeight:     reflect.TypeOf(&types.BlockHeight{}),
+	Integer:         reflect.TypeOf(&big.Int{}),
+	String:          reflect.TypeOf(string("")),
+	UintArray:       reflect.TypeOf([]uint64{}),
+	PeerID:          reflect.TypeOf(peer.ID("")),
+	SectorID:        reflect.TypeOf(uint64(0)),
+	CommitmentsMap:  reflect.TypeOf(map[string]types.Commitments{}),
+	PoStProofs:      reflect.TypeOf([]types.PoStProof{}),
+	Boolean:         reflect.TypeOf(false),
+	ProofsMode:      reflect.TypeOf(types.TestProofsMode),
+	PoRepProof:      reflect.TypeOf(types.PoRepProof{}),
+	PoStProof:       reflect.TypeOf(types.PoStProof{}),
+	Predicate:       reflect.TypeOf(&types.Predicate{}),
+	Parameters:      reflect.TypeOf([]interface{}{}),
+	IntSet:          reflect.TypeOf(types.IntSet{}),
+	MinerPoStStates: reflect.TypeOf(&map[string]uint64{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

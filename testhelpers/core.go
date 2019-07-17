@@ -120,7 +120,7 @@ func VMStorage() vm.StorageMap {
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
 func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
-	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid)
+	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid, 0)
 }
 
 // CreateTestMinerWith creates a new test miner with the given peerID miner
@@ -132,14 +132,16 @@ func CreateTestMinerWith(
 	vms vm.StorageMap,
 	minerOwnerAddr address.Address,
 	pid peer.ID,
+	height uint64,
 ) address.Address {
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
-	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
+	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)
-
+	require.NotNil(t, result)
+	require.NoError(t, result.ExecutionError)
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return addr

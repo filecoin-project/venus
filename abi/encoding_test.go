@@ -4,10 +4,11 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/stretchr/testify/assert"
 )
 
 // TODO: tests that check the exact serialization of different inputs.
@@ -29,11 +30,16 @@ func TestBasicEncodingRoundTrip(t *testing.T) {
 		"a string":   {"flugzeug"},
 		"mixed":      {big.NewInt(17), []byte("beep"), "mr rogers", addrGetter()},
 		"sector ids": {uint64(1234), uint64(0)},
-		"predicate": {&types.Predicate{
-			To:     addrGetter(),
-			Method: "someMethod",
-			Params: []interface{}{uint64(3), []byte("proof")},
-		}},
+		"predicate": {
+			&types.Predicate{
+				To:     addrGetter(),
+				Method: "someMethod",
+				Params: []interface{}{uint64(3), []byte("proof")},
+			},
+		},
+		"miner post states": {
+			&map[string]uint64{address.TestAddress.String(): 1, address.TestAddress2.String(): 2},
+		},
 	}
 
 	for tname, tcase := range cases {
