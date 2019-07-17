@@ -117,6 +117,7 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 	emptyMiners := map[string]uint64{}
 
 	type testCase struct {
+		Name           string
 		BlockHeight    uint64
 		ExpectedMiners map[string]uint64
 	}
@@ -125,13 +126,15 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 
 		tc := []testCase{
-			{BlockHeight: 2, ExpectedMiners: emptyMiners},
-			{BlockHeight: 2000, ExpectedMiners: emptyMiners},
+			{Name: "just after commit", BlockHeight: 2, ExpectedMiners: emptyMiners},
+			{Name: "super late", BlockHeight: 2000, ExpectedMiners: emptyMiners},
 		}
 
 		for _, el := range tc {
-			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
-			assert.Equal(t, el.ExpectedMiners, miners)
+			t.Run(el.Name, func(t *testing.T) {
+				miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+				assert.Equal(t, el.ExpectedMiners, miners)
+			})
 		}
 	})
 
@@ -145,12 +148,14 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 		}
 
 		tc := []testCase{
-			{BlockHeight: 2, ExpectedMiners: emptyMiners},
-			{BlockHeight: 2000, ExpectedMiners: emptyMiners},
+			{Name: "just after commit", BlockHeight: 2, ExpectedMiners: emptyMiners},
+			{Name: "super late", BlockHeight: 2000, ExpectedMiners: emptyMiners},
 		}
 		for _, el := range tc {
-			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
-			assert.Equal(t, miners, el.ExpectedMiners)
+			t.Run(el.Name, func(t *testing.T) {
+				miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+				assert.Equal(t, miners, el.ExpectedMiners)
+			})
 		}
 	})
 
@@ -175,20 +180,22 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 		thirdProvingPeriodStart := 2*miner.LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 
 		tc := []testCase{
-			{BlockHeight: firstCommitBlockHeight, ExpectedMiners: emptyMiners},
-			{BlockHeight: secondProvingPeriodStart, ExpectedMiners: emptyMiners},
-			{BlockHeight: secondProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
+			{Name: "1st commit bh", BlockHeight: firstCommitBlockHeight, ExpectedMiners: emptyMiners},
+			{Name: "2nd proving pd start", BlockHeight: secondProvingPeriodStart, ExpectedMiners: emptyMiners},
+			{Name: "just after 2nd proving period start", BlockHeight: secondProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
 				addr1.String(): miner.PoStStateAfterProvingPeriod,
 				addr2.String(): miner.PoStStateAfterProvingPeriod},
 			},
-			{BlockHeight: thirdProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
+			{Name: "after 3rd proving period start", BlockHeight: thirdProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
 				addr1.String(): miner.PoStStateAfterGenerationAttackThreshold,
 				addr2.String(): miner.PoStStateAfterGenerationAttackThreshold},
 			},
 		}
 		for _, el := range tc {
-			miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
-			assert.Equal(t, el.ExpectedMiners, miners)
+			t.Run(el.Name, func(t *testing.T) {
+				miners := *assertGetLateMiners(t, st, vms, el.BlockHeight)
+				assert.Equal(t, el.ExpectedMiners, miners)
+			})
 		}
 	})
 }
