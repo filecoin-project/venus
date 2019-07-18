@@ -87,11 +87,6 @@ type Store struct {
 	tipIndex *TipIndex
 }
 
-type ipldStateThing interface {
-	Get(ctx context.Context, c cid.Cid, out interface{}) error
-	Put(ctx context.Context, v interface{}) (cid.Cid, error)
-}
-
 // NewStore constructs a new default store.
 func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, genesisCid cid.Cid) *Store {
 	return &Store{
