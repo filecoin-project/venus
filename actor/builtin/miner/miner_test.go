@@ -1195,10 +1195,10 @@ func TestVerifyPIP(t *testing.T) {
 	commP := th.MakeCommitment()
 
 	t.Run("PIP is invalid if miner hasn't committed sector", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(NewSectorSet()).
-			build()
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: NewSectorSet(),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(42), 2, nil)
 		require.Error(t, err)
@@ -1209,11 +1209,11 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("PIP is invalid if miner has not submitted any PoSt proofs", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(nil).
-			build()
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  nil,
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
 		require.Error(t, err)
@@ -1224,11 +1224,11 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("PIP is invalid if miner's PoSt is too far into the past", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(types.NewBlockHeight(0).Sub(types.NewBlockHeight(PieceInclusionGracePeriodBlocks * 2))).
-			build()
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(0).Sub(types.NewBlockHeight(PieceInclusionGracePeriodBlocks * 2)),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(66), 1, []byte{42})
 		require.Error(t, err)
@@ -1239,15 +1239,15 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("verifier errors are propagated to caller", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(types.NewBlockHeight(0)).
-			withVerifier(verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(0),
+			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
 				VerifyPieceInclusionProofValid: false,
 				VerifyPieceInclusionProofError: errors.New("wombat"),
-			})).
-			build()
+			}),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
 		require.Error(t, err)
@@ -1262,14 +1262,14 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("verifier rejecting the proof produces an error, too", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(types.NewBlockHeight(0)).
-			withVerifier(verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(0),
+			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
 				VerifyPieceInclusionProofValid: false,
-			})).
-			build()
+			}),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
 		require.Error(t, err)
@@ -1284,14 +1284,14 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("PIP is valid if miner's PoSts are before the end of the grace period", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(types.NewBlockHeight(0)).
-			withVerifier(verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(0),
+			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
 				VerifyPieceInclusionProofValid: true,
-			})).
-			build()
+			}),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
 		require.NoError(t, err)
@@ -1305,14 +1305,14 @@ func TestVerifyPIP(t *testing.T) {
 	})
 
 	t.Run("PIP is valid if miner's PoSt is at the very end of the grace period", func(t *testing.T) {
-		vmctx, verifier, minerActor := newMinerEnvBuilder().
-			withMessage("verifyPieceInclusionProof").
-			withSectorSet(sectorSetWithOneCommitment).
-			withLastPoSt(types.NewBlockHeight(PieceInclusionGracePeriodBlocks)).
-			withVerifier(verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(PieceInclusionGracePeriodBlocks),
+			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
 				VerifyPieceInclusionProofValid: true,
-			})).
-			build()
+			}),
+		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
 		require.NoError(t, err)
@@ -1500,42 +1500,22 @@ type minerEnvBuilder struct {
 	verifier   *verification.FakeVerifier
 }
 
-func newMinerEnvBuilder() *minerEnvBuilder {
-	return &minerEnvBuilder{
-		sectorSet:  NewSectorSet(),
-		sectorSize: types.OneKiBSectorSize,
-		verifier:   verification.NewFakeVerifier(verification.FakeVerifierConfig{}),
-	}
-}
-
-func (b *minerEnvBuilder) withMessage(m string) *minerEnvBuilder {
-	b.message = m
-	return b
-}
-func (b *minerEnvBuilder) withVerifier(v *verification.FakeVerifier) *minerEnvBuilder {
-	b.verifier = v
-	return b
-}
-
-func (b *minerEnvBuilder) withSectorSize(s *types.BytesAmount) *minerEnvBuilder {
-	b.sectorSize = s
-	return b
-}
-
-func (b *minerEnvBuilder) withLastPoSt(h *types.BlockHeight) *minerEnvBuilder {
-	b.lastPoSt = h
-	return b
-}
-
-func (b *minerEnvBuilder) withSectorSet(s SectorSet) *minerEnvBuilder {
-	b.sectorSet = s
-	return b
-}
-
 func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Actor) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.LastPoSt = b.lastPoSt
+
+	if b.sectorSet == nil {
+		b.sectorSet = NewSectorSet()
+	}
+
+	if b.sectorSize == nil {
+		b.sectorSize = types.OneKiBSectorSize
+	}
+
+	if b.verifier == nil {
+		b.verifier = verification.NewFakeVerifier(verification.FakeVerifierConfig{})
+	}
 
 	vmctx := th.NewFakeVMContextWithVerifier(types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
 
