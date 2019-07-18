@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
-	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-metrics"
 	"github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -339,7 +338,7 @@ func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 
 // DAGCat returns an iostream with a piece of data stored on the merkeldag with
 // the given cid.
-func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
+func (api *API) DAGCat(ctx context.Context, c cid.Cid) (io.Reader, error) {
 	return api.dag.Cat(ctx, c)
 }
 

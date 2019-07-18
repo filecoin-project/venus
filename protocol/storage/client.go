@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/big"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -56,6 +58,7 @@ type clientPorcelainAPI interface {
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
+	DAGCat(context.Context, cid.Cid) (io.Reader, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
@@ -104,14 +107,10 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		minerAlive <- smc.api.PingMinerWithTimeout(ctxSetup, pid, 15*time.Second)
 	}()
 
-	size, err := smc.api.DAGGetFileSize(ctxSetup, data)
+	pieceSize, err := smc.api.DAGGetFileSize(ctxSetup, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
-
-	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
-	var commP types.CommP
-	copy(commP[:], data.Bytes())
 
 	sectorSize, err := smc.api.MinerGetSectorSize(ctxSetup, miner)
 	if err != nil {
@@ -119,8 +118,21 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
-	if size > maxUserBytes {
-		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, maxUserBytes)
+	if pieceSize > maxUserBytes {
+		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", pieceSize, maxUserBytes)
+	}
+
+	pieceReader, err := smc.api.DAGCat(ctxSetup, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make piece reader")
+	}
+
+	res, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+		PieceReader: pieceReader,
+		PieceSize:   types.NewBytesAmount(pieceSize),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate piece commitment")
 	}
 
 	ask, err := smc.api.MinerGetAsk(ctxSetup, miner, askID)
@@ -144,11 +156,11 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	totalPrice := price.MulBigInt(big.NewInt(int64(size * duration)))
+	totalPrice := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
 
 	proposal := &storagedeal.Proposal{
 		PieceRef:     data,
-		Size:         types.NewBytesAmount(size),
+		Size:         types.NewBytesAmount(pieceSize),
 		TotalPrice:   totalPrice,
 		Duration:     duration,
 		MinerAddress: miner,
@@ -175,7 +187,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.Payer = fromAddress
 
 	// create payment information
-	totalCost := price.MulBigInt(big.NewInt(int64(size * duration)))
+	totalCost := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
 	if totalCost.GreaterThan(types.ZeroAttoFIL) {
 		cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
 			From:            fromAddress,
@@ -183,8 +195,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 			Value:           totalCost,
 			Duration:        duration,
 			MinerAddress:    miner,
-			CommP:           commP,
+			CommP:           res.CommP,
 			PaymentInterval: VoucherInterval,
+			PieceSize:       types.NewBytesAmount(pieceSize),
 			ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
 			GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
 			GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
