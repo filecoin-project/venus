@@ -270,7 +270,10 @@ func ReadPieceFromSealedSector(sectorBuilderPtr unsafe.Pointer, pieceKey string)
 	cPieceKey := C.CString(pieceKey)
 	defer C.free(unsafe.Pointer(cPieceKey))
 
-	resPtr := C.sector_builder_ffi_read_piece_from_sealed_sector((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), cPieceKey)
+	resPtr := C.sector_builder_ffi_read_piece_from_sealed_sector(
+		(*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr),
+		cPieceKey,
+	)
 	defer C.sector_builder_ffi_destroy_read_piece_from_sealed_sector_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -319,7 +322,10 @@ func GetAllStagedSectors(sectorBuilderPtr unsafe.Pointer) ([]StagedSectorMetadat
 func GetSectorSealingStatusByID(sectorBuilderPtr unsafe.Pointer, sectorID uint64) (SectorSealingStatus, error) {
 	defer elapsed("GetSectorSealingStatusByID")()
 
-	resPtr := C.sector_builder_ffi_get_seal_status((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), C.uint64_t(sectorID))
+	resPtr := C.sector_builder_ffi_get_seal_status(
+		(*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr),
+		C.uint64_t(sectorID),
+	)
 	defer C.sector_builder_ffi_destroy_get_seal_status_response(resPtr)
 
 	if resPtr.status_code != 0 {
@@ -389,7 +395,12 @@ func GeneratePoSt(
 	challengeSeedPtr := unsafe.Pointer(&(challengeSeed)[0])
 
 	// a mutable pointer to a GeneratePoStResponse C-struct
-	resPtr := C.sector_builder_ffi_generate_post((*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr), (*C.uint8_t)(cflattened), C.size_t(len(flattened)), (*[32]C.uint8_t)(challengeSeedPtr))
+	resPtr := C.sector_builder_ffi_generate_post(
+		(*C.sector_builder_ffi_SectorBuilder)(sectorBuilderPtr),
+		(*C.uint8_t)(cflattened),
+		C.size_t(len(flattened)),
+		(*[32]C.uint8_t)(challengeSeedPtr),
+	)
 	defer C.sector_builder_ffi_destroy_generate_post_response(resPtr)
 
 	if resPtr.status_code != 0 {
