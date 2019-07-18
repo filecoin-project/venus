@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"io/ioutil"
@@ -366,6 +367,12 @@ func TestSectorBuilder(t *testing.T) {
 		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
 		require.NoError(t, err)
 
+		commRes, commErr := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+			PieceReader: bytes.NewReader(inputBytes),
+			PieceSize:   types.NewBytesAmount(size),
+		})
+		require.NoError(t, commErr)
+
 		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), ref, size, reader)
 		require.NoError(t, err)
 
@@ -377,6 +384,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NotNil(t, val.SealingResult)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
 			require.Equal(t, 1, len(val.SealingResult.Pieces), "expected to find the single piece we added")
+			require.Equal(t, val.SealingResult.Pieces[0].CommP, commRes.CommP, "client and miner disagree on CommP")
 
 			pipRes, pipErr := (&verification.RustVerifier{}).VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
 				CommD:               val.SealingResult.CommD,
