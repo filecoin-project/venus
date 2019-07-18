@@ -14,7 +14,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -30,14 +29,6 @@ var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
-
-// TreeStateLoader implements the state.StateLoader interface.
-type TreeStateLoader struct{}
-
-// LoadStateTree is a wrapper around state.LoadStateTree.
-func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store state.IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (state.Tree, error) {
-	return state.LoadStateTree(ctx, store, c, builtinActors)
-}
 
 type ipldSource struct {
 	// cst is a store allowing access
