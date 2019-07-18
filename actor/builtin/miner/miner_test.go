@@ -1275,6 +1275,7 @@ func TestVerifyPIP(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, "piece inclusion proof did not validate", err.Error())
 		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
+		require.Equal(t, ErrInvalidPieceInclusionProof, int(code), "should produce invalid pip exit code")
 
 		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
