@@ -781,11 +781,11 @@ func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.
 		Size:         types.NewBytesAmount(size),
 		Duration:     duration,
 		Payment: storagedeal.PaymentInfo{
-			Payer: porcelainAPI.payerAddress,
-			//PayChActor:    address.PaymentBrokerAddress,
-			//Channel:       porcelainAPI.channelID,
-			//ChannelMsgCid: porcelainAPI.messageCid,
-			//Vouchers:      vouchers,
+			Payer:         porcelainAPI.payerAddress,
+			PayChActor:    address.PaymentBrokerAddress,
+			Channel:       porcelainAPI.channelID,
+			ChannelMsgCid: porcelainAPI.messageCid,
+			Vouchers:      vouchers,
 		},
 	}
 
