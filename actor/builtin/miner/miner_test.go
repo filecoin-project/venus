@@ -1187,13 +1187,10 @@ func assertSlashStatus(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr
 func TestVerifyPIP(t *testing.T) {
 	tf.UnitTest(t)
 
-	sectorSetWithOneCommitment, commDForSectorIdOne := func() (SectorSet, types.CommD) {
-		set := NewSectorSet()
-		comms := th.MakeCommitments()
-		set.Add(1, comms)
-
-		return set, comms.CommD
-	}()
+	sectorSetWithOneCommitment := NewSectorSet()
+	comms := th.MakeCommitments()
+	commDForSectorIdOne := comms.CommD
+	sectorSetWithOneCommitment.Add(1, comms)
 
 	commP := th.MakeCommitment()
 
