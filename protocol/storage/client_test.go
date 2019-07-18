@@ -138,7 +138,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 
 		assert.Equal(t, (*types.ChannelID)(nil), p.Payment.Channel)
 		assert.Equal(t, address.Undef, p.Payment.PayChActor)
-		assert.Equal(t, address.Undef, p.Payment.Payer)
+		assert.Equal(t, testAPI.payer, p.Payment.Payer)
 		assert.Nil(t, p.Payment.Vouchers)
 
 		pcid, err := convert.ToCid(p.Proposal)

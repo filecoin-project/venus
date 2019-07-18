@@ -171,6 +171,9 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, ctxSetup.Err()
 	}
 
+	// Always set payer because it is used for signing
+	proposal.Payment.Payer = fromAddress
+
 	// create payment information
 	totalCost := price.MulBigInt(big.NewInt(int64(size * duration)))
 	if totalCost.GreaterThan(types.ZeroAttoFIL) {
@@ -192,7 +195,6 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 		proposal.Payment.Channel = cpResp.Channel
 		proposal.Payment.PayChActor = address.PaymentBrokerAddress
-		proposal.Payment.Payer = fromAddress
 		proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
 		proposal.Payment.Vouchers = cpResp.Vouchers
 	}
