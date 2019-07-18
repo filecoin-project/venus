@@ -203,7 +203,7 @@ func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*cha
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, cst, &chain.TreeStateLoader{}, calcGenBlk.Cid())
 
 	blockSource := th.NewTestFetcher()
 	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
@@ -275,7 +275,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	require.NoError(t, err)
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, cst, calcGenBlk.Cid())
+	chainStore := chain.NewStore(chainDS, cst, &chain.TreeStateLoader{}, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
 	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
@@ -1067,7 +1067,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	chainStore := chain.NewStore(r.ChainDatastore(), cst, calcGenBlk.Cid())
+	chainStore := chain.NewStore(r.ChainDatastore(), cst, &chain.TreeStateLoader{}, calcGenBlk.Cid())
 
 	verifier := verification.NewFakeVerifier(true, nil)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
