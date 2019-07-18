@@ -171,28 +171,33 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, ctxSetup.Err()
 	}
 
-	// create payment information
-	cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
-		From:            fromAddress,
-		To:              minerOwner,
-		Value:           price.MulBigInt(big.NewInt(int64(size * duration))),
-		Duration:        duration,
-		MinerAddress:    miner,
-		CommP:           commP,
-		PaymentInterval: VoucherInterval,
-		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
-		GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
-		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating payment")
-	}
-
-	proposal.Payment.Channel = cpResp.Channel
-	proposal.Payment.PayChActor = address.PaymentBrokerAddress
+	// Always set payer because it is used for signing
 	proposal.Payment.Payer = fromAddress
-	proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
-	proposal.Payment.Vouchers = cpResp.Vouchers
+
+	// create payment information
+	totalCost := price.MulBigInt(big.NewInt(int64(size * duration)))
+	if totalCost.GreaterThan(types.ZeroAttoFIL) {
+		cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
+			From:            fromAddress,
+			To:              minerOwner,
+			Value:           totalCost,
+			Duration:        duration,
+			MinerAddress:    miner,
+			CommP:           commP,
+			PaymentInterval: VoucherInterval,
+			ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
+			GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
+			GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating payment")
+		}
+
+		proposal.Payment.Channel = cpResp.Channel
+		proposal.Payment.PayChActor = address.PaymentBrokerAddress
+		proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
+		proposal.Payment.Vouchers = cpResp.Vouchers
+	}
 
 	signedProposal, err := proposal.NewSignedProposal(fromAddress, smc.api)
 	if err != nil {
