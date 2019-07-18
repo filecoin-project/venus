@@ -271,9 +271,9 @@ func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, ve
 	offl := offline.Exchange(bs)
 	blkserv := blockservice.New(bs, offl)
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
-	pv := verification.NewFakeVerifier(verification.FakeVerifierConfig{
+	pv := &verification.FakeVerifier{
 		VerifyPoStValid: true,
-	})
+	}
 	return cis, bs, pv
 }
 

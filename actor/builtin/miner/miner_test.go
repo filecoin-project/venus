@@ -718,9 +718,9 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 
 		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
 		minerState.ProvingSet = types.NewIntSet(1, 2)
-		verifier := verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		verifier := &verification.FakeVerifier{
 			VerifyPoStValid: true,
-		})
+		}
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
 		miner := Actor{Bootstrap: false}
@@ -771,9 +771,9 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
-		verifier := verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		verifier := &verification.FakeVerifier{
 			VerifyPoStError: errors.New("verifier error"),
-		})
+		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
@@ -794,9 +794,9 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.SectorCommitments.Add(1, types.Commitments{CommR: comm1.CommR})
 
 		minerState.ProvingSet = types.NewIntSet(1)
-		verifier := verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		verifier := &verification.FakeVerifier{
 			VerifyPoStValid: false,
-		})
+		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 
@@ -1243,10 +1243,10 @@ func TestVerifyPIP(t *testing.T) {
 			message:   "verifyPieceInclusionProof",
 			sectorSet: sectorSetWithOneCommitment,
 			lastPoSt:  types.NewBlockHeight(0),
-			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
+			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
 				VerifyPieceInclusionProofError: errors.New("wombat"),
-			}),
+			},
 		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
@@ -1266,9 +1266,9 @@ func TestVerifyPIP(t *testing.T) {
 			message:   "verifyPieceInclusionProof",
 			sectorSet: sectorSetWithOneCommitment,
 			lastPoSt:  types.NewBlockHeight(0),
-			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
+			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
-			}),
+			},
 		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
@@ -1289,9 +1289,9 @@ func TestVerifyPIP(t *testing.T) {
 			message:   "verifyPieceInclusionProof",
 			sectorSet: sectorSetWithOneCommitment,
 			lastPoSt:  types.NewBlockHeight(0),
-			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
+			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: true,
-			}),
+			},
 		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
@@ -1310,9 +1310,9 @@ func TestVerifyPIP(t *testing.T) {
 			message:   "verifyPieceInclusionProof",
 			sectorSet: sectorSetWithOneCommitment,
 			lastPoSt:  types.NewBlockHeight(PieceInclusionGracePeriodBlocks),
-			verifier: verification.NewFakeVerifier(verification.FakeVerifierConfig{
+			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: true,
-			}),
+			},
 		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
@@ -1515,7 +1515,7 @@ func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *
 	}
 
 	if b.verifier == nil {
-		b.verifier = verification.NewFakeVerifier(verification.FakeVerifierConfig{})
+		b.verifier = &verification.FakeVerifier{}
 	}
 
 	vmctx := th.NewFakeVMContextWithVerifier(types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)

@@ -58,11 +58,11 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 		NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
-		verification.NewFakeVerifier(verification.FakeVerifierConfig{
+		&verification.FakeVerifier{
 			VerifyPoStValid:                true,
 			VerifyPieceInclusionProofValid: true,
 			VerifySealValid:                true,
-		}),
+		},
 		BlockTimeTest)
 	params.Consensus = con
 	return MkFakeChildWithCon(params)
