@@ -1187,10 +1187,13 @@ func assertSlashStatus(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr
 func TestVerifyPIP(t *testing.T) {
 	tf.UnitTest(t)
 
+	firstSectorCommitments := th.MakeCommitments()
+	firstSectorCommD := firstSectorCommitments.CommD
+	firstSectorID := uint64(1)
+	secondSectorId := uint64(24)
+
 	sectorSetWithOneCommitment := NewSectorSet()
-	comms := th.MakeCommitments()
-	commDForSectorIdOne := comms.CommD
-	sectorSetWithOneCommitment.Add(1, comms)
+	sectorSetWithOneCommitment.Add(firstSectorID, firstSectorCommitments)
 
 	commP := th.MakeCommitment()
 
@@ -1200,7 +1203,7 @@ func TestVerifyPIP(t *testing.T) {
 			sectorSet: NewSectorSet(),
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(42), 2, nil)
+		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(42), secondSectorId, nil)
 		require.Error(t, err)
 		require.Equal(t, "sector not committed", err.Error())
 		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
@@ -1215,7 +1218,7 @@ func TestVerifyPIP(t *testing.T) {
 			lastPoSt:  nil,
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.Error(t, err)
 		assert.Equal(t, "proofs out of date", err.Error())
 		assert.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
@@ -1230,7 +1233,7 @@ func TestVerifyPIP(t *testing.T) {
 			lastPoSt:  types.NewBlockHeight(0).Sub(types.NewBlockHeight(PieceInclusionGracePeriodBlocks * 2)),
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.Error(t, err)
 		require.Equal(t, "proofs out of date", err.Error())
 		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
@@ -1249,14 +1252,14 @@ func TestVerifyPIP(t *testing.T) {
 			},
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.Error(t, err)
 		require.Equal(t, "failed to verify piece inclusion proof: wombat", err.Error())
 		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
 
 		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, commDForSectorIdOne)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
 	})
@@ -1271,7 +1274,7 @@ func TestVerifyPIP(t *testing.T) {
 			},
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.Error(t, err)
 		require.Equal(t, "piece inclusion proof did not validate", err.Error())
 		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
@@ -1279,7 +1282,7 @@ func TestVerifyPIP(t *testing.T) {
 
 		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, commDForSectorIdOne)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
 	})
@@ -1294,13 +1297,13 @@ func TestVerifyPIP(t *testing.T) {
 			},
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.NoError(t, err)
 		require.Equal(t, 0, int(code), "should be successful")
 
 		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, commDForSectorIdOne)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
 	})
@@ -1315,13 +1318,13 @@ func TestVerifyPIP(t *testing.T) {
 			},
 		}).build()
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), 1, []byte{42})
+		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.NoError(t, err)
 		require.Equal(t, 0, int(code), "should be successful")
 
 		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, commDForSectorIdOne)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
 	})
