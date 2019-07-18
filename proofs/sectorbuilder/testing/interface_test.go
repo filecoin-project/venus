@@ -376,7 +376,7 @@ func TestSectorBuilder(t *testing.T) {
 			require.NoError(t, val.SealingErr)
 			require.NotNil(t, val.SealingResult)
 			require.Equal(t, sectorID, val.SealingResult.SectorID)
-			require.Equal(t, 1, len(val.SealingResult.Pieces), "too many pieces")
+			require.Equal(t, 1, len(val.SealingResult.Pieces), "expected to find the single piece we added")
 
 			pipRes, pipErr := (&verification.RustVerifier{}).VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
 				CommD:               val.SealingResult.CommD,
