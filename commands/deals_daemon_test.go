@@ -273,7 +273,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 	// Use a longer duration so we can have >1 voucher to test
 	durationui64 := uint64(2000)
 	price := big.NewFloat(0.000000001) // price per byte/block
-	clientNode, ask, clientAddr, deal := setupDeal(t, ctx, env, price, durationui64, maxBytesi64)
+	clientNode, ask, clientAddr, deal := setupDeal(ctx, t, env, price, durationui64, maxBytesi64)
 
 	t.Run("Vouchers output as JSON have the correct info", func(t *testing.T) {
 		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
@@ -339,7 +339,7 @@ func TestFreeDealsShowPaymentVouchers(t *testing.T) {
 	// Use a longer duration so we can have >1 voucher to test
 	durationui64 := uint64(2000)
 	price := big.NewFloat(0) // free deal
-	clientNode, _, _, deal := setupDeal(t, ctx, env, price, durationui64, maxBytesi64)
+	clientNode, _, _, deal := setupDeal(ctx, t, env, price, durationui64, maxBytesi64)
 
 	t.Run("No vouchers doesn't break output", func(t *testing.T) {
 		res, err := clientNode.DealsShow(ctx, deal.ProposalCid)
@@ -352,8 +352,8 @@ func TestFreeDealsShowPaymentVouchers(t *testing.T) {
 }
 
 func setupDeal(
-	t *testing.T,
 	ctx context.Context,
+	t *testing.T,
 	env *fastesting.TestEnvironment,
 	price *big.Float,
 	duration uint64,
