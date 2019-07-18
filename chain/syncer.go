@@ -547,15 +547,8 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 
 	// horay we got the right chain, due to the way bitswap works it has already
 	// writen all this data to a store. We may move on to validating it.
-	head := out[len(out)-1]
-	logSyncer.Infof("Bootstrap Sync Complete new head: %s", head.String())
+	logSyncer.Infof("Bootstrap Sync Complete new head: %s", out[len(out)-1].String())
 	syncer.syncMode = CaughtUp
-	/*
-		if err := syncer.chainStore.SetHead(ctx, head); err != nil {
-			return err
-		}
-	*/
-
 	return nil
 }
 

@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -19,9 +21,7 @@ func init() {
 	log.SetDebugLogging()
 }
 
-func TestSyncerBootstrapMode(t *testing.T) {
-	tf.UnitTest(t)
-
+func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Builder, *Store) {
 	ctx := context.Background()
 	cb := NewBuilder(t, address.Undef)
 	gen := cb.AppendOn()
@@ -36,9 +36,18 @@ func TestSyncerBootstrapMode(t *testing.T) {
 
 	r := repo.NewInMemoryRepo()
 	chainDS := r.ChainDatastore()
-	chainStore := NewStore(chainDS, &fakeCst{}, gen.Cid())
+	chainStore := NewStore(chainDS, &fakeCst{}, &fakeTreeLoader{}, gen.Cid())
 	chainStore.PutTipSetAndState(ctx, genTsas)
 	chainStore.SetHead(ctx, genTs)
+
+	return gen, cb, chainStore
+}
+
+func TestSyncerSimpleBootstrapMode(t *testing.T) {
+	tf.UnitTest(t)
+
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t)
+	ctx := context.Background()
 
 	fpm := &fakePeerManager{}
 	syncer := NewSyncer(&fakeStateEvaluator{}, chainStore, cb, fpm, Syncing)
@@ -46,9 +55,23 @@ func TestSyncerBootstrapMode(t *testing.T) {
 	b10 := cb.AppendManyOn(9, gen)
 	fpm.head = types.RequireNewTipSet(t, b10)
 
-	err := syncer.SyncBootstrap(ctx)
-	assert.NoError(t, err)
+	// assert the syncer:
+	// - Bootstrapped successfully
+	// - didn't encounter any bad tipset
+	// - has the expected head
+	// - is now in caught up mode
+	assert.NoError(t, syncer.SyncBootstrap(ctx))
+	assert.Equal(t, 0, len(syncer.badTipSets.bad))
+	assert.Equal(t, types.RequireNewTipSet(t, b10).Key(), chainStore.GetHead())
+	assert.Equal(t, CaughtUp, syncer.syncMode)
 
+}
+
+type fakeTreeLoader struct {
+}
+
+func (ftl *fakeTreeLoader) LoadStateTree(ctx context.Context, store state.IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (state.Tree, error) {
+	return nil, nil
 }
 
 type fakeCst struct {
