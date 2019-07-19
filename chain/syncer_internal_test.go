@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -26,7 +27,6 @@ func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Bui
 	cb := NewBuilder(t, address.Undef)
 	gen := cb.AppendOn()
 	genTs := types.RequireNewTipSet(t, gen)
-	t.Logf("Genesis CID: %s", genTs.String())
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetAndState{
@@ -43,7 +43,7 @@ func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Bui
 	return gen, cb, chainStore
 }
 
-func TestSyncerSimpleBootstrapMode(t *testing.T) {
+func TestSimpleBootstrapMode(t *testing.T) {
 	tf.UnitTest(t)
 
 	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t)
@@ -64,7 +64,56 @@ func TestSyncerSimpleBootstrapMode(t *testing.T) {
 	assert.Equal(t, 0, len(syncer.badTipSets.bad))
 	assert.Equal(t, types.RequireNewTipSet(t, b10).Key(), chainStore.GetHead())
 	assert.Equal(t, CaughtUp, syncer.syncMode)
+}
 
+func TestSimpleCaughtUpMode(t *testing.T) {
+	tf.UnitTest(t)
+
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t)
+	ctx := context.Background()
+
+	fpm := &fakePeerManager{}
+	syncer := NewSyncer(&fakeStateEvaluator{}, chainStore, cb, fpm, CaughtUp)
+
+	b10 := cb.AppendManyOn(9, gen)
+	cb.AppendManyOn(9, gen)
+	for _, blk := range cb.blocks {
+		chainStore.PutTipSetAndState(ctx, &TipSetAndState{
+			TipSet:          types.RequireNewTipSet(t, blk),
+			TipSetStateRoot: types.SomeCid(),
+		})
+	}
+	require.NoError(t, chainStore.SetHead(ctx, types.RequireNewTipSet(t, b10)))
+
+	b11 := cb.AppendOn(b10)
+
+	// assert the syncer:
+	// - CaughtUp successfully
+	// - didn't encounter any bad tipset
+	// - has the expected head
+	// - is still in caughtup mode
+	assert.NoError(t, syncer.SyncCaughtUp(ctx, types.RequireNewTipSet(t, b11).Key()))
+	assert.Equal(t, 0, len(syncer.badTipSets.bad))
+	assert.Equal(t, types.RequireNewTipSet(t, b11).Key(), chainStore.GetHead())
+	assert.Equal(t, CaughtUp, syncer.syncMode)
+
+	// craft a block too far in the future
+	outOfFinalityBlock := cb.BuildOn(b11, func(b *BlockBuilder) {
+		b.IncHeight(types.Uint64(FinalityLimit))
+	})
+
+	// block is rejected
+	expectFinalityErr := syncer.SyncCaughtUp(ctx, types.RequireNewTipSet(t, outOfFinalityBlock).Key())
+	assert.Equal(t, ErrNewChainTooLong, expectFinalityErr)
+
+	// craft a block one back from finality
+	outOfFinalityBlock = cb.BuildOn(b11, func(b *BlockBuilder) {
+		b.IncHeight(types.Uint64(FinalityLimit - 1))
+	})
+
+	// block is accepts
+	noErr := syncer.SyncCaughtUp(ctx, types.RequireNewTipSet(t, outOfFinalityBlock).Key())
+	assert.NoError(t, noErr)
 }
 
 type fakeTreeLoader struct {
