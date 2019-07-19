@@ -17,8 +17,8 @@ func init() {
 	syncOneTimer = metrics.NewTimerMs("syncer/sync_one", "Duration of single tipset validation in milliseconds")
 }
 
-// ChainEvaluator defines an interface for evaluating a chain
-type ChainEvaluator interface {
+// Evaluator defines an interface for evaluating a chain
+type Evaluator interface {
 	Evaluate(context.Context, types.TipSet, []types.TipSet) error
 	IsBadTipSet(types.TipSetKey) bool
 	ExceedsFinalityLimit(ts types.TipSet) bool
@@ -35,21 +35,31 @@ type evaluatorChainReaderWriter interface {
 	SetHead(ctx context.Context, s types.TipSet) error
 }
 
-// ChainStateEvaluator is a fancy wrapper around calls to expected consensus
-type ChainStateEvaluator struct {
+// StateEvaluator is a fancy wrapper around calls to expected consensus
+type StateEvaluator struct {
 	// Provides and stores validated tipsets and their state roots.
 	chainStore evaluatorChainReaderWriter
 	// Evaluates tipset messages and stores the resulting states.
-	stateEvaluator syncStateEvaluator
+	chainTransitioner syncStateTransitioner
 	// badTipSetCache is used to filter out collections of invalid blocks.
 	badTipSets *badTipSetCache
 }
 
-// NewChainStateEvaluator returns a new ChainStateEvaluator.
-func NewChainStateEvaluator(e syncStateEvaluator, store evaluatorChainReaderWriter) *ChainStateEvaluator {
-	return &ChainStateEvaluator{
-		chainStore:     store,
-		stateEvaluator: e,
+type syncStateTransitioner interface {
+	// RunStateTransition returns the state root CID resulting from applying the input ts to the
+	// prior `stateRoot`.  It returns an error if the transition is invalid.
+	RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
+
+	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
+	// tipset b is heavier than tipset a.
+	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+}
+
+// NewChainStateEvaluator returns a new StateEvaluator.
+func NewChainStateEvaluator(e syncStateTransitioner, store evaluatorChainReaderWriter) *StateEvaluator {
+	return &StateEvaluator{
+		chainStore:        store,
+		chainTransitioner: e,
 		badTipSets: &badTipSetCache{
 			bad: make(map[string]struct{}),
 		},
@@ -57,13 +67,13 @@ func NewChainStateEvaluator(e syncStateEvaluator, store evaluatorChainReaderWrit
 }
 
 // IsBadTipSet returns true if the tipset `ts` is known to be bad, true otherwise.
-func (cse *ChainStateEvaluator) IsBadTipSet(ts types.TipSetKey) bool {
+func (cse *StateEvaluator) IsBadTipSet(ts types.TipSetKey) bool {
 	return cse.badTipSets.Has(ts.String())
 }
 
 // Evaluate is a wrapper around calls to consensus, it will either sync the chain `chain` to the store
 // or return an error
-func (cse *ChainStateEvaluator) Evaluate(ctx context.Context, parent types.TipSet, chain []types.TipSet) error {
+func (cse *StateEvaluator) Evaluate(ctx context.Context, parent types.TipSet, chain []types.TipSet) error {
 	head := chain[0].Key()
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
@@ -100,7 +110,7 @@ func (cse *ChainStateEvaluator) Evaluate(ctx context.Context, parent types.TipSe
 	return nil
 }
 
-func (cse *ChainStateEvaluator) syncOne(ctx context.Context, parent, next types.TipSet) error {
+func (cse *StateEvaluator) syncOne(ctx context.Context, parent, next types.TipSet) error {
 	priorHeadKey := cse.chainStore.GetHead()
 
 	// if tipset is already priorHeadKey, we've been here before. do nothing.
@@ -131,7 +141,7 @@ func (cse *ChainStateEvaluator) syncOne(ctx context.Context, parent, next types.
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, err := cse.stateEvaluator.RunStateTransition(ctx, next, ancestors, stateRoot)
+	root, err := cse.chainTransitioner.RunStateTransition(ctx, next, ancestors, stateRoot)
 	if err != nil {
 		return err
 	}
@@ -167,7 +177,7 @@ func (cse *ChainStateEvaluator) syncOne(ctx context.Context, parent, next types.
 		}
 	}
 
-	heavier, err := cse.stateEvaluator.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
+	heavier, err := cse.chainTransitioner.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
 	if err != nil {
 		return err
 	}
@@ -189,7 +199,7 @@ func (cse *ChainStateEvaluator) syncOne(ctx context.Context, parent, next types.
 // returns the union of the input tipset and the biggest tipset with the same
 // parents from the store.
 // TODO: this leaks EC abstractions into the syncer, we should think about this.
-func (cse *ChainStateEvaluator) widen(ctx context.Context, ts types.TipSet) (types.TipSet, error) {
+func (cse *StateEvaluator) widen(ctx context.Context, ts types.TipSet) (types.TipSet, error) {
 	// Lookup tipsets with the same parents from the store.
 	parentSet, err := ts.Parents()
 	if err != nil {
@@ -246,7 +256,7 @@ func (cse *ChainStateEvaluator) widen(ctx context.Context, ts types.TipSet) (typ
 	return wts, nil
 }
 
-func (cse *ChainStateEvaluator) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
+func (cse *StateEvaluator) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
 	curHeadIter := IterAncestors(ctx, cse.chainStore, curHead)
 	newHeadIter := IterAncestors(ctx, cse.chainStore, newHead)
 	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
@@ -270,7 +280,9 @@ func (cse *ChainStateEvaluator) logReorg(ctx context.Context, curHead, newHead t
 	}
 }
 
-func (cse *ChainStateEvaluator) ExceedsFinalityLimit(ts types.TipSet) bool {
+// ExceedsFinalityLimit return true if `ts` is greater than FinalityLimit from the
+// stores current head.
+func (cse *StateEvaluator) ExceedsFinalityLimit(ts types.TipSet) bool {
 	tsh, err := ts.Height()
 	if err != nil {
 		return false

@@ -37,8 +37,8 @@ func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Bui
 	r := repo.NewInMemoryRepo()
 	chainDS := r.ChainDatastore()
 	chainStore := NewStore(chainDS, &fakeCst{}, &fakeTreeLoader{}, gen.Cid())
-	chainStore.PutTipSetAndState(ctx, genTsas)
-	chainStore.SetHead(ctx, genTs)
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
+	require.NoError(t, chainStore.SetHead(ctx, genTs))
 
 	return gen, cb, chainStore
 }
@@ -79,10 +79,10 @@ func TestSimpleCaughtUpMode(t *testing.T) {
 	b10 := cb.AppendManyOn(9, gen)
 	cb.AppendManyOn(9, gen)
 	for _, blk := range cb.blocks {
-		chainStore.PutTipSetAndState(ctx, &TipSetAndState{
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, &TipSetAndState{
 			TipSet:          types.RequireNewTipSet(t, blk),
 			TipSetStateRoot: types.SomeCid(),
-		})
+		}))
 	}
 	require.NoError(t, chainStore.SetHead(ctx, types.RequireNewTipSet(t, b10)))
 

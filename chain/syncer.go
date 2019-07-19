@@ -58,9 +58,6 @@ const (
 	// See the spec for more detail:
 	// https://github.com/filecoin-project/specs/blob/master/sync.md#caught-up-mode
 	CaughtUp
-
-	// Bad state, currently not used
-	Unknown
 )
 
 type syncerChainReader interface {
@@ -68,16 +65,6 @@ type syncerChainReader interface {
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	BlockHeight() (uint64, error)
 	GenesisCid() cid.Cid
-}
-
-type syncStateEvaluator interface {
-	// RunStateTransition returns the state root CID resulting from applying the input ts to the
-	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
-
-	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
-	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -108,7 +95,7 @@ type Syncer struct {
 	fetcher net.Fetcher
 
 	// Evaluates and processes tipset messages and stores the resulting states.
-	evaluator ChainEvaluator
+	evaluator Evaluator
 	// Provides and stores validated tipsets and their state roots.
 	store syncerChainReader
 
@@ -124,7 +111,7 @@ type Syncer struct {
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e ChainEvaluator, s syncerChainReader, f net.Fetcher, pm PeerManager, syncMode SyncMode) *Syncer {
+func NewSyncer(e Evaluator, s syncerChainReader, f net.Fetcher, pm PeerManager, syncMode SyncMode) *Syncer {
 	return &Syncer{
 		fetcher:   f,
 		evaluator: e,
@@ -195,7 +182,6 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey t
 				logSyncer.Errorf("CaughtUp error: %s", err.Error())
 			}
 			return
-		case Unknown:
 		default:
 			panic("invalid syncer state")
 		}
@@ -212,6 +198,8 @@ var BootstrapThreshold = 0
 // when performing bootstrap sync
 var BootstrapFetchWindow = 1
 
+// SyncBootstrap performs the bootstrap sync process, if successful the syncer will
+// be placed in "CaughtUp" mode, else an error is returned.
 func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 	logSyncer.Info("Starting Bootstrap Sync")
 
@@ -237,6 +225,9 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		// Have we reached their genesis block yet?
 		// TODO this will need to be rethought when the fether is capable of returning a list of tipsets
 		h, err := out[len(out)-1].Height()
+		if err != nil {
+			return err
+		}
 		if h == 0 {
 			break
 		}
@@ -262,12 +253,13 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 	}
 
 	// horay we got the right chain, due to the way bitswap works it has already
-	// writen all this data to a store. We may move on to validating it.
+	// written all this data to a store. We may move on to validating it.
 	logSyncer.Infof("Bootstrap Sync Complete new head: %s", out[len(out)-1].String())
 	syncer.syncMode = CaughtUp
 	return nil
 }
 
+// SyncCaughtUp performs a caught up sync.
 func (syncer *Syncer) SyncCaughtUp(ctx context.Context, tsKey types.TipSetKey) error {
 	logSyncer.Infof("Begin fetch and sync of chain with head %v", tsKey)
 
