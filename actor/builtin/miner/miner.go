@@ -966,6 +966,10 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, fa
 			return nil, err
 		}
 
+		if err = state.SectorCommitments.Drop(faults.SectorIds.Values()); err != nil {
+			return nil, err
+		}
+
 		sectorIDsToProve, err := state.SectorCommitments.IDs()
 		if err != nil {
 			return nil, err

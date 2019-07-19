@@ -702,7 +702,7 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 		assert.Equal(t, types.NewBytesAmount(2).Mul(types.OneKiBSectorSize), power)
 	})
 
-	t.Run("power removed with faults", func(t *testing.T) {
+	t.Run("faults removes power and sector commitments", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 
 		// commit several sectors
@@ -722,6 +722,12 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 		mal.requirePoSt(firstCommitBlockHeight+3, done, types.NewFaultSet([]uint64{1, 2}))
 		power = mal.requirePower(firstCommitBlockHeight + 4)
 		assert.Equal(t, types.NewBytesAmount(1).Mul(types.OneKiBSectorSize), power)
+
+		// Ensure that sector commitments have been updated
+		state := mal.requireReadState()
+		assert.False(t, state.SectorCommitments.Has(uint64(1)))
+		assert.False(t, state.SectorCommitments.Has(uint64(2)))
+		assert.True(t, state.SectorCommitments.Has(uint64(3)))
 	})
 }
 
