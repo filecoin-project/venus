@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// PeerManager defines an interface for managin peers and their heads
 type PeerManager interface {
 	// AddPeer adds a peer to the peer managers store.
 	AddPeer(p peer.ID, h types.TipSet)
@@ -23,17 +24,20 @@ type PeerManager interface {
 	SelectHead() (types.TipSet, error)
 }
 
+// BasicPeerManager tracks peers and their heads
 type BasicPeerManager struct {
 	peerHeadMu sync.Mutex
 	peerHeads  map[peer.ID]types.TipSet
 }
 
+// NewBasicPeerManager returns a BasicPeerManager
 func NewBasicPeerManager() *BasicPeerManager {
 	return &BasicPeerManager{
 		peerHeads: make(map[peer.ID]types.TipSet),
 	}
 }
 
+// AddPeer adds a peer and its head to the peer manager.
 func (bpm *BasicPeerManager) AddPeer(p peer.ID, h types.TipSet) {
 	bpm.peerHeadMu.Lock()
 	defer bpm.peerHeadMu.Unlock()
@@ -41,6 +45,7 @@ func (bpm *BasicPeerManager) AddPeer(p peer.ID, h types.TipSet) {
 	bpm.peerHeads[p] = h
 }
 
+// Peers returns the peers the peer manager is aware of.
 func (bpm *BasicPeerManager) Peers() []peer.ID {
 	bpm.peerHeadMu.Lock()
 	defer bpm.peerHeadMu.Unlock()
@@ -52,6 +57,7 @@ func (bpm *BasicPeerManager) Peers() []peer.ID {
 	return out
 }
 
+// PeerHeads returns a list of peers and their heads
 func (bpm *BasicPeerManager) PeerHeads() map[peer.ID]types.TipSet {
 	bpm.peerHeadMu.Lock()
 	defer bpm.peerHeadMu.Unlock()
@@ -59,6 +65,7 @@ func (bpm *BasicPeerManager) PeerHeads() map[peer.ID]types.TipSet {
 	return bpm.peerHeads
 }
 
+// SelectHead selects the best possible head from the peers and heads its aware of.
 func (bpm *BasicPeerManager) SelectHead() (types.TipSet, error) {
 	bpm.peerHeadMu.Lock()
 	defer bpm.peerHeadMu.Unlock()
@@ -66,9 +73,34 @@ func (bpm *BasicPeerManager) SelectHead() (types.TipSet, error) {
 	if len(bpm.peerHeads) == 0 {
 		return types.UndefTipSet, fmt.Errorf("zero peers to select from")
 	}
-	// for now pick something random?
+
+	// stinky
+	var best types.TipSet
 	for _, h := range bpm.peerHeads {
-		return h, nil
+		best = h
+		break
 	}
-	panic("unreachable")
+
+	if len(bpm.peerHeads) == 1 {
+		return best, nil
+	}
+
+	// for now pick the head with the heaviest parent.
+	for _, h := range bpm.peerHeads {
+		maybe, err := h.ParentWeight()
+		if err != nil {
+			return types.UndefTipSet, err
+		}
+
+		bestP, err := best.ParentWeight()
+		if err != nil {
+			return types.UndefTipSet, err
+		}
+
+		if maybe > bestP {
+			best = h
+		}
+
+	}
+	return best, nil
 }
