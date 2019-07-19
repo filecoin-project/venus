@@ -50,7 +50,8 @@ func TestSimpleBootstrapMode(t *testing.T) {
 	ctx := context.Background()
 
 	fpm := &fakePeerManager{}
-	syncer := NewSyncer(&fakeStateEvaluator{}, chainStore, cb, fpm, Syncing)
+	processor := NewChainStateEvaluator(&fakeStateEvaluator{}, chainStore)
+	syncer := NewSyncer(processor, chainStore, cb, fpm, Syncing)
 
 	b10 := cb.AppendManyOn(9, gen)
 	fpm.head = types.RequireNewTipSet(t, b10)
@@ -61,7 +62,6 @@ func TestSimpleBootstrapMode(t *testing.T) {
 	// - has the expected head
 	// - is now in caught up mode
 	assert.NoError(t, syncer.SyncBootstrap(ctx))
-	assert.Equal(t, 0, len(syncer.badTipSets.bad))
 	assert.Equal(t, types.RequireNewTipSet(t, b10).Key(), chainStore.GetHead())
 	assert.Equal(t, CaughtUp, syncer.syncMode)
 }
@@ -73,7 +73,8 @@ func TestSimpleCaughtUpMode(t *testing.T) {
 	ctx := context.Background()
 
 	fpm := &fakePeerManager{}
-	syncer := NewSyncer(&fakeStateEvaluator{}, chainStore, cb, fpm, CaughtUp)
+	processor := NewChainStateEvaluator(&fakeStateEvaluator{}, chainStore)
+	syncer := NewSyncer(processor, chainStore, cb, fpm, CaughtUp)
 
 	b10 := cb.AppendManyOn(9, gen)
 	cb.AppendManyOn(9, gen)
@@ -93,7 +94,6 @@ func TestSimpleCaughtUpMode(t *testing.T) {
 	// - has the expected head
 	// - is still in caughtup mode
 	assert.NoError(t, syncer.SyncCaughtUp(ctx, types.RequireNewTipSet(t, b11).Key()))
-	assert.Equal(t, 0, len(syncer.badTipSets.bad))
 	assert.Equal(t, types.RequireNewTipSet(t, b11).Key(), chainStore.GetHead())
 	assert.Equal(t, CaughtUp, syncer.syncMode)
 
@@ -158,6 +158,14 @@ func (f *fakePeerManager) SelectHead() (types.TipSet, error) {
 }
 
 type fakeStateEvaluator struct {
+}
+
+func (f *fakeStateEvaluator) Evaluate(ctx context.Context, parent types.TipSet, chain []types.TipSet) error {
+	return nil
+}
+
+func (f *fakeStateEvaluator) IsBadTipSet(ts types.TipSetKey) bool {
+	return false
 }
 
 // prior `stateRoot`.  It returns an error if the transition is invalid.
