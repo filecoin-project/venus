@@ -79,7 +79,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 		return fmt.Errorf("block %s has nil StateRoot", blk.Cid().String())
 	}
 	if blk.Miner.Empty() {
-		return fmt.Errorf("block %s has nil miner address", blk.Miner.String())
+		return fmt.Errorf("block %s has nil miner address", blk.Cid().String())
 	}
 	if len(blk.Ticket) == 0 {
 		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())

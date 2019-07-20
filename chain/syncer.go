@@ -154,6 +154,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, from peer.ID, tsKey t
 	if err != nil {
 		return err
 	}
+
 	ts, err := types.NewTipSet(blks...)
 	if err != nil {
 		return err
@@ -200,6 +201,8 @@ var BootstrapFetchWindow = 1
 
 // SyncBootstrap performs the bootstrap sync process, if successful the syncer will
 // be placed in "CaughtUp" mode, else an error is returned.
+// TODO handle the case when a node has been restarted and already has some data
+// i.e. try and remove the var name "genesis"
 func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 	logSyncer.Info("Starting Bootstrap Sync")
 
@@ -222,6 +225,12 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		}
 		out = append(out, tips...)
 
+		// TODO make a method like this that finds the most recent ancestor of tips
+		/*
+			if previousHead := syncer.store.HasAnyTipSetAndState(ctx, tips); previousHead != nil {
+				break
+			}
+		*/
 		// Have we reached their genesis block yet?
 		// TODO this will need to be rethought when the fether is capable of returning a list of tipsets
 		h, err := out[len(out)-1].Height()
@@ -248,6 +257,8 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		panic("ohh no wrong chain")
 	}
 
+	// TODO don't evaluate the entire chain all over againg for the case when a node
+	// restarts.
 	if err := syncer.evaluator.Evaluate(ctx, genesis, out); err != nil {
 		return err
 	}

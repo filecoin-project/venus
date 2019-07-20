@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,10 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+func init() {
+	logging.SetLogLevel("*", "info")
+}
 
 func connect(t *testing.T, nd1, nd2 *Node) {
 	t.Helper()
@@ -61,6 +66,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
 	require.NoError(t, err)
 
+	t.Logf("Genesis Block: %s", baseTS.Key())
+
 	nextBlk := &types.Block{
 		Miner:        minerAddr,
 		Parents:      baseTS.Key(),
@@ -70,11 +77,15 @@ func TestBlockPropsManyNodes(t *testing.T) {
 		Proof:        proof,
 		Ticket:       ticket,
 	}
+	t.Logf("Next Block: %s", nextBlk.Cid())
 
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 300)
 
 	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
+
+	// Wait for nodes to bootstrap
+	time.Sleep(time.Millisecond * 300)
 
 	equal := false
 	for i := 0; i < 30; i++ {
@@ -118,17 +129,23 @@ func TestChainSync(t *testing.T) {
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk2))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk3))
+	t.Logf("Blk1: %s", nextBlk1.Cid())
+	t.Logf("Blk2: %s", nextBlk2.Cid())
+	t.Logf("Blk3: %s", nextBlk3.Cid())
 
 	connect(t, nodes[0], nodes[1])
+	time.Sleep(time.Second * 5)
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].ChainReader.GetHead()
+		t.Logf("OtherHead: %s", otherHead)
 		assert.NotNil(t, otherHead)
 		equal = otherHead.ToSlice()[0].Equals(nextBlk3.Cid())
 		if equal {
 			break
 		}
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 200)
+		assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk3))
 	}
 
 	assert.True(t, equal, "failed to sync chains")

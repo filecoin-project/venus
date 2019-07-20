@@ -43,6 +43,8 @@ func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Bui
 	return gen, cb, chainStore
 }
 
+// TODO handle the case when you are bootstrapping after the node has been restarted
+
 func TestSimpleBootstrapMode(t *testing.T) {
 	tf.UnitTest(t)
 

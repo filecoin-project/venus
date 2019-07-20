@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -25,6 +26,7 @@ type BitswapFetcher struct {
 	// session is a bitswap session that enables efficient transfer.
 	session   *bserv.Session
 	validator consensus.BlockSyntaxValidator
+	Log       logging.EventLogger
 }
 
 // NewBitswapFetcher returns a BitswapFetcher wired up to the input BlockService and a newly
@@ -33,12 +35,14 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 	return &BitswapFetcher{
 		session:   bserv.NewSession(ctx, bsrv),
 		validator: bv,
+		Log:       logging.Logger("net/fetcher"),
 	}
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
 // FetchTipSets will fetch `recur` partens of `tsKey`. FetchTipSets does not return partial results.
 func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
+	bsf.Log.Infof("Fetcher Fetching Tipset: %s", tsKey)
 	var out []types.TipSet
 	cur := tsKey
 	for i := 0; i < recur; i++ {
@@ -66,6 +70,7 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 // GetBlocks fetches the blocks with the given cids from the network using the
 // BitswapFetcher's bitswap session.
 func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
+	bsf.Log.Infof("Fetcher Getting Blocks: %s", cids)
 	var unsanitized []blocks.Block
 	for b := range bsf.session.GetBlocks(ctx, cids) {
 		unsanitized = append(unsanitized, b)
@@ -88,6 +93,11 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 			return nil, errors.Wrap(err, fmt.Sprintf("fetched data (cid %s) was not a block", u.Cid().String()))
 		}
 
+		// HACK Genesis block will fail validation
+		if block.Height == 0 {
+			blocks = append(blocks, block)
+			continue
+		}
 		// reject blocks that are syntactically invalid.
 		if err := bsf.validator.ValidateSyntax(ctx, block); err != nil {
 			continue

@@ -74,6 +74,12 @@ func (cse *StateEvaluator) IsBadTipSet(ts types.TipSetKey) bool {
 // Evaluate is a wrapper around calls to consensus, it will either sync the chain `chain` to the store
 // or return an error
 func (cse *StateEvaluator) Evaluate(ctx context.Context, parent types.TipSet, chain []types.TipSet) error {
+	// TODO add this as a sanity check
+	/*
+		if p, err := chain[0].Parents(); err != nil && p.ContainsAll(parent.Key()) {
+			panic("boom"
+		}
+	*/
 	head := chain[0].Key()
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
