@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,10 +16,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
-
-func init() {
-	logging.SetLogLevel("*", "info")
-}
 
 func connect(t *testing.T, nd1, nd2 *Node) {
 	t.Helper()

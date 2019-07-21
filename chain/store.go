@@ -250,6 +250,8 @@ func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key.String())
 }
 
+// FindCommonTipSet assumes `tips` are ordered based on height and will return the
+// first tipset the store and `tip` have in commmon in addition to the index.
 func (store *Store) FindCommonTipSet(ctx context.Context, tips []types.TipSet) (int, types.TipSet, bool) {
 	// we are given a chain segment and want to find the first tipset we
 	// have seen before
