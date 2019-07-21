@@ -237,7 +237,10 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 			return err
 		}
 		if h == 0 {
+			logSyncer.Info("Bootstrap sync receieved tipset with height 0, compare genesis")
+			logSyncer.Infof("Fetched Genesis: %s, Store Genesis: %s", tips[len(tips)-1].Key(), syncer.store.GenesisCid())
 			if !tips[len(tips)-1].Key().Equals(types.NewTipSetKey(syncer.store.GenesisCid())) {
+				logSyncer.Error("Bootstrap synced chain with wrong genesis")
 				return errors.Errorf("failed to bootstrap from %s, wrong genesis block", syncHead)
 			}
 			// case when bootstrapping to the netfor for the first time.
@@ -253,6 +256,7 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 		// and ancestor of it for the case when we are syncing a fork/reorg
 		// the store garentees that everything after idx is valid and we have it.
 		if found {
+			logSyncer.Infof("Bootstrap sync receieved tipset that has been seen before: %s", parent.Key().String())
 			out = append(tips[:idx], out...)
 			break
 		}

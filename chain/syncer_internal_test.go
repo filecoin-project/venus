@@ -22,9 +22,11 @@ func init() {
 	log.SetDebugLogging()
 }
 
-func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Builder, *Store) {
+// minerAddr can be thought of as a "seed". Different values for minerAddr will produce
+// blocks with different CID's
+func setupChainBuilderAndStoreWithGenesisState(t *testing.T, minerAddr address.Address) (*types.Block, *Builder, *Store) {
 	ctx := context.Background()
-	cb := NewBuilder(t, address.Undef)
+	cb := NewBuilder(t, minerAddr)
 	gen := cb.AppendOn()
 	genTs := types.RequireNewTipSet(t, gen)
 
@@ -43,12 +45,10 @@ func setupChainBuilderAndStoreWithGenesisState(t *testing.T) (*types.Block, *Bui
 	return gen, cb, chainStore
 }
 
-// TODO handle the case when you are bootstrapping after the node has been restarted
-
-func TestSimpleBootstrapMode(t *testing.T) {
+func TestBootstrapModeInitialNetworkJoin(t *testing.T) {
 	tf.UnitTest(t)
 
-	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t)
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t, address.Undef)
 	ctx := context.Background()
 
 	fpm := &fakePeerManager{}
@@ -68,10 +68,123 @@ func TestSimpleBootstrapMode(t *testing.T) {
 	assert.Equal(t, CaughtUp, syncer.syncMode)
 }
 
+func TestBootstrapModeInvalidGenesisBlock(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+
+	minerA, err := address.NewActorAddress([]byte("minerA"))
+	require.NoError(t, err)
+	minerB, err := address.NewActorAddress([]byte("minerB"))
+	require.NoError(t, err)
+
+	genA, cbA, chainStoreA := setupChainBuilderAndStoreWithGenesisState(t, minerA)
+	genB, cbB, _ := setupChainBuilderAndStoreWithGenesisState(t, minerB)
+
+	fpm := &fakePeerManager{}
+	processor := NewChainStateEvaluator(&fakeStateEvaluator{}, chainStoreA)
+	syncer := NewSyncer(processor, chainStoreA, cbB, fpm, Syncing)
+
+	b10B := cbB.AppendManyOn(9, genB)
+	fpm.head = types.RequireNewTipSet(t, b10B)
+	assert.Contains(t, syncer.SyncBootstrap(ctx).Error(), "wrong genesis")
+
+	// now ensure we can sync to a known block
+	b10A := cbA.AppendManyOn(9, genA)
+	fpm.head = types.RequireNewTipSet(t, b10A)
+	syncer.fetcher = cbA // this feels kinda hacky, works for now though
+	assert.NoError(t, syncer.SyncBootstrap(ctx))
+
+}
+
+// TODO this test needs a better name
+func TestBootstrapModeAfterRestartSimple(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t, address.Undef)
+
+	cur := gen
+	for i := 0; i < 9; i++ {
+		blk := cb.AppendOn(cur)
+		blkTs := types.RequireNewTipSet(t, blk)
+		blkTsas := &TipSetAndState{
+			TipSet:          blkTs,
+			TipSetStateRoot: types.SomeCid(),
+		}
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, blkTsas))
+		cur = blk
+	}
+
+	fpm := &fakePeerManager{}
+	fse := &fakeStateEvaluator{}
+	processor := NewChainStateEvaluator(fse, chainStore)
+	syncer := NewSyncer(processor, chainStore, cb, fpm, Syncing)
+
+	// create blocks that are not in the syncer chainstore
+	b20 := cb.AppendManyOn(9, cur)
+	fpm.head = types.RequireNewTipSet(t, b20)
+
+	// TODO add an assertion that the Evaluate method was only called 9 times
+	assert.NoError(t, syncer.SyncBootstrap(ctx))
+	assert.Equal(t, CaughtUp, syncer.syncMode)
+
+}
+
+// testing the case when the node is restarted and the chain forks on a previous
+// tipset the node had.
+func TestBootstrapModeAfterRestartForked(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	forkMinerAddr, err := address.NewActorAddress([]byte("forkMiner"))
+	require.NoError(t, err)
+
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t, address.Undef)
+
+	cur := gen
+	var fork *types.Block
+	for i := 0; i < 9; i++ {
+		blk := cb.AppendOn(cur)
+		blkTs := types.RequireNewTipSet(t, blk)
+		blkTsas := &TipSetAndState{
+			TipSet:          blkTs,
+			TipSetStateRoot: types.SomeCid(),
+		}
+		require.NoError(t, chainStore.PutTipSetAndState(ctx, blkTsas))
+		if i == 3 {
+			fork = blk
+			t.Logf("Fork Block: %s", fork.Cid())
+		}
+		cur = blk
+		t.Logf("StorePut %s", cur.Cid())
+	}
+	t.Logf("Old Head: %s", cur.Cid())
+
+	fpm := &fakePeerManager{}
+	fse := &fakeStateEvaluator{}
+	processor := NewChainStateEvaluator(fse, chainStore)
+
+	// create blocks that are not in the syncer chainstore
+	cbF := NewBuilder(t, forkMinerAddr)
+	b20 := cbF.AppendManyOn(9, fork)
+
+	// need to merge the chainBuilders so fetching works
+	for k, v := range cb.blocks {
+		cbF.blocks[k] = v
+	}
+
+	fpm.head = types.RequireNewTipSet(t, b20)
+	syncer := NewSyncer(processor, chainStore, cbF, fpm, Syncing)
+
+	// TODO add an assertion that the Evaluate method was only called 9 times
+	assert.NoError(t, syncer.SyncBootstrap(ctx))
+	assert.Equal(t, CaughtUp, syncer.syncMode)
+
+}
+
 func TestSimpleCaughtUpMode(t *testing.T) {
 	tf.UnitTest(t)
 
-	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t)
+	gen, cb, chainStore := setupChainBuilderAndStoreWithGenesisState(t, address.Undef)
 	ctx := context.Background()
 
 	fpm := &fakePeerManager{}
@@ -160,14 +273,6 @@ func (f *fakePeerManager) SelectHead() (types.TipSet, error) {
 }
 
 type fakeStateEvaluator struct {
-}
-
-func (f *fakeStateEvaluator) Evaluate(ctx context.Context, parent types.TipSet, chain []types.TipSet) error {
-	return nil
-}
-
-func (f *fakeStateEvaluator) IsBadTipSet(ts types.TipSetKey) bool {
-	return false
 }
 
 // prior `stateRoot`.  It returns an error if the transition is invalid.
