@@ -62,6 +62,7 @@ const (
 
 type syncerChainReader interface {
 	HasTipSetAndState(ctx context.Context, tsKey string) bool
+	FindCommonTipSet(ctx context.Context, tips []types.TipSet) (int, types.TipSet, bool)
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	BlockHeight() (uint64, error)
 	GenesisCid() cid.Cid
@@ -213,53 +214,58 @@ func (syncer *Syncer) SyncBootstrap(ctx context.Context) error {
 	}
 
 	var out []types.TipSet
+	var parent types.TipSet
+	var found bool
+	var idx int
 	cur := syncHead.Key()
 	for {
 		logSyncer.Infof("Bootstrap Sync requesting Tipset: %s and %d parents", cur.String(), BootstrapFetchWindow)
 		// NB: this will break in the event that we are fetching past the genesis block
 		// e.g. bootstrapping a chain of length 8 with a Window set to 10
+		// from the NB a TODO here is for the Fetcher to handle partial responses
+		// or we should adjust the bootstrap window based on the height of cur s.t.
+		// it is never the case that cur.Height < BootstrapFetchWindow
 		tips, err := syncer.fetcher.FetchTipSets(ctx, cur, BootstrapFetchWindow)
 		if err != nil {
 			logSyncer.Errorf("Failed to fetch tipset at %s. Error: %s", cur.String(), err.Error())
 			return errors.Wrap(err, "Failed to fetch tipset")
 		}
-		out = append(out, tips...)
 
-		// TODO make a method like this that finds the most recent ancestor of tips
-		/*
-			if previousHead := syncer.store.HasAnyTipSetAndState(ctx, tips); previousHead != nil {
-				break
-			}
-		*/
-		// Have we reached their genesis block yet?
-		// TODO this will need to be rethought when the fether is capable of returning a list of tipsets
-		h, err := out[len(out)-1].Height()
+		// need to check if we are being given a genesis block first
+		h, err := tips[len(tips)-1].Height()
 		if err != nil {
 			return err
 		}
 		if h == 0 {
+			if !tips[len(tips)-1].Key().Equals(types.NewTipSetKey(syncer.store.GenesisCid())) {
+				return errors.Errorf("failed to bootstrap from %s, wrong genesis block", syncHead)
+			}
+			// case when bootstrapping to the netfor for the first time.
+			out = append(tips, out...)
+			parent = tips[len(tips)-1]
 			break
 		}
 
-		cur, err = out[len(out)-1].Parents()
+		// fetched tips don't containe a genesis, see if we have seen part of this
+		// segmant before for the case of a node restart and bootstrap
+		idx, parent, found = syncer.store.FindCommonTipSet(ctx, tips)
+		// parent is a block we have seen before, possibly our previous head or
+		// and ancestor of it for the case when we are syncing a fork/reorg
+		// the store garentees that everything after idx is valid and we have it.
+		if found {
+			out = append(tips[:idx], out...)
+			break
+		}
+
+		// all the fetched tips are new to us, continue fetching
+		out = append(tips, out...)
+		cur, err = out[0].Parents()
 		if err != nil {
 			return err
 		}
 	}
 
-	// get the genesis block and order the list
-	out = reverse(out)
-	genesis := out[0]
-
-	// moment of truth
-	// this comparison has a bit of an odor to it.
-	if !genesis.Key().Equals(types.NewTipSetKey(syncer.store.GenesisCid())) {
-		panic("ohh no wrong chain")
-	}
-
-	// TODO don't evaluate the entire chain all over againg for the case when a node
-	// restarts.
-	if err := syncer.evaluator.Evaluate(ctx, genesis, out); err != nil {
+	if err := syncer.evaluator.Evaluate(ctx, parent, out); err != nil {
 		return err
 	}
 
