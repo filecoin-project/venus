@@ -393,7 +393,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up chainstore
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, genCid)
 	chainState := cst.NewChainStateProvider(chainStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 

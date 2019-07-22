@@ -42,7 +42,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 func newChainStore(dstP *SyncerTestParams) *chain.Store {
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	return chain.NewStore(ds, hamt.NewCborStore(), dstP.genCid)
+	return chain.NewStore(ds, hamt.NewCborStore(), &state.TreeStateLoader{}, dstP.genCid)
 }
 
 // requirePutTestChain adds all test chain tipsets to the passed in chain store.
@@ -181,7 +181,7 @@ func TestGetTipSetState(t *testing.T) {
 	// setup chain store
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	store := chain.NewStore(ds, cst, gen.Cid())
+	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, gen.Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -394,7 +394,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, dstP.link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, dstP.link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, cst, dstP.genCid)
+	chainStore := chain.NewStore(ds, cst, &state.TreeStateLoader{}, dstP.genCid)
 	requirePutTestChain(t, chainStore, dstP)
 	assertSetHead(t, chainStore, dstP.genTS) // set the genesis block
 
@@ -402,7 +402,7 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	rebootChain := chain.NewStore(ds, cst, dstP.genCid)
+	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, dstP.genCid)
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 
