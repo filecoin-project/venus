@@ -20,10 +20,10 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(4))
-	iterator := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, head))
+	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
@@ -42,10 +42,10 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(0))
-	iterator := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, head))
+	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
@@ -62,7 +62,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 
 	// Add 30 tipsets to the head of the chainStore.
 	head = builder.AppendManyOn(30, head)
@@ -76,7 +76,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	head = builder.AppendManyOn(19, head)
 
 	stopHeight := types.NewBlockHeight(uint64(35))
-	iterator := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, head))
+	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
@@ -94,18 +94,18 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 
 	t.Run("happy path", func(t *testing.T) {
 		number := uint(10)
-		iterator := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, head))
+		iterator := chain.IterAncestors(ctx, builder, head)
 		tipsets, err := chain.CollectAtMostNTipSets(ctx, iterator, number)
 		assert.NoError(t, err)
 		assert.Equal(t, 10, len(tipsets))
 	})
 	t.Run("hit genesis", func(t *testing.T) {
 		number := uint(400)
-		iterator := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, head))
+		iterator := chain.IterAncestors(ctx, builder, head)
 		tipsets, err := chain.CollectAtMostNTipSets(ctx, iterator, number)
 		assert.NoError(t, err)
 		assert.Equal(t, 25, len(tipsets))
@@ -122,7 +122,7 @@ func TestGetRecentAncestors(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 200
-	headBlock := builder.AppendManyOn(chainLen)
+	headBlock := builder.AppendManyBlocksOnBlocks(chainLen)
 	head := types.RequireNewTipSet(t, headBlock)
 
 	epochs := uint64(100)
@@ -146,8 +146,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 100
-	headBlock := builder.AppendManyOn(chainLen)
-	head := types.RequireNewTipSet(t, headBlock)
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
 	h, err := head.Height()
 	require.NoError(t, err)
 	epochs := uint64(200)
@@ -173,7 +172,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 
 	// Add 30 tipsets to the head of the chainStore.
 	head = builder.AppendManyOn(30, head)
@@ -187,10 +186,9 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 
 	epochs := uint64(28)
 	lookback := 6
-	headTipSet := types.RequireNewTipSet(t, head)
-	h, err := headTipSet.Height()
+	h, err := head.Height()
 	require.NoError(t, err)
-	ancestors, err := chain.GetRecentAncestors(ctx, headTipSet, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), uint(lookback))
+	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), uint(lookback))
 	require.NoError(t, err)
 
 	// We expect to see 20 blocks in the first 28 epochs and an additional 6 for the lookback parameter
@@ -204,37 +202,35 @@ func TestFindCommonAncestorSameChain(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 	// Add 30 tipsets to the head of the chainStore.
 	head = builder.AppendManyOn(30, head)
-	headTipSet := types.RequireNewTipSet(t, head)
-	headIterOne := chain.IterAncestors(ctx, builder, headTipSet)
-	headIterTwo := chain.IterAncestors(ctx, builder, headTipSet)
+	headIterOne := chain.IterAncestors(ctx, builder, head)
+	headIterTwo := chain.IterAncestors(ctx, builder, head)
 	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
 	assert.NoError(t, err)
-	assert.Equal(t, headTipSet, commonAncestor)
+	assert.Equal(t, head, commonAncestor)
 }
 
 func TestFindCommonAncestorFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 
 	// Add 3 tipsets to the head of the chainStore.
-	commonHeadBlock := builder.AppendManyOn(3, head)
-	commonHeadTip := types.RequireNewTipSet(t, commonHeadBlock)
+	commonHeadTip := builder.AppendManyOn(3, head)
 
 	// Grow the fork chain
 	lenFork := 10
-	forkHead := builder.AppendManyOn(lenFork, commonHeadBlock)
+	forkHead := builder.AppendManyOn(lenFork, commonHeadTip)
 
 	// Grow the main chain
 	lenMainChain := 14
-	mainHead := builder.AppendManyOn(lenMainChain, commonHeadBlock)
+	mainHead := builder.AppendManyOn(lenMainChain, commonHeadTip)
 
-	forkItr := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, forkHead))
-	mainItr := chain.IterAncestors(ctx, builder, types.RequireNewTipSet(t, mainHead))
+	forkItr := chain.IterAncestors(ctx, builder, forkHead)
+	mainItr := chain.IterAncestors(ctx, builder, mainHead)
 	commonAncestor, err := chain.FindCommonAncestor(mainItr, forkItr)
 	assert.NoError(t, err)
 	assert.Equal(t, commonHeadTip, commonAncestor)
@@ -244,21 +240,20 @@ func TestFindCommonAncestorNoFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 
 	// Add 30 tipsets to the head of the chainStore.
 	head = builder.AppendManyOn(30, head)
-	headTipSet1 := types.RequireNewTipSet(t, head)
-	headIterOne := chain.IterAncestors(ctx, builder, headTipSet1)
+	headIterOne := chain.IterAncestors(ctx, builder, head)
 
 	// Now add 19 more tipsets.
+	expectedAncestor := head
 	head = builder.AppendManyOn(19, head)
-	headTipSet2 := types.RequireNewTipSet(t, head)
-	headIterTwo := chain.IterAncestors(ctx, builder, headTipSet2)
+	headIterTwo := chain.IterAncestors(ctx, builder, head)
 
 	commonAncestor, err := chain.FindCommonAncestor(headIterOne, headIterTwo)
 	assert.NoError(t, err)
-	assert.Equal(t, headTipSet1, commonAncestor)
+	assert.True(t, expectedAncestor.Equals(commonAncestor))
 }
 
 // This test exercises an edge case fork that our previous common ancestor
@@ -267,25 +262,22 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendOn()
+	head := builder.Genesis()
 
 	// Add 10 tipsets to the head of the chainStore.
 	commonHead := builder.AppendManyOn(10, head)
-	expectedCA := types.RequireNewTipSet(t, commonHead)
 
 	// From the common ancestor, add a block following a null block.
 	headAfterNull := builder.BuildOn(commonHead, func(b *chain.BlockBuilder) {
 		b.IncHeight(1)
 	})
-	afterNullTS := types.RequireNewTipSet(t, headAfterNull)
-	afterNullItr := chain.IterAncestors(ctx, builder, afterNullTS)
+	afterNullItr := chain.IterAncestors(ctx, builder, headAfterNull)
 
 	// Add a block (with no null) on another fork.
-	headNoNull := builder.AppendOn(commonHead)
-	noNullTS := types.RequireNewTipSet(t, headNoNull)
-	noNullItr := chain.IterAncestors(ctx, builder, noNullTS)
+	headNoNull := builder.AppendOn(commonHead, 1)
+	noNullItr := chain.IterAncestors(ctx, builder, headNoNull)
 
 	commonAncestor, err := chain.FindCommonAncestor(afterNullItr, noNullItr)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCA, commonAncestor)
+	assert.Equal(t, commonHead, commonAncestor)
 }

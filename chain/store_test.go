@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -172,16 +173,15 @@ func TestGetTipSetState(t *testing.T) {
 
 	// link testing state to test block
 	builder := chain.NewBuilder(t, address.Undef)
-	gen := builder.AppendOn()
-	testBlock := builder.BuildOn(gen, func(b *chain.BlockBuilder) {
+	gen := builder.Genesis()
+	testTs := builder.BuildOn(gen, func(b *chain.BlockBuilder) {
 		b.SetStateRoot(root)
 	})
-	testTs := types.RequireNewTipSet(t, testBlock)
 
 	// setup chain store
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, gen.Cid())
+	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, gen.At(0).Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -418,4 +418,24 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// Check the head
 	assert.Equal(t, dstP.link4.Key(), rebootChain.GetHead())
+}
+
+type tipSetGetter interface {
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+}
+
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.TipSetKey) types.TipSet {
+	ts, err := chainStore.GetTipSet(key)
+	require.NoError(t, err)
+	return ts
+}
+
+type tipSetStateRootGetter interface {
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+}
+
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key types.TipSetKey) cid.Cid {
+	stateCid, err := chainStore.GetTipSetStateRoot(key)
+	require.NoError(t, err)
+	return stateCid
 }
