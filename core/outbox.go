@@ -70,8 +70,9 @@ func (ob *Outbox) Queue() *MessageQueue {
 }
 
 // Send marshals and sends a message, retaining it in the outbound message queue.
+// If gossip is true, it publishes the message at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (out cid.Cid, err error) {
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, gossip bool, params ...interface{}) (out cid.Cid, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -120,9 +121,11 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 
-	err = ob.publisher.Publish(ctx, signed, height)
-	if err != nil {
-		return cid.Undef, err
+	if gossip {
+		err = ob.publisher.Publish(ctx, signed, height)
+		if err != nil {
+			return cid.Undef, err
+		}
 	}
 
 	return signed.Cid()

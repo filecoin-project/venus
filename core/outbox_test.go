@@ -27,10 +27,11 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
+		gossip := true
 
 		ob := core.NewOutbox(w, nullValidator{rejectMessages: true}, queue, publisher, nullPolicy{}, provider, provider)
 
-		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "")
+		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "", gossip)
 		assert.Errorf(t, err, "for testing")
 		assert.False(t, cid.Defined())
 	})
@@ -42,6 +43,7 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
+		gossip := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -53,7 +55,7 @@ func TestOutbox(t *testing.T) {
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", gossip)
 		require.NoError(t, err)
 		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
 		assert.NotNil(t, publisher.message)
@@ -72,6 +74,7 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
+		gossip := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -85,7 +88,7 @@ func TestOutbox(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
-				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), []byte{})
+				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), gossip, []byte{})
 				require.NoError(t, err)
 			}
 		}
@@ -122,6 +125,7 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
+		gossip := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		actr := storagemarket.NewActor() // Not an account actor
@@ -129,10 +133,35 @@ func TestOutbox(t *testing.T) {
 
 		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "")
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", gossip)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})
+	t.Run("enqueues and does not publish if gossip set to false", func(t *testing.T) {
+		w, _ := types.NewMockSignersAndKeyInfo(1)
+		sender := w.Addresses[0]
+		toAddr := address.NewForTestGetter()()
+		queue := core.NewMessageQueue()
+		publisher := &mockPublisher{}
+		provider := &fakeProvider{}
+		gossip := false
+
+		blk := types.NewBlockForTest(nil, 1)
+		blk.Height = 1000
+		actr, _ := account.NewActor(types.ZeroAttoFIL)
+		actr.Nonce = 42
+		provider.Set(t, blk, sender, actr)
+
+		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
+		require.Empty(t, queue.List(sender))
+		require.Nil(t, publisher.message)
+
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", gossip)
+		require.NoError(t, err)
+		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
+		assert.Nil(t, publisher.message)
+	})
+
 }
 
 // A publisher which just stores the last message published.
