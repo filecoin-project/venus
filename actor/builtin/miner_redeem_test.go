@@ -7,8 +7,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/stretchr/testify/require"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -21,6 +20,8 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestVerifyPieceInclusionInRedeem(t *testing.T) {
@@ -38,11 +39,19 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Establish our state
 	_, st, vms := requireGenesis(ctx, t, target)
 
+	// TODO: Remove all of these byte slice-literals and use the FakeVMContext
+	// and FakeVerifier instead. A PIP should be treated by go-filecoin as an
+	// opaque byte slice which it has received from the proving system.
+	//
+	// See: https://github.com/filecoin-project/go-filecoin/issues/3086
+
 	// Create a miner actor with fake commitments
 	minerAddr := addrGetter()
 	sectorID := uint64(123)
-	commP := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-	commD := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
+	pip := []byte{24, 0, 0, 0, 0, 0, 0, 0, 92, 46, 114, 56, 244, 245, 178, 65, 110, 127, 140, 185, 130, 36, 177, 209, 113, 122, 121, 150, 227, 8, 36, 77, 9, 242, 66, 104, 144, 231, 230, 105, 229, 170, 199, 185, 252, 141, 159, 211, 47, 128, 21, 148, 42, 6, 242, 12, 91, 193, 150, 55, 181, 213, 107, 234, 29, 139, 241, 240, 236, 154, 176, 51}
+	commD := []byte{246, 84, 0, 66, 209, 111, 32, 176, 46, 49, 34, 221, 99, 221, 62, 146, 201, 38, 203, 235, 40, 6, 245, 216, 233, 219, 232, 40, 42, 10, 186, 7}
+	commP := []byte{68, 45, 27, 111, 138, 160, 144, 53, 94, 145, 123, 208, 166, 210, 130, 77, 13, 10, 200, 223, 101, 1, 99, 24, 20, 127, 166, 41, 143, 118, 66, 78}
+	pieceSize := types.NewBytesAmount(200)
 	lastPoSt := types.NewBlockHeight(10)
 	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
 
@@ -55,15 +64,8 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Create a payment channel from payer -> target
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
-	// Make a pip
-	// TODO: This pip is very Fake
-	// https://github.com/filecoin-project/go-filecoin/issues/2629
-	pip := []byte{}
-	pip = append(pip, commP[:]...)
-	pip = append(pip, commD[:]...)
-
 	makeCondition := func() *types.Predicate {
-		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP, pieceSize}}
 	}
 
 	makeAndSignVoucher := func(condition *types.Predicate) []byte {
@@ -117,7 +119,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid inclusion proof")
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: piece inclusion proof did not validate")
 	})
 
 	t.Run("Voucher with piece inclusion condition and wrong sectorID fails", func(t *testing.T) {
@@ -178,6 +180,7 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 		ProvingSet:        types.EmptyIntSet(),
 		SlashedSet:        types.EmptyIntSet(),
 		LastPoSt:          lastPoSt,
+		SectorSize:        types.OneKiBSectorSize,
 	}
 	executableActor := miner.Actor{}
 	if err := executableActor.InitializeState(storage, minerState); err != nil {

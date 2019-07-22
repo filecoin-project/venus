@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"io/ioutil"
@@ -353,6 +354,47 @@ func TestSectorBuilder(t *testing.T) {
 
 			require.NoError(t, verr)
 			require.True(t, vres.IsValid)
+		case <-timeout:
+			t.Fatalf("timed out waiting for seal to complete")
+		}
+	})
+
+	t.Run("PIP generation and verification", func(t *testing.T) {
+		h := NewBuilder(t).Build()
+		defer h.Close()
+
+		inputBytes := RequireRandomBytes(t, h.MaxBytesPerSector.Uint64())
+		ref, size, reader, err := h.CreateAddPieceArgs(inputBytes)
+		require.NoError(t, err)
+
+		commRes, commErr := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+			PieceReader: bytes.NewReader(inputBytes),
+			PieceSize:   types.NewBytesAmount(size),
+		})
+		require.NoError(t, commErr)
+
+		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), ref, size, reader)
+		require.NoError(t, err)
+
+		timeout := time.After(MaxTimeToSealASector)
+
+		select {
+		case val := <-h.SectorBuilder.SectorSealResults():
+			require.NoError(t, val.SealingErr)
+			require.NotNil(t, val.SealingResult)
+			require.Equal(t, sectorID, val.SealingResult.SectorID)
+			require.Equal(t, 1, len(val.SealingResult.Pieces), "expected to find the single piece we added")
+			require.Equal(t, val.SealingResult.Pieces[0].CommP, commRes.CommP, "client and miner disagree on CommP")
+
+			pipRes, pipErr := (&verification.RustVerifier{}).VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
+				CommD:               val.SealingResult.CommD,
+				CommP:               val.SealingResult.Pieces[0].CommP,
+				PieceInclusionProof: val.SealingResult.Pieces[0].InclusionProof,
+				PieceSize:           types.NewBytesAmount(val.SealingResult.Pieces[0].Size),
+				SectorSize:          types.OneKiBSectorSize,
+			})
+			require.NoError(t, pipErr, "PIP verification produced an error")
+			require.True(t, pipRes.IsValid, "PIP wasn't valid")
 		case <-timeout:
 			t.Fatalf("timed out waiting for seal to complete")
 		}

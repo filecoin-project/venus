@@ -178,11 +178,12 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 
 	if status.SealStatusCode == 0 {
 		info := make([]*PieceInfo, len(status.Pieces))
-		// TODO: These piece inclusion proofs are fake, remove this when proofs are available
-		// The fake proof uses the piece cid as a fake CommP and concatenates CommP with CommD
-		// see https://github.com/filecoin-project/go-filecoin/issues/2629
 		for idx, pieceMetadata := range status.Pieces {
-			p := &PieceInfo{Size: pieceMetadata.Size}
+			p := &PieceInfo{
+				Size:           pieceMetadata.Size,
+				InclusionProof: pieceMetadata.InclusionProof,
+				CommP:          pieceMetadata.CommP,
+			}
 
 			// decode piece key-string to CID
 			ref, err := cid.Decode(pieceMetadata.Key)
@@ -190,12 +191,6 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 				return nil, err
 			}
 			p.Ref = ref
-
-			var commP types.CommP
-			copy(commP[:], p.Ref.Bytes())
-			p.InclusionProof = []byte{}
-			p.InclusionProof = append(p.InclusionProof, commP[:]...)
-			p.InclusionProof = append(p.InclusionProof, status.CommD[:]...)
 
 			info[idx] = p
 		}

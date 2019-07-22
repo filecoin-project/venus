@@ -192,7 +192,9 @@ func TestNodeConfig(t *testing.T) {
 	defaultCfg := config.NewDefaultConfig()
 
 	// fake mining
-	verifier := verification.NewFakeVerifier(true, nil)
+	verifier := &verification.FakeVerifier{
+		VerifyPoStValid: true,
+	}
 
 	configBlockTime := 99
 

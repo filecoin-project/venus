@@ -1,6 +1,8 @@
 package verification
 
-import "github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
+import (
+	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
+)
 
 // RustVerifier provides proof-verification methods.
 type RustVerifier struct{}
@@ -40,6 +42,19 @@ func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, e
 	}
 
 	return VerifyPoStResponse{
+		IsValid: isValid,
+	}, nil
+}
+
+// VerifyPieceInclusionProof returns true if the piece inclusion proof is valid
+// with the given arguments.
+func (rp *RustVerifier) VerifyPieceInclusionProof(req VerifyPieceInclusionProofRequest) (VerifyPieceInclusionProofResponse, error) {
+	isValid, err := libsectorbuilder.VerifyPieceInclusionProof(req.SectorSize.Uint64(), req.PieceSize.Uint64(), req.CommP, req.CommD, req.PieceInclusionProof)
+	if err != nil {
+		return VerifyPieceInclusionProofResponse{}, err
+	}
+
+	return VerifyPieceInclusionProofResponse{
 		IsValid: isValid,
 	}, nil
 }

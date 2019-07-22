@@ -222,7 +222,7 @@ type FakeVMContext struct {
 	StorageValue            exec.Storage
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
-	VerifierValue           exec.Verifier
+	VerifierValue           verification.Verifier
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
 	Sender                  func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
@@ -266,7 +266,7 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 }
 
 // NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
-func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier exec.Verifier) *FakeVMContext {
+func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier verification.Verifier) *FakeVMContext {
 	vmctx := NewFakeVMContext(message, state)
 	vmctx.VerifierValue = verifier
 	return vmctx
@@ -323,34 +323,6 @@ func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, init
 }
 
 // Verifier provides an interface to the proofs verifier
-func (tc *FakeVMContext) Verifier() exec.Verifier {
+func (tc *FakeVMContext) Verifier() verification.Verifier {
 	return tc.VerifierValue
-}
-
-// FakeVerifier is a fake implementation of a proof verifier
-type FakeVerifier struct {
-	Valid bool
-	Err   error
-
-	// these requests will be captured by code that calls VerifySeal or VerifyPoSt.
-	SealRequest verification.VerifySealRequest
-	PoStRequest verification.VerifyPoStRequest
-}
-
-// VerifySeal verifies that a seal proof is valid
-func (tv *FakeVerifier) VerifySeal(req verification.VerifySealRequest) (verification.VerifySealResponse, error) {
-	if tv.Err != nil {
-		return verification.VerifySealResponse{}, tv.Err
-	}
-	tv.SealRequest = req
-	return verification.VerifySealResponse{IsValid: tv.Valid}, nil
-}
-
-// VerifyPoSt verifies that a PoSt proof is valid
-func (tv *FakeVerifier) VerifyPoSt(req verification.VerifyPoStRequest) (verification.VerifyPoStResponse, error) {
-	if tv.Err != nil {
-		return verification.VerifyPoStResponse{}, tv.Err
-	}
-	tv.PoStRequest = req
-	return verification.VerifyPoStResponse{IsValid: tv.Valid}, nil
 }

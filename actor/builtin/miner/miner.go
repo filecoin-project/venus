@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"bytes"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
@@ -80,20 +79,24 @@ const (
 	ErrMinerAlreadySlashed = 44
 	// ErrMinerNotSlashable indicates that an attempt has been made to slash a miner that does not meet the criteria for slashing.
 	ErrMinerNotSlashable = 45
+	// ErrInvalidPieceInclusionProof indicates that the piece inclusion proof was
+	// malformed or did not succesfully verify.
+	ErrInvalidPieceInclusionProof = 46
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrInvalidSector:           errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
-	ErrSectorIDInUse:           errors.NewCodedRevertErrorf(ErrSectorIDInUse, "sector already committed at this ID"),
-	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
-	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
-	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
-	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
-	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
-	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
-	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
-	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
+	ErrInvalidSector:              errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
+	ErrSectorIDInUse:              errors.NewCodedRevertErrorf(ErrSectorIDInUse, "sector already committed at this ID"),
+	ErrStoragemarketCallFailed:    errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
+	ErrCallerUnauthorized:         errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
+	ErrInsufficientPledge:         errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
+	ErrInvalidPoSt:                errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
+	ErrAskNotFound:                errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
+	ErrInvalidSealProof:           errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
+	ErrGetProofsModeFailed:        errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
+	ErrInsufficientCollateral:     errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
+	ErrInvalidPieceInclusionProof: errors.NewCodedRevertErrorf(ErrInvalidPieceInclusionProof, "piece inclusion proof did not validate"),
 }
 
 const (
@@ -281,7 +284,7 @@ var minerExports = exec.Exports{
 	},
 	// verifyPieceInclusion is not in spec, but should be.
 	"verifyPieceInclusion": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
 	"getSectorSize": &exec.FunctionSignature{
@@ -672,7 +675,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
-func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
+func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -699,13 +702,19 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID
 		// Verify proof proves CommP is in sector's CommD
 		var typedCommP types.CommP
 		copy(typedCommP[:], commP)
-		valid, err := verifyInclusionProof(typedCommP, commitment.CommD, proof)
-		if err != nil {
-			return nil, err
-		}
 
-		if !valid {
-			return nil, errors.NewRevertError("invalid inclusion proof")
+		res, err := ctx.Verifier().VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
+			CommD:               commitment.CommD,
+			CommP:               typedCommP,
+			PieceInclusionProof: proof,
+			PieceSize:           pieceSize,
+			SectorSize:          state.SectorSize,
+		})
+		if err != nil {
+			return nil, errors.RevertErrorWrap(err, "failed to verify piece inclusion proof")
+		}
+		if !res.IsValid {
+			return nil, Errors[ErrInvalidPieceInclusionProof]
 		}
 
 		return nil, nil
@@ -1181,17 +1190,4 @@ func lateState(provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeig
 		return PoStStateAfterProvingPeriod, roundsLate
 	}
 	return PoStStateWithinProvingPeriod, roundsLate
-}
-
-// TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
-// see https://github.com/filecoin-project/go-filecoin/issues/2629
-func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
-	if len(proof) != 2*int(types.CommitmentBytesLen) {
-		return false, errors.NewRevertError("malformed inclusion proof")
-	}
-	combined := []byte{}
-	combined = append(combined, commP[:]...)
-	combined = append(combined, commD[:]...)
-
-	return bytes.Equal(combined, proof), nil
 }
