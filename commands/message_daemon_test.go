@@ -143,7 +143,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 		blockCid := d.RunSuccess("mining", "once").ReadStdoutTrimNewlines()
 
-		blockInfo := d.RunSuccess("show", "block", blockCid, "--enc", "json").ReadStdoutTrimNewlines()
+		blockInfo := d.RunSuccess("chain", "block", blockCid, "--enc", "json").ReadStdoutTrimNewlines()
 
 		require.NoError(t, json.Unmarshal([]byte(blockInfo), &result))
 		assert.NotEmpty(t, result.Messages, "msg under the block gas limit passes validation and is run in the block")

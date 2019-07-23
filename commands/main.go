@@ -107,7 +107,6 @@ VIEW DATA STRUCTURES
   go-filecoin chain                  - Inspect the filecoin blockchain
   go-filecoin dag                    - Interact with IPLD DAG objects
   go-filecoin deals                  - Manage deals made by or with this node
-  go-filecoin show                   - Get human-readable representations of filecoin objects
 
 NETWORK COMMANDS
   go-filecoin bitswap                - Explore libp2p bitswap
@@ -179,7 +178,6 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"ping":             pingCmd,
 	"protocol":         protocolCmd,
 	"retrieval-client": retrievalClientCmd,
-	"show":             showCmd,
 	"stats":            statsCmd,
 	"swarm":            swarmCmd,
 	"wallet":           walletCmd,

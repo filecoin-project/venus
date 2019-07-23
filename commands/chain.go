@@ -19,8 +19,9 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head": chainHeadCmd,
-		"ls":   chainLsCmd,
+		"head":  chainHeadCmd,
+		"ls":    chainLsCmd,
+		"block": chainBlockCmd,
 	},
 }
 
@@ -56,18 +57,32 @@ var chainLsCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
+		cmdkit.Uint64Option("begin", "b", "The block height of smallest height, default for genesis"),
+		cmdkit.Uint64Option("end", "e", "The block height of largest height, default for head"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
 		if err != nil {
 			return err
 		}
+		beginHeight, _ := req.Options["begin"].(uint64)
+		endHeight, _ := req.Options["end"].(uint64)
+
+		fmt.Println("beginHeight", beginHeight, "endHeight", endHeight)
+
 		for ; !iter.Complete(); err = iter.Next() {
 			if err != nil {
 				return err
 			}
 			if !iter.Value().Defined() {
 				panic("tipsets from this iterator should have at least one member")
+			}
+			height, _ := iter.Value().Height()
+			if height < beginHeight {
+				return nil
+			}
+			if endHeight != 0 && height > endHeight {
+				continue
 			}
 			if err := re.Emit(iter.Value().ToSlice()); err != nil {
 				return err
@@ -105,6 +120,66 @@ var chainLsCmd = &cmds.Command{
 			}
 
 			return nil
+		}),
+	},
+}
+
+var chainBlockCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show a filecoin block by its CID",
+		ShortDescription: `Prints the miner, parent weight, height,
+and nonce of a given block. If JSON encoding is specified with the --enc flag,
+all other block properties will be included as well.`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("cid", true, false, "CID of block to show"),
+	},
+	Options: []cmdkit.Option{
+		cmdkit.BoolOption("messages", "m", "show messages in block"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		cid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		block, err := GetPorcelainAPI(env).ChainGetBlock(req.Context, cid)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(block)
+	},
+	Type: types.Block{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *types.Block) error {
+			wStr, err := types.FixedStr(uint64(block.ParentWeight))
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Fprintf(w, `Block Details
+Miner:  %s
+Weight: %s
+Height: %s
+Nonce:  %s
+Timestamp:  %s
+`,
+				block.Miner,
+				wStr,
+				strconv.FormatUint(uint64(block.Height), 10),
+				strconv.FormatUint(uint64(block.Nonce), 10),
+				strconv.FormatUint(uint64(block.Timestamp), 10),
+			)
+			if err != nil {
+				return err
+			}
+
+			showMessages, _ := req.Options["messages"].(bool)
+			if showMessages == true {
+				_, err = fmt.Fprintf(w, `Messages:  %s`+"\n", block.Messages)
+			}
+			return err
 		}),
 	},
 }

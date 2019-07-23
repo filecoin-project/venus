@@ -127,4 +127,83 @@ func TestChainLs(t *testing.T) {
 		assert.Contains(t, chainLsResult, `"height":"1"`)
 		assert.Contains(t, chainLsResult, `"nonce":"0"`)
 	})
+
+	t.Run("chain ls --begin --end with height range", func(t *testing.T) {
+		daemon := makeTestDaemonWithMinerAndStart(t)
+		defer daemon.ShutdownSuccess()
+
+		daemon.RunSuccess("mining", "once", "--enc", "text")
+		daemon.RunSuccess("mining", "once", "--enc", "text")
+		daemon.RunSuccess("mining", "once", "--enc", "text")
+		daemon.RunSuccess("mining", "once", "--enc", "text")
+		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "-b", "1", "-e", "3", "--enc", "json").ReadStdoutTrimNewlines()
+		assert.Contains(t, chainLsResult, `"height":"1"`)
+		assert.Contains(t, chainLsResult, `"height":"2"`)
+		assert.Contains(t, chainLsResult, `"height":"3"`)
+		assert.NotContains(t, chainLsResult, `"height":"0"`)
+		assert.NotContains(t, chainLsResult, `"height":"4"`)
+		assert.Contains(t, chainLsResult, `"nonce":"0"`)
+	})
+}
+
+func TestBlockDaemon(t *testing.T) {
+	tf.IntegrationTest(t)
+
+	t.Run("chain block <cid-of-genesis-block> returns human readable output for the filecoin block", func(t *testing.T) {
+		d := makeTestDaemonWithMinerAndStart(t)
+		defer d.ShutdownSuccess()
+
+		// mine a block and get its CID
+		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
+
+		// get the mined block by its CID
+		output := d.RunSuccess("chain", "block", minedBlockCidStr).ReadStdoutTrimNewlines()
+
+		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "Weight: 0")
+		assert.Contains(t, output, "Height: 1")
+		assert.Contains(t, output, "Nonce:  0")
+		assert.Contains(t, output, "Timestamp:  ")
+	})
+
+	t.Run("chain block --messages <cid-of-genesis-block> returns human readable output for the filecoin block including messages", func(t *testing.T) {
+		d := makeTestDaemonWithMinerAndStart(t)
+		defer d.ShutdownSuccess()
+
+		// mine a block and get its CID
+		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
+
+		// get the mined block by its CID
+		output := d.RunSuccess("chain", "block", "--messages", minedBlockCidStr).ReadStdoutTrimNewlines()
+
+		assert.Contains(t, output, "Block Details")
+		assert.Contains(t, output, "Weight: 0")
+		assert.Contains(t, output, "Height: 1")
+		assert.Contains(t, output, "Nonce:  0")
+		assert.Contains(t, output, "Timestamp:  ")
+		assert.Contains(t, output, "Messages:  ")
+	})
+
+	t.Run("chain block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {
+		d := th.NewDaemon(t,
+			th.KeyFile(fixtures.KeyFilePaths()[0]),
+			th.WithMiner(fixtures.TestMiners[0])).Start()
+		defer d.ShutdownSuccess()
+
+		// mine a block and get its CID
+		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
+
+		// get the mined block by its CID
+		blockGetLine := th.RunSuccessFirstLine(d, "chain", "block", minedBlockCidStr, "--enc", "json")
+		var blockGetBlock types.Block
+		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
+
+		// ensure that we were returned the correct block
+
+		require.Equal(t, minedBlockCidStr, blockGetBlock.Cid().String())
+
+		// ensure that the JSON we received from block get conforms to schema
+
+		requireSchemaConformance(t, []byte(blockGetLine), "filecoin_block")
+	})
 }
