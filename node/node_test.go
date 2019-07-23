@@ -140,6 +140,8 @@ func TestNodeStartMining(t *testing.T) {
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
+	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
+	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to get miner actor")
 	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), nil)
 	assert.NoError(t, err)
 
