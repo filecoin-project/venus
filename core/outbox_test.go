@@ -6,6 +6,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -13,9 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/core"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOutbox(t *testing.T) {
@@ -27,23 +28,23 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		publish := true
+		bcast := true
 
 		ob := core.NewOutbox(w, nullValidator{rejectMessages: true}, queue, publisher, nullPolicy{}, provider, provider)
 
-		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), "", publish)
+		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
 		assert.Errorf(t, err, "for testing")
 		assert.False(t, cid.Defined())
 	})
 
-	t.Run("send message enqueues and calls publish", func(t *testing.T) {
+	t.Run("send message enqueues and calls Publish", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
 		toAddr := address.NewForTestGetter()()
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		publish := true
+		bcast := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -55,12 +56,13 @@ func TestOutbox(t *testing.T) {
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", publish)
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
 		require.NoError(t, err)
 		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
 		assert.NotNil(t, publisher.message)
 		assert.Equal(t, actr.Nonce, publisher.message.Nonce)
 		assert.Equal(t, uint64(1000), publisher.height)
+		assert.Equal(t, bcast, publisher.bcast)
 	})
 
 	t.Run("send message avoids nonce race", func(t *testing.T) {
@@ -74,7 +76,7 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		publish := true
+		bcast := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -88,7 +90,8 @@ func TestOutbox(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
-				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), fmt.Sprintf("%d-%d", batch, i), publish, []byte{})
+				method := fmt.Sprintf("%d-%d", batch, i)
+				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, method, []byte{})
 				require.NoError(t, err)
 			}
 		}
@@ -125,7 +128,6 @@ func TestOutbox(t *testing.T) {
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		publish := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		actr := storagemarket.NewActor() // Not an account actor
@@ -133,18 +135,18 @@ func TestOutbox(t *testing.T) {
 
 		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", publish)
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), true, "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})
-	t.Run("enqueues and does not publish if publish set to false", func(t *testing.T) {
+	t.Run("enqueues and does not bcast if bcast set to false", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
 		toAddr := address.NewForTestGetter()()
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		publish := false
+		bcast := false
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -156,11 +158,12 @@ func TestOutbox(t *testing.T) {
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), "", publish)
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
 		require.NoError(t, err)
-		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
-		assert.Nil(t, publisher.message)
-		assert.Equal(t, uint64(0), publisher.height)
+		assert.Equal(t, uint64(blk.Height), queue.List(sender)[0].Stamp)
+		assert.NotNil(t, publisher.message)
+		assert.Equal(t, uint64(blk.Height), publisher.height)
+		assert.Equal(t, bcast, publisher.bcast)
 	})
 
 }
@@ -170,11 +173,13 @@ type mockPublisher struct {
 	returnError error                // Error to be returned by Publish()
 	message     *types.SignedMessage // Message received by Publish()
 	height      uint64               // Height received by Publish()
+	bcast       bool                 // was this broadcast?
 }
 
-func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64) error {
+func (p *mockPublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
 	p.message = message
 	p.height = height
+	p.bcast = bcast
 	return p.returnError
 }
 

@@ -45,7 +45,7 @@ type actorProvider interface {
 }
 
 type publisher interface {
-	Publish(ctx context.Context, message *types.SignedMessage, height uint64) error
+	Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error
 }
 
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
@@ -70,9 +70,9 @@ func (ob *Outbox) Queue() *MessageQueue {
 }
 
 // Send marshals and sends a message, retaining it in the outbound message queue.
-// If publish is true, it publishes the message to the network at the current block height.
+// If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, publish bool, params ...interface{}) (out cid.Cid, err error) {
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method string, params ...interface{}) (out cid.Cid, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -116,16 +116,14 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrap(err, "failed to get block height")
 	}
 
-	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
+	// Add to the local message queue at the last possible moment before
+	// calling Publish.
 	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
 	}
-
-	if publish {
-		err = ob.publisher.Publish(ctx, signed, height)
-		if err != nil {
-			return cid.Undef, err
-		}
+	err = ob.publisher.Publish(ctx, signed, height, bcast)
+	if err != nil {
+		return cid.Undef, err
 	}
 
 	return signed.Cid()

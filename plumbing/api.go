@@ -218,7 +218,7 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 // message in the msg pool and broadcasts it to the network; it does not wait for the
 // message to go on chain. Note that no default from address is provided.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, true, params...)
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.

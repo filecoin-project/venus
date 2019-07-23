@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// defaultMessagePublisher publishes messages to a pubsub topic and adds them to a message pool.
+// defaultMessagePublisher adds messages to a message pool and can publish them to its topic.
 // This is wiring for message publication from the outbox.
 type defaultMessagePublisher struct {
 	network *pubsub.Publisher
@@ -21,7 +21,9 @@ func newDefaultMessagePublisher(pubsub *pubsub.Publisher, topic string, pool *co
 	return &defaultMessagePublisher{pubsub, topic, pool}
 }
 
-func (p *defaultMessagePublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64) error {
+// Publish marshals and publishes a message to the core message pool, and if bcast is true,
+// broadcasts it to the network with the publisher's topic.
+func (p *defaultMessagePublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
 	encoded, err := message.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")
@@ -31,8 +33,10 @@ func (p *defaultMessagePublisher) Publish(ctx context.Context, message *types.Si
 		return errors.Wrap(err, "failed to add message to message pool")
 	}
 
-	if err = p.network.Publish(p.topic, encoded); err != nil {
-		return errors.Wrap(err, "failed to publish message to network")
+	if bcast {
+		if err = p.network.Publish(p.topic, encoded); err != nil {
+			return errors.Wrap(err, "failed to publish message to network")
+		}
 	}
 	return nil
 }
