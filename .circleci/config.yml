@@ -549,13 +549,6 @@ workflows:
       - functional_test_linux:
           requires:
             - build_linux
-      - build_docker_img:
-          requires:
-            - build_linux
-            - unit_test_linux
-            - integration_test_linux
-            - functional_test_linux
-          <<: *master_filter
 
   build_nightly_osx:
     triggers:
