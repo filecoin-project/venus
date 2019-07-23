@@ -367,10 +367,12 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 	return types.NewTipSet(blocks...)
 }
 
-// FetchTipSets returns `recur` tipsets from `key` by following parent keys.
-func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, recur int) ([]types.TipSet, error) {
+// FetchTipSets fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
+// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
+// this includes the provided `tsKey`.
+func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done func(t types.TipSetKey) bool) ([]types.TipSet, error) {
 	var tips []types.TipSet
-	for i := 0; i < recur; i++ {
+	for !done(key) {
 		tip, err := f.GetTipSet(key)
 		if err != nil {
 			return nil, err

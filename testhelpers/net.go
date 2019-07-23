@@ -142,12 +142,13 @@ func (f *TestFetcher) AddSourceBlocks(blocks ...*types.Block) {
 	}
 }
 
-// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
-// FetchTipSets will fetch `recur` partens of `tsKey`. FetchTipSets does not return partial results.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
+// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`
+// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
+// this includes the provided `tsKey`.
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(t types.TipSetKey) bool) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
-	for i := 0; i < recur; i++ {
+	for !done(cur) {
 		res, err := f.GetBlocks(ctx, cur.ToSlice())
 		if err != nil {
 			return nil, err
@@ -158,12 +159,13 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, r
 			return nil, err
 		}
 
+		out = append(out, ts)
+
 		cur, err = ts.Parents()
 		if err != nil {
 			return nil, err
 		}
 
-		out = append(out, ts)
 	}
 
 	return out, nil
