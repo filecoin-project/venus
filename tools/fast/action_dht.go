@@ -2,6 +2,7 @@ package fast
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -40,14 +41,7 @@ func (f *Filecoin) DHTFindPeer(ctx context.Context, pid peer.ID) ([]multiaddr.Mu
 }
 
 // DHTFindProvs runs the `dht findprovs` command against the filecoin process
-func (f *Filecoin) DHTFindProvs(ctx context.Context, key cid.Cid) ([]routing.QueryEvent, error) {
-	var out []routing.QueryEvent
-
-	args := []string{"go-filecoin", "swarm", "findprovs", key.String()}
-
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return nil, err
-	}
-
-	return out, nil
+func (f *Filecoin) DHTFindProvs(ctx context.Context, key cid.Cid) (*json.Decoder, error) {
+	args := []string{"go-filecoin", "dht", "findprovs", key.String()}
+	return f.RunCmdLDJSONWithStdin(ctx, nil, args...)
 }

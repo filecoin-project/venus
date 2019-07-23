@@ -31,6 +31,13 @@ func POAutoSealIntervalSeconds(seconds int) ProcessInitOption {
 	}
 }
 
+// PODevnet provides the `--devnet-<net>` option to process at init
+func PODevnet(net string) ProcessInitOption {
+	return func() []string {
+		return []string{fmt.Sprintf("--devnet-%s", net)}
+	}
+}
+
 // PODevnetTest provides the `--devnet-test` option to process at init
 func PODevnetTest() ProcessInitOption {
 	return func() []string {
