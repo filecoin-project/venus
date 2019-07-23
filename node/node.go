@@ -14,10 +14,12 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-interface"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
@@ -28,8 +30,8 @@ import (
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -384,7 +386,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
-	fetcher := net.NewBitswapFetcher(ctx, bservice, blkValid)
+	//fetcher := net.NewBitswapFetcher(ctx, bservice, blkValid)
+
+	bridge := ipldbridge.NewIPLDBridge()
+	gsn := gsnet.NewFromLibp2pHost(peerHost)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsn, bridge, bs, blkValid)
 
 	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
