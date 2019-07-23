@@ -3,21 +3,25 @@ package node
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // defaultMessagePublisher adds messages to a message pool and can publish them to its topic.
 // This is wiring for message publication from the outbox.
 type defaultMessagePublisher struct {
-	network *pubsub.Publisher
+	network networkPublisher
 	topic   string
 	pool    *core.MessagePool
 }
 
-func newDefaultMessagePublisher(pubsub *pubsub.Publisher, topic string, pool *core.MessagePool) *defaultMessagePublisher {
+type networkPublisher interface {
+	Publish(topic string, data []byte) error
+}
+
+func newDefaultMessagePublisher(pubsub networkPublisher, topic string, pool *core.MessagePool) *defaultMessagePublisher {
 	return &defaultMessagePublisher{pubsub, topic, pool}
 }
 
