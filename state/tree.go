@@ -47,13 +47,34 @@ type Tree interface {
 
 var _ Tree = &tree{}
 
+// IpldStore defines an interface for interacting with a hamt.CborIpldStore.
+// TODO #3078 use go-ipld-cbor export
+type IpldStore interface {
+	Put(ctx context.Context, v interface{}) (cid.Cid, error)
+	Get(ctx context.Context, c cid.Cid, out interface{}) error
+}
+
+// TreeLoader defines an interfaces for loading a state tree from an IpldStore.
+type TreeLoader interface {
+	LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error)
+}
+
+// TreeStateLoader implements the state.StateLoader interface.
+type TreeStateLoader struct{}
+
+// LoadStateTree is a wrapper around state.LoadStateTree.
+func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
+	return LoadStateTree(ctx, store, c, builtinActors)
+}
+
 // LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store *hamt.CborIpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
-	root, err := hamt.LoadNode(ctx, store, c)
+func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
+	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
+	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}
-	stateTree := newEmptyStateTree(store)
+	stateTree := newEmptyStateTree(store.(*hamt.CborIpldStore))
 	stateTree.root = root
 
 	stateTree.builtinActors = builtinActors

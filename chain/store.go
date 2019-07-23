@@ -8,7 +8,6 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -34,10 +33,10 @@ var headKey = datastore.NewKey("/chain/heaviestTipSet")
 type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
-	cborStore *hamt.CborIpldStore
+	cborStore state.IpldStore
 }
 
-func newSource(cst *hamt.CborIpldStore) *ipldSource {
+func newSource(cst state.IpldStore) *ipldSource {
 	return &ipldSource{
 		cborStore: cst,
 	}
@@ -59,6 +58,10 @@ type Store struct {
 	// ipldSource is a wrapper around ipld storage.  It is used
 	// for reading filecoin block and state objects kept by the node.
 	stateAndBlockSource *ipldSource
+
+	// stateTreeeLoader is used for loading the state tree from a
+	// CborIPLDStore
+	stateTreeLoader state.TreeLoader
 
 	// ds is the datastore for the chain's private metadata which consists
 	// of the tipset key to state root cid mapping, and the heaviest tipset
@@ -85,9 +88,10 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst *hamt.CborIpldStore, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
+		stateTreeLoader:     stl,
 		ds:                  ds,
 		headEvents:          pubsub.New(128),
 		tipIndex:            NewTipIndex(),
@@ -238,7 +242,7 @@ func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (st
 	if err != nil {
 		return nil, err
 	}
-	return state.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
