@@ -953,12 +953,15 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, fa
 		newPower := types.NewBytesAmount(uint64(state.ProvingSet.Size() - faults.SectorIds.Size())).Mul(state.SectorSize)
 		state.Power = newPower
 		delta := newPower.Sub(oldPower)
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
+
+		if !delta.IsZero() {
+			_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
+			if err != nil {
+				return nil, err
+			}
+			if ret != 0 {
+				return nil, Errors[ErrStoragemarketCallFailed]
+			}
 		}
 
 		// Update SectorSet, DoneSet and ProvingSet

@@ -704,23 +704,22 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 
 	t.Run("faults removes power and sector commitments", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
-
-		// commit several sectors
-		mal.requireCommit(firstCommitBlockHeight, uint64(1))
-		mal.requireCommit(firstCommitBlockHeight, uint64(2))
-		mal.requireCommit(firstCommitBlockHeight, uint64(3))
-
 		done := types.EmptyIntSet()
 
-		// PoSt twice to get power for my sectors
-		mal.requirePoSt(firstCommitBlockHeight+1, done, faults)
-		mal.requirePoSt(firstCommitBlockHeight+1, done, faults)
-		power := mal.requirePower(firstCommitBlockHeight + 2)
+		// commit several sectors and PoSt
+		mal.requireCommit(firstCommitBlockHeight, uint64(1))
+		mal.requireCommit(firstCommitBlockHeight+1, uint64(2))
+		mal.requireCommit(firstCommitBlockHeight+2, uint64(3))
+		mal.requirePoSt(firstCommitBlockHeight+5, done, faults)
+
+		// Second proving period
+		mal.requirePoSt(secondProvingPeriodStart, done, faults)
+		power := mal.requirePower(secondProvingPeriodStart + 1)
 		assert.Equal(t, types.NewBytesAmount(3).Mul(types.OneKiBSectorSize), power)
 
 		// PoSt with some faults and check that power has decreased
-		mal.requirePoSt(firstCommitBlockHeight+3, done, types.NewFaultSet([]uint64{1, 2}))
-		power = mal.requirePower(firstCommitBlockHeight + 4)
+		mal.requirePoSt(thirdProvingPeriodStart, done, types.NewFaultSet([]uint64{1, 2}))
+		power = mal.requirePower(thirdProvingPeriodStart + 1)
 		assert.Equal(t, types.NewBytesAmount(1).Mul(types.OneKiBSectorSize), power)
 
 		// Ensure that sector commitments have been updated
