@@ -86,8 +86,8 @@ type syncStateEvaluator interface {
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
 
-	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
-	// tipset b is heavier than tipset a.
+	// IsHeaver tests whether tipset `a` is heavier than tipset `b`.
+	// The state IDs identify the state to which the tipset applies (i.e. prior to its messages).
 	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
