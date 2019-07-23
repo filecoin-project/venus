@@ -68,8 +68,6 @@ var chainLsCmd = &cmds.Command{
 		beginHeight, _ := req.Options["begin"].(uint64)
 		endHeight, _ := req.Options["end"].(uint64)
 
-		fmt.Println("beginHeight", beginHeight, "endHeight", endHeight)
-
 		for ; !iter.Complete(); err = iter.Next() {
 			if err != nil {
 				return err
