@@ -370,12 +370,15 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 // FetchTipSets fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
 // FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
 // this includes the provided `tsKey`.
-func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done func(t types.TipSetKey) bool) ([]types.TipSet, error) {
+func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done func(t types.TipSet) bool) ([]types.TipSet, error) {
 	var tips []types.TipSet
-	for !done(key) {
+	for {
 		tip, err := f.GetTipSet(key)
 		if err != nil {
 			return nil, err
+		}
+		if done(tip) {
+			break
 		}
 		tips = append(tips, tip)
 		key, err = tip.Parents()

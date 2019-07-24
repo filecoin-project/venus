@@ -340,15 +340,12 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	defer syncer.mu.Unlock()
 
 	// If the store already has this tipset then the syncer is finished.
-	if _, err := syncer.chainStore.GetTipSet(tsKey); err == nil {
+	if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil
 	}
 
-	haltOnState := func(t types.TipSetKey) bool {
-		if syncer.chainStore.HasTipSetAndState(ctx, t.String()) {
-			return true
-		}
-		return false
+	haltOnState := func(t types.TipSet) bool {
+		return syncer.chainStore.HasTipSetAndState(ctx, t.String())
 	}
 
 	var chain []types.TipSet
