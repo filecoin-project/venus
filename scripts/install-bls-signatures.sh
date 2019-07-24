@@ -22,6 +22,6 @@ else
     mkdir -p bls-signatures/lib/pkgconfig
 
     find "${subm_dir}" -type f -name libbls_signatures.h -exec mv -- "{}" ./bls-signatures/include/ \;
-    find "${subm_dir}" -type f -name libbls_signatures_ffi.a -exec cp -- "{}" ./bls-signatures/lib/ \;
+    find "${subm_dir}" -type f -name libbls_signatures_ffi.a -exec cp -- "{}" ./bls-signatures/lib/libbls_signatures.a \;
     find "${subm_dir}" -type f -name libbls_signatures.pc -exec cp -- "{}" ./bls-signatures/lib/pkgconfig/ \;
 fi
