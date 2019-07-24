@@ -71,6 +71,11 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 
 // ValidateSyntax validates a single block is correctly formed.
 func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+	// TODO special handling for genesis block
+	// figure out in: https://github.com/filecoin-project/go-filecoin/issues/3121
+	if blk.Height == 0 {
+		return nil
+	}
 	now := uint64(dv.Now().Unix())
 	if uint64(blk.Timestamp) > now {
 		return fmt.Errorf("block %s with timestamp %d generate in future at time %d", blk.Cid().String(), blk.Timestamp, now)
