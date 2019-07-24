@@ -216,10 +216,9 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain. Note that no default from address is provided. If you need
-// a default address, use MessageSend instead.
+// message to go on chain. Note that no default from address is provided.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.
