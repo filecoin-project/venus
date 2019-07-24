@@ -271,7 +271,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.PoStProofs, abi.IntSet},
+		Params: []abi.Type{abi.PoStProofs, abi.FaultSet, abi.IntSet},
 		Return: []abi.Type{},
 	},
 	"slashStorageFault": &exec.FunctionSignature{
@@ -854,7 +854,7 @@ func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, 
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, done types.IntSet) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -929,7 +929,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 			req := verification.VerifyPoStRequest{
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
-				Faults:        []uint64{},
+				Faults:        faults.SectorIds.Values(),
 				Proofs:        poStProofs,
 				SectorSize:    state.SectorSize,
 			}
@@ -950,20 +950,26 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 		// Update miner power to the amount of data actually proved
 		// during the last proving period.
 		oldPower := state.Power
-		// TODO subtract total faulted size from ProvingSet size #2889
-		newPower := types.NewBytesAmount(uint64(state.ProvingSet.Size())).Mul(state.SectorSize)
+		newPower := types.NewBytesAmount(uint64(state.ProvingSet.Size() - faults.SectorIds.Size())).Mul(state.SectorSize)
 		state.Power = newPower
 		delta := newPower.Sub(oldPower)
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
+
+		if !delta.IsZero() {
+			_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
+			if err != nil {
+				return nil, err
+			}
+			if ret != 0 {
+				return nil, Errors[ErrStoragemarketCallFailed]
+			}
 		}
 
 		// Update SectorSet, DoneSet and ProvingSet
 		if err = state.SectorCommitments.Drop(done.Values()); err != nil {
+			return nil, err
+		}
+
+		if err = state.SectorCommitments.Drop(faults.SectorIds.Values()); err != nil {
 			return nil, err
 		}
 
