@@ -28,7 +28,7 @@ type Inbox struct {
 // Exported for testing.
 type InboxChainProvider interface {
 	chain.TipSetProvider
-	BlockHeight() (uint64, error)
+	GetHead() types.TipSetKey
 }
 
 // NewInbox constructs a new inbox.
@@ -40,7 +40,11 @@ func NewInbox(pool *MessagePool, maxAgeRounds uint, chain InboxChainProvider) *I
 // An error probably means the message failed to validate,
 // but it could indicate a more serious problem with the system.
 func (ib *Inbox) Add(ctx context.Context, msg *types.SignedMessage) (cid.Cid, error) {
-	blockTime, err := ib.chain.BlockHeight()
+	head, err := ib.chain.GetTipSet(ib.chain.GetHead())
+	if err != nil {
+		return cid.Undef, err
+	}
+	blockTime, err := head.Height()
 	if err != nil {
 		return cid.Undef, err
 	}

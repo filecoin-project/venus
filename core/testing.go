@@ -2,11 +2,14 @@ package core
 
 import (
 	"context"
+	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -32,6 +35,40 @@ func MustConvertParams(params ...interface{}) []byte {
 		panic(err)
 	}
 	return out
+}
+
+// msgBuild takes in the msgSet dictating which messages go on which block of
+// a test tipset and returns a build function that adds these messages to the
+// correct block using the chain.Builder.
+func msgBuild(t *testing.T, msgSet [][]*types.SignedMessage) func(*chain.BlockBuilder, int) {
+	return func(bb *chain.BlockBuilder, i int) {
+		require.True(t, i <= len(msgSet))
+		for _, msg := range msgSet[i] {
+			bb.AddMessage(msg, &types.MessageReceipt{})
+		}
+	}
+}
+
+// RequireChainWithMessages creates a chain of tipsets containing the given messages
+// using the provided chain builder.  The builder stores the chain.  Note that
+// each msgSet argument is a slice of message slices.  Each slice of slices
+// goes into a successive tipset and each subslice goes into one tipset block.
+// Precondition: the root tipset must be defined.  The chain of tipsets is
+// returned.
+func RequireChainWithMessages(t *testing.T, builder *chain.Builder, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
+	var tipSets []types.TipSet
+	parent := root
+	require.True(t, parent.Defined())
+
+	for _, tsMsgSet := range msgSets {
+		if len(tsMsgSet) == 0 {
+			parent = builder.BuildOn(parent, nil)
+		} else {
+			parent = builder.Build(parent, len(tsMsgSet), msgBuild(t, tsMsgSet))
+		}
+		tipSets = append(tipSets, parent)
+	}
+	return tipSets
 }
 
 // NewChainWithMessages creates a chain of tipsets containing the given messages

@@ -377,7 +377,7 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 // The chain builder has a single genesis block, which is set as the head of the store.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *chain.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
-	genesis := builder.Genesis()
+	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
 

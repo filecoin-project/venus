@@ -45,6 +45,7 @@ func newSource(cst state.IpldStore) *ipldSource {
 // GetBlock retrieves a filecoin block by cid from the IPLD store.
 func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
 	var block types.Block
+
 	err := source.cborStore.Get(ctx, c, &block)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
@@ -350,13 +351,6 @@ func (store *Store) GetHead() types.TipSetKey {
 	}
 
 	return store.head.Key()
-}
-
-// BlockHeight returns the chain height of the head tipset.
-func (store *Store) BlockHeight() (uint64, error) {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
-	return store.head.Height()
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

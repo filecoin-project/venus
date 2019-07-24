@@ -19,7 +19,6 @@ import (
 )
 
 type chainReader interface {
-	BlockHeight() (uint64, error)
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)

@@ -173,7 +173,7 @@ func TestGetTipSetState(t *testing.T) {
 
 	// link testing state to test block
 	builder := chain.NewBuilder(t, address.Undef)
-	gen := builder.Genesis()
+	gen := builder.NewGenesis()
 	testTs := builder.BuildOn(gen, func(b *chain.BlockBuilder) {
 		b.SetStateRoot(root)
 	})
