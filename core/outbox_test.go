@@ -37,14 +37,13 @@ func TestOutbox(t *testing.T) {
 		assert.False(t, cid.Defined())
 	})
 
-	t.Run("send message enqueues and calls Publish", func(t *testing.T) {
+	t.Run("send message enqueues and calls Publish, but respects bcast flag for broadcasting", func(t *testing.T) {
 		w, _ := types.NewMockSignersAndKeyInfo(1)
 		sender := w.Addresses[0]
 		toAddr := address.NewForTestGetter()()
 		queue := core.NewMessageQueue()
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
-		bcast := true
 
 		blk := types.NewBlockForTest(nil, 1)
 		blk.Height = 1000
@@ -56,15 +55,23 @@ func TestOutbox(t *testing.T) {
 		require.Empty(t, queue.List(sender))
 		require.Nil(t, publisher.message)
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
-		require.NoError(t, err)
-		assert.Equal(t, uint64(1000), queue.List(sender)[0].Stamp)
-		assert.NotNil(t, publisher.message)
-		assert.Equal(t, actr.Nonce, publisher.message.Nonce)
-		assert.Equal(t, uint64(1000), publisher.height)
-		assert.Equal(t, bcast, publisher.bcast)
-	})
+		testCases := []struct {
+			bcast  bool
+			nonce  types.Uint64
+			height int
+		}{{true, actr.Nonce, 1000}, {false, actr.Nonce + 1, 1000}}
 
+		for _, test := range testCases {
+			_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), test.bcast, "")
+			require.NoError(t, err)
+			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
+			assert.NotNil(t, publisher.message)
+			assert.Equal(t, test.nonce, publisher.message.Nonce)
+			assert.Equal(t, uint64(test.height), publisher.height)
+			assert.Equal(t, test.bcast, publisher.bcast)
+		}
+
+	})
 	t.Run("send message avoids nonce race", func(t *testing.T) {
 		ctx := context.Background()
 		msgCount := 20      // number of messages to send
@@ -139,33 +146,6 @@ func TestOutbox(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})
-	t.Run("enqueues and does not bcast if bcast set to false", func(t *testing.T) {
-		w, _ := types.NewMockSignersAndKeyInfo(1)
-		sender := w.Addresses[0]
-		toAddr := address.NewForTestGetter()()
-		queue := core.NewMessageQueue()
-		publisher := &mockPublisher{}
-		provider := &fakeProvider{}
-		bcast := false
-
-		blk := types.NewBlockForTest(nil, 1)
-		blk.Height = 1000
-		actr, _ := account.NewActor(types.ZeroAttoFIL)
-		actr.Nonce = 42
-		provider.Set(t, blk, sender, actr)
-
-		ob := core.NewOutbox(w, nullValidator{}, queue, publisher, nullPolicy{}, provider, provider)
-		require.Empty(t, queue.List(sender))
-		require.Nil(t, publisher.message)
-
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
-		require.NoError(t, err)
-		assert.Equal(t, uint64(blk.Height), queue.List(sender)[0].Stamp)
-		assert.NotNil(t, publisher.message)
-		assert.Equal(t, uint64(blk.Height), publisher.height)
-		assert.Equal(t, bcast, publisher.bcast)
-	})
-
 }
 
 // A publisher which just stores the last message published.
