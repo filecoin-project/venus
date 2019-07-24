@@ -544,5 +544,5 @@ func MinerSetWorkerAddress(
 		return err
 	}
 	// set config
-	return plumbing.ConfigSet("miner.workerAddr", workerAddr.String())
+	return plumbing.ConfigSet("mining.workerAddr", workerAddr.String())
 }
