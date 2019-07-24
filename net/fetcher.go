@@ -15,7 +15,9 @@ import (
 
 // Fetcher defines an interface that may be used to fetch data from the network.
 type Fetcher interface {
-	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) bool) ([]types.TipSet, error)
+	// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
+	// this includes the provided `tsKey`. The returns slice of TipSets is in Traversal order.
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
 // BitswapFetcher is used to fetch data over the network.  It is implemented with
@@ -36,9 +38,7 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
-// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
-// this includes the provided `tsKey`.
-func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(types.TipSet) bool) ([]types.TipSet, error) {
+func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
 	for {
@@ -52,7 +52,11 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 			return nil, err
 		}
 
-		if done(ts) {
+		ok, err := done(ts)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
 			break
 		}
 

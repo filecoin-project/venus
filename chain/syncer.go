@@ -344,39 +344,48 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 		return nil
 	}
 
-	haltOnState := func(t types.TipSet) bool {
-		return syncer.chainStore.HasTipSetAndState(ctx, t.String())
+	syncDoneCb := func(t types.TipSet) (bool, error) {
+		return syncer.chainStore.HasTipSetAndState(ctx, t.String()), nil
+	}
+
+	catchDoneCb := func(t types.TipSet) (bool, error) {
+		if syncer.chainStore.HasTipSetAndState(ctx, t.String()) {
+			return true, nil
+		}
+		// Only check if the head we are fetching exceeds finality
+		if t.Key().Equals(tsKey) {
+			ok, err := syncer.exceedsFinalityLimit(t)
+			if err != nil {
+				return true, err
+			}
+			if ok {
+				return true, ErrNewChainTooLong
+			}
+		}
+		return false, nil
 	}
 
 	var chain []types.TipSet
 	switch syncer.syncMode {
 	case Syncing:
-		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, haltOnState)
+		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, syncDoneCb)
 		if err != nil {
 			return err
 		}
-		chain = reverse(chain)
 	case CaughtUp:
 		// we cancel the fetch during caught up mode after a single blocktime.
 		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
 		defer cancel()
-		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, haltOnState)
+
+		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, catchDoneCb)
 		if err != nil {
 			return err
-		}
-		chain = reverse(chain)
-		// TODO figure out a better check for finality than this
-		// https://github.com/filecoin-project/go-filecoin/issues/3112
-		ok, err := syncer.exceedsFinalityLimit(chain)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return ErrNewChainTooLong
 		}
 	default:
 		panic("syncer in unknown state")
 	}
+	// Fetcher returns chain in Traversal order, reverse it to height order
+	Reverse(chain)
 
 	parentCids, err := chain[0].Parents()
 	if err != nil {
@@ -422,9 +431,9 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	return nil
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) (bool, error) {
-	if len(chain) == 0 {
-		return false, nil
+func (syncer *Syncer) exceedsFinalityLimit(tip types.TipSet) (bool, error) {
+	if !tip.Defined() {
+		return false, errors.New("cannon check finality limit on undefined tipset")
 	}
 	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
 	if err != nil {
@@ -435,17 +444,9 @@ func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) (bool, error) {
 		return false, err
 	}
 	finalityHeight := types.NewBlockHeight(headHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
-	chainHeight, err := chain[0].Height()
+	chainHeight, err := tip.Height()
 	if err != nil {
 		return false, err
 	}
 	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight), nil
-}
-
-func reverse(tips []types.TipSet) []types.TipSet {
-	out := make([]types.TipSet, len(tips))
-	for i := 0; i < len(tips); i++ {
-		out[i] = tips[len(tips)-(i+1)]
-	}
-	return out
 }

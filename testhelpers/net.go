@@ -142,10 +142,8 @@ func (f *TestFetcher) AddSourceBlocks(blocks ...*types.Block) {
 	}
 }
 
-// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`
-// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
-// this includes the provided `tsKey`.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(t types.TipSet) bool) ([]types.TipSet, error) {
+// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`.
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
 	for {
@@ -159,7 +157,12 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, d
 			return nil, err
 		}
 
-		if done(ts) {
+		ok, err := done(ts)
+		if err != nil {
+			return nil, err
+		}
+
+		if ok {
 			break
 		}
 
