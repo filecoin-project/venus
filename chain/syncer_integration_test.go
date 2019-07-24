@@ -491,6 +491,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Setup a fetcher for feeding blocks into the syncer.
 	blockSource := th.NewTestFetcher()
+	// the block source needs the genesis
+	// DONOTMERGE
+	blockSource.AddSourceBlocks(genTsas.TipSet.ToSlice()...)
 
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = &verification.FakeVerifier{
