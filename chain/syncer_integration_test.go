@@ -251,6 +251,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
+	fetcher.AddSourceBlocks(calcGenBlk)
 	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
@@ -397,6 +398,10 @@ func TestLoadFork(t *testing.T) {
 
 	// Shut down store, reload and wire to syncer.
 	loadSyncer, blockSource := loadSyncerFromRepo(t, r, dstP)
+	// The fetcher will need to fetch these so that is may pass them to the
+	// done callback inorder to determine when to stop fetching.
+	// DONOTMERGE get specific approval on this before merging
+	blockSource.AddSourceBlocks(forklink3.ToSlice()...)
 
 	// Test that the syncer can't sync a block on the old chain
 	// without getting old blocks from network. i.e. the repo is trimmed
