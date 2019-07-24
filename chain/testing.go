@@ -62,8 +62,8 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	return b
 }
 
-// Genesis creates and returns a tipset of one block with no parents.
-func (f *Builder) Genesis() types.TipSet {
+// NewGenesis creates and returns a tipset of one block with no parents.
+func (f *Builder) NewGenesis() types.TipSet {
 	return types.RequireNewTipSet(f.t, f.AppendBlockOn(types.UndefTipSet))
 }
 
