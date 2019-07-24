@@ -349,9 +349,6 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	}
 
 	catchDoneCb := func(t types.TipSet) (bool, error) {
-		if syncer.chainStore.HasTipSetAndState(ctx, t.String()) {
-			return true, nil
-		}
 		// Only check if the head we are fetching exceeds finality
 		if t.Key().Equals(tsKey) {
 			ok, err := syncer.exceedsFinalityLimit(t)
@@ -361,6 +358,9 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 			if ok {
 				return true, ErrNewChainTooLong
 			}
+		}
+		if syncer.chainStore.HasTipSetAndState(ctx, t.String()) {
+			return true, nil
 		}
 		return false, nil
 	}
@@ -431,22 +431,22 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	return nil
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(tip types.TipSet) (bool, error) {
-	if !tip.Defined() {
+func (syncer *Syncer) exceedsFinalityLimit(newHead types.TipSet) (bool, error) {
+	if !newHead.Defined() {
 		return false, errors.New("cannon check finality limit on undefined tipset")
 	}
-	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	curHead, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
 	if err != nil {
 		return false, err
 	}
-	headHeight, err := head.Height()
+	curHeight, err := curHead.Height()
 	if err != nil {
 		return false, err
 	}
-	finalityHeight := types.NewBlockHeight(headHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
-	chainHeight, err := tip.Height()
+	finalityHeight := types.NewBlockHeight(curHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	newHeight, err := newHead.Height()
 	if err != nil {
 		return false, err
 	}
-	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight), nil
+	return types.NewBlockHeight(newHeight).GreaterThan(finalityHeight), nil
 }
