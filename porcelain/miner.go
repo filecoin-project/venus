@@ -509,3 +509,40 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 	}
 	return types.NewAttoFILFromBytes(rets[0]), nil
 }
+
+// mmswaAPI is the subset of the plumbing.API that MinerSetWorkerAddress uses.
+type mmswaAPI interface {
+	ConfigSet(dottedKey string, jsonString string) error
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+}
+
+// MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
+// waits for the message to appear on chain and then sets miner.workerAddr config to the new address.
+func MinerSetWorkerAddress(
+	ctx context.Context,
+	plumbing mmswaAPI,
+	minerOwnerAddr,
+	minerActorAddr,
+	workerAddr address.Address,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+) error {
+	// message send
+	smsgCid, err := plumbing.MessageSend(ctx, minerOwnerAddr, minerActorAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "changeWorker", workerAddr)
+	if err != nil {
+		return err
+	}
+	// message wait
+	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+		if receipt.ExitCode != uint8(0) {
+			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	// set config
+	return plumbing.ConfigSet("miner.workerAddr", workerAddr.String())
+}
