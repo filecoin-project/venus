@@ -31,7 +31,7 @@ require (
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.9.5 // indirect
 	github.com/hashicorp/go-multierror v1.0.0 // indirect
-	github.com/ipfs/go-bitswap v0.0.2
+	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.0.2
 	github.com/ipfs/go-car v0.0.1
@@ -48,8 +48,9 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.1
+	github.com/ipfs/go-ipfs-flags v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-keystore v0.0.1
-	github.com/ipfs/go-ipfs-routing v0.0.1
+	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.1
 	github.com/ipfs/go-ipld-format v0.0.1
 	github.com/ipfs/go-log v0.0.1
@@ -85,10 +86,8 @@ require (
 	github.com/libp2p/go-libp2p-routing v0.0.1
 	github.com/libp2p/go-libp2p-secio v0.1.1 // indirect
 	github.com/libp2p/go-libp2p-swarm v0.1.1
-	github.com/libp2p/go-msgio v0.0.4 // indirect
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/magiconair/properties v1.8.1 // indirect
-	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/miekg/dns v1.1.15 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.0
@@ -103,7 +102,6 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/otiai10/copy v1.0.1
 	github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
