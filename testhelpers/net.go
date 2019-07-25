@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/connmgr"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,7 +17,6 @@ import (
 	smux "github.com/libp2p/go-stream-muxer"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
-	msmux "github.com/multiformats/go-multistream"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -43,9 +43,10 @@ func (fh *FakeHost) ConnManager() connmgr.ConnManager { panic("not implemented")
 func (fh *FakeHost) Connect(ctx context.Context, pi pstore.PeerInfo) error { // nolint: golint
 	return fh.ConnectImpl(ctx, pi)
 }
+func (fh *FakeHost) EventBus() event.Bus                              { panic("not implemented") } //nolint: golint
 func (fh *FakeHost) ID() peer.ID                                      { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Network() inet.Network                            { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) Mux() *msmux.MultistreamMuxer                     { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Mux() protocol.Switch                             { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Peerstore() pstore.Peerstore                      { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) RemoveStreamHandler(protocol.ID)                  { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) SetStreamHandler(protocol.ID, inet.StreamHandler) { panic("not implemented") } // nolint: golint
