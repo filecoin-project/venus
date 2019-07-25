@@ -3,11 +3,11 @@ package commands
 import (
 	"fmt"
 	"io"
-	"time"
 
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/pkg/errors"
 )
 
@@ -18,8 +18,8 @@ import (
 // * Time is the amount of time elapsed from ping to pong in seconds.
 //
 type PingResult struct {
-	Count uint
-	Time  time.Duration
+	Count      uint
+	PingResult ping.Result
 }
 
 var pingCmd = &cmds.Command{
@@ -53,8 +53,8 @@ trip latency information.
 		for i := uint(0); numPings == 0 || i < numPings; i++ {
 			pong, pingChOpen := <-pingCh
 			result := &PingResult{
-				Count: i,
-				Time:  pong,
+				Count:      i,
+				PingResult: pong,
 			}
 			if err := re.Emit(result); err != nil {
 				return err
@@ -68,7 +68,7 @@ trip latency information.
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *PingResult) error {
-			milliseconds := result.Time.Seconds() * 1000
+			milliseconds := result.PingResult.RTT.Seconds() * 1000
 			fmt.Fprintf(w, "Pong received: seq=%d time=%.2f ms\n", result.Count, milliseconds) // nolint: errcheck
 			return nil
 		}),
