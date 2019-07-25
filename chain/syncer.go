@@ -145,89 +145,6 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, s
 	}
 }
 
-// fetchTipSetWithTimeout resolves a TipSetKey to a TipSet. This method will
-// request the TipSet from the network if it is not found locally in the
-// blockstore. This method is all or nothing, it will error if any of the cids
-// that make up the requested tipset cannot be resolved.
-func (syncer *Syncer) fetchTipSetWithTimeout(ctx context.Context, tsKey types.TipSetKey) (types.TipSet, error) {
-	ctx, cancel := context.WithTimeout(ctx, blkWaitTime)
-	defer cancel()
-
-	tss, err := syncer.fetcher.FetchTipSets(ctx, tsKey, 1)
-	if err != nil {
-		return types.UndefTipSet, err
-	}
-
-	// TODO remove this when we land: https://github.com/filecoin-project/go-filecoin/issues/1105
-	if len(tss) > 1 {
-		panic("programmer error, FetchTipSets ignored recur parameter, returned more than 1 tipset")
-	}
-
-	return tss[0], nil
-}
-
-// collectChain resolves the cids of the head tipset and its ancestors to
-// blocks until it resolves a tipset with a parent contained in the Store. It
-// returns the chain of new incompletely validated tipsets and the id of the
-// parent tipset already synced into the store.  collectChain resolves cids
-// from the syncer's fetcher.  In production the fetcher wraps a bitswap
-// session.  collectChain errors if any set of cids in the chain resolves to
-// blocks that do not form a tipset, or if any tipset has already been recorded
-// as the head of an invalid chain.  collectChain is the entrypoint to the code
-// that interacts with the network. It does NOT add tipsets to the chainStore..
-func (syncer *Syncer) collectChain(ctx context.Context, tsKey types.TipSetKey) (ts []types.TipSet, err error) {
-	ctx, span := trace.StartSpan(ctx, "Syncer.collectChain")
-	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	var chain []types.TipSet
-	var count uint64
-	defer logSyncer.Infof("chain fetch from network complete %s", tsKey.String())
-
-	// Continue collecting the chain if we're either not yet caught up or the
-	// number of new input blocks is less than the FinalityLimit constant.
-	// Otherwise, halt assuming the new blocks come from an invalid chain.
-	for {
-		exceedsFinality, err := syncer.exceedsFinalityLimit(chain)
-		if err != nil {
-			return nil, err
-		}
-		if syncer.syncMode != Syncing && exceedsFinality {
-			break
-		}
-
-		// Finish traversal if the tipset made is tracked in the store.
-		if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
-			return chain, nil
-		}
-
-		logSyncer.Debugf("CollectChain next link: %s", tsKey.String())
-
-		if syncer.badTipSets.Has(tsKey.String()) {
-			return nil, ErrChainHasBadTipSet
-		}
-
-		ts, err := syncer.fetchTipSetWithTimeout(ctx, tsKey)
-		if err != nil {
-			return nil, err
-		}
-
-		count++
-		if count%500 == 0 {
-			logSyncer.Infof("fetching the chain, %d blocks fetched", count)
-		}
-
-		// Update values to traverse next tipset
-		chain = append([]types.TipSet{ts}, chain...)
-		tsKey, err = ts.Parents()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return nil, ErrNewChainTooLong
-}
-
 // syncOne syncs a single tipset with the chain store. syncOne calculates the
 // parent state of the tipset and calls into consensus to run a state transition
 // in order to validate the tipset.  In the case the input tipset is valid,
@@ -423,17 +340,62 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	defer syncer.mu.Unlock()
 
 	// If the store already has this tipset then the syncer is finished.
-	if _, err := syncer.chainStore.GetTipSet(tsKey); err == nil {
+	if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
 		return nil
 	}
 
-	// Walk the chain given by the input blocks back to a known tipset in
-	// the store. This is the only code that may go to the network to
-	// resolve cids to blocks.
-	chain, err := syncer.collectChain(ctx, tsKey)
-	if err != nil {
-		return err
+	syncDoneCb := func(t types.TipSet) (bool, error) {
+		parents, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		return syncer.chainStore.HasTipSetAndState(ctx, parents.String()), nil
 	}
+
+	catchDoneCb := func(t types.TipSet) (bool, error) {
+		// Only check if the head we are fetching exceeds finality
+		if t.Key().Equals(tsKey) {
+			ok, err := syncer.exceedsFinalityLimit(t)
+			if err != nil {
+				return true, err
+			}
+			if ok {
+				return true, ErrNewChainTooLong
+			}
+		}
+		parents, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		if syncer.chainStore.HasTipSetAndState(ctx, parents.String()) {
+			return true, nil
+		}
+		return false, nil
+	}
+
+	var chain []types.TipSet
+	switch syncer.syncMode {
+	case Syncing:
+		// No time-out here, this can fetch an arbitrarily long chain
+		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, syncDoneCb)
+		if err != nil {
+			return err
+		}
+	case CaughtUp:
+		// Time out if this bounded fetch doesn't complete quickly
+		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
+		defer cancel()
+
+		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, catchDoneCb)
+		if err != nil {
+			return err
+		}
+	default:
+		panic("syncer in unknown state")
+	}
+	// Fetcher returns chain in Traversal order, reverse it to height order
+	Reverse(chain)
+
 	parentCids, err := chain[0].Parents()
 	if err != nil {
 		return err
@@ -478,22 +440,22 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	return nil
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(chain []types.TipSet) (bool, error) {
-	if len(chain) == 0 {
-		return false, nil
+func (syncer *Syncer) exceedsFinalityLimit(newHead types.TipSet) (bool, error) {
+	if !newHead.Defined() {
+		return false, errors.New("cannon check finality limit on undefined tipset")
 	}
-	head, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	curHead, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
 	if err != nil {
 		return false, err
 	}
-	headHeight, err := head.Height()
+	curHeight, err := curHead.Height()
 	if err != nil {
 		return false, err
 	}
-	finalityHeight := types.NewBlockHeight(headHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
-	chainHeight, err := chain[0].Height()
+	finalityHeight := types.NewBlockHeight(curHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
+	newHeight, err := newHead.Height()
 	if err != nil {
 		return false, err
 	}
-	return types.NewBlockHeight(chainHeight).LessThan(finalityHeight), nil
+	return types.NewBlockHeight(newHeight).GreaterThan(finalityHeight), nil
 }

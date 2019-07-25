@@ -251,6 +251,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
+	fetcher.AddSourceBlocks(calcGenBlk)
 	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state

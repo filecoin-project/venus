@@ -102,6 +102,7 @@ func TestBlockValidSyntax(t *testing.T) {
 		StateRoot: validSt,
 		Miner:     validAd,
 		Ticket:    validTi,
+		Height:    1,
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
