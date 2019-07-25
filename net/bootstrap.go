@@ -10,9 +10,9 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	routing "github.com/libp2p/go-libp2p-routing"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
@@ -43,7 +43,7 @@ type Bootstrapper struct {
 	// Dependencies
 	h host.Host
 	d inet.Dialer
-	r routing.IpfsRouting
+	r routing.Routing
 	// Does the work. Usually Bootstrapper.bootstrap. Argument is a slice of
 	// currently-connected peers (so it won't attempt to reconnect).
 	Bootstrap func([]peer.ID)
@@ -57,7 +57,7 @@ type Bootstrapper struct {
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
 // to the filecoin network by connecting to the given bootstrap peers.
-func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, r routing.IpfsRouting, minPeer int, period time.Duration) *Bootstrapper {
+func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, r routing.Routing, minPeer int, period time.Duration) *Bootstrapper {
 	b := &Bootstrapper{
 		MinPeerThreshold:  minPeer,
 		bootstrapPeers:    bootstrapPeers,
