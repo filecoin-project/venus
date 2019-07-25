@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -15,13 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
-	//"github.com/multiformats/go-multiaddr"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
@@ -39,7 +33,7 @@ type MinerConfig struct {
 
 type MinerProfile struct {
 	config MinerConfig
-	foobar Foobar
+	runner FASTRunner
 }
 
 func NewMinerProfile(configfile string) (Profile, error) {
@@ -62,7 +56,7 @@ func NewMinerProfile(configfile string) (Profile, error) {
 		return nil, err
 	}
 
-	foobar := Foobar{
+	runner := FASTRunner{
 		WorkingDir: config.WorkingDir,
 		ProcessArgs: fast.FilecoinOpts{
 			InitOpts: []fast.ProcessInitOption{
@@ -79,20 +73,24 @@ func NewMinerProfile(configfile string) (Profile, error) {
 		},
 	}
 
-	return &MinerProfile{config, foobar}, nil
+	return &MinerProfile{config, runner}, nil
 }
 
 func (p *MinerProfile) Pre() error {
 	ctx := context.Background()
 
-	node, err := GetNode(ctx, lpfc.PluginName, p.foobar.WorkingDir, p.foobar.PluginOptions, p.foobar.ProcessArgs)
+	node, err := GetNode(ctx, lpfc.PluginName, p.runner.WorkingDir, p.runner.PluginOptions, p.runner.ProcessArgs)
 	if err != nil {
 		return err
 	}
 
-	if o, err := node.InitDaemon(ctx); err != nil {
-		io.Copy(os.Stdout, o.Stdout())
-		io.Copy(os.Stdout, o.Stderr())
+	if _, err := os.Stat(p.runner.WorkingDir + "/repo"); os.IsNotExist(err) {
+		if o, err := node.InitDaemon(ctx); err != nil {
+			io.Copy(os.Stdout, o.Stdout())
+			io.Copy(os.Stdout, o.Stderr())
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
@@ -115,7 +113,7 @@ func (p *MinerProfile) Pre() error {
 
 func (p *MinerProfile) Daemon() error {
 	args := []string{}
-	for _, argfn := range p.foobar.ProcessArgs.DaemonOpts {
+	for _, argfn := range p.runner.ProcessArgs.DaemonOpts {
 		args = append(args, argfn()...)
 	}
 
@@ -126,106 +124,39 @@ func (p *MinerProfile) Daemon() error {
 
 func (p *MinerProfile) Post() error {
 	ctx := context.Background()
-	miner, err := GetNode(ctx, lpfc.PluginName, p.foobar.WorkingDir, p.foobar.PluginOptions, p.foobar.ProcessArgs)
+	miner, err := GetNode(ctx, lpfc.PluginName, p.runner.WorkingDir, p.runner.PluginOptions, p.runner.ProcessArgs)
 	if err != nil {
 		return err
 	}
+	defer miner.DumpLastOutput(os.Stdout)
 
-	client, err := GetClientNode(ctx, p.foobar)
+	miningStatus, err := miner.MiningStatus(ctx)
 	if err != nil {
 		return err
 	}
+	if mining := miningStatus.Active; !mining {
+		if err := FaucetRequest(ctx, miner, p.config.FaucetURL); err != nil {
+			return err
+		}
 
-	defer client.StopDaemon(ctx)
+		collateral := big.NewInt(int64(p.config.Collateral))
+		price, _, err := big.ParseFloat(p.config.AskPrice, 10, 128, big.AwayFromZero)
+		if err != nil {
+			return err
+		}
 
-	if err := FaucetRequest(ctx, miner, p.config.FaucetURL); err != nil {
-		return err
+		expiry := big.NewInt(int64(p.config.AskExpiry))
+
+		_, err = series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
+		if err != nil {
+			return err
+		}
+
+		if err := miner.MiningStart(ctx); err != nil {
+			return err
+		}
 	}
-
-	if err := FaucetRequest(ctx, client, p.config.FaucetURL); err != nil {
-		return err
-	}
-
-	collateral := big.NewInt(int64(p.config.Collateral))
-	price, _, err := big.ParseFloat(p.config.AskPrice, 10, 128, big.AwayFromZero)
-	if err != nil {
-		return err
-	}
-
-	expiry := big.NewInt(int64(p.config.AskExpiry))
-
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
-	if err != nil {
-		return err
-	}
-
-	if err := miner.MiningStart(ctx); err != nil {
-		return err
-	}
-
-	if err := series.Connect(ctx, client, miner); err != nil {
-		return err
-	}
-
-	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, int64(p.config.SectorSize))
-	dataReader = io.TeeReader(dataReader, &data)
-	_, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
-	if err != nil {
-		return err
-	}
-
-	if err := series.WaitForDealState(ctx, client, deal, storagedeal.Complete); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-// GetClientNode return a new node that is used to make deals with the miner so it can have power
-func GetClientNode(ctx context.Context, foobar Foobar) (*fast.Filecoin, error) {
-	tmpdir, err := ioutil.TempDir("", "deal-maker")
-	if err != nil {
-		return nil, err
-	}
-
-	processArgs := fast.FilecoinOpts{
-		InitOpts:   foobar.ProcessArgs.InitOpts,
-		DaemonOpts: foobar.ProcessArgs.DaemonOpts,
-	}
-
-	client, err := GetNode(ctx, lpfc.PluginName, tmpdir, foobar.PluginOptions, processArgs)
-	if err != nil {
-		return nil, err
-	}
-
-	if o, err := client.InitDaemon(ctx); err != nil {
-		io.Copy(os.Stdout, o.Stdout())
-		io.Copy(os.Stdout, o.Stderr())
-		return nil, err
-	}
-
-	cfg, err := client.Config()
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.Observability.Metrics.PrometheusEnabled = true
-
-	// IPTB changes this to loopback
-	cfg.Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-
-	if err := client.WriteConfig(cfg); err != nil {
-		return nil, err
-	}
-
-	if o, err := client.StartDaemon(ctx, true); err != nil {
-		io.Copy(os.Stdout, o.Stdout())
-		io.Copy(os.Stdout, o.Stderr())
-		return nil, err
-	}
-
-	return client, nil
 }
 
 func FaucetRequest(ctx context.Context, p *fast.Filecoin, uri string) error {
@@ -254,3 +185,5 @@ func FaucetRequest(ctx context.Context, p *fast.Filecoin, uri string) error {
 
 	return nil
 }
+
+func (p *MinerProfile) Main() error { return nil }

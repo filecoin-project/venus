@@ -24,7 +24,7 @@ type BootstrapConfig struct {
 
 type BootstrapProfile struct {
 	config BootstrapConfig
-	foobar Foobar
+	runner FASTRunner
 }
 
 func NewBootstrapProfile(configfile string) (Profile, error) {
@@ -57,7 +57,7 @@ func NewBootstrapProfile(configfile string) (Profile, error) {
 		return nil, err
 	}
 
-	foobar := Foobar{
+	runner := FASTRunner{
 		WorkingDir: config.WorkingDir,
 		ProcessArgs: fast.FilecoinOpts{
 			InitOpts: []fast.ProcessInitOption{
@@ -78,20 +78,24 @@ func NewBootstrapProfile(configfile string) (Profile, error) {
 		},
 	}
 
-	return &BootstrapProfile{config, foobar}, nil
+	return &BootstrapProfile{config, runner}, nil
 }
 
 func (p *BootstrapProfile) Pre() error {
 	ctx := context.Background()
 
-	node, err := GetNode(ctx, lpfc.PluginName, p.foobar.WorkingDir, p.foobar.PluginOptions, p.foobar.ProcessArgs)
+	node, err := GetNode(ctx, lpfc.PluginName, p.runner.WorkingDir, p.runner.PluginOptions, p.runner.ProcessArgs)
 	if err != nil {
 		return err
 	}
 
-	if o, err := node.InitDaemon(ctx); err != nil {
-		io.Copy(os.Stdout, o.Stdout())
-		io.Copy(os.Stdout, o.Stderr())
+	if _, err := os.Stat(p.runner.WorkingDir + "/repo"); os.IsNotExist(err) {
+		if o, err := node.InitDaemon(ctx); err != nil {
+			io.Copy(os.Stdout, o.Stdout())
+			io.Copy(os.Stdout, o.Stderr())
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
@@ -101,7 +105,7 @@ func (p *BootstrapProfile) Pre() error {
 	}
 
 	cfg.Observability.Metrics.PrometheusEnabled = true
-
+	cfg.API.Address = "/ip4/0.0.0.0/tcp/3453"
 	// IPTB changes this to loopback and a random port
 	cfg.Swarm.Address = "/ip4/0.0.0.0/tcp/6000"
 
@@ -114,7 +118,7 @@ func (p *BootstrapProfile) Pre() error {
 
 func (p *BootstrapProfile) Daemon() error {
 	args := []string{}
-	for _, argfn := range p.foobar.ProcessArgs.DaemonOpts {
+	for _, argfn := range p.runner.ProcessArgs.DaemonOpts {
 		args = append(args, argfn()...)
 	}
 
@@ -125,7 +129,7 @@ func (p *BootstrapProfile) Daemon() error {
 
 func (p *BootstrapProfile) Post() error {
 	ctx := context.Background()
-	node, err := GetNode(ctx, lpfc.PluginName, p.foobar.WorkingDir, p.foobar.PluginOptions, p.foobar.ProcessArgs)
+	node, err := GetNode(ctx, lpfc.PluginName, p.runner.WorkingDir, p.runner.PluginOptions, p.runner.ProcessArgs)
 	if err != nil {
 		return err
 	}
@@ -134,3 +138,5 @@ func (p *BootstrapProfile) Post() error {
 
 	return nil
 }
+
+func (p *BootstrapProfile) Main() error { return nil }
