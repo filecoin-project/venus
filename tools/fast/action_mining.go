@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -44,4 +45,15 @@ func (f *Filecoin) MiningStop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// MiningStatus runs the `mining status` command against the filecoin process
+func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResult, error) {
+	var out commands.MiningStatusResult
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "mining", "status"); err != nil {
+		return commands.MiningStatusResult{}, err
+	}
+
+	return out, nil
 }
