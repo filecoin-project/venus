@@ -157,16 +157,14 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, d
 			return nil, err
 		}
 
+		out = append(out, ts)
 		ok, err := done(ts)
 		if err != nil {
 			return nil, err
 		}
-
 		if ok {
 			break
 		}
-
-		out = append(out, ts)
 
 		cur, err = ts.Parents()
 		if err != nil {

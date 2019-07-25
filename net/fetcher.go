@@ -15,8 +15,9 @@ import (
 
 // Fetcher defines an interface that may be used to fetch data from the network.
 type Fetcher interface {
-	// FetchTipSets will only fetch TipSets whos TipSetKeys evaluate to `false` when passed to `done`,
-	// this includes the provided `tsKey`. The returns slice of TipSets is in Traversal order.
+	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
+	// this includes the provided `ts`. The TipSet that evaluates to true when
+	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
 	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
@@ -52,6 +53,7 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 			return nil, err
 		}
 
+		out = append(out, ts)
 		ok, err := done(ts)
 		if err != nil {
 			return nil, err
@@ -59,8 +61,6 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 		if ok {
 			break
 		}
-
-		out = append(out, ts)
 
 		cur, err = ts.Parents()
 		if err != nil {

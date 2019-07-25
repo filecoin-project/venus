@@ -345,7 +345,11 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	}
 
 	syncDoneCb := func(t types.TipSet) (bool, error) {
-		return syncer.chainStore.HasTipSetAndState(ctx, t.String()), nil
+		parents, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		return syncer.chainStore.HasTipSetAndState(ctx, parents.String()), nil
 	}
 
 	catchDoneCb := func(t types.TipSet) (bool, error) {
@@ -359,7 +363,11 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 				return true, ErrNewChainTooLong
 			}
 		}
-		if syncer.chainStore.HasTipSetAndState(ctx, t.String()) {
+		parents, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		if syncer.chainStore.HasTipSetAndState(ctx, parents.String()) {
 			return true, nil
 		}
 		return false, nil
@@ -368,12 +376,13 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	var chain []types.TipSet
 	switch syncer.syncMode {
 	case Syncing:
+		// No time-out here, this can fetch an arbitrarily long chain
 		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, syncDoneCb)
 		if err != nil {
 			return err
 		}
 	case CaughtUp:
-		// we cancel the fetch during caught up mode after a single blocktime.
+		// Time out if this bounded fetch doesn't complete quickly
 		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
 		defer cancel()
 

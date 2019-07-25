@@ -398,10 +398,6 @@ func TestLoadFork(t *testing.T) {
 
 	// Shut down store, reload and wire to syncer.
 	loadSyncer, blockSource := loadSyncerFromRepo(t, r, dstP)
-	// The fetcher will need to fetch these so that is may pass them to the
-	// done callback inorder to determine when to stop fetching.
-	// DONOTMERGE get specific approval on this before merging
-	blockSource.AddSourceBlocks(forklink3.ToSlice()...)
 
 	// Test that the syncer can't sync a block on the old chain
 	// without getting old blocks from network. i.e. the repo is trimmed
@@ -491,9 +487,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Setup a fetcher for feeding blocks into the syncer.
 	blockSource := th.NewTestFetcher()
-	// the block source needs the genesis
-	// DONOTMERGE
-	blockSource.AddSourceBlocks(genTsas.TipSet.ToSlice()...)
 
 	// Now sync the chainStore with consensus using a MarketView.
 	verifier = &verification.FakeVerifier{

@@ -375,6 +375,7 @@ func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done fu
 		if err != nil {
 			return nil, err
 		}
+		tips = append(tips, tip)
 		ok, err := done(tip)
 		if err != nil {
 			return nil, err
@@ -382,7 +383,6 @@ func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done fu
 		if ok {
 			break
 		}
-		tips = append(tips, tip)
 		key, err = tip.Parents()
 		if err != nil {
 			return nil, err
