@@ -18,7 +18,7 @@ import (
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"

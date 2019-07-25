@@ -12,7 +12,7 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	smux "github.com/libp2p/go-stream-muxer"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"

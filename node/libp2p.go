@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-interface-connmgr"
 	"github.com/libp2p/go-libp2p-peerstore"
 	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multistream"
 	errors "github.com/pkg/errors"
