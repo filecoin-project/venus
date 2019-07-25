@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/jbenet/goprocess"
+	"github.com/libp2p/go-libp2p-core/connmgr"
 	net "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-interface-connmgr"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/libp2p/go-libp2p-peerstore"
 	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multistream"
 	errors "github.com/pkg/errors"
@@ -61,8 +61,8 @@ func (noopLibP2PHost) Close() error {
 	return nil
 }
 
-func (noopLibP2PHost) ConnManager() ifconnmgr.ConnManager {
-	return &ifconnmgr.NullConnMgr{}
+func (noopLibP2PHost) ConnManager() connmgr.ConnManager {
+	return &connmgr.NullConnMgr{}
 }
 
 type noopLibP2PNetwork struct{}

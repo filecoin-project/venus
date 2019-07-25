@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-interface-connmgr"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
 	smux "github.com/libp2p/go-stream-muxer"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
@@ -37,9 +37,9 @@ func NewFakeHost() host.Host {
 
 // minimal implementation of host.Host interface
 
-func (fh *FakeHost) Addrs() []ma.Multiaddr              { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) Close() error                       { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) ConnManager() ifconnmgr.ConnManager { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Addrs() []ma.Multiaddr            { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Close() error                     { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) ConnManager() connmgr.ConnManager { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Connect(ctx context.Context, pi pstore.PeerInfo) error { // nolint: golint
 	return fh.ConnectImpl(ctx, pi)
 }
