@@ -7,9 +7,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
 	net "github.com/libp2p/go-libp2p-core/network"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/libp2p/go-libp2p-peerstore"
 	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	errors "github.com/pkg/errors"
@@ -41,7 +41,7 @@ func (noopLibP2PHost) Mux() protocol.Switch {
 	panic("implement me")
 }
 
-func (noopLibP2PHost) Connect(ctx context.Context, pi peerstore.PeerInfo) error {
+func (noopLibP2PHost) Connect(ctx context.Context, pi peer.AddrInfo) error {
 	return errors.New("Connect called on noopLibP2PHost")
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 // This struct wraps the filecoin nodes router.  This router is a
@@ -39,12 +38,12 @@ func NewRouter(r routing.Routing) *Router {
 
 // FindProvidersAsync searches for and returns peers who are able to provide a
 // given key.
-func (r *Router) FindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
+func (r *Router) FindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
 	return r.routing.FindProvidersAsync(ctx, key, count)
 }
 
 // FindPeer searches the libp2p router for a given peer id
-func (r *Router) FindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+func (r *Router) FindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	return r.routing.FindPeer(ctx, peerID)
 }
 

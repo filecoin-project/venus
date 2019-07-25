@@ -483,7 +483,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// Bootstrapper maintains connections to some subset of addresses
 	ba := nd.Repo.Config().Bootstrap.Addresses
-	bpi, err := net.PeerAddrsToPeerInfos(ba)
+	bpi, err := net.PeerAddrsToAddrInfo(ba)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}

@@ -13,7 +13,6 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 
@@ -262,7 +261,7 @@ func (api *API) NetworkGetPeerID() peer.ID {
 }
 
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
-func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
+func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
 	return api.network.Router.FindProvidersAsync(ctx, key, count)
 }
 
@@ -277,7 +276,7 @@ func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Resul
 }
 
 // NetworkFindPeer searches the libp2p router for a given peer id
-func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	return api.network.FindPeer(ctx, peerID)
 }
 

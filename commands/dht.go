@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 const (
@@ -137,7 +136,7 @@ var findProvidersDhtCmd = &cmds.Command{
 				// verbose mode but otherwise filtered.
 				routing.PublishQueryEvent(ctx, &routing.QueryEvent{
 					Type:      routing.Provider,
-					Responses: []*pstore.PeerInfo{&np},
+					Responses: []*peer.AddrInfo{&np},
 				})
 			}
 		}()

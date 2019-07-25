@@ -12,8 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
 	smux "github.com/libp2p/go-stream-muxer"
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
@@ -26,12 +26,12 @@ var _ host.Host = &FakeHost{}
 
 // FakeHost is a test host.Host
 type FakeHost struct {
-	ConnectImpl func(context.Context, pstore.PeerInfo) error
+	ConnectImpl func(context.Context, peer.AddrInfo) error
 }
 
 // NewFakeHost constructs a FakeHost with no other parameters needed
 func NewFakeHost() host.Host {
-	nopfunc := func(_ context.Context, _ pstore.PeerInfo) error { return nil }
+	nopfunc := func(_ context.Context, _ peer.AddrInfo) error { return nil }
 	return &FakeHost{ConnectImpl: nopfunc}
 }
 
@@ -40,14 +40,14 @@ func NewFakeHost() host.Host {
 func (fh *FakeHost) Addrs() []ma.Multiaddr            { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Close() error                     { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) ConnManager() connmgr.ConnManager { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) Connect(ctx context.Context, pi pstore.PeerInfo) error { // nolint: golint
+func (fh *FakeHost) Connect(ctx context.Context, pi peer.AddrInfo) error { // nolint: golint
 	return fh.ConnectImpl(ctx, pi)
 }
 func (fh *FakeHost) EventBus() event.Bus                              { panic("not implemented") } //nolint: golint
 func (fh *FakeHost) ID() peer.ID                                      { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Network() inet.Network                            { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) Mux() protocol.Switch                             { panic("not implemented") } // nolint: golint
-func (fh *FakeHost) Peerstore() pstore.Peerstore                      { panic("not implemented") } // nolint: golint
+func (fh *FakeHost) Peerstore() peerstore.Peerstore                   { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) RemoveStreamHandler(protocol.ID)                  { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) SetStreamHandler(protocol.ID, inet.StreamHandler) { panic("not implemented") } // nolint: golint
 func (fh *FakeHost) SetStreamHandlerMatch(protocol.ID, func(string) bool, inet.StreamHandler) { // nolint: golint
@@ -72,7 +72,7 @@ type FakeDialer struct {
 func (fd *FakeDialer) Peers() []peer.ID {
 	return fd.PeersImpl()
 }
-func (fd *FakeDialer) Peerstore() pstore.Peerstore                          { panic("not implemented") } // nolint: golint
+func (fd *FakeDialer) Peerstore() peerstore.Peerstore                       { panic("not implemented") } // nolint: golint
 func (fd *FakeDialer) LocalPeer() peer.ID                                   { panic("not implemented") } // nolint: golint
 func (fd *FakeDialer) DialPeer(context.Context, peer.ID) (inet.Conn, error) { panic("not implemented") } // nolint: golint
 func (fd *FakeDialer) ClosePeer(peer.ID) error                              { panic("not implemented") } // nolint: golint

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +19,7 @@ import (
 
 func connect(t *testing.T, nd1, nd2 *Node) {
 	t.Helper()
-	pinfo := peerstore.PeerInfo{
+	pinfo := peer.AddrInfo{
 		ID:    nd2.Host().ID(),
 		Addrs: nd2.Host().Addrs(),
 	}
