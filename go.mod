@@ -68,9 +68,9 @@ require (
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/libp2p/go-eventbus v0.0.3 // indirect
 	github.com/libp2p/go-libp2p v0.2.1
-	github.com/libp2p/go-libp2p-autonat-svc v0.0.2
+	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.0
-	github.com/libp2p/go-libp2p-core v0.0.9 // indirect
+	github.com/libp2p/go-libp2p-core v0.0.9
 	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/libp2p/go-libp2p-host v0.0.1
 	github.com/libp2p/go-libp2p-interface-connmgr v0.0.1
