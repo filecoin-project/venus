@@ -55,10 +55,22 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
 		outCh := make(chan mining.Output)
-		worker := mining.NewDefaultWorkerWithDeps(
-			pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(), mining.NewTestPowerTableView(1),
-			bs, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(),
-			CreatePoSTFunc)
+		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+			API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+			MinerAddr:      minerAddr,
+			MinerOwnerAddr: minerOwnerAddr,
+			MinerWorker:    blockSignerAddr,
+			WorkerSigner:   mockSigner,
+
+			GetStateTree: getStateTree,
+			GetWeight:    getWeightTest,
+			GetAncestors: getAncestors,
+
+			MessageSource: pool,
+			Processor:     th.NewTestProcessor(),
+			PowerTable:    mining.NewTestPowerTableView(1),
+			Blockstore:    bs}, CreatePoSTFunc)
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
@@ -69,8 +81,22 @@ func Test_Mine(t *testing.T) {
 	t.Run("Block generation fails", func(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
-		worker := mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors, th.NewTestProcessor(),
-			mining.NewTestPowerTableView(1), bs, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+			API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+			MinerAddr:      minerAddr,
+			MinerOwnerAddr: minerOwnerAddr,
+			MinerWorker:    blockSignerAddr,
+			WorkerSigner:   mockSigner,
+
+			GetStateTree: makeExplodingGetStateTree(st),
+			GetWeight:    getWeightTest,
+			GetAncestors: getAncestors,
+
+			MessageSource: pool,
+			Processor:     th.NewTestProcessor(),
+			PowerTable:    mining.NewTestPowerTableView(1),
+			Blockstore:    bs}, CreatePoSTFunc)
 		outCh := make(chan mining.Output)
 		doSomeWorkCalled = false
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -84,8 +110,22 @@ func Test_Mine(t *testing.T) {
 	t.Run("Sent empty tipset", func(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
-		worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-			mining.NewTestPowerTableView(1), bs, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+			API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+			MinerAddr:      minerAddr,
+			MinerOwnerAddr: minerOwnerAddr,
+			MinerWorker:    blockSignerAddr,
+			WorkerSigner:   mockSigner,
+
+			GetStateTree: getStateTree,
+			GetWeight:    getWeightTest,
+			GetAncestors: getAncestors,
+
+			MessageSource: pool,
+			Processor:     th.NewTestProcessor(),
+			PowerTable:    mining.NewTestPowerTableView(1),
+			Blockstore:    bs}, CreatePoSTFunc)
 		input := types.TipSet{}
 		outCh := make(chan mining.Output)
 		go worker.Mine(ctx, input, 0, outCh)
@@ -147,7 +187,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
-		addr1:                  act1,
+		addr1: act1,
 	})
 
 	ctx := context.Background()
@@ -211,8 +251,22 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
 
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, th.NewTestProcessor(),
-		&th.TestView{}, bs, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+		MinerAddr:      minerAddr,
+		MinerOwnerAddr: minerOwnerAddr,
+		MinerWorker:    blockSignerAddr,
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: getStateTree,
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+
+		MessageSource: pool,
+		Processor:     th.NewTestProcessor(),
+		PowerTable:    &th.TestView{},
+		Blockstore:    bs}, CreatePoSTFunc)
 
 	parents := types.NewTipSetKey(newCid())
 	stateRoot := newCid()
@@ -254,8 +308,22 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+		MinerAddr:      addrs[4],
+		MinerOwnerAddr: addrs[3],
+		MinerWorker:    blockSignerAddr,
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: getStateTree,
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+
+		MessageSource: pool,
+		Processor:     consensus.NewDefaultProcessor(),
+		PowerTable:    &th.TestView{},
+		Blockstore:    bs}, CreatePoSTFunc)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, types.ZeroAttoFIL, "", nil)
@@ -336,8 +404,22 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, minerAddr, minerOwnerAddr, blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+		MinerAddr:      minerAddr,
+		MinerOwnerAddr: minerOwnerAddr,
+		MinerWorker:    blockSignerAddr,
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: getStateTree,
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+
+		MessageSource: pool,
+		Processor:     consensus.NewDefaultProcessor(),
+		PowerTable:    &th.TestView{},
+		Blockstore:    bs}, CreatePoSTFunc)
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
@@ -378,8 +460,22 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
-	worker := mining.NewDefaultWorkerWithDeps(pool, getStateTree, getWeightTest, getAncestors, consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+		MinerAddr:      addrs[4],
+		MinerOwnerAddr: addrs[3],
+		MinerWorker:    blockSignerAddr,
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: getStateTree,
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+
+		MessageSource: pool,
+		Processor:     consensus.NewDefaultProcessor(),
+		PowerTable:    &th.TestView{},
+		Blockstore:    bs}, CreatePoSTFunc)
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -411,9 +507,22 @@ func TestGenerateError(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
-	worker := mining.NewDefaultWorkerWithDeps(pool, makeExplodingGetStateTree(st), getWeightTest, getAncestors,
-		consensus.NewDefaultProcessor(),
-		&th.TestView{}, bs, addrs[4], addrs[3], blockSignerAddr, mockSigner, th.NewDefaultTestWorkerPorcelainAPI(), CreatePoSTFunc)
+	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		API: th.NewDefaultTestWorkerPorcelainAPI(),
+
+		MinerAddr:      addrs[4],
+		MinerOwnerAddr: addrs[3],
+		MinerWorker:    blockSignerAddr,
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: makeExplodingGetStateTree(st),
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+
+		MessageSource: pool,
+		Processor:     consensus.NewDefaultProcessor(),
+		PowerTable:    &th.TestView{},
+		Blockstore:    bs}, CreatePoSTFunc)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, "", nil)
