@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-genesis
+  labels:
+    app: filecoin-genesis
+spec:
+  ports:
+    - port: 6000
+      name: swarm
+    - port: 3453
+      name: api
+    - port: 9797
+      name: faucet
+  clusterIP: None
+  selector:
+    app: filecoin-genesis
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: genesis-configs
+  namespace: default
+data:
+  filecoin-genesis-0.json: |
+    {
+      "WorkingDir": "/var/filecoin",
+      "GenesisCarFile":"/opt/filecoin/genesis.car",
+      "PeerkeyFile": "/opt/filecoin/peer0.key",
+      "AutoSealInterval": 120,
+      "Network": "user",
+      "BlockTime": "30s",
+      "LogJSON": "1",
+      "LogLevel":"5",
+      "WalletFile": "/opt/filecoin/0.key",
+      "MinerAddress": "t2g33pkfg2bfqfyksw4ksvvgepzfmgkyu7ugnmvci"
+    }
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: filecoin-genesis
+spec:
+  selector:
+    matchLabels:
+      app: filecoin-genesis
+  serviceName: "filecoin-genesis"
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: filecoin-genesis
+    spec:
+      containers:
+        - name: filecoin-genesis
+          image: "{{ .Values.Image }}"
+          lifecycle:
+            postStart:
+             exec:
+                command: [
+                  "/bin/sh",
+                  "-c",
+                  "deploy -profile=genesis -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
+                ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: [
+            "go-filecoin",
+            "daemon",
+            "--repodir=/var/filecoin/repo",
+            "--block-time=30s",
+          ]
+          ports:
+            - containerPort: 6000
+            - containerPort: 3453
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-bootstrappers
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+        - name: faucet
+          image: "{{ .Values.Image }}"
+          command: [
+            "faucet",
+            "-fil-api=filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453",
+            "-fil-wallet=t1ijvaivtngec42yjpj3fndxxvvdd2iorwphucgwq",
+            "-faucet-val=1000",
+          ]
+          ports:
+            - containerPort: 9797
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+      initContainers:
+        - name: filecoin-init
+          image: "{{ .Values.Image }}"
+          command: [
+            "deploy",
+            "-profile=genesis",
+            "-profile-config=/opt/filecoin-deploy/$(CONFIG_NAME).json",
+            "-step=pre",
+          ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-bootstrappers
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+        - name: bootstrap-ready-check
+          image: "giantswarm/tiny-tools"
+          {{- $lastBootstrapOrd := sub .Values.Bootstrap.Replicas 1 }}
+          command: [
+            "/bin/sh",
+            "-c",
+            "curl -s http://filecoin-bootstrappers-{{ $lastBootstrapOrd }}.filecoin-bootstrappers.default.svc.cluster.local:3453/api/id"
+          ]
+      volumes:
+      - name: devnet-secrets
+        secret:
+          secretName: filecoin
+      - name: filecoin-parameter-cache
+        hostPath:
+          path: /home/ognots/filecoin-proof-parameters
+      - name: config-volume
+        configMap:
+          name: genesis-configs
+  volumeClaimTemplates:
+  - metadata:
+      name: filecoin-storage-bootstrappers
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "microk8s-hostpath"
+      resources:
+        requests:
+          storage: 10Gi
+
+
+

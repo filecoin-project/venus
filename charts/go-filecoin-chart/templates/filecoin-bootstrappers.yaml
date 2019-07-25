@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-bootstrappers
+  labels:
+    app: filecoin-bootstrappers
+spec:
+  ports:
+    - port: 6000
+      name: swarm
+    - port: 3453
+      name: api
+  clusterIP: None
+  selector:
+    app: filecoin-bootstrappers
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bootstrap-configs
+  namespace: default
+data:
+{{- range $k, $v := until (atoi (quote .Values.Bootstrap.Replicas) | default 3) }}
+  {{- $peerIndex := add $v 1 }}
+  filecoin-bootstrappers-{{$v}}.json: |
+    {
+      "WorkingDir": "/var/filecoin",
+      "GenesisCarFile":"/opt/filecoin/genesis.car",
+      "PeerkeyFile": "/opt/filecoin/peer{{$peerIndex}}.key",
+      "AutoSealInterval": 120,
+      "Network": "user",
+      "BlockTime": "30s",
+      "LogJSON": "1",
+      "LogLevel":"5",
+      "SwarmListen": "/ip4/0.0.0.0/tcp/6000",
+      "SwarmRelayPublic": "/ip4/0.0.0.0/tcp/6000"
+    }
+{{ end }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: filecoin-bootstrappers
+spec:
+  selector:
+    matchLabels:
+      app: filecoin-bootstrappers
+  serviceName: "filecoin-bootstrappers"
+  replicas: {{ .Values.Bootstrap.Replicas }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: filecoin-bootstrappers
+    spec:
+      containers:
+        - name: filecoin-bootstrappers
+          image: "{{ .Values.Image }}"
+          lifecycle:
+            postStart:
+              exec:
+                command: [
+                  #"deploy",
+                  #"-profile=bootstrap",
+                  #"-profile-config=/opt/filecoin-deploy/$(CONFIG_NAME).json",
+                  #"-step=post",
+                  "/bin/sh",
+                  "-c",
+                  "deploy -profile=bootstrap -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
+                ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: [
+            "go-filecoin",
+            "daemon",
+            "--repodir=/var/filecoin/repo",
+            "--block-time=30s",
+            "--is-relay",
+            "--swarmlisten=/ip4/0.0.0.0/tcp/6000",
+            "--swarmrelaypublic=/ip4/0.0.0.0/tcp/6000",
+          ]
+          ports:
+            - containerPort: 6000
+            - containerPort: 3453
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-bootstrappers
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+      initContainers:
+        - name: filecoin-init
+          image: "{{ .Values.Image }}"
+          command: [
+            "deploy",
+            "-profile=bootstrap",
+            "-profile-config=/opt/filecoin-deploy/$(CONFIG_NAME).json",
+            "-step=pre",
+          ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-bootstrappers
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+      volumes:
+      - name: devnet-secrets
+        secret:
+          secretName: filecoin
+      - name: filecoin-parameter-cache
+        hostPath:
+          path: /home/ognots/filecoin-proof-parameters
+      - name: config-volume
+        configMap:
+          name: bootstrap-configs
+  volumeClaimTemplates:
+  - metadata:
+      name: filecoin-storage-bootstrappers
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "microk8s-hostpath"
+      resources:
+        requests:
+          storage: 10Gi
+
+
+

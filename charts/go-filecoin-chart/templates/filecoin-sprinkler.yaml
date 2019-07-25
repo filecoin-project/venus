@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sprinkler-config
+  namespace: default
+data:
+  filecoin-sprinkler.json: |
+    {
+      "WorkingDir": "/var/filecoin",
+      "GenesisCarFile":"/opt/filecoin/genesis.car",
+      "FaucetURL": "http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:9797/tap",
+      "MaxPrice": "0.000000001",
+      "AutoSealInterval": 120,
+      "Network": "user",
+      "BlockTime": "30s",
+      "LogJSON": "1",
+      "LogLevel":"5"
+    }
+
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: filecoin-sprinkler
+spec:
+  schedule: "{{ .Values.Sprinkler.Schedule }}"
+  concurrencyPolicy: "{{ .Values.Sprinkler.CronJobConcurrencyPolicy }}"
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: filecoin-sprinkler
+              image: "{{ .Values.Image }}"
+              env:
+                - name: FILECOIN_PARAMETER_CACHE
+                  value: /opt/filecoin-proof-parameters
+              command: [
+                "deploy",
+                "-profile=sprinkler",
+                "-profile-config=/opt/filecoin-deploy/filecoin-sprinkler.json",
+              ]
+              ports:
+                - containerPort: 6000
+                - containerPort: 3453
+              volumeMounts:
+                - name: devnet-secrets
+                  mountPath: /opt/filecoin
+                  readOnly: true
+                - name: filecoin-parameter-cache
+                  mountPath: /opt/filecoin-proof-parameters
+                - name: config-volume
+                  mountPath: /opt/filecoin-deploy
+          volumes:
+          - name: devnet-secrets
+            secret:
+              secretName: filecoin
+          - name: filecoin-parameter-cache
+            hostPath:
+              path: /home/ognots/filecoin-proof-parameters
+          - name: config-volume
+            configMap:
+              name: sprinkler-config
