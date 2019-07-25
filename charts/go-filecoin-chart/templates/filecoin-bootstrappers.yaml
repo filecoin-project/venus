@@ -133,7 +133,7 @@ spec:
           secretName: filecoin
       - name: filecoin-parameter-cache
         hostPath:
-          path: /home/ognots/filecoin-proof-parameters
+          path: "{{ .Values.ProofParamsDir }}"
       - name: config-volume
         configMap:
           name: bootstrap-configs

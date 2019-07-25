@@ -22,8 +22,8 @@ func init() {
 	logging.SetDebugLogging()
 }
 
-// Foobar is a base configuration structure for setting up a FAST process
-type Foobar struct {
+// FASTRunner is a base configuration structure for setting up a FAST process
+type FASTRunner struct {
 	WorkingDir    string
 	ProcessArgs   fast.FilecoinOpts
 	PluginOptions map[string]string
@@ -43,33 +43,6 @@ type CommonConfig struct {
 	GasLimit  string
 }
 
-/*
-func (d *CommonConfig) UnmarshalJSON(data []byte) error {
-	type Alias CommonConfig
-
-	fmt.Println("1")
-
-	aux := &struct {
-		BlockTime string
-		*Alias
-	}{
-		Alias: (*Alias)(d),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	var err error
-	d.BlockTime, err = time.ParseDuration(aux.BlockTime)
-	if err != nil {
-		return nil
-	}
-
-	return nil
-}
-*/
-
 // Profile is an interface used to describe the basic setup life cycle of a devnet node
 type Profile interface {
 	// Runs the filecoin init and any additional configuration required prior to the daemon starting
@@ -80,6 +53,9 @@ type Profile interface {
 
 	// Runs additional commands against an already running daemon
 	Post() error
+
+	// Runs an arbitrary main command
+	Main() error
 }
 
 func main() {
@@ -124,6 +100,15 @@ func main() {
 		}
 
 		runStep(step, p)
+		break
+	case "sprinkler":
+		p, err := NewSprinklerProfile(config)
+		if err != nil {
+			fmt.Printf("%s", err)
+			os.Exit(1)
+		}
+
+		p.Main()
 		break
 	default:
 		fmt.Printf("Invalid profile: %s\n", profile)
