@@ -377,7 +377,7 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f func(*storagedeal.Response)) error {
 	storageDeal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get retrive deal with proposal CID %s", proposalCid.String())
+		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
 	f(storageDeal.Response)
 	err = sm.porcelainAPI.DealPut(storageDeal)
