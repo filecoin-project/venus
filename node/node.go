@@ -25,10 +25,10 @@ import (
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-routing"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
@@ -414,7 +414,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// Set up libp2p network
-	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
+	// TODO PubSub requires strict message signing, disabled for now
+	// reference issue: #3124
+	fsub, err := libp2pps.NewFloodSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
