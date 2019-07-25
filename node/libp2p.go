@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/jbenet/goprocess"
-	"github.com/libp2p/go-libp2p-interface-connmgr"
-	"github.com/libp2p/go-libp2p-net"
+	net "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-interface-connmgr"
 	"github.com/libp2p/go-libp2p-peerstore"
 	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	"github.com/libp2p/go-libp2p-protocol"

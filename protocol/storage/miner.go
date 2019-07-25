@@ -17,7 +17,7 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-core/host"
-	inet "github.com/libp2p/go-libp2p-net"
+	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-protocol"
 	"github.com/pkg/errors"
 

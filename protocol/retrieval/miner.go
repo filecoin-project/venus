@@ -5,7 +5,7 @@ import (
 
 	logging "github.com/ipfs/go-log"
 	host "github.com/libp2p/go-libp2p-core/host"
-	inet "github.com/libp2p/go-libp2p-net"
+	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-protocol"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
