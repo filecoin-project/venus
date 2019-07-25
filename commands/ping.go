@@ -3,11 +3,12 @@ package commands
 import (
 	"fmt"
 	"io"
+	"time"
 
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	//"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/pkg/errors"
 )
 
@@ -18,8 +19,8 @@ import (
 // * Time is the amount of time elapsed from ping to pong in seconds.
 //
 type PingResult struct {
-	Count      uint
-	PingResult ping.Result
+	Count uint
+	RTT   time.Duration
 }
 
 var pingCmd = &cmds.Command{
@@ -52,9 +53,12 @@ trip latency information.
 
 		for i := uint(0); numPings == 0 || i < numPings; i++ {
 			pong, pingChOpen := <-pingCh
+			if pong.Error != nil {
+				return pong.Error
+			}
 			result := &PingResult{
-				Count:      i,
-				PingResult: pong,
+				Count: i,
+				RTT:   pong.RTT,
 			}
 			if err := re.Emit(result); err != nil {
 				return err
@@ -68,7 +72,7 @@ trip latency information.
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *PingResult) error {
-			milliseconds := result.PingResult.RTT.Seconds() * 1000
+			milliseconds := result.RTT.Seconds() * 1000
 			fmt.Fprintf(w, "Pong received: seq=%d time=%.2f ms\n", result.Count, milliseconds) // nolint: errcheck
 			return nil
 		}),
