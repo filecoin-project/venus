@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-miners
+  labels:
+    app: filecoin-miners
+spec:
+  ports:
+    - port: 6000
+      name: swarm
+  clusterIP: None
+  selector:
+    app: filecoin-miners
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: miner-configs
+  namespace: default
+data:
+{{- range $k, $v := until (atoi (quote .Values.Miner.Replicas) | default 3) }}
+  filecoin-miners-{{$v}}.json: |
+    {
+      "WorkingDir": "/var/filecoin",
+      "GenesisCarFile":"/opt/filecoin/genesis.car",
+      "FaucetURL": "http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:9797/tap",
+      "AutoSealInterval": 120,
+      "Network": "user",
+      "BlockTime": "30s",
+      "LogJSON": "1",
+      "LogLevel":"5",
+      "Collateral": 10,
+      "AskPrice": "0.000000001",
+      "AskExpiry": 100,
+      "SectorSize": 128
+    }
+{{ end }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: filecoin-miners
+spec:
+  selector:
+    matchLabels:
+      app: filecoin-miners
+  serviceName: "filecoin-miners"
+  replicas: {{ .Values.Miner.Replicas }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: filecoin-miners
+    spec:
+      containers:
+        - name: filecoin-miners
+          image: "{{ .Values.Image }}"
+          lifecycle:
+            postStart:
+              exec:
+                command: [
+                  "/bin/sh",
+                  "-c",
+                  "deploy -profile=miner -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
+                ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: [
+            "go-filecoin",
+            "daemon",
+            "--repodir=/var/filecoin/repo",
+            "--block-time=30s",
+          ]
+          ports:
+            - containerPort: 6000
+            - containerPort: 3453
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-miners
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+      initContainers:
+        - name: filecoin-init
+          image: "{{ .Values.Image }}"
+          command: [
+            "deploy",
+            "-profile=miner",
+            "-profile-config=/opt/filecoin-deploy/$(CONFIG_NAME).json",
+            "-step=pre",
+          ]
+          env:
+            - name: FILECOIN_PARAMETER_CACHE
+              value: /opt/filecoin-proof-parameters
+            - name: CONFIG_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/filecoin
+              readOnly: true
+            - name: filecoin-storage-miners
+              mountPath: /var/filecoin
+            - name: filecoin-parameter-cache
+              mountPath: /opt/filecoin-proof-parameters
+            - name: config-volume
+              mountPath: /opt/filecoin-deploy
+        - name: genesis-ready-check
+          image: "giantswarm/tiny-tools"
+          command: [
+            "/bin/sh",
+            "-c",
+            "curl -s http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453/api/mining/status | grep true"
+          ]
+      volumes:
+      - name: devnet-secrets
+        secret:
+          secretName: filecoin
+      - name: filecoin-parameter-cache
+        hostPath:
+          path: /home/ognots/filecoin-proof-parameters
+      - name: config-volume
+        configMap:
+          name: miner-configs
+  volumeClaimTemplates:
+  - metadata:
+      name: filecoin-storage-miners
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "microk8s-hostpath"
+      resources:
+        requests:
+          storage: 50Gi
+
+
+
