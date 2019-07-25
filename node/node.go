@@ -27,7 +27,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
-	p2pmetrics "github.com/libp2p/go-libp2p-metrics"
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	libp2ppeer "github.com/libp2p/go-libp2p-core/peer"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-routing"
