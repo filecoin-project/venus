@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -271,7 +272,7 @@ func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan 
 }
 
 // NetworkPing sends echo request packets over the network.
-func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
+func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Result, error) {
 	return api.network.Pinger.Ping(ctx, pid)
 }
 
