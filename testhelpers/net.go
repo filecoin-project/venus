@@ -144,7 +144,7 @@ func (f *TestFetcher) AddSourceBlocks(blocks ...*types.Block) {
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
 	for {

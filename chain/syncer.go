@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -327,7 +328,7 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey) (err error) {
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey, from peer.ID) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tsKey)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
 	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
@@ -377,7 +378,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	switch syncer.syncMode {
 	case Syncing:
 		// No time-out here, this can fetch an arbitrarily long chain
-		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, syncDoneCb)
+		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, from, syncDoneCb)
 		if err != nil {
 			return err
 		}
@@ -386,7 +387,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
 		defer cancel()
 
-		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, catchDoneCb)
+		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, from, catchDoneCb)
 		if err != nil {
 			return err
 		}

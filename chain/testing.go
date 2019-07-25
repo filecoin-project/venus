@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -368,7 +369,7 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
-func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
+func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, from peer.ID, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var tips []types.TipSet
 	for {
 		tip, err := f.GetTipSet(key)
