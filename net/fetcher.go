@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -18,7 +19,7 @@ type Fetcher interface {
 	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
 	// this includes the provided `ts`. The TipSet that evaluates to true when
 	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
-	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
 // BitswapFetcher is used to fetch data over the network.  It is implemented with
@@ -39,7 +40,7 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
-func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
 	for {
