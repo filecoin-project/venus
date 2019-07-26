@@ -2,13 +2,14 @@ package block_test
 
 import (
 	"context"
+	"testing"
+
 	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	ast "github.com/stretchr/testify/assert"
 	req "github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/node"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -30,7 +31,6 @@ func TestAPI_MineOnce(t *testing.T) {
 	assert := ast.New(t)
 	require := req.New(t)
 	ctx := context.Background()
-
 	api, nd := newAPI(t, assert)
 	require.NoError(nd.Start(ctx))
 	defer nd.Stop(ctx)
@@ -81,7 +81,6 @@ func TestMiningAPI_MiningStop(t *testing.T) {
 	require := req.New(t)
 	ctx := context.Background()
 	api, nd := newAPI(t, assert)
-
 	require.NoError(nd.Start(ctx))
 	defer nd.Stop(ctx)
 
@@ -109,7 +108,28 @@ func TestMiningAPI_MiningAddress(t *testing.T) {
 	ast.Equal(t, minerAddress, maybeAddress)
 
 	nd.StopMining(ctx)
+}
 
+func TestMiningAPI_MiningTogether(t *testing.T) {
+	tf.UnitTest(t)
+
+	assert := ast.New(t)
+	require := req.New(t)
+	ctx := context.Background()
+	api, nd := newAPI(t, assert)
+	require.NoError(nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	require.NoError(api.MiningStart(ctx))
+	assert.True(nd.IsMining())
+	blk, err := api.MiningOnce(ctx)
+	require.Nil(blk)
+	require.Contains(err.Error(), "Node is already mining")
+	nd.StopMining(ctx)
+	blk, err = api.MiningOnce(ctx)
+	require.Nil(err)
+	require.NotNil(blk)
+	assert.NotNil(blk.Ticket)
 }
 
 func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
