@@ -81,6 +81,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
 			BeatPeriod:      "3s",
@@ -109,6 +110,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      "",
 			BeatPeriod:      "3s",
@@ -160,6 +162,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
 			BeatPeriod:      "1s",

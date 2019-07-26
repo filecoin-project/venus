@@ -585,14 +585,14 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 
 	// start the primary heartbeat service
 	if len(node.Repo.Config().Heartbeat.BeatTarget) > 0 {
-		hbs := metrics.NewHeartbeatService(node.Host(), node.Repo.Config().Heartbeat, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
+		hbs := metrics.NewHeartbeatService(node.Host(), node.ChainReader.GenesisCid(), node.Repo.Config().Heartbeat, node.PorcelainAPI.ChainHead, metrics.WithMinerAddressGetter(mag))
 		go hbs.Start(ctx)
 	}
 
 	// check if we want to connect to an alert service. An alerting service is a heartbeat
 	// service that can trigger alerts based on the contents of heatbeats.
 	if alertTarget := os.Getenv("FIL_HEARTBEAT_ALERTS"); len(alertTarget) > 0 {
-		ahbs := metrics.NewHeartbeatService(node.Host(), &config.HeartbeatConfig{
+		ahbs := metrics.NewHeartbeatService(node.Host(), node.ChainReader.GenesisCid(), &config.HeartbeatConfig{
 			BeatTarget:      alertTarget,
 			BeatPeriod:      "10s",
 			ReconnectPeriod: "10s",
