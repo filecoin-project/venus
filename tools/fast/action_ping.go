@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/commands"
 )

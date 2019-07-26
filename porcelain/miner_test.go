@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"

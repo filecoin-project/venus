@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"

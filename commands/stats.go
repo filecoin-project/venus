@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 )
 
 var statsCmd = &cmds.Command{

@@ -7,8 +7,7 @@ import (
 	"time"
 
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	"github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -16,9 +15,9 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
-func panicConnect(_ context.Context, _ pstore.PeerInfo) error { panic("shouldn't be called") }
-func nopPeers() []peer.ID                                     { return []peer.ID{} }
-func panicPeers() []peer.ID                                   { panic("shouldn't be called") }
+func panicConnect(_ context.Context, _ peer.AddrInfo) error { panic("shouldn't be called") }
+func nopPeers() []peer.ID                                   { return []peer.ID{} }
+func panicPeers() []peer.ID                                 { panic("shouldn't be called") }
 
 type blankValidator struct{}
 
@@ -36,7 +35,7 @@ func TestBootstrapperStartAndStop(t *testing.T) {
 	// that canceling the context causes it to stop being called. Do this
 	// by stubbing out Bootstrap to keep a count of the number of times it
 	// is called and to cancel its context after several calls.
-	b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, fakeRouter, 0, 200*time.Millisecond)
+	b := NewBootstrapper([]peer.AddrInfo{}, fakeHost, fakeDialer, fakeRouter, 0, 200*time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -73,7 +72,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 		ctx := context.Background()
 
-		b := NewBootstrapper([]pstore.PeerInfo{}, fakeHost, fakeDialer, fakeRouter, 1, time.Minute)
+		b := NewBootstrapper([]peer.AddrInfo{}, fakeHost, fakeDialer, fakeRouter, 1, time.Minute)
 		currentPeers := []peer.ID{th.RequireRandomPeerID(t)} // Have 1
 		b.ctx = ctx
 		assert.NotPanics(t, func() { b.bootstrap(currentPeers) })
@@ -81,7 +80,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 
 	var lk sync.Mutex
 	var connectCount int
-	countingConnect := func(context.Context, pstore.PeerInfo) error {
+	countingConnect := func(context.Context, peer.AddrInfo) error {
 		lk.Lock()
 		defer lk.Unlock()
 		connectCount++
@@ -96,7 +95,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		fakeDialer := &th.FakeDialer{PeersImpl: panicPeers}
 		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 
-		bootstrapPeers := []pstore.PeerInfo{
+		bootstrapPeers := []peer.AddrInfo{
 			{ID: th.RequireRandomPeerID(t)},
 			{ID: th.RequireRandomPeerID(t)},
 		}
@@ -119,7 +118,7 @@ func TestBootstrapperBootstrap(t *testing.T) {
 		fakeRouter := offroute.NewOfflineRouter(repo.NewInMemoryRepo().Datastore(), blankValidator{})
 
 		connectedPeerID := th.RequireRandomPeerID(t)
-		bootstrapPeers := []pstore.PeerInfo{
+		bootstrapPeers := []peer.AddrInfo{
 			{ID: connectedPeerID},
 		}
 

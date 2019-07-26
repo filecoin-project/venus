@@ -9,9 +9,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
-	notif "github.com/libp2p/go-libp2p-routing/notifications"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 )
 
 const (
@@ -54,7 +53,7 @@ var queryDhtCmd = &cmds.Command{
 		}
 
 		ctx, cancel := context.WithCancel(req.Context)
-		ctx, events := notif.RegisterForQueryEvents(ctx)
+		ctx, events := routing.RegisterForQueryEvents(ctx)
 
 		closestPeers, err := GetPorcelainAPI(env).NetworkGetClosestPeers(ctx, string(id))
 		if err != nil {
@@ -65,9 +64,9 @@ var queryDhtCmd = &cmds.Command{
 		go func() {
 			defer cancel()
 			for p := range closestPeers {
-				notif.PublishQueryEvent(ctx, &notif.QueryEvent{
+				routing.PublishQueryEvent(ctx, &routing.QueryEvent{
 					ID:   p,
-					Type: notif.FinalPeer,
+					Type: routing.FinalPeer,
 				})
 			}
 		}()
@@ -81,9 +80,9 @@ var queryDhtCmd = &cmds.Command{
 		return nil
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *notif.QueryEvent) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *routing.QueryEvent) error {
 			pfm := pfuncMap{
-				notif.PeerResponse: func(obj *notif.QueryEvent, out io.Writer, verbose bool) {
+				routing.PeerResponse: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
 					for _, p := range obj.Responses {
 						fmt.Fprintf(out, "%s\n", p.ID.Pretty()) // nolint: errcheck
 					}
@@ -94,7 +93,7 @@ var queryDhtCmd = &cmds.Command{
 			return nil
 		}),
 	},
-	Type: notif.QueryEvent{},
+	Type: routing.QueryEvent{},
 }
 
 var findProvidersDhtCmd = &cmds.Command{
@@ -121,7 +120,7 @@ var findProvidersDhtCmd = &cmds.Command{
 		}
 
 		ctx, cancel := context.WithTimeout(req.Context, time.Minute)
-		ctx, events := notif.RegisterForQueryEvents(ctx)
+		ctx, events := routing.RegisterForQueryEvents(ctx)
 
 		pchan := GetPorcelainAPI(env).NetworkFindProvidersAsync(ctx, c, numProviders)
 
@@ -135,9 +134,9 @@ var findProvidersDhtCmd = &cmds.Command{
 				// system so that they can be read alongside
 				// other routing events which are output in
 				// verbose mode but otherwise filtered.
-				notif.PublishQueryEvent(ctx, &notif.QueryEvent{
-					Type:      notif.Provider,
-					Responses: []*pstore.PeerInfo{&np},
+				routing.PublishQueryEvent(ctx, &routing.QueryEvent{
+					Type:      routing.Provider,
+					Responses: []*peer.AddrInfo{&np},
 				})
 			}
 		}()
@@ -150,14 +149,14 @@ var findProvidersDhtCmd = &cmds.Command{
 		return nil
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *notif.QueryEvent) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *routing.QueryEvent) error {
 			pfm := pfuncMap{
-				notif.FinalPeer: func(obj *notif.QueryEvent, out io.Writer, verbose bool) {
+				routing.FinalPeer: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
 					if verbose {
 						fmt.Fprintf(out, "* closest peer %s\n", obj.ID) // nolint: errcheck
 					}
 				},
-				notif.Provider: func(obj *notif.QueryEvent, out io.Writer, verbose bool) {
+				routing.Provider: func(obj *routing.QueryEvent, out io.Writer, verbose bool) {
 					prov := obj.Responses[0]
 					if verbose {
 						fmt.Fprintf(out, "provider: ") // nolint: errcheck
@@ -177,11 +176,11 @@ var findProvidersDhtCmd = &cmds.Command{
 			return nil
 		}),
 	},
-	Type: notif.QueryEvent{},
+	Type: routing.QueryEvent{},
 }
 
-type printFunc func(obj *notif.QueryEvent, out io.Writer, verbose bool)
-type pfuncMap map[notif.QueryEventType]printFunc
+type printFunc func(obj *routing.QueryEvent, out io.Writer, verbose bool)
+type pfuncMap map[routing.QueryEventType]printFunc
 
 // printEvent writes a libp2p event to a user friendly output on the out writer.
 // Note that this function is only needed to enable the output logging of
@@ -189,7 +188,7 @@ type pfuncMap map[notif.QueryEventType]printFunc
 // the verbose option this can be removed. However if we keep the verbose option
 // in findprovs and on any other dht subcommands we decide to copy over from
 // ipfs this function will stay needed.
-func printEvent(obj *notif.QueryEvent, out io.Writer, verbose bool, override pfuncMap) {
+func printEvent(obj *routing.QueryEvent, out io.Writer, verbose bool, override pfuncMap) {
 	if verbose {
 		fmt.Fprintf(out, "%s: ", time.Now().Format("15:04:05.000")) // nolint: errcheck
 	}
@@ -202,17 +201,17 @@ func printEvent(obj *notif.QueryEvent, out io.Writer, verbose bool, override pfu
 	}
 
 	switch obj.Type {
-	case notif.SendingQuery:
+	case routing.SendingQuery:
 		if verbose {
 			fmt.Fprintf(out, "* querying %s\n", obj.ID) // nolint: errcheck
 		}
-	case notif.Value:
+	case routing.Value:
 		if verbose {
 			fmt.Fprintf(out, "got value: '%s'\n", obj.Extra) // nolint: errcheck
 		} else {
 			fmt.Fprint(out, obj.Extra) // nolint: errcheck
 		}
-	case notif.PeerResponse:
+	case routing.PeerResponse:
 		if verbose {
 			fmt.Fprintf(out, "* %s says use ", obj.ID) // nolint: errcheck
 			for _, p := range obj.Responses {
@@ -220,19 +219,19 @@ func printEvent(obj *notif.QueryEvent, out io.Writer, verbose bool, override pfu
 			}
 			fmt.Fprintln(out) // nolint: errcheck
 		}
-	case notif.QueryError:
+	case routing.QueryError:
 		if verbose {
 			fmt.Fprintf(out, "error: %s\n", obj.Extra) // nolint: errcheck
 		}
-	case notif.DialingPeer:
+	case routing.DialingPeer:
 		if verbose {
 			fmt.Fprintf(out, "dialing peer: %s\n", obj.ID) // nolint: errcheck
 		}
-	case notif.AddingPeer:
+	case routing.AddingPeer:
 		if verbose {
 			fmt.Fprintf(out, "adding peer to query: %s\n", obj.ID) // nolint: errcheck
 		}
-	case notif.FinalPeer:
+	case routing.FinalPeer:
 	default:
 		if verbose {
 			fmt.Fprintf(out, "unrecognized event type: %d\n", obj.Type) // nolint: errcheck

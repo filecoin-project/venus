@@ -21,7 +21,7 @@ import (
 var reorgCnt *metrics.Int64Counter
 
 func init() {
-	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occured.")
+	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
 
 // The amount of time the syncer will wait while fetching the blocks of a

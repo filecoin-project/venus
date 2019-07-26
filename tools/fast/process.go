@@ -10,7 +10,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	fcconfig "github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
