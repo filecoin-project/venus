@@ -771,6 +771,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
+	_, err = node.PorcelainAPI.ActorGet(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "failed to get miner actor")
+	}
 
 	// ensure we have a sector builder
 	if node.SectorBuilder() == nil {
