@@ -135,41 +135,6 @@ func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowD
 	return dealResponse, err
 }
 
-func TestDuplicateDealsOld(t *testing.T) {
-	tf.IntegrationTest(t)
-
-	miner := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-	).Start()
-	defer miner.ShutdownSuccess()
-
-	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
-	defer client.ShutdownSuccess()
-
-	miner.RunSuccess("mining start")
-	miner.UpdatePeerID()
-
-	miner.ConnectSuccess(client)
-
-	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
-	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
-
-	t.Run("propose a duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
-		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
-		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
-	})
-
-	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
-		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDuplicateDeal].Error())
-		assert.Equal(t, expectedError, proposeDealOutput)
-	})
-}
-
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	tf.IntegrationTest(t)
 
