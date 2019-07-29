@@ -75,6 +75,6 @@ func assertPowerOutput(ctx context.Context, t *testing.T, d *fast.Filecoin, expM
 	minerAddr := requireGetMinerAddress(ctx, t, d)
 	actualMinerPwr, actualTotalPwr, err := d.MinerPower(ctx, minerAddr)
 	require.NoError(t, err)
-	assert.Equal(t, actualMinerPwr, expMinerPwr, "for miner power")
-	assert.Equal(t, actualTotalPwr, expTotalPwr, "for total power")
+	assert.Equal(t, actualMinerPwr.Int64(), expMinerPwr, "for miner power")
+	assert.Equal(t, actualTotalPwr.Int64(), expTotalPwr, "for total power")
 }

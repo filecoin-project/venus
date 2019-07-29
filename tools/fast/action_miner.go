@@ -69,25 +69,25 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 
 // MinerPower runs the `miner power` command against the filecoin process and returns the result
 // as two *big.Ints
-func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (int64, int64, error) {
+func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (*big.Int, *big.Int, error) {
 	var out string
 
 	sMinerAddr := minerAddr.String()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", sMinerAddr); err != nil {
-		return 0, 0, err
+		return big.NewInt(0), big.NewInt(0), err
 	}
 
 	powers := strings.Split(out, " / ")
 	minerPwr, err := strconv.ParseInt(powers[0], 10, 64)
 	if err != nil {
-		return 0, 0, err
+		return big.NewInt(0), big.NewInt(0), err
 	}
 	totalPwr, err := strconv.ParseInt(powers[1], 10, 64)
 	if err != nil {
-		return 0, 0, err
+		return big.NewInt(0), big.NewInt(0), err
 	}
-	return minerPwr, totalPwr, nil
+	return big.NewInt(minerPwr), big.NewInt(totalPwr), nil
 }
 
 // MinerSetPrice runs the `miner set-price` command against the filecoin process
