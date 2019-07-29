@@ -402,7 +402,7 @@ type syncStoreReader interface {
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
-	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(types.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain store.
@@ -419,7 +419,7 @@ func verifyTip(t *testing.T, store syncStoreReader, tip types.TipSet, stateRoot 
 	assert.NoError(t, err)
 	h, err := tip.Height()
 	assert.NoError(t, err)
-	childTsasSlice, err := store.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
+	childTsasSlice, err := store.GetTipSetAndStatesByParentsAndHeight(parent, h)
 	assert.NoError(t, err)
 	assert.True(t, containsTipSet(childTsasSlice, tip))
 }

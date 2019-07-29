@@ -274,7 +274,7 @@ func requirePutTestChain(t *testing.T, chainStore *chain.Store, dstP *SyncerTest
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, link4Tsas))
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey string, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey types.TipSetKey, h uint64) []*chain.TipSetAndState {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
@@ -409,11 +409,11 @@ func TestGetByParent(t *testing.T) {
 	chain := newChainStore(dstP)
 
 	requirePutTestChain(t, chain, dstP)
-	pkg := types.TipSetKey{}.String() // empty cid set is dstP.genesis pIDs
-	pk1 := dstP.genTS.String()
-	pk2 := dstP.link1.String()
-	pk3 := dstP.link2.String()
-	pk4 := dstP.link3.String()
+	pkg := types.TipSetKey{} // empty cid set is dstP.genesis pIDs
+	pk1 := dstP.genTS.Key()
+	pk2 := dstP.link1.Key()
+	pk3 := dstP.link2.Key()
+	pk4 := dstP.link3.Key()
 
 	gotG := requireGetTsasByParentAndHeight(t, chain, pkg, uint64(0))
 	got1 := requireGetTsasByParentAndHeight(t, chain, pk1, uint64(1))
@@ -457,7 +457,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	}
 
 	requirePutTestChain(t, chainStore, dstP)
-	pk1 := dstP.genTS.String()
+	pk1 := dstP.genTS.Key()
 	// give one parent multiple children and then query
 	newBlk := th.RequireMkFakeChild(t, fakeChildParams)
 	newChild := th.RequireNewTipSet(t, newBlk)
@@ -609,7 +609,7 @@ func TestLoadAndReboot(t *testing.T) {
 	assert.Equal(t, dstP.link2, got2)
 
 	// Get another by parent key
-	got4 := requireGetTsasByParentAndHeight(t, rebootChain, dstP.link3.String(), uint64(6))
+	got4 := requireGetTsasByParentAndHeight(t, rebootChain, dstP.link3.Key(), uint64(6))
 	assert.Equal(t, 1, len(got4))
 	assert.Equal(t, dstP.link4, got4[0].TipSet)
 

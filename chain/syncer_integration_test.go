@@ -316,7 +316,7 @@ func initGenesis(minerAddress address.Address, minerOwnerAddress address.Address
 
 type requireTsAddedChainStore interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(types.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
 }
 
 func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
@@ -328,7 +328,7 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	require.Equal(t, ts, gotTs)
 	parent, err := ts.Parents()
 	require.NoError(t, err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
+	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent, h)
 	require.NoError(t, err)
 	require.True(t, containsTipSet(childTsasSlice, ts))
 }

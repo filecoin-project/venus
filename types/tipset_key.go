@@ -1,6 +1,9 @@
 package types
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -126,6 +129,17 @@ func (s TipSetKey) String() string {
 		out = fmt.Sprintf("%s %s", out, it.Value().String())
 	}
 	return out + " }"
+}
+
+// Serialize returns a serialize string of TipSetKey use gob and base64.
+func (s TipSetKey) Serialize() string {
+	b := bytes.Buffer{}
+	e := gob.NewEncoder(&b)
+	err := e.Encode(s)
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(b.Bytes())
 }
 
 // MarshalJSON serializes the key to JSON.

@@ -76,10 +76,10 @@ func (ti *TipIndex) Put(tsas *TipSetAndState) error {
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipIndex) Get(tsKey string) (*TipSetAndState, error) {
+func (ti *TipIndex) Get(tsKey types.TipSetKey) (*TipSetAndState, error) {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
-	tsas, ok := ti.tsasByID[tsKey]
+	tsas, ok := ti.tsasByID[tsKey.String()]
 	if !ok {
 		return nil, ErrNotFound
 	}
@@ -87,7 +87,7 @@ func (ti *TipIndex) Get(tsKey string) (*TipSetAndState, error) {
 }
 
 // GetTipSet returns the tipset from func (ti *TipIndex) Get(tsKey string)
-func (ti *TipIndex) GetTipSet(tsKey string) (types.TipSet, error) {
+func (ti *TipIndex) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
 		return types.UndefTipSet, err
@@ -96,7 +96,7 @@ func (ti *TipIndex) GetTipSet(tsKey string) (types.TipSet, error) {
 }
 
 // GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipIndex) Get(tsKey string).
-func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid, error) {
+func (ti *TipIndex) GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
 		return cid.Cid{}, err
@@ -106,17 +106,17 @@ func (ti *TipIndex) GetTipSetStateRoot(tsKey string) (cid.Cid, error) {
 
 // Has returns true iff the tipset with the input ID is stored in
 // the TipIndex.
-func (ti *TipIndex) Has(tsKey string) bool {
+func (ti *TipIndex) Has(tsKey types.TipSetKey) bool {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
-	_, ok := ti.tsasByID[tsKey]
+	_, ok := ti.tsasByID[tsKey.String()]
 	return ok
 }
 
 // GetByParentsAndHeight returns the all tipsets and states stored in the TipIndex
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipIndex) GetByParentsAndHeight(pKey string, h uint64) ([]*TipSetAndState, error) {
-	key := makeKey(pKey, h)
+func (ti *TipIndex) GetByParentsAndHeight(pKey types.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsasByID, ok := ti.tsasByParentsAndHeight[key]
@@ -133,8 +133,8 @@ func (ti *TipIndex) GetByParentsAndHeight(pKey string, h uint64) ([]*TipSetAndSt
 // HasByParentsAndHeight returns true iff there exist tipsets, and states,
 // tracked in the TipIndex such that the parent ID of these tipsets equals the
 // input.
-func (ti *TipIndex) HasByParentsAndHeight(pKey string, h uint64) bool {
-	key := makeKey(pKey, h)
+func (ti *TipIndex) HasByParentsAndHeight(pKey types.TipSetKey, h uint64) bool {
+	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	_, ok := ti.tsasByParentsAndHeight[key]
