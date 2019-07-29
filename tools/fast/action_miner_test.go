@@ -7,7 +7,6 @@ import (
 	"time"
 
 	files "github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 
@@ -21,7 +20,6 @@ import (
 
 func TestFilecoin_MinerPower(t *testing.T) {
 	tf.IntegrationTest(t)
-	logging.SetDebugLogging()
 
 	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -59,7 +57,7 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 	minerAddress := requireGetMinerAddress(ctx, t, minerDaemon)
 
 	dealDuration := uint64(5)
-	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration, true)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
 	require.NoError(t, err)
 	return dealResponse, dealDuration
 }
