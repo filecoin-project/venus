@@ -1046,10 +1046,22 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		log.Errorf("could not get owner address of miner actor")
 		return nil, err
 	}
-	return mining.NewDefaultWorker(
-		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
-		node.Blockstore, minerAddr, minerOwnerAddr, minerWorker, node.Wallet,
-		node.PorcelainAPI), nil
+	return mining.NewDefaultWorker(mining.WorkerParameters{
+		API: node.PorcelainAPI,
+
+		MinerAddr:      minerAddr,
+		MinerOwnerAddr: minerOwnerAddr,
+		MinerWorker:    minerWorker,
+		WorkerSigner:   node.Wallet,
+
+		GetStateTree: node.getStateTree,
+		GetWeight:    node.getWeight,
+		GetAncestors: node.getAncestors,
+
+		MessageSource: node.Inbox.Pool(),
+		Processor:     processor,
+		PowerTable:    node.PowerTable,
+		Blockstore:    node.Blockstore}), nil
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.
