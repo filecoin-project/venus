@@ -9,17 +9,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-files"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	"github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListAsks(t *testing.T) {
@@ -77,6 +79,69 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 }
 
 func TestDuplicateDeals(t *testing.T) {
+	tf.IntegrationTest(t)
+	logging.SetDebugLogging()
+
+	// Give the deal time to complete
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
+	})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+	clientDaemon := env.GenesisMiner
+	require.NoError(t, clientDaemon.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, clientDaemon.MiningStop(ctx))
+	}()
+
+	minerDaemon := env.RequireNewNodeWithFunds(1111)
+
+	duration := uint64(5)
+	collateral := big.NewInt(int64(100))
+	askPrice := big.NewFloat(0.5)
+	expiry := big.NewInt(int64(10000))
+
+	t.Run("Can make a second deal if --allow-duplicates is passed", func(t *testing.T) {
+		ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry)
+		require.NoError(t, err)
+		_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+
+		require.NoError(t, err)
+
+		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+		assert.NoError(t, err)
+		require.NotNil(t, dealResp)
+		assert.Equal(t, storagedeal.Staged, dealResp.State)
+	})
+	t.Run("Cannot make a second deal --allow-duplicates is NOT passed", func(t *testing.T) {
+		ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry)
+		require.NoError(t, err)
+		_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+
+		require.NoError(t, err)
+
+		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, false, minerDaemon, clientDaemon, ask.ID, duration)
+		assert.Error(t, err)
+		assert.Nil(t, dealResp)
+	})
+}
+
+// requireMakeDeal creates a deal with allowDuplicates set to true
+func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*storagedeal.Response, error) {
+	f := files.NewBytesFile([]byte("HODLHODLHODL"))
+	dataCid, err := clientDaemon.ClientImport(ctx, f)
+	require.NoError(t, err)
+
+	var minerAddress address.Address
+	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
+	require.NoError(t, err)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, askID, duration, allowDupes)
+	return dealResponse, err
+}
+
+func TestDuplicateDealsOld(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	miner := th.NewDaemon(t,

@@ -1,6 +1,7 @@
 package fast
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -197,6 +198,16 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 // LastCmdStdErr is the standard error output from the last command run
 func (f *Filecoin) LastCmdStdErr() io.ReadCloser {
 	return f.lastCmdOutput.Stderr()
+}
+
+// LastCmdStdErrStr is a shortcut to just get the output as string
+func (f *Filecoin) LastCmdStdErrStr() string {
+	buf := new(bytes.Buffer)
+	out := f.LastCmdStdErr()
+	if _, err := buf.ReadFrom(out); err != nil {
+		return "Problem reading from LastCmdStdErr buffer"
+	}
+	return buf.String()
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.

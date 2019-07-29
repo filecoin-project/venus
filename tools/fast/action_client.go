@@ -44,8 +44,16 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 	sAsk := fmt.Sprintf("%d", ask)
 	sDuration := fmt.Sprintf("%d", duration)
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration); err != nil {
-		return nil, err
+	// RunCmd does not allow empty arguments (e.g. in the cast that allowDuplicates is false, use an
+	// empty string as a param).
+	if allowDuplicates {
+		if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "propose-storage-deal", "--allow-duplicates", sMiner, sData, sAsk, sDuration); err != nil {
+			return nil, err
+		}
 	}
 	return &out, nil
 }
