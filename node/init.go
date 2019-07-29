@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	ci "github.com/libp2p/go-libp2p-crypto"
+	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"

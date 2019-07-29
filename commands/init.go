@@ -14,7 +14,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"

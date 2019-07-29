@@ -93,32 +93,30 @@ type DefaultWorker struct {
 	blockstore    blockstore.Blockstore
 }
 
-// NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messageSource MessageSource,
-	getStateTree GetStateTree,
-	getWeight GetWeight,
-	getAncestors GetAncestors,
-	processor MessageApplier,
-	powerTable consensus.PowerTableView,
-	bs blockstore.Blockstore,
-	miner address.Address,
-	minerOwner address.Address,
-	minerWorker address.Address,
-	workerSigner consensus.TicketSigner,
-	api workerPorcelainAPI) *DefaultWorker {
+// WorkerParameters use for NewDefaultWorker parameters
+type WorkerParameters struct {
+	API workerPorcelainAPI
 
-	w := NewDefaultWorkerWithDeps(messageSource,
-		getStateTree,
-		getWeight,
-		getAncestors,
-		processor,
-		powerTable,
-		bs,
-		miner,
-		minerOwner,
-		minerWorker,
-		workerSigner,
-		api,
+	MinerAddr      address.Address
+	MinerOwnerAddr address.Address
+	MinerWorker    address.Address
+	WorkerSigner   consensus.TicketSigner
+
+	// consensus things
+	GetStateTree GetStateTree
+	GetWeight    GetWeight
+	GetAncestors GetAncestors
+
+	// core filecoin things
+	MessageSource MessageSource
+	Processor     MessageApplier
+	PowerTable    consensus.PowerTableView
+	Blockstore    blockstore.Blockstore
+}
+
+// NewDefaultWorker instantiates a new Worker.
+func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
+	w := NewDefaultWorkerWithDeps(parameters,
 		func() {})
 
 	// TODO: create real PoST.
@@ -129,33 +127,22 @@ func NewDefaultWorker(messageSource MessageSource,
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messageSource MessageSource,
-	getStateTree GetStateTree,
-	getWeight GetWeight,
-	getAncestors GetAncestors,
-	processor MessageApplier,
-	powerTable consensus.PowerTableView,
-	bs blockstore.Blockstore,
-	miner address.Address,
-	minerOwner address.Address,
-	minerWorker address.Address,
-	workerSigner consensus.TicketSigner,
-	api workerPorcelainAPI,
+func NewDefaultWorkerWithDeps(parameters WorkerParameters,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		api:            api,
-		getStateTree:   getStateTree,
-		getWeight:      getWeight,
-		getAncestors:   getAncestors,
-		messageSource:  messageSource,
-		processor:      processor,
-		powerTable:     powerTable,
-		blockstore:     bs,
+		api:            parameters.API,
+		getStateTree:   parameters.GetStateTree,
+		getWeight:      parameters.GetWeight,
+		getAncestors:   parameters.GetAncestors,
+		messageSource:  parameters.MessageSource,
+		processor:      parameters.Processor,
+		powerTable:     parameters.PowerTable,
+		blockstore:     parameters.Blockstore,
 		createPoSTFunc: createPoST,
-		minerAddr:      miner,
-		minerOwnerAddr: minerOwner,
-		minerWorker:    minerWorker,
-		workerSigner:   workerSigner,
+		minerAddr:      parameters.MinerAddr,
+		minerOwnerAddr: parameters.MinerOwnerAddr,
+		minerWorker:    parameters.MinerWorker,
+		workerSigner:   parameters.WorkerSigner,
 	}
 }
 

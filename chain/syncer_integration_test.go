@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -251,6 +251,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
 
 	fetcher := th.NewTestFetcher()
+	fetcher.AddSourceBlocks(calcGenBlk)
 	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
@@ -329,7 +330,7 @@ func TestLoadFork(t *testing.T) {
 	// Set up chain store to have standard chain up to dstP.link2
 	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
 	cids2 := requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
-	err := syncer.HandleNewTipset(ctx, cids2)
+	err := syncer.HandleNewTipset(ctx, cids2, peer.ID(""))
 	require.NoError(t, err)
 
 	// Now sync the store with a heavier fork, forking off dstP.link1.
@@ -380,7 +381,7 @@ func TestLoadFork(t *testing.T) {
 	_ = requirePutBlocks(t, blockSource, forklink1.ToSlice()...)
 	_ = requirePutBlocks(t, blockSource, forklink2.ToSlice()...)
 	forkHead := requirePutBlocks(t, blockSource, forklink3.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, forkHead)
+	err = syncer.HandleNewTipset(ctx, forkHead, peer.ID(""))
 	require.NoError(t, err)
 	requireHead(t, chainStore, forklink3)
 
@@ -402,7 +403,7 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the repo is trimmed
 	// of non-heaviest chain blocks
 	cids3 := requirePutBlocks(t, blockSource, dstP.link3.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cids3)
+	err = loadSyncer.HandleNewTipset(ctx, cids3, peer.ID(""))
 	assert.Error(t, err)
 
 	// Test that the syncer can sync a block on the heaviest chain
@@ -411,7 +412,7 @@ func TestLoadFork(t *testing.T) {
 	forklink4blk1 := th.RequireMkFakeChild(t, fakeChildParams)
 	forklink4 := th.RequireNewTipSet(t, forklink4blk1)
 	cidsFork4 := requirePutBlocks(t, blockSource, forklink4.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cidsFork4)
+	err = loadSyncer.HandleNewTipset(ctx, cidsFork4, peer.ID(""))
 	assert.NoError(t, err)
 }
 
@@ -545,7 +546,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(t, blockSource, f1b1, f2b1)
-	err = syncer.HandleNewTipset(ctx, sharedCids)
+	err = syncer.HandleNewTipset(ctx, sharedCids, peer.ID(""))
 	require.NoError(t, err)
 	assertHead(t, chainStore, tsShared)
 	measuredWeight, err := wFun(requireHeadTipset(t, chainStore))
@@ -577,7 +578,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f1Cids)
+	err = syncer.HandleNewTipset(ctx, f1Cids, peer.ID(""))
 	require.NoError(t, err)
 	assertHead(t, chainStore, f1)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
@@ -602,7 +603,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f2Cids)
+	err = syncer.HandleNewTipset(ctx, f2Cids, peer.ID(""))
 	require.NoError(t, err)
 	assertHead(t, chainStore, f2)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))

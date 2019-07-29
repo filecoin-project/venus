@@ -25,7 +25,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )

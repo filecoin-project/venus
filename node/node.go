@@ -24,13 +24,13 @@ import (
 	"github.com/libp2p/go-libp2p"
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
 	circuit "github.com/libp2p/go-libp2p-circuit"
-	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-core/host"
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
-	p2pmetrics "github.com/libp2p/go-libp2p-metrics"
-	libp2ppeer "github.com/libp2p/go-libp2p-peer"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p-routing"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
@@ -89,7 +89,7 @@ type nodeChainReader interface {
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey) error
+	HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey, from peer.ID) error
 }
 
 // Node represents a full Filecoin node.
@@ -177,7 +177,7 @@ type Node struct {
 	OfflineMode bool
 
 	// Router is a router from IPFS
-	Router routing.IpfsRouting
+	Router routing.Routing
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -281,7 +281,7 @@ func readGenesisCid(ds datastore.Datastore) (cid.Cid, error) {
 
 // buildHost determines if we are publically dialable.  If so use public
 // Address, if not configure node to announce relay address.
-func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.IpfsRouting, error)) (host.Host, error) {
+func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their
 	// own dialability by having this node attempt to dial them.
@@ -341,13 +341,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	validator := blankValidator{}
 
 	var peerHost host.Host
-	var router routing.IpfsRouting
+	var router routing.Routing
 
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	nc.Libp2pOpts = append(nc.Libp2pOpts, libp2p.BandwidthReporter(bandwidthTracker))
 
 	if !nc.OfflineMode {
-		makeDHT := func(h host.Host) (routing.IpfsRouting, error) {
+		makeDHT := func(h host.Host) (routing.Routing, error) {
 			r, err := dht.New(
 				ctx,
 				h,
@@ -414,7 +414,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// Set up libp2p network
-	fsub, err := libp2pps.NewFloodSub(ctx, peerHost)
+	// TODO PubSub requires strict message signing, disabled for now
+	// reference issue: #3124
+	fsub, err := libp2pps.NewFloodSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
@@ -481,7 +483,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// Bootstrapper maintains connections to some subset of addresses
 	ba := nd.Repo.Config().Bootstrap.Addresses
-	bpi, err := net.PeerAddrsToPeerInfos(ba)
+	bpi, err := net.PeerAddrsToAddrInfo(ba)
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
@@ -515,9 +517,9 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// Start up 'hello' handshake service
-	syncCallBack := func(pid libp2ppeer.ID, cids []cid.Cid, height uint64) {
+	syncCallBack := func(pid peer.ID, cids []cid.Cid, height uint64) {
 		cidSet := types.NewTipSetKey(cids...)
-		err := node.Syncer.HandleNewTipset(context.Background(), cidSet)
+		err := node.Syncer.HandleNewTipset(context.Background(), cidSet, pid)
 		if err != nil {
 			log.Infof("error handling blocks: %s", cidSet.String())
 		}
@@ -768,6 +770,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 	minerAddr, err := node.miningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
+	}
+	_, err = node.PorcelainAPI.ActorGet(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "failed to get miner actor")
 	}
 
 	// ensure we have a sector builder
@@ -1040,10 +1046,22 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		log.Errorf("could not get owner address of miner actor")
 		return nil, err
 	}
-	return mining.NewDefaultWorker(
-		node.Inbox.Pool(), node.getStateTree, node.getWeight, node.getAncestors, processor, node.PowerTable,
-		node.Blockstore, minerAddr, minerOwnerAddr, minerWorker, node.Wallet,
-		node.PorcelainAPI), nil
+	return mining.NewDefaultWorker(mining.WorkerParameters{
+		API: node.PorcelainAPI,
+
+		MinerAddr:      minerAddr,
+		MinerOwnerAddr: minerOwnerAddr,
+		MinerWorker:    minerWorker,
+		WorkerSigner:   node.Wallet,
+
+		GetStateTree: node.getStateTree,
+		GetWeight:    node.getWeight,
+		GetAncestors: node.getAncestors,
+
+		MessageSource: node.Inbox.Pool(),
+		Processor:     processor,
+		PowerTable:    node.PowerTable,
+		Blockstore:    node.Blockstore}), nil
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.

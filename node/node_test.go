@@ -7,6 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
@@ -14,12 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/types"
-
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/libp2p/go-libp2p-peerstore"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestNodeConstruct(t *testing.T) {
@@ -39,7 +39,7 @@ func TestNodeNetworking(t *testing.T) {
 	nds := node.MakeNodesUnstarted(t, 2, false)
 	nd1, nd2 := nds[0], nds[1]
 
-	pinfo := peerstore.PeerInfo{
+	pinfo := peer.AddrInfo{
 		ID:    nd2.Host().ID(),
 		Addrs: nd2.Host().Addrs(),
 	}
@@ -140,6 +140,8 @@ func TestNodeStartMining(t *testing.T) {
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
+	// Start mining give error for fail to get miner actor from the heaviest tipset stateroot
+	assert.Contains(t, minerNode.StartMining(ctx).Error(), "failed to get miner actor")
 	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), nil)
 	assert.NoError(t, err)
 

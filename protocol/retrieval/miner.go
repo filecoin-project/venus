@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-host"
-	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-protocol"
+	host "github.com/libp2p/go-libp2p-core/host"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"

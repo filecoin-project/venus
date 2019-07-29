@@ -26,7 +26,7 @@ func mock() *prereleaseTool {
 		Name:       &name1,
 		Prerelease: &prerelease1,
 		ID:         &id1,
-		CreatedAt:  &github.Timestamp{time1},
+		CreatedAt:  &github.Timestamp{Time: time1},
 		TagName:    &tag1,
 	})
 	name2 := "prerelease-middle"
@@ -38,7 +38,7 @@ func mock() *prereleaseTool {
 		Name:       &name2,
 		Prerelease: &prerelease2,
 		ID:         &id2,
-		CreatedAt:  &github.Timestamp{time2},
+		CreatedAt:  &github.Timestamp{Time: time2},
 		TagName:    &tag2,
 	})
 	name3 := "prerelease-oldest"
@@ -50,7 +50,7 @@ func mock() *prereleaseTool {
 		Name:       &name3,
 		Prerelease: &prerelease3,
 		ID:         &id3,
-		CreatedAt:  &github.Timestamp{time3},
+		CreatedAt:  &github.Timestamp{Time: time3},
 		TagName:    &tag3,
 	})
 	name4 := "prerelease-newest"
@@ -62,7 +62,7 @@ func mock() *prereleaseTool {
 		Name:       &name4,
 		Prerelease: &prerelease4,
 		ID:         &id4,
-		CreatedAt:  &github.Timestamp{time4},
+		CreatedAt:  &github.Timestamp{Time: time4},
 		TagName:    &tag4,
 	})
 	return &r
