@@ -3,25 +3,24 @@ package commands_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
-	"github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestListAsks(t *testing.T) {
