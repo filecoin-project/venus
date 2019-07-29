@@ -30,7 +30,7 @@ func ImportAndStoreWithDuration(ctx context.Context, client *fast.Filecoin, ask 
 	}
 
 	// Client makes a deal
-	deal, err := client.ClientProposeStorageDeal(ctx, dcid, ask.Miner, ask.ID, duration, false)
+	deal, err := client.ClientProposeStorageDeal(ctx, dcid, ask.Miner, ask.ID, duration)
 	if err != nil {
 		return cid.Undef, nil, err
 	}

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -79,7 +78,6 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 func TestDuplicateDeals(t *testing.T) {
 	tf.IntegrationTest(t)
-	logging.SetDebugLogging()
 
 	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -130,7 +128,7 @@ func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowD
 	var minerAddress address.Address
 	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
 	require.NoError(t, err)
-	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, askID, duration, allowDupes)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, askID, duration, fast.AOAllowDuplicates(allowDupes))
 	return dealResponse, err
 }
 
