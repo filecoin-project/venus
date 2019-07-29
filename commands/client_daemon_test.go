@@ -103,25 +103,19 @@ func TestDuplicateDeals(t *testing.T) {
 	askPrice := big.NewFloat(0.5)
 	expiry := big.NewInt(int64(10000))
 
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry)
+	require.NoError(t, err)
+
+	_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+	require.NoError(t, err)
+
 	t.Run("Can make a second deal if --allow-duplicates is passed", func(t *testing.T) {
-		ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry)
-		require.NoError(t, err)
-		_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
-
-		require.NoError(t, err)
-
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
 		assert.NoError(t, err)
 		require.NotNil(t, dealResp)
-		assert.Equal(t, storagedeal.Staged, dealResp.State)
+		assert.Equal(t, storagedeal.Accepted, dealResp.State)
 	})
 	t.Run("Cannot make a second deal --allow-duplicates is NOT passed", func(t *testing.T) {
-		ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry)
-		require.NoError(t, err)
-		_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
-
-		require.NoError(t, err)
-
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, false, minerDaemon, clientDaemon, ask.ID, duration)
 		assert.Error(t, err)
 		assert.Nil(t, dealResp)
