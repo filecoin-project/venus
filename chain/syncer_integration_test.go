@@ -329,6 +329,7 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	parent, err := ts.Parents()
 	require.NoError(t, err)
 	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent, h)
+
 	require.NoError(t, err)
 	require.True(t, containsTipSet(childTsasSlice, ts))
 }
