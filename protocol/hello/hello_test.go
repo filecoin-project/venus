@@ -172,10 +172,10 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
 
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-test", "sha1")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-staging", "sha1")
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-staging", "sha2")
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(t, mn.LinkAll())

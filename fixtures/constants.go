@@ -106,13 +106,13 @@ func KeyFilePaths() []string {
 	return res
 }
 
-// test devnet addrs
+// staging devnet addrs
 const (
-	testFilecoinBootstrap0 string = "/dns4/test.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
-	testFilecoinBootstrap1 string = "/dns4/test.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
-	testFilecoinBootstrap2 string = "/dns4/test.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
-	testFilecoinBootstrap3 string = "/dns4/test.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
-	testFilecoinBootstrap4 string = "/dns4/test.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
+	stagingFilecoinBootstrap0 string = "/dns4/staging.kittyhawk.wtf/tcp/9000/ipfs/Qmd6xrWYHsxivfakYRy6MszTpuAiEoFbgE1LWw4EvwBpp4"
+	stagingFilecoinBootstrap1 string = "/dns4/staging.kittyhawk.wtf/tcp/9001/ipfs/QmXq6XEYeEmUzBFuuKbVEGgxEpVD4xbSkG2Rhek6zkFMp4"
+	stagingFilecoinBootstrap2 string = "/dns4/staging.kittyhawk.wtf/tcp/9002/ipfs/QmXhxqTKzBKHA5FcMuiKZv8YaMPwpbKGXHRVZcFB2DX9XY"
+	stagingFilecoinBootstrap3 string = "/dns4/staging.kittyhawk.wtf/tcp/9003/ipfs/QmZGDLdQLUTi7uYTNavKwCd7SBc5KMfxzWxAyvqRQvwuiV"
+	stagingFilecoinBootstrap4 string = "/dns4/staging.kittyhawk.wtf/tcp/9004/ipfs/QmZRnwmCjyNHgeNDiyT8mXRtGhP6uSzgHtrozc42crmVbg"
 )
 
 // nightly devnet addrs
@@ -134,13 +134,13 @@ const (
 )
 
 // DevnetTestBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
-// test devnet.
-var DevnetTestBootstrapAddrs = []string{
-	testFilecoinBootstrap0,
-	testFilecoinBootstrap1,
-	testFilecoinBootstrap2,
-	testFilecoinBootstrap3,
-	testFilecoinBootstrap4,
+// staging devnet.
+var DevnetStagingBootstrapAddrs = []string{
+	stagingFilecoinBootstrap0,
+	stagingFilecoinBootstrap1,
+	stagingFilecoinBootstrap2,
+	stagingFilecoinBootstrap3,
+	stagingFilecoinBootstrap4,
 }
 
 // DevnetNightlyBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
