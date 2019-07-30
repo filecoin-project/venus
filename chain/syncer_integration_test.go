@@ -81,8 +81,8 @@ func TestLoadFork(t *testing.T) {
 	fakeFetcher := th.NewTestFetcher()
 	offlineSyncer := chain.NewSyncer(eval, newStore, fakeFetcher, chain.Syncing)
 
-	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key().String()))
-	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key().String()))
+	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
+	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
 
 	// The newRight head extends right. The store already has the individual blocks up to the point
 	// `right`, but has not computed their state (because it's not the heavy branch).
