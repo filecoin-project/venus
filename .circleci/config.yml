@@ -19,9 +19,9 @@ params:
       description: "job is being invoked from user devnet workflow"
       type: boolean
       default: false
-  test_devnet_param: &test_devnet_param
-    test_devnet:
-      description: "job is being invoked from test devnet workflow"
+  staging_devnet_param: &staging_devnet_param
+    staging_devnet:
+      description: "job is being invoked from staging devnet workflow"
       type: boolean
       default: false
 
@@ -369,7 +369,7 @@ jobs:
     parameters:
       <<: *nightly_param
       <<: *user_devnet_param
-      <<: *test_devnet_param
+      <<: *staging_devnet_param
     working_directory: "~/docker_build"
     steps:
       - add_ssh_keys:
@@ -410,9 +410,9 @@ jobs:
           steps:
             - get_user_devnet_version
       - when:
-          condition: << parameters.test_devnet >>
+          condition: << parameters.staging_devnet >>
           steps:
-            - get_test_devnet_version
+            - get_staging_devnet_version
       - run:
           name: build & push image - genesis file server
           command: |
@@ -487,9 +487,9 @@ jobs:
     parameters:
       network:
         type: string
-        default: test
+        default: staging
       <<: *user_devnet_param
-      <<: *test_devnet_param
+      <<: *staging_devnet_param
     docker:
       - image: circleci/golang:1.12.1-stretch
     resource_class: small
@@ -500,9 +500,9 @@ jobs:
           steps:
             - get_user_devnet_version
       - when:
-          condition: << parameters.test_devnet >>
+          condition: << parameters.staging_devnet>>
           steps:
-            - get_test_devnet_version
+            - get_staging_devnet_version
       - trigger_infra_build:
           job: deploy_<< parameters.network >>_devnet
           branch: filecoin-<< parameters.network >>net
@@ -515,14 +515,14 @@ filters:
       branches:
         only:
           - master
-  test_devnet_filter: &test_devnet_filter
+  staging_devnet_filter: &staging_devnet_filter
     filters:
       branches:
         ignore:
           - /.*/
       tags:
         only:
-          - /^test\-devnet\-\d+\.\d+\.\d+$/
+          - /^staging\-devnet\-\d+\.\d+\.\d+$/
   user_devnet_filter: &user_devnet_filter
     filters:
       branches:
@@ -663,28 +663,28 @@ workflows:
             - approve_deploy
           <<: *user_devnet_filter
 
-  build_test_devnet:
+  build_staging_devnet:
     jobs:
       - build_macos:
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - deps_linux:
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - build_linux:
           requires:
             - deps_linux
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - unit_test_linux:
           requires:
             - deps_linux
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - integration_test_linux:
           requires:
             - build_linux
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - functional_test_linux:
           requires:
             - build_linux
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - publish_release:
           requires:
             - build_linux
@@ -692,21 +692,21 @@ workflows:
             - integration_test_linux
             - functional_test_linux
             - build_macos
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - build_docker_img:
-          test_devnet: true
+          staging_devnet: true
           requires:
             - build_linux
             - unit_test_linux
             - integration_test_linux
             - functional_test_linux
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
       - trigger_devnet_deploy:
-          test_devnet: true
-          network: "test"
+          staging_devnet: true
+          network: "staging"
           requires:
             - build_docker_img
-          <<: *test_devnet_filter
+          <<: *staging_devnet_filter
 
 commands:
   create_nightly_version:
@@ -725,10 +725,10 @@ commands:
           name: read and export nightly FILECOIN_BINARY_VERSION
           command: |
             echo "export FILECOIN_BINARY_VERSION="$(cat release-version-nightly.txt)"" >> $BASH_ENV
-  get_test_devnet_version:
+  get_staging_devnet_version:
     steps:
       - run:
-          name: read and export test devnet FILECOIN_BINARY_VERSION
+          name: read and export staging devnet FILECOIN_BINARY_VERSION
           command: |
             echo "export FILECOIN_BINARY_VERSION="${CIRCLE_TAG}"" >> $BASH_ENV
   get_user_devnet_version:
