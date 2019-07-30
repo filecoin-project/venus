@@ -22,12 +22,99 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipld/go-ipld-prime"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGraphsyncFetcherHappyPath(t *testing.T) {
+type requestKey struct {
+	link     ipld.Link
+	selector selector.Selector
+}
+
+type mockResponse struct {
+	responses []graphsync.ResponseProgress
+	errs      []error
+}
+
+type mockableGraphsync struct {
+	mockedResponses  map[requestKey]mockResponse
+	receivedRequests []requestKey
+}
+
+func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
+	parsed, err := selector.ParseSelector(selectorSpec)
+	if err != nil {
+		errChan := make(chan error, 1)
+		errChan <- fmt.Errorf("Invalid selector")
+		close(errChan)
+		responseChan := make(chan graphsync.ResponseProgress)
+		close(responseChan)
+		return responseChan, errChan
+	}
+	mgs.receivedRequests = append(mgs.receivedRequests, requestKey{root, parsed})
+	mr, ok := mgs.mockedResponses[requestKey{root, parsed}]
+	if !ok {
+		errChan := make(chan error, 1)
+		errChan <- fmt.Errorf("Failed Request")
+		close(errChan)
+		responseChan := make(chan graphsync.ResponseProgress)
+		close(responseChan)
+		return responseChan, errChan
+	}
+	errChan := make(chan error, len(mr.errs))
+	for _, err := range mr.errs {
+		errChan <- err
+	}
+	close(errChan)
+
+	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
+	for _, response := range mr.responses {
+		responseChan <- response
+	}
+	close(responseChan)
+
+	return responseChan, errChan
+}
+
+func TestGraphsyncFetcherGetSingleLayerHappyPath(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+	bv := th.NewFakeBlockValidator()
+
+	block1 := types.NewBlockForTest(nil, uint64(0))
+	block2 := types.NewBlockForTest(nil, uint64(1))
+	block3 := types.NewBlockForTest(nil, uint64(3))
+
+	originalCids := types.NewTipSetKey(block1.Cid(), block2.Cid(), block3.Cid())
+
+	mockedResponses := make(map[requestKey]mockResponse)
+	selector, err := selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder()).Matcher().Selector()
+	require.NoError(t, err)
+	mockedResponses[requestKey{cidlink.Link{Cid: block1.Cid()}, selector}] = mockResponse{}
+	mockedResponses[requestKey{cidlink.Link{Cid: block2.Cid()}, selector}] = mockResponse{}
+	mockedResponses[requestKey{cidlink.Link{Cid: block3.Cid()}, selector}] = mockResponse{}
+	mgs := &mockableGraphsync{mockedResponses: mockedResponses}
+
+	fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv)
+
+	err = fetcher.GetSingleLayer(ctx, originalCids.ToSlice(), peer.ID("fake"))
+	require.NoError(t, err)
+	require.Equal(t, 3, len(mgs.receivedRequests))
+	fetchedCids := types.NewTipSetKey(
+		mgs.receivedRequests[0].link.(cidlink.Link).Cid,
+		mgs.receivedRequests[1].link.(cidlink.Link).Cid,
+		mgs.receivedRequests[2].link.(cidlink.Link).Cid,
+	)
+
+	require.True(t, originalCids.Equals(fetchedCids))
+}
+
+func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	// setup a chain
