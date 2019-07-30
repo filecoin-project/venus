@@ -1,10 +1,8 @@
 package net
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -12,10 +10,9 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	ipldp "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	selector "github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -30,54 +27,32 @@ type Fetcher interface {
 	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
+// GraphExchange is an interface wrapper to Graphsync so it can be stubbed in
+// unit testing
+type GraphExchange interface {
+	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
+}
+
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented with
 // a persistent bitswap session on a networked blockservice.
 type GraphSyncFetcher struct {
-	gs        *graphsync.GraphSync
+	exchange  GraphExchange
 	validator consensus.BlockSyntaxValidator
-	bridge    ipldbridge.IPLDBridge
 	bs        bstore.Blockstore
+	ssb       selector.SelectorSpecBuilder
 }
 
 // NewGraphSyncFetcher returns a BitswapFetcher wired up to the input BlockService and a newly
 // initialized persistent session of the block service.
-func NewGraphSyncFetcher(ctx context.Context, network gsnet.GraphSyncNetwork, bridge ipldbridge.IPLDBridge, blockstore bstore.Blockstore,
+func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
 	bv consensus.BlockSyntaxValidator) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		bs:        blockstore,
 		validator: bv,
-		bridge:    bridge,
+		exchange:  exchange,
+		ssb:       selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
 	}
-	gsf.gs = graphsync.New(ctx, network, bridge, gsf.loader, gsf.storer)
 	return gsf
-}
-
-func (gsf *GraphSyncFetcher) loader(lnk ipldp.Link, lnkCtx ipldp.LinkContext) (io.Reader, error) {
-	asCidLink, ok := lnk.(cidlink.Link)
-	if !ok {
-		return nil, fmt.Errorf("Unsupported Link Type")
-	}
-	block, err := gsf.bs.Get(asCidLink.Cid)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(block.RawData()), nil
-}
-
-func (gsf *GraphSyncFetcher) storer(lnkCtx ipldp.LinkContext) (io.Writer, ipldp.StoreCommitter, error) {
-	var buffer bytes.Buffer
-	committer := func(lnk ipldp.Link) error {
-		asCidLink, ok := lnk.(cidlink.Link)
-		if !ok {
-			return fmt.Errorf("Unsupported Link Type")
-		}
-		block, err := blocks.NewBlockWithCid(buffer.Bytes(), asCidLink.Cid)
-		if err != nil {
-			return err
-		}
-		return gsf.bs.Put(block)
-	}
-	return &buffer, committer, nil
 }
 
 const maxRecursionDepth = 64
@@ -166,15 +141,10 @@ type resultSet struct {
 // GetSingleLayer requests a single layer of cids as individual bocks, fetching
 // non-recursively
 func (gsf *GraphSyncFetcher) GetSingleLayer(ctx context.Context, cids []cid.Cid, from peer.ID) error {
-	selector, err := gsf.bridge.BuildSelector(func(ssb selector.SelectorSpecBuilder) selector.SelectorSpec {
-		return ssb.Matcher()
-	})
-	if err != nil {
-		return err
-	}
+	selector := gsf.ssb.Matcher().Node()
 	resultSets := make([]resultSet, 0, len(cids))
 	for _, c := range cids {
-		responseChan, errChan := gsf.gs.Request(ctx, from, cidlink.Link{Cid: c}, selector)
+		responseChan, errChan := gsf.exchange.Request(ctx, from, cidlink.Link{Cid: c}, selector)
 		resultSets = append(resultSets, resultSet{responseChan, errChan})
 	}
 	for _, rs := range resultSets {
@@ -191,22 +161,16 @@ func (gsf *GraphSyncFetcher) GetSingleLayer(ctx context.Context, cids []cid.Cid,
 // the given recursion depth parameter
 func (gsf *GraphSyncFetcher) GetBlocks(ctx context.Context, baseCid cid.Cid, from peer.ID, recursionDepth int) ([][]cid.Cid, error) {
 
-	selector, err := gsf.bridge.BuildSelector(func(ssb selector.SelectorSpecBuilder) selector.SelectorSpec {
-		return ssb.ExploreRecursive(recursionDepth, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
-			efsb.Insert("parents", ssb.ExploreUnion(
-				ssb.ExploreAll(ssb.Matcher()),
-				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-			))
-		}))
-	})
-	if err != nil {
-		return nil, err
-	}
-
+	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("parents", gsf.ssb.ExploreUnion(
+			gsf.ssb.ExploreAll(gsf.ssb.Matcher()),
+			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
+		))
+	})).Node()
 	cidResponseLayers := make([][]cid.Cid, recursionDepth)
 	hasCids := make([]map[cid.Cid]struct{}, recursionDepth)
 
-	responseChan, errChan := gsf.gs.Request(ctx, from, cidlink.Link{Cid: baseCid}, selector)
+	responseChan, errChan := gsf.exchange.Request(ctx, from, cidlink.Link{Cid: baseCid}, selector)
 	for err := range errChan {
 		return nil, err
 	}

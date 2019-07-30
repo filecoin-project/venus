@@ -3,6 +3,7 @@ package net_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -124,14 +126,44 @@ func TestGraphsyncFetcherHappyPath(t *testing.T) {
 	gsnet2 := gsnet.NewFromLibp2pHost(host2)
 
 	// setup a graphsync fetcher and a graphsync responder
+
 	bridge1 := ipldbridge.NewIPLDBridge()
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
 
-	fetcher := net.NewGraphSyncFetcher(ctx, gsnet1, bridge1, bs, bv)
+	localLoader := func(lnk ipldp.Link, lnkCtx ipldp.LinkContext) (io.Reader, error) {
+		asCidLink, ok := lnk.(cidlink.Link)
+		if !ok {
+			return nil, fmt.Errorf("Unsupported Link Type")
+		}
+		block, err := bs.Get(asCidLink.Cid)
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewReader(block.RawData()), nil
+	}
 
-	loader := func(lnk ipldp.Link, lnkCtx ipldp.LinkContext) (io.Reader, error) {
+	localStorer := func(lnkCtx ipldp.LinkContext) (io.Writer, ipldp.StoreCommitter, error) {
+		var buffer bytes.Buffer
+		committer := func(lnk ipldp.Link) error {
+			asCidLink, ok := lnk.(cidlink.Link)
+			if !ok {
+				return fmt.Errorf("Unsupported Link Type")
+			}
+			block, err := blocks.NewBlockWithCid(buffer.Bytes(), asCidLink.Cid)
+			if err != nil {
+				return err
+			}
+			return bs.Put(block)
+		}
+		return &buffer, committer, nil
+	}
+
+	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
+	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv)
+
+	remoteLoader := func(lnk ipldp.Link, lnkCtx ipldp.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
 		block, err := builder.GetBlock(ctx, cid)
 		if err != nil {
@@ -143,7 +175,7 @@ func TestGraphsyncFetcherHappyPath(t *testing.T) {
 		}
 		return bytes.NewBuffer(raw), nil
 	}
-	graphsync.New(ctx, gsnet2, bridge2, loader, nil)
+	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
 
 	tipsets, err := fetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts types.TipSet) (bool, error) {
 		if ts.Key().Equals(gen.Key()) {
