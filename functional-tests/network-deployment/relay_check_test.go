@@ -344,8 +344,8 @@ func scanDhtProviders(ctx context.Context, t *testing.T, node *fast.Filecoin, dh
 	return eventChan, nil
 }
 
-// returns the list of peer address for network relay peers
-func networkRelayPeers(network string) []string {
+// returns the list of peer address for the network bootstrap peers
+func networkBootstrapPeers(network string) []string {
 	// Currently all bootstrap addresses are relay peers
 
 	switch network {
@@ -358,4 +358,9 @@ func networkRelayPeers(network string) []string {
 	}
 
 	return []string{}
+}
+
+// returns the list of peer address for network relay peers
+func networkRelayPeers(network string) []string {
+	return networkBootstrapPeers(network)
 }

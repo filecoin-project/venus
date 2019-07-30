@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -69,4 +70,15 @@ func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*s
 // A json decoer is returned that asks may be decoded from.
 func (f *Filecoin) ClientListAsks(ctx context.Context) (*json.Decoder, error) {
 	return f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "client", "list-asks")
+}
+
+// ClientPayments runs the client payments command against the filecoin process.
+func (f *Filecoin) ClientPayments(ctx context.Context, deal cid.Cid) ([]types.PaymentVoucher, error) {
+	var out []types.PaymentVoucher
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "payments", deal.String()); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
