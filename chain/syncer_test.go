@@ -430,3 +430,12 @@ func verifyHead(t *testing.T, store syncStoreReader, head types.TipSet) {
 	require.NoError(t, err)
 	assert.Equal(t, head, headTipSet)
 }
+
+func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
+	for _, tsas := range tsasSlice {
+		if tsas.TipSet.String() == ts.String() { //bingo
+			return true
+		}
+	}
+	return false
+}

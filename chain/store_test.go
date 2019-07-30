@@ -11,6 +11,8 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -23,7 +25,202 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Note: many of these tests use the test chain defined in the init function of default_syncer_test.
+// This setup stuff is a horrendous legacy holdover from when these store tests shared a
+// common monolithic setup with the syncer tests. There's no good reason for it to still exist.
+// https://github.com/filecoin-project/go-filecoin/issues/2128
+type SyncerTestParams struct {
+	// Chain diagram below.  Note that blocks in the same tipset are in parentheses.
+	//
+	// genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (link4blk1, link4blk2)
+
+	// Blocks
+	genesis                         *types.Block
+	link1blk1, link1blk2            *types.Block
+	link2blk1, link2blk2, link2blk3 *types.Block
+	link3blk1                       *types.Block
+	link4blk1, link4blk2            *types.Block
+
+	// Cids
+	genCid                                                       cid.Cid
+	genStateRoot, link1State, link2State, link3State, link4State cid.Cid
+
+	// TipSets
+	genTS, link1, link2, link3, link4 types.TipSet
+
+	// utils
+	cidGetter         func() cid.Cid
+	minerAddress      address.Address
+	minerOwnerAddress address.Address
+	minerPeerID       peer.ID
+}
+
+func initDSTParams() *SyncerTestParams {
+	var err error
+	minerAddress, err := address.NewActorAddress([]byte("miner"))
+	if err != nil {
+		panic(err)
+	}
+	minerOwnerAddress, err := address.NewActorAddress([]byte("minerOwner"))
+	if err != nil {
+		panic(err)
+	}
+	minerPeerID, err := th.RandPeerID()
+	if err != nil {
+		panic(err)
+	}
+
+	// Set up the test chain
+	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
+	cst := hamt.NewCborStore()
+	genesis, err := initGenesis(minerAddress, minerOwnerAddress, minerPeerID, cst, bs)
+	if err != nil {
+		panic(err)
+	}
+	genCid := genesis.Cid()
+	genTS := th.MustNewTipSet(genesis)
+
+	// mock state root cids
+	cidGetter := types.NewCidForTestGetter()
+
+	genStateRoot := genesis.StateRoot
+
+	return &SyncerTestParams{
+		minerAddress:      minerAddress,
+		minerOwnerAddress: minerOwnerAddress,
+		minerPeerID:       minerPeerID,
+		genesis:           genesis,
+		genCid:            genCid,
+		genTS:             genTS,
+		cidGetter:         cidGetter,
+		genStateRoot:      genStateRoot,
+	}
+}
+
+// This function sets global variables according to the tests needs.  The
+// test chain's basic structure is always the same, but some tests want
+// mocked stateRoots or parent weight calculations from different consensus protocols.
+func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bool, dstP *SyncerTestParams) {
+
+	var err error
+	// see powerTableForWidenTest
+	minerPower := types.NewBytesAmount(25)
+	totalPower := types.NewBytesAmount(100)
+	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
+	minerWorker := mockSigner.Addresses[0]
+
+	fakeChildParams := th.FakeChildParams{
+		Parent:      dstP.genTS,
+		GenesisCid:  dstP.genCid,
+		StateRoot:   dstP.genStateRoot,
+		Consensus:   con,
+		MinerAddr:   dstP.minerAddress,
+		MinerWorker: minerWorker,
+		Signer:      mockSigner,
+	}
+
+	dstP.link1blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link1blk1.Proof, dstP.link1blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link1blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link1blk2.Proof, dstP.link1blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link1 = th.RequireNewTipSet(t, dstP.link1blk1, dstP.link1blk2)
+
+	if mockStateRoots {
+		dstP.link1State = dstP.cidGetter()
+	} else {
+		dstP.link1State = dstP.genStateRoot
+	}
+
+	fakeChildParams.Parent = dstP.link1
+	fakeChildParams.StateRoot = dstP.link1State
+	dstP.link2blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link2blk1.Proof, dstP.link2blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link2blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link2blk2.Proof, dstP.link2blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	fakeChildParams.Nonce = uint64(1)
+	dstP.link2blk3 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link2blk3.Proof, dstP.link2blk3.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link2 = th.RequireNewTipSet(t, dstP.link2blk1, dstP.link2blk2, dstP.link2blk3)
+
+	if mockStateRoots {
+		dstP.link2State = dstP.cidGetter()
+	} else {
+		dstP.link2State = dstP.genStateRoot
+	}
+
+	fakeChildParams.Parent = dstP.link2
+	fakeChildParams.StateRoot = dstP.link2State
+	dstP.link3blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link3blk1.Proof, dstP.link3blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link3 = th.RequireNewTipSet(t, dstP.link3blk1)
+
+	if mockStateRoots {
+		dstP.link3State = dstP.cidGetter()
+	} else {
+		dstP.link3State = dstP.genStateRoot
+	}
+
+	fakeChildParams.Parent = dstP.link3
+	fakeChildParams.StateRoot = dstP.link3State
+	fakeChildParams.NullBlockCount = uint64(2)
+	dstP.link4blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link4blk1.Proof, dstP.link4blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	fakeChildParams.Nonce = uint64(1)
+	dstP.link4blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
+	dstP.link4blk2.Proof, dstP.link4blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
+	require.NoError(t, err)
+
+	dstP.link4 = th.RequireNewTipSet(t, dstP.link4blk1, dstP.link4blk2)
+
+	if mockStateRoots {
+		dstP.link4State = dstP.cidGetter()
+	} else {
+		dstP.link4State = dstP.genStateRoot
+	}
+}
+
+func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *SyncerTestParams, syncMode chain.SyncMode) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
+	ctx := context.Background()
+
+	calcGenBlk, err := genFunc(cst, bs) // flushes state
+	require.NoError(t, err)
+	calcGenBlk.StateRoot = dstP.genStateRoot
+	chainDS := r.ChainDatastore()
+	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
+
+	fetcher := th.NewTestFetcher()
+	fetcher.AddSourceBlocks(calcGenBlk)
+	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
+
+	// Initialize stores to contain dstP.genesis block and state
+	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
+
+	genTsas := &chain.TipSetAndState{
+		TipSet:          calcGenTS,
+		TipSetStateRoot: dstP.genStateRoot,
+	}
+	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
+	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct dstP.genesis
+	require.NoError(t, err)
+	requireHead(t, chainStore, calcGenTS)
+	requireTsAdded(t, chainStore, calcGenTS)
+
+	return syncer, chainStore, r, fetcher
+}
+
 func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 	powerTable := &th.TestView{}
 	r := repo.NewInMemoryRepo()
