@@ -134,7 +134,7 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	defer nd.Stop(ctx)
 
 	servenv := &Env{
-		// TODO: should this be the passed in context?  Issue 2641
+		// TODO: should this be the passed in context?  Issue #2641
 		blockMiningAPI: nd.BlockMiningAPI,
 		ctx:            context.Background(),
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
