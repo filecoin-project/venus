@@ -25,7 +25,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )
@@ -300,7 +300,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			if _, err := pnrg.Read(poStProof[:]); err != nil {
 				return nil, err
 			}
-			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "submitPoSt", []types.PoStProof{poStProof}, types.EmptyIntSet())
+			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "submitPoSt", []types.PoStProof{poStProof}, types.EmptyFaultSet(), types.EmptyIntSet())
 			if err != nil {
 				return nil, err
 			}

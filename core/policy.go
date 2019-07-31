@@ -57,7 +57,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 
 	// Remove from the queue all messages that have now been mined in new blocks.
 	// Rearrange the tipsets into increasing height order so messages are discovered in nonce order.
-	reverse(newTips)
+	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
 			for _, minedMsg := range tipset.At(i).Messages {
@@ -86,12 +86,4 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 		}
 	}
 	return nil
-}
-
-func reverse(list []types.TipSet) {
-	// https://github.com/golang/go/wiki/SliceTricks#reversing
-	for i := len(list)/2 - 1; i >= 0; i-- {
-		opp := len(list) - 1 - i
-		list[i], list[opp] = list[opp], list[i]
-	}
 }

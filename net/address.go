@@ -1,21 +1,21 @@
 package net
 
 import (
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// PeerAddrsToPeerInfos converts a slice of string peer addresses
+// PeerAddrsToAddrInfo converts a slice of string peer addresses
 // (multiaddr + ipfs peerid) to PeerInfos.
-func PeerAddrsToPeerInfos(addrs []string) ([]pstore.PeerInfo, error) {
-	var pis []pstore.PeerInfo
+func PeerAddrsToAddrInfo(addrs []string) ([]peer.AddrInfo, error) {
+	var pis []peer.AddrInfo
 	for _, addr := range addrs {
 		a, err := ma.NewMultiaddr(addr)
 		if err != nil {
 			return nil, err
 		}
 
-		pinfo, err := pstore.InfoFromP2pAddr(a)
+		pinfo, err := peer.AddrInfoFromP2pAddr(a)
 		if err != nil {
 			return nil, err
 		}

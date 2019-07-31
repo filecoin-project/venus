@@ -36,7 +36,7 @@ func (f *Filecoin) ClientImport(ctx context.Context, data files.File) (cid.Cid, 
 
 // ClientProposeStorageDeal runs the client propose-storage-deal command against the filecoin process.
 func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
-	miner address.Address, ask uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
+	miner address.Address, ask uint64, duration uint64, options ...ActionOption) (*storagedeal.Response, error) {
 
 	var out storagedeal.Response
 	sData := data.String()
@@ -44,7 +44,12 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 	sAsk := fmt.Sprintf("%d", ask)
 	sDuration := fmt.Sprintf("%d", duration)
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration); err != nil {
+	args := []string{"go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration}
+	for _, opt := range options {
+		args = append(args, opt()...)
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return nil, err
 	}
 	return &out, nil

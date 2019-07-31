@@ -6,10 +6,9 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-metrics"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
@@ -120,7 +119,7 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan Con
 		return nil, fmt.Errorf("peerhost network was not a swarm")
 	}
 
-	pis, err := PeerAddrsToPeerInfos(addrs)
+	pis, err := PeerAddrsToAddrInfo(addrs)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +129,7 @@ func (network *Network) Connect(ctx context.Context, addrs []string) (<-chan Con
 		wg.Add(len(pis))
 
 		for _, pi := range pis {
-			go func(pi peerstore.PeerInfo) {
+			go func(pi peer.AddrInfo) {
 				swrm.Backoff().Clear(pi.ID)
 				err := network.host.Connect(ctx, pi)
 				outCh <- ConnectionResult{

@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/net"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
 
 type ntwkPingPlumbing struct {
@@ -18,15 +19,18 @@ type ntwkPingPlumbing struct {
 	rtt  time.Duration // pinging all other ids will resolve after rtt
 }
 
-func (npp *ntwkPingPlumbing) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
+func (npp *ntwkPingPlumbing) NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Result, error) {
 	if pid == npp.self {
 		return nil, net.ErrPingSelf
 	}
-	c := make(chan time.Duration)
+	c := make(chan ping.Result)
 
 	go func() {
 		<-time.After(npp.rtt)
-		c <- npp.rtt
+		c <- ping.Result{
+			RTT:   npp.rtt,
+			Error: nil,
+		}
 	}()
 	return c, nil
 }

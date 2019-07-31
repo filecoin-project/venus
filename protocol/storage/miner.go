@@ -16,9 +16,9 @@ import (
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p-host"
-	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/host"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -377,7 +377,7 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f func(*storagedeal.Response)) error {
 	storageDeal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get retrive deal with proposal CID %s", proposalCid.String())
+		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
 	f(storageDeal.Response)
 	err = sm.porcelainAPI.DealPut(storageDeal)
@@ -778,7 +778,7 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, done)
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, submission.Faults, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

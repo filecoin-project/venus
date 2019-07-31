@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -108,10 +108,18 @@ func AOPayer(payer address.Address) ActionOption {
 	}
 }
 
-// AOValidAt provides the `--validat=<blockheight>` option to actions
+// AOValidAt provides the `--validate=<blockheight>` option to actions
 func AOValidAt(bh *types.BlockHeight) ActionOption {
 	sBH := bh.String()
 	return func() []string {
 		return []string{"--validat", sBH}
+	}
+}
+
+// AOAllowDuplicates provides the --allow-duplicates option to client propose-storage-deal
+func AOAllowDuplicates(allow bool) ActionOption {
+	sAllowDupes := fmt.Sprintf("--allow-duplicates=%t", allow)
+	return func() []string {
+		return []string{sAllowDupes}
 	}
 }

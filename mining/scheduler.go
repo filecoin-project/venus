@@ -43,16 +43,14 @@ import (
 )
 
 // Scheduler is the mining interface consumers use. When you Start() the
-// scheduler it returns two channels (inCh, outCh) and a sync.WaitGroup:
-//   - inCh: the caller sends Inputs to mine on to this channel.
-//   - outCh: the scheduler sends Outputs to the caller on this channel.
-//   - doneWg: signals that the scheduler and any goroutines it launched
+// scheduler it returns a channel and a sync.WaitGroup:
+//   - channel: the scheduler emits outputs (mined blocks) to the caller on this channel
+//   - waitgroup: signals that the scheduler and any goroutines it launched
 //             have stopped. (Context cancelation happens async, so you
 //             need some way to know when it has actually stopped.)
 //
-// Once Start()ed, the Scheduler can be stopped by canceling its miningCtx,
-// which will signal on doneWg when it's actually done. Canceling miningCtx
-// cancels any run in progress and shuts the scheduler down.
+// Once started, a scheduler can be stopped by canceling the context provided to `Start()`,
+// which will signal on the waitgroup when it's actually done.
 type Scheduler interface {
 	Start(miningCtx context.Context) (<-chan Output, *sync.WaitGroup)
 	IsStarted() bool

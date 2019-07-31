@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -15,7 +16,10 @@ import (
 
 // Fetcher defines an interface that may be used to fetch data from the network.
 type Fetcher interface {
-	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error)
+	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
+	// this includes the provided `ts`. The TipSet that evaluates to true when
+	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
 // BitswapFetcher is used to fetch data over the network.  It is implemented with
@@ -36,11 +40,10 @@ func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensu
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
-// FetchTipSets will fetch `recur` partens of `tsKey`. FetchTipSets does not return partial results.
-func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, recur int) ([]types.TipSet, error) {
+func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var out []types.TipSet
 	cur := tsKey
-	for i := 0; i < recur; i++ {
+	for {
 		res, err := bsf.GetBlocks(ctx, cur.ToSlice())
 		if err != nil {
 			return nil, err
@@ -51,15 +54,24 @@ func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetK
 			return nil, err
 		}
 
+		out = append(out, ts)
+		ok, err := done(ts)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			break
+		}
+
 		cur, err = ts.Parents()
 		if err != nil {
 			return nil, err
 		}
 
-		out = append(out, ts)
 	}
 
 	return out, nil
+
 }
 
 // GetBlocks fetches the blocks with the given cids from the network using the

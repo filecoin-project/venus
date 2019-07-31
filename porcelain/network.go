@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/pkg/errors"
 )
 
 type netPlumbing interface {
-	NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error)
+	NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Result, error)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given

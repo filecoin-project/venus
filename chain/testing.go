@@ -8,6 +8,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -62,8 +63,8 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	return b
 }
 
-// Genesis creates and returns a tipset of one block with no parents.
-func (f *Builder) Genesis() types.TipSet {
+// NewGenesis creates and returns a tipset of one block with no parents.
+func (f *Builder) NewGenesis() types.TipSet {
 	return types.RequireNewTipSet(f.t, f.AppendBlockOn(types.UndefTipSet))
 }
 
@@ -174,9 +175,8 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 		}
 
 		// Compute state root for this block.
-		tipSet, err := types.NewTipSet(b)
-		require.NoError(f.t, err)
-		b.StateRoot = f.ComputeState(tipSet)
+		prevState := f.StateForKey(parent.Key())
+		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.SignedMessage{b.Messages})
 		require.NoError(f.t, err)
 
 		f.blocks[b.Cid()] = b
@@ -207,7 +207,7 @@ func (f *Builder) ComputeState(tip types.TipSet) cid.Cid {
 	require.NoError(f.t, err)
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
-	state, err := f.stateBuilder.ComputeState(prev, tip)
+	state, err := f.stateBuilder.ComputeState(prev, tipMessages(tip))
 	require.NoError(f.t, err)
 	return state
 }
@@ -258,7 +258,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
-	ComputeState(prev cid.Cid, tip types.TipSet) (cid.Cid, error)
+	ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
 
@@ -267,16 +267,16 @@ type FakeStateBuilder struct {
 }
 
 // ComputeState computes a fake state from a previous state root CID and the messages contained
-// in a tipset. Note that if the tipset is empty of messages, the resulting state is the same
-// as the input state.
+// in list-of-lists of messages in blocks. Note that if there are no messages, the resulting state
+// is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, tip types.TipSet) (cid.Cid, error) {
+func (FakeStateBuilder) ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
-	for i := 0; i < tip.Len(); i++ {
-		for j := 0; j < len(tip.At(i).Messages); j++ {
-			mCId, err := tip.At(i).Messages[j].Cid()
+	for _, blockMessages := range blocksMessages {
+		for _, msg := range blockMessages {
+			mCId, err := msg.Cid()
 			if err != nil {
 				return cid.Undef, err
 			}
@@ -312,8 +312,8 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
-	return e.ComputeState(stateID, ts)
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
+	return e.ComputeState(stateID, tipMessages(tip))
 }
 
 // IsHeavier compares chains weighed with StateBuilder.Weigh.
@@ -367,15 +367,22 @@ func (f *Builder) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
 	return types.NewTipSet(blocks...)
 }
 
-// FetchTipSets returns `recur` tipsets from `key` by following parent keys.
-func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, recur int) ([]types.TipSet, error) {
+// FetchTipSets fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
+func (f *Builder) FetchTipSets(ctx context.Context, key types.TipSetKey, from peer.ID, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	var tips []types.TipSet
-	for i := 0; i < recur; i++ {
+	for {
 		tip, err := f.GetTipSet(key)
 		if err != nil {
 			return nil, err
 		}
 		tips = append(tips, tip)
+		ok, err := done(tip)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			break
+		}
 		key, err = tip.Parents()
 		if err != nil {
 			return nil, err
@@ -413,4 +420,12 @@ func makeCid(i interface{}) (cid.Cid, error) {
 		MhType:   types.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
+}
+
+func tipMessages(tip types.TipSet) [][]*types.SignedMessage {
+	var msgs [][]*types.SignedMessage
+	for i := 0; i < tip.Len(); i++ {
+		msgs = append(msgs, tip.At(i).Messages)
+	}
+	return msgs
 }

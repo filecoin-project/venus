@@ -45,6 +45,7 @@ func newSource(cst state.IpldStore) *ipldSource {
 // GetBlock retrieves a filecoin block by cid from the IPLD store.
 func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
 	var block types.Block
+
 	err := source.cborStore.Get(ctx, c, &block)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
@@ -233,12 +234,12 @@ func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState)
 
 // GetTipSet returns the tipset identified by `key`.
 func (store *Store) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
-	return store.tipIndex.GetTipSet(key.String())
+	return store.tipIndex.GetTipSet(key)
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
 func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (state.Tree, error) {
-	stateCid, err := store.tipIndex.GetTipSetStateRoot(key.String())
+	stateCid, err := store.tipIndex.GetTipSetStateRoot(key)
 	if err != nil {
 		return nil, err
 	}
@@ -247,24 +248,24 @@ func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (st
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
 func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
-	return store.tipIndex.GetTipSetStateRoot(key.String())
+	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset identified by `key`.
-func (store *Store) HasTipSetAndState(ctx context.Context, key string) bool {
+func (store *Store) HasTipSetAndState(ctx context.Context, key types.TipSetKey) bool {
 	return store.tipIndex.Has(key)
 }
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey string, h uint64) ([]*TipSetAndState, error) {
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey types.TipSetKey, h uint64) ([]*TipSetAndState, error) {
 	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset identified by `parentKey`.
-func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey string, h uint64) bool {
+func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey types.TipSetKey, h uint64) bool {
 	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
 }
 
@@ -350,13 +351,6 @@ func (store *Store) GetHead() types.TipSetKey {
 	}
 
 	return store.head.Key()
-}
-
-// BlockHeight returns the chain height of the head tipset.
-func (store *Store) BlockHeight() (uint64, error) {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
-	return store.head.Height()
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

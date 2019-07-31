@@ -70,7 +70,8 @@ func TestDealsRedeem(t *testing.T) {
 	minerOwnerAddress := minerOwnerAddresses[0]
 
 	dealDuration := uint64(5)
-	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration, true)
+
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
 	require.NoError(t, err)
 
 	// atLeastStartH is either the start height of the deal or a height after the deal has started.

@@ -4,10 +4,16 @@ download_release_tarball() {
     __resultvar=$1
     __submodule_path=$2
     __repo_name=$(echo $2 | cut -d '/' -f 2)
-    __release_name="${__repo_name}-$(uname)"
+    __arch=$(uname)
+    __release_name="${__repo_name}-${__arch}"
     __release_sha1=$(git rev-parse @:"${__submodule_path}")
     __release_tag="${__release_sha1:0:16}"
     __release_tag_url="https://api.github.com/repos/filecoin-project/${__repo_name}/releases/tags/${__release_tag}"
+
+    if [[ ! $__arch =~ ^(Darwin|Linux)$ ]]; then
+      (>&2 echo "precompiled releases exist for only OSX and Linux")
+      return 1
+    fi
 
     echo "acquiring release @ ${__release_tag}"
 

@@ -7,12 +7,11 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-host"
+	host "github.com/libp2p/go-libp2p-core/host"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
-	inet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
-	routing "github.com/libp2p/go-libp2p-routing"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
@@ -33,7 +32,7 @@ type Bootstrapper struct {
 	// MinPeerThreshold is the number of connections it attempts to maintain.
 	MinPeerThreshold int
 	// Peers to connect to if we fall below the threshold.
-	bootstrapPeers []pstore.PeerInfo
+	bootstrapPeers []peer.AddrInfo
 	// Period is the interval at which it periodically checks to see
 	// if the threshold is maintained.
 	Period time.Duration
@@ -43,7 +42,7 @@ type Bootstrapper struct {
 	// Dependencies
 	h host.Host
 	d inet.Dialer
-	r routing.IpfsRouting
+	r routing.Routing
 	// Does the work. Usually Bootstrapper.bootstrap. Argument is a slice of
 	// currently-connected peers (so it won't attempt to reconnect).
 	Bootstrap func([]peer.ID)
@@ -57,7 +56,7 @@ type Bootstrapper struct {
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
 // to the filecoin network by connecting to the given bootstrap peers.
-func NewBootstrapper(bootstrapPeers []pstore.PeerInfo, h host.Host, d inet.Dialer, r routing.IpfsRouting, minPeer int, period time.Duration) *Bootstrapper {
+func NewBootstrapper(bootstrapPeers []peer.AddrInfo, h host.Host, d inet.Dialer, r routing.Routing, minPeer int, period time.Duration) *Bootstrapper {
 	b := &Bootstrapper{
 		MinPeerThreshold:  minPeer,
 		bootstrapPeers:    bootstrapPeers,
