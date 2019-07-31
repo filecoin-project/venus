@@ -7,7 +7,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -328,10 +327,10 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey, from peer.ID) (err error) {
-	logSyncer.Debugf("Begin fetch and sync of chain with head %v", tsKey)
+func (syncer *Syncer) HandleNewTipset(ctx context.Context, ci *types.ChainInfo, trusted bool) (err error) {
+	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
 	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
-	span.AddAttributes(trace.StringAttribute("tipset", tsKey.String()))
+	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	// This lock could last a long time as we fetch all the blocks needed to block the chain.
@@ -341,7 +340,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	defer syncer.mu.Unlock()
 
 	// If the store already has this tipset then the syncer is finished.
-	if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
+	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {
 		return nil
 	}
 
@@ -355,7 +354,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 
 	catchDoneCb := func(t types.TipSet) (bool, error) {
 		// Only check if the head we are fetching exceeds finality
-		if t.Key().Equals(tsKey) {
+		if t.Key().Equals(ci.Head) {
 			ok, err := syncer.exceedsFinalityLimit(t)
 			if err != nil {
 				return true, err
@@ -378,7 +377,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	switch syncer.syncMode {
 	case Syncing:
 		// No time-out here, this can fetch an arbitrarily long chain
-		chain, err = syncer.fetcher.FetchTipSets(ctx, tsKey, from, syncDoneCb)
+		chain, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, syncDoneCb)
 		if err != nil {
 			return err
 		}
@@ -387,7 +386,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
 		defer cancel()
 
-		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, tsKey, from, catchDoneCb)
+		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, ci.Head, ci.Peer, catchDoneCb)
 		if err != nil {
 			return err
 		}
@@ -434,7 +433,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 			return err
 		}
 		if i%500 == 0 {
-			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), tsKey.String())
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())
 		}
 		parent = ts
 	}

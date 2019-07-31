@@ -28,7 +28,6 @@ import (
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -92,7 +91,7 @@ type nodeChainReader interface {
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipset(ctx context.Context, tipsetCids types.TipSetKey, from peer.ID) error
+	HandleNewTipset(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
 // Node represents a full Filecoin node.
@@ -553,7 +552,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
-			err := node.Syncer.HandleNewTipset(context.Background(), ci.Head, ci.Peer)
+			err := node.Syncer.HandleNewTipset(context.Background(), ci, true)
 			if err != nil {
 				log.Infof("error handling blocks: %s", ci.Head.String())
 				return
