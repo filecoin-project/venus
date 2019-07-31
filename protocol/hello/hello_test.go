@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -18,12 +16,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type mockSyncCallback struct {
+type mockHelloCallback struct {
 	mock.Mock
 }
 
-func (msb *mockSyncCallback) SyncCallback(p peer.ID, cids []cid.Cid, h uint64) {
-	msb.Called(p, cids, h)
+func (msb *mockHelloCallback) HelloCallback(ci *types.ChainInfo) {
+	msb.Called(ci.Peer, ci.Head, ci.Height)
 }
 
 type mockHeaviestGetter struct {
@@ -51,14 +49,14 @@ func TestHelloHandshake(t *testing.T) {
 	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
 
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
 
-	msc1.On("SyncCallback", b.ID(), heavy2.Key().ToSlice(), uint64(3)).Return()
-	msc2.On("SyncCallback", a.ID(), heavy1.Key().ToSlice(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
@@ -67,7 +65,7 @@ func TestHelloHandshake(t *testing.T) {
 		var msc1Done bool
 		var msc2Done bool
 		for _, call := range msc1.Calls {
-			if call.Method == "SyncCallback" {
+			if call.Method == "HelloCallback" {
 				if _, differences := msc1.ExpectedCalls[0].Arguments.Diff(call.Arguments); differences == 0 {
 					msc1Done = true
 					break
@@ -75,7 +73,7 @@ func TestHelloHandshake(t *testing.T) {
 			}
 		}
 		for _, call := range msc2.Calls {
-			if call.Method == "SyncCallback" {
+			if call.Method == "HelloCallback" {
 				if _, differences := msc2.ExpectedCalls[0].Arguments.Diff(call.Arguments); differences == 0 {
 					msc2Done = true
 					break
@@ -105,22 +103,22 @@ func TestHelloBadGenesis(t *testing.T) {
 	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
 
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisB.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	New(b, genesisB.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
 
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
+	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
+	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
 }
 
 func TestHelloWrongVersion(t *testing.T) {
@@ -138,22 +136,22 @@ func TestHelloWrongVersion(t *testing.T) {
 
 	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg.getHeaviestTipSet, "devnet-user", "sha1")
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-user", "sha1")
+	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-user", "sha2")
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-user", "sha2")
+	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
+	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
+	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
 }
 
 func TestHelloWrongVersionTestDevnet(t *testing.T) {
@@ -171,22 +169,22 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 
 	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
 
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha1")
-	msc1.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-test", "sha1")
+	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
-	msc2.On("SyncCallback", mock.Anything, mock.Anything, mock.Anything).Return()
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-test", "sha2")
+	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(t, mn.LinkAll())
 	require.NoError(t, mn.ConnectAllButSelf())
 
 	time.Sleep(time.Millisecond * 50)
 
-	msc1.AssertNumberOfCalls(t, "SyncCallback", 0)
-	msc2.AssertNumberOfCalls(t, "SyncCallback", 0)
+	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
+	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
 }
 
 func TestHelloMultiBlock(t *testing.T) {
@@ -214,14 +212,14 @@ func TestHelloMultiBlock(t *testing.T) {
 		&types.Block{Nonce: 1005, Height: 3},
 	)
 
-	msc1, msc2 := new(mockSyncCallback), new(mockSyncCallback)
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.SyncCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.SyncCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
 
-	msc1.On("SyncCallback", b.ID(), heavy2.Key().ToSlice(), uint64(3)).Return()
-	msc2.On("SyncCallback", a.ID(), heavy1.Key().ToSlice(), uint64(2)).Return()
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
 
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())
