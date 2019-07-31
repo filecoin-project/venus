@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -23,10 +22,6 @@ var reorgCnt *metrics.Int64Counter
 func init() {
 	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
-
-// The amount of time the syncer will wait while fetching the blocks of a
-// tipset over the network.
-var blkWaitTime = 30 * time.Second
 
 // FinalityLimit is the maximum number of blocks ahead of the current consensus
 // chain height to accept once in caught up mode
