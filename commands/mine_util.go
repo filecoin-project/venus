@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -85,6 +86,10 @@ func GetMinerOwner(ctx context.Context, minerAddress address.Address, api *porce
 type MinerPowerResult struct {
 	Power *types.BytesAmount
 	Total *types.BytesAmount
+}
+
+func (mpr MinerPowerResult) String() string {
+	return fmt.Sprintf("%s / %s", mpr.Power.String(), mpr.Total.String())
 }
 
 // GetMinerPower returns the power of miner `minerAddress`

@@ -411,15 +411,15 @@ Values will be output as a ratio where the first number is the miner power and s
 		if err != nil {
 			return err
 		}
-		str := fmt.Sprintf("%s / %s", minerPower.Power.String(), minerPower.Total.String()) // nolint: govet
-		return re.Emit(str)
+		return re.Emit(minerPower)
 	},
+	Type: MinerPowerResult{},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
-			_, err := fmt.Fprintln(w, a)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *MinerPowerResult) error {
+			_, err := fmt.Fprintln(w, out.String())
 			return err
 		}),
 	},
