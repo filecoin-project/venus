@@ -31,9 +31,10 @@ type waiterChainReader interface {
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader waiterChainReader
-	cst         *hamt.CborIpldStore
-	bs          bstore.Blockstore
+	chainReader   waiterChainReader
+	messageReader chain.MessageReader // nolint: structcheck
+	cst           *hamt.CborIpldStore
+	bs            bstore.Blockstore
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
@@ -44,7 +45,7 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messageReader chain.MessageReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,

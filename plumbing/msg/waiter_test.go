@@ -46,12 +46,12 @@ type smsgsSet [][]*types.SignedMessage
 
 func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
 	d := requiredCommonDeps(t, consensus.DefaultGenesis)
-	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
+	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
 func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
 	d := requiredCommonDeps(t, gif)
-	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.blockstore, d.cst)
+	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
 func TestWait(t *testing.T) {
