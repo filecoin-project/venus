@@ -569,7 +569,7 @@ func (node *Node) Start(ctx context.Context) error {
 				// Subscribe to block pubsub topic to learn about new chain heads.
 				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic, node.processBlock)
 				if err != nil {
-					log.Errorf("failed to subscribe to %s: %s", net.MessageTopic, err)
+					log.Error(err)
 				}
 			}
 		}()
@@ -581,7 +581,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// is necessary for message_propagate_test to start mining before testing this behaviour.
 		node.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic, node.processMessage)
 		if err != nil {
-			return errors.Wrapf(err, "failed to subscribe to %s", net.MessageTopic)
+			return err
 		}
 
 		// Start heartbeats.
