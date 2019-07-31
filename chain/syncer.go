@@ -48,27 +48,6 @@ func init() {
 
 var logSyncer = logging.Logger("chain.syncer")
 
-// SyncMode represents which behavior mode the chain syncer is currently in. By
-// default, the node starts in "Syncing" mode, and once it syncs the most
-// recently generated block, it switches to "Caught Up" mode.
-type SyncMode int
-
-const (
-	// Syncing indicates that the node was started recently and the chain is still
-	// significantly behind the current consensus head.
-	//
-	// See the spec for more detail:
-	// https://github.com/filecoin-project/specs/blob/master/sync.md#syncing-mode
-	Syncing SyncMode = iota
-	// CaughtUp indicates that the node has caught up with consensus head and as a
-	// result can restrict which new blocks are accepted to mitigate consensus
-	// attacks.
-	//
-	// See the spec for more detail:
-	// https://github.com/filecoin-project/specs/blob/master/sync.md#caught-up-mode
-	CaughtUp
-)
-
 type syncerChainReaderWriter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
@@ -123,17 +102,10 @@ type Syncer struct {
 	stateEvaluator syncStateEvaluator
 	// Provides and stores validated tipsets and their state roots.
 	chainStore syncerChainReaderWriter
-
-	// syncMode is an enumerable indicating whether the chain is currently caught
-	// up or still syncing. Presently, syncMode is always Syncing pending
-	// implementation in issue #1160.
-	//
-	// TODO: https://github.com/filecoin-project/go-filecoin/issues/1160
-	syncMode SyncMode
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, syncMode SyncMode) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -141,7 +113,6 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher, s
 		},
 		stateEvaluator: e,
 		chainStore:     s,
-		syncMode:       syncMode,
 	}
 }
 
@@ -344,54 +315,29 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, ci *types.ChainInfo, 
 		return nil
 	}
 
-	syncDoneCb := func(t types.TipSet) (bool, error) {
+	curHead, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
+	if err != nil {
+		return err
+	}
+	curHeight, err := curHead.Height()
+	if err != nil {
+		return err
+	}
+
+	// If we do not trust the peer head check finality
+	if !trusted && syncer.exceedsFinalityLimit(curHeight, ci.Height) {
+		return ErrNewChainTooLong
+	}
+
+	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
 		}
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
-	}
-
-	catchDoneCb := func(t types.TipSet) (bool, error) {
-		// Only check if the head we are fetching exceeds finality
-		if t.Key().Equals(ci.Head) {
-			ok, err := syncer.exceedsFinalityLimit(t)
-			if err != nil {
-				return true, err
-			}
-			if ok {
-				return true, ErrNewChainTooLong
-			}
-		}
-		parents, err := t.Parents()
-		if err != nil {
-			return true, err
-		}
-		if syncer.chainStore.HasTipSetAndState(ctx, parents) {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	var chain []types.TipSet
-	switch syncer.syncMode {
-	case Syncing:
-		// No time-out here, this can fetch an arbitrarily long chain
-		chain, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, syncDoneCb)
-		if err != nil {
-			return err
-		}
-	case CaughtUp:
-		// Time out if this bounded fetch doesn't complete quickly
-		fetchCtx, cancel := context.WithTimeout(ctx, blkWaitTime)
-		defer cancel()
-
-		chain, err = syncer.fetcher.FetchTipSets(fetchCtx, ci.Head, ci.Peer, catchDoneCb)
-		if err != nil {
-			return err
-		}
-	default:
-		panic("syncer in unknown state")
+	})
+	if err != nil {
+		return err
 	}
 	// Fetcher returns chain in Traversal order, reverse it to height order
 	Reverse(chain)
@@ -440,22 +386,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, ci *types.ChainInfo, 
 	return nil
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(newHead types.TipSet) (bool, error) {
-	if !newHead.Defined() {
-		return false, errors.New("cannon check finality limit on undefined tipset")
-	}
-	curHead, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
-	if err != nil {
-		return false, err
-	}
-	curHeight, err := curHead.Height()
-	if err != nil {
-		return false, err
-	}
-	finalityHeight := types.NewBlockHeight(curHeight).Add(types.NewBlockHeight(uint64(FinalityLimit)))
-	newHeight, err := newHead.Height()
-	if err != nil {
-		return false, err
-	}
-	return types.NewBlockHeight(newHeight).GreaterThan(finalityHeight), nil
+func (syncer *Syncer) exceedsFinalityLimit(curHeight, newHeight uint64) bool {
+	finalityHeight := curHeight + uint64(FinalityLimit)
+	return newHeight > finalityHeight
 }
