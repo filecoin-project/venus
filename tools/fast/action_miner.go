@@ -111,3 +111,14 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 
 	return &out.MinerSetPriceResponse, nil
 }
+
+// MinerProvingPeriod runs the `miner proving-period` command against the filecoin process
+func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address) (commands.MinerProvingPeriodResult, error) {
+	var out commands.MinerProvingPeriodResult
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-period", miner.String()); err != nil {
+		return commands.MinerProvingPeriodResult{}, err
+	}
+
+	return out, nil
+}

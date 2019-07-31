@@ -8,11 +8,15 @@ import (
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+
+	"github.com/filecoin-project/go-filecoin/address"
 )
 
 // MiningStatusResult is the type returned when get mining status.
 type MiningStatusResult struct {
-	Active bool
+	Active        bool                      `json:"active"`
+	Miner         address.Address           `json:"minerAddress"`
+	ProvingPeriod *MinerProvingPeriodResult `json:"provingPeriod,omitempty"`
 }
 
 var miningCmd = &cmds.Command{
@@ -20,10 +24,28 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"once":   miningOnceCmd,
-		"start":  miningStartCmd,
-		"status": miningStatusCmd,
-		"stop":   miningStopCmd,
+		"address": miningAddrCmd,
+		"once":    miningOnceCmd,
+		"start":   miningStartCmd,
+		"status":  miningStatusCmd,
+		"stop":    miningStopCmd,
+	},
+}
+
+var miningAddrCmd = &cmds.Command{
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddress, err := GetBlockAPI(env).MinerAddress()
+		if err != nil {
+			return err
+		}
+		return re.Emit(minerAddress.String())
+	},
+	Type: address.Address{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a address.Address) error {
+			fmt.Fprintln(w, a.String()) // nolint: errcheck
+			return nil
+		}),
 	},
 }
 
@@ -58,8 +80,27 @@ var miningStartCmd = &cmds.Command{
 var miningStatusCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		isMining := GetBlockAPI(env).MiningIsActive()
+
+		if !isMining {
+			return re.Emit(&MiningStatusResult{
+				Active: isMining,
+			})
+		}
+		// Get the Miner Address
+		minerAddress, err := GetBlockAPI(env).MinerAddress()
+		if err != nil {
+			return err
+		}
+
+		mpp, err := GetMinerProvingPeriod(req.Context, minerAddress, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+
 		return re.Emit(&MiningStatusResult{
-			Active: isMining,
+			Active:        isMining,
+			Miner:         minerAddress,
+			ProvingPeriod: mpp,
 		})
 	},
 	Type: &MiningStatusResult{},
@@ -67,9 +108,26 @@ var miningStatusCmd = &cmds.Command{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MiningStatusResult) error {
 			_, err := fmt.Fprintf(w, `Mining Status
 Active:  %s
+Address: %s
+`, strconv.FormatBool(res.Active), res.Miner.String())
+			if err != nil {
+				return err
+			}
+
+			if res.Active {
+				var pSet []string
+				for p := range res.ProvingPeriod.Set {
+					pSet = append(pSet, p)
+				}
+				_, err = fmt.Fprintf(w, `Proving Period Start: %s
+Proving Period End: %s
+Proving Period Set: %s
 `,
-				strconv.FormatBool(res.Active),
-			)
+					res.ProvingPeriod.Start.String(),
+					res.ProvingPeriod.End.String(),
+					pSet,
+				)
+			}
 			return err
 		}),
 	},

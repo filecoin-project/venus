@@ -23,12 +23,13 @@ var minerCmd = &cmds.Command{
 		Tagline: "Manage a single miner actor",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"create":        minerCreateCmd,
-		"owner":         minerOwnerCmd,
-		"power":         minerPowerCmd,
-		"set-price":     minerSetPriceCmd,
-		"update-peerid": minerUpdatePeerIDCmd,
-		"collateral":    minerCollateralCmd,
+		"create":         minerCreateCmd,
+		"owner":          minerOwnerCmd,
+		"power":          minerPowerCmd,
+		"set-price":      minerSetPriceCmd,
+		"update-peerid":  minerUpdatePeerIDCmd,
+		"collateral":     minerCollateralCmd,
+		"proving-period": minerProvingPeriodCmd,
 	},
 }
 
@@ -62,7 +63,7 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		pp, err := GetPorcelainAPI(env).ProtocolParameters(env.Context())
+		pp, err := GetPorcelainAPI(env).ProtocolParameters(req.Context)
 		if err != nil {
 			return err
 		}
@@ -482,6 +483,51 @@ var minerCollateralCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, af types.AttoFIL) error {
 			return PrintString(w, af)
+		}),
+	},
+}
+
+// MinerProvingPeriodResult is the type returned when getting a miner's proving period.
+type MinerProvingPeriodResult struct {
+	Start *types.BlockHeight           `json:"start,omitempty"`
+	End   *types.BlockHeight           `json:"end,omitempty"`
+	Set   map[string]types.Commitments `json:"set,omitempty"`
+}
+
+var minerProvingPeriodCmd = &cmds.Command{
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "Miner address to get proving period for"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		// Get the Miner Address
+		minerAddress, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		mpp, err := GetMinerProvingPeriod(req.Context, minerAddress, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+		return re.Emit(mpp)
+	},
+	Type: &MinerProvingPeriodResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerProvingPeriodResult) error {
+			var pSet []string
+			for p := range res.Set {
+				pSet = append(pSet, p)
+			}
+			_, err := fmt.Fprintf(w, `Proving Period
+Start: %s
+End: %s
+Set: %s
+`,
+				res.Start.String(),
+				res.End.String(),
+				pSet,
+			)
+			return err
 		}),
 	},
 }
