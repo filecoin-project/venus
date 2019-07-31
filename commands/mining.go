@@ -10,14 +10,8 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/types"
 )
-
-// MiningStatusResult is the type returned when get mining status.
-type MiningStatusResult struct {
-	Active        bool                      `json:"active"`
-	Miner         address.Address           `json:"minerAddress"`
-	ProvingPeriod *MinerProvingPeriodResult `json:"provingPeriod,omitempty"`
-}
 
 var miningCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -77,15 +71,20 @@ var miningStartCmd = &cmds.Command{
 	Encoders: stringEncoderMap,
 }
 
+// MiningStatusResult is the type returned when get mining status.
+type MiningStatusResult struct {
+	Active        bool                     `json:"active"`
+	Miner         address.Address          `json:"minerAddress"`
+	Owner         address.Address          `json:"owner"`
+	Collateral    types.AttoFIL            `json:"collateral"`
+	ProvingPeriod MinerProvingPeriodResult `json:"provingPeriod,omitempty"`
+	Power         MinerPowerResult         `json:"minerPower"`
+}
+
 var miningStatusCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		isMining := GetBlockAPI(env).MiningIsActive()
 
-		if !isMining {
-			return re.Emit(&MiningStatusResult{
-				Active: isMining,
-			})
-		}
 		// Get the Miner Address
 		minerAddress, err := GetBlockAPI(env).MinerAddress()
 		if err != nil {
@@ -97,37 +96,58 @@ var miningStatusCmd = &cmds.Command{
 			return err
 		}
 
+		owner, err := GetMinerOwner(req.Context, minerAddress, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+
+		collateral, err := GetMinerCollateral(req.Context, minerAddress, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+
+		power, err := GetMinerPower(req.Context, minerAddress, GetPorcelainAPI(env))
+		if err != nil {
+			return err
+		}
+
 		return re.Emit(&MiningStatusResult{
 			Active:        isMining,
 			Miner:         minerAddress,
+			Owner:         owner,
+			Collateral:    collateral,
+			Power:         power,
 			ProvingPeriod: mpp,
 		})
 	},
 	Type: &MiningStatusResult{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MiningStatusResult) error {
+			var pSet []string
+			for p := range res.ProvingPeriod.Set {
+				pSet = append(pSet, p)
+			}
 			_, err := fmt.Fprintf(w, `Mining Status
-Active:  %s
-Address: %s
-`, strconv.FormatBool(res.Active), res.Miner.String())
-			if err != nil {
-				return err
-			}
+Active:     %s
+Address:    %s
+Owner:      %s
+Collateral: %s
+Power:      %s / %s
 
-			if res.Active {
-				var pSet []string
-				for p := range res.ProvingPeriod.Set {
-					pSet = append(pSet, p)
-				}
-				_, err = fmt.Fprintf(w, `Proving Period Start: %s
-Proving Period End: %s
-Proving Period Set: %s
-`,
-					res.ProvingPeriod.Start.String(),
-					res.ProvingPeriod.End.String(),
-					pSet,
-				)
-			}
+Proving Period
+Start: %s
+End:   %s
+Set:   %s
+
+`, strconv.FormatBool(res.Active),
+				res.Miner.String(),
+				res.Owner.String(),
+				res.Collateral.String(),
+				res.Power.Power.String(), res.Power.Total.String(),
+				res.ProvingPeriod.Start.String(),
+				res.ProvingPeriod.End.String(),
+				pSet)
+
 			return err
 		}),
 	},

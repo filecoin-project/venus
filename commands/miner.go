@@ -377,17 +377,7 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getOwner",
-		)
-		if err != nil {
-			return err
-		}
-		ownerAddr, err := address.NewFromBytes(bytes[0])
+		ownerAddr, err := GetMinerOwner(req.Context, minerAddr, GetPorcelainAPI(env))
 		if err != nil {
 			return err
 		}
@@ -417,29 +407,11 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getPower",
-		)
+		minerPower, err := GetMinerPower(req.Context, minerAddr, GetPorcelainAPI(env))
 		if err != nil {
 			return err
 		}
-		power := types.NewBytesAmountFromBytes(bytes[0])
-
-		bytes, err = GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			address.StorageMarketAddress,
-			"getTotalStorage",
-		)
-		if err != nil {
-			return err
-		}
-		total := types.NewBytesAmountFromBytes(bytes[0])
-
-		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
+		str := fmt.Sprintf("%s / %s", minerPower.Power.String(), minerPower.Total.String()) // nolint: govet
 		return re.Emit(str)
 	},
 	Arguments: []cmdkit.Argument{
@@ -463,17 +435,10 @@ var minerCollateralCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		rets, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getActiveCollateral",
-		)
+		collateral, err := GetMinerCollateral(req.Context, minerAddr, GetPorcelainAPI(env))
 		if err != nil {
 			return err
 		}
-		collateral := types.NewAttoFILFromBytes(rets[0])
 		return re.Emit(collateral)
 	},
 	Arguments: []cmdkit.Argument{
@@ -485,13 +450,6 @@ var minerCollateralCmd = &cmds.Command{
 			return PrintString(w, af)
 		}),
 	},
-}
-
-// MinerProvingPeriodResult is the type returned when getting a miner's proving period.
-type MinerProvingPeriodResult struct {
-	Start *types.BlockHeight           `json:"start,omitempty"`
-	End   *types.BlockHeight           `json:"end,omitempty"`
-	Set   map[string]types.Commitments `json:"set,omitempty"`
 }
 
 var minerProvingPeriodCmd = &cmds.Command{
