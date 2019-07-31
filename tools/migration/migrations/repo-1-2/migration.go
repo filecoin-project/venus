@@ -16,9 +16,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// ==============  IMPORTANT ================
-// PLEASE SEE THE README IF YOU ARE HERE BECAUSE YOUR CHANGES BROKE A MIGRATION TEST
-// ==========================================
+// This migration was written for a prior development state in order to demonstrate migration
+// functionality and workflow. It's not expected to run against a current repo and the tests have
+// since been removed. This code remains for the next migration author to use as a reference,
+// after which we can probably remove it.
+
 // duplicate head key here to protect against future changes
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
