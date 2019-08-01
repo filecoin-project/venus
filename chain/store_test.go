@@ -192,7 +192,10 @@ func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bo
 	}
 }
 
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *SyncerTestParams, syncMode chain.SyncMode) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
+func initSyncTest(t *testing.T,
+	con consensus.Protocol,
+	genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error),
+	cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
 	ctx := context.Background()
 
 	calcGenBlk, err := genFunc(cst, bs) // flushes state
@@ -203,7 +206,7 @@ func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.C
 
 	fetcher := th.NewTestFetcher()
 	fetcher.AddSourceBlocks(calcGenBlk)
-	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(con, chainStore, fetcher) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
@@ -233,7 +236,7 @@ func initStoreTest(ctx context.Context, t *testing.T, dstP *SyncerTestParams) {
 	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
 		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
 	}
-	initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
+	initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP)
 	requireSetTestChain(t, con, true, dstP)
 }
 
