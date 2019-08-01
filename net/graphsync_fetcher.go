@@ -3,8 +3,6 @@ package net
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/types"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -14,6 +12,9 @@ import (
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // interface conformance check
@@ -25,7 +26,7 @@ type GraphExchange interface {
 	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
 }
 
-// GraphSyncFetcher is used to fetch data over the network.  It is implemented with
+// GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
 	exchange  GraphExchange
@@ -34,8 +35,8 @@ type GraphSyncFetcher struct {
 	ssb       selector.SelectorSpecBuilder
 }
 
-// NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and attached local
-// blockservice for reloading blocks in memory once they are returned
+// NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
+// attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
 	bv consensus.BlockSyntaxValidator) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
@@ -63,17 +64,20 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 const maxRecursionDepth = 64
 const recursionMultiplier = 4
 
-// FetchTipSets gets Tipsets starting from the given tipset key and continuing till
+// FetchTipSets gets Tipsets starting from the given tipset key and continuing until
 // the done function returns true or errors
 //
 // For now FetchTipSets operates in two parts:
 // 1. It fetches relevant blocks through Graphsync, which writes them to the block store
-// 2. It reads them from the block store and validates there syntax as blocks
+// 2. It reads them from the block store and validates their syntax as blocks
 // and constructs a tipset
 // This does have a potentially unwanted side effect of writing blocks to the block store
 // that later don't validate (bitswap actually does this as well)
-// In the future, the blocks will be validated directly through graphsync as
+//
+// TODO: In the future, the blocks will be validated directly through graphsync as
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
+//
+// See: https://github.com/filecoin-project/go-filecoin/issues/3175
 func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	cids := tsKey.ToSlice()
 	err := gsf.fetchBlocks(ctx, cids, from)
@@ -92,6 +96,9 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	recursionDepth := 1
 	ts := startingTipset
 	for !isDone {
+		// Because a graphsync query always starts from a single CID,
+		// we fetch tipsets starting from the first block in the last tipset and
+		// recursively getting sets of parents
 		err := gsf.fetchBlocksRecursively(ctx, ts.At(0).Cid(), from, recursionDepth)
 		if err != nil {
 			return nil, err
@@ -139,14 +146,14 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, fr
 	return nil
 }
 
-// fetchBlocksRecursively gets multiple sets of parent blocks starting from a baseCid, up to
-// the given recursion depth parameter
+// fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
+// starting from baseCid.
 func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, from peer.ID, recursionDepth int) error {
 
 	// recursive selector to fetch n sets of parent blocks
 	// starting from block matching base cid:
 	//   - fetch all parent blocks
-	//   - with exactly the first parent block, repeat again for it's parents
+	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
 	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(

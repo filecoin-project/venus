@@ -4,10 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/net"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -16,6 +12,11 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/net"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data ipld.Node) {

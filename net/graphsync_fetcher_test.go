@@ -56,19 +56,19 @@ func TestGraphsyncFetcher(t *testing.T) {
 		final := builder.AppendOn(gen, 3)
 
 		stubs := []requestResponse{
-			requestResponse{
+			{
 				fakeRequest{cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
 				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
 			},
-			requestResponse{
+			{
 				fakeRequest{cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
 				fakeResponse{blks: []format.Node{final.At(1).ToNode()}},
 			},
-			requestResponse{
+			{
 				fakeRequest{cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
 				fakeResponse{blks: []format.Node{final.At(2).ToNode()}},
 			},
-			requestResponse{fakeRequest{cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
+			{fakeRequest{cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
 					makeGsResponse("", final.At(0).Cid()),
 					makeGsResponse("parents", final.At(0).Cid()),
@@ -106,7 +106,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		originalCids := types.NewTipSetKey(notABlockCid)
 
 		stubs := []requestResponse{
-			requestResponse{
+			{
 				fakeRequest{cidlink.Link{Cid: notABlockCid}, layer1Selector},
 				fakeResponse{blks: []format.Node{notABlockObj}},
 			},
