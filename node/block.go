@@ -28,7 +28,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
-	if err := node.Syncer.HandleNewTipset(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), true); err != nil {
+	if err := node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), true); err != nil {
 		return err
 	}
 
@@ -58,7 +58,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// Don't be too quick to change that, though: the syncer re-fetching the block
 	// is currently critical to reliable validation.
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
-	err = node.Syncer.HandleNewTipset(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), true)
+	err = node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), true)
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")
 	}

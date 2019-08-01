@@ -78,12 +78,12 @@ type syncStateEvaluator interface {
 // tipset in the incoming chain, and assumptions regarding the existence of
 // grandparent state in the store.
 type Syncer struct {
-	// This mutex ensures at most one call to HandleNewTipset executes at
+	// This mutex ensures at most one call to HandleNewTipSet executes at
 	// any time.  This is important because at least two sections of the
 	// code otherwise have races:
 	// 1. syncOne assumes that chainStore.Head() does not change when
 	// comparing tipset weights and updating the store
-	// 2. HandleNewTipset assumes that calls to widen and then syncOne
+	// 2. HandleNewTipSet assumes that calls to widen and then syncOne
 	// are not run concurrently with other calls to widen to ensure
 	// that the syncer always finds the heaviest existing tipset.
 	mu sync.Mutex
@@ -289,13 +289,13 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 	return wts, nil
 }
 
-// HandleNewTipset extends the Syncer's chain store with the given tipset if they
+// HandleNewTipSet extends the Syncer's chain store with the given tipset if they
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (syncer *Syncer) HandleNewTipset(ctx context.Context, ci *types.ChainInfo, trusted bool) (err error) {
+func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) (err error) {
 	logSyncer.Debugf("Begin fetch and sync of chain with head %v", ci.Head)
-	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipset")
+	ctx, span := trace.StartSpan(ctx, "Syncer.HandleNewTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ci.Head.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 

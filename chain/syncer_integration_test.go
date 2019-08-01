@@ -58,8 +58,8 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipset(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, syncer.HandleNewTipset(ctx, types.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -105,11 +105,11 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
 
-	err = offlineSyncer.HandleNewTipset(ctx, types.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
+	err = offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipset(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
 }
 
 // Syncer handles MarketView weight comparisons.
@@ -243,7 +243,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(t, blockSource, f1b1, f2b1)
-	err = syncer.HandleNewTipset(ctx, types.NewChainInfo(peer.ID(""), sharedCids, uint64(f1b1.Height)), true)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), sharedCids, uint64(f1b1.Height)), true)
 	require.NoError(t, err)
 	assertHead(t, chainStore, tsShared)
 	measuredWeight, err := wFun(requireHeadTipset(t, chainStore))
@@ -278,7 +278,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1H, err := f1.Height()
 	require.NoError(t, err)
-	err = syncer.HandleNewTipset(ctx, types.NewChainInfo(peer.ID(""), f1Cids, uint64(f1H)), true)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f1Cids, uint64(f1H)), true)
 	require.NoError(t, err)
 
 	assertHead(t, chainStore, f1)
@@ -307,7 +307,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f2H, err := f2.Height()
 	require.NoError(t, err)
-	err = syncer.HandleNewTipset(ctx, types.NewChainInfo(peer.ID(""), f2Cids, f2H), true)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f2Cids, f2H), true)
 	require.NoError(t, err)
 
 	assertHead(t, chainStore, f2)

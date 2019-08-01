@@ -91,7 +91,7 @@ type nodeChainReader interface {
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipset(ctx context.Context, ci *types.ChainInfo, trusted bool) error
+	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
 // Node represents a full Filecoin node.
@@ -552,7 +552,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
-			err := node.Syncer.HandleNewTipset(context.Background(), ci, true)
+			err := node.Syncer.HandleNewTipSet(context.Background(), ci, true)
 			if err != nil {
 				log.Infof("error handling blocks: %s", ci.Head.String())
 				return
