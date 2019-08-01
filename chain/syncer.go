@@ -74,11 +74,11 @@ type syncerChainReaderWriter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
-	HasTipSetAndState(ctx context.Context, tsKey string) bool
+	HasTipSetAndState(ctx context.Context, tsKey types.TipSetKey) bool
 	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
 	SetHead(ctx context.Context, s types.TipSet) error
-	HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error)
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey types.TipSetKey, h uint64) bool
+	GetTipSetAndStatesByParentsAndHeight(pTsKey types.TipSetKey, h uint64) ([]*TipSetAndState, error)
 }
 
 type syncStateEvaluator interface {
@@ -277,10 +277,10 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 	if err != nil {
 		return types.UndefTipSet, err
 	}
-	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet.String(), height) {
+	if !syncer.chainStore.HasTipSetAndStatesWithParentsAndHeight(parentSet, height) {
 		return types.UndefTipSet, nil
 	}
-	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet.String(), height)
+	candidates, err := syncer.chainStore.GetTipSetAndStatesByParentsAndHeight(parentSet, height)
 	if err != nil {
 		return types.UndefTipSet, err
 	}
@@ -341,7 +341,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 	defer syncer.mu.Unlock()
 
 	// If the store already has this tipset then the syncer is finished.
-	if syncer.chainStore.HasTipSetAndState(ctx, tsKey.String()) {
+	if syncer.chainStore.HasTipSetAndState(ctx, tsKey) {
 		return nil
 	}
 
@@ -350,7 +350,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 		if err != nil {
 			return true, err
 		}
-		return syncer.chainStore.HasTipSetAndState(ctx, parents.String()), nil
+		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	}
 
 	catchDoneCb := func(t types.TipSet) (bool, error) {
@@ -368,7 +368,7 @@ func (syncer *Syncer) HandleNewTipset(ctx context.Context, tsKey types.TipSetKey
 		if err != nil {
 			return true, err
 		}
-		if syncer.chainStore.HasTipSetAndState(ctx, parents.String()) {
+		if syncer.chainStore.HasTipSetAndState(ctx, parents) {
 			return true, nil
 		}
 		return false, nil

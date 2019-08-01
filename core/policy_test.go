@@ -192,7 +192,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
 			b.AddMessage(msgs[1], &types.MessageReceipt{})
 			b.SetTicket([]byte{1})
-			b.SetTimestamp(2) // Tweak if necessary to force CID ordering opposite ticket ordering.
+			b.SetTimestamp(0) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)
 

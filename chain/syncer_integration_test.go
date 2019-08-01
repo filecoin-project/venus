@@ -27,400 +27,96 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// This file contains test that use a full syncer dependency structure, including store and
-// consensus implementations.
-// See syncer_test.go for most syncer unit tests.
-// The tests here should probably be reworked to follow the unit test patterns, and this
-// integration test setup reserved for a few "sunny day" tests of integration specifically.
-
-type SyncerTestParams struct {
-	// Chain diagram below.  Note that blocks in the same tipset are in parentheses.
-	//
-	// genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (link4blk1, link4blk2)
-
-	// Blocks
-	genesis                         *types.Block
-	link1blk1, link1blk2            *types.Block
-	link2blk1, link2blk2, link2blk3 *types.Block
-	link3blk1                       *types.Block
-	link4blk1, link4blk2            *types.Block
-
-	// Cids
-	genCid                                                       cid.Cid
-	genStateRoot, link1State, link2State, link3State, link4State cid.Cid
-
-	// TipSets
-	genTS, link1, link2, link3, link4 types.TipSet
-
-	// utils
-	cidGetter         func() cid.Cid
-	minerAddress      address.Address
-	minerOwnerAddress address.Address
-	minerPeerID       peer.ID
-}
-
-func initDSTParams() *SyncerTestParams {
-	var err error
-	minerAddress, err := address.NewActorAddress([]byte("miner"))
-	if err != nil {
-		panic(err)
-	}
-	minerOwnerAddress, err := address.NewActorAddress([]byte("minerOwner"))
-	if err != nil {
-		panic(err)
-	}
-	minerPeerID, err := th.RandPeerID()
-	if err != nil {
-		panic(err)
-	}
-
-	// Set up the test chain
-	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
-	cst := hamt.NewCborStore()
-	genesis, err := initGenesis(minerAddress, minerOwnerAddress, minerPeerID, cst, bs)
-	if err != nil {
-		panic(err)
-	}
-	genCid := genesis.Cid()
-	genTS := th.MustNewTipSet(genesis)
-
-	// mock state root cids
-	cidGetter := types.NewCidForTestGetter()
-
-	genStateRoot := genesis.StateRoot
-
-	return &SyncerTestParams{
-		minerAddress:      minerAddress,
-		minerOwnerAddress: minerOwnerAddress,
-		minerPeerID:       minerPeerID,
-		genesis:           genesis,
-		genCid:            genCid,
-		genTS:             genTS,
-		cidGetter:         cidGetter,
-		genStateRoot:      genStateRoot,
-	}
-}
-
-// This function sets global variables according to the tests needs.  The
-// test chain's basic structure is always the same, but some tests want
-// mocked stateRoots or parent weight calculations from different consensus protocols.
-func requireSetTestChain(t *testing.T, con consensus.Protocol, mockStateRoots bool, dstP *SyncerTestParams) {
-
-	var err error
-	// see powerTableForWidenTest
-	minerPower := types.NewBytesAmount(25)
-	totalPower := types.NewBytesAmount(100)
-	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
-	minerWorker := mockSigner.Addresses[0]
-
-	fakeChildParams := th.FakeChildParams{
-		Parent:      dstP.genTS,
-		GenesisCid:  dstP.genCid,
-		StateRoot:   dstP.genStateRoot,
-		Consensus:   con,
-		MinerAddr:   dstP.minerAddress,
-		MinerWorker: minerWorker,
-		Signer:      mockSigner,
-	}
-
-	dstP.link1blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link1blk1.Proof, dstP.link1blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link1blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link1blk2.Proof, dstP.link1blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link1 = th.RequireNewTipSet(t, dstP.link1blk1, dstP.link1blk2)
-
-	if mockStateRoots {
-		dstP.link1State = dstP.cidGetter()
-	} else {
-		dstP.link1State = dstP.genStateRoot
-	}
-
-	fakeChildParams.Parent = dstP.link1
-	fakeChildParams.StateRoot = dstP.link1State
-	dstP.link2blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link2blk1.Proof, dstP.link2blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link2blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link2blk2.Proof, dstP.link2blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	fakeChildParams.Nonce = uint64(1)
-	dstP.link2blk3 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link2blk3.Proof, dstP.link2blk3.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link2 = th.RequireNewTipSet(t, dstP.link2blk1, dstP.link2blk2, dstP.link2blk3)
-
-	if mockStateRoots {
-		dstP.link2State = dstP.cidGetter()
-	} else {
-		dstP.link2State = dstP.genStateRoot
-	}
-
-	fakeChildParams.Parent = dstP.link2
-	fakeChildParams.StateRoot = dstP.link2State
-	dstP.link3blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link3blk1.Proof, dstP.link3blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link3 = th.RequireNewTipSet(t, dstP.link3blk1)
-
-	if mockStateRoots {
-		dstP.link3State = dstP.cidGetter()
-	} else {
-		dstP.link3State = dstP.genStateRoot
-	}
-
-	fakeChildParams.Parent = dstP.link3
-	fakeChildParams.StateRoot = dstP.link3State
-	fakeChildParams.NullBlockCount = uint64(2)
-	dstP.link4blk1 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link4blk1.Proof, dstP.link4blk1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	fakeChildParams.Nonce = uint64(1)
-	dstP.link4blk2 = th.RequireMkFakeChildWithCon(t, fakeChildParams)
-	dstP.link4blk2.Proof, dstP.link4blk2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker, minerPower, totalPower, mockSigner)
-	require.NoError(t, err)
-
-	dstP.link4 = th.RequireNewTipSet(t, dstP.link4blk1, dstP.link4blk2)
-
-	if mockStateRoots {
-		dstP.link4State = dstP.cidGetter()
-	} else {
-		dstP.link4State = dstP.genStateRoot
-	}
-}
-
-// loadSyncerFromRepo creates a store and syncer from an existing repo.
-func loadSyncerFromRepo(t *testing.T, r repo.Repo, dstP *SyncerTestParams) (*chain.Syncer, *th.TestFetcher) {
-	powerTable := &th.TestView{}
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	verifier := &verification.FakeVerifier{
-		VerifyPoStValid: true,
-	}
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
-
-	calcGenBlk, err := initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs) // flushes state
-	require.NoError(t, err)
-	calcGenBlk.StateRoot = dstP.genStateRoot
-	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
-
-	blockSource := th.NewTestFetcher()
-	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
-
-	ctx := context.Background()
-	err = chainStore.Load(ctx)
-	require.NoError(t, err)
-	return syncer, blockSource
-}
-
-// initSyncTestDefault creates and returns the datastructures (syncer, store, repo, fetcher)
-// needed to run tests.  It also sets the global test variables appropriately.
-func initSyncTestDefault(t *testing.T, dstP *SyncerTestParams) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
-	processor := th.NewTestProcessor()
-	powerTable := &th.TestView{}
-	r := repo.NewInMemoryRepo()
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	verifier := &verification.FakeVerifier{
-		VerifyPoStValid: true,
-	}
-	con := consensus.NewExpected(cst, bs, processor, th.NewFakeBlockValidator(), powerTable, dstP.genCid, verifier, th.BlockTimeTest)
-	requireSetTestChain(t, con, false, dstP)
-	initGenesisWrapper := func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
-		return initGenesis(dstP.minerAddress, dstP.minerOwnerAddress, dstP.minerPeerID, cst, bs)
-	}
-	return initSyncTest(t, con, initGenesisWrapper, cst, bs, r, dstP, chain.Syncing)
-}
-
-func initSyncTest(t *testing.T, con consensus.Protocol, genFunc func(cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error), cst *hamt.CborIpldStore, bs bstore.Blockstore, r repo.Repo, dstP *SyncerTestParams, syncMode chain.SyncMode) (*chain.Syncer, *chain.Store, repo.Repo, *th.TestFetcher) {
-	ctx := context.Background()
-
-	calcGenBlk, err := genFunc(cst, bs) // flushes state
-	require.NoError(t, err)
-	calcGenBlk.StateRoot = dstP.genStateRoot
-	chainDS := r.ChainDatastore()
-	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
-
-	fetcher := th.NewTestFetcher()
-	fetcher.AddSourceBlocks(calcGenBlk)
-	syncer := chain.NewSyncer(con, chainStore, fetcher, syncMode) // note we use same cst for on and offline for tests
-
-	// Initialize stores to contain dstP.genesis block and state
-	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)
-
-	genTsas := &chain.TipSetAndState{
-		TipSet:          calcGenTS,
-		TipSetStateRoot: dstP.genStateRoot,
-	}
-	require.NoError(t, chainStore.PutTipSetAndState(ctx, genTsas))
-	err = chainStore.SetHead(ctx, calcGenTS) // Initialize chainStore store with correct dstP.genesis
-	require.NoError(t, err)
-	requireHead(t, chainStore, calcGenTS)
-	requireTsAdded(t, chainStore, calcGenTS)
-
-	return syncer, chainStore, r, fetcher
-}
-
-func containsTipSet(tsasSlice []*chain.TipSetAndState, ts types.TipSet) bool {
-	for _, tsas := range tsasSlice {
-		if tsas.TipSet.String() == ts.String() { //bingo
-			return true
-		}
-	}
-	return false
-}
-
-type requireTsAddedChainStore interface {
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetAndStatesByParentsAndHeight(string, uint64) ([]*chain.TipSetAndState, error)
-}
-
-func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
-	h, err := ts.Height()
-	require.NoError(t, err)
-	// Tip Index correctly updated
-	gotTs, err := chain.GetTipSet(ts.Key())
-	require.NoError(t, err)
-	require.Equal(t, ts, gotTs)
-	parent, err := ts.Parents()
-	require.NoError(t, err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent.String(), h)
-	require.NoError(t, err)
-	require.True(t, containsTipSet(childTsasSlice, ts))
-}
-
-func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
-	require.Equal(t, head, requireHeadTipset(t, chain))
-}
-
-func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
-	headTipSet, err := chain.GetTipSet(chain.GetHead())
-	assert.NoError(t, err)
-	assert.Equal(t, head, headTipSet)
-}
-
-func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
-	var cids []cid.Cid
-	for _, block := range blocks {
-		c := block.Cid()
-		cids = append(cids, c)
-	}
-	f.AddSourceBlocks(blocks...)
-	return types.NewTipSetKey(cids...)
-}
-
-// Syncer is capable of recovering from a fork reorg after Load.
+// Syncer is capable of recovering from a fork reorg after the store is loaded.
+// This is a regression test to guard against the syncer assuming that the store having all
+// blocks from a tipset means the syncer has computed its state.
+// Such a case happens when the store has just loaded, but this tipset is not on its heaviest chain).
 // See https://github.com/filecoin-project/go-filecoin/issues/1148#issuecomment-432008060
 func TestLoadFork(t *testing.T) {
 	tf.UnitTest(t)
-	dstP := initDSTParams()
-
-	syncer, chainStore, r, blockSource := initSyncTestDefault(t, dstP)
 	ctx := context.Background()
-
-	// Set up chain store to have standard chain up to dstP.link2
-	_ = requirePutBlocks(t, blockSource, dstP.link1.ToSlice()...)
-	cids2 := requirePutBlocks(t, blockSource, dstP.link2.ToSlice()...)
-	err := syncer.HandleNewTipset(ctx, cids2, peer.ID(""))
+	// Set up in the standard way, but retain references to the repo and cbor stores.
+	builder := chain.NewBuilder(t, address.Undef)
+	genesis := builder.NewGenesis()
+	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
 
-	// Now sync the store with a heavier fork, forking off dstP.link1.
-	forkbase := th.RequireNewTipSet(t, dstP.link2blk1)
+	repo := repo.NewInMemoryRepo()
+	bs := bstore.NewBlockstore(repo.Datastore())
+	cborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	store := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, genesis.At(0).Cid())
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{genStateRoot, genesis}))
+	require.NoError(t, store.SetHead(ctx, genesis))
 
-	signer, ki := types.NewMockSignersAndKeyInfo(2)
-	minerWorker, err := ki[0].Address()
-	require.NoError(t, err)
+	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
+	// *not* as the store, to which the syncer must ensure to put blocks.
+	eval := &chain.FakeStateEvaluator{}
+	syncer := chain.NewSyncer(eval, store, builder, chain.Syncing)
 
-	fakeChildParams := th.FakeChildParams{
-		Parent:      forkbase,
-		GenesisCid:  dstP.genCid,
-		MinerAddr:   dstP.minerAddress,
-		Nonce:       uint64(1),
-		StateRoot:   dstP.genStateRoot,
-		Signer:      signer,
-		MinerWorker: minerWorker,
+	base := builder.AppendManyOn(3, genesis)
+	left := builder.AppendManyOn(4, base)
+	right := builder.AppendManyOn(3, base)
+
+	// Sync the two branches, which stores all blocks in the underlying stores.
+	assert.NoError(t, syncer.HandleNewTipset(ctx, left.Key(), ""))
+	assert.NoError(t, syncer.HandleNewTipset(ctx, right.Key(), ""))
+	verifyHead(t, store, left)
+
+	// The syncer/store assume that the fetcher populates the underlying block store such that
+	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
+	// it manually here.
+	for _, tip := range []types.TipSet{left, right} {
+		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
+			for _, block := range itr.Value().ToSlice() {
+				_, err := cborStore.Put(ctx, block)
+				require.NoError(t, err)
+			}
+		}
 	}
 
-	forklink1blk1 := th.RequireMkFakeChild(t, fakeChildParams)
+	// Load a new chain store on the underlying data. It will only compute state for the
+	// left (heavy) branch. It has a fetcher that can't provide blocks.
+	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, genesis.At(0).Cid())
+	require.NoError(t, newStore.Load(ctx))
+	fakeFetcher := th.NewTestFetcher()
+	offlineSyncer := chain.NewSyncer(eval, newStore, fakeFetcher, chain.Syncing)
 
-	fakeChildParams.Nonce = uint64(1)
-	forklink1blk2 := th.RequireMkFakeChild(t, fakeChildParams)
+	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
+	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
 
-	fakeChildParams.Nonce = uint64(2)
-	forklink1blk3 := th.RequireMkFakeChild(t, fakeChildParams)
-	forklink1 := th.RequireNewTipSet(t, forklink1blk1, forklink1blk2, forklink1blk3)
+	// The newRight head extends right. The store already has the individual blocks up to the point
+	// `right`, but has not computed their state (because it's not the heavy branch).
+	// Obtuse code organisation means that the syncer will
+	// attempt to fetch `newRight` *and `right`* blocks from the network in the process of computing
+	// the state sequence for them all. Yes, this is a bit silly - the `right` blocks are already local.
+	// The test is guarding against a prior incorrect behaviour where the syncer would not attempt to
+	// fetch the `right` blocks (because it already has them) but *also* would not compute their state.
+	// We detect this by making the final `newRight` blocks fetchable, but not the `right` blocks, and
+	// expect the syncer to fail due to that failed fetch.
+	// This test would fail to work if the syncer could inspect the store directly to avoid requesting
+	// blocks already local, but also correctly recomputed the state.
 
-	fakeChildParams.Parent = forklink1
-	fakeChildParams.Nonce = uint64(0)
-	forklink2blk1 := th.RequireMkFakeChild(t, fakeChildParams)
+	// Note that since the blocks are in the store, and a real fetcher will consult the store before
+	// trying the network, this won't actually cause a network request. But it's really hard to follow.
+	newRight := builder.AppendManyOn(1, right)
+	fakeFetcher.AddSourceBlocks(newRight.ToSlice()...)
 
-	fakeChildParams.Nonce = uint64(1)
-	forklink2blk2 := th.RequireMkFakeChild(t, fakeChildParams)
-
-	fakeChildParams.Nonce = uint64(2)
-	forklink2blk3 := th.RequireMkFakeChild(t, fakeChildParams)
-	forklink2 := th.RequireNewTipSet(t, forklink2blk1, forklink2blk2, forklink2blk3)
-
-	fakeChildParams.Nonce = uint64(0)
-	fakeChildParams.Parent = forklink2
-	forklink3blk1 := th.RequireMkFakeChild(t, fakeChildParams)
-
-	fakeChildParams.Nonce = uint64(1)
-	forklink3blk2 := th.RequireMkFakeChild(t, fakeChildParams)
-	forklink3 := th.RequireNewTipSet(t, forklink3blk1, forklink3blk2)
-
-	_ = requirePutBlocks(t, blockSource, forklink1.ToSlice()...)
-	_ = requirePutBlocks(t, blockSource, forklink2.ToSlice()...)
-	forkHead := requirePutBlocks(t, blockSource, forklink3.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, forkHead, peer.ID(""))
-	require.NoError(t, err)
-	requireHead(t, chainStore, forklink3)
-
-	// Put blocks in global IPLD blockstore
-	// TODO #2128 make this cleaner along with broad test cleanup.
-	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	requirePutBlocksToCborStore(t, cst, dstP.genTS.ToSlice()...)
-	requirePutBlocksToCborStore(t, cst, dstP.link1.ToSlice()...)
-	requirePutBlocksToCborStore(t, cst, dstP.link2.ToSlice()...)
-	requirePutBlocksToCborStore(t, cst, forklink1.ToSlice()...)
-	requirePutBlocksToCborStore(t, cst, forklink2.ToSlice()...)
-	requirePutBlocksToCborStore(t, cst, forklink3.ToSlice()...)
-
-	// Shut down store, reload and wire to syncer.
-	loadSyncer, blockSource := loadSyncerFromRepo(t, r, dstP)
-
-	// Test that the syncer can't sync a block on the old chain
-	// without getting old blocks from network. i.e. the repo is trimmed
-	// of non-heaviest chain blocks
-	cids3 := requirePutBlocks(t, blockSource, dstP.link3.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cids3, peer.ID(""))
+	// Test that the syncer can't sync a block chained from on the right (originally shorter) chain
+	// without getting old blocks from network. i.e. the store index has been trimmed
+	// of non-heaviest chain blocks.
+	err = offlineSyncer.HandleNewTipset(ctx, newRight.Key(), "")
 	assert.Error(t, err)
 
-	// Test that the syncer can sync a block on the heaviest chain
-	// without getting old blocks from the network.
-	fakeChildParams.Parent = forklink3
-	forklink4blk1 := th.RequireMkFakeChild(t, fakeChildParams)
-	forklink4 := th.RequireNewTipSet(t, forklink4blk1)
-	cidsFork4 := requirePutBlocks(t, blockSource, forklink4.ToSlice()...)
-	err = loadSyncer.HandleNewTipset(ctx, cidsFork4, peer.ID(""))
-	assert.NoError(t, err)
+	// The left chain is ok without any fetching though.
+	assert.NoError(t, offlineSyncer.HandleNewTipset(ctx, left.Key(), ""))
 }
 
 // Syncer handles MarketView weight comparisons.
 // Current issue: when creating miner mining with addr0, addr0's storage head isn't found in the blockstore
 // and I can't figure out why because we pass in the correct blockstore to createStorageMinerWithpower.
 func TestTipSetWeightDeep(t *testing.T) {
-	tf.UnitTest(t)
+	// This test takes many seconds, the bottleneck is gengen.
+	tf.IntegrationTest(t)
 
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
@@ -616,4 +312,44 @@ func initGenesis(minerAddress address.Address, minerOwnerAddress address.Address
 	return consensus.MakeGenesisFunc(
 		consensus.MinerActor(minerAddress, minerOwnerAddress, minerPeerID, types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)(cst, bs)
+}
+
+type requireTsAddedChainStore interface {
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSetAndStatesByParentsAndHeight(types.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
+}
+
+func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
+	h, err := ts.Height()
+	require.NoError(t, err)
+	// Tip Index correctly updated
+	gotTs, err := chain.GetTipSet(ts.Key())
+	require.NoError(t, err)
+	require.Equal(t, ts, gotTs)
+	parent, err := ts.Parents()
+	require.NoError(t, err)
+	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent, h)
+
+	require.NoError(t, err)
+	require.True(t, containsTipSet(childTsasSlice, ts))
+}
+
+func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
+	require.Equal(t, head, requireHeadTipset(t, chain))
+}
+
+func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
+	assert.NoError(t, err)
+	assert.Equal(t, head, headTipSet)
+}
+
+func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
+	var cids []cid.Cid
+	for _, block := range blocks {
+		c := block.Cid()
+		cids = append(cids, c)
+	}
+	f.AddSourceBlocks(blocks...)
+	return types.NewTipSetKey(cids...)
 }

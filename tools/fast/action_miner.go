@@ -3,6 +3,8 @@ package fast
 import (
 	"context"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -65,17 +67,27 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 	return out, nil
 }
 
-// MinerPower runs the `miner power` command against the filecoin process
-func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	var out big.Int
+// MinerPower runs the `miner power` command against the filecoin process and returns the result
+// as two *big.Ints
+func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (*big.Int, *big.Int, error) {
+	var out string
 
 	sMinerAddr := minerAddr.String()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", sMinerAddr); err != nil {
-		return big.NewInt(0), err
+		return big.NewInt(0), big.NewInt(0), err
 	}
 
-	return &out, nil
+	powers := strings.Split(out, " / ")
+	minerPwr, err := strconv.ParseInt(powers[0], 10, 64)
+	if err != nil {
+		return big.NewInt(0), big.NewInt(0), err
+	}
+	totalPwr, err := strconv.ParseInt(powers[1], 10, 64)
+	if err != nil {
+		return big.NewInt(0), big.NewInt(0), err
+	}
+	return big.NewInt(minerPwr), big.NewInt(totalPwr), nil
 }
 
 // MinerSetPrice runs the `miner set-price` command against the filecoin process

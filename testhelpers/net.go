@@ -3,7 +3,9 @@ package testhelpers
 import (
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -18,6 +20,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -120,6 +123,17 @@ func RandPeerID() (peer.ID, error) {
 	}
 	h, _ := mh.Sum(buf, mh.SHA2_256, -1)
 	return peer.ID(h), nil
+}
+
+// RequireIntPeerID takes in an integer and creates a unique peer id for it.
+func RequireIntPeerID(t *testing.T, i int64) peer.ID {
+	buf := make([]byte, 16)
+	n := binary.PutVarint(buf, i)
+	h, err := mh.Sum(buf[:n], mh.ID, -1)
+	require.NoError(t, err)
+	pid, err := peer.IDFromBytes(h)
+	require.NoError(t, err)
+	return pid
 }
 
 // TestFetcher is an object with the same method set as Fetcher plus a method
