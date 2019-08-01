@@ -156,6 +156,9 @@ type Node struct {
 	// SectorBuilder is used by the miner to fill and seal sectors.
 	sectorBuilder sectorbuilder.SectorBuilder
 
+	// PeerTracker maintains a list of peers good for fetching.
+	PeerTracker *net.PeerTracker
+
 	// Fetcher is the interface for fetching data from nodes.
 	Fetcher net.Fetcher
 
@@ -377,6 +380,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
 
+	// set up peer tracking
+	peerTracker := net.NewPeerTracker()
+
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
@@ -443,6 +449,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		ChainReader:  chainStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
+		PeerTracker:  peerTracker,
 		Fetcher:      fetcher,
 		Exchange:     bswap,
 		host:         peerHost,
@@ -536,16 +543,19 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start bootstrapper.
 		node.Bootstrapper.Start(context.Background())
 
+		// Register peer tracker disconnect function with network.
+		net.TrackerRegisterDisconnect(node.host.Network(), node.PeerTracker)
+
 		// Establish a barrier to be released when the initial chain sync has completed.
 		// Services which depend on a more-or-less synced chain can wait for this before starting up.
 		chainSynced := moresync.NewLatch(1)
 
 		// Start up 'hello' handshake service
-		syncCallBack := func(pid peer.ID, cids []cid.Cid, height uint64) {
-			cidSet := types.NewTipSetKey(cids...)
-			err := node.Syncer.HandleNewTipset(context.Background(), cidSet, pid)
+		helloCallback := func(ci *types.ChainInfo) {
+			node.PeerTracker.Track(ci)
+			err := node.Syncer.HandleNewTipset(context.Background(), ci.Head, ci.Peer)
 			if err != nil {
-				log.Infof("error handling blocks: %s", cidSet.String())
+				log.Infof("error handling blocks: %s", ci.Head.String())
 				return
 			}
 			// For now, consider the initial bootstrap done after the syncer has (synchronously)
@@ -560,7 +570,7 @@ func (node *Node) Start(ctx context.Context) error {
 			// See https://github.com/filecoin-project/go-filecoin/issues/1105
 			chainSynced.Done()
 		}
-		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), syncCallBack, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
+		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
