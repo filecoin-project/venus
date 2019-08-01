@@ -18,7 +18,7 @@ type MemRepo struct {
 	// lk guards the config
 	lk         sync.RWMutex
 	C          *config.Config
-	L          map[string]*log.Logger
+	Ls         map[string]*log.Logger
 	D          Datastore
 	Ks         keystore.Keystore
 	W          Datastore
@@ -34,7 +34,7 @@ var _ Repo = (*MemRepo)(nil)
 func NewInMemoryRepo() *MemRepo {
 	return &MemRepo{
 		C:       config.NewDefaultConfig(),
-		L:       make(map[string]*log.Logger),
+		Ls:      make(map[string]*log.Logger),
 		D:       dss.MutexWrap(datastore.NewMapDatastore()),
 		Ks:      keystore.MutexWrap(keystore.NewMemKeystore()),
 		W:       dss.MutexWrap(datastore.NewMapDatastore()),
@@ -45,7 +45,7 @@ func NewInMemoryRepo() *MemRepo {
 }
 
 // Logger not implement in mem repo
-func (r *MemRepo) Logger(filename string) (*log.Logger, error) {
+func (mr *MemRepo) Logger(filename string) (*log.Logger, error) {
 	return nil, errors.New("Not Implement")
 }
 

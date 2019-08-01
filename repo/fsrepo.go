@@ -492,7 +492,10 @@ func initConfig(p string, cfg *config.Config) error {
 
 	// make the snapshot dir
 	snapshotDir := filepath.Join(p, snapshotStorePrefix)
-	return ensureWritableDirectory(snapshotDir)
+	err = ensureWritableDirectory(snapshotDir)
+	if err != nil {
+		return err
+	}
 
 	// make the logs dir
 	logStoreDir := filepath.Join(p, logStorePrefix)
