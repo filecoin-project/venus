@@ -440,7 +440,7 @@ func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserializ
 	}
 	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
 	if !ok {
-		return MinerProvingPeriod{}, errors.Wrap(err, "type assertion failed")
+		return MinerProvingPeriod{}, errors.New("type assertion failed")
 	}
 
 	return MinerProvingPeriod{
@@ -468,9 +468,6 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 		return MinerPower{}, err
 	}
 	power := types.NewBytesAmountFromBytes(bytes[0])
-	if power.Equal(types.NewBytesAmount(0)) {
-		power = types.NewBytesAmount(0)
-	}
 
 	bytes, err = plumbing.MessageQuery(
 		ctx,

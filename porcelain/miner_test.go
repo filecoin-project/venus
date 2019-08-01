@@ -437,6 +437,55 @@ func TestMinerGetOwnerAddress(t *testing.T) {
 	assert.Equal(t, address.TestAddress, addr)
 }
 
+func TestMinerGetPower(t *testing.T) {
+	tf.UnitTest(t)
+
+	power, err := MinerGetPower(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, "2", power.Total.String())
+	assert.Equal(t, "2", power.Power.String())
+}
+
+type minerGetProvingPeriodPlumbing struct{}
+
+func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getProvingPeriod" {
+		return [][]byte{types.NewBlockHeight(10).Bytes(), types.NewBlockHeight(20).Bytes()}, nil
+	}
+	if method == "getProvingSetCommitments" {
+		commitments := make(map[string]types.Commitments)
+		commitments["foo"] = types.Commitments{
+			CommD:     [32]byte{1},
+			CommR:     [32]byte{1},
+			CommRStar: [32]byte{1},
+		}
+		thing, _ := cbor.DumpObject(commitments)
+		return [][]byte{thing}, nil
+	}
+	return nil, fmt.Errorf("unsupported method: %s", method)
+}
+
+func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "getProvingSetCommitments" {
+		return &exec.FunctionSignature{
+			Params: nil,
+			Return: []abi.Type{abi.CommitmentsMap},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported method: %s", method)
+}
+
+func TestMinerProvingPeriod(t *testing.T) {
+	tf.UnitTest(t)
+
+	pp, err := MinerGetProvingPeriod(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, "10", pp.Start.String())
+	assert.Equal(t, "20", pp.End.String())
+	assert.NotNil(t, pp.Set["foo"])
+}
+
 type minerGetPeerIDPlumbing struct{}
 
 func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
