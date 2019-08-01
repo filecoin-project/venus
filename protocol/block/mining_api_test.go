@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 
-	ast "github.com/stretchr/testify/assert"
-	req "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/node"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -18,58 +18,49 @@ import (
 func TestTrivialNew(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
-
-	api, _ := newAPI(t, assert)
+	api, _ := newAPI(t)
 	require.NotNil(t, api)
 }
 
 func TestAPI_MineOnce(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
 	ctx := context.Background()
-	api, nd := newAPI(t, assert)
-	require.NoError(nd.Start(ctx))
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
 	blk, err := api.MiningOnce(ctx)
-	require.Nil(err)
-	require.NotNil(blk)
-	assert.NotNil(blk.Ticket)
+	require.Nil(t, err)
+	require.NotNil(t, blk)
+	assert.NotNil(t, blk.Ticket)
 }
 
 func TestMiningAPI_MiningStart(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
 	ctx := context.Background()
-	api, nd := newAPI(t, assert)
-	require.NoError(nd.Start(ctx))
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	require.NoError(api.MiningStart(ctx))
-	assert.True(nd.IsMining())
+	require.NoError(t, api.MiningStart(ctx))
+	assert.True(t, nd.IsMining())
 	nd.StopMining(ctx)
 }
 
 func TestMiningAPI_MiningIsActive(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
 	ctx := context.Background()
-	api, nd := newAPI(t, assert)
-	require.NoError(nd.Start(ctx))
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	require.NoError(nd.StartMining(ctx))
-	assert.True(api.MiningIsActive())
+	require.NoError(t, nd.StartMining(ctx))
+	assert.True(t, api.MiningIsActive())
 	nd.StopMining(ctx)
-	assert.False(api.MiningIsActive())
+	assert.False(t, api.MiningIsActive())
 
 	nd.StopMining(ctx)
 }
@@ -77,16 +68,14 @@ func TestMiningAPI_MiningIsActive(t *testing.T) {
 func TestMiningAPI_MiningStop(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
 	ctx := context.Background()
-	api, nd := newAPI(t, assert)
-	require.NoError(nd.Start(ctx))
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	require.NoError(nd.StartMining(ctx))
+	require.NoError(t, nd.StartMining(ctx))
 	api.MiningStop(ctx)
-	assert.False(nd.IsMining())
+	assert.False(t, nd.IsMining())
 }
 
 func TestMiningAPI_MiningAddress(t *testing.T) {
@@ -113,26 +102,24 @@ func TestMiningAPI_MiningAddress(t *testing.T) {
 func TestMiningAPI_MiningTogether(t *testing.T) {
 	tf.UnitTest(t)
 
-	assert := ast.New(t)
-	require := req.New(t)
 	ctx := context.Background()
-	api, nd := newAPI(t, assert)
-	require.NoError(nd.Start(ctx))
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	require.NoError(api.MiningStart(ctx))
-	assert.True(nd.IsMining())
+	require.NoError(t, api.MiningStart(ctx))
+	assert.True(t, nd.IsMining())
 	blk, err := api.MiningOnce(ctx)
-	require.Nil(blk)
-	require.Contains(err.Error(), "Node is already mining")
+	require.Nil(t, blk)
+	require.Contains(t, err.Error(), "Node is already mining")
 	nd.StopMining(ctx)
 	blk, err = api.MiningOnce(ctx)
-	require.Nil(err)
-	require.NotNil(blk)
-	assert.NotNil(blk.Ticket)
+	require.Nil(t, err)
+	require.NotNil(t, blk)
+	assert.NotNil(t, blk.Ticket)
 }
 
-func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
+func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	configOpts := []node.ConfigOpt{}
 
@@ -143,7 +130,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
 	_, err := storage.NewMiner(mAddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI, &storage.TrivialTestSlasher{})
-	assert.NoError(err)
+	assert.NoError(t, err)
 	return bapi.New(
 		nd.MiningAddress,
 		nd.AddNewBlock,
