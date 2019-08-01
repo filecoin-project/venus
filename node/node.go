@@ -552,7 +552,10 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
-			err := node.Syncer.HandleNewTipSet(context.Background(), ci, true)
+			// TODO Implement principled trusting of ChainInfo's
+			// to address in #2674
+			trusted := true
+			err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
 			if err != nil {
 				log.Infof("error handling blocks: %s", ci.Head.String())
 				return
