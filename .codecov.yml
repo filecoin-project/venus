@@ -1,4 +1,6 @@
 coverage:
+  notify:
+    after_n_builds: 10
   range: 50..100
   round: down
   precision: 0
