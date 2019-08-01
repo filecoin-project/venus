@@ -66,13 +66,13 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 }
 
 // MinerPower runs the `miner power` command against the filecoin process
-func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (commands.MinerPowerResult, error) {
-	var out commands.MinerPowerResult
+func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (porcelain.MinerPower, error) {
+	var out porcelain.MinerPower
 
 	sMinerAddr := minerAddr.String()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", sMinerAddr); err != nil {
-		return commands.MinerPowerResult{}, err
+		return porcelain.MinerPower{}, err
 	}
 
 	return out, nil
@@ -101,11 +101,11 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 }
 
 // MinerProvingPeriod runs the `miner proving-period` command against the filecoin process
-func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address) (commands.MinerProvingPeriodResult, error) {
-	var out commands.MinerProvingPeriodResult
+func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address) (porcelain.MinerProvingPeriod, error) {
+	var out porcelain.MinerProvingPeriod
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-period", miner.String()); err != nil {
-		return commands.MinerProvingPeriodResult{}, err
+		return porcelain.MinerProvingPeriod{}, err
 	}
 
 	return out, nil

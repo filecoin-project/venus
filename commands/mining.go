@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -73,12 +74,12 @@ var miningStartCmd = &cmds.Command{
 
 // MiningStatusResult is the type returned when get mining status.
 type MiningStatusResult struct {
-	Active        bool                     `json:"active"`
-	Miner         address.Address          `json:"minerAddress"`
-	Owner         address.Address          `json:"owner"`
-	Collateral    types.AttoFIL            `json:"collateral"`
-	ProvingPeriod MinerProvingPeriodResult `json:"provingPeriod,omitempty"`
-	Power         MinerPowerResult         `json:"minerPower"`
+	Active        bool                         `json:"active"`
+	Miner         address.Address              `json:"minerAddress"`
+	Owner         address.Address              `json:"owner"`
+	Collateral    types.AttoFIL                `json:"collateral"`
+	ProvingPeriod porcelain.MinerProvingPeriod `json:"provingPeriod,omitempty"`
+	Power         porcelain.MinerPower         `json:"minerPower"`
 }
 
 var miningStatusCmd = &cmds.Command{
@@ -91,22 +92,22 @@ var miningStatusCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetMinerProvingPeriod(req.Context, minerAddress, GetPorcelainAPI(env))
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
 
-		owner, err := GetMinerOwner(req.Context, minerAddress, GetPorcelainAPI(env))
+		owner, err := GetPorcelainAPI(env).MinerGetOwnerAddress(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
 
-		collateral, err := GetMinerCollateral(req.Context, minerAddress, GetPorcelainAPI(env))
+		collateral, err := GetPorcelainAPI(env).MinerGetCollateral(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
 
-		power, err := GetMinerPower(req.Context, minerAddress, GetPorcelainAPI(env))
+		power, err := GetPorcelainAPI(env).MinerGetPower(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}

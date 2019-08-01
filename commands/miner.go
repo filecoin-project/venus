@@ -377,7 +377,7 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		ownerAddr, err := GetMinerOwner(req.Context, minerAddr, GetPorcelainAPI(env))
+		ownerAddr, err := GetPorcelainAPI(env).MinerGetOwnerAddress(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
@@ -407,19 +407,20 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		minerPower, err := GetMinerPower(req.Context, minerAddr, GetPorcelainAPI(env))
+		minerPower, err := GetPorcelainAPI(env).MinerGetPower(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
 		return re.Emit(minerPower)
 	},
-	Type: MinerPowerResult{},
+	Type: porcelain.MinerPower{},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *MinerPowerResult) error {
-			_, err := fmt.Fprintln(w, out.String())
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *porcelain.MinerPower) error {
+			outStr := fmt.Sprintf("%s / %s", out.Power.String(), out.Total.String())
+			_, err := fmt.Fprintln(w, outStr)
 			return err
 		}),
 	},
@@ -435,7 +436,7 @@ var minerCollateralCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		collateral, err := GetMinerCollateral(req.Context, minerAddr, GetPorcelainAPI(env))
+		collateral, err := GetPorcelainAPI(env).MinerGetCollateral(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
@@ -463,15 +464,15 @@ var minerProvingPeriodCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetMinerProvingPeriod(req.Context, minerAddress, GetPorcelainAPI(env))
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
 		return re.Emit(mpp)
 	},
-	Type: &MinerProvingPeriodResult{},
+	Type: porcelain.MinerProvingPeriod{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MinerProvingPeriodResult) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
 			var pSet []string
 			for p := range res.Set {
 				pSet = append(pSet, p)
