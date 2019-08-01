@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ipfs/go-block-format"
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
+	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -92,6 +91,14 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 		return nil, err
 	}
 
+	blocks, err := sanitizeBlocks(ctx, unsanitized, bsf.validator)
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}
+
+func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {
 	var blocks []*types.Block
 	for _, u := range unsanitized {
 		block, err := types.DecodeBlock(u.RawData())
@@ -100,7 +107,7 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 		}
 
 		// reject blocks that are syntactically invalid.
-		if err := bsf.validator.ValidateSyntax(ctx, block); err != nil {
+		if err := validator.ValidateSyntax(ctx, block); err != nil {
 			continue
 		}
 
