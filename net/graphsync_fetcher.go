@@ -89,15 +89,20 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	if err != nil {
 		return nil, err
 	}
-	baseCid := cids[0]
 	recursionDepth := 1
+	ts := startingTipset
 	for !isDone {
-		cidSets, err := gsf.fetchBlocksRecursively(ctx, baseCid, from, recursionDepth)
+		err := gsf.fetchBlocksRecursively(ctx, ts.At(0).Cid(), from, recursionDepth)
 		if err != nil {
 			return nil, err
 		}
-		for _, cids := range cidSets {
-			ts, err := gsf.loadTipsetFromCids(ctx, cids)
+		for i := 0; i < recursionDepth; i++ {
+			tsKey, err := ts.Parents()
+			if err != nil {
+				return nil, err
+			}
+			cids := tsKey.ToSlice()
+			ts, err = gsf.loadTipsetFromCids(ctx, cids)
 			if err != nil {
 				return nil, err
 			}
@@ -109,7 +114,6 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 			if isDone {
 				break
 			}
-			baseCid = cids[0]
 		}
 		if recursionDepth < maxRecursionDepth {
 			recursionDepth *= recursionMultiplier
@@ -137,7 +141,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, fr
 
 // fetchBlocksRecursively gets multiple sets of parent blocks starting from a baseCid, up to
 // the given recursion depth parameter
-func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, from peer.ID, recursionDepth int) ([][]cid.Cid, error) {
+func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, from peer.ID, recursionDepth int) error {
 
 	// recursive selector to fetch n sets of parent blocks
 	// starting from block matching base cid:
@@ -150,55 +154,12 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
 		))
 	})).Node()
-	cidMaps := make([]map[cid.Cid]struct{}, recursionDepth)
 
-	responseChan, errChan := gsf.exchange.Request(ctx, from, cidlink.Link{Cid: baseCid}, selector)
-	for responseChan != nil || errChan != nil {
-		select {
-		case err, ok := <-errChan:
-			if !ok {
-				errChan = nil
-				continue
-			}
-			return nil, err
-		case response, ok := <-responseChan:
-			if !ok {
-				responseChan = nil
-				continue
-			}
-			// Paths returned in a traversal are of the format "","parent","parent/0",
-			// "parent/0/parent", "parent/0/parent/0", and so on. Each time the number of
-			// segments in the path goes up by two, we traverse to the next set of parents
-			// We care about blocks starting with the first set of parents --
-			// those at "parents/n" so we calculate the depth by dividing the
-			// number of path segments by two and subtracting one, skipping over
-			// "" & "parent", which refer to the block at baseCid
-			depth := (len(response.Path.Segments()) / 2) - 1
-			if depth < 0 {
-				continue
-			}
-			cidMap := cidMaps[depth]
-			if cidMap == nil {
-				cidMap = make(map[cid.Cid]struct{})
-				cidMaps[depth] = cidMap
-			}
-			asCidLink := response.LastBlock.Link.(cidlink.Link)
-			cidMap[asCidLink.Cid] = struct{}{}
-		}
+	_, errChan := gsf.exchange.Request(ctx, from, cidlink.Link{Cid: baseCid}, selector)
+	for err := range errChan {
+		return err
 	}
-	return cidMapstoCidSets(cidMaps), nil
-}
-
-func cidMapstoCidSets(cidMaps []map[cid.Cid]struct{}) [][]cid.Cid {
-	cidSets := make([][]cid.Cid, len(cidMaps))
-	for i, cidMap := range cidMaps {
-		cidSet := make([]cid.Cid, 0, len(cidMap))
-		for c := range cidMap {
-			cidSet = append(cidSet, c)
-		}
-		cidSets[i] = cidSet
-	}
-	return cidSets
+	return nil
 }
 
 func (gsf *GraphSyncFetcher) loadTipsetFromCids(ctx context.Context, cids []cid.Cid) (types.TipSet, error) {
