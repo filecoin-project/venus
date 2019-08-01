@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/core"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -45,8 +46,9 @@ func TestOutbox(t *testing.T) {
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
 
-		blk := types.NewBlockForTest(nil, 1)
-		blk.Height = 1000
+		blk := chain.NewBuilder(t, address.Undef).BuildOnBlock(nil, func(b *chain.BlockBuilder) {
+			b.IncHeight(1000)
+		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
@@ -85,8 +87,9 @@ func TestOutbox(t *testing.T) {
 		provider := &fakeProvider{}
 		bcast := true
 
-		blk := types.NewBlockForTest(nil, 1)
-		blk.Height = 1000
+		blk := chain.NewBuilder(t, address.Undef).BuildOnBlock(nil, func(b *chain.BlockBuilder) {
+			b.IncHeight(1000)
+		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
 		provider.Set(t, blk, sender, actr)
@@ -136,7 +139,7 @@ func TestOutbox(t *testing.T) {
 		publisher := &mockPublisher{}
 		provider := &fakeProvider{}
 
-		blk := types.NewBlockForTest(nil, 1)
+		blk := chain.NewBuilder(t, address.Undef).NewGenesis().At(0)
 		actr := storagemarket.NewActor() // Not an account actor
 		provider.Set(t, blk, sender, actr)
 
