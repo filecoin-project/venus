@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -33,9 +34,10 @@ const (
 	dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
+	logStorePrefix         = "logs"
 )
 
-var log = logging.Logger("repo")
+var logRepo = logging.Logger("repo")
 
 // FSRepo is a repo implementation backed by a filesystem.
 type FSRepo struct {
@@ -52,6 +54,8 @@ type FSRepo struct {
 	walletDs Datastore
 	chainDs  Datastore
 	dealsDs  Datastore
+
+	loggers map[string]*log.Logger
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -241,7 +245,7 @@ func (r *FSRepo) Config() *config.Config {
 // ReplaceConfig replaces the current config with the newly passed in one.
 func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	if err := r.SnapshotConfig(r.Config()); err != nil {
-		log.Warningf("failed to create snapshot: %s", err.Error())
+		logRepo.Warningf("failed to create snapshot: %s", err.Error())
 	}
 	r.lk.Lock()
 	defer r.lk.Unlock()
@@ -271,6 +275,20 @@ func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
 		return fmt.Errorf("file already exists: %s", snapshotFile)
 	}
 	return cfg.WriteFile(snapshotFile)
+}
+
+// Logger get logger for store in file to inspect
+func (r *FSRepo) Logger(filename string) (*log.Logger, error) {
+	if logger, ok := r.loggers[filename]; ok {
+		return logger, nil
+	}
+	logFileName := filepath.Join(r.path, logStorePrefix, filename)
+	logFile, err := os.OpenFile(logFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0766)
+	if err != nil {
+		return nil, err
+	}
+	r.loggers[filename] = log.New(logFile, "", log.LstdFlags)
+	return r.loggers[filename], nil
 }
 
 // Datastore returns the datastore.
@@ -475,6 +493,10 @@ func initConfig(p string, cfg *config.Config) error {
 	// make the snapshot dir
 	snapshotDir := filepath.Join(p, snapshotStorePrefix)
 	return ensureWritableDirectory(snapshotDir)
+
+	// make the logs dir
+	logStoreDir := filepath.Join(p, logStorePrefix)
+	return ensureWritableDirectory(logStoreDir)
 }
 
 func genSnapshotFileName() string {

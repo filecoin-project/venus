@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"os"
 	"runtime"
 
@@ -357,4 +358,9 @@ func (g *Inspector) Config() *config.Config {
 // FilecoinVersion returns the version of go-filecoin.
 func (g *Inspector) FilecoinVersion() string {
 	return flags.Commit
+}
+
+// Logger get repo logger
+func (g *Inspector) Logger(filename string) (*log.Logger, error) {
+	return g.repo.Logger(filename)
 }

@@ -1,6 +1,8 @@
 package repo
 
 import (
+	"log"
+
 	"github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 
@@ -21,6 +23,7 @@ type Datastore interface {
 // Repo is a representation of all persistent data in a filecoin node.
 type Repo interface {
 	Config() *config.Config
+	Logger(string) (*log.Logger, error)
 	// ReplaceConfig replaces the current config, with the newly passed in one.
 	ReplaceConfig(cfg *config.Config) error
 

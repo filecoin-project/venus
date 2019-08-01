@@ -149,6 +149,10 @@ be 2, 1 hour would be 120, and 1 day would be 2880.
 		if err != nil {
 			return err
 		}
+		logger, err := GetInspectorAPI(env).Logger("deal.log")
+		if err == nil {
+			logger.Printf("deal: data %s store at miner %s askid %d for %d blocks time", data, miner, askid, duration)
+		}
 
 		return re.Emit(resp)
 	},
