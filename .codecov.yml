@@ -2,19 +2,22 @@ coverage:
   range: 50..100
   round: down
   precision: 0
-
   status:
     project: off
     patch: off
     changes: off
 
-comment: off
-#  layout: "diff, flags, files"
-#  behavior: default
-#  require_changes: false  # if true: only post the comment if coverage changes
-#  require_base: yes       # [yes :: must have a base report to post]
-#  require_head: yes       # [yes :: must have a head report to post]
-#  branches: null          # branch names that can post comment
+comment:
+  layout: "diff, flags, files"
+  behavior: default
+  require_changes: false  # if true: only post the comment if coverage changes
+  require_base: yes       # [yes :: must have a base report to post]
+  require_head: yes       # [yes :: must have a head report to post]
+  branches: null          # branch names that can post comment
 
 ignore:
   - "*/testing.go"
+
+codecov:
+  notify:
+    require_ci_to_pass: no
