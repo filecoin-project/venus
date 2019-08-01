@@ -28,7 +28,7 @@ func init() {
 		fmt.Println("Failed to set GO111MODULE env")
 		os.Exit(1)
 	}
-	log.Print("testing12")
+	log.Print("testing123")
 }
 
 // command is a structure representing a shell command to be run in the
