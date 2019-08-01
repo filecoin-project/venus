@@ -23,6 +23,7 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -31,69 +32,6 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type mockRequest struct {
-	root     ipld.Link
-	selector selector.Selector
-}
-
-type mockResponse struct {
-	responses []graphsync.ResponseProgress
-	errs      []error
-}
-
-type requestResponse struct {
-	request  mockRequest
-	response mockResponse
-}
-
-type mockableGraphsync struct {
-	stubs            []requestResponse
-	receivedRequests []mockRequest
-}
-
-func toChans(mr mockResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
-	errChan := make(chan error, len(mr.errs))
-	for _, err := range mr.errs {
-		errChan <- err
-	}
-	close(errChan)
-
-	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
-	for _, response := range mr.responses {
-		responseChan <- response
-	}
-	close(responseChan)
-
-	return responseChan, errChan
-}
-
-func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
-	parsed, err := selector.ParseSelector(selectorSpec)
-	if err != nil {
-		return toChans(mockResponse{nil, []error{fmt.Errorf("Invalid selector")}})
-	}
-	request := mockRequest{root, parsed}
-	mgs.receivedRequests = append(mgs.receivedRequests, request)
-	for _, stub := range mgs.stubs {
-		if reflect.DeepEqual(stub.request, request) {
-			return toChans(stub.response)
-		}
-	}
-	return toChans(mockResponse{nil, []error{fmt.Errorf("Failed Request")}})
-}
-
-func makeGsResponse(path string, blockCid cid.Cid) graphsync.ResponseProgress {
-	return graphsync.ResponseProgress{
-		Path: ipld.ParsePath(path),
-		LastBlock: struct {
-			Path ipld.Path
-			Link ipld.Link
-		}{
-			Link: cidlink.Link{Cid: blockCid},
-		},
-	}
-}
 
 func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
@@ -113,46 +51,49 @@ func TestGraphsyncFetcher(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
-		parentBlock := types.NewBlockForTest(nil, uint64(0))
-		block1 := types.NewBlockForTest(parentBlock, uint64(3))
-		block2 := types.NewBlockForTest(parentBlock, uint64(5))
-		block3 := types.NewBlockForTest(parentBlock, uint64(6))
-		requireBlockStorePut(t, bs, parentBlock.ToNode())
-		requireBlockStorePut(t, bs, block1.ToNode())
-		requireBlockStorePut(t, bs, block2.ToNode())
-		requireBlockStorePut(t, bs, block3.ToNode())
-		originalCids := types.NewTipSetKey(block1.Cid(), block2.Cid(), block3.Cid())
-		parentCids := types.NewTipSetKey(parentBlock.Cid())
+		builder := chain.NewBuilder(t, address.Undef)
+		gen := builder.NewGenesis()
+		final := builder.AppendOn(gen, 3)
 
 		stubs := []requestResponse{
-			requestResponse{mockRequest{cidlink.Link{Cid: block1.Cid()}, layer1Selector}, mockResponse{}},
-			requestResponse{mockRequest{cidlink.Link{Cid: block2.Cid()}, layer1Selector}, mockResponse{}},
-			requestResponse{mockRequest{cidlink.Link{Cid: block3.Cid()}, layer1Selector}, mockResponse{}},
-			requestResponse{mockRequest{cidlink.Link{Cid: originalCids.ToSlice()[0]}, gsSelector}, mockResponse{
+			requestResponse{
+				fakeRequest{cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
+				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
+			},
+			requestResponse{
+				fakeRequest{cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
+				fakeResponse{blks: []format.Node{final.At(1).ToNode()}},
+			},
+			requestResponse{
+				fakeRequest{cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
+				fakeResponse{blks: []format.Node{final.At(2).ToNode()}},
+			},
+			requestResponse{fakeRequest{cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", block1.Cid()),
-					makeGsResponse("parents", block1.Cid()),
-					makeGsResponse("parents/0", parentBlock.Cid()),
+					makeGsResponse("", final.At(0).Cid()),
+					makeGsResponse("parents", final.At(0).Cid()),
+					makeGsResponse("parents/0", gen.At(0).Cid()),
 				},
+				blks: []format.Node{final.At(0).ToNode(), gen.At(0).ToNode()},
 			}},
 		}
-		mgs := &mockableGraphsync{stubs: stubs}
+		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv)
 
 		done := func(ts types.TipSet) (bool, error) {
-			if ts.Key().Equals(parentCids) {
+			if ts.Key().Equals(gen.Key()) {
 				return true, nil
 			}
 			return false, nil
 		}
 
-		ts, err := fetcher.FetchTipSets(ctx, originalCids, peer.ID("fake"), done)
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), peer.ID("fake"), done)
 		require.NoError(t, err, "the request completes successfully")
 		require.Equal(t, 4, len(mgs.receivedRequests), "all expected graphsync requests are made")
 		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
-		require.True(t, originalCids.Equals(ts[0].Key()), "the initial tipset is correct")
-		require.True(t, parentCids.Equals(ts[1].Key()), "the remaining tipsets are correct")
+		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
+		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
 	})
 
 	t.Run("value returned with non block format", func(t *testing.T) {
@@ -160,15 +101,17 @@ func TestGraphsyncFetcher(t *testing.T) {
 		notABlockObj, err := notABlock.ToNode()
 		require.NoError(t, err)
 
-		requireBlockStorePut(t, bs, notABlockObj)
 		notABlockCid, err := notABlock.Cid()
 		require.NoError(t, err)
 		originalCids := types.NewTipSetKey(notABlockCid)
 
 		stubs := []requestResponse{
-			requestResponse{mockRequest{cidlink.Link{Cid: notABlockCid}, layer1Selector}, mockResponse{}},
+			requestResponse{
+				fakeRequest{cidlink.Link{Cid: notABlockCid}, layer1Selector},
+				fakeResponse{blks: []format.Node{notABlockObj}},
+			},
 		}
-		mgs := &mockableGraphsync{stubs: stubs}
+		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv)
 
@@ -280,5 +223,74 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		matchedTs, err := builder.GetTipSet(ts.Key())
 		require.NoError(t, err)
 		require.NotNil(t, matchedTs)
+	}
+}
+
+type fakeRequest struct {
+	root     ipld.Link
+	selector selector.Selector
+}
+
+type fakeResponse struct {
+	responses []graphsync.ResponseProgress
+	errs      []error
+	blks      []format.Node
+}
+
+type requestResponse struct {
+	request  fakeRequest
+	response fakeResponse
+}
+
+type mockableGraphsync struct {
+	stubs            []requestResponse
+	receivedRequests []fakeRequest
+	store            bstore.Blockstore
+	t                *testing.T
+}
+
+func (mgs *mockableGraphsync) toChans(mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
+	errChan := make(chan error, len(mr.errs))
+	for _, err := range mr.errs {
+		errChan <- err
+	}
+	close(errChan)
+
+	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
+	for _, response := range mr.responses {
+		responseChan <- response
+	}
+	close(responseChan)
+
+	for _, block := range mr.blks {
+		requireBlockStorePut(mgs.t, mgs.store, block)
+	}
+	return responseChan, errChan
+}
+
+func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
+	parsed, err := selector.ParseSelector(selectorSpec)
+	if err != nil {
+		return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("Invalid selector")}, nil})
+	}
+	request := fakeRequest{root, parsed}
+	mgs.receivedRequests = append(mgs.receivedRequests, request)
+	for _, stub := range mgs.stubs {
+		if reflect.DeepEqual(stub.request, request) {
+			return mgs.toChans(stub.response)
+		}
+	}
+	return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("Failed Request")}, nil})
+}
+
+func makeGsResponse(path string, blockCid cid.Cid) graphsync.ResponseProgress {
+	return graphsync.ResponseProgress{
+		Path: ipld.ParsePath(path),
+		LastBlock: struct {
+			Path ipld.Path
+			Link ipld.Link
+		}{
+			Link: cidlink.Link{Cid: blockCid},
+		},
 	}
 }
