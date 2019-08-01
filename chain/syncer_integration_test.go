@@ -278,7 +278,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1H, err := f1.Height()
 	require.NoError(t, err)
-	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f1Cids, uint64(f1H)), true)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f1Cids, f1H), true)
 	require.NoError(t, err)
 
 	assertHead(t, chainStore, f1)
