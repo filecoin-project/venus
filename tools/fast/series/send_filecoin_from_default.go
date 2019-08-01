@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // SendFilecoinFromDefault will send the `value` of FIL from the default wallet
@@ -26,7 +27,17 @@ func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr addr
 		return cid.Undef, err
 	}
 
-	CtxMiningOnce(ctx)
+	err = CtxMiningOnce(ctx)
+	if err != nil {
+		height, err := GetHeadBlockHeight(ctx, node)
+		if err != nil {
+			return cid.Undef, err
+		}
+		err = WaitForBlockHeight(ctx, node, types.NewBlockHeight(uint64(1)).Add(height))
+		if err != nil {
+			return cid.Undef, err
+		}
+	}
 
 	if _, err := node.MessageWait(ctx, mcid); err != nil {
 		return cid.Undef, err

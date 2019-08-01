@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // SetPriceGetAsk issues a `set-price` and tries, to the best it can, return the
@@ -21,7 +22,17 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		return porcelain.Ask{}, err
 	}
 
-	CtxMiningOnce(ctx)
+	err = CtxMiningOnce(ctx)
+	if err != nil {
+		height, err := GetHeadBlockHeight(ctx, miner)
+		if err != nil {
+			return porcelain.Ask{}, err
+		}
+		err = WaitForBlockHeight(ctx, miner, types.NewBlockHeight(uint64(1)).Add(height))
+		if err != nil {
+			return porcelain.Ask{}, err
+		}
+	}
 
 	response, err := miner.MessageWait(ctx, pinfo.AddAskCid)
 	if err != nil {

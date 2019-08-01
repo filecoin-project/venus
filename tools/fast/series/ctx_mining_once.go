@@ -2,6 +2,7 @@ package series
 
 import (
 	"context"
+	"errors"
 )
 
 type ctxMiningOnceKey struct{}
@@ -10,7 +11,7 @@ type ctxMiningOnceKey struct{}
 var miningOnceKey = ctxMiningOnceKey{}
 
 // MiningOnceFunc is the type for the value used when calling SetCtxMiningOnce
-type MiningOnceFunc func()
+type MiningOnceFunc func() error
 
 // SetCtxMiningOnce returns a context with `fn` set in the context. To run the
 // MiningOnceFunc value, call CtxMiningOnce.
@@ -20,9 +21,10 @@ func SetCtxMiningOnce(ctx context.Context, fn MiningOnceFunc) context.Context {
 
 // CtxMiningOnce will call the MiningOnceFunc set on the context using
 // SetMiningOnceFunc. If no value is set on the context, the call is a noop.
-func CtxMiningOnce(ctx context.Context) {
+func CtxMiningOnce(ctx context.Context) error {
 	miningOnce, ok := ctx.Value(miningOnceKey).(MiningOnceFunc)
 	if ok {
-		miningOnce()
+		return miningOnce()
 	}
+	return errors.New("Not Set")
 }
