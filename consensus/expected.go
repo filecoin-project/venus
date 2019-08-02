@@ -84,10 +84,10 @@ const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessBlock processes all messages in a block.
-	ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error)
+	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *types.Block, []*types.SignedMessage, []types.TipSet) ([]*ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // Expected implements expected consensus.
@@ -247,7 +247,7 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, b
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, priorStateID cid.Cid) (root cid.Cid, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, priorStateID cid.Cid) (root cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -268,7 +268,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ance
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err := c.runMessages(ctx, priorState, vms, ts, ancestors)
+	st, err := c.runMessages(ctx, priorState, vms, ts, tsMessages, tsReceipts, ancestors)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -366,7 +366,7 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStC
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: don't process messages twice
@@ -382,12 +382,12 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, ancestors)
+		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, tsMessages[i], ancestors)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 		// TODO: check that receipts actually match
-		if len(receipts) != len(blk.MessageReceipts) {
+		if len(receipts) != len(tsReceipts[i]) {
 			return nil, fmt.Errorf("found invalid message receipts: %v %v", receipts, blk.MessageReceipts)
 		}
 
@@ -406,7 +406,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, ancestors)
+	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, tsMessages, ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
 	}

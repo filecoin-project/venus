@@ -7,7 +7,7 @@ import (
 	"time"
 
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -69,10 +69,10 @@ func requireGetMinerAddress(ctx context.Context, t *testing.T, daemon *fast.File
 	return minerAddress
 }
 
-func assertPowerOutput(ctx context.Context, t *testing.T, d *fast.Filecoin, expMinerPwr, expTotalPwr int64) {
+func assertPowerOutput(ctx context.Context, t *testing.T, d *fast.Filecoin, expMinerPwr, expTotalPwr uint64) {
 	minerAddr := requireGetMinerAddress(ctx, t, d)
-	actualMinerPwr, actualTotalPwr, err := d.MinerPower(ctx, minerAddr)
+	actualMinerPwr, err := d.MinerPower(ctx, minerAddr)
 	require.NoError(t, err)
-	assert.Equal(t, actualMinerPwr.Int64(), expMinerPwr, "for miner power")
-	assert.Equal(t, actualTotalPwr.Int64(), expTotalPwr, "for total power")
+	assert.Equal(t, actualMinerPwr.Power.Uint64(), expMinerPwr, "for miner power")
+	assert.Equal(t, actualMinerPwr.Total.Uint64(), expTotalPwr, "for total power")
 }

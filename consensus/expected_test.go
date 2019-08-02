@@ -106,7 +106,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, blocks[0].StateRoot)
+		var emptyMessages [][]*types.SignedMessage
+		var emptyReceipts [][]*types.MessageReceipt
+		for i := 0; i < len(blocks); i++ {
+			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+		}
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -126,7 +133,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
+		var emptyMessages [][]*types.SignedMessage
+		var emptyReceipts [][]*types.MessageReceipt
+		for i := 0; i < len(blocks); i++ {
+			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+		}
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "can't check for winning ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }

@@ -23,12 +23,13 @@ var minerCmd = &cmds.Command{
 		Tagline: "Manage a single miner actor",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"create":        minerCreateCmd,
-		"owner":         minerOwnerCmd,
-		"power":         minerPowerCmd,
-		"set-price":     minerSetPriceCmd,
-		"update-peerid": minerUpdatePeerIDCmd,
-		"collateral":    minerCollateralCmd,
+		"create":         minerCreateCmd,
+		"owner":          minerOwnerCmd,
+		"power":          minerPowerCmd,
+		"set-price":      minerSetPriceCmd,
+		"update-peerid":  minerUpdatePeerIDCmd,
+		"collateral":     minerCollateralCmd,
+		"proving-period": minerProvingPeriodCmd,
 	},
 }
 
@@ -62,7 +63,7 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		pp, err := GetPorcelainAPI(env).ProtocolParameters(env.Context())
+		pp, err := GetPorcelainAPI(env).ProtocolParameters(req.Context)
 		if err != nil {
 			return err
 		}
@@ -376,17 +377,7 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getOwner",
-		)
-		if err != nil {
-			return err
-		}
-		ownerAddr, err := address.NewFromBytes(bytes[0])
+		ownerAddr, err := GetPorcelainAPI(env).MinerGetOwnerAddress(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
@@ -416,37 +407,20 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getPower",
-		)
+		minerPower, err := GetPorcelainAPI(env).MinerGetPower(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
-		power := types.NewBytesAmountFromBytes(bytes[0])
-
-		bytes, err = GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			address.StorageMarketAddress,
-			"getTotalStorage",
-		)
-		if err != nil {
-			return err
-		}
-		total := types.NewBytesAmountFromBytes(bytes[0])
-
-		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
-		return re.Emit(str)
+		return re.Emit(minerPower)
 	},
+	Type: porcelain.MinerPower{},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
-			_, err := fmt.Fprintln(w, a)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *porcelain.MinerPower) error {
+			outStr := fmt.Sprintf("%s / %s", out.Power.String(), out.Total.String())
+			_, err := fmt.Fprintln(w, outStr)
 			return err
 		}),
 	},
@@ -462,17 +436,10 @@ var minerCollateralCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		rets, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getActiveCollateral",
-		)
+		collateral, err := GetPorcelainAPI(env).MinerGetCollateral(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
-		collateral := types.NewAttoFILFromBytes(rets[0])
 		return re.Emit(collateral)
 	},
 	Arguments: []cmdkit.Argument{
@@ -482,6 +449,44 @@ var minerCollateralCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, af types.AttoFIL) error {
 			return PrintString(w, af)
+		}),
+	},
+}
+
+var minerProvingPeriodCmd = &cmds.Command{
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "Miner address to get proving period for"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		// Get the Miner Address
+		minerAddress, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
+		if err != nil {
+			return err
+		}
+		return re.Emit(mpp)
+	},
+	Type: porcelain.MinerProvingPeriod{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
+			var pSet []string
+			for p := range res.ProvingSet {
+				pSet = append(pSet, p)
+			}
+			_, err := fmt.Fprintf(w, `Proving Period
+Start:      %s
+End:        %s
+ProvingSet: %s
+`,
+				res.Start.String(),
+				res.End.String(),
+				pSet,
+			)
+			return err
 		}),
 	},
 }

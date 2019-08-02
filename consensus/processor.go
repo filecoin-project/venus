@@ -106,7 +106,7 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) (results []*ApplicationResult, err error) {
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, blkMessages []*types.SignedMessage, ancestors []types.TipSet) (results []*ApplicationResult, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessBlock")
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -123,7 +123,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 	}
 
 	bh := types.NewBlockHeight(uint64(blk.Height))
-	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blk.Messages, minerOwnerAddr, bh, ancestors)
+	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
 	if faultErr != nil {
 		return emptyResults, faultErr
 	}
@@ -145,7 +145,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -174,7 +174,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 
 		// filter out duplicates within TipSet
 		var msgs []*types.SignedMessage
-		for _, msg := range blk.Messages {
+		for _, msg := range tsMessages[i] {
 			mCid, err := msg.Cid()
 			if err != nil {
 				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
