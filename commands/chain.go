@@ -57,16 +57,12 @@ var chainLsCmd = &cmds.Command{
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("long", "l", "List blocks in long format, including CID, Miner, StateRoot, block height and message count respectively"),
-		cmdkit.Uint64Option("begin", "b", "The block height of smallest height, default for genesis"),
-		cmdkit.Uint64Option("end", "e", "The block height of largest height, default for head"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		iter, err := GetPorcelainAPI(env).ChainLs(req.Context)
 		if err != nil {
 			return err
 		}
-		beginHeight, _ := req.Options["begin"].(uint64)
-		endHeight, _ := req.Options["end"].(uint64)
 
 		for ; !iter.Complete(); err = iter.Next() {
 			if err != nil {
@@ -74,13 +70,6 @@ var chainLsCmd = &cmds.Command{
 			}
 			if !iter.Value().Defined() {
 				panic("tipsets from this iterator should have at least one member")
-			}
-			height, _ := iter.Value().Height()
-			if height < beginHeight {
-				return nil
-			}
-			if endHeight != 0 && height > endHeight {
-				continue
 			}
 			if err := re.Emit(iter.Value().ToSlice()); err != nil {
 				return err

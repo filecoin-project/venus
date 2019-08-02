@@ -127,23 +127,6 @@ func TestChainLs(t *testing.T) {
 		assert.Contains(t, chainLsResult, `"height":"1"`)
 		assert.Contains(t, chainLsResult, `"nonce":"0"`)
 	})
-
-	t.Run("chain ls --begin --end with height range", func(t *testing.T) {
-		daemon := makeTestDaemonWithMinerAndStart(t)
-		defer daemon.ShutdownSuccess()
-
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "-b", "1", "-e", "3", "--enc", "json").ReadStdoutTrimNewlines()
-		assert.Contains(t, chainLsResult, `"height":"1"`)
-		assert.Contains(t, chainLsResult, `"height":"2"`)
-		assert.Contains(t, chainLsResult, `"height":"3"`)
-		assert.NotContains(t, chainLsResult, `"height":"0"`)
-		assert.NotContains(t, chainLsResult, `"height":"4"`)
-		assert.Contains(t, chainLsResult, `"nonce":"0"`)
-	})
 }
 
 func TestBlockDaemon(t *testing.T) {
