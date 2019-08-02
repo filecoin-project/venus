@@ -151,7 +151,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 	require.NoError(f.t, err)
 
 	for i := 0; i < width; i++ {
-		ticket := make([]byte, binary.Size(f.seq))
+		ticket := make(types.Signature, binary.Size(f.seq))
 		binary.BigEndian.PutUint64(ticket, f.seq)
 		f.seq++
 
@@ -405,6 +405,19 @@ func (f *Builder) RequireTipSet(key types.TipSetKey) types.TipSet {
 	tip, err := f.GetTipSet(key)
 	require.NoError(f.t, err)
 	return tip
+}
+
+// RequireTipSets returns a chain of tipsets from key, which must exist and be long enough.
+func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []types.TipSet {
+	var tips []types.TipSet
+	var err error
+	for i := 0; i < count; i++ {
+		tip := f.RequireTipSet(head)
+		tips = append(tips, tip)
+		head, err = tip.Parents()
+		require.NoError(f.t, err)
+	}
+	return tips
 }
 
 ///// Internals /////

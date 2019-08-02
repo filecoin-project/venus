@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -605,7 +606,9 @@ func setupMinerActorLiason(t *testing.T) *minerActorLiason {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	ancestors := th.RequireTipSetChain(t, 10)
+	builder := chain.NewBuilder(t, address.Undef)
+	head := builder.AppendManyOn(10, types.UndefTipSet)
+	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
 	return newMinerActorLiason(t, st, vms, ancestors, minerAddr)
@@ -1009,7 +1012,9 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	ancestors := th.RequireTipSetChain(t, 10)
+	builder := chain.NewBuilder(t, address.Undef)
+	head := builder.AppendManyOn(10, types.UndefTipSet)
+	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
 	proof := th.MakeRandomPoStProofForTest()
@@ -1103,7 +1108,9 @@ func TestActorSlashStorageFault(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
-		ancestors := th.RequireTipSetChain(t, 10)
+		builder := chain.NewBuilder(t, address.Undef)
+		head := builder.AppendManyOn(10, types.UndefTipSet)
+		ancestors := builder.RequireTipSets(head.Key(), 10)
 		proof := th.MakeRandomPoStProofForTest()
 		doneDefault := types.EmptyIntSet()
 		faultsDefault := types.EmptyFaultSet()
