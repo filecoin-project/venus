@@ -91,11 +91,12 @@ func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*ty
 		return nil, err
 	}
 
-	blocks, err := sanitizeBlocks(ctx, unsanitized, bsf.validator)
+	filBlocks, err := sanitizeBlocks(ctx, unsanitized, bsf.validator)
 	if err != nil {
 		return nil, err
 	}
-	return blocks, nil
+
+	return filBlocks, nil
 }
 
 func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {

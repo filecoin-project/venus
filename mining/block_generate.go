@@ -71,16 +71,33 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "generate flush vm storage map")
 	}
 
-	var receipts []*types.MessageReceipt
+	// By default no receipts/messages is serialized as the zero length
+	// slice, not the nil slice.
+	receipts := []*types.MessageReceipt{}
 	for _, r := range res.Results {
 		receipts = append(receipts, r.Receipt)
+	}
+
+	minedMessages := []*types.SignedMessage{}
+	for _, msg := range res.SuccessfulMessages {
+		minedMessages = append(minedMessages, msg)
+	}
+
+	// Persist messages to ipld storage
+	msgsCid, err := w.messageStore.StoreMessages(ctx, minedMessages)
+	if err != nil {
+		return nil, errors.Wrap(err, "error persisting messages")
+	}
+	rcptsCid, err := w.messageStore.StoreReceipts(ctx, receipts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error persisting receipts")
 	}
 
 	next := &types.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
-		Messages:        res.SuccessfulMessages,
-		MessageReceipts: receipts,
+		Messages:        msgsCid,
+		MessageReceipts: rcptsCid,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
 		Proof:           proof,

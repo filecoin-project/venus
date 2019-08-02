@@ -23,6 +23,12 @@ var (
 	ErrInvalidMessageLength = errors.New("invalid message length")
 )
 
+// EmptyMessagesCID is the cid of an empty collection of messages.
+var EmptyMessagesCID = MessageCollection{}.Cid()
+
+// EmptyReceiptsCID is the cid of an empty collection of receipts.
+var EmptyReceiptsCID = ReceiptCollection{}.Cid()
+
 // Message is an exchange of information between two actors modeled
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
@@ -106,4 +112,35 @@ func (msg *Message) Equals(other *Message) bool {
 		msg.Value.Equal(other.Value) &&
 		msg.Method == other.Method &&
 		bytes.Equal(msg.Params, other.Params)
+}
+
+// MessageCollection tracks a group of messages and assigns it a cid.
+type MessageCollection []*SignedMessage
+
+// TODO #3078 the panics here and in types.Block should go away.  We need to
+// keep them in order to use the ipld cborstore with the default hash function
+// because we need to implement hamt.cidProvider which doesn't handle errors.
+// We can clean all this up when we can use our own CborIpldStore with the hamt.
+
+// Cid returns the cid of the message collection.
+func (mC MessageCollection) Cid() cid.Cid {
+	nd, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return nd.Cid()
+}
+
+// ReceiptCollection tracks a group of receipts and assigns it a cid.
+type ReceiptCollection []*MessageReceipt
+
+// Cid returns the cid of the receipt collection.
+func (rC ReceiptCollection) Cid() cid.Cid {
+	nd, err := cbor.WrapObject(rC, DefaultHashFunction, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return nd.Cid()
 }

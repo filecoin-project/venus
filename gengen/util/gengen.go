@@ -146,8 +146,24 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
+	emptyMessagesCid, err := cst.Put(ctx, types.MessageCollection{})
+	if err != nil {
+		return nil, err
+	}
+	emptyReceiptsCid, err := cst.Put(ctx, types.ReceiptCollection{})
+	if err != nil {
+		return nil, err
+	}
+
+	if !emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
+		!emptyReceiptsCid.Equals(types.EmptyReceiptsCID) {
+		return nil, errors.New("bad CID for empty messages/receipts")
+	}
+
 	geneblk := &types.Block{
-		StateRoot: stateRoot,
+		StateRoot:       stateRoot,
+		Messages:        emptyMessagesCid,
+		MessageReceipts: emptyReceiptsCid,
 	}
 
 	c, err := cst.Put(ctx, geneblk)

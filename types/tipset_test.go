@@ -7,9 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
@@ -18,10 +16,11 @@ const parentWeight = uint64(1337000)
 var (
 	cid1, cid2        cid.Cid
 	mockSignerForTest MockSigner
+	cidGetter         func() cid.Cid
 )
 
 func init() {
-	cidGetter := NewCidForTestGetter()
+	cidGetter = NewCidForTestGetter()
 	cid1 = cidGetter()
 	cid2 = cidGetter()
 
@@ -29,22 +28,15 @@ func init() {
 }
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
-	addrGetter := address.NewForTestGetter()
-
-	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
-	sm1, err := NewSignedMessage(*m1, &mockSignerForTest, NewGasPrice(0), NewGasUnits(0))
-	require.NoError(t, err)
-	ret := []byte{1, 2}
-
 	return &Block{
 		Ticket:          ticket,
 		Parents:         NewTipSetKey(parentCid),
 		ParentWeight:    Uint64(parentWeight),
 		Height:          Uint64(42 + uint64(height)),
 		Nonce:           7,
-		Messages:        []*SignedMessage{sm1},
-		StateRoot:       SomeCid(),
-		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
+		Messages:        cidGetter(),
+		StateRoot:       cidGetter(),
+		MessageReceipts: cidGetter(),
 		Timestamp:       Uint64(timestamp),
 	}
 }

@@ -11,23 +11,11 @@
         "height": {
           "type": "string"
         },
-        "messageReceipts": {
-          "items": {
-            "$ref": "#/definitions/MessageReceipt"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
+          "messageReceipts": {
+	      "$ref": "#/definitions/Cid"
         },
         "messages": {
-          "items": {
-            "$ref": "#/definitions/SignedMessage"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
+	    "$ref": "#/definitions/Cid"
         },
         "miner": {
           "type": "string"

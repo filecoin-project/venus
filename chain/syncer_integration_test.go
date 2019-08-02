@@ -165,6 +165,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	chainStore := chain.NewStore(r.ChainDatastore(), cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
 	messageStore := chain.NewMessageStore(cst)
+	emptyMessagesCid, err := messageStore.StoreMessages(ctx, []*types.SignedMessage{})
+	require.NoError(t, err)
+	emptyReceiptsCid, err := messageStore.StoreReceipts(ctx, []*types.MessageReceipt{})
+	require.NoError(t, err)
 
 	verifier := &verification.FakeVerifier{
 		VerifyPoStValid: true,
@@ -233,12 +237,16 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b1.Messages = emptyMessagesCid
+	f1b1.MessageReceipts = emptyReceiptsCid
 
 	fakeChildParams.Nonce = uint64(1)
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f2b1.Messages = emptyMessagesCid
+	f2b1.MessageReceipts = emptyReceiptsCid
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
 
@@ -265,6 +273,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b2a.Messages = emptyMessagesCid
+	f1b2a.MessageReceipts = emptyReceiptsCid
 
 	fakeChildParams.Nonce = uint64(1)
 
@@ -273,6 +283,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b2b.Messages = emptyMessagesCid
+	f1b2b.MessageReceipts = emptyReceiptsCid
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
@@ -302,6 +314,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[3].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f2b2.Messages = emptyMessagesCid
+	f2b2.MessageReceipts = emptyReceiptsCid
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)

@@ -72,7 +72,6 @@ func TestProcessBlockSuccess(t *testing.T) {
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs,
 		Miner:     minerAddr,
 	}
 	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
@@ -129,11 +128,12 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 	msgs1 := []*types.SignedMessage{smsg1}
+	cidGetter := types.NewCidForTestGetter()
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs1,
 		Miner:     minerAddr,
+		Messages:  cidGetter(),
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
@@ -143,8 +143,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs2,
 		Miner:     minerAddr,
+		Messages:  cidGetter(),
 	}
 
 	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
@@ -202,7 +202,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs1,
 		Ticket:    []byte{0, 0}, // Block with smaller ticket
 		Miner:     minerAddr,
 	}
@@ -214,7 +213,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs2,
 		Ticket:    []byte{1, 1},
 		Miner:     minerAddr,
 	}
@@ -276,7 +274,6 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
-		Messages:  msgs,
 	}
 	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
 	require.Nil(t, results)
@@ -311,7 +308,6 @@ func TestProcessBlockReward(t *testing.T) {
 		Miner:     minerAddr,
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{},
 	}
 	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, []*types.SignedMessage{}, nil)
 	require.NoError(t, err)
@@ -362,7 +358,6 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  msgs,
 		Miner:     minerAddr,
 	}
 

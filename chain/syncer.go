@@ -43,10 +43,6 @@ func init() {
 
 var logSyncer = logging.Logger("chain.syncer")
 
-type syncerMessageReader interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
-}
-
 type syncerChainReaderWriter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
@@ -102,19 +98,19 @@ type Syncer struct {
 	// Provides and stores validated tipsets and their state roots.
 	chainStore syncerChainReaderWriter
 	// Provides message collections given cids
-	messages syncerMessageReader
+	messageProvider MessageProvider
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m syncerMessageReader, f net.Fetcher) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
 			bad: make(map[string]struct{}),
 		},
-		stateEvaluator: e,
-		chainStore:     s,
-		messages:       m,
+		stateEvaluator:  e,
+		chainStore:      s,
+		messageProvider: m,
 	}
 }
 
@@ -159,11 +155,16 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	var nextReceipts [][]*types.MessageReceipt
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
-		// TODO #3103 this is a temporary way to force the consensus interface.
-		// Once we separate messages out from blocks we'll need to read from
-		// the message collection store.
-		nextMessages = append(nextMessages, blk.Messages)
-		nextReceipts = append(nextReceipts, blk.MessageReceipts)
+		msgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
+		if err != nil {
+			return err
+		}
+		rcpts, err := syncer.messageProvider.LoadReceipts(ctx, blk.MessageReceipts)
+		if err != nil {
+			return err
+		}
+		nextMessages = append(nextMessages, msgs)
+		nextReceipts = append(nextReceipts, rcpts)
 	}
 
 	// Run a state transition to validate the tipset and compute

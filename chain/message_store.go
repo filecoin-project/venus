@@ -5,13 +5,14 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// MessageReader is an interface exposing the read methods of the
+// MessageProvider is an interface exposing the load methods of the
 // MessageStore.
-type MessageReader interface {
+type MessageProvider interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 }
@@ -39,9 +40,12 @@ func NewMessageStore(cst *hamt.CborIpldStore) *MessageStore {
 // storage.
 func (ms *MessageStore) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, error) {
 	// TODO #1324 message collection shouldn't be a slice
-	var out []*types.SignedMessage
+	var out types.MessageCollection
 	err := ms.ipldStore.Get(ctx, c, &out)
-	return out, err
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not load message collection with cid: %s", c.String())
+	}
+	return []*types.SignedMessage(out), nil
 }
 
 // StoreMessages puts the input signed messages to a collection and then writes
@@ -49,18 +53,19 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.S
 func (ms *MessageStore) StoreMessages(ctx context.Context, msgs []*types.SignedMessage) (cid.Cid, error) {
 	// For now the collection is just a slice (cbor array)
 	// TODO #1324 put these messages in a merkelized collection
-	return ms.ipldStore.Put(ctx, msgs)
+	msgCollection := types.MessageCollection(msgs)
+	return ms.ipldStore.Put(ctx, msgCollection)
 }
 
 // LoadReceipts loads the signed messages in the collection with cid c from ipld
 // storage and returns the slice implied by the collection
 func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.MessageReceipt, error) {
-	var out []*types.MessageReceipt
+	var out types.ReceiptCollection
 	err := ms.ipldStore.Get(ctx, c, &out)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not load receipt collection with cid: %s", c.String())
 	}
-	return out, nil
+	return []*types.MessageReceipt(out), nil
 }
 
 // StoreReceipts puts the input signed messages to a collection and then writes
@@ -68,5 +73,6 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.M
 func (ms *MessageStore) StoreReceipts(ctx context.Context, receipts []*types.MessageReceipt) (cid.Cid, error) {
 	// For now the collection is just a slice (cbor array)
 	// TODO #1324 put these messages in a merkelized collection
-	return ms.ipldStore.Put(ctx, receipts)
+	rcptCollection := types.ReceiptCollection(receipts)
+	return ms.ipldStore.Put(ctx, rcptCollection)
 }

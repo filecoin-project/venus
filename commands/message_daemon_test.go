@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -123,7 +124,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	doubleTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) * 2)
 	halfTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) / 2)
-	result := struct{ Messages []interface{} }{}
+	result := struct{ Messages cid.Cid }{}
 
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
 		d.RunFail("block gas limit",

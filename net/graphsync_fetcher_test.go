@@ -8,12 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/net"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
@@ -30,7 +24,15 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/net"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestGraphsyncFetcher(t *testing.T) {
@@ -42,9 +44,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	ssb := selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
-	layer1Selector, err := ssb.Matcher().Selector()
+	layer1Selector, err := ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
+	}).Selector()
 	require.NoError(t, err)
 	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(
 			ssb.ExploreAll(ssb.Matcher()),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
@@ -52,6 +59,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})).Selector()
 	require.NoError(t, err)
 	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(
 			ssb.ExploreAll(ssb.Matcher()),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
@@ -353,6 +362,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Errorf(t, err, "fetched data (cid %s) was not a block", notABlockCid.String())
 		require.Nil(t, ts)
 	})
+
 }
 
 func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
@@ -361,7 +371,23 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
 	gen := builder.NewGenesis()
-	final := builder.AppendManyOn(30, gen)
+	antepenultimate := builder.AppendManyOn(29, gen)
+
+	// add a message and receipt to the head's parent
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	msg1 := mm.NewSignedMessage(mm.Addresses()[0], 1)
+	rcpt1 := &types.MessageReceipt{ExitCode: 42}
+	penultimate := builder.BuildOn(antepenultimate, func(bb *chain.BlockBuilder) {
+		bb.AddMessages([]*types.SignedMessage{msg1}, []*types.MessageReceipt{rcpt1})
+	})
+
+	// add a message and receipt to the head
+	msg2 := mm.NewSignedMessage(mm.Addresses()[0], 2)
+	rcpt2 := &types.MessageReceipt{ExitCode: 67}
+	final := builder.BuildOn(penultimate, func(bb *chain.BlockBuilder) {
+		bb.AddMessages([]*types.SignedMessage{msg2}, []*types.MessageReceipt{rcpt2})
+	})
 
 	// setup network
 	mn := mocknet.New(ctx)
@@ -401,11 +427,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		block, err := builder.GetBlock(ctx, cid)
-		if err != nil {
-			return nil, err
-		}
-		raw, err := cbor.DumpObject(block)
+		raw, err := tryBlockMessageReceipt(ctx, builder, cid)
 		if err != nil {
 			return nil, err
 		}
@@ -422,13 +444,41 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	require.NoError(t, err)
 
-	require.Equal(t, 31, len(tipsets))
+	require.Equal(t, 32, len(tipsets))
 
 	for _, ts := range tipsets {
 		matchedTs, err := builder.GetTipSet(ts.Key())
 		require.NoError(t, err)
 		require.NotNil(t, matchedTs)
 	}
+
+	// check that the fetcher's storage has messages and receipts linked by
+	// the chain.
+	hasMsg1, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg1}).Cid())
+	require.NoError(t, err)
+	assert.True(t, hasMsg1)
+	hasRcpt1, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt1}).Cid())
+	require.NoError(t, err)
+	assert.True(t, hasRcpt1)
+	hasMsg2, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg2}).Cid())
+	require.NoError(t, err)
+	assert.True(t, hasMsg2)
+	hasRcpt2, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt2}).Cid())
+	require.NoError(t, err)
+	assert.True(t, hasRcpt2)
+}
+
+func tryBlockMessageReceipt(ctx context.Context, f *chain.Builder, c cid.Cid) ([]byte, error) {
+	if block, err := f.GetBlock(ctx, c); err == nil {
+		return cbor.DumpObject(block)
+	}
+	if messages, err := f.LoadMessages(ctx, c); err == nil {
+		return cbor.DumpObject(messages)
+	}
+	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
+		return cbor.DumpObject(receipts)
+	}
+	return nil, fmt.Errorf("cid could not be resolved through builder")
 }
 
 type fakeRequest struct {

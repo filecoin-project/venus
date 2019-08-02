@@ -181,7 +181,6 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	assert.NoError(t, hbs.Run(runCtx))
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
-
 }
 
 func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
@@ -192,8 +191,8 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 		ParentWeight:    0,
 		Height:          height,
 		Nonce:           0,
-		Messages:        nil,
-		MessageReceipts: nil,
+		MessageReceipts: types.EmptyMessagesCID,
+		Messages:        types.EmptyReceiptsCID,
 	})
 	if err != nil {
 		t.Fatal(err)

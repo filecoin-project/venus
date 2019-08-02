@@ -41,7 +41,7 @@ type Builder struct {
 var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
 var _ net.Fetcher = (*Builder)(nil)
-var _ MessageReader = (*Builder)(nil)
+var _ MessageProvider = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker.
 // Blocks will have `miner` set as the miner address, or a default if empty.
@@ -61,6 +61,9 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 		messages:     make(map[cid.Cid][]*types.SignedMessage),
 		receipts:     make(map[cid.Cid][]*types.MessageReceipt),
 	}
+
+	b.messages[types.EmptyMessagesCID] = []*types.SignedMessage{}
+	b.receipts[types.EmptyReceiptsCID] = []*types.MessageReceipt{}
 
 	nullState, err := makeCid("null")
 	require.NoError(t, err)
@@ -166,8 +169,8 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    types.Uint64(parentWeight),
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        []*types.SignedMessage{},
-			MessageReceipts: []*types.MessageReceipt{},
+			Messages:        types.EmptyMessagesCID,
+			MessageReceipts: types.EmptyReceiptsCID,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
 			//Proof            PoStProof
@@ -181,7 +184,9 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 
 		// Compute state root for this block.
 		prevState := f.StateForKey(parent.Key())
-		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.SignedMessage{b.Messages})
+		msgs, ok := f.messages[b.Messages]
+		require.True(f.t, ok)
+		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.SignedMessage{msgs})
 		require.NoError(f.t, err)
 
 		f.blocks[b.Cid()] = b
@@ -212,9 +217,21 @@ func (f *Builder) ComputeState(tip types.TipSet) cid.Cid {
 	require.NoError(f.t, err)
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
-	state, err := f.stateBuilder.ComputeState(prev, tipMessages(tip))
+	state, err := f.stateBuilder.ComputeState(prev, f.tipMessages(tip))
 	require.NoError(f.t, err)
 	return state
+}
+
+// tipMessages returns the messages of a tipset.  Each block's messages are
+// grouped into a slice and a slice of these slices is returned.
+func (f *Builder) tipMessages(tip types.TipSet) [][]*types.SignedMessage {
+	var msgs [][]*types.SignedMessage
+	for i := 0; i < tip.Len(); i++ {
+		blkMsgs, ok := f.messages[tip.At(i).Messages]
+		require.True(f.t, ok)
+		msgs = append(msgs, blkMsgs)
+	}
+	return msgs
 }
 
 // Wraps a simple build function in one that also accepts an index, propagating a nil function.
@@ -261,8 +278,8 @@ func (bb *BlockBuilder) AddMessages(msgs []*types.SignedMessage, rcpts []*types.
 	require.NoError(bb.t, err)
 	bb.receipts[cR] = rcpts
 
-	bb.block.Messages = msgs
-	bb.block.MessageReceipts = rcpts
+	bb.block.Messages = cM
+	bb.block.MessageReceipts = cR
 }
 
 // SetStateRoot sets the block's state root.
@@ -329,7 +346,7 @@ type FakeStateEvaluator struct {
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
 func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
-	return e.ComputeState(stateID, tipMessages(tip))
+	return e.ComputeState(stateID, messages)
 }
 
 // IsHeavier compares chains weighed with StateBuilder.Weigh.
@@ -467,12 +484,4 @@ func makeCid(i interface{}) (cid.Cid, error) {
 		MhType:   types.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
-}
-
-func tipMessages(tip types.TipSet) [][]*types.SignedMessage {
-	var msgs [][]*types.SignedMessage
-	for i := 0; i < tip.Len(); i++ {
-		msgs = append(msgs, tip.At(i).Messages)
-	}
-	return msgs
 }

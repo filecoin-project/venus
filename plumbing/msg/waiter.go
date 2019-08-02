@@ -31,10 +31,10 @@ type waiterChainReader interface {
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader   waiterChainReader
-	messageReader chain.MessageReader // nolint: structcheck
-	cst           *hamt.CborIpldStore
-	bs            bstore.Blockstore
+	chainReader     waiterChainReader
+	messageProvider chain.MessageProvider
+	cst             *hamt.CborIpldStore
+	bs              bstore.Blockstore
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
@@ -45,11 +45,12 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, messageReader chain.MessageReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messages chain.MessageProvider, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
-		chainReader: chainStore,
-		cst:         cst,
-		bs:          bs,
+		chainReader:     chainStore,
+		cst:             cst,
+		bs:              bs,
+		messageProvider: messages,
 	}
 }
 
@@ -109,7 +110,11 @@ func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Ci
 		}
 		for i := 0; i < iterator.Value().Len(); i++ {
 			blk := iterator.Value().At(i)
-			for _, msg := range blk.Messages {
+			msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+			if err != nil {
+				return nil, false, err
+			}
+			for _, msg := range msgs {
 				c, err := msg.Cid()
 				if err != nil {
 					return nil, false, err
@@ -148,7 +153,11 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 			case types.TipSet:
 				for i := 0; i < raw.Len(); i++ {
 					blk := raw.At(i)
-					for _, msg := range blk.Messages {
+					msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+					if err != nil {
+						return nil, false, err
+					}
+					for _, msg := range msgs {
 						c, err := msg.Cid()
 						if err != nil {
 							return nil, false, err
@@ -178,15 +187,21 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	var rcpt *types.MessageReceipt
 	if ts.Len() == 1 {
 		b := ts.At(0)
-		// TODO: this should return an error if a receipt doesn't exist.
+		// TODO #3194: this should return an error if a receipt doesn't exist.
 		// Right now doing so breaks tests because our test helpers
 		// don't correctly apply messages when making test chains.
-		j, err := msgIndexOfTipSet(msgCid, ts, make(map[cid.Cid]struct{}))
+		//
+		j, err := w.msgIndexOfTipSet(ctx, msgCid, ts, make(map[cid.Cid]struct{}))
 		if err != nil {
 			return nil, err
 		}
-		if j < len(b.MessageReceipts) {
-			rcpt = b.MessageReceipts[j]
+
+		receipts, err := w.messageProvider.LoadReceipts(ctx, b.MessageReceipts)
+		if err != nil {
+			return nil, err
+		}
+		if j < len(receipts) {
+			rcpt = receipts[j]
 		}
 		return rcpt, nil
 	}
@@ -219,10 +234,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	var tsMessages [][]*types.SignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		// TODO #3103 this is a temporary way to force the consensus interface.
-		// Once we separate messages out from blocks we'll need to read from
-		// the message collection store.
-		tsMessages = append(tsMessages, blk.Messages)
+		msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+		if err != nil {
+			return nil, err
+		}
+		tsMessages = append(tsMessages, msgs)
 	}
 
 	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
@@ -236,11 +252,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		return nil, nil
 	}
 
-	j, err := msgIndexOfTipSet(msgCid, ts, res.Failures)
+	j, err := w.msgIndexOfTipSet(ctx, msgCid, ts, res.Failures)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: out of bounds receipt index should return an error.
+	// TODO #3194: out of bounds receipt index should return an error.
 	if j < len(res.Results) {
 		rcpt = res.Results[j].Receipt
 	}
@@ -251,11 +267,15 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func msgIndexOfTipSet(msgCid cid.Cid, ts types.TipSet, fails map[cid.Cid]struct{}) (int, error) {
+func (w *Waiter) msgIndexOfTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet, fails map[cid.Cid]struct{}) (int, error) {
 	duplicates := make(map[cid.Cid]struct{})
 	var msgCnt int
 	for i := 0; i < ts.Len(); i++ {
-		for _, msg := range ts.At(i).Messages {
+		messages, err := w.messageProvider.LoadMessages(ctx, ts.At(i).Messages)
+		if err != nil {
+			return -1, err
+		}
+		for _, msg := range messages {
 			c, err := msg.Cid()
 			if err != nil {
 				return -1, err

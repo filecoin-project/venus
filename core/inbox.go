@@ -21,8 +21,8 @@ type Inbox struct {
 	// Maximum age of a pool message.
 	maxAgeTipsets uint
 
-	chain    InboxChainProvider
-	messages MessageProvider // nolint: structcheck
+	chain           InboxChainProvider
+	messageProvider MessageProvider // nolint: structcheck
 }
 
 // InboxChainProvider provides chain access for updating the message pool in response to new heads.
@@ -39,7 +39,12 @@ type MessageProvider interface {
 
 // NewInbox constructs a new inbox.
 func NewInbox(pool *MessagePool, maxAgeRounds uint, chain InboxChainProvider, messages MessageProvider) *Inbox {
-	return &Inbox{pool: pool, maxAgeTipsets: maxAgeRounds, chain: chain}
+	return &Inbox{
+		pool:            pool,
+		maxAgeTipsets:   maxAgeRounds,
+		chain:           chain,
+		messageProvider: messages,
+	}
 }
 
 // Add adds a message to the pool, tagged with the current block height.
@@ -79,7 +84,11 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 	for _, tipset := range oldTips {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			for _, msg := range block.Messages {
+			msgs, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
+			if err != nil {
+				return err
+			}
+			for _, msg := range msgs {
 				_, err = ib.pool.Add(ctx, msg, uint64(block.Height))
 				if err != nil {
 					// Messages from the removed chain are frequently invalidated, e.g. because that
@@ -95,7 +104,11 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 	var removeCids []cid.Cid
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			for _, msg := range tipset.At(i).Messages {
+			msgs, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			if err != nil {
+				return err
+			}
+			for _, msg := range msgs {
 				cid, err := msg.Cid()
 				if err != nil {
 					return err
