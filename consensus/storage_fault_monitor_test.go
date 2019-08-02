@@ -32,6 +32,7 @@ func TestHandleNewTipSet(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		minerOwnerAddr := signer.Addresses[0]
 
+		ob := outbox{}
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.HandleNewTipSet(ctx, height)
 		require.NoError(t, err)

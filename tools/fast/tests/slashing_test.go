@@ -9,7 +9,6 @@ import (
 	"time"
 
 	files "github.com/ipfs/go-ipfs-files"
-	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,12 +26,10 @@ func TestSlashing(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("works", func(t *testing.T) {
-		logging.SetDebugLogging()
-
 		// Give the deal time to complete
 		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 			InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
-			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(200 * time.Millisecond)},
+			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
 		})
 		defer func() {
 			require.NoError(t, env.Teardown(ctx))
