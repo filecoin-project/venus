@@ -30,7 +30,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0],     Chain: b[m1]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		mustAdd(ib, m[0], m[1])
@@ -52,7 +52,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0, m1], Chain: b[m2]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		mustAdd(ib, m[0], m[1])
@@ -71,7 +71,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m1],         Chain: b[m2, m3] -> b[m4] -> b[m0] -> b[] -> b[m5, m6]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
@@ -99,7 +99,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m1],         Chain: b[m2, m3] -> {b[m4], b[m0], b[], b[]} -> {b[], b[m6,m5]}
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
@@ -126,7 +126,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m1, m2],     Chain: b[m0] -> b[m3] -> b[m4, m5]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		mustAdd(ib, m[3], m[5])
@@ -148,7 +148,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m6],         Chain: b[m0] -> b[m3] -> b[m4] -> b[m5] -> b[m1, m2]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[6])
@@ -178,7 +178,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m6],         Chain: {b[m0], b[m1]} -> b[m3] -> b[m4] -> {b[m5], b[m1, m2]}
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[6])
@@ -207,7 +207,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m3, m5],     Chain: {b[m0], b[m1], b[m2]}
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(6, mockSigner)
 		mustAdd(ib, m[3], m[5])
@@ -235,7 +235,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m2, m3],         Chain: b[m0] -> b[m1]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 		m := types.NewSignedMsgs(4, mockSigner)
 
 		parent := chainProvider.headTip()
@@ -258,7 +258,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [m0],     Chain: b[] -> b[m1, m2]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(3, mockSigner)
 		mustAdd(ib, m[0], m[1])
@@ -280,7 +280,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		ib := core.NewInbox(p, 10, chainProvider)
+		ib := core.NewInbox(p, 10, chainProvider, builder)
 
 		m := types.NewSignedMsgs(7, mockSigner)
 		mustAdd(ib, m[2], m[5])
@@ -304,7 +304,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		maxAge := uint(10)
-		ib := core.NewInbox(p, maxAge, chainProvider)
+		ib := core.NewInbox(p, maxAge, chainProvider, builder)
 
 		m := types.NewSignedMsgs(maxAge, mockSigner)
 
@@ -345,7 +345,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		builder, chainProvider := newBuilderAndProvider(t)
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		maxAge := uint(10)
-		ib := core.NewInbox(p, maxAge, chainProvider)
+		ib := core.NewInbox(p, maxAge, chainProvider, builder)
 
 		m := types.NewSignedMsgs(maxAge, mockSigner)
 		parent := chainProvider.headTip()

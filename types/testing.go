@@ -215,25 +215,6 @@ func NewMessageForTestGetter() func() *Message {
 	}
 }
 
-// NewBlockForTest returns a new block. If a parent block is provided, the returned
-// block will be configured as if it were a child of that parent. The returned block
-// has not been persisted into the store.
-func NewBlockForTest(parent *Block, nonce uint64) *Block {
-	block := &Block{
-		Nonce:           Uint64(nonce),
-		Messages:        []*SignedMessage{},
-		MessageReceipts: []*MessageReceipt{},
-	}
-
-	if parent != nil {
-		block.Height = parent.Height + 1
-		block.StateRoot = parent.StateRoot
-		block.Parents = NewTipSetKey(parent.Cid())
-	}
-
-	return block
-}
-
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
 func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {

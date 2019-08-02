@@ -37,8 +37,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("old block does nothing", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
+		messages := blocks
 		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		policy := core.NewMessageQueuePolicy(blocks, messages, 10)
 
 		fromAlice := mm.NewSignedMessage(alice, 1)
 		fromBob := mm.NewSignedMessage(bob, 1)
@@ -56,8 +57,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("removes mined messages", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
+		messages := blocks
 		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		policy := core.NewMessageQueuePolicy(blocks, messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -73,7 +75,10 @@ func TestMessageQueuePolicy(t *testing.T) {
 			b.IncHeight(103)
 		})
 		b1 := blocks.BuildOn(root, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[0], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[0]},
+				types.EmptyReceipts(1),
+			)
 		})
 
 		err := policy.HandleNewHead(ctx, q, root, b1)
@@ -90,8 +95,10 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 		// Block with both alice and bob's next message
 		b3 := blocks.BuildOn(b2, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[1], &types.MessageReceipt{})
-			b.AddMessage(msgs[3], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[1], msgs[3]},
+				types.EmptyReceipts(2),
+			)
 		})
 		err = policy.HandleNewHead(ctx, q, b2, b3)
 		require.NoError(t, err)
@@ -100,7 +107,10 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 		// Block with alice's last message
 		b4 := blocks.BuildOn(b3, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[2], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[2]},
+				types.EmptyReceipts(1),
+			)
 		})
 		err = policy.HandleNewHead(ctx, q, b3, b4)
 		require.NoError(t, err)
@@ -109,8 +119,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("expires old messages", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
+		messages := blocks
 		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		policy := core.NewMessageQueuePolicy(blocks, messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -146,8 +157,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("fails when messages out of nonce order", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
+		messages := blocks
 		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		policy := core.NewMessageQueuePolicy(blocks, messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -160,7 +172,10 @@ func TestMessageQueuePolicy(t *testing.T) {
 		})
 
 		b1 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[1], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[1]},
+				types.EmptyReceipts(1),
+			)
 		})
 		err := policy.HandleNewHead(ctx, q, requireTipset(t, root), requireTipset(t, b1))
 		require.Error(t, err)
@@ -169,8 +184,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("removes sequential messages in peer blocks", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
+		messages := blocks
 		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		policy := core.NewMessageQueuePolicy(blocks, messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -186,11 +202,17 @@ func TestMessageQueuePolicy(t *testing.T) {
 		// These blocks are constructed so that their CIDs would order them
 		// in the *opposite* order (blocks used to be ordered by CID).
 		b1 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[0], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[0]},
+				types.EmptyReceipts(1),
+			)
 			b.SetTicket([]byte{0})
 		})
 		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
-			b.AddMessage(msgs[1], &types.MessageReceipt{})
+			b.AddMessages(
+				[]*types.SignedMessage{msgs[1]},
+				types.EmptyReceipts(1),
+			)
 			b.SetTicket([]byte{1})
 			b.SetTimestamp(0) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
