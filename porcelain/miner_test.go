@@ -483,7 +483,7 @@ func TestMinerProvingPeriod(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "10", pp.Start.String())
 	assert.Equal(t, "20", pp.End.String())
-	assert.NotNil(t, pp.Set["foo"])
+	assert.NotNil(t, pp.ProvingSet["foo"])
 }
 
 type minerGetPeerIDPlumbing struct{}

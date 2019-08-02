@@ -125,7 +125,7 @@ var miningStatusCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MiningStatusResult) error {
 			var pSet []string
-			for p := range res.ProvingPeriod.Set {
+			for p := range res.ProvingPeriod.ProvingSet {
 				pSet = append(pSet, p)
 			}
 			_, err := fmt.Fprintf(w, `Mining Status
@@ -136,9 +136,9 @@ Collateral: %s
 Power:      %s / %s
 
 Proving Period
-Start: %s
-End:   %s
-Set:   %s
+Start:         %s
+End:           %s
+Proving Set:   %s
 
 `, strconv.FormatBool(res.Active),
 				res.Miner.String(),

@@ -474,13 +474,13 @@ var minerProvingPeriodCmd = &cmds.Command{
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
 			var pSet []string
-			for p := range res.Set {
+			for p := range res.ProvingSet {
 				pSet = append(pSet, p)
 			}
 			_, err := fmt.Fprintf(w, `Proving Period
-Start: %s
-End: %s
-Set: %s
+Start:      %s
+End:        %s
+ProvingSet: %s
 `,
 				res.Start.String(),
 				res.End.String(),

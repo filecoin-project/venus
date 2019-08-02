@@ -399,11 +399,11 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 }
 
 // MinerProvingPeriod contains a miners proving period start and end as well
-// as a set of their commitments.
+// as a set of their proving set.
 type MinerProvingPeriod struct {
-	Start types.BlockHeight
-	End   types.BlockHeight
-	Set   map[string]types.Commitments
+	Start      types.BlockHeight
+	End        types.BlockHeight
+	ProvingSet map[string]types.Commitments
 }
 
 // MinerGetProvingPeriod gets the proving period and commitments for miner `minerAddr`.
@@ -444,9 +444,9 @@ func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserializ
 	}
 
 	return MinerProvingPeriod{
-		Start: *start,
-		End:   *end,
-		Set:   commitments,
+		Start:      *start,
+		End:        *end,
+		ProvingSet: commitments,
 	}, nil
 }
 
