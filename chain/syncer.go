@@ -43,6 +43,10 @@ func init() {
 
 var logSyncer = logging.Logger("chain.syncer")
 
+type syncerMessageReader interface {
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+}
+
 type syncerChainReaderWriter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
@@ -57,7 +61,7 @@ type syncerChainReaderWriter interface {
 type syncStateEvaluator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
+	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
 
 	// IsHeaver tests whether tipset `a` is heavier than tipset `b`.
 	// The state IDs identify the state to which the tipset applies (i.e. prior to its messages).
@@ -97,10 +101,12 @@ type Syncer struct {
 	stateEvaluator syncStateEvaluator
 	// Provides and stores validated tipsets and their state roots.
 	chainStore syncerChainReaderWriter
+	// Provides message collections given cids
+	messages syncerMessageReader
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m syncerMessageReader, f net.Fetcher) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -108,6 +114,7 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, f net.Fetcher) *
 		},
 		stateEvaluator: e,
 		chainStore:     s,
+		messages:       m,
 	}
 }
 
@@ -148,9 +155,20 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 		return err
 	}
 
+	var nextMessages [][]*types.SignedMessage
+	var nextReceipts [][]*types.MessageReceipt
+	for i := 0; i < next.Len(); i++ {
+		blk := next.At(i)
+		// TODO #3103 this is a temporary way to force the consensus interface.
+		// Once we separate messages out from blocks we'll need to read from
+		// the message collection store.
+		nextMessages = append(nextMessages, blk.Messages)
+		nextReceipts = append(nextReceipts, blk.MessageReceipts)
+	}
+
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, ancestors, stateRoot)
+	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextMessages, nextReceipts, ancestors, stateRoot)
 	if err != nil {
 		return err
 	}

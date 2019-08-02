@@ -216,7 +216,16 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		return nil, err
 	}
 
-	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, ancestors)
+	var tsMessages [][]*types.SignedMessage
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		// TODO #3103 this is a temporary way to force the consensus interface.
+		// Once we separate messages out from blocks we'll need to read from
+		// the message collection store.
+		tsMessages = append(tsMessages, blk.Messages)
+	}
+
+	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
 	if err != nil {
 		return nil, err
 	}

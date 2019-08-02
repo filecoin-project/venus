@@ -190,7 +190,7 @@ func TestFarFutureTipsets(t *testing.T) {
 		genesis := builder.RequireTipSet(store.GetHead())
 		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder)
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder)
 		assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), true))
 	})
 
@@ -199,7 +199,7 @@ func TestFarFutureTipsets(t *testing.T) {
 		genesis := builder.RequireTipSet(store.GetHead())
 		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder)
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder)
 		err := syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), false)
 		assert.Error(t, err)
 	})
@@ -217,7 +217,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, emptyFetcher)
+	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher)
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), head.Key(), heightFromTip(t, head)), true))
 }
 
@@ -404,7 +404,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder)
+	syncer := chain.NewSyncer(eval, store, builder, builder)
 
 	return builder, store, syncer
 }

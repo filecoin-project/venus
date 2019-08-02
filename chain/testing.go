@@ -328,7 +328,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
 	return e.ComputeState(stateID, tipMessages(tip))
 }
 

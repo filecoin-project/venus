@@ -68,13 +68,14 @@ func TestProcessBlockSuccess(t *testing.T) {
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
 
+	msgs := []*types.SignedMessage{smsg}
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg},
+		Messages:  msgs,
 		Miner:     minerAddr,
 	}
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, nil)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 
@@ -127,24 +128,27 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	msg1 := types.NewMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
+	msgs1 := []*types.SignedMessage{smsg1}
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg1},
+		Messages:  msgs1,
 		Miner:     minerAddr,
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
+	msgs2 := []*types.SignedMessage{smsg2}
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg2},
+		Messages:  msgs2,
 		Miner:     minerAddr,
 	}
 
-	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), nil)
+	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
+	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
 	assert.Len(t, res.Results, 2)
 
@@ -194,10 +198,11 @@ func TestProcessTipsConflicts(t *testing.T) {
 	msg1 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), "", nil)
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
+	msgs1 := []*types.SignedMessage{smsg1}
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg1},
+		Messages:  msgs1,
 		Ticket:    []byte{0, 0}, // Block with smaller ticket
 		Miner:     minerAddr,
 	}
@@ -205,14 +210,17 @@ func TestProcessTipsConflicts(t *testing.T) {
 	msg2 := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), "", nil)
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
+	msgs2 := []*types.SignedMessage{smsg2}
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg2},
+		Messages:  msgs2,
 		Ticket:    []byte{1, 1},
 		Miner:     minerAddr,
 	}
-	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), nil)
+
+	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
+	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
 	assert.Len(t, res.Results, 1)
 
@@ -263,13 +271,14 @@ func TestProcessBlockBadMsgSig(t *testing.T) {
 	// corrupt the message data
 	smsg.Message.Nonce = 13
 
+	msgs := []*types.SignedMessage{smsg}
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
-		Messages:  []*types.SignedMessage{smsg},
+		Messages:  msgs,
 	}
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, nil)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
 	require.Nil(t, results)
 	assert.EqualError(t, err, "apply message failed: invalid signature by sender over message data")
 }
@@ -304,7 +313,7 @@ func TestProcessBlockReward(t *testing.T) {
 		StateRoot: stCid,
 		Messages:  []*types.SignedMessage{},
 	}
-	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, nil)
+	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, []*types.SignedMessage{}, nil)
 	require.NoError(t, err)
 	assert.Nil(t, ret)
 
@@ -349,16 +358,17 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	msg := types.NewMessage(fromAddr, toAddr, 0, types.ZeroAttoFIL, "returnRevertError", nil)
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
 	require.NoError(t, err)
+	msgs := []*types.SignedMessage{smsg}
 	blk := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Messages:  []*types.SignedMessage{smsg},
+		Messages:  msgs,
 		Miner:     minerAddr,
 	}
 
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, nil)
+	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(t, err)
