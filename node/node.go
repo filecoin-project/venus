@@ -99,10 +99,11 @@ type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
-	Consensus   consensus.Protocol
-	ChainReader nodeChainReader
-	Syncer      nodeChainSyncer
-	PowerTable  consensus.PowerTableView
+	Consensus    consensus.Protocol
+	ChainReader  nodeChainReader
+	MessageStore *chain.MessageStore
+	Syncer       nodeChainSyncer
+	PowerTable   consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -395,9 +396,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	// set up chainstore
+	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, genCid)
-	chainState := cst.NewChainStateProvider(chainStore, &ipldCborStore)
+	messageStore := chain.NewMessageStore(&ipldCborStore)
+	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -433,10 +435,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, fetcher)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
-	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
+	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
 
 	msgQueue := core.NewMessageQueue()
-	outboxPolicy := core.NewMessageQueuePolicy(chainStore, core.OutboxMaxAgeRounds)
+	outboxPolicy := core.NewMessageQueuePolicy(chainStore, messageStore, core.OutboxMaxAgeRounds)
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
@@ -446,6 +448,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		cborStore:    &ipldCborStore,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
+		MessageStore: messageStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PeerTracker:  peerTracker,
@@ -471,7 +474,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgPool:       msgPool,
 		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
 		MsgQueryer:    msg.NewQueryer(chainStore, &ipldCborStore, bs),
-		MsgWaiter:     msg.NewWaiter(chainStore, bs, &ipldCborStore),
+		MsgWaiter:     msg.NewWaiter(chainStore, messageStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,
 		SectorBuilder: nd.SectorBuilder,
@@ -1108,6 +1111,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		GetAncestors: node.getAncestors,
 
 		MessageSource: node.Inbox.Pool(),
+		MessageStore:  node.MessageStore,
 		Processor:     processor,
 		PowerTable:    node.PowerTable,
 		Blockstore:    node.Blockstore}), nil

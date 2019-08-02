@@ -43,9 +43,7 @@ func MustConvertParams(params ...interface{}) []byte {
 func msgBuild(t *testing.T, msgSet [][]*types.SignedMessage) func(*chain.BlockBuilder, int) {
 	return func(bb *chain.BlockBuilder, i int) {
 		require.True(t, i <= len(msgSet))
-		for _, msg := range msgSet[i] {
-			bb.AddMessage(msg, &types.MessageReceipt{})
-		}
+		bb.AddMessages(msgSet[i], types.EmptyReceipts(len(msgSet[i])))
 	}
 }
 

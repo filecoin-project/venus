@@ -31,7 +31,9 @@ type Builder struct {
 	stateBuilder StateBuilder
 	seq          uint64 // For unique tickets
 
-	blocks map[cid.Cid]*types.Block
+	blocks   map[cid.Cid]*types.Block
+	messages map[cid.Cid][]*types.SignedMessage
+	receipts map[cid.Cid][]*types.MessageReceipt
 	// Cache of the state root CID computed for each tipset key.
 	tipStateCids map[string]cid.Cid
 }
@@ -39,6 +41,7 @@ type Builder struct {
 var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
 var _ net.Fetcher = (*Builder)(nil)
+var _ MessageReader = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker.
 // Blocks will have `miner` set as the miner address, or a default if empty.
@@ -55,6 +58,8 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 		stateBuilder: &FakeStateBuilder{},
 		blocks:       make(map[cid.Cid]*types.Block),
 		tipStateCids: make(map[string]cid.Cid),
+		messages:     make(map[cid.Cid][]*types.SignedMessage),
+		receipts:     make(map[cid.Cid][]*types.MessageReceipt),
 	}
 
 	nullState, err := makeCid("null")
@@ -171,7 +176,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 		// Nonce intentionally omitted as it will go away.
 
 		if build != nil {
-			build(&BlockBuilder{b}, i)
+			build(&BlockBuilder{b, f.t, f.messages, f.receipts}, i)
 		}
 
 		// Compute state root for this block.
@@ -225,6 +230,10 @@ func singleBuilder(build func(b *BlockBuilder)) func(b *BlockBuilder, i int) {
 // BlockBuilder mutates blocks as they are generated.
 type BlockBuilder struct {
 	block *types.Block
+	t     *testing.T
+	// These maps should be set to share data with the builder.
+	messages map[cid.Cid][]*types.SignedMessage
+	receipts map[cid.Cid][]*types.MessageReceipt
 }
 
 // SetTicket sets the block's ticket.
@@ -243,10 +252,17 @@ func (bb *BlockBuilder) IncHeight(nullBlocks types.Uint64) {
 	bb.block.Height += nullBlocks
 }
 
-// AddMessage adds a message & receipt to the block.
-func (bb *BlockBuilder) AddMessage(msg *types.SignedMessage, rcpt *types.MessageReceipt) {
-	bb.block.Messages = append(bb.block.Messages, msg)
-	bb.block.MessageReceipts = append(bb.block.MessageReceipts, rcpt)
+// AddMessages adds a message & receipt collection to the block.
+func (bb *BlockBuilder) AddMessages(msgs []*types.SignedMessage, rcpts []*types.MessageReceipt) {
+	cM, err := makeCid(msgs)
+	require.NoError(bb.t, err)
+	bb.messages[cM] = msgs
+	cR, err := makeCid(rcpts)
+	require.NoError(bb.t, err)
+	bb.receipts[cR] = rcpts
+
+	bb.block.Messages = msgs
+	bb.block.MessageReceipts = rcpts
 }
 
 // SetStateRoot sets the block's state root.
@@ -418,6 +434,24 @@ func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []types.TipSet
 		require.NoError(f.t, err)
 	}
 	return tips
+}
+
+// LoadMessages returns the message collections tracked by the builder.
+func (f *Builder) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, error) {
+	msgs, ok := f.messages[c]
+	if !ok {
+		return nil, errors.Errorf("no message for %s", c)
+	}
+	return msgs, nil
+}
+
+// LoadReceipts returns the message collections tracked by the builder.
+func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.MessageReceipt, error) {
+	rs, ok := f.receipts[c]
+	if !ok {
+		return nil, errors.Errorf("no message for %s", c)
+	}
+	return rs, nil
 }
 
 ///// Internals /////

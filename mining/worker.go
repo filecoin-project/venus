@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -89,6 +90,7 @@ type DefaultWorker struct {
 	// core filecoin things
 	messageSource MessageSource
 	processor     MessageApplier
+	messageStore  chain.MessageWriter // nolint: structcheck
 	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
 }
@@ -111,6 +113,7 @@ type WorkerParameters struct {
 	MessageSource MessageSource
 	Processor     MessageApplier
 	PowerTable    consensus.PowerTableView
+	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
 }
 
@@ -135,6 +138,7 @@ func NewDefaultWorkerWithDeps(parameters WorkerParameters,
 		getWeight:      parameters.GetWeight,
 		getAncestors:   parameters.GetAncestors,
 		messageSource:  parameters.MessageSource,
+		messageStore:   parameters.MessageStore,
 		processor:      parameters.Processor,
 		powerTable:     parameters.PowerTable,
 		blockstore:     parameters.Blockstore,
