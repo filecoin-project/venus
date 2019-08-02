@@ -38,7 +38,7 @@ RUN set -x \
 
 
 # Now comes the actual target image, which aims to be as small as possible.
-FROM busybox:1-glibc AS filecoin
+FROM busybox:1.30.1-glibc AS filecoin
 MAINTAINER Filecoin Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
