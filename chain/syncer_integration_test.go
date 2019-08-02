@@ -51,15 +51,15 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, chain.Syncing)
+	syncer := chain.NewSyncer(eval, store, builder)
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipset(ctx, left.Key(), ""))
-	assert.NoError(t, syncer.HandleNewTipset(ctx, right.Key(), ""))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -79,7 +79,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, newStore, fakeFetcher, chain.Syncing)
+	offlineSyncer := chain.NewSyncer(eval, newStore, fakeFetcher)
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -104,11 +104,12 @@ func TestLoadFork(t *testing.T) {
 	// Test that the syncer can't sync a block chained from on the right (originally shorter) chain
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
-	err = offlineSyncer.HandleNewTipset(ctx, newRight.Key(), "")
+
+	err = offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipset(ctx, left.Key(), ""))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
 }
 
 // Syncer handles MarketView weight comparisons.
@@ -189,7 +190,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 		VerifyPoStValid: true,
 	}
 	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
-	syncer := chain.NewSyncer(con, chainStore, blockSource, chain.Syncing)
+	syncer := chain.NewSyncer(con, chainStore, blockSource)
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
@@ -242,7 +243,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(t, blockSource, f1b1, f2b1)
-	err = syncer.HandleNewTipset(ctx, sharedCids, peer.ID(""))
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), sharedCids, uint64(f1b1.Height)), true)
 	require.NoError(t, err)
 	assertHead(t, chainStore, tsShared)
 	measuredWeight, err := wFun(requireHeadTipset(t, chainStore))
@@ -274,8 +275,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f1Cids, peer.ID(""))
+
+	f1H, err := f1.Height()
 	require.NoError(t, err)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f1Cids, f1H), true)
+	require.NoError(t, err)
+
 	assertHead(t, chainStore, f1)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
 	require.NoError(t, err)
@@ -299,8 +304,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)
-	err = syncer.HandleNewTipset(ctx, f2Cids, peer.ID(""))
+
+	f2H, err := f2.Height()
 	require.NoError(t, err)
+	err = syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), f2Cids, f2H), true)
+	require.NoError(t, err)
+
 	assertHead(t, chainStore, f2)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
 	require.NoError(t, err)

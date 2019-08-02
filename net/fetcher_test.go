@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 
