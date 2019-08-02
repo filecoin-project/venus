@@ -27,8 +27,9 @@ type chainReader interface {
 // ChainStateProvider composes a chain and a state store to provide access to
 // the state (including actors) derived from a chain.
 type ChainStateProvider struct {
-	reader chainReader         // Provides chain tipsets and state roots.
-	cst    *hamt.CborIpldStore // Provides chain blocks and state trees.
+	reader   chainReader         // Provides chain tipsets and state roots.
+	cst      *hamt.CborIpldStore // Provides chain blocks and state trees.
+	messages chain.MessageReader // nolint: structcheck
 }
 
 var (
@@ -42,7 +43,7 @@ var (
 )
 
 // NewChainStateProvider returns a new ChainStateProvider.
-func NewChainStateProvider(chainReader chainReader, cst *hamt.CborIpldStore) *ChainStateProvider {
+func NewChainStateProvider(chainReader chainReader, messages chain.MessageReader, cst *hamt.CborIpldStore) *ChainStateProvider {
 	return &ChainStateProvider{
 		reader: chainReader,
 		cst:    cst,

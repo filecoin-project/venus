@@ -203,10 +203,11 @@ func initSyncTest(t *testing.T,
 	calcGenBlk.StateRoot = dstP.genStateRoot
 	chainDS := r.ChainDatastore()
 	chainStore := chain.NewStore(chainDS, cst, &state.TreeStateLoader{}, calcGenBlk.Cid())
+	messageStore := chain.NewMessageStore(cst)
 
 	fetcher := th.NewTestFetcher()
 	fetcher.AddSourceBlocks(calcGenBlk)
-	syncer := chain.NewSyncer(con, chainStore, fetcher) // note we use same cst for on and offline for tests
+	syncer := chain.NewSyncer(con, chainStore, messageStore, fetcher) // note we use same cst for on and offline for tests
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, calcGenBlk)

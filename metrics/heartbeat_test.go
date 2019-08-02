@@ -18,9 +18,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -89,7 +89,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
 	)
@@ -118,7 +118,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
 	)

@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
@@ -39,7 +40,7 @@ func Test_Mine(t *testing.T) {
 	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -49,6 +50,8 @@ func Test_Mine(t *testing.T) {
 
 	minerAddr := addrs[3]      // addr4 in sharedSetup
 	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
+
+	messages := chain.NewMessageStore(cst)
 
 	// TODO: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
 	t.Run("Trivial success case", func(t *testing.T) {
@@ -70,7 +73,9 @@ func Test_Mine(t *testing.T) {
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
-			Blockstore:    bs}, CreatePoSTFunc)
+			Blockstore:    bs,
+			MessageStore:  messages,
+		}, CreatePoSTFunc)
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
@@ -96,7 +101,9 @@ func Test_Mine(t *testing.T) {
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
-			Blockstore:    bs}, CreatePoSTFunc)
+			Blockstore:    bs,
+			MessageStore:  messages,
+		}, CreatePoSTFunc)
 		outCh := make(chan mining.Output)
 		doSomeWorkCalled = false
 		go worker.Mine(ctx, tipSet, 0, outCh)
@@ -125,7 +132,9 @@ func Test_Mine(t *testing.T) {
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
-			Blockstore:    bs}, CreatePoSTFunc)
+			Blockstore:    bs,
+			MessageStore:  messages,
+		}, CreatePoSTFunc)
 		input := types.TipSet{}
 		outCh := make(chan mining.Output)
 		go worker.Mine(ctx, input, 0, outCh)
@@ -240,7 +249,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -250,6 +259,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
+
+	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(),
@@ -266,7 +277,9 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		MessageSource: pool,
 		Processor:     th.NewTestProcessor(),
 		PowerTable:    &th.TestView{},
-		Blockstore:    bs}, CreatePoSTFunc)
+		Blockstore:    bs,
+		MessageStore:  messages,
+	}, CreatePoSTFunc)
 
 	parents := types.NewTipSetKey(newCid())
 	stateRoot := newCid()
@@ -300,7 +313,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
@@ -308,6 +321,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
+
+	messages := chain.NewMessageStore(cst)
+
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(),
 
@@ -323,7 +339,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
-		Blockstore:    bs}, CreatePoSTFunc)
+		Blockstore:    bs,
+		MessageStore:  messages,
+	}, CreatePoSTFunc)
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, types.ZeroAttoFIL, "", nil)
@@ -394,7 +412,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
@@ -404,6 +422,9 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	}
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
+
+	messages := chain.NewMessageStore(cst)
+
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(),
 
@@ -419,7 +440,9 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
-		Blockstore:    bs}, CreatePoSTFunc)
+		Blockstore:    bs,
+		MessageStore:  messages,
+	}, CreatePoSTFunc)
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
@@ -453,13 +476,16 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
+
+	messages := chain.NewMessageStore(cst)
+
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(),
 
@@ -475,7 +501,9 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
-		Blockstore:    bs}, CreatePoSTFunc)
+		Blockstore:    bs,
+		MessageStore:  messages,
+	}, CreatePoSTFunc)
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
@@ -502,11 +530,13 @@ func TestGenerateError(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
 	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
 		return nil, nil
 	}
+
+	messages := chain.NewMessageStore(cst)
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(),
 
@@ -522,7 +552,9 @@ func TestGenerateError(t *testing.T) {
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
-		Blockstore:    bs}, CreatePoSTFunc)
+		Blockstore:    bs,
+		MessageStore:  messages,
+	}, CreatePoSTFunc)
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, "", nil)

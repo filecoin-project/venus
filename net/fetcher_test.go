@@ -13,6 +13,8 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/net"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -29,9 +31,10 @@ func TestFetchHappyPath(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fetcher := net.NewBitswapFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
-	block1 := types.NewBlockForTest(nil, uint64(0))
-	block2 := types.NewBlockForTest(nil, uint64(1))
-	block3 := types.NewBlockForTest(nil, uint64(3))
+	builder := chain.NewBuilder(t, address.Undef)
+	block1 := builder.NewGenesis().At(0)
+	block2 := builder.NewGenesis().At(0)
+	block3 := builder.NewGenesis().At(0)
 
 	requireBlockStorePut(t, bs, block1.ToNode())
 	requireBlockStorePut(t, bs, block2.ToNode())
@@ -55,8 +58,9 @@ func TestFetchNoBlockFails(t *testing.T) {
 
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	fetcher := net.NewBitswapFetcher(context.Background(), bserv.New(bs, offline.Exchange(bs)), th.NewFakeBlockValidator())
-	block1 := types.NewBlockForTest(nil, uint64(0))
-	block2 := types.NewBlockForTest(nil, uint64(1))
+	builder := chain.NewBuilder(t, address.Undef)
+	block1 := builder.NewGenesis().At(0)
+	block2 := builder.NewGenesis().At(0)
 
 	// do not add block2 to the bstore
 	requireBlockStorePut(t, bs, block1.ToNode())

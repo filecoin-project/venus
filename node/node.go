@@ -99,10 +99,11 @@ type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
-	Consensus   consensus.Protocol
-	ChainReader nodeChainReader
-	Syncer      nodeChainSyncer
-	PowerTable  consensus.PowerTableView
+	Consensus    consensus.Protocol
+	ChainReader  nodeChainReader
+	MessageStore *chain.MessageStore
+	Syncer       nodeChainSyncer
+	PowerTable   consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -395,9 +396,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	// set up chainstore
+	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, genCid)
-	chainState := cst.NewChainStateProvider(chainStore, &ipldCborStore)
+	messageStore := chain.NewMessageStore(&ipldCborStore)
+	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 
 	// set up processor
@@ -431,12 +433,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, fetcher)
+	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
-	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore)
+	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
 
 	msgQueue := core.NewMessageQueue()
-	outboxPolicy := core.NewMessageQueuePolicy(chainStore, core.OutboxMaxAgeRounds)
+	outboxPolicy := core.NewMessageQueuePolicy(chainStore, messageStore, core.OutboxMaxAgeRounds)
 	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
@@ -446,6 +448,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		cborStore:    &ipldCborStore,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
+		MessageStore: messageStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
 		PeerTracker:  peerTracker,
@@ -471,7 +474,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		MsgPool:       msgPool,
 		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
 		MsgQueryer:    msg.NewQueryer(chainStore, &ipldCborStore, bs),
-		MsgWaiter:     msg.NewWaiter(chainStore, bs, &ipldCborStore),
+		MsgWaiter:     msg.NewWaiter(chainStore, messageStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,
 		SectorBuilder: nd.SectorBuilder,
@@ -513,7 +516,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// Only set these up if there is a miner configured.
-	if _, err := node.miningAddress(); err == nil {
+	if _, err := node.MiningAddress(); err == nil {
 		if err := node.setupMining(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
@@ -617,8 +620,8 @@ func (node *Node) pubsubscribe(ctx context.Context, topic string, handler pubSub
 
 func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	mag := func() address.Address {
-		addr, err := node.miningAddress()
-		// the only error miningAddress() returns is ErrNoMinerAddress.
+		addr, err := node.MiningAddress()
+		// the only error MiningAddress() returns is ErrNoMinerAddress.
 		// if there is no configured miner address, simply send a zero
 		// address across the wire.
 		if err != nil {
@@ -785,9 +788,9 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	}
 }
 
-// miningAddress returns the address of the mining actor mining on behalf of
+// MiningAddress returns the address of the mining actor mining on behalf of
 // the node.
-func (node *Node) miningAddress() (address.Address, error) {
+func (node *Node) MiningAddress() (address.Address, error) {
 	addr := node.Repo.Config().Mining.MinerAddress
 	if addr.Empty() {
 		return address.Undef, ErrNoMinerAddress
@@ -812,7 +815,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	if node.IsMining() {
 		return errors.New("Node is already mining")
 	}
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
@@ -932,7 +935,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
@@ -988,7 +991,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 }
 
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
@@ -1054,6 +1057,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 func (node *Node) setupProtocols() error {
 	_, mineDelay := node.MiningTimes()
 	blockMiningAPI := block.New(
+		node.MiningAddress,
 		node.AddNewBlock,
 		node.ChainReader,
 		node.IsMining,
@@ -1080,7 +1084,7 @@ func (node *Node) setupProtocols() error {
 func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error) {
 	processor := consensus.NewDefaultProcessor()
 
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
@@ -1108,6 +1112,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		GetAncestors: node.getAncestors,
 
 		MessageSource: node.Inbox.Pool(),
+		MessageStore:  node.MessageStore,
 		Processor:     processor,
 		PowerTable:    node.PowerTable,
 		Blockstore:    node.Blockstore}), nil

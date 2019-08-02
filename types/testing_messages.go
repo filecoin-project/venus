@@ -58,3 +58,12 @@ func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *Si
 	require.NoError(mm.t, err)
 	return signed
 }
+
+// EmptyReceipts returns a slice of n empty receipts.
+func EmptyReceipts(n int) []*MessageReceipt {
+	out := make([]*MessageReceipt, n)
+	for i := 0; i < n; i++ {
+		out[i] = &MessageReceipt{}
+	}
+	return out
+}

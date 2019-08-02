@@ -21,7 +21,8 @@ type Inbox struct {
 	// Maximum age of a pool message.
 	maxAgeTipsets uint
 
-	chain InboxChainProvider
+	chain    InboxChainProvider
+	messages MessageProvider // nolint: structcheck
 }
 
 // InboxChainProvider provides chain access for updating the message pool in response to new heads.
@@ -31,8 +32,13 @@ type InboxChainProvider interface {
 	GetHead() types.TipSetKey
 }
 
+// MessageProvider provides message collections given their cid.
+type MessageProvider interface {
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+}
+
 // NewInbox constructs a new inbox.
-func NewInbox(pool *MessagePool, maxAgeRounds uint, chain InboxChainProvider) *Inbox {
+func NewInbox(pool *MessagePool, maxAgeRounds uint, chain InboxChainProvider, messages MessageProvider) *Inbox {
 	return &Inbox{pool: pool, maxAgeTipsets: maxAgeRounds, chain: chain}
 }
 

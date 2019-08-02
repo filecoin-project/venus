@@ -31,9 +31,10 @@ type waiterChainReader interface {
 
 // Waiter waits for a message to appear on chain.
 type Waiter struct {
-	chainReader waiterChainReader
-	cst         *hamt.CborIpldStore
-	bs          bstore.Blockstore
+	chainReader   waiterChainReader
+	messageReader chain.MessageReader // nolint: structcheck
+	cst           *hamt.CborIpldStore
+	bs            bstore.Blockstore
 }
 
 // ChainMessage is an on-chain message with its block and receipt.
@@ -44,7 +45,7 @@ type ChainMessage struct {
 }
 
 // NewWaiter returns a new Waiter.
-func NewWaiter(chainStore waiterChainReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
+func NewWaiter(chainStore waiterChainReader, messageReader chain.MessageReader, bs bstore.Blockstore, cst *hamt.CborIpldStore) *Waiter {
 	return &Waiter{
 		chainReader: chainStore,
 		cst:         cst,
@@ -215,7 +216,16 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		return nil, err
 	}
 
-	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, ancestors)
+	var tsMessages [][]*types.SignedMessage
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+		// TODO #3103 this is a temporary way to force the consensus interface.
+		// Once we separate messages out from blocks we'll need to read from
+		// the message collection store.
+		tsMessages = append(tsMessages, blk.Messages)
+	}
+
+	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
 	if err != nil {
 		return nil, err
 	}
