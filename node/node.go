@@ -516,7 +516,7 @@ func (node *Node) Start(ctx context.Context) error {
 	}
 
 	// Only set these up if there is a miner configured.
-	if _, err := node.miningAddress(); err == nil {
+	if _, err := node.MiningAddress(); err == nil {
 		if err := node.setupMining(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
@@ -620,8 +620,8 @@ func (node *Node) pubsubscribe(ctx context.Context, topic string, handler pubSub
 
 func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	mag := func() address.Address {
-		addr, err := node.miningAddress()
-		// the only error miningAddress() returns is ErrNoMinerAddress.
+		addr, err := node.MiningAddress()
+		// the only error MiningAddress() returns is ErrNoMinerAddress.
 		// if there is no configured miner address, simply send a zero
 		// address across the wire.
 		if err != nil {
@@ -788,9 +788,9 @@ func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	}
 }
 
-// miningAddress returns the address of the mining actor mining on behalf of
+// MiningAddress returns the address of the mining actor mining on behalf of
 // the node.
-func (node *Node) miningAddress() (address.Address, error) {
+func (node *Node) MiningAddress() (address.Address, error) {
 	addr := node.Repo.Config().Mining.MinerAddress
 	if addr.Empty() {
 		return address.Undef, ErrNoMinerAddress
@@ -815,7 +815,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 	if node.IsMining() {
 		return errors.New("Node is already mining")
 	}
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
 	}
@@ -935,7 +935,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 }
 
 func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
@@ -991,7 +991,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 }
 
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
@@ -1057,6 +1057,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 func (node *Node) setupProtocols() error {
 	_, mineDelay := node.MiningTimes()
 	blockMiningAPI := block.New(
+		node.MiningAddress,
 		node.AddNewBlock,
 		node.ChainReader,
 		node.IsMining,
@@ -1083,7 +1084,7 @@ func (node *Node) setupProtocols() error {
 func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error) {
 	processor := consensus.NewDefaultProcessor()
 
-	minerAddr, err := node.miningAddress()
+	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}

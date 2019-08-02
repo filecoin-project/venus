@@ -397,3 +397,105 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 	}
 	return pid, nil
 }
+
+// MinerProvingPeriod contains a miners proving period start and end as well
+// as a set of their proving set.
+type MinerProvingPeriod struct {
+	Start      types.BlockHeight
+	End        types.BlockHeight
+	ProvingSet map[string]types.Commitments
+}
+
+// MinerGetProvingPeriod gets the proving period and commitments for miner `minerAddr`.
+func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingPeriod, error) {
+	res, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getProvingPeriod",
+	)
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query ProvingPeriod method failed")
+	}
+	start, end := types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1])
+
+	res, err = plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getProvingSetCommitments",
+	)
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query SetCommitments method failed")
+	}
+
+	sig, err := plumbing.ActorGetSignature(ctx, minerAddr, "getProvingSetCommitments")
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query method failed")
+	}
+
+	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "deserialization failed")
+	}
+	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
+	if !ok {
+		return MinerProvingPeriod{}, errors.New("type assertion failed")
+	}
+
+	return MinerProvingPeriod{
+		Start:      *start,
+		End:        *end,
+		ProvingSet: commitments,
+	}, nil
+}
+
+// MinerPower contains a miners power and the total power of the network
+type MinerPower struct {
+	Power types.BytesAmount
+	Total types.BytesAmount
+}
+
+// MinerGetPower queries the power of a given miner.
+func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Address) (MinerPower, error) {
+	bytes, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getPower",
+	)
+	if err != nil {
+		return MinerPower{}, err
+	}
+	power := types.NewBytesAmountFromBytes(bytes[0])
+
+	bytes, err = plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		address.StorageMarketAddress,
+		"getTotalStorage",
+	)
+	if err != nil {
+		return MinerPower{}, err
+	}
+	total := types.NewBytesAmountFromBytes(bytes[0])
+
+	return MinerPower{
+		Power: *power,
+		Total: *total,
+	}, nil
+}
+
+// MinerGetCollateral queries the collateral of a given miner.
+func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.Address) (types.AttoFIL, error) {
+	rets, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getActiveCollateral",
+	)
+	if err != nil {
+		return types.AttoFIL{}, err
+	}
+	return types.NewAttoFILFromBytes(rets[0]), nil
+}

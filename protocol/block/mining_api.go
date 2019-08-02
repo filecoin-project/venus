@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -15,6 +16,7 @@ type miningChainReader interface {
 
 // MiningAPI provides an interface to the block mining protocol.
 type MiningAPI struct {
+	minerAddress     func() (address.Address, error)
 	addNewBlockFunc  func(context.Context, *types.Block) (err error)
 	chainReader      miningChainReader
 	isMiningFunc     func() bool
@@ -26,6 +28,7 @@ type MiningAPI struct {
 
 // New creates a new MiningAPI instance with the provided deps
 func New(
+	minerAddr func() (address.Address, error),
 	addNewBlockFunc func(context.Context, *types.Block) (err error),
 	chainReader miningChainReader,
 	isMiningFunc func() bool,
@@ -35,6 +38,7 @@ func New(
 	createWorkerFunc func(ctx context.Context) (mining.Worker, error),
 ) MiningAPI {
 	return MiningAPI{
+		minerAddress:     minerAddr,
 		addNewBlockFunc:  addNewBlockFunc,
 		chainReader:      chainReader,
 		isMiningFunc:     isMiningFunc,
@@ -43,6 +47,12 @@ func New(
 		stopMiningFunc:   stopMiningfunc,
 		createWorkerFunc: createWorkerFunc,
 	}
+}
+
+// MinerAddress returns the mining address the MiningAPI is using, an error is
+// returned if the mining address is not set.
+func (a *MiningAPI) MinerAddress() (address.Address, error) {
+	return a.minerAddress()
 }
 
 // MiningIsActive calls the node's IsMining function

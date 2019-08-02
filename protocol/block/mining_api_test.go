@@ -90,6 +90,28 @@ func TestMiningAPI_MiningStop(t *testing.T) {
 	assert.False(nd.IsMining())
 }
 
+func TestMiningAPI_MiningAddress(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	api, nd := newAPI(t, ast.New(t))
+
+	ast.NoError(t, nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	req.NoError(t, nd.StartMining(ctx))
+
+	maybeAddress, err := api.MinerAddress()
+	req.NoError(t, err)
+	minerAddress, err := nd.MiningAddress()
+	req.NoError(t, err)
+
+	ast.Equal(t, minerAddress, maybeAddress)
+
+	nd.StopMining(ctx)
+
+}
+
 func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	configOpts := []node.ConfigOpt{}
@@ -103,6 +125,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	_, err := storage.NewMiner(mAddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
 	assert.NoError(err)
 	return bapi.New(
+		nd.MiningAddress,
 		nd.AddNewBlock,
 		nd.ChainReader,
 		nd.IsMining,

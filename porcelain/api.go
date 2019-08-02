@@ -146,6 +146,21 @@ func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner add
 	return MinerSetPrice(ctx, a, from, miner, gasPrice, gasLimit, price, expiry)
 }
 
+// MinerGetPower queries for the power of the given miner
+func (a *API) MinerGetPower(ctx context.Context, minerAddr address.Address) (MinerPower, error) {
+	return MinerGetPower(ctx, a, minerAddr)
+}
+
+// MinerGetProvingPeriod queries for the proving period of the given miner
+func (a *API) MinerGetProvingPeriod(ctx context.Context, minerAddr address.Address) (MinerProvingPeriod, error) {
+	return MinerGetProvingPeriod(ctx, a, minerAddr)
+}
+
+// MinerGetCollateral queries for the proving period of the given miner
+func (a *API) MinerGetCollateral(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error) {
+	return MinerGetCollateral(ctx, a, minerAddr)
+}
+
 // MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
 // This method accepts all the same arguments as MinerSetPrice.
 func (a *API) MinerPreviewSetPrice(
