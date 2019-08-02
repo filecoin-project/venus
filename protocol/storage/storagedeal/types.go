@@ -121,6 +121,7 @@ type Deal struct {
 	Miner    address.Address
 	Proposal *Proposal
 	Response *Response
+	CommP    types.CommP
 }
 
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
