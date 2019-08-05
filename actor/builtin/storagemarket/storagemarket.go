@@ -229,7 +229,7 @@ func (sma *Actor) GetLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8
 				return &miners, err
 			}
 
-			if poStState > miner.PoStStateWithinProvingPeriod {
+			if poStState == miner.PoStStateAfterGenerationAttackThreshold {
 				miners[addr.String()] = poStState
 			}
 		}

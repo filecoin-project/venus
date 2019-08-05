@@ -58,24 +58,10 @@ func TestSlashing(t *testing.T) {
 		require.NoError(t, series.WaitForBlockHeight(ctx, minerDaemon, types.NewBlockHeight(waitLimit)))
 		require.NoError(t, waitForPower(ctx, t, minerDaemon, minerAddr, 1024, waitLimit))
 
-		// miner makes another deal
-		dealResponse = requireMinerClientMakeADeal(ctx, t, minerDaemon, clientDaemon, askID, duration)
-		require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Staged))
-
 		// miner is offline for entire proving period + grace period
 		require.NoError(t, minerDaemon.StopDaemon(ctx))
 
-		//atLeastStartH is either the start height of the deal or a height after the deal has started.
-		atLeastStartH, err := series.GetHeadBlockHeight(ctx, clientDaemon)
-		require.NoError(t, err)
-
-		lastPossibleSubmission := atLeastStartH.AsBigInt().Uint64() +
-			3*miner.ProvingPeriodDuration(types.OneKiBSectorSize) +
-			miner.LargestSectorGenerationAttackThresholdBlocks
-
-		require.NoError(t, series.WaitForBlockHeight(ctx, clientDaemon, types.NewBlockHeight(lastPossibleSubmission)))
-
-		waitLimit = 2000
+		waitLimit = 1000
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
 
@@ -132,11 +118,6 @@ func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner add
 		require.NoError(t, err)
 		if expPower == actualPower.Uint64() {
 			return nil
-		}
-		if i%10 == 0 {
-			bh, err := series.GetHeadBlockHeight(ctx, d)
-			require.NoError(t, err)
-			fmt.Printf("\n---------- BLOCK HEIGHT %6d POWER %6d ITERATION %6d\n", bh.AsBigInt().Uint64(), actualPower.Uint64(), i)
 		}
 		series.CtxSleepDelay(ctx)
 	}

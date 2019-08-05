@@ -127,6 +127,14 @@ func (ob *outbox) Send(ctx context.Context,
 		return cid.Undef, err
 	}
 
+	if gasPrice.LessEqual(types.ZeroAttoFIL) {
+		return cid.Undef, errors.New("gas price must be >0")
+	}
+
+	if gasLimit < types.Uint64(300) {
+		return cid.Undef, errors.New("gas limit must be >= 300")
+	}
+
 	if ob.failSend {
 		return cid.Undef, errors.New(ob.failErr)
 	}

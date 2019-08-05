@@ -76,7 +76,6 @@ func (sfm *StorageFaultMonitor) HandleNewTipSet(ctx context.Context, currentHeig
 	}
 	sfm.log.Debugf("there are %d late miners", len(*lms))
 	// Slash late miners.
-	// Keep trying to slash even if something goes wrong.
 	for minerStr, state := range *lms {
 		minerAddr, err := address.NewFromString(minerStr)
 		if err != nil {
@@ -85,7 +84,9 @@ func (sfm *StorageFaultMonitor) HandleNewTipSet(ctx context.Context, currentHeig
 
 		// send slash message, don't broadcast it, and don't wait for message to appear on chain.
 		sfm.log.Debugf("Slashing %s with state %d", minerStr, state)
-		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, types.ZeroAttoFIL, types.NewGasUnits(0), false, "slashStorageFault")
+
+		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, types.NewAttoFILFromFIL(1),
+			types.NewGasUnits(300), false, "slashStorageFault")
 		if err != nil {
 			return errors.FaultErrorWrap(err, "slashStorageFault message failed")
 		}
