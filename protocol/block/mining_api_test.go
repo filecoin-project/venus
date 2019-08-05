@@ -82,19 +82,19 @@ func TestMiningAPI_MiningAddress(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	api, nd := newAPI(t, ast.New(t))
+	api, nd := newAPI(t)
 
-	ast.NoError(t, nd.Start(ctx))
+	require.NoError(t, nd.Start(ctx))
 	defer nd.Stop(ctx)
 
-	req.NoError(t, nd.StartMining(ctx))
+	require.NoError(t, nd.StartMining(ctx))
 
 	maybeAddress, err := api.MinerAddress()
-	req.NoError(t, err)
+	require.NoError(t, err)
 	minerAddress, err := nd.MiningAddress()
-	req.NoError(t, err)
+	require.NoError(t, err)
 
-	ast.Equal(t, minerAddress, maybeAddress)
+	assert.Equal(t, minerAddress, maybeAddress)
 
 	nd.StopMining(ctx)
 }
