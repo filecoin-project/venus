@@ -177,7 +177,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 	return out, nil
 }
 
-// fetchBlocks requests a single set of cids as individual bocks, fetching
+// fetchBlocks requests a single set of cids as individual blocks, fetching
 // non-recursively
 func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, from peer.ID) error {
 	selector := gsf.ssb.Matcher().Node()

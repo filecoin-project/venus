@@ -169,7 +169,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Equal(t, pid1, mgs.receivedRequests[3].p, "asks second peer for failed responses in first tipset")
 		require.Equal(t, pid1, mgs.receivedRequests[4].p, "asks second peer for failed responses in first tipset")
 		require.Equal(t, pid2, mgs.receivedRequests[5].p, "asks third peer for failed responses in first tipset")
-		require.Equal(t, pid2, mgs.receivedRequests[6].p, "asks third peer for when continuing the query")
+		require.Equal(t, pid2, mgs.receivedRequests[6].p, "asks third peer for remaining tipsets")
 		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
 		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
 		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
