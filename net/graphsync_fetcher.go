@@ -96,6 +96,35 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	if err != nil {
 		return nil, err
 	}
+
+	// fetch remaining tipsets recursively
+	return gsf.fetchRemainingTipsets(ctx, startingTipset, rpf, done)
+}
+
+func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
+	cids := tsKey.ToSlice()
+	remainingCids := cids
+	for {
+		err := gsf.fetchBlocks(ctx, remainingCids, rpf.CurrentPeer())
+		if err == nil {
+			break
+		}
+		// something went wrong in a graphsync request, but we want to keep trying other peers, so
+		// just log error
+		logGraphsyncFetcher.Infof("Error occurred during Graphsync request: %s", err)
+		remainingCids, err = gsf.missingCids(remainingCids)
+		if err != nil {
+			return types.UndefTipSet, err
+		}
+		err = rpf.FindNextPeer()
+		if err != nil {
+			return types.UndefTipSet, fmt.Errorf("Failed fetching tipset: %s", tsKey.String())
+		}
+	}
+	return gsf.loadTipsetFromCids(ctx, cids)
+}
+
+func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf *requestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	out := []types.TipSet{startingTipset}
 	isDone, err := done(startingTipset)
 	if err != nil {
@@ -146,29 +175,6 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 		}
 	}
 	return out, nil
-}
-
-func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
-	cids := tsKey.ToSlice()
-	remainingCids := cids
-	for {
-		err := gsf.fetchBlocks(ctx, remainingCids, rpf.CurrentPeer())
-		if err == nil {
-			break
-		}
-		// something went wrong in a graphsync request, but we want to keep trying other peers, so
-		// just log error
-		logGraphsyncFetcher.Infof("Error occurred during Graphsync request: %s", err)
-		remainingCids, err = gsf.missingCids(remainingCids)
-		if err != nil {
-			return types.UndefTipSet, err
-		}
-		err = rpf.FindNextPeer()
-		if err != nil {
-			return types.UndefTipSet, fmt.Errorf("Failed fetching tipset: %s", tsKey.String())
-		}
-	}
-	return gsf.loadTipsetFromCids(ctx, cids)
 }
 
 // fetchBlocks requests a single set of cids as individual bocks, fetching
