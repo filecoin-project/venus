@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -62,6 +63,17 @@ func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*s
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "query-storage-deal", prop.String()); err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+// ClientVerifyStorageDeal runs the client verify-storage-deal command against the filecoin process.
+func (f *Filecoin) ClientVerifyStorageDeal(ctx context.Context, prop cid.Cid) (*commands.VerifyStorageDealResult, error) {
+	var out commands.VerifyStorageDealResult
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "verify-storage-deal", prop.String()); err != nil {
+		return nil, err
+	}
+
 	return &out, nil
 }
 

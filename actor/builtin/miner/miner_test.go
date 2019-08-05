@@ -1373,6 +1373,40 @@ func TestVerifyPIP(t *testing.T) {
 	})
 }
 
+func TestDoVerifyPIP(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstSectorCommitments := th.MakeCommitments()
+	firstSectorCommD := firstSectorCommitments.CommD
+	firstSectorID := uint64(1)
+
+	sectorSetWithOneCommitment := NewSectorSet()
+	sectorSetWithOneCommitment.Add(firstSectorID, firstSectorCommitments)
+
+	commP := th.MakeCommitment()
+
+	t.Run("Sends correct parameters to PIP verifier", func(t *testing.T) {
+		vmctx, verifier, minerActor := (&minerEnvBuilder{
+			message:   "verifyPieceInclusionProof",
+			sectorSet: sectorSetWithOneCommitment,
+			lastPoSt:  types.NewBlockHeight(PieceInclusionGracePeriodBlocks),
+			verifier: &verification.FakeVerifier{
+				VerifyPieceInclusionProofValid: true,
+			},
+		}).build()
+
+		code, err := minerActor.DoVerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
+		require.NoError(t, err)
+		require.Equal(t, 0, int(code), "should be successful")
+
+		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
+		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
+	})
+}
+
 func TestGetProofsMode(t *testing.T) {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)

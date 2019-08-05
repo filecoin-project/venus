@@ -333,6 +333,11 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.AttoFIL},
 	},
+	// verifyPieceInclusion is not in spec, but should be.
+	"doVerifyPieceInclusion": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
+		Return: []abi.Type{},
+	},
 }
 
 // Exports returns the miner actors exported functions.
@@ -673,7 +678,8 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
-// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
+// verifies that this miner is up-to-date with its PoSts.
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
 func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
@@ -684,7 +690,7 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSiz
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 
 		// If miner has not committed sector id, proof is invalid
-		commitment, ok := state.SectorCommitments.Get(sectorID)
+		_, ok := state.SectorCommitments.Get(sectorID)
 		if !ok {
 			return nil, errors.NewRevertError("sector not committed")
 		}
@@ -697,6 +703,24 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSiz
 		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(PieceInclusionGracePeriodBlocks))
 		if ctx.BlockHeight().GreaterThan(clientProofsTimeout) {
 			return nil, errors.NewRevertError("proofs out of date")
+		}
+
+		return ma.DoVerifyPieceInclusion(ctx, commP, pieceSize, sectorID, proof)
+	})
+
+	return errors.CodeError(err), err
+}
+
+// DoVerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// This method returns nothing if the verification succeeds and returns a revert error if verification fails.
+func (ma *Actor) DoVerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+
+		// If miner has not committed sector id, proof is invalid
+		commitment, ok := state.SectorCommitments.Get(sectorID)
+		if !ok {
+			return nil, errors.NewRevertError("sector not committed")
 		}
 
 		// Verify proof proves CommP is in sector's CommD

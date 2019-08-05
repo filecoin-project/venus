@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -25,6 +26,7 @@ var clientCmd = &cmds.Command{
 		"import":               clientImportDataCmd,
 		"propose-storage-deal": clientProposeStorageDealCmd,
 		"query-storage-deal":   clientQueryStorageDealCmd,
+		"verify-storage-deal":  clientVerifyStorageDealCmd,
 		"list-asks":            clientListAsksCmd,
 		"payments":             paymentsCmd,
 	},
@@ -186,6 +188,8 @@ format is specified with the --enc flag.
 			return err
 		}
 
+		fmt.Printf("storagedeal response: %+v", resp)
+
 		return re.Emit(resp)
 	},
 	Type: storagedeal.Response{},
@@ -196,6 +200,49 @@ format is specified with the --enc flag.
 			return nil
 		}),
 	},
+}
+
+type VerifyStorageDealResult struct {
+	validPip bool
+}
+
+var clientVerifyStorageDealCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Verify a storage deal",
+		ShortDescription: `
+Returns an error if the deal is not in the Complete state or the Piece Inclusion Proof
+is invalid.  Returns nil otherwise.
+`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("id", true, false, "CID of deal to query"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		fmt.Printf("decoding CID\n")
+		proposalCid, err := cid.Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("querying storage deal\n")
+		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("checking for complete\n")
+		if resp.State != storagedeal.Complete {
+			return errors.New("storage deal not in Complete state")
+		}
+
+		fmt.Printf("calling into clientvalidatedeal\n")
+		err = GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
+
+		re.Emit(VerifyStorageDealResult{err == nil})
+
+		return err
+	},
+	Type: &VerifyStorageDealResult{},
 }
 
 var clientListAsksCmd = &cmds.Command{

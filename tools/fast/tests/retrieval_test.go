@@ -119,6 +119,9 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	RunRetrievalTest(ctx, t, miner, client, sectorSize)
 }
 
+// Current issue:
+// miner state LastPoSt is nil during deal finalization, so verifyPieceInclusion will never succeed
+
 // TestRetrieval exercises storing and retreiving with the filecoin protocols on a kittyhawk deployed
 // devnet.
 func TestRetrievalDevnet(t *testing.T) {
@@ -211,7 +214,14 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	require.NoError(t, err)
 
 	// Wait for the deal to be complete
-	err = series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	require.NoError(t, err)
+
+	_, err = client.MessageWait(ctx, proposalResponse.ProofInfo.CommitmentMessage)
+	require.NoError(t, err)
+
+	// Verify PIP
+	_, err = client.ClientVerifyStorageDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 
 	// Retrieve the stored piece of data
