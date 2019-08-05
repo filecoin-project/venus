@@ -2,7 +2,6 @@ package series
 
 import (
 	"context"
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -12,12 +11,12 @@ import (
 func GetHeadBlockHeight(ctx context.Context, client *fast.Filecoin) (*types.BlockHeight, error) {
 	tipset, err := client.ChainHead(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "client.ChainHead failed")
+		return nil, err
 	}
 
 	block, err := client.ShowHeader(ctx, tipset[0])
 	if err != nil {
-		return nil, errors.Wrap(err, "client.ShowBlock failed")
+		return nil, err
 	}
 
 	return types.NewBlockHeight(uint64(block.Height)), nil

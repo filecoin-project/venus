@@ -109,8 +109,8 @@ type Node struct {
 
 	Consensus           consensus.Protocol
 	ChainReader         nodeChainReader
-	StorageFaultMonitor storageFaultMonitor
 	MessageStore        *chain.MessageStore
+	StorageFaultMonitor storageFaultMonitor
 	Syncer              nodeChainSyncer
 	PowerTable          consensus.PowerTableView
 

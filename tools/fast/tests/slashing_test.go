@@ -64,22 +64,6 @@ func TestSlashing(t *testing.T) {
 		waitLimit = 1000
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
-
-	// start genesis node mining
-	// set up another miner with commits
-	// verify normal operation of storage fault monitor when there is a new tipset
-	//  (it doesn't crash?)
-
-	// 0. make miner submit proof on time
-	//    verify normal operation of storage fault monitor
-	//    verify miner is not slashed
-
-	// 1. make miner be late by not submitting proof
-	//    verify the miner is slashed
-
-	// 2. make miner be late but submits late proof
-	//    verify miner is not slashed twice
-
 }
 
 func requireMinerCreateWithAsk(ctx context.Context, t *testing.T, d *fast.Filecoin) uint64 {
@@ -114,9 +98,9 @@ func requireGetMinerAddress(ctx context.Context, t *testing.T, daemon *fast.File
 // waitForPower queries miner power for up to limit iterations, until it has power expPower.
 func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner address.Address, expPower, limit uint64) error {
 	for i := uint64(0); i < limit; i++ {
-		actualPower, _, err := d.MinerPower(ctx, miner)
+		powers, err := d.MinerPower(ctx, miner)
 		require.NoError(t, err)
-		if expPower == actualPower.Uint64() {
+		if expPower == powers.Power.Uint64() {
 			return nil
 		}
 		series.CtxSleepDelay(ctx)

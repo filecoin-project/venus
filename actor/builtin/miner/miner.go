@@ -1053,9 +1053,7 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 	return 0, nil
 }
 
-// GetProvingPeriod gets the proving period in terms of block heights.
-//   returns: proving period start, proving period end
-//            error code, error
+// GetProvingPeriod returns the proving period start and proving period end
 func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)

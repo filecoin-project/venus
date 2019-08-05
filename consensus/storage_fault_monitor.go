@@ -12,13 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// TSIter is an iterator over a TipSet
-type TSIter interface {
-	Complete() bool
-	Next() error
-	Value() types.TipSet
-}
-
 // monitorPlumbing is an interface for the functionality StorageFaultMonitor needs
 type monitorPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
