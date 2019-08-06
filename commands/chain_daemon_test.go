@@ -122,6 +122,7 @@ func TestChainLs(t *testing.T) {
 		genesisBlockCid := blks[0].Cid().String()
 
 		newCid, err := chainDaemon.MiningOnce(ctx)
+		assert.NoError(t, err)
 
 		expectedOutput := fmt.Sprintf("%s\n%s", newCid, genesisBlockCid)
 
