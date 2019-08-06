@@ -99,7 +99,7 @@ type nodeChainSyncer interface {
 }
 
 type storageFaultMonitor interface {
-	HandleNewTipSet(context.Context, *types.BlockHeight) error
+	Slash(context.Context, *types.BlockHeight) error
 }
 
 // Node represents a full Filecoin node.
@@ -748,13 +748,13 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 						log.Error("can't get height of new tipset", err)
 					} else {
 						bh := types.NewBlockHeight(height)
-						err := node.StorageFaultMonitor.HandleNewTipSet(ctx, bh)
+						err := node.StorageFaultMonitor.Slash(ctx, bh)
 						if err != nil {
 							log.Error("fault monitoring new block from network", err)
 						}
 					}
 				} else {
-					log.Error("node.StorageFaultMonitor is not set -- cannot start fault monitoring")
+					log.Error("node.StorageFaultSlasher is not set -- cannot start fault monitoring")
 				}
 			}
 		case <-ctx.Done():

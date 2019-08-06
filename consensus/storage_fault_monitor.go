@@ -12,11 +12,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
-// monitorPlumbing is an interface for the functionality StorageFaultMonitor needs
+// monitorPlumbing is an interface for the functionality StorageFaultSlasher needs
 type monitorPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
+// slashingMsgOutbox is the interface for the functionality of Outbox StorageFaultSlasher needs
 type slashingMsgOutbox interface {
 	Send(ctx context.Context,
 		from, to address.Address,
@@ -28,20 +29,20 @@ type slashingMsgOutbox interface {
 		params ...interface{}) (out cid.Cid, err error)
 }
 
-// StorageFaultMonitor checks each new tipset for storage faults, a.k.a. market faults.
+// StorageFaultSlasher checks for unreported storage faults by miners, a.k.a. market faults.
 // Storage faults are distinct from consensus faults.
 // See https://github.com/filecoin-project/specs/blob/master/faults.md
-type StorageFaultMonitor struct {
+type StorageFaultSlasher struct {
 	log       logging.EventLogger
 	msgSender address.Address   // what signs the slashing message and receives slashing reward
 	outbox    slashingMsgOutbox // what sends the slashing message
 	plumbing  monitorPlumbing   // what does the message query
 }
 
-// NewStorageFaultMonitor creates a new StorageFaultMonitor with the provided porcelain and function
-// to get miner power
-func NewStorageFaultMonitor(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address) *StorageFaultMonitor {
-	return &StorageFaultMonitor{
+// NewStorageFaultMonitor creates a new StorageFaultSlasher with the provided plumbing, outbox and message sender.
+// Message sender must be an account actor address.
+func NewStorageFaultMonitor(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address) *StorageFaultSlasher {
+	return &StorageFaultSlasher{
 		plumbing:  plumbing,
 		log:       logging.Logger("StorFltMon"),
 		outbox:    outbox,
@@ -49,10 +50,10 @@ func NewStorageFaultMonitor(plumbing monitorPlumbing, outbox slashingMsgOutbox, 
 	}
 }
 
-// HandleNewTipSet receives an iterator over the current chain, and a new tipset
-// and looks for missing, expected submitPoSts
-// Miners without power and those that posted proofs to newTs are skipped
-func (sfm *StorageFaultMonitor) HandleNewTipSet(ctx context.Context, currentHeight *types.BlockHeight) error {
+// Slash checks for miners with unreported faults, then slashes them
+// Slashing messages are not broadcast to the network, but included in the next block mined by the slashing
+// node.
+func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHeight) error {
 	res, err := sfm.plumbing.MessageQuery(ctx, sfm.msgSender, address.StorageMarketAddress, "getLateMiners")
 	if err != nil {
 		return errors.FaultErrorWrap(err, "getLateMiners message failed")

@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestHandleNewTipSet(t *testing.T) {
+func TestStorageFaultSlasher_Slash(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -34,7 +34,7 @@ func TestHandleNewTipSet(t *testing.T) {
 
 		ob := outbox{}
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
-		err = fm.HandleNewTipSet(ctx, height)
+		err = fm.Slash(ctx, height)
 		require.NoError(t, err)
 	})
 
@@ -57,7 +57,7 @@ func TestHandleNewTipSet(t *testing.T) {
 		ob := outbox{}
 		minerOwnerAddr := signer.Addresses[0]
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
-		err = fm.HandleNewTipSet(ctx, height)
+		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, ob.msgCount)
 	})
@@ -78,7 +78,7 @@ func TestHandleNewTipSet(t *testing.T) {
 		ob := outbox{failSend: true, failErr: "Boom"}
 		minerOwnerAddr := signer.Addresses[0]
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
-		err = fm.HandleNewTipSet(ctx, height)
+		err = fm.Slash(ctx, height)
 		assert.Error(t, err, "Boom\nBoom")
 		assert.Equal(t, 0, ob.msgCount)
 	})
