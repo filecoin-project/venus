@@ -1,68 +1,79 @@
 package commands_test
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/fixtures"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestChainHead(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d := th.NewDaemon(t).Start()
-	defer d.ShutdownSuccess()
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-	jsonResult := d.RunSuccess("chain", "head", "--enc", "json").ReadStdoutTrimNewlines()
+	// Teardown after test ends
+	defer func() {
+		err := env.Teardown(ctx)
+		require.NoError(t, err)
+	}()
 
-	var cidsFromJSON []cid.Cid
-	err := json.Unmarshal([]byte(jsonResult), &cidsFromJSON)
+	chainDaemon := env.GenesisMiner
+	_, err := chainDaemon.MiningOnce(ctx)
 	assert.NoError(t, err)
 
-	textResult := d.RunSuccess("chain", "ls", "--enc", "text").ReadStdoutTrimNewlines()
+	miningCid, err := chainDaemon.MiningOnce(ctx)
+	assert.NoError(t, err)
 
-	textCid, err := cid.Decode(textResult)
-	require.NoError(t, err)
+	headResult, err := chainDaemon.ChainHead(ctx)
+	assert.NoError(t, err)
 
-	assert.Equal(t, textCid, cidsFromJSON[0])
+	decoder, err := chainDaemon.ChainLs(ctx)
+	assert.NoError(t, err)
+	var blks []types.Block
+	err = decoder.Decode(&blks)
+	assert.NoError(t, err)
+	assert.Equal(t, headResult[0], blks[0].Cid())
+	assert.Equal(t, headResult[0], miningCid)
 }
 
 func TestChainLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
-		d := makeTestDaemonWithMinerAndStart(t)
-		defer d.ShutdownSuccess()
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-		op1 := d.RunSuccess("mining", "once", "--enc", "text")
-		result1 := op1.ReadStdoutTrimNewlines()
-		c, err := cid.Parse(result1)
-		require.NoError(t, err)
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
 
-		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
-		result2 := op2.ReadStdoutTrimNewlines()
+		chainDaemon := env.GenesisMiner
+		c, err := chainDaemon.MiningOnce(ctx)
+		assert.NoError(t, err)
 
 		var bs [][]types.Block
-		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
-			var b []types.Block
-			err := json.Unmarshal(line, &b)
-			require.NoError(t, err)
-			bs = append(bs, b)
-			require.Equal(t, 1, len(b))
-			line = bytes.TrimPrefix(line, []byte{'['})
-			line = bytes.TrimSuffix(line, []byte{']'})
-
-			// ensure conformance with JSON schema
-			requireSchemaConformance(t, line, "filecoin_block")
+		decoder, err := chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		for {
+			var blks []types.Block
+			err = decoder.Decode(&blks)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(blks))
+			bs = append(bs, blks)
 		}
 
 		assert.Equal(t, 2, len(bs))
@@ -71,122 +82,165 @@ func TestChainLs(t *testing.T) {
 	})
 
 	t.Run("chain ls with chain of size 1 returns genesis block", func(t *testing.T) {
-		d := th.NewDaemon(t).Start()
-		defer d.ShutdownSuccess()
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-		op := d.RunSuccess("chain", "ls", "--enc", "json")
-		result := op.ReadStdoutTrimNewlines()
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
 
-		var b []types.Block
-		err := json.Unmarshal([]byte(result), &b)
-		require.NoError(t, err)
+		chainDaemon := env.GenesisMiner
 
-		assert.True(t, b[0].Parents.Empty())
+		decoder, err := chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		var blks []types.Block
+		err = decoder.Decode(&blks)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(blks))
+
+		assert.True(t, blks[0].Parents.Empty())
 	})
 
 	t.Run("chain ls with text encoding returns only CIDs", func(t *testing.T) {
-		daemon := makeTestDaemonWithMinerAndStart(t)
-		defer daemon.ShutdownSuccess()
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-		var blocks []types.Block
-		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
-		err := json.Unmarshal([]byte(blockJSON), &blocks)
-		genesisBlockCid := blocks[0].Cid().String()
-		require.NoError(t, err)
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
 
-		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+		chainDaemon := env.GenesisMiner
 
-		expectedOutput := fmt.Sprintf("%s\n%s", newBlockCid, genesisBlockCid)
+		decoder, err := chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		var blks []types.Block
+		err = decoder.Decode(&blks)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(blks))
+		genesisBlockCid := blks[0].Cid().String()
 
-		chainLsResult := daemon.RunSuccess("chain", "ls").ReadStdoutTrimNewlines()
+		newCid, err := chainDaemon.MiningOnce(ctx)
 
-		assert.Equal(t, chainLsResult, expectedOutput)
+		expectedOutput := fmt.Sprintf("%s\n%s", newCid, genesisBlockCid)
+
+		decoder, err = chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		var chainLsResult []string
+		for {
+			var blks []types.Block
+			err = decoder.Decode(&blks)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(blks))
+			chainLsResult = append(chainLsResult, blks[0].Cid().String())
+		}
+
+		assert.Equal(t, strings.Join(chainLsResult, "\n"), expectedOutput)
 	})
 
 	t.Run("chain ls --long returns CIDs, Miner, block height and message count", func(t *testing.T) {
-		daemon := makeTestDaemonWithMinerAndStart(t)
-		defer daemon.ShutdownSuccess()
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-		newBlockCid := daemon.RunSuccess("mining", "once", "--enc", "text").ReadStdoutTrimNewlines()
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
 
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long").ReadStdoutTrimNewlines()
+		chainDaemon := env.GenesisMiner
 
-		assert.Contains(t, chainLsResult, newBlockCid)
-		assert.Contains(t, chainLsResult, fixtures.TestMiners[0])
-		assert.Contains(t, chainLsResult, "1")
-		assert.Contains(t, chainLsResult, "0")
+		newCid, err := chainDaemon.MiningOnce(ctx)
+		assert.NoError(t, err)
+
+		decoder, err := chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		var chainLsResult [][]types.Block
+		for {
+			var blks []types.Block
+			err = decoder.Decode(&blks)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(blks))
+			chainLsResult = append(chainLsResult, blks)
+		}
+		minerConfig, err := chainDaemon.Config()
+		assert.NoError(t, err)
+
+		assert.Equal(t, chainLsResult[0][0].Cid(), newCid)
+		assert.Equal(t, chainLsResult[0][0].Miner.String(), minerConfig.Mining.MinerAddress.String())
+		assert.Equal(t, chainLsResult[0][0].Height, types.Uint64(1))
+		assert.Equal(t, chainLsResult[1][0].Height, types.Uint64(0))
 	})
 
 	t.Run("chain ls --long with JSON encoding returns integer string block height and nonce", func(t *testing.T) {
-		daemon := makeTestDaemonWithMinerAndStart(t)
-		defer daemon.ShutdownSuccess()
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 
-		daemon.RunSuccess("mining", "once", "--enc", "text")
-		chainLsResult := daemon.RunSuccess("chain", "ls", "--long", "--enc", "json").ReadStdoutTrimNewlines()
-		assert.Contains(t, chainLsResult, `"height":"0"`)
-		assert.Contains(t, chainLsResult, `"height":"1"`)
-		assert.Contains(t, chainLsResult, `"nonce":"0"`)
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
+
+		chainDaemon := env.GenesisMiner
+
+		_, err := chainDaemon.MiningOnce(ctx)
+		assert.NoError(t, err)
+		decoder, err := chainDaemon.ChainLs(ctx)
+		assert.NoError(t, err)
+		var chainLsResult [][]types.Block
+		for {
+			var blks []types.Block
+			err = decoder.Decode(&blks)
+			if err == io.EOF {
+				break
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, 1, len(blks))
+			chainLsResult = append(chainLsResult, blks)
+		}
+
+		assert.Equal(t, chainLsResult[1][0].Height, types.Uint64(0))
+		assert.Equal(t, chainLsResult[0][0].Height, types.Uint64(1))
+		assert.Equal(t, chainLsResult[0][0].Nonce, types.Uint64(0))
 	})
 }
 
-func TestBlockDaemon(t *testing.T) {
+func TestChainBlock(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	t.Run("chain block <cid-of-genesis-block> returns human readable output for the filecoin block", func(t *testing.T) {
-		d := makeTestDaemonWithMinerAndStart(t)
-		defer d.ShutdownSuccess()
+	t.Run("chain block <cid-of-genesis-block> --enc=json returns output for the filecoin block", func(t *testing.T) {
+		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+
+		// Teardown after test ends
+		defer func() {
+			err := env.Teardown(ctx)
+			require.NoError(t, err)
+		}()
+
+		chainDaemon := env.GenesisMiner
 
 		// mine a block and get its CID
-		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
+		newCid, err := chainDaemon.MiningOnce(ctx)
+		assert.NoError(t, err)
 
 		// get the mined block by its CID
-		output := d.RunSuccess("chain", "block", minedBlockCidStr).ReadStdoutTrimNewlines()
+		outputBlock, err := chainDaemon.ChainBlock(ctx, newCid)
+		assert.NoError(t, err)
+		minerConfig, err := chainDaemon.Config()
+		assert.NoError(t, err)
 
-		assert.Contains(t, output, "Block Details")
-		assert.Contains(t, output, "Weight: 0")
-		assert.Contains(t, output, "Height: 1")
-		assert.Contains(t, output, "Nonce:  0")
-		assert.Contains(t, output, "Timestamp:  ")
-	})
-
-	t.Run("chain block --messages <cid-of-genesis-block> returns human readable output for the filecoin block including messages", func(t *testing.T) {
-		d := makeTestDaemonWithMinerAndStart(t)
-		defer d.ShutdownSuccess()
-
-		// mine a block and get its CID
-		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
-
-		// get the mined block by its CID
-		output := d.RunSuccess("chain", "block", "--messages", minedBlockCidStr).ReadStdoutTrimNewlines()
-
-		assert.Contains(t, output, "Block Details")
-		assert.Contains(t, output, "Weight: 0")
-		assert.Contains(t, output, "Height: 1")
-		assert.Contains(t, output, "Nonce:  0")
-		assert.Contains(t, output, "Timestamp:  ")
-		assert.Contains(t, output, "Messages:  ")
-	})
-
-	t.Run("chain block <cid-of-genesis-block> --enc json returns JSON for a filecoin block", func(t *testing.T) {
-		d := th.NewDaemon(t,
-			th.KeyFile(fixtures.KeyFilePaths()[0]),
-			th.WithMiner(fixtures.TestMiners[0])).Start()
-		defer d.ShutdownSuccess()
-
-		// mine a block and get its CID
-		minedBlockCidStr := th.RunSuccessFirstLine(d, "mining", "once")
-
-		// get the mined block by its CID
-		blockGetLine := th.RunSuccessFirstLine(d, "chain", "block", minedBlockCidStr, "--enc", "json")
-		var blockGetBlock types.Block
-		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
-
-		// ensure that we were returned the correct block
-
-		require.Equal(t, minedBlockCidStr, blockGetBlock.Cid().String())
-
-		// ensure that the JSON we received from block get conforms to schema
-
-		requireSchemaConformance(t, []byte(blockGetLine), "filecoin_block")
+		assert.Equal(t, outputBlock.ParentWeight, types.Uint64(0))
+		assert.Equal(t, outputBlock.Height, types.Uint64(1))
+		assert.Equal(t, outputBlock.Nonce, types.Uint64(0))
+		assert.Equal(t, outputBlock.Miner.String(), minerConfig.Mining.MinerAddress.String())
+		assert.Equal(t, outputBlock.Messages[0].MeteredMessage.Message.To.String(),
+			minerConfig.Mining.MinerAddress.String())
+		assert.Equal(t, outputBlock.Messages[0].MeteredMessage.Message.Method, "updatePeerID")
 	})
 }

@@ -6,18 +6,18 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
 )
 
 // MiningOnce runs the `mining once` command against the filecoin process
-func (f *Filecoin) MiningOnce(ctx context.Context) (*types.Block, error) {
-	var out types.Block
+func (f *Filecoin) MiningOnce(ctx context.Context) (cid.Cid, error) {
+	var out cid.Cid
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "mining", "once"); err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 // MiningStart runs the `mining Start` command against the filecoin process
