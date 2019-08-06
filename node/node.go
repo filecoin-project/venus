@@ -98,7 +98,8 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
-type storageFaultMonitor interface {
+// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
+type storageFaultSlasher interface {
 	Slash(context.Context, *types.BlockHeight) error
 }
 
@@ -110,7 +111,7 @@ type Node struct {
 	Consensus           consensus.Protocol
 	ChainReader         nodeChainReader
 	MessageStore        *chain.MessageStore
-	StorageFaultMonitor storageFaultMonitor
+	StorageFaultMonitor storageFaultSlasher
 	Syncer              nodeChainSyncer
 	PowerTable          consensus.PowerTableView
 

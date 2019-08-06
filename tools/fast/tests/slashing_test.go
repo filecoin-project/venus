@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Not passing, and also too slow to let run in CI
+// Too slow to let run in CI. Use for debugging locally.
 func TestSlashing(t *testing.T) {
 	tf.IntegrationTest(t)
 	t.SkipNow()
