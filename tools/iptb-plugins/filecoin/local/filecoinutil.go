@@ -61,10 +61,6 @@ func (l *Localfilecoin) env() ([]string, error) {
 	envs = filecoin.UpdateOrAppendEnv(envs, "GO_FILECOIN_LOG_JSON", l.logJSON)
 	envs = filecoin.UpdateOrAppendEnv(envs, "PATH", newPath)
 
-	if err := os.Setenv("PATH", newPath); err != nil {
-		return []string{}, err
-	}
-
 	return envs, nil
 }
 
