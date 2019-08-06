@@ -88,8 +88,8 @@ const recursionMultiplier = 4
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
-func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
-	rpf := newRequestPeerFinder(gsf.peerTracker, from)
+func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, initialPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	rpf := newRequestPeerFinder(gsf.peerTracker, initialPeer)
 
 	// fetch initial tipset
 	startingTipset, err := gsf.fetchFirstTipset(ctx, tsKey, rpf)
@@ -103,16 +103,15 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 
 func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
 	cids := tsKey.ToSlice()
-	remainingCids := cids
 	for {
-		err := gsf.fetchBlocks(ctx, remainingCids, rpf.CurrentPeer())
+		err := gsf.fetchBlocks(ctx, cids, rpf.CurrentPeer())
 		if err == nil {
 			break
 		}
 		// something went wrong in a graphsync request, but we want to keep trying other peers, so
 		// just log error
 		logGraphsyncFetcher.Infof("Error occurred during Graphsync request: %s", err)
-		remainingCids, err = gsf.missingCids(remainingCids)
+		cids, err = gsf.missingCids(cids)
 		if err != nil {
 			return types.UndefTipSet, err
 		}
@@ -121,7 +120,7 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey types.T
 			return types.UndefTipSet, fmt.Errorf("Failed fetching tipset: %s", tsKey.String())
 		}
 	}
-	return gsf.loadTipsetFromCids(ctx, cids)
+	return gsf.loadTipsetFromCids(ctx, tsKey.ToSlice())
 }
 
 func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf *requestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
@@ -150,11 +149,15 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 			if err != nil {
 				return nil, err
 			}
-			cidsAreMissing, err = gsf.areCidsMissing(tsKey, rpf)
+			cidsAreMissing, err = gsf.areCidsMissing(tsKey)
 			if err != nil {
 				return nil, err
 			}
 			if cidsAreMissing {
+				err := rpf.FindNextPeer()
+				if err != nil {
+					return nil, fmt.Errorf("Failed fetching tipset: %s", tsKey.String())
+				}
 				break
 			}
 			ts, err = gsf.loadTipsetFromCids(ctx, tsKey.ToSlice())
@@ -179,13 +182,13 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 
 // fetchBlocks requests a single set of cids as individual blocks, fetching
 // non-recursively
-func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, from peer.ID) error {
+func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
 	selector := gsf.ssb.Matcher().Node()
 	errChans := make([]<-chan error, 0, len(cids))
 	requestCtx, requestCancel := context.WithCancel(ctx)
 	defer requestCancel()
 	for _, c := range cids {
-		_, errChan := gsf.exchange.Request(requestCtx, from, cidlink.Link{Cid: c}, selector)
+		_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
 		errChans = append(errChans, errChan)
 	}
 	for _, errChan := range errChans {
@@ -198,7 +201,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, fr
 
 // fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
 // starting from baseCid.
-func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, from peer.ID, recursionDepth int) error {
+func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) error {
 	requestCtx, requestCancel := context.WithCancel(ctx)
 	defer requestCancel()
 
@@ -214,7 +217,7 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 		))
 	})).Node()
 
-	_, errChan := gsf.exchange.Request(requestCtx, from, cidlink.Link{Cid: baseCid}, selector)
+	_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
 	for err := range errChan {
 		return err
 	}
@@ -252,16 +255,12 @@ func (gsf *GraphSyncFetcher) missingCids(cids []cid.Cid) ([]cid.Cid, error) {
 	return missing, nil
 }
 
-func (gsf *GraphSyncFetcher) areCidsMissing(tsKey types.TipSetKey, rpf *requestPeerFinder) (bool, error) {
+func (gsf *GraphSyncFetcher) areCidsMissing(tsKey types.TipSetKey) (bool, error) {
 	missing, err := gsf.missingCids(tsKey.ToSlice())
 	if err != nil {
 		return false, err
 	}
 	if len(missing) != 0 {
-		err := rpf.FindNextPeer()
-		if err != nil {
-			return false, fmt.Errorf("Failed fetching tipset: %s", tsKey.String())
-		}
 		return true, nil
 	}
 	return false, nil
@@ -273,9 +272,9 @@ type requestPeerFinder struct {
 	triedPeers  map[peer.ID]struct{}
 }
 
-func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, from peer.ID) *requestPeerFinder {
-	pri := &requestPeerFinder{peerTracker, from, make(map[peer.ID]struct{})}
-	pri.triedPeers[from] = struct{}{}
+func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, initialPeer peer.ID) *requestPeerFinder {
+	pri := &requestPeerFinder{peerTracker, initialPeer, make(map[peer.ID]struct{})}
+	pri.triedPeers[initialPeer] = struct{}{}
 	return pri
 }
 
