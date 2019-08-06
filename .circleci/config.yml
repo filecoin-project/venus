@@ -808,8 +808,8 @@ commands:
           name: append rust-fil-sector-builder checksum
           command: git rev-parse @:./proofs/rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
       - run:
-          name: append bls-signatures checksum
-          command: git rev-parse @:./bls-signatures/bls-signatures >> /tmp/rust-submodules-checksums.txt
+          name: append go-bls-sigs checksum
+          command: git --git-dir=./go-bls-sigs/.git rev-parse @:bls-signatures >> /tmp/rust-submodules-checksums.txt
   trigger_infra_build:
     parameters:
       branch:
@@ -842,4 +842,4 @@ commands:
     steps:
       - run:
           name: Update submodules
-          command: git submodule update --init
+          command: git submodule update --init --recursive
