@@ -310,7 +310,12 @@ func (l *Localfilecoin) RunCmd(ctx context.Context, stdin io.Reader, args ...str
 		return nil, fmt.Errorf("error getting env: %s", err)
 	}
 
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	firstArg := args[0]
+	if firstArg == "go-filecoin" {
+		firstArg = l.binPath
+	}
+
+	cmd := exec.CommandContext(ctx, firstArg, args[1:]...)
 	cmd.Env = env
 	cmd.Stdin = stdin
 
