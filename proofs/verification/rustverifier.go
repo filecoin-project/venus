@@ -1,7 +1,7 @@
 package verification
 
 import (
-	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 // RustVerifier provides proof-verification methods.
@@ -12,7 +12,7 @@ var _ Verifier = &RustVerifier{}
 // VerifySeal returns nil if the Seal operation from which its inputs were
 // derived was valid, and an error if not.
 func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, error) {
-	isValid, err := libsectorbuilder.VerifySeal(req.SectorSize.Uint64(), req.CommR, req.CommD, req.CommRStar, req.ProverID, req.SectorID, req.Proof)
+	isValid, err := go_sectorbuilder.VerifySeal(req.SectorSize.Uint64(), req.CommR, req.CommD, req.CommRStar, req.ProverID, req.SectorID, req.Proof)
 	if err != nil {
 		return VerifySealResponse{}, err
 	}
@@ -36,7 +36,7 @@ func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, e
 		asSlices[idx] = append(proof[:0:0], proof...)
 	}
 
-	isValid, err := libsectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), asArrays, req.ChallengeSeed, asSlices, req.Faults)
+	isValid, err := go_sectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), asArrays, req.ChallengeSeed, asSlices, req.Faults)
 	if err != nil {
 		return VerifyPoStResponse{}, err
 	}
@@ -49,7 +49,7 @@ func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, e
 // VerifyPieceInclusionProof returns true if the piece inclusion proof is valid
 // with the given arguments.
 func (rp *RustVerifier) VerifyPieceInclusionProof(req VerifyPieceInclusionProofRequest) (VerifyPieceInclusionProofResponse, error) {
-	isValid, err := libsectorbuilder.VerifyPieceInclusionProof(req.SectorSize.Uint64(), req.PieceSize.Uint64(), req.CommP, req.CommD, req.PieceInclusionProof)
+	isValid, err := go_sectorbuilder.VerifyPieceInclusionProof(req.SectorSize.Uint64(), req.PieceSize.Uint64(), req.CommP, req.CommD, req.PieceInclusionProof)
 	if err != nil {
 		return VerifyPieceInclusionProofResponse{}, err
 	}
