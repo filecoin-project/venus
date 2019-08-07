@@ -188,8 +188,6 @@ format is specified with the --enc flag.
 			return err
 		}
 
-		fmt.Printf("storagedeal response: %+v", resp)
-
 		return re.Emit(resp)
 	},
 	Type: storagedeal.Response{},
@@ -202,6 +200,7 @@ format is specified with the --enc flag.
 	},
 }
 
+// VerifyStorageDealResult wraps the success in an interface type
 type VerifyStorageDealResult struct {
 	validPip bool
 }
@@ -218,29 +217,23 @@ is invalid.  Returns nil otherwise.
 		cmdkit.StringArg("id", true, false, "CID of deal to query"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fmt.Printf("decoding CID\n")
 		proposalCid, err := cid.Decode(req.Arguments[0])
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("querying storage deal\n")
 		resp, err := GetStorageAPI(env).QueryStorageDeal(req.Context, proposalCid)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("checking for complete\n")
 		if resp.State != storagedeal.Complete {
 			return errors.New("storage deal not in Complete state")
 		}
 
-		fmt.Printf("calling into clientvalidatedeal\n")
-		err = GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
+		validateError := GetPorcelainAPI(env).ClientValidateDeal(req.Context, proposalCid, resp.ProofInfo)
 
-		re.Emit(VerifyStorageDealResult{err == nil})
-
-		return err
+		return re.Emit(VerifyStorageDealResult{validateError == nil})
 	},
 	Type: &VerifyStorageDealResult{},
 }

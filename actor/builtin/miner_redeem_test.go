@@ -52,8 +52,8 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	commD := []byte{246, 84, 0, 66, 209, 111, 32, 176, 46, 49, 34, 221, 99, 221, 62, 146, 201, 38, 203, 235, 40, 6, 245, 216, 233, 219, 232, 40, 42, 10, 186, 7}
 	commP := []byte{68, 45, 27, 111, 138, 160, 144, 53, 94, 145, 123, 208, 166, 210, 130, 77, 13, 10, 200, 223, 101, 1, 99, 24, 20, 127, 166, 41, 143, 118, 66, 78}
 	pieceSize := types.NewBytesAmount(200)
-	lastPoSt := types.NewBlockHeight(10)
-	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
+	provingPeriodEnd := types.NewBlockHeight(10)
+	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, provingPeriodEnd))
 
 	// Create the payer actor
 	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -136,7 +136,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: sector not committed")
 	})
 
-	t.Run("Voucher with piece inclusion condition and out of date Last PoSt", func(t *testing.T) {
+	t.Run("Voucher with piece inclusion condition and slashable miner", func(t *testing.T) {
 		condition := makeCondition()
 		signature := makeAndSignVoucher(condition)
 		msg := makeRedeemMsg(condition, sectorID, pip, signature)
@@ -147,7 +147,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: proofs out of date")
+		require.Contains(t, appResult.ExecutionError.Error(), "miner is tardy")
 	})
 
 	t.Run("Signed voucher cannot be altered", func(t *testing.T) {
@@ -165,7 +165,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	})
 }
 
-func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
+func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, provingPeriodEnd *types.BlockHeight) error {
 	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 
@@ -179,7 +179,7 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 		NextDoneSet:       types.EmptyIntSet(),
 		ProvingSet:        types.EmptyIntSet(),
 		SlashedSet:        types.EmptyIntSet(),
-		LastPoSt:          lastPoSt,
+		ProvingPeriodEnd:  provingPeriodEnd,
 		SectorSize:        types.OneKiBSectorSize,
 	}
 	executableActor := miner.Actor{}

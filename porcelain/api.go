@@ -225,6 +225,7 @@ func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
 }
 
+// ClientValidateDeal checks to see that a storage deal is in the `Complete` state, and that its PIP is valid
 func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
 	return ClientVerifyStorageDeal(ctx, a, proposalCid, proofInfo)
 }

@@ -2,15 +2,16 @@ package porcelain
 
 import (
 	"context"
-	"fmt"
+	"math/big"
+
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
-	"math/big"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
@@ -100,13 +101,11 @@ type cvsdPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
+// ClientVerifyStorageDeal check to see that a storage deal is in the `Complete` state, and that its PIP is valid
+// returns nil if successful
 func ClientVerifyStorageDeal(ctx context.Context, plumbing cvsdPlumbing, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
 	// Get the deal out of local storage.  This Deal was stored when we made the
 	// proposal, and has never been updated
-	fmt.Printf("getting deal\n")
-
-	fmt.Printf("ProofInfo: %+v\n", proofInfo)
-
 	deal, err := plumbing.DealGet(ctx, proposalCid)
 	if err != nil {
 		return errors.Wrap(err, "failed to get deal")
@@ -119,16 +118,10 @@ func ClientVerifyStorageDeal(ctx context.Context, plumbing cvsdPlumbing, proposa
 		proofInfo.PieceInclusionProof,
 	}
 
-	fmt.Printf("params to verify: %v", params)
-
-	result, err := plumbing.MessageQuery(ctx, address.Undef, deal.Miner, "doVerifyPieceInclusion", params...)
+	_, err = plumbing.MessageQuery(ctx, address.Undef, deal.Miner, "doVerifyPieceInclusion", params...)
 	if err != nil {
-		fmt.Printf("verify error: %v", err)
-
 		return err
 	}
-
-	fmt.Printf("result from verify: %v", result)
 
 	return nil
 }

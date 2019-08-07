@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/commands"
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 
 	"github.com/ipfs/go-cid"

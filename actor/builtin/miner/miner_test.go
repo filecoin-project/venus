@@ -1239,10 +1239,12 @@ func TestVerifyPIP(t *testing.T) {
 	sectorSetWithOneCommitment.Add(firstSectorID, firstSectorCommitments)
 
 	commP := th.MakeCommitment()
+	pieceSize := types.NewBytesAmount(66)
+	pip := []byte{42}
 
 	t.Run("PIP is invalid if miner hasn't committed sector", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
+			message:   "verifyPieceInclusion",
 			sectorSet: NewSectorSet(),
 		}).build()
 
@@ -1254,41 +1256,41 @@ func TestVerifyPIP(t *testing.T) {
 		require.Nil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest, "should have never called the verifier")
 	})
 
-	t.Run("PIP is invalid if miner has not submitted any PoSt proofs", func(t *testing.T) {
-		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  nil,
-		}).build()
+	t.Run("PIP is invalid if miner is tardy/slashable", func(t *testing.T) {
+		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
-		require.Error(t, err)
-		assert.Equal(t, "proofs out of date", err.Error())
-		assert.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
+		comm1 := th.MakeCommitments()
+		comm2 := th.MakeCommitments()
 
-		require.Nil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
-	})
+		commitments := NewSectorSet()
+		commitments.Add(1, types.Commitments{CommR: comm1.CommR})
+		commitments.Add(2, types.Commitments{CommR: comm2.CommR})
 
-	t.Run("PIP is invalid if miner's PoSt is too far into the past", func(t *testing.T) {
-		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(0).Sub(types.NewBlockHeight(PieceInclusionGracePeriodBlocks * 2)),
-		}).build()
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.SectorCommitments = commitments
+		minerState.ProvingSet = types.NewIntSet(1, 2)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(LargestSectorSizeProvingPeriodBlocks)
 
-		code, err := minerActor.VerifyPieceInclusion(vmctx, th.MakeCommitment(), types.NewBytesAmount(66), firstSectorID, []byte{42})
-		require.Error(t, err)
-		require.Equal(t, "proofs out of date", err.Error())
-		require.NotEqual(t, 0, int(code), "should not produce non-zero exit code")
+		verifier := &verification.FakeVerifier{
+			VerifyPieceInclusionProofValid: true,
+		}
 
-		require.Nil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest, "should have never called the verifier")
+		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(GenerationAttackTime(minerState.SectorSize)).Add(types.NewBlockHeight(1))
+		miner := Actor{}
+
+		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
+
+		require.Error(t, err, "miner is tardy")
+		require.NotEqual(t, uint8(0), code)
 	})
 
 	t.Run("verifier errors are propagated to caller", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(0),
+			message:          "verifyPieceInclusion",
+			sectorSet:        sectorSetWithOneCommitment,
+			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
 				VerifyPieceInclusionProofError: errors.New("wombat"),
@@ -1309,9 +1311,9 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("verifier rejecting the proof produces an error, too", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(0),
+			message:          "verifyPieceInclusion",
+			sectorSet:        sectorSetWithOneCommitment,
+			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
 			},
@@ -1330,72 +1332,17 @@ func TestVerifyPIP(t *testing.T) {
 		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
 	})
 
-	t.Run("PIP is valid if miner's PoSts are before the end of the grace period", func(t *testing.T) {
+	t.Run("PIP is valid if the miner is currently active and has the sector committed", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(0),
+			message:          "verifyPieceInclusion",
+			sectorSet:        sectorSetWithOneCommitment,
+			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: true,
 			},
 		}).build()
 
 		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
-		require.NoError(t, err)
-		require.Equal(t, 0, int(code), "should be successful")
-
-		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
-	})
-
-	t.Run("PIP is valid if miner's PoSt is at the very end of the grace period", func(t *testing.T) {
-		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(PieceInclusionGracePeriodBlocks),
-			verifier: &verification.FakeVerifier{
-				VerifyPieceInclusionProofValid: true,
-			},
-		}).build()
-
-		code, err := minerActor.VerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
-		require.NoError(t, err)
-		require.Equal(t, 0, int(code), "should be successful")
-
-		require.NotNil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommP[:], commP)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.CommD, firstSectorCommD)
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceSize, types.NewBytesAmount(66))
-		require.Equal(t, verifier.LastReceivedVerifyPieceInclusionProofRequest.PieceInclusionProof, []byte{42})
-	})
-}
-
-func TestDoVerifyPIP(t *testing.T) {
-	tf.UnitTest(t)
-
-	firstSectorCommitments := th.MakeCommitments()
-	firstSectorCommD := firstSectorCommitments.CommD
-	firstSectorID := uint64(1)
-
-	sectorSetWithOneCommitment := NewSectorSet()
-	sectorSetWithOneCommitment.Add(firstSectorID, firstSectorCommitments)
-
-	commP := th.MakeCommitment()
-
-	t.Run("Sends correct parameters to PIP verifier", func(t *testing.T) {
-		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusionProof",
-			sectorSet: sectorSetWithOneCommitment,
-			lastPoSt:  types.NewBlockHeight(PieceInclusionGracePeriodBlocks),
-			verifier: &verification.FakeVerifier{
-				VerifyPieceInclusionProofValid: true,
-			},
-		}).build()
-
-		code, err := minerActor.DoVerifyPieceInclusion(vmctx, commP, types.NewBytesAmount(66), firstSectorID, []byte{42})
 		require.NoError(t, err)
 		require.Equal(t, 0, int(code), "should be successful")
 
@@ -1576,17 +1523,19 @@ func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *Sta
 }
 
 type minerEnvBuilder struct {
-	lastPoSt   *types.BlockHeight
-	message    string
-	sectorSet  SectorSet
-	sectorSize *types.BytesAmount
-	verifier   *verification.FakeVerifier
+	lastPoSt         *types.BlockHeight
+	provingPeriodEnd *types.BlockHeight
+	message          string
+	sectorSet        SectorSet
+	sectorSize       *types.BytesAmount
+	verifier         *verification.FakeVerifier
 }
 
 func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Actor) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.LastPoSt = b.lastPoSt
+	minerState.ProvingPeriodEnd = b.provingPeriodEnd
 
 	if b.sectorSet == nil {
 		b.sectorSet = NewSectorSet()
