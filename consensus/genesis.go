@@ -175,9 +175,20 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
+		emptyMessagesCid, err := cst.Put(ctx, []types.SignedMessage{})
+		if err != nil {
+			return nil, err
+		}
+		emptyReceiptsCid, err := cst.Put(ctx, []types.MessageReceipt{})
+		if err != nil {
+			return nil, err
+		}
+
 		genesis := &types.Block{
-			StateRoot: c,
-			Nonce:     1337,
+			StateRoot:       c,
+			Nonce:           1337,
+			Messages:        emptyMessagesCid,
+			MessageReceipts: emptyReceiptsCid,
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

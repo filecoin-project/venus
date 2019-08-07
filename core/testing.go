@@ -73,7 +73,7 @@ func RequireChainWithMessages(t *testing.T, builder *chain.Builder, root types.T
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
+func NewChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
 	var tipSets []types.TipSet
 	parents := root
 	height := uint64(0)
@@ -88,6 +88,14 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 		height, _ = parents.Height()
 		height++
 	}
+	emptyMessagesCid, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{})
+	if err != nil {
+		panic(err)
+	}
+	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []*types.MessageReceipt{})
+	if err != nil {
+		panic(err)
+	}
 
 	for _, tsMsgs := range msgSets {
 		var blocks []*types.Block
@@ -95,18 +103,26 @@ func NewChainWithMessages(store *hamt.CborIpldStore, root types.TipSet, msgSets 
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
 			child := &types.Block{
-				Height:  types.Uint64(height),
-				Parents: parents.Key(),
+				Height:          types.Uint64(height),
+				Parents:         parents.Key(),
+				Messages:        emptyMessagesCid,
+				MessageReceipts: emptyReceiptsCid,
 			}
 			MustPut(store, child)
 			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
+			msgsCid, err := msgStore.StoreMessages(context.Background(), msgs)
+			if err != nil {
+				panic(err)
+			}
+
 			child := &types.Block{
-				Messages:  msgs,
-				Parents:   parents.Key(),
-				Height:    types.Uint64(height),
-				StateRoot: stateRootCidGetter(), // Differentiate all blocks
+				Messages:        msgsCid,
+				Parents:         parents.Key(),
+				Height:          types.Uint64(height),
+				StateRoot:       stateRootCidGetter(), // Differentiate all blocks
+				MessageReceipts: emptyReceiptsCid,
 			}
 			MustPut(store, child)
 			blocks = append(blocks, child)

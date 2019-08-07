@@ -62,7 +62,11 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			for _, minedMsg := range tipset.At(i).Messages {
+			msgs, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			if err != nil {
+				return err
+			}
+			for _, minedMsg := range msgs {
 				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
 				if err != nil {
 					return err

@@ -44,32 +44,32 @@ func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *t
 type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
-func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
+func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
 	d := requiredCommonDeps(t, consensus.DefaultGenesis)
-	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
+	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
-func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *Waiter) {
+func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
 	d := requiredCommonDeps(t, gif)
-	return d.cst, d.chainStore, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
+	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
 func TestWait(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst, chainStore, waiter := setupTest(t)
+	cst, chainStore, msgStore, waiter := setupTest(t)
 
-	testWaitExisting(ctx, t, cst, chainStore, waiter)
-	testWaitNew(ctx, t, cst, chainStore, waiter)
+	testWaitExisting(ctx, t, cst, chainStore, msgStore, waiter)
+	testWaitNew(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
+func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2 := newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}})
+	chainWithMsgs := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -82,7 +82,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	testWaitHelp(nil, t, waiter, m2, false, nil)
 }
 
-func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
+func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	var wg sync.WaitGroup
 
 	_, _ = newSignedMessage(), newSignedMessage() // flush out so we get distinct messages from testWaitExisting
@@ -90,7 +90,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m3, m4}})
+	chainWithMsgs := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, t, waiter, m3, false, nil)
@@ -112,17 +112,17 @@ func TestWaitError(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	cst, chainStore, waiter := setupTest(t)
+	cst, chainStore, msgStore, waiter := setupTest(t)
 
-	testWaitError(ctx, t, cst, chainStore, waiter)
+	testWaitError(ctx, t, cst, chainStore, msgStore, waiter)
 }
 
-func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, waiter *Waiter) {
+func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, chainStore *chain.Store, msgStore *chain.MessageStore, waiter *Waiter) {
 	m1, m2, m3, m4 := newSignedMessage(), newSignedMessage(), newSignedMessage(), newSignedMessage()
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chain := core.NewChainWithMessages(cst, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	chain := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
 	err = chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(t, err)
@@ -146,7 +146,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
 		consensus.MinerActor(minerAddr, addr3, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)
-	cst, chainStore, waiter := setupTestWithGif(t, testGen)
+	cst, chainStore, msgStore, waiter := setupTestWithGif(t, testGen)
 
 	// Create conflicting messages
 	m1 := types.NewMessage(addr1, addr3, 0, types.NewAttoFILFromFIL(6000), "", nil)
@@ -166,6 +166,9 @@ func TestWaitConflicting(t *testing.T) {
 
 	require.NotNil(t, chainStore.GenesisCid())
 
+	emptyReceiptsCid, err := msgStore.StoreReceipts(ctx, []*types.MessageReceipt{})
+	require.NoError(t, err)
+
 	b1 := th.RequireMkFakeChild(t,
 		th.FakeChildParams{
 			MinerAddr:   minerAddr,
@@ -175,7 +178,10 @@ func TestWaitConflicting(t *testing.T) {
 			Signer:      mockSigner,
 			MinerWorker: worker1,
 		})
-	b1.Messages = []*types.SignedMessage{sm1}
+	sm1Cid, err := msgStore.StoreMessages(ctx, []*types.SignedMessage{sm1})
+	require.NoError(t, err)
+	b1.Messages = sm1Cid
+	b1.MessageReceipts = emptyReceiptsCid
 	b1.Ticket = []byte{0} // block 1 comes first in message application
 	core.MustPut(cst, b1)
 
@@ -187,8 +193,12 @@ func TestWaitConflicting(t *testing.T) {
 			StateRoot:   baseBlock.StateRoot,
 			Signer:      mockSigner,
 			MinerWorker: worker2,
-			Nonce:       uint64(1)})
-	b2.Messages = []*types.SignedMessage{sm2}
+			Nonce:       uint64(1),
+		})
+	sm2Cid, err := msgStore.StoreMessages(ctx, []*types.SignedMessage{sm2})
+	require.NoError(t, err)
+	b2.Messages = sm2Cid
+	b2.MessageReceipts = emptyReceiptsCid
 	b2.Ticket = []byte{1}
 	core.MustPut(cst, b2)
 
@@ -217,7 +227,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	_, _, waiter := setupTest(t)
+	_, _, _, waiter := setupTest(t)
 
 	failIfCalledCb := func(b *types.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {

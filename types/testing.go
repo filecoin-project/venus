@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -171,19 +172,25 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 // SomeCid generates a Cid for use in tests where you want a Cid but don't care
 // what it is.
 func SomeCid() cid.Cid {
-	b := &Block{}
-	return b.Cid()
+	obj, err := cbor.WrapObject([]int{42}, DefaultHashFunction, -1)
+	if err != nil {
+		panic(err)
+	}
+	return obj.Cid()
 }
 
 // NewCidForTestGetter returns a closure that returns a Cid unique to that invocation.
 // The Cid is unique wrt the closure returned, not globally. You can use this function
 // in tests.
 func NewCidForTestGetter() func() cid.Cid {
-	i := Uint64(31337)
+	i := 31337
 	return func() cid.Cid {
-		b := &Block{Height: i}
+		obj, err := cbor.WrapObject([]int{i}, DefaultHashFunction, -1)
+		if err != nil {
+			panic(err)
+		}
 		i++
-		return b.Cid()
+		return obj.Cid()
 	}
 }
 

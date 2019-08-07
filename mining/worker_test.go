@@ -244,7 +244,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-
 	CreatePoSTFunc := func() {}
 
 	mockSigner, blockSignerAddr := setupSigner()
@@ -299,7 +298,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock1, &baseBlock2), nil, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
-	assert.Len(t, blk.Messages, 0)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages)
+	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(1020), blk.ParentWeight)
 }
@@ -400,7 +400,14 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	assert.Contains(t, pool.Pending(), smsg1)
 	assert.Contains(t, pool.Pending(), smsg2)
 
-	assert.Len(t, blk.Messages, 1) // This is the good message
+	// message and receipts can be loaded from message store and have
+	// length 1.
+	msgs, err := messages.LoadMessages(ctx, blk.Messages)
+	require.NoError(t, err)
+	assert.Len(t, msgs, 1) // This is the good message
+	rcpts, err := messages.LoadReceipts(ctx, blk.MessageReceipts)
+	require.NoError(t, err)
+	assert.Len(t, rcpts, 1)
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
@@ -516,7 +523,9 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
-	assert.Len(t, blk.Messages, 0)
+
+	assert.Equal(t, types.MessageCollection{}.Cid(), blk.Messages)
+	assert.Equal(t, types.ReceiptCollection{}.Cid(), blk.MessageReceipts)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,

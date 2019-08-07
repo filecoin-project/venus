@@ -62,13 +62,15 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	require.NoError(t, err)
 
 	nextBlk := &types.Block{
-		Miner:        minerAddr,
-		Parents:      baseTS.Key(),
-		Height:       types.Uint64(1),
-		ParentWeight: types.Uint64(10000),
-		StateRoot:    baseTS.ToSlice()[0].StateRoot,
-		Proof:        proof,
-		Ticket:       ticket,
+		Miner:           minerAddr,
+		Parents:         baseTS.Key(),
+		Height:          types.Uint64(1),
+		ParentWeight:    types.Uint64(10000),
+		StateRoot:       baseTS.ToSlice()[0].StateRoot,
+		Proof:           proof,
+		Ticket:          ticket,
+		Messages:        types.EmptyMessagesCID,
+		MessageReceipts: types.EmptyReceiptsCID,
 	}
 
 	// Wait for network connection notifications to propagate
@@ -110,10 +112,18 @@ func TestChainSync(t *testing.T) {
 	minerWorker, err := ki[0].Address()
 	require.NoError(t, err)
 	stateRoot := baseTS.ToSlice()[0].StateRoot
+	msgsCid := types.EmptyMessagesCID
+	rcptsCid := types.EmptyReceiptsCID
 
 	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr, minerWorker, signer)
+	nextBlk1.Messages = msgsCid
+	nextBlk1.MessageReceipts = rcptsCid
 	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, minerWorker, signer)
+	nextBlk2.Messages = msgsCid
+	nextBlk2.MessageReceipts = rcptsCid
 	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, minerWorker, signer)
+	nextBlk3.Messages = msgsCid
+	nextBlk3.MessageReceipts = rcptsCid
 
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk1))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk2))
