@@ -16,6 +16,10 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-interface"
@@ -388,7 +392,13 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	//nwork := bsnet.NewFromIpfsHost(innerHost, router)
 	bswap := bitswap.New(ctx, nwork, bs)
 	bservice := bserv.New(bs, bswap)
-	fetcher := net.NewBitswapFetcher(ctx, bservice, blkValid)
+
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(peerHost)
+	bridge := ipldbridge.NewIPLDBridge()
+	loader := gsstoreutil.LoaderForBlockstore(bs)
+	storer := gsstoreutil.StorerForBlockstore(bs)
+	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
 
 	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())

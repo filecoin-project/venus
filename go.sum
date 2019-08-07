@@ -336,6 +336,8 @@ github.com/ipfs/go-graphsync v0.0.0-20190730003352-c0a02c36677e h1:n5x82DdH4Ctsw
 github.com/ipfs/go-graphsync v0.0.0-20190730003352-c0a02c36677e/go.mod h1:Mc/swk1M2pyFi60f+urOPJo7K6lTnS9NMF5dJNjrffE=
 github.com/ipfs/go-graphsync v0.0.0-20190730081500-edbfd0323fdf h1:W7GMZUIea+nDrtO1PEFtHZ0P7Tib8NHJs06u7eUeiPQ=
 github.com/ipfs/go-graphsync v0.0.0-20190730081500-edbfd0323fdf/go.mod h1:Mc/swk1M2pyFi60f+urOPJo7K6lTnS9NMF5dJNjrffE=
+github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90 h1:Ow8i70zrww6+U9b68b7TOyivaMNk79hz59WB2qjXLgQ=
+github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90/go.mod h1:kWwu6mFFtlqD6PM4rU3PutXlwanwg+Sefkd5eWHpFio=
 github.com/ipfs/go-hamt-ipld v0.0.1 h1:dOS1Bp9hyZUozI4Y7rC+FJqitur00tWlIFmLLgNev38=
 github.com/ipfs/go-hamt-ipld v0.0.1/go.mod h1:WrX60HHX2SeMb602Z1s9Ztnf/4fzNHzwH9gxNTVpEmk=
 github.com/ipfs/go-ipfs-blockstore v0.0.1 h1:O9n3PbmTYZoNhkgkEyrXTznbmktIXif62xLX+8dPHzc=
@@ -388,6 +390,7 @@ github.com/ipfs/go-metrics-interface v0.0.1/go.mod h1:6s6euYU4zowdslK0GKHmqaIZ3j
 github.com/ipfs/go-path v0.0.1 h1:6UskTq8xYVs3zVnHjXDvoCqw22dKWK1BwD1cy1cuHyc=
 github.com/ipfs/go-path v0.0.1/go.mod h1:ztzG4iSBN2/CJa93rtHAv/I+mpK+BGALeUoJzhclhw0=
 github.com/ipfs/go-peertaskqueue v0.0.1/go.mod h1:03H8fhyeMfKNFWqzYEVyMbcPUeYrqP1MX6Kd+aN+rMQ=
+github.com/ipfs/go-peertaskqueue v0.0.4/go.mod h1:03H8fhyeMfKNFWqzYEVyMbcPUeYrqP1MX6Kd+aN+rMQ=
 github.com/ipfs/go-peertaskqueue v0.1.1 h1:+gPjbI+V3NktXZOqJA1kzbms2pYmhjgQQal0MzZrOAY=
 github.com/ipfs/go-peertaskqueue v0.1.1/go.mod h1:Jmk3IyCcfl1W3jTW3YpghSwSEC6IJ3Vzz/jUmWw8Z0U=
 github.com/ipfs/go-todocounter v0.0.1 h1:kITWA5ZcQZfrUnDNkRn04Xzh0YFaDFXsoO2A81Eb6Lw=
