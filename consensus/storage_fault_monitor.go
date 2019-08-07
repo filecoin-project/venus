@@ -68,7 +68,7 @@ func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.
 	if !ok {
 		return errors.FaultErrorWrapf(err, "expected *map[string]uint64 but got %T", lms)
 	}
-	sfm.log.Debugf("there are %d late miners", len(*lms))
+	sfm.log.Debugf("there are %d late miners\n", len(*lms))
 	// Slash late miners.
 	for minerStr, state := range *lms {
 		minerAddr, err := address.NewFromString(minerStr)
@@ -77,7 +77,7 @@ func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.
 		}
 
 		// send slash message, don't broadcast it, and don't wait for message to appear on chain.
-		sfm.log.Debugf("Slashing %s with state %d", minerStr, state)
+		sfm.log.Debugf("Slashing %s with state %d\n", minerStr, state)
 
 		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, types.NewAttoFILFromFIL(1),
 			types.NewGasUnits(300), false, "slashStorageFault")

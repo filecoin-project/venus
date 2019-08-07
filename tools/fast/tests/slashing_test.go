@@ -24,8 +24,7 @@ import (
 
 // Too slow to let run in CI. Use for debugging locally.
 func TestSlashing(t *testing.T) {
-	tf.IntegrationTest(t)
-	t.SkipNow()
+	tf.FunctionalTest(t)
 
 	t.Run("miner is slashed when it is late", func(t *testing.T) {
 		// Give the deal time to complete

@@ -24,7 +24,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 	ctx := context.Background()
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 
-	t.Run("When no miners, empty LateMiners", func(t *testing.T) {
+	t.Run("When there are no miners, functions normally by returning empty late miners list", func(t *testing.T) {
 
 		height := types.NewBlockHeight(1)
 		data, err := cbor.DumpObject(&map[string]uint64{})
@@ -62,15 +62,15 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		assert.Equal(t, 3, ob.msgCount)
 	})
 
-	t.Run("When Send fails, get collection of all errors + no messages", func(t *testing.T) {
+	t.Run("When Send fails, return error", func(t *testing.T) {
 		getf := address.NewForTestGetter()
 		height := types.NewBlockHeight(100)
 		addr1 := getf().String()
 		addr2 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterProvingPeriod,
-			addr2: miner.PoStStateAfterProvingPeriod,
+			addr1: miner.PoStStateAfterGenerationAttackThreshold,
+			addr2: miner.PoStStateAfterGenerationAttackThreshold,
 		})
 		require.NoError(t, err)
 
@@ -79,7 +79,8 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		minerOwnerAddr := signer.Addresses[0]
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.Slash(ctx, height)
-		assert.Error(t, err, "Boom\nBoom")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Boom\nBoom")
 		assert.Equal(t, 0, ob.msgCount)
 	})
 
