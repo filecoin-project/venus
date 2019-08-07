@@ -183,7 +183,10 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 // fetchBlocks requests a single set of cids as individual blocks, fetching
 // non-recursively
 func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
-	selector := gsf.ssb.Matcher().Node()
+	selector := gsf.ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", gsf.ssb.Matcher())
+		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+	}).Node()
 	errChans := make([]<-chan error, 0, len(cids))
 	requestCtx, requestCancel := context.WithCancel(ctx)
 	defer requestCancel()
@@ -215,6 +218,8 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 			gsf.ssb.ExploreAll(gsf.ssb.Matcher()),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
 		))
+		efsb.Insert("messages", gsf.ssb.Matcher())
+		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	})).Node()
 
 	_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)

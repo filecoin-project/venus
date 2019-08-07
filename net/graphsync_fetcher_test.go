@@ -42,13 +42,18 @@ func TestGraphsyncFetcher(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	ssb := selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
-	layer1Selector, err := ssb.Matcher().Selector()
+	layer1Selector, err := ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
+	}).Selector()
 	require.NoError(t, err)
 	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
 		efsb.Insert("parents", ssb.ExploreUnion(
 			ssb.ExploreAll(ssb.Matcher()),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
 		))
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
 	})).Selector()
 	require.NoError(t, err)
 	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
@@ -56,6 +61,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 			ssb.ExploreAll(ssb.Matcher()),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
 		))
+		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messageReceipts", ssb.Matcher())
 	})).Selector()
 	require.NoError(t, err)
 	pid1 := th.RequireIntPeerID(t, 1)
