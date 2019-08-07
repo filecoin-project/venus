@@ -174,13 +174,13 @@ message_wait "${STORAGE_MN_MINER_SET_PRICE_MSG_CID}" "${STORAGE_MN_REPO_DIR}"
 
 echo ""
 echo "client proposes a storage deal, which transfers file 1..."
-./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" 0 5 \
-  --repodir="$CL_REPO_DIR" \
+PROPOSAL1_CID=$(./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_1_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
+echo "proposal 1 cid: $PROPOSAL1_CID"
 
 echo ""
 echo "client proposes a storage deal, which transfers piece 2..."
-./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_2_CID}" 0 5 \
-  --repodir="$CL_REPO_DIR" \
+PROPOSAL2_CID=$(./go-filecoin client propose-storage-deal "${STORAGE_MN_MINER_FIL_ADDR}" "${PIECE_2_CID}" 0 5 --repodir="$CL_REPO_DIR" --enc=json |  jq -r '.ProposalCid["/"]')
+echo "proposal 2 cid: $PROPOSAL2_CID"
 
 echo ""
 echo "wait for commitSector sent by miner owner to be included in a block viewable by all nodes..."
@@ -193,6 +193,14 @@ echo "wait for submitPoSt, too..."
 wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${CL_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
 wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${BOOTSTRAP_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
 wait_for_message_in_chain_by_method_and_sender submitPoSt "${STORAGE_MN_MINER_OWNER_FIL_ADDR}" "${STORAGE_MN_REPO_DIR}" "${COMMIT_SECTOR_AND_POST_TIMEOUT}"
+
+echo ""
+echo "storage deal 1 status:"
+./go-filecoin client query-storage-deal "${PROPOSAL1_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
+
+echo ""
+echo "storage deal 2 status:"
+./go-filecoin client query-storage-deal "${PROPOSAL2_CID}" --repodir="$CL_REPO_DIR" --enc=json |  jq .
 
 echo ""
 echo ""

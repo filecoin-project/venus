@@ -309,6 +309,9 @@ func TestOnCommitmentSent(t *testing.T) {
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
+		assert.Equal(t, sector.CommD[:], dealResponse.ProofInfo.CommD)
+		assert.Equal(t, sector.CommR[:], dealResponse.ProofInfo.CommR)
+		assert.Equal(t, sector.CommRStar[:], dealResponse.ProofInfo.CommRStar)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
@@ -909,8 +912,15 @@ func testSectorMetadata(pieceRef cid.Cid) *sectorbuilder.SealedSectorMetadata {
 	copy(commD[:], []byte{9, 9, 9, 9})
 	pip := []byte{3, 3, 3, 3, 3}
 
+	// Make some values that aren't the zero value
+	var commR types.CommR
+	copy(commR[:], []byte{1, 2, 3, 4})
+
+	var commRStar types.CommRStar
+	copy(commRStar[:], []byte{5, 6, 7, 8})
+
 	piece := &sectorbuilder.PieceInfo{Ref: pieceRef, Size: 10999, InclusionProof: pip}
-	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
+	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, CommR: commR, CommRStar: commRStar, Pieces: []*sectorbuilder.PieceInfo{piece}}
 }
 
 func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
