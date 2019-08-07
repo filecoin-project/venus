@@ -14,13 +14,13 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipfs/go-graphsync/ipldbridge"
 	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
@@ -392,33 +392,8 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bv := th.NewFakeBlockValidator()
 	pt := net.NewPeerTracker()
 
-	localLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
-		asCidLink, ok := lnk.(cidlink.Link)
-		if !ok {
-			return nil, fmt.Errorf("Unsupported Link Type")
-		}
-		block, err := bs.Get(asCidLink.Cid)
-		if err != nil {
-			return nil, err
-		}
-		return bytes.NewReader(block.RawData()), nil
-	}
-
-	localStorer := func(lnkCtx ipld.LinkContext) (io.Writer, ipld.StoreCommitter, error) {
-		var buffer bytes.Buffer
-		committer := func(lnk ipld.Link) error {
-			asCidLink, ok := lnk.(cidlink.Link)
-			if !ok {
-				return fmt.Errorf("Unsupported Link Type")
-			}
-			block, err := blocks.NewBlockWithCid(buffer.Bytes(), asCidLink.Cid)
-			if err != nil {
-				return err
-			}
-			return bs.Put(block)
-		}
-		return &buffer, committer, nil
-	}
+	localLoader := gsstoreutil.LoaderForBlockstore(bs)
+	localStorer := gsstoreutil.StorerForBlockstore(bs)
 
 	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
 

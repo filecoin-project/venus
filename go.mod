@@ -43,7 +43,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.0-20190730081500-edbfd0323fdf
+	github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -137,6 +137,7 @@ require (
 	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/tools v0.0.0-20190726230722-1bd56024c620 // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
 	google.golang.org/grpc v1.22.1 // indirect
 	gotest.tools v2.2.0+incompatible
