@@ -27,9 +27,9 @@ type chainReader interface {
 // ChainStateProvider composes a chain and a state store to provide access to
 // the state (including actors) derived from a chain.
 type ChainStateProvider struct {
-	reader          chainReader           // Provides chain tipsets and state roots.
-	cst             *hamt.CborIpldStore   // Provides chain blocks and state trees.
-	messageProvider chain.MessageProvider // nolint: structcheck
+	reader          chainReader         // Provides chain tipsets and state roots.
+	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
+	messageProvider chain.MessageProvider
 }
 
 var (
@@ -74,6 +74,16 @@ func (chn *ChainStateProvider) GetBlock(ctx context.Context, id cid.Cid) (*types
 	var out types.Block
 	err := chn.cst.Get(ctx, id, &out)
 	return &out, err
+}
+
+// GetMessages gets a message collection by CID.
+func (chn *ChainStateProvider) GetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
+	return chn.messageProvider.LoadMessages(ctx, id)
+}
+
+// GetReceipts gets a receipt collection by CID.
+func (chn *ChainStateProvider) GetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
 // SampleRandomness samples randomness from the chain at the given height.

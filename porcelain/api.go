@@ -50,6 +50,11 @@ func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ChainBlockHeight(a)
 }
 
+// ChainGetFullBlock returns the full block given the header cid
+func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
+	return GetFullBlock(ctx, a, id)
+}
+
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
