@@ -35,8 +35,7 @@ func TestSelfDialRetrievalGoodError(t *testing.T) {
 	msgCid, err := env.GenesisMiner.MinerUpdatePeerid(ctx, minerAddr, details.ID, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 	_, err = env.GenesisMiner.MessageWait(ctx, msgCid)
 	require.NoError(t, err)
 

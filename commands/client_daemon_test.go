@@ -278,10 +278,7 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 			case <-minerCreateDoneCh:
 				return
 			default:
-				err := series.CtxMiningOnce(ctx)
-				if err != nil {
-					return
-				}
+				series.CtxMiningOnce(ctx)
 			}
 		}
 	}()

@@ -76,10 +76,9 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	// Define a MiningOnce function which will bet set on the context to provide
 	// a way to mine blocks in the series used during testing
-	var MiningOnce series.MiningOnceFunc = func() error {
+	var MiningOnce series.MiningOnceFunc = func() {
 		_, err := genesis.MiningOnce(ctx)
-		// require.NoError(t, err)
-		return err
+		require.NoError(t, err)
 	}
 
 	ctx = series.SetCtxMiningOnce(ctx, MiningOnce)

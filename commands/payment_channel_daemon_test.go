@@ -190,8 +190,7 @@ func TestPaymentChannelRedeemSuccess(t *testing.T) {
 	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.target.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -232,8 +231,7 @@ func TestPaymentChannelRedeemTooEarlyFails(t *testing.T) {
 	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.target.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -284,8 +282,7 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	mcid, err := rsrc.target.PaychRedeem(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.target.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -298,14 +295,12 @@ func TestPaymentChannelReclaimSuccess(t *testing.T) {
 	assert.Equal(t, channelAmount, channel.Amount)
 	assert.Equal(t, voucherAmount, channel.AmountRedeemed)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	mcid, err = rsrc.payer.PaychReclaim(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err = rsrc.payer.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -355,8 +350,7 @@ func TestPaymentChannelCloseSuccess(t *testing.T) {
 	mcid, err := rsrc.target.PaychClose(ctx, voucherStr, fast.AOFromAddr(rsrc.targetAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.target.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -412,8 +406,7 @@ func TestPaymentChannelExtendSuccess(t *testing.T) {
 	mcid, err := rsrc.payer.PaychExtend(ctx, chanid, extendAmount, extendExpiry, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.payer.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -462,8 +455,7 @@ func TestPaymentChannelCancelSuccess(t *testing.T) {
 	mcid, err := rsrc.payer.PaychCancel(ctx, chanid, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.payer.MessageWait(ctx, mcid)
 	require.NoError(t, err)
@@ -516,8 +508,7 @@ func (rsrc *paychResources) requirePaymentChannel(ctx context.Context, t *testin
 	mcid, err := rsrc.payer.PaychCreate(ctx, rsrc.targetAddr, amt, eol, fast.AOFromAddr(rsrc.payerAddr), fast.AOPrice(big.NewFloat(1)), fast.AOLimit(300))
 	require.NoError(t, err)
 
-	err = series.CtxMiningOnce(ctx)
-	require.NoError(t, err)
+	series.CtxMiningOnce(ctx)
 
 	resp, err := rsrc.payer.MessageWait(ctx, mcid)
 	require.NoError(t, err)
