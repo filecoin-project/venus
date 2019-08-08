@@ -80,7 +80,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.Slash(ctx, height)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "Boom\nBoom")
+		assert.Contains(t, err.Error(), "Boom")
 		assert.Equal(t, 0, ob.msgCount)
 	})
 
