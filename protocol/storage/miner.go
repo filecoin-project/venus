@@ -10,8 +10,6 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
@@ -49,6 +47,11 @@ const (
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
+// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
+type storageFaultSlasher interface {
+	Slash(context.Context, *types.BlockHeight) error
+}
+
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr  address.Address
@@ -70,6 +73,8 @@ type Miner struct {
 
 	proposalAcceptor func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error)
 	proposalRejector func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error)
+
+	storageFaultSlasher storageFaultSlasher
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
@@ -101,8 +106,8 @@ type node interface {
 	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// NewMiner is
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+// NewMiner is for construction of a new storage miner.
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain, slasher storageFaultSlasher) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
@@ -114,6 +119,7 @@ func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, 
 		node:                nd,
 		proposalAcceptor:    acceptProposal,
 		proposalRejector:    rejectProposal,
+		storageFaultSlasher: slasher,
 	}
 
 	if err := sm.loadDealsAwaitingSeal(); err != nil {

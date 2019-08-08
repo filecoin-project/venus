@@ -98,10 +98,6 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
-// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
-type storageFaultSlasher interface {
-	Slash(context.Context, *types.BlockHeight) error
-}
 
 // Node represents a full Filecoin node.
 type Node struct {
