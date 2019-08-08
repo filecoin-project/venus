@@ -77,6 +77,11 @@ func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) 
 	return DealsLs(ctx, a)
 }
 
+// GetFullBlock returns the full block given the header cid
+func (a *API) GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
+	return GetFullBlock(ctx, a, id)
+}
+
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
 // It's useful for integration testing.
 func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {

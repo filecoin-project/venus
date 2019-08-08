@@ -143,6 +143,16 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, er
 	return api.chain.GetBlock(ctx, id)
 }
 
+// ChainGetMessages gets a message colleciton by CID
+func (api *API) ChainGetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
+	return api.chain.GetMessages(ctx, id)
+}
+
+// ChainGetReceipts gets a receipt collection by CID
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+	return api.chain.GetReceipts(ctx, id)
+}
+
 // ChainHead returns the head tipset
 func (api *API) ChainHead() (types.TipSet, error) {
 	return api.chain.Head()
