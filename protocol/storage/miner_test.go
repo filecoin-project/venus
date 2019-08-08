@@ -58,7 +58,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 				rejected = true
 				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
 			},
-			storageFaultSlasher: &trivialSlasher{},
+			storageFaultSlasher: &TrivialTestSlasher{},
 		}
 
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, defaultAmountInc)
@@ -92,7 +92,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 				rejected = true
 				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
 			},
-			storageFaultSlasher: &trivialSlasher{},
+			storageFaultSlasher: &TrivialTestSlasher{},
 		}
 
 		// do not create payment info
@@ -686,7 +686,7 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 		proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
 			return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
 		},
-		storageFaultSlasher: &trivialSlasher{},
+		storageFaultSlasher: &TrivialTestSlasher{},
 	}
 }
 
@@ -807,11 +807,5 @@ func (mtp *minerTestPorcelain) DealGet(_ context.Context, dealCid cid.Cid) (*sto
 
 func (mtp *minerTestPorcelain) DealPut(storageDeal *storagedeal.Deal) error {
 	mtp.deals[storageDeal.Response.ProposalCid] = storageDeal
-	return nil
-}
-
-
-type trivialSlasher struct {}
-func (ts *trivialSlasher) Slash(context.Context, *types.BlockHeight) error {
 	return nil
 }

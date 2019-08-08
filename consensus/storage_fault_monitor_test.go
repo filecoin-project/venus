@@ -47,9 +47,9 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		addr3 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterProvingPeriod,
+			addr1: miner.PoStStateAfterGenerationAttackThreshold,
 			addr2: miner.PoStStateAfterGenerationAttackThreshold,
-			addr3: miner.PoStStateAfterProvingPeriod,
+			addr3: miner.PoStStateAfterGenerationAttackThreshold,
 		})
 		require.NoError(t, err)
 

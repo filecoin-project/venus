@@ -15,3 +15,11 @@ func (p *FakeProver) CalculatePoSt(ctx context.Context, start, end *types.BlockH
 		Proofs: []types.PoStProof{[]byte("test proof")},
 	}, nil
 }
+
+// TrivialTestSlasher is a storage fault slasher that does nothing
+type TrivialTestSlasher struct{}
+
+// Slash is a required function for storageFaultSlasher interfaces and is intended to do nothing.
+func (ts *TrivialTestSlasher) Slash(context.Context, *types.BlockHeight) error {
+	return nil
+}
