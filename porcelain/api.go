@@ -50,6 +50,11 @@ func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ChainBlockHeight(a)
 }
 
+// GetFullBlock returns the full block given the header cid
+func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
+	return GetFullBlock(ctx, a, id)
+}
+
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
@@ -75,11 +80,6 @@ func (a *API) DealRedeemPreview(ctx context.Context, fromAddr address.Address, d
 // DealsLs returns a channel with all deals
 func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) {
 	return DealsLs(ctx, a)
-}
-
-// GetFullBlock returns the full block given the header cid
-func (a *API) GetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
-	return GetFullBlock(ctx, a, id)
 }
 
 // MessagePoolWait waits for the message pool to have at least messageCount unmined messages.
