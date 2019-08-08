@@ -98,17 +98,16 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
-
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
 	PeerHost host.Host
 
-	Consensus           consensus.Protocol
-	ChainReader         nodeChainReader
-	MessageStore        *chain.MessageStore
-	Syncer              nodeChainSyncer
-	PowerTable          consensus.PowerTableView
+	Consensus    consensus.Protocol
+	ChainReader  nodeChainReader
+	MessageStore *chain.MessageStore
+	Syncer       nodeChainSyncer
+	PowerTable   consensus.PowerTableView
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
