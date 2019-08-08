@@ -22,6 +22,7 @@ import (
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
+	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
@@ -43,13 +44,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 
-	ssb := selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
-	layer1Selector, err := ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", ssb.Matcher())
 		efsb.Insert("messageReceipts", ssb.Matcher())
 	}).Selector()
 	require.NoError(t, err)
-	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", ssb.Matcher())
 		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(
@@ -58,7 +59,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		))
 	})).Selector()
 	require.NoError(t, err)
-	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", ssb.Matcher())
 		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(

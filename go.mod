@@ -43,7 +43,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90
+	github.com/ipfs/go-graphsync v0.0.1-filecoin
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -62,7 +62,7 @@ require (
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.0.1
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
-	github.com/ipld/go-ipld-prime v0.0.0-20190730002952-369bb56ad071
+	github.com/ipld/go-ipld-prime v0.0.1-filecoin
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jbenet/goprocess v0.1.3

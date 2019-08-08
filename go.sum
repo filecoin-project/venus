@@ -338,6 +338,8 @@ github.com/ipfs/go-graphsync v0.0.0-20190730081500-edbfd0323fdf h1:W7GMZUIea+nDr
 github.com/ipfs/go-graphsync v0.0.0-20190730081500-edbfd0323fdf/go.mod h1:Mc/swk1M2pyFi60f+urOPJo7K6lTnS9NMF5dJNjrffE=
 github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90 h1:Ow8i70zrww6+U9b68b7TOyivaMNk79hz59WB2qjXLgQ=
 github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90/go.mod h1:kWwu6mFFtlqD6PM4rU3PutXlwanwg+Sefkd5eWHpFio=
+github.com/ipfs/go-graphsync v0.0.1-filecoin h1:Z8TyQw9mhlRFeMiN+/2xgBMkPp0EU1SnA/BhT5VUyTQ=
+github.com/ipfs/go-graphsync v0.0.1-filecoin/go.mod h1:ICL/OYl1sg5VTjM+jVwuNGyScs/wzs+cpeyl1HdOXyc=
 github.com/ipfs/go-hamt-ipld v0.0.1 h1:dOS1Bp9hyZUozI4Y7rC+FJqitur00tWlIFmLLgNev38=
 github.com/ipfs/go-hamt-ipld v0.0.1/go.mod h1:WrX60HHX2SeMb602Z1s9Ztnf/4fzNHzwH9gxNTVpEmk=
 github.com/ipfs/go-ipfs-blockstore v0.0.1 h1:O9n3PbmTYZoNhkgkEyrXTznbmktIXif62xLX+8dPHzc=
@@ -412,6 +414,8 @@ github.com/ipld/go-ipld-prime v0.0.0-20190727004028-8623c7a03978 h1:idRwgPC9oCGn
 github.com/ipld/go-ipld-prime v0.0.0-20190727004028-8623c7a03978/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
 github.com/ipld/go-ipld-prime v0.0.0-20190730002952-369bb56ad071 h1:+jRGf/jb5MnxBsLYczZF0u5pr3nzfbS8pPt/49Yxekw=
 github.com/ipld/go-ipld-prime v0.0.0-20190730002952-369bb56ad071/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
+github.com/ipld/go-ipld-prime v0.0.1-filecoin h1:jK1bUG/z73GNeKrNlVfdexkEIIWp0BEsBVjHkh9WvXo=
+github.com/ipld/go-ipld-prime v0.0.1-filecoin/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52 h1:QG4CGBqCeuBo6aZlGAamSkxWdgWfZGeE49eUOWJPA4c=
 github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52/go.mod h1:fdg+/X9Gg4AsAIzWpEHwnqd+QY3b7lajxyjE1m4hkq4=
 github.com/jackpal/gateway v1.0.4 h1:LS5EHkLuQ6jzaHwULi0vL+JO0mU/n4yUtK8oUjHHOlM=
