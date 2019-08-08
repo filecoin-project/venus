@@ -15,7 +15,9 @@ func TestCidForTestGetter(t *testing.T) {
 	c1 := newCid()
 	c2 := newCid()
 	assert.False(t, c1.Equals(c2))
-	assert.False(t, c1.Equals(SomeCid())) // Just in case.
+	someCid, err := CidFromString("somecid")
+	assert.NoError(t, err)
+	assert.False(t, c1.Equals(someCid)) // Just in case.
 }
 
 func TestNewMessageForTestGetter(t *testing.T) {

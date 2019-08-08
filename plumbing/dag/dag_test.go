@@ -47,7 +47,8 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		someCid := types.SomeCid()
+		someCid, err := types.CidFromString("somecid")
+		assert.NoError(t, err)
 
 		_, err := dag.GetNode(ctx, someCid.String())
 		assert.EqualError(t, err, "merkledag: not found")

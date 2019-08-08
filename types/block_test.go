@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,18 +58,20 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
+		someCid, err := CidFromString("somecid")
+		assert.NoError(t, err)
 
 		b := &Block{
 			Miner:           newAddress(),
 			Ticket:          []byte{0x01, 0x02, 0x03},
 			Height:          Uint64(2),
 			Nonce:           3,
-			Messages:        SomeCid(),
-			MessageReceipts: SomeCid(),
-			Parents:         NewTipSetKey(SomeCid()),
+			Messages:        someCid,
+			MessageReceipts: someCid,
+			Parents:         NewTipSetKey(someCid),
 			ParentWeight:    Uint64(1000),
 			Proof:           NewTestPoSt(),
-			StateRoot:       SomeCid(),
+			StateRoot:       someCid,
 			Timestamp:       Uint64(1),
 		}
 		s := reflect.TypeOf(*b)
@@ -109,24 +110,19 @@ func TestBlockScore(t *testing.T) {
 	})
 }
 
-func cidFromString(input string) (cid.Cid, error) {
-	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
-	return prefix.Sum([]byte(input))
-}
-
 func TestDecodeBlock(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		addrGetter := address.NewForTestGetter()
 
-		c1, err := cidFromString("a")
+		c1, err := CidFromString("a")
 		assert.NoError(t, err)
-		c2, err := cidFromString("b")
+		c2, err := CidFromString("b")
 		assert.NoError(t, err)
-		cM, err := cidFromString("messages")
+		cM, err := CidFromString("messages")
 		assert.NoError(t, err)
-		cR, err := cidFromString("receipts")
+		cR, err := CidFromString("receipts")
 		assert.NoError(t, err)
 
 		before := &Block{
@@ -155,9 +151,9 @@ func TestDecodeBlock(t *testing.T) {
 func TestEquals(t *testing.T) {
 	tf.UnitTest(t)
 
-	c1, err := cidFromString("a")
+	c1, err := CidFromString("a")
 	assert.NoError(t, err)
-	c2, err := cidFromString("b")
+	c2, err := CidFromString("b")
 	assert.NoError(t, err)
 
 	var n1 Uint64 = 1234
@@ -198,8 +194,10 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 
-	child.Messages = SomeCid()
-	child.MessageReceipts = SomeCid()
+	someCid, err := CidFromString("somecid")
+	assert.NoError(t, err)
+	child.Messages = someCid
+	child.MessageReceipts = someCid
 
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)
