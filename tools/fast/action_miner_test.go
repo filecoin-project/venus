@@ -37,6 +37,7 @@ func TestFilecoin_MinerPower(t *testing.T) {
 		require.NoError(t, clientDaemon.MiningStop(ctx))
 	}()
 
+	env.RunAsyncMiner()
 	minerDaemon := env.RequireNewNodeWithFunds(10000)
 	_, _ = requireMinerClientMakeADeal(ctx, t, minerDaemon, clientDaemon)
 
