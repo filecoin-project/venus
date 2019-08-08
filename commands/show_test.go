@@ -3,7 +3,6 @@ package commands_test
 import (
 	"encoding/json"
 	"testing"
-	//	"fmt"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,6 +113,23 @@ func TestBlockDaemon(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(emptyMessagesLine), &messageCollection))
 
 		assert.Equal(t, 0, len(messageCollection))
+	})
+
+	t.Run("show receipts <empty-collection-cid> returns empty receipt collection", func(t *testing.T) {
+		d := th.NewDaemon(t,
+			th.KeyFile(fixtures.KeyFilePaths()[0]),
+			th.WithMiner(fixtures.TestMiners[0])).Start()
+		defer d.ShutdownSuccess()
+
+		// mine a block
+		th.RunSuccessFirstLine(d, "mining", "once")
+
+		emptyReceiptsLine := th.RunSuccessFirstLine(d, "show", "receipts", types.EmptyReceiptsCID.String(), "--enc", "json")
+
+		var receipts []*types.MessageReceipt
+		require.NoError(t, json.Unmarshal([]byte(emptyReceiptsLine), &receipts))
+
+		assert.Equal(t, 0, len(receipts))
 	})
 
 	t.Run("show messages and show receipts", func(t *testing.T) {

@@ -149,7 +149,8 @@ var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin message collection by its CID",
 		ShortDescription: `Prints info for all messages in a collection,
-at the given CID.`,
+at the given CID.  Message collection CIDs are found in the "Messages" field of 
+the filecoin block header.`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("cid", true, false, "CID of message collection to show"),
@@ -184,7 +185,8 @@ var showReceiptsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin receipt collection by its CID",
 		ShortDescription: `Prints info for all receipts in a collection,
-at the given CID.`,
+at the given CID.  Receipt collection CIDs are found in the "MessageReceipts"
+field of the filecoin block header.`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("cid", true, false, "CID of receipt collection to show"),
