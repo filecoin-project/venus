@@ -107,7 +107,6 @@ type Node struct {
 	Consensus           consensus.Protocol
 	ChainReader         nodeChainReader
 	MessageStore        *chain.MessageStore
-	StorageFaultMonitor storageFaultSlasher
 	Syncer              nodeChainSyncer
 	PowerTable          consensus.PowerTableView
 
@@ -739,20 +738,6 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
-				if node.StorageFaultMonitor != nil {
-					height, err := newHead.Height()
-					if err != nil {
-						log.Error("can't get height of new tipset", err)
-					} else {
-						bh := types.NewBlockHeight(height)
-						err := node.StorageFaultMonitor.Slash(ctx, bh)
-						if err != nil {
-							log.Error("fault monitoring new block from network", err)
-						}
-					}
-				} else {
-					log.Error("node.StorageFaultSlasher is not set -- cannot start fault monitoring")
-				}
 			}
 		case <-ctx.Done():
 			return
@@ -890,7 +875,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrap(err, "failed to initialize storage miner")
 	}
 	node.StorageMiner = storageMiner
-	node.StorageFaultMonitor = consensus.NewStorageFaultMonitor(node.PorcelainAPI, node.Outbox, minerOwnerAddr)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -1034,7 +1018,17 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 	}
 
 	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
-	miner, err := storage.NewMiner(minerAddr, ownerAddress, workerAddress, prover, sectorSize, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
+
+	miner, err := storage.NewMiner(
+		minerAddr,
+		ownerAddress,
+		workerAddress,
+		prover,
+		sectorSize,
+		node,
+		node.Repo.DealsDatastore(),
+		node.PorcelainAPI,
+		consensus.NewStorageFaultMonitor(node.PorcelainAPI, node.Outbox, ownerAddress))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

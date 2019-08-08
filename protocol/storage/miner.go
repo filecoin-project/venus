@@ -10,6 +10,8 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
@@ -756,7 +758,8 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
-	return nil
+	// slash any late miners w/ unreported storage faults
+	return sm.storageFaultSlasher.Slash(ctx, h)
 }
 
 func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
