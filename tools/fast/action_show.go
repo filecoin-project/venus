@@ -14,7 +14,7 @@ func (f *Filecoin) ShowBlock(ctx context.Context, ref cid.Cid) (*types.Block, er
 
 	sRef := ref.String()
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "block", sRef); err != nil {
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "show", "header", sRef); err != nil {
 		return nil, err
 	}
 

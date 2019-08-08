@@ -50,7 +50,7 @@ func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ChainBlockHeight(a)
 }
 
-// GetFullBlock returns the full block given the header cid
+// ChainGetFullBlock returns the full block given the header cid
 func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
 	return GetFullBlock(ctx, a, id)
 }

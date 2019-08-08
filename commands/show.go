@@ -17,7 +17,10 @@ var showCmd = &cmds.Command{
 		Tagline: "Get human-readable representations of filecoin objects",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"block": showBlockCmd,
+		"block":    showBlockCmd,
+		"header":   showHeaderCmd,
+		"messages": showMessagesCmd,
+		"receipts": showReceiptsCmd,
 	},
 }
 
@@ -33,7 +36,7 @@ all other block properties will be included as well.`,
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("messages", "m", "show messages in block"),
-		cmdkit.BoolOption("receipts", "r", "show receipts in block"),		
+		cmdkit.BoolOption("receipts", "r", "show receipts in block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -140,12 +143,12 @@ Timestamp:  %s
 			return err
 		}),
 	},
-}	
-	
+}
+
 var showMessagesCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin message collection by its CID",
-		ShortDescription: `Prints info for all messages in a colleciton,
+		ShortDescription: `Prints info for all messages in a collection,
 at the given CID.`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -180,7 +183,7 @@ at the given CID.`,
 var showReceiptsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show a filecoin receipt collection by its CID",
-		ShortDescription: `Prints info for all receipts in a colleciton,
+		ShortDescription: `Prints info for all receipts in a collection,
 at the given CID.`,
 	},
 	Arguments: []cmdkit.Argument{
@@ -210,4 +213,4 @@ at the given CID.`,
 			return err
 		}),
 	},
-}	
+}

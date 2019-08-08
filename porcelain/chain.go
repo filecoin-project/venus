@@ -2,9 +2,9 @@ package porcelain
 
 import (
 	"context"
-	
+
 	"github.com/ipfs/go-cid"
-	
+
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -35,12 +35,12 @@ type fullBlockPlumbing interface {
 func GetFullBlock(ctx context.Context, plumbing fullBlockPlumbing, id cid.Cid) (*types.FullBlock, error) {
 	var out types.FullBlock
 	var err error
-	
+
 	out.Header, err = plumbing.ChainGetBlock(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	out.Messages, err = plumbing.ChainGetMessages(ctx, out.Header.Messages)
 	if err != nil {
 		return nil, err

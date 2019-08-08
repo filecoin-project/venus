@@ -143,7 +143,7 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, er
 	return api.chain.GetBlock(ctx, id)
 }
 
-// ChainGetMessages gets a message colleciton by CID
+// ChainGetMessages gets a message collection by CID
 func (api *API) ChainGetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
 	return api.chain.GetMessages(ctx, id)
 }
