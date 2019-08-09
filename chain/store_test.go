@@ -363,7 +363,7 @@ func TestGetTipSetState(t *testing.T) {
 	cst := hamt.NewCborStore()
 
 	// setup testing state
-	fakeCode := types.SomeCid()
+	fakeCode := types.CidFromString(t, "somecid")
 	balance := types.NewAttoFILFromFIL(1000000)
 	testActor := actor.NewActor(fakeCode, balance)
 	addr := address.NewForTestGetter()()

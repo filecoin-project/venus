@@ -239,7 +239,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	doneCh := make(chan struct{})
 	go func() {
 		defer close(doneCh)
-		err = waiter.Wait(ctx, types.SomeCid(), failIfCalledCb)
+		err = waiter.Wait(ctx, types.CidFromString(t, "somecid"), failIfCalledCb)
 	}()
 
 	cancel()
