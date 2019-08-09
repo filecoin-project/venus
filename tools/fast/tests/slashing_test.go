@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Too slow to let run in CI. Use for debugging locally.
 func TestSlashing(t *testing.T) {
 	tf.FunctionalTest(t)
 
@@ -60,7 +59,7 @@ func TestSlashing(t *testing.T) {
 		// miner is offline for entire proving period + grace period
 		require.NoError(t, minerDaemon.StopDaemon(ctx))
 
-		waitLimit = 1000
+		waitLimit = 2000
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
 }
@@ -100,6 +99,7 @@ func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner add
 		powers, err := d.MinerPower(ctx, miner)
 		require.NoError(t, err)
 		if expPower == powers.Power.Uint64() {
+			fmt.Printf("Power reached %5d at iteration %5d", expPower, i)
 			return nil
 		}
 		series.CtxSleepDelay(ctx)
