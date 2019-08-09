@@ -153,7 +153,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 	})
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
-	_, err = client.ProposeDeal(ctx, addressCreator(), types.CidFromString(t, "somecid"), uint64(67), uint64(10000), false)
+	_, err := client.ProposeDeal(ctx, addressCreator(), types.CidFromString(t, "somecid"), uint64(67), uint64(10000), false)
 	require.NoError(t, err)
 
 	// ensure client did not attempt to create a payment channel

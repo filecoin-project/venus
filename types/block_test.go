@@ -114,13 +114,13 @@ func TestDecodeBlock(t *testing.T) {
 	t.Run("successfully decodes raw bytes to a Filecoin block", func(t *testing.T) {
 		addrGetter := address.NewForTestGetter()
 
-		c1, err := CidFromString("a")
+		c1, err := CidFromString(t, "a")
 		assert.NoError(t, err)
-		c2, err := CidFromString("b")
+		c2, err := CidFromString(t, "b")
 		assert.NoError(t, err)
-		cM, err := CidFromString("messages")
+		cM, err := CidFromString(t, "messages")
 		assert.NoError(t, err)
-		cR, err := CidFromString("receipts")
+		cR, err := CidFromString(t, "receipts")
 		assert.NoError(t, err)
 
 		before := &Block{
@@ -149,9 +149,9 @@ func TestDecodeBlock(t *testing.T) {
 func TestEquals(t *testing.T) {
 	tf.UnitTest(t)
 
-	c1, err := CidFromString("a")
+	c1, err := CidFromString(t, "a")
 	assert.NoError(t, err)
-	c2, err := CidFromString("b")
+	c2, err := CidFromString(t, "b")
 	assert.NoError(t, err)
 
 	var n1 Uint64 = 1234
