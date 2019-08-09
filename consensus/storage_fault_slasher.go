@@ -39,9 +39,9 @@ type StorageFaultSlasher struct {
 	plumbing  monitorPlumbing   // what does the message query
 }
 
-// NewStorageFaultMonitor creates a new StorageFaultSlasher with the provided plumbing, outbox and message sender.
+// NewStorageFaultSlasher creates a new StorageFaultSlasher with the provided plumbing, outbox and message sender.
 // Message sender must be an account actor address.
-func NewStorageFaultMonitor(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address) *StorageFaultSlasher {
+func NewStorageFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address) *StorageFaultSlasher {
 	return &StorageFaultSlasher{
 		plumbing:  plumbing,
 		log:       logging.Logger("StorFltMon"),
@@ -69,6 +69,7 @@ func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.
 		return errors.FaultErrorWrapf(err, "expected *map[string]uint64 but got %T", lms)
 	}
 	sfm.log.Debugf("there are %d late miners\n", len(*lms))
+
 	// Slash late miners.
 	for minerStr, state := range *lms {
 		minerAddr, err := address.NewFromString(minerStr)
@@ -76,7 +77,7 @@ func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.
 			return errors.FaultErrorWrap(err, "could not create minerAddr string")
 		}
 
-		// send slash message, don't broadcast it, and don't wait for message to appear on chain.
+		// add slash message to message pull w/o broadcasting
 		sfm.log.Debugf("Slashing %s with state %d\n", minerStr, state)
 
 		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, types.NewAttoFILFromFIL(1),

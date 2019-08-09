@@ -24,7 +24,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 	ctx := context.Background()
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 
-	t.Run("When there are no miners, functions normally by returning empty late miners list", func(t *testing.T) {
+	t.Run("When there are no miners, does not error", func(t *testing.T) {
 
 		height := types.NewBlockHeight(1)
 		data, err := cbor.DumpObject(&map[string]uint64{})
@@ -33,9 +33,10 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		minerOwnerAddr := signer.Addresses[0]
 
 		ob := outbox{}
-		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.Slash(ctx, height)
 		require.NoError(t, err)
+		assert.Equal(t, 0, ob.msgCount)
 	})
 
 	t.Run("When 3 late miners, sends 3 messages", func(t *testing.T) {
@@ -56,7 +57,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, ob.msgCount)
@@ -77,7 +78,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{failSend: true, failErr: "Boom"}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultMonitor(&storageFaultMonitorPorcelain{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
 		err = fm.Slash(ctx, height)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Boom")
@@ -98,13 +99,13 @@ func makeQueryer(returnData [][]byte) msgQueryer {
 
 type msgQueryer func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 
-type storageFaultMonitorPorcelain struct {
+type slasherPlumbing struct {
 	actorFail   bool
 	actorChFail bool
 	Queryer     msgQueryer
 }
 
-func (tmp *storageFaultMonitorPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return tmp.Queryer(ctx, optFrom, to, method, params)
 }
 

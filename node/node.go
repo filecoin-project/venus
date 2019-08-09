@@ -1027,7 +1027,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		node,
 		node.Repo.DealsDatastore(),
 		node.PorcelainAPI,
-		consensus.NewStorageFaultMonitor(node.PorcelainAPI, node.Outbox, ownerAddress))
+		consensus.NewStorageFaultSlasher(node.PorcelainAPI, node.Outbox, ownerAddress))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

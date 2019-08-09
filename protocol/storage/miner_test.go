@@ -309,6 +309,9 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
+
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, 1, testSlasher.SendCalls)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
@@ -349,6 +352,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "bootstrapping")
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Exits early if miner is bootstrap miner", func(t *testing.T) {
@@ -379,6 +384,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it commitments contains a bad id", func(t *testing.T) {
@@ -397,6 +404,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it cannot retrieve post period", func(t *testing.T) {
@@ -413,6 +422,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get proving period")
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if tipset has no blocks", func(t *testing.T) {
@@ -425,6 +436,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get block height")
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("calls SubmitsPoSt when in proving period", func(t *testing.T) {
@@ -455,6 +468,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// assert proof generated in sector builder is sent to submitPoSt
 		require.Equal(t, 3, len(postParams))
 		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
 
 	t.Run("Does not post if block height is too low", func(t *testing.T) {
@@ -481,6 +496,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Wait to make sure submitPoSt is not called
 		time.Sleep(1 * time.Second)
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if past proving period", func(t *testing.T) {
@@ -506,6 +523,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Sleep to ensure submit post is not called
 		time.Sleep(1 * time.Second)
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 }
 
