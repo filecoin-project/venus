@@ -12,7 +12,7 @@ import (
 	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
+	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -40,7 +40,7 @@ type GraphSyncFetcher struct {
 	exchange    GraphExchange
 	validator   consensus.BlockSyntaxValidator
 	store       bstore.Blockstore
-	ssb         selector.SelectorSpecBuilder
+	ssb         selectorbuilder.SelectorSpecBuilder
 	peerTracker graphsyncFallbackPeerTracker
 }
 
@@ -52,7 +52,7 @@ func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore
 		store:       blockstore,
 		validator:   bv,
 		exchange:    exchange,
-		ssb:         selector.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
 		peerTracker: pt,
 	}
 	return gsf
@@ -183,7 +183,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 // fetchBlocks requests a single set of cids as individual blocks, fetching
 // non-recursively
 func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
-	selector := gsf.ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.Matcher())
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
@@ -213,7 +213,7 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 	//   - fetch all parent blocks
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
-	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selector.ExploreFieldsSpecBuilder) {
+	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.Matcher())
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
