@@ -60,9 +60,8 @@ func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Addres
 	if mpc.msgFail {
 		return cid.Cid{}, errors.New("Test Error")
 	}
-	mpc.msgCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
-	
+	mpc.msgCid = types.CidFromString(t, "somecid")
+
 	return mpc.msgCid, nil
 }
 

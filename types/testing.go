@@ -170,9 +170,11 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 // Type-related test helpers.
 
 // CidFromString generates Cid from string input
-func CidFromString(input string) (cid.Cid, error) {
+func CidFromString(t *testing.T, input string) cid.Cid {
 	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
-	return prefix.Sum([]byte(input))
+	cid, err := prefix.Sum([]byte(input))
+	require.NoError(t, err)
+	return cid
 }
 
 // NewCidForTestGetter returns a closure that returns a Cid unique to that invocation.

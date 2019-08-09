@@ -58,20 +58,18 @@ func TestTriangleEncoding(t *testing.T) {
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
-		someCid, err := CidFromString("somecid")
-		assert.NoError(t, err)
 
 		b := &Block{
 			Miner:           newAddress(),
 			Ticket:          []byte{0x01, 0x02, 0x03},
 			Height:          Uint64(2),
 			Nonce:           3,
-			Messages:        someCid,
-			MessageReceipts: someCid,
-			Parents:         NewTipSetKey(someCid),
+			Messages:        CidFromString(t, "somecid"),
+			MessageReceipts: CidFromString(t, "somecid"),
+			Parents:         NewTipSetKey(CidFromString(t, "somecid")),
 			ParentWeight:    Uint64(1000),
 			Proof:           NewTestPoSt(),
-			StateRoot:       someCid,
+			StateRoot:       CidFromString(t, "somecid"),
 			Timestamp:       Uint64(1),
 		}
 		s := reflect.TypeOf(*b)
@@ -194,10 +192,8 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 
-	someCid, err := CidFromString("somecid")
-	assert.NoError(t, err)
-	child.Messages = someCid
-	child.MessageReceipts = someCid
+	child.Messages = CidFromString(t, "somecid")
+	child.MessageReceipts = CidFromString(t, "somecid")
 
 	marshalled, e1 := json.Marshal(&child)
 	assert.NoError(t, e1)

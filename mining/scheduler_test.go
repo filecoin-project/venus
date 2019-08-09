@@ -13,10 +13,7 @@ import (
 )
 
 func newTestUtils(t *testing.T) types.TipSet {
-	someCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
-
-	baseBlock := &types.Block{StateRoot: someCid}
+	baseBlock := &types.Block{StateRoot: types.CidFromString(t, "somecid")}
 	ts, err := types.NewTipSet(baseBlock)
 	require.NoError(t, err)
 	return ts
@@ -85,11 +82,9 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	tf.UnitTest(t)
 
-	someCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
 	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	blk2 := &types.Block{StateRoot: someCid, Height: 1}
+	blk2 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
 
 	checkNullBlocks := 0
@@ -132,12 +127,10 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
 
-	someCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
 	// make tipsets with progressively higher heights
-	blk2 := &types.Block{StateRoot: someCid, Height: 1}
+	blk2 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
-	blk3 := &types.Block{StateRoot: someCid, Height: 2}
+	blk3 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 2}
 	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
 	headFunc := func() (types.TipSet, error) {
@@ -170,13 +163,11 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 // TestSchedulerCollect tests that the scheduler collects tipsets before mining
 func TestSchedulerCollect(t *testing.T) {
 	tf.UnitTest(t)
-	someCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
 	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	blk2 := &types.Block{StateRoot: someCid, Height: 1}
+	blk2 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
-	blk3 := &types.Block{StateRoot: someCid, Height: 1}
+	blk3 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 	ts3 := th.RequireNewTipSet(t, blk3)
 	var head types.TipSet
 	headFunc := func() (types.TipSet, error) {
@@ -262,8 +253,6 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 
 func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	tf.UnitTest(t)
-	someCid, err := types.CidFromString("somecid")
-	assert.NoError(t, err)
 	ts1 := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	var checkTS types.TipSet
@@ -272,9 +261,9 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 		return head, nil
 	}
 	// make tipsets with progressively higher heights
-	blk2 := &types.Block{StateRoot: someCid, Height: 1}
+	blk2 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 	ts2 := th.RequireNewTipSet(t, blk2)
-	blk3 := &types.Block{StateRoot: someCid, Height: 2}
+	blk3 := &types.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 2}
 	ts3 := th.RequireNewTipSet(t, blk3)
 
 	checkValsMine := func(c context.Context, inTS types.TipSet, nBC int, outCh chan<- Output) bool {
