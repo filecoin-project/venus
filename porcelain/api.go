@@ -60,6 +60,11 @@ func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (
 	return CreatePayments(ctx, a, config)
 }
 
+// ValidateStoragePaymentCondition validates that the given condition is a payment condition and has the right values
+func (a *API) ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	return ValidateStoragePaymentCondition(ctx, condition, minerAddr, commP, pieceSize)
+}
+
 // DealGet returns a single deal matching a given cid or an error
 func (a *API) DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error) {
 	return DealGet(ctx, a, proposalCid)

@@ -185,6 +185,60 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	return response, nil
 }
 
+// ValidateStoragePaymentCondition validates that condition of a voucher created for a storage payment meets expectations
+func ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	// a nil condition is always valid
+	if condition == nil {
+		return nil
+	}
+
+	if condition.To != minerAddr {
+		return errors.New("voucher condition addressed to wrong address")
+	}
+
+	if condition.Method != verifyPieceInclusionMethod {
+		return errors.Errorf("payment condition method, %s, should be %s", condition.Method, verifyPieceInclusionMethod)
+	}
+
+	if condition.Params == nil || len(condition.Params) != 2 {
+		return errors.New("payment condition does not contain exactly 2 parameters")
+	}
+
+	var clientCommP types.CommP
+	// lack of type data in params means commP isn't necessarily cbor decoded
+	clientCommPBytes, ok := condition.Params[0].([]byte)
+	if ok {
+		copy(clientCommP[:], clientCommPBytes)
+	} else {
+		clientCommP, ok = condition.Params[0].(types.CommP)
+		if !ok {
+			return errors.New("piece commitment is not a CommP")
+		}
+	}
+
+	if clientCommP != commP {
+		return errors.New("piece commitment does not match commitment supplied in payment condition")
+	}
+
+	var clientPieceSize *types.BytesAmount
+	// lack of type data in params means piece size isn't necessarily cbor decoded
+	clientPieceSizeBytes, ok := condition.Params[1].([]byte)
+	if ok {
+		clientPieceSize = types.NewBytesAmountFromBytes(clientPieceSizeBytes)
+	} else {
+		clientPieceSize, ok = condition.Params[1].(*types.BytesAmount)
+		if !ok {
+			return errors.New("piece size is not a bytes amount")
+		}
+	}
+
+	if !pieceSize.Equal(clientPieceSize) {
+		return errors.Errorf("piece size, %v,  does not match piece size supplied in payment condition: %v", pieceSize, clientPieceSize)
+	}
+
+	return nil
+}
+
 func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,

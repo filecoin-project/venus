@@ -126,7 +126,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Generating the piece commitment is a computationally expensive operation and can take
 	// many minutes depending on the size of the piece.
-	res, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+	pieceCommitmentResponse, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
 		PieceReader: pieceReader,
 		PieceSize:   types.NewBytesAmount(pieceSize),
 	})
@@ -194,7 +194,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 			Value:           totalCost,
 			Duration:        duration,
 			MinerAddress:    miner,
-			CommP:           res.CommP,
+			CommP:           pieceCommitmentResponse.CommP,
 			PaymentInterval: VoucherInterval,
 			PieceSize:       types.NewBytesAmount(pieceSize),
 			ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
