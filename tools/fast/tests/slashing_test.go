@@ -29,7 +29,7 @@ func TestSlashing(t *testing.T) {
 		// Give the deal time to complete
 		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 			InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
-			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
+			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
 		})
 		defer func() {
 			require.NoError(t, env.Teardown(ctx))
@@ -59,7 +59,7 @@ func TestSlashing(t *testing.T) {
 		// miner is offline for entire proving period + grace period
 		require.NoError(t, minerDaemon.StopDaemon(ctx))
 
-		waitLimit = 2000
+		waitLimit = 4000
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
 }
@@ -99,8 +99,11 @@ func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner add
 		powers, err := d.MinerPower(ctx, miner)
 		require.NoError(t, err)
 		if expPower == powers.Power.Uint64() {
-			fmt.Printf("Power reached %5d at iteration %5d", expPower, i)
+			fmt.Printf("Power reached %5d at iteration %5d \n", expPower, i)
 			return nil
+		}
+		if i%100 == 0 {
+			t.Logf("Power is %5d \n", powers.Power.Uint64())
 		}
 		series.CtxSleepDelay(ctx)
 	}
