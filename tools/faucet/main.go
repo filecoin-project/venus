@@ -131,7 +131,7 @@ const form = `
 	<body>
 		<h1> What is your wallet address </h1>
 		<p> You can find this by running: </p>
-		<tt> go-filecoin wallet addrs ls </tt>
+		<tt> go-filecoin address ls </tt>
 		<p> Address: </p>
 		<form action="/tap" method="post">
 			<input type="text" name="target" size="30" />
