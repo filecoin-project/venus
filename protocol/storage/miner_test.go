@@ -311,7 +311,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
 
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, 1, testSlasher.SendCalls)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {

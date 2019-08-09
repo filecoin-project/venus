@@ -29,24 +29,38 @@ func TestSlashing(t *testing.T) {
 		// Give the deal time to complete
 		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 			InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
-			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
+			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
 		})
 		defer func() {
 			require.NoError(t, env.Teardown(ctx))
 		}()
 		clientDaemon := env.GenesisMiner
 		require.NoError(t, clientDaemon.MiningStart(ctx))
-		defer func() {
-			require.NoError(t, clientDaemon.MiningStop(ctx))
-		}()
 
+		// set up the daemon that will be slashing with a storage miner.
+		// we need a third miner because env.GenesisMiner (clientDaemon) is a bootstrap
+		// miner and therefore will never slash.
+		slashingDaemon := env.RequireNewNodeWithFunds(1234)
+		require.NoError(t, series.Connect(ctx, clientDaemon, slashingDaemon))
+		duration := uint64(5)
+		askID := requireMinerCreateWithAsk(ctx, t, slashingDaemon)
+		defer func() {
+			require.NoError(t, slashingDaemon.MiningStop(ctx))
+		}()
+		dealResponse := requireMinerClientMakeADeal(ctx, t, slashingDaemon, clientDaemon, askID, duration)
+		// Wait until deal is accepted and complete
+		require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete))
+
+		require.NoError(t, clientDaemon.MiningStop(ctx))
+		// minerDaemon will be slashed.
 		minerDaemon := env.RequireNewNodeWithFunds(1111)
 		require.NoError(t, series.Connect(ctx, clientDaemon, minerDaemon))
 
-		duration := uint64(5)
-		askID := requireMinerCreateWithAsk(ctx, t, minerDaemon)
+		duration = uint64(5)
+		askID = requireMinerCreateWithAsk(ctx, t, minerDaemon)
+
 		minerAddr := requireGetMinerAddress(ctx, t, minerDaemon)
-		dealResponse := requireMinerClientMakeADeal(ctx, t, minerDaemon, clientDaemon, askID, duration)
+		dealResponse = requireMinerClientMakeADeal(ctx, t, minerDaemon, clientDaemon, askID, duration)
 
 		// Wait until deal is accepted and complete
 		require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete))
@@ -59,7 +73,7 @@ func TestSlashing(t *testing.T) {
 		// miner is offline for entire proving period + grace period
 		require.NoError(t, minerDaemon.StopDaemon(ctx))
 
-		waitLimit = 4000
+		waitLimit = 1000
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
 }
@@ -101,9 +115,6 @@ func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner add
 		if expPower == powers.Power.Uint64() {
 			fmt.Printf("Power reached %5d at iteration %5d \n", expPower, i)
 			return nil
-		}
-		if i%100 == 0 {
-			t.Logf("Power is %5d \n", powers.Power.Uint64())
 		}
 		series.CtxSleepDelay(ctx)
 	}
