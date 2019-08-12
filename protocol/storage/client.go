@@ -306,6 +306,11 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 		return nil, err
 	}
 
+	workerAddr, err := smc.api.MinerGetWorkerAddress(ctx, mineraddr)
+	if err != nil {
+		return nil, err
+	}
+
 	minerpid, err := smc.api.MinerGetPeerID(ctx, mineraddr)
 	if err != nil {
 		return nil, err
@@ -316,6 +321,14 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 	err = smc.ProtocolRequestFunc(ctx, queryDealProtocol, minerpid, smc.host, q, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying deal")
+	}
+
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return nil, err
+	}
+	if !valid {
+		return nil, errors.New("deal response has invalid signature")
 	}
 
 	return &resp, nil
