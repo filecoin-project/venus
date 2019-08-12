@@ -668,6 +668,7 @@ type minerTestPorcelain struct {
 	config          *cfg.Config
 	payerAddress    address.Address
 	targetAddress   address.Address
+	workerAddress   address.Address
 	channelID       *types.ChannelID
 	messageCid      *cid.Cid
 	signer          types.MockSigner
@@ -687,9 +688,11 @@ var _ minerPorcelain = (*minerTestPorcelain)(nil)
 type messageHandlerMap map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorcelain {
-	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
 	payerAddr, err := ki[0].Address()
 	require.NoError(t, err, "Could not create payer address")
+	workerAddr, err := ki[1].Address()
+	require.NoError(t, err, "Could not create worker address")
 
 	addressGetter := address.NewForTestGetter()
 	cidGetter := types.NewCidForTestGetter()
@@ -704,6 +707,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 		config:          config,
 		payerAddress:    payerAddr,
 		targetAddress:   addressGetter(),
+		workerAddress:   workerAddr,
 		channelID:       types.NewChannelID(73),
 		messageCid:      &messageCid,
 		signer:          mockSigner,
@@ -800,7 +804,7 @@ func (mtp *minerTestPorcelain) MinerCalculateLateFee(ctx context.Context, minerA
 }
 
 func (mtp *minerTestPorcelain) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	return addr.Bytes(), nil
+	return mtp.signer.SignBytes(data, addr)
 }
 
 func newTestMiner(api *minerTestPorcelain) *Miner {
