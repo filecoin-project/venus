@@ -49,6 +49,11 @@ const (
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
+// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
+type storageFaultSlasher interface {
+	Slash(context.Context, *types.BlockHeight) error
+}
+
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr  address.Address
@@ -70,6 +75,8 @@ type Miner struct {
 
 	proposalAcceptor func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error)
 	proposalRejector func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error)
+
+	storageFaultSlasher storageFaultSlasher
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
@@ -101,8 +108,8 @@ type node interface {
 	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// NewMiner is
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+// NewMiner is for construction of a new storage miner.
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain, slasher storageFaultSlasher) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
@@ -114,6 +121,7 @@ func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, 
 		node:                nd,
 		proposalAcceptor:    acceptProposal,
 		proposalRejector:    rejectProposal,
+		storageFaultSlasher: slasher,
 	}
 
 	if err := sm.loadDealsAwaitingSeal(); err != nil {
@@ -750,7 +758,8 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
-	return nil
+	// slash any late miners w/ unreported storage faults
+	return sm.storageFaultSlasher.Slash(ctx, h)
 }
 
 func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {

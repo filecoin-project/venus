@@ -283,17 +283,6 @@ func GetAllActors(ctx context.Context, t Tree) <-chan GetAllActorsResult {
 	return out
 }
 
-// GetAllActorsFromStore loads a StateTree and returns a channel with addresses
-// and their corresponding actors. The second returned value is any error that
-// occurred when loading.
-func GetAllActorsFromStore(ctx context.Context, store *hamt.CborIpldStore, stateRoot cid.Cid) (<-chan GetAllActorsResult, error) {
-	st, err := LoadStateTree(ctx, store, stateRoot, nil)
-	if err != nil {
-		return nil, err
-	}
-	return GetAllActors(ctx, st), nil
-}
-
 // NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.
 func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActorsResult, ps []*hamt.Pointer) {
 	for _, p := range ps {
