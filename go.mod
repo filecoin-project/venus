@@ -21,6 +21,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/filecoin-project/go-bls-sigs v0.0.0
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
+	github.com/filecoin-project/go-sectorbuilder v0.0.0-20190801004428-e75bc9b0aaea
 	github.com/go-critic/go-critic v0.0.0-20181204210945-ee9bf5809ead // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
@@ -140,3 +141,5 @@ require (
 )
 
 replace github.com/filecoin-project/go-bls-sigs => ./go-bls-sigs
+
+replace github.com/filecoin-project/go-sectorbuilder => ./go-sectorbuilder

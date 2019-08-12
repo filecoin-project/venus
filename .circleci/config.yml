@@ -805,8 +805,8 @@ commands:
           name: generate rust-fil-proofs checksum
           command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-submodules-checksums.txt
       - run:
-          name: append rust-fil-sector-builder checksum
-          command: git rev-parse @:./proofs/rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
+          name: append go-sectorbuilder checksum
+          command: git --git-dir=./go-sectorbuilder/.git rev-parse @:rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
       - run:
           name: append go-bls-sigs checksum
           command: git --git-dir=./go-bls-sigs/.git rev-parse @:bls-signatures >> /tmp/rust-submodules-checksums.txt

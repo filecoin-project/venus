@@ -117,6 +117,8 @@ github.com/filecoin-project/go-bls-sigs v0.0.0-20190724002326-7c76f1d1d7c2 h1:YO
 github.com/filecoin-project/go-bls-sigs v0.0.0-20190724002326-7c76f1d1d7c2/go.mod h1:y5euLUNwRkoJSdnkDi5ZxFzrysgu1JkSRfwotVM87PE=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543/go.mod h1:mjrHv1cDGJWDlGmC0eDc1E5VJr8DmL9XMUcaFwiuKg8=
+github.com/filecoin-project/go-sectorbuilder v0.0.0-20190801004428-e75bc9b0aaea h1:7uL70/MF9zsHMD6vyaPOUYfqc+nCaDg++xadkssNbZk=
+github.com/filecoin-project/go-sectorbuilder v0.0.0-20190801004428-e75bc9b0aaea/go.mod h1:PDdd3YCFpF6Uu3aSZO4O2+4aRANvuhX1ekTIv4JnliM=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
