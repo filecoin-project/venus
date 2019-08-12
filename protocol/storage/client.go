@@ -65,6 +65,7 @@ type clientPorcelainAPI interface {
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error
@@ -155,6 +156,11 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
+	minerWorker, err := smc.api.MinerGetWorkerAddress(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+
 	totalPrice := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
 
 	proposal := &storagedeal.Proposal{
@@ -225,7 +231,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "error sending proposal")
 	}
 
-	if err := smc.checkDealResponse(ctx, &response); err != nil {
+	if err := smc.checkDealResponse(ctx, &response, minerWorker); err != nil {
 		return nil, errors.Wrap(err, "response check failed")
 	}
 
@@ -263,7 +269,16 @@ func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Respons
 	})
 }
 
-func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Response) error {
+func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Response, workerAddr address.Address) error {
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return errors.Wrap(err, "Could not verify response signature")
+	}
+
+	if !valid {
+		return errors.New("Response signature is invalid")
+	}
+
 	switch resp.State {
 	case storagedeal.Rejected:
 		return fmt.Errorf("deal rejected: %s", resp.Message)

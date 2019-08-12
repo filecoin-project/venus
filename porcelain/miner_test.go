@@ -413,13 +413,13 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 	})
 }
 
-type minerGetOwnerPlumbing struct{}
+type minerQueryAndDeserializePlumbing struct{}
 
-func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return [][]byte{address.TestAddress.Bytes()}, nil
 }
 
-func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
 	if method == "getSectorSize" {
 		return &exec.FunctionSignature{
 			Params: nil,
@@ -433,7 +433,15 @@ func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorA
 func TestMinerGetOwnerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
+	addr, err := MinerGetOwnerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, address.TestAddress, addr)
+}
+
+func TestMinerGetWorkerAddress(t *testing.T) {
+	tf.UnitTest(t)
+
+	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, address.TestAddress, addr)
 }
@@ -441,7 +449,7 @@ func TestMinerGetOwnerAddress(t *testing.T) {
 func TestMinerGetPower(t *testing.T) {
 	tf.UnitTest(t)
 
-	power, err := MinerGetPower(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
+	power, err := MinerGetPower(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, "2", power.Total.String())
 	assert.Equal(t, "2", power.Power.String())
