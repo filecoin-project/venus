@@ -817,6 +817,10 @@ func (mtp *minerTestPorcelain) MinerCalculateLateFee(ctx context.Context, minerA
 	return types.ZeroAttoFIL, nil
 }
 
+func (mtp *minerTestPorcelain) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return addr.Bytes(), nil
+}
+
 func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
 		porcelainAPI: api,

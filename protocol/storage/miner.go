@@ -96,6 +96,7 @@ type minerPorcelain interface {
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	types.Signer
 }
 
 // prover computes PoSts for submission by a miner.
@@ -342,7 +343,9 @@ func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, 
 	resp := &storagedeal.Response{
 		State:       storagedeal.Accepted,
 		ProposalCid: proposalCid,
-		Signature:   types.Signature("signaturrreee"),
+	}
+	if err = sm.signDealResponse(resp); err != nil {
+		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
 	storageDeal := &storagedeal.Deal{
@@ -371,7 +374,9 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 		State:       storagedeal.Rejected,
 		ProposalCid: proposalCid,
 		Message:     reason,
-		Signature:   types.Signature("signaturrreee"),
+	}
+	if err = sm.signDealResponse(resp); err != nil {
+		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
 	storageDeal := &storagedeal.Deal{
@@ -387,17 +392,19 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 }
 
 func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f func(*storagedeal.Response)) error {
-	storageDeal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
+	deal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
-	f(storageDeal.Response)
-	err = sm.porcelainAPI.DealPut(storageDeal)
+	f(deal.Response)
+	sm.signDealResponse(deal.Response)
+
+	err = sm.porcelainAPI.DealPut(deal)
 	if err != nil {
 		return errors.Wrap(err, "failed to store updated deal response in datastore")
 	}
 
-	log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), storageDeal.Response)
+	log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), deal.Response)
 	return nil
 }
 
@@ -547,6 +554,17 @@ func (sm *Miner) saveDealsAwaitingSeal() error {
 	}
 
 	return nil
+}
+
+func (sm *Miner) signDealResponse(resp *storagedeal.Response) error {
+	resp.Signature = nil
+	respBytes, err := cbor.DumpObject(resp)
+	if err != nil {
+		return err
+	}
+
+	resp.Signature, err = sm.porcelainAPI.SignBytes(respBytes, sm.ownerAddr)
+	return err
 }
 
 // OnCommitmentSent is a callback, called when a sector seal message was posted to the chain.
