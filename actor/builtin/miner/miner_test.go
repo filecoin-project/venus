@@ -1256,6 +1256,22 @@ func TestVerifyPIP(t *testing.T) {
 		require.Nil(t, verifier.LastReceivedVerifyPieceInclusionProofRequest, "should have never called the verifier")
 	})
 
+	t.Run("PIP is invalid if miner isn't proving anything", func(t *testing.T) {
+		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.SectorCommitments = nil
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		miner := Actor{}
+
+		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
+
+		require.Error(t, err, "not active")
+		require.NotEqual(t, uint8(0), code)
+	})
+
 	t.Run("PIP is invalid if miner is tardy/slashable", func(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
 		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
