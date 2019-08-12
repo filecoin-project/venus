@@ -116,6 +116,31 @@ type Response struct {
 	Signature types.Signature
 }
 
+// Sign signs this response
+func (r *Response) Sign(signer types.Signer, addr address.Address) error {
+	r.Signature = nil
+	respBytes, err := cbor.DumpObject(r)
+	if err != nil {
+		return err
+	}
+
+	r.Signature, err = signer.SignBytes(respBytes, addr)
+	return err
+}
+
+// VerifySignature verifies the signature of this response
+func (r *Response) VerifySignature(addr address.Address) (bool, error) {
+	var responseCopy Response
+	responseCopy = *r
+	responseCopy.Signature = nil
+	respBytes, err := cbor.DumpObject(responseCopy)
+	if err != nil {
+		return false, err
+	}
+
+	return types.IsValidSignature(respBytes, addr, r.Signature), nil
+}
+
 // Deal is a storage deal struct
 type Deal struct {
 	Miner    address.Address

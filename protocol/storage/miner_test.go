@@ -38,7 +38,7 @@ const (
 func TestReceiveStorageProposal(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
+	t.Run("Accepts proposals with sufficient TotalPrice and signs response", func(t *testing.T) {
 		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		miner := Miner{
 			porcelainAPI:        porcelainAPI,
@@ -60,6 +60,10 @@ func TestReceiveStorageProposal(t *testing.T) {
 		for _, deal := range porcelainAPI.deals {
 			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
 			assert.Equal(t, "", deal.Response.Message)
+
+			valid, err := deal.Response.VerifySignature(porcelainAPI.workerAddress)
+			require.NoError(t, err)
+			assert.True(t, valid)
 		}
 	})
 
@@ -88,7 +92,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		}
 	})
 
-	t.Run("Rejects proposals with insufficient TotalPrice", func(t *testing.T) {
+	t.Run("Rejects proposals with insufficient TotalPrice and signs response", func(t *testing.T) {
 		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
 		// configure storage price
@@ -99,6 +103,20 @@ func TestReceiveStorageProposal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Rejected, res.State)
 		assert.Equal(t, "proposed price (2500) is less than expected (5000) given asking price of 0.0005", res.Message)
+	})
+
+	t.Run("Rejected proposals are signed", func(t *testing.T) {
+		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
+
+		// configure storage price
+		assert.NoError(t, porcelainAPI.config.Set("mining.storagePrice", `".0005"`))
+
+		res, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		valid, err := res.VerifySignature(porcelainAPI.workerAddress)
+		require.NoError(t, err)
+		assert.True(t, valid)
 	})
 
 	t.Run("Rejects proposals with invalid payment channel", func(t *testing.T) {
@@ -279,7 +297,7 @@ func TestOnCommitmentSent(t *testing.T) {
 
 	t.Run("On successful commitment", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+		porcelainAPI, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
@@ -294,6 +312,11 @@ func TestOnCommitmentSent(t *testing.T) {
 		assert.Equal(t, sector.CommD[:], dealResponse.ProofInfo.CommD)
 		assert.Equal(t, sector.CommR[:], dealResponse.ProofInfo.CommR)
 		assert.Equal(t, sector.CommRStar[:], dealResponse.ProofInfo.CommRStar)
+
+		// response is signed
+		valid, err := dealResponse.VerifySignature(porcelainAPI.workerAddress)
+		require.NoError(t, err)
+		assert.True(t, valid)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
