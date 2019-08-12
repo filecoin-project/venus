@@ -286,7 +286,7 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 	})
 }
 
-func TestOnCommitmentAddedToChain(t *testing.T) {
+func TestOnCommitmentSent(t *testing.T) {
 	tf.UnitTest(t)
 
 	cidGetter := types.NewCidForTestGetter()
@@ -309,9 +309,6 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
-
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
@@ -352,6 +349,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "bootstrapping")
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
@@ -368,6 +367,10 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// empty TipSet causes error if bootstrap miner is not set (see "Errors if tipset has no blocks")
 		err := miner.OnNewHeaviestTipSet(types.TipSet{})
 		require.NoError(t, err)
+
+		// bootstrap miner should never slash
+		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it cannot retrieve sector commitments", func(t *testing.T) {
@@ -384,6 +387,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
@@ -404,6 +409,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
@@ -422,6 +429,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get proving period")
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
@@ -436,6 +445,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get block height")
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
@@ -468,6 +479,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// assert proof generated in sector builder is sent to submitPoSt
 		require.Equal(t, 3, len(postParams))
 		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
+
+		// "slash early, slash often" slasher will still be called when there are no errors
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
@@ -496,6 +509,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Wait to make sure submitPoSt is not called
 		time.Sleep(1 * time.Second)
+
+		// "slash early, slash often" slasher will still be called when there are no errors
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
@@ -523,6 +538,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Sleep to ensure submit post is not called
 		time.Sleep(1 * time.Second)
+
+		// slasher shouldn't have been called if it errors out beforehand.
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
