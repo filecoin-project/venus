@@ -349,10 +349,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "bootstrapping")
-
-		// slasher shouldn't have been called if it errors out beforehand.
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Exits early if miner is bootstrap miner", func(t *testing.T) {
@@ -367,10 +363,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// empty TipSet causes error if bootstrap miner is not set (see "Errors if tipset has no blocks")
 		err := miner.OnNewHeaviestTipSet(types.TipSet{})
 		require.NoError(t, err)
-
-		// bootstrap miner should never slash
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it cannot retrieve sector commitments", func(t *testing.T) {
@@ -387,10 +379,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
-
-		// slasher shouldn't have been called if it errors out beforehand.
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it commitments contains a bad id", func(t *testing.T) {
@@ -409,10 +397,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
-
-		// slasher shouldn't have been called if it errors out beforehand.
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if it cannot retrieve post period", func(t *testing.T) {
@@ -429,10 +413,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get proving period")
-
-		// slasher shouldn't have been called if it errors out beforehand.
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if tipset has no blocks", func(t *testing.T) {
@@ -445,10 +425,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get block height")
-
-		// slasher shouldn't have been called if it errors out beforehand.
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
 
 	t.Run("calls SubmitsPoSt when in proving period", func(t *testing.T) {
@@ -479,10 +455,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		// assert proof generated in sector builder is sent to submitPoSt
 		require.Equal(t, 3, len(postParams))
 		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
-
-		// "slash early, slash often" slasher will still be called when there are no errors
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
 
 	t.Run("Does not post if block height is too low", func(t *testing.T) {
@@ -509,10 +481,6 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Wait to make sure submitPoSt is not called
 		time.Sleep(1 * time.Second)
-
-		// "slash early, slash often" slasher will still be called when there are no errors
-		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
-		assert.Equal(t, uint64(1), testSlasher.SendCalls)
 	})
 
 	t.Run("Errors if past proving period", func(t *testing.T) {
@@ -538,11 +506,144 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// Sleep to ensure submit post is not called
 		time.Sleep(1 * time.Second)
+	})
+}
 
-		// slasher shouldn't have been called if it errors out beforehand.
+func TestSlasherCalls(t *testing.T) {
+	tf.UnitTest(t)
+
+	cidGetter := types.NewCidForTestGetter()
+	proposalCid := cidGetter()
+
+	sector := testSectorMetadata(proposalCid)
+
+	type testCases []struct {
+		name        string
+		handlerName string
+		height      uint64
+		handlerFunc func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error)
+	}
+
+	nonSlasherCallingCases := testCases{
+		{
+			name:        "this is a bootstrap miner",
+			handlerName: "isBootstrapMiner",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return mustEncodeResults(t, true), nil
+			},
+		},
+		{
+			name:        "getting bootstrap miner flag returns error",
+			handlerName: "isBootstrapMiner",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return [][]byte{}, errors.New("test error")
+			},
+		},
+		{
+			name:        "getting proving set commitments returns error",
+			handlerName: "getProvingSetCommitments",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return nil, errors.New("test error")
+			},
+		},
+		{name: "proving set commitments contains a bad id",
+			handlerName: "getProvingSetCommitments",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				commitments := map[string]types.Commitments{}
+				commitments["notanumber"] = types.Commitments{}
+				return mustEncodeResults(t, commitments), nil
+			},
+		},
+		{
+			name:        "cannot retrieve proving period",
+			handlerName: "getProvingPeriod",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return nil, errors.New("test error")
+			},
+		},
+		{
+			name:        "it cannot retrieve post period",
+			handlerName: "getProvingPeriod",
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return nil, errors.New("test error")
+			},
+		},
+		{name: "If too late past proving period",
+			handlerName: "submitPoSt",
+			height:      50500,
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				t.Error("Should not have called submit post")
+				return [][]byte{}, nil
+			},
+		},
+	}
+
+	for _, testCase := range nonSlasherCallingCases {
+		t.Run("Slasher is not called if "+testCase.name, func(t *testing.T) {
+			api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+
+			api.messageHandlers = successMessageHandlers(t)
+			if testCase.handlerName != "" {
+				api.messageHandlers[testCase.handlerName] = testCase.handlerFunc
+			}
+			// height doesn't really matter here
+			callOnNewHeaviestTipSet(api, t, miner, testCase.height)
+
+			testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+			assert.Equal(t, uint64(0), testSlasher.SendCalls)
+		})
+	}
+
+	t.Run("Slasher is not called if tipset has no blocks", func(t *testing.T) {
+		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+		api.messageHandlers = successMessageHandlers(t)
+		require.Error(t, miner.OnNewHeaviestTipSet(types.TipSet{}))
 		testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
 		assert.Equal(t, uint64(0), testSlasher.SendCalls)
 	})
+
+	slasherCallingCases := testCases{
+		{
+			name:        "it's after proving period",
+			handlerName: "submitPoSt",
+			height:      20500,
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				return [][]byte{}, nil
+			},
+		}, {
+			name:        "block height is low",
+			handlerName: "submitPoSt",
+			height:      10500,
+			handlerFunc: func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+				t.Error("Should not have called submit post")
+				return [][]byte{}, nil
+			},
+		},
+	}
+
+	// Slasher should always be called under normal / non-error case
+	for _, testCase := range slasherCallingCases {
+		t.Run("Slasher is called if "+testCase.name, func(t *testing.T) {
+			// create new miner with deal in the accepted state and mapped to a sector
+			api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+			handlers := successMessageHandlers(t)
+			handlers["submitPoSt"] = testCase.handlerFunc
+			api.messageHandlers = handlers
+			callOnNewHeaviestTipSet(api, t, miner, testCase.height)
+			testSlasher := miner.storageFaultSlasher.(*TrivialTestSlasher)
+			assert.Equal(t, uint64(1), testSlasher.SendCalls)
+		})
+	}
+}
+
+func callOnNewHeaviestTipSet(api *minerTestPorcelain, t *testing.T, miner *Miner, height uint64) {
+	api.blockHeight = types.NewBlockHeight(height)
+	block := &types.Block{Height: types.Uint64(height)}
+	ts, err := types.NewTipSet(block)
+	require.NoError(t, err)
+	_ = miner.OnNewHeaviestTipSet(ts)
+	// Sleep to make sure submitPoSt is not called
+	time.Sleep(1 * time.Second)
 }
 
 func successMessageHandlers(t *testing.T) messageHandlerMap {
