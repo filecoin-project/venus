@@ -39,26 +39,14 @@ func TestReceiveStorageProposal(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
-		accepted := false
-		rejected := false
-		var message string
-
 		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		miner := Miner{
-			porcelainAPI: porcelainAPI,
-			ownerAddr:    porcelainAPI.targetAddress,
-			workerAddr:   porcelainAPI.targetAddress,
-			sectorSize:   types.OneKiBSectorSize,
-			proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-				accepted = true
-				return &storagedeal.Response{State: storagedeal.Accepted}, nil
-			},
-			proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-				message = reason
-				rejected = true
-				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-			},
+			porcelainAPI:        porcelainAPI,
+			ownerAddr:           porcelainAPI.targetAddress,
+			workerAddr:          porcelainAPI.targetAddress,
+			sectorSize:          types.OneKiBSectorSize,
 			storageFaultSlasher: &TrivialTestSlasher{},
+			proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
 		}
 
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, defaultAmountInc)
@@ -67,32 +55,23 @@ func TestReceiveStorageProposal(t *testing.T) {
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
 
-		assert.True(t, accepted, "Proposal has been accepted")
-		assert.False(t, rejected, "Proposal has not been rejected")
-		assert.Equal(t, "", message)
+		// one deal should be stored and it should have been accepted
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+		}
 	})
 
 	t.Run("Accepts proposals with no payments when price is zero", func(t *testing.T) {
-		accepted := false
-		rejected := false
-		var message string
-
 		porcelainAPI := newMinerTestPorcelain(t, "0")
 		miner := Miner{
-			porcelainAPI: porcelainAPI,
-			ownerAddr:    porcelainAPI.targetAddress,
-			workerAddr:   porcelainAPI.targetAddress,
-			sectorSize:   types.OneKiBSectorSize,
-			proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-				accepted = true
-				return &storagedeal.Response{State: storagedeal.Accepted}, nil
-			},
-			proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-				message = reason
-				rejected = true
-				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-			},
+			porcelainAPI:        porcelainAPI,
+			ownerAddr:           porcelainAPI.targetAddress,
+			workerAddr:          porcelainAPI.targetAddress,
+			sectorSize:          types.OneKiBSectorSize,
 			storageFaultSlasher: &TrivialTestSlasher{},
+			proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
 		}
 
 		// do not create payment info
@@ -101,9 +80,12 @@ func TestReceiveStorageProposal(t *testing.T) {
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
 
-		assert.True(t, accepted, "Proposal has been accepted")
-		assert.False(t, rejected, "Proposal has not been rejected")
-		assert.Equal(t, "", message)
+		// one deal should be stored and it should have been accepted
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+		}
 	})
 
 	t.Run("Rejects proposals with insufficient TotalPrice", func(t *testing.T) {
@@ -823,18 +805,13 @@ func (mtp *minerTestPorcelain) SignBytes(data []byte, addr address.Address) (typ
 
 func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
-		porcelainAPI: api,
-		ownerAddr:    api.targetAddress,
-		workerAddr:   api.targetAddress,
-		prover:       &FakeProver{},
-		sectorSize:   types.OneKiBSectorSize,
-		proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-			return &storagedeal.Response{State: storagedeal.Accepted}, nil
-		},
-		proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-			return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-		},
+		porcelainAPI:        api,
+		ownerAddr:           api.targetAddress,
+		workerAddr:          api.targetAddress,
+		prover:              &FakeProver{},
+		sectorSize:          types.OneKiBSectorSize,
 		storageFaultSlasher: &TrivialTestSlasher{},
+		proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
 	}
 }
 
@@ -963,4 +940,8 @@ func (mtp *minerTestPorcelain) DealGet(_ context.Context, dealCid cid.Cid) (*sto
 func (mtp *minerTestPorcelain) DealPut(storageDeal *storagedeal.Deal) error {
 	mtp.deals[storageDeal.Response.ProposalCid] = storageDeal
 	return nil
+}
+
+func (mtp *minerTestPorcelain) SectorBuilder() sectorbuilder.SectorBuilder {
+	return &sectorbuilder.RustSectorBuilder{}
 }
