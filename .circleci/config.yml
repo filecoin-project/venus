@@ -73,6 +73,9 @@ jobs:
             mkdir $HOME/.bin
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
             chmod +x $HOME/.bin/jq
+      - run:
+          name: Load submodules 
+          command: git submodule update --init --recursive
       - go_build:
           cmd: "deps"
           no_output_timeout: "60m"
