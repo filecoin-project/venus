@@ -29,7 +29,7 @@ func TestSlashing(t *testing.T) {
 		// Give the deal time to complete
 		ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 			InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
-			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
+			DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(150 * time.Millisecond)},
 		})
 		defer func() {
 			require.NoError(t, env.Teardown(ctx))
@@ -40,54 +40,47 @@ func TestSlashing(t *testing.T) {
 		// set up the daemon that will be slashing with a storage miner.
 		// we need a third miner because env.GenesisMiner (clientDaemon) is a bootstrap
 		// miner and therefore will never slash.
-		slashingDaemon := env.RequireNewNodeWithFunds(1234)
-		require.NoError(t, series.Connect(ctx, clientDaemon, slashingDaemon))
-		duration := uint64(5)
-		askID := requireMinerCreateWithAsk(ctx, t, slashingDaemon)
+		slashingDaemon, askIDSlash := requireMinerCreateWithAsk(ctx, t, env, clientDaemon)
 		defer func() {
 			require.NoError(t, slashingDaemon.MiningStop(ctx))
 		}()
-		dealResponse := requireMinerClientMakeADeal(ctx, t, slashingDaemon, clientDaemon, askID, duration)
-		// Wait until deal is accepted and complete
-		require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete))
 
-		require.NoError(t, clientDaemon.MiningStop(ctx))
 		// minerDaemon will be slashed.
-		minerDaemon := env.RequireNewNodeWithFunds(1111)
-		require.NoError(t, series.Connect(ctx, clientDaemon, minerDaemon))
+		minerDaemon, askID := requireMinerCreateWithAsk(ctx, t, env, clientDaemon)
 
-		duration = uint64(5)
-		askID = requireMinerCreateWithAsk(ctx, t, minerDaemon)
+		duration := uint64(5)
+		requireMinerClientCompleteDeal(ctx, t, slashingDaemon, clientDaemon, askIDSlash, duration)
+		requireMinerClientCompleteDeal(ctx, t, minerDaemon, clientDaemon, askID, duration)
 
-		minerAddr := requireGetMinerAddress(ctx, t, minerDaemon)
-		dealResponse = requireMinerClientMakeADeal(ctx, t, minerDaemon, clientDaemon, askID, duration)
-
-		// Wait until deal is accepted and complete
-		require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete))
+		// genesis mining isn't needed any more.
+		require.NoError(t, clientDaemon.MiningStop(ctx))
 
 		// Wait until miner gets their power
+		minerAddr := requireGetMinerAddress(ctx, t, minerDaemon)
 		waitLimit := miner.LargestSectorSizeProvingPeriodBlocks + duration + 1
 		require.NoError(t, series.WaitForBlockHeight(ctx, minerDaemon, types.NewBlockHeight(waitLimit)))
 		require.NoError(t, waitForPower(ctx, t, minerDaemon, minerAddr, 1024, waitLimit))
 
 		// miner is offline for entire proving period + grace period
-		require.NoError(t, minerDaemon.StopDaemon(ctx))
-
 		waitLimit = 1000
+		require.NoError(t, minerDaemon.StopDaemon(ctx))
 		assert.NoError(t, waitForPower(ctx, t, clientDaemon, minerAddr, 0, waitLimit))
 	})
 }
 
-func requireMinerCreateWithAsk(ctx context.Context, t *testing.T, d *fast.Filecoin) uint64 {
+func requireMinerCreateWithAsk(ctx context.Context, t *testing.T, env *fastesting.TestEnvironment, client *fast.Filecoin) (*fast.Filecoin, uint64) {
 	collateral := big.NewInt(int64(100))
 	askPrice := big.NewFloat(0.5)
 	expiry := big.NewInt(int64(10000))
-	ask, err := series.CreateStorageMinerWithAsk(ctx, d, collateral, askPrice, expiry)
+
+	minerd := env.RequireNewNodeWithFunds(1234)
+	require.NoError(t, series.Connect(ctx, client, minerd))
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerd, collateral, askPrice, expiry)
 	require.NoError(t, err)
-	return ask.ID
+	return minerd, ask.ID
 }
 
-func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) *storagedeal.Response {
+func requireMinerClientCompleteDeal(ctx context.Context, t *testing.T, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) {
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
 	require.NoError(t, err)
@@ -97,7 +90,11 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, askID, duration, fast.AOAllowDuplicates(true))
 
 	require.NoError(t, err)
-	return dealResponse
+	// Wait until deal is accepted and complete
+	require.NoError(t, series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Complete))
+	bh, err := series.GetHeadBlockHeight(ctx, minerDaemon)
+	require.NoError(t, err)
+	fmt.Printf("Deal complete at block height %5d \n", bh.AsBigInt().Uint64())
 }
 
 func requireGetMinerAddress(ctx context.Context, t *testing.T, daemon *fast.Filecoin) address.Address {
@@ -115,6 +112,9 @@ func waitForPower(ctx context.Context, t *testing.T, d *fast.Filecoin, miner add
 		if expPower == powers.Power.Uint64() {
 			fmt.Printf("Power reached %5d at iteration %5d \n", expPower, i)
 			return nil
+		}
+		if i%100 == 0 {
+			fmt.Printf("Power is %5d at iteration %5d \n", powers.Power.Uint64(), i)
 		}
 		series.CtxSleepDelay(ctx)
 	}
