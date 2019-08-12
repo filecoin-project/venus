@@ -563,7 +563,7 @@ func (sm *Miner) signDealResponse(resp *storagedeal.Response) error {
 		return err
 	}
 
-	resp.Signature, err = sm.porcelainAPI.SignBytes(respBytes, sm.ownerAddr)
+	resp.Signature, err = sm.porcelainAPI.SignBytes(respBytes, sm.workerAddr)
 	return err
 }
 
