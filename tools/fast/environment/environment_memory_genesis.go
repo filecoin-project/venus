@@ -78,9 +78,6 @@ func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMo
 // Filecoin processes default wallet address.
 // GetFunds will cause the genesis node to send 1000 filecoin to process `p`.
 func (e *MemoryGenesis) GetFunds(ctx context.Context, p *fast.Filecoin) error {
-	e.processesMu.Lock()
-	defer e.processesMu.Unlock()
-
 	e.log.Infof("GetFunds for process: %s", p.String())
 	return series.SendFilecoinDefaults(ctx, e.Processes()[0], p, 1000)
 }
@@ -240,7 +237,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:               0,
-				NumCommittedSectors: 1,
+				NumCommittedSectors: 128,
 			},
 		},
 		ProofsMode: e.proofsMode,
