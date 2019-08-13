@@ -3,10 +3,9 @@ package porcelain_test
 import (
 	"context"
 	"errors"
+	"github.com/ipfs/go-ipld-cbor"
 	"math/big"
 	"testing"
-
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -300,7 +300,7 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 	copy(commP[:], testhelpers.MakeRandomBytes(len(types.CommP{})))
 
 	makeValidCondition := func() *types.Predicate {
-		return &types.Predicate{
+		condition := &types.Predicate{
 			To:     address.TestAddress,
 			Method: "verifyPieceInclusion",
 			Params: []interface{}{
@@ -308,17 +308,24 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 				pieceSize,
 			},
 		}
+
+		// simulate parameter encoding from encoding and decoding to send across the network
+		conditionBytes, err := cbornode.DumpObject(condition)
+		require.NoError(t, err)
+		require.NoError(t, cbornode.DecodeInto(conditionBytes, condition))
+
+		return condition
 	}
 
 	t.Run("Accepts the nil condition", func(t *testing.T) {
-		err := ValidateStoragePaymentCondition(context.Background(), nil, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), nil, address.TestAddress, commP, pieceSize)
 		require.NoError(t, err)
 	})
 
 	t.Run("Accepts valid condition", func(t *testing.T) {
 		condition := makeValidCondition()
 
-		err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.NoError(t, err)
 	})
 
@@ -326,7 +333,7 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 		condition := makeValidCondition()
 		condition.Method = "notARealMethod"
 
-		err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "payment condition method")
 
@@ -336,13 +343,13 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 		condition := makeValidCondition()
 		condition.To = address.TestAddress2
 
-		err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "wrong address")
+		assert.Contains(t, err.Error(), "voucher condition addressed")
 
 	})
 
-	t.Run("Condition invalid when it wrong number of parameters", func(t *testing.T) {
+	t.Run("Condition invalid when it contains wrong number of parameters", func(t *testing.T) {
 		invalidParameters := [][]interface{}{
 			nil,
 			{},
@@ -354,7 +361,7 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 			condition := makeValidCondition()
 			condition.Params = invalidParam
 
-			err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+			err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "2 parameters")
 		}
@@ -364,13 +371,13 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 		condition := makeValidCondition()
 		condition.Params[0] = types.CommP{}
 
-		err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "piece commitment")
 
 		condition.Params[0] = "not event a byte slice"
 
-		err = ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err = ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "piece commitment")
 	})
@@ -379,13 +386,13 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 		condition := makeValidCondition()
 		condition.Params[1] = uint64(3223893)
 
-		err := ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "piece size")
 
 		condition.Params[1] = "not even a uint64"
 
-		err = ValidateStoragePaymentCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
+		err = ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "piece size")
 	})

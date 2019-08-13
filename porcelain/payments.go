@@ -185,15 +185,15 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	return response, nil
 }
 
-// ValidateStoragePaymentCondition validates that condition of a voucher created for a storage payment meets expectations
-func ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+// ValidatePaymentVoucherCondition validates that condition of a voucher created for a storage payment meets expectations
+func ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
 	// a nil condition is always valid
 	if condition == nil {
 		return nil
 	}
 
 	if condition.To != minerAddr {
-		return errors.New("voucher condition addressed to wrong address")
+		return errors.Errorf("voucher condition addressed to %s, should be %s", condition.To, minerAddr)
 	}
 
 	if condition.Method != verifyPieceInclusionMethod {
@@ -205,31 +205,23 @@ func ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predi
 	}
 
 	var clientCommP types.CommP
-	// lack of type data in params means commP isn't necessarily cbor decoded
 	clientCommPBytes, ok := condition.Params[0].([]byte)
 	if ok {
 		copy(clientCommP[:], clientCommPBytes)
 	} else {
-		clientCommP, ok = condition.Params[0].(types.CommP)
-		if !ok {
-			return errors.New("piece commitment is not a CommP")
-		}
+		return errors.New("piece commitment is not a CommP")
 	}
 
 	if clientCommP != commP {
-		return errors.New("piece commitment does not match commitment supplied in payment condition")
+		return errors.Errorf("piece commitment, [% x] does not match payment condition commitment: [% x]", clientCommP[:], commP[:])
 	}
 
 	var clientPieceSize *types.BytesAmount
-	// lack of type data in params means piece size isn't necessarily cbor decoded
 	clientPieceSizeBytes, ok := condition.Params[1].([]byte)
 	if ok {
 		clientPieceSize = types.NewBytesAmountFromBytes(clientPieceSizeBytes)
 	} else {
-		clientPieceSize, ok = condition.Params[1].(*types.BytesAmount)
-		if !ok {
-			return errors.New("piece size is not a bytes amount")
-		}
+		return errors.New("piece size is not a bytes amount")
 	}
 
 	if !pieceSize.Equal(clientPieceSize) {

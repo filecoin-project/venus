@@ -798,7 +798,7 @@ func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sample
 	return bytes, nil
 }
 
-func (mtp *minerTestPorcelain) ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+func (mtp *minerTestPorcelain) ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
 	return nil
 }
 

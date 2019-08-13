@@ -91,7 +91,7 @@ type minerPorcelain interface {
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
 
-	ValidateStoragePaymentCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
+	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
@@ -512,7 +512,7 @@ func (sm *Miner) validatePieceCommitments(ctx context.Context, deal *storagedeal
 	}
 
 	for _, voucher := range deal.Proposal.Payment.Vouchers {
-		err := porcelain.ValidateStoragePaymentCondition(ctx, voucher.Condition, sm.minerAddr, pieceCommitmentResponse.CommP, deal.Proposal.Size)
+		err := porcelain.ValidatePaymentVoucherCondition(ctx, voucher.Condition, sm.minerAddr, pieceCommitmentResponse.CommP, deal.Proposal.Size)
 		if err != nil {
 			return err
 		}
