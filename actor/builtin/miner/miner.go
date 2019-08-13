@@ -47,13 +47,6 @@ const LargestSectorGenerationAttackThresholdBlocks = 100
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
 
-// ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
-// after which the miner is no longer considered to be storing the client's piece and they are entitled to
-// a refund.
-// TODO: what is a fair value for this? Value is arbitrary right now.
-// See https://github.com/filecoin-project/go-filecoin/issues/1887
-const PieceInclusionGracePeriodBlocks = 10000
-
 const (
 	// ErrInvalidSector indicates and invalid sector id.
 	ErrInvalidSector = 34
@@ -673,12 +666,15 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
-// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
+// verifies that this miner is not slashable
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
 func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
+
+	chainHeight := ctx.BlockHeight()
 
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -689,14 +685,14 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSiz
 			return nil, errors.NewRevertError("sector not committed")
 		}
 
-		// If miner is not up-to-date on their PoSts, proof is invalid
-		if state.LastPoSt == nil {
-			return nil, errors.NewRevertError("proofs out of date")
+		if state.ProvingPeriodEnd == nil {
+			return nil, errors.NewRevertError("miner not active")
 		}
 
-		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(PieceInclusionGracePeriodBlocks))
-		if ctx.BlockHeight().GreaterThan(clientProofsTimeout) {
-			return nil, errors.NewRevertError("proofs out of date")
+		// Ensure the miner is active
+		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		if chainHeight.GreaterThan(deadline) {
+			return nil, errors.NewRevertError("miner is tardy")
 		}
 
 		// Verify proof proves CommP is in sector's CommD

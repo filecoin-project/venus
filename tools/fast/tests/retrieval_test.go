@@ -211,7 +211,14 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	require.NoError(t, err)
 
 	// Wait for the deal to be complete
-	err = series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	require.NoError(t, err)
+
+	_, err = client.MessageWait(ctx, proposalResponse.ProofInfo.CommitmentMessage)
+	require.NoError(t, err)
+
+	// Verify PIP
+	_, err = client.ClientVerifyStorageDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 
 	// Retrieve the stored piece of data

@@ -79,7 +79,7 @@ func TestDealsRedeem(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait until deal is accepted so miner has redeemable vouchers.
-	err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Staged)
+	_, err = series.WaitForDealState(ctx, clientDaemon, dealResponse, storagedeal.Staged)
 	require.NoError(t, err)
 
 	// Wait until deal period is complete.

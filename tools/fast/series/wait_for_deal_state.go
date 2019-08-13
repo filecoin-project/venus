@@ -9,20 +9,18 @@ import (
 
 // WaitForDealState will query the storage deal until its state matches the
 // passed in `state`, or the context is canceled.
-func WaitForDealState(ctx context.Context, client *fast.Filecoin, deal *storagedeal.Response, state storagedeal.State) error {
+func WaitForDealState(ctx context.Context, client *fast.Filecoin, deal *storagedeal.Response, state storagedeal.State) (*storagedeal.Response, error) {
 	for {
 		// Client waits around for the deal to be sealed
 		dr, err := client.ClientQueryStorageDeal(ctx, deal.ProposalCid)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if dr.State == state {
-			break
+			return dr, nil
 		}
 
 		CtxSleepDelay(ctx)
 	}
-
-	return nil
 }
