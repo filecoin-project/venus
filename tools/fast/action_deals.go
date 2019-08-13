@@ -2,6 +2,7 @@ package fast
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/ipfs/go-cid"
 
@@ -9,9 +10,7 @@ import (
 )
 
 // DealsList runs the `deals list` command against the filecoin process
-func (f *Filecoin) DealsList(ctx context.Context, client bool, miner bool) (*commands.DealsListResult, error) {
-	var out commands.DealsListResult
-
+func (f *Filecoin) DealsList(ctx context.Context, client bool, miner bool) (*json.Decoder, error) {
 	args := []string{"go-filecoin", "deals", "list"}
 
 	if client {
@@ -22,11 +21,7 @@ func (f *Filecoin) DealsList(ctx context.Context, client bool, miner bool) (*com
 		args = append(args, "--miner")
 	}
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
-		return nil, err
-	}
-
-	return &out, nil
+	return f.RunCmdLDJSONWithStdin(ctx, nil, args...)
 }
 
 // DealsRedeem runs the `deals redeem` command against the filecoin process.
