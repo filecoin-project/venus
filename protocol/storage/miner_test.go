@@ -798,6 +798,10 @@ func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sample
 	return bytes, nil
 }
 
+func (mtp *minerTestPorcelain) ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	return nil
+}
+
 func (mtp *minerTestPorcelain) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return nil
 }

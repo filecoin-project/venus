@@ -13,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -27,6 +28,7 @@ import (
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -88,6 +90,8 @@ type minerPorcelain interface {
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
+
+	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
@@ -448,6 +452,13 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 		return
 	}
 
+	// Before adding piece, confirm that client has generated payment conditions correctly now that
+	// we can compute CommP
+	if err := sm.validatePieceCommitments(ctx, d, rootIpldNode, dagService); err != nil {
+		fail("payment error", fmt.Sprintf("failed to add piece: %s", err))
+		return
+	}
+
 	r, err := uio.NewDagReader(ctx, rootIpldNode, dagService)
 	if err != nil {
 		fail("internal error", fmt.Sprintf("failed to add piece: %s", err))
@@ -482,6 +493,32 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("could not save deal awaiting seal: %s", err)
 	}
+}
+
+func (sm *Miner) validatePieceCommitments(ctx context.Context, deal *storagedeal.Deal, rootIpldNode format.Node, serv format.NodeGetter) error {
+	pieceReader, err := uio.NewDagReader(ctx, rootIpldNode, serv)
+	if err != nil {
+		return err
+	}
+
+	// Generating the piece commitment is a computationally expensive operation and can take
+	// many minutes depending on the size of the piece.
+	pieceCommitmentResponse, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+		PieceReader: pieceReader,
+		PieceSize:   types.NewBytesAmount(deal.Proposal.Size.Uint64()),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to generate pieceCommitmentResponse commitment")
+	}
+
+	for _, voucher := range deal.Proposal.Payment.Vouchers {
+		err := porcelain.ValidatePaymentVoucherCondition(ctx, voucher.Condition, sm.minerAddr, pieceCommitmentResponse.CommP, deal.Proposal.Size)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (sm *Miner) loadDealsAwaitingSeal() error {
