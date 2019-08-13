@@ -1546,7 +1546,6 @@ func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *Sta
 }
 
 type minerEnvBuilder struct {
-	lastPoSt         *types.BlockHeight
 	provingPeriodEnd *types.BlockHeight
 	message          string
 	sectorSet        SectorSet
@@ -1557,7 +1556,6 @@ type minerEnvBuilder struct {
 func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Actor) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
-	minerState.LastPoSt = b.lastPoSt
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd
 
 	if b.sectorSet == nil {
