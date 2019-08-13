@@ -390,13 +390,14 @@ func (sm *Miner) rejectProposal(p *storagedeal.Proposal, reason string) (*storag
 	return resp, nil
 }
 
-func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f func(*storagedeal.Response)) error {
+// updateDealResponse retrieves a deal, operates on its response with a provided callback then signs the deal and stores it.
+func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, callback func(*storagedeal.Response)) error {
 	deal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
 
-	f(deal.Response)
+	callback(deal.Response)
 
 	if err = deal.Response.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
 		return errors.Wrap(err, "could not sign deal response")
