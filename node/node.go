@@ -734,8 +734,7 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 			prevHead = newHead
 
 			if node.StorageMiner != nil {
-				err := node.StorageMiner.OnNewHeaviestTipSet(newHead)
-				if err != nil {
+				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
 			}
@@ -1018,7 +1017,17 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 	}
 
 	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
-	miner, err := storage.NewMiner(minerAddr, ownerAddress, workerAddress, prover, sectorSize, node, node.Repo.DealsDatastore(), node.PorcelainAPI)
+
+	miner, err := storage.NewMiner(
+		minerAddr,
+		ownerAddress,
+		workerAddress,
+		prover,
+		sectorSize,
+		node,
+		node.Repo.DealsDatastore(),
+		node.PorcelainAPI,
+		consensus.NewStorageFaultSlasher(node.PorcelainAPI, node.Outbox, ownerAddress))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}

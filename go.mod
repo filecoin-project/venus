@@ -19,7 +19,9 @@ require (
 	github.com/docker/docker v0.7.3-0.20190315170154-87d593639c77
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
+	github.com/filecoin-project/go-bls-sigs v0.0.0
 	github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543
+	github.com/filecoin-project/go-sectorbuilder v0.0.0-20190801004428-e75bc9b0aaea
 	github.com/go-critic/go-critic v0.0.0-20181204210945-ee9bf5809ead // indirect
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
@@ -43,7 +45,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.0-20190806205338-f506993bcc90
+	github.com/ipfs/go-graphsync v0.0.1-filecoin
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -62,7 +64,7 @@ require (
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.0.1
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
-	github.com/ipld/go-ipld-prime v0.0.0-20190730002952-369bb56ad071
+	github.com/ipld/go-ipld-prime v0.0.1-filecoin
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jbenet/goprocess v0.1.3
@@ -77,21 +79,15 @@ require (
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.0
 	github.com/libp2p/go-libp2p-core v0.0.9
-	github.com/libp2p/go-libp2p-crypto v0.1.0
-	github.com/libp2p/go-libp2p-host v0.0.1
-	github.com/libp2p/go-libp2p-interface-connmgr v0.0.1
+	github.com/libp2p/go-libp2p-host v0.0.1 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
-	github.com/libp2p/go-libp2p-metrics v0.0.1
-	github.com/libp2p/go-libp2p-net v0.1.0
-	github.com/libp2p/go-libp2p-peer v0.2.0
+	github.com/libp2p/go-libp2p-metrics v0.0.1 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.1.2
-	github.com/libp2p/go-libp2p-protocol v0.0.1
 	github.com/libp2p/go-libp2p-pubsub v0.1.0
-	github.com/libp2p/go-libp2p-routing v0.1.0
 	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/libp2p/go-testutil v0.0.1 // indirect
-	github.com/magiconair/properties v1.8.1
+	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/miekg/dns v1.1.15 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.0
@@ -143,3 +139,7 @@ require (
 	gotest.tools v2.2.0+incompatible
 	sourcegraph.com/sourcegraph/go-diff v0.5.1-0.20190210232911-dee78e514455 // indirect
 )
+
+replace github.com/filecoin-project/go-bls-sigs => ./go-bls-sigs
+
+replace github.com/filecoin-project/go-sectorbuilder => ./go-sectorbuilder

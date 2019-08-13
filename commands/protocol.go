@@ -8,8 +8,8 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var protocolCmd = &cmds.Command{
@@ -36,7 +36,7 @@ var protocolCmd = &cmds.Command{
 				sectorSize = types.TwoHundredFiftySixMiBSectorSize
 			}
 
-			maxUserBytes := types.NewBytesAmount(libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+			maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
 
 			_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorSize.Uint64())), readableBytesAmount(float64(maxUserBytes.Uint64())))
 			if err != nil {

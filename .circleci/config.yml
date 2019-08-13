@@ -73,6 +73,9 @@ jobs:
             mkdir $HOME/.bin
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
             chmod +x $HOME/.bin/jq
+      - run:
+          name: Load submodules 
+          command: git submodule update --init --recursive
       - go_build:
           cmd: "deps"
           no_output_timeout: "60m"
@@ -802,11 +805,11 @@ commands:
           name: generate rust-fil-proofs checksum
           command: git rev-parse @:./proofs/rust-fil-proofs > /tmp/rust-submodules-checksums.txt
       - run:
-          name: append rust-fil-sector-builder checksum
-          command: git rev-parse @:./proofs/rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
+          name: append go-sectorbuilder checksum
+          command: git --git-dir=./go-sectorbuilder/.git rev-parse @:rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
       - run:
-          name: append bls-signatures checksum
-          command: git rev-parse @:./bls-signatures/bls-signatures >> /tmp/rust-submodules-checksums.txt
+          name: append go-bls-sigs checksum
+          command: git --git-dir=./go-bls-sigs/.git rev-parse @:bls-signatures >> /tmp/rust-submodules-checksums.txt
   trigger_infra_build:
     parameters:
       branch:
@@ -839,4 +842,4 @@ commands:
     steps:
       - run:
           name: Update submodules
-          command: git submodule update --init
+          command: git submodule update --init --recursive

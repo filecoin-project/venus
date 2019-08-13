@@ -24,7 +24,7 @@ func TestPeerTrackerTracks(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.SomeCid()), 6)
+	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
 	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(), 0)
 	ci7 := types.NewChainInfo(pid7, types.NewTipSetKey(), 0)
@@ -50,7 +50,7 @@ func TestPeerTrackerRemove(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.SomeCid()), 6)
+	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
 	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(), 0)
 	ci7 := types.NewChainInfo(pid7, types.NewTipSetKey(), 0)

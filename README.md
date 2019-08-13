@@ -99,6 +99,12 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 `go-filecoin` depends on some proofs code written in Rust, housed in the
 [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo and consumed as a submodule. You will need to have `cargo` and `jq` installed.
 
+First we need to load all the submodules.
+
+```sh
+git submodule update --init --recursive
+```
+
 To install golangci-lint and other build and test dependencies (with precompiled
 proofs, recommended), run:
 

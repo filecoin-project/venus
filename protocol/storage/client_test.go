@@ -56,7 +56,8 @@ func TestProposeDeal(t *testing.T) {
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
-	dataCid := types.SomeCid()
+	dataCid := types.CidFromString(t, "somecid")
+
 	minerAddr := addressCreator()
 	askID := uint64(67)
 	duration := uint64(10000)
@@ -152,7 +153,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 	})
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
-	_, err := client.ProposeDeal(ctx, addressCreator(), types.SomeCid(), uint64(67), uint64(10000), false)
+	_, err := client.ProposeDeal(ctx, addressCreator(), types.CidFromString(t, "somecid"), uint64(67), uint64(10000), false)
 	require.NoError(t, err)
 
 	// ensure client did not attempt to create a payment channel
@@ -184,7 +185,8 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
-	dataCid := types.SomeCid()
+	dataCid := types.CidFromString(t, "somecid")
+
 	minerAddr := addressCreator()
 	askID := uint64(67)
 	duration := uint64(10000)

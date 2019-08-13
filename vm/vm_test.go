@@ -45,9 +45,8 @@ func TestTransfer(t *testing.T) {
 
 func TestSendErrorHandling(t *testing.T) {
 	tf.UnitTest(t)
-
-	actor1 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(100))
-	actor2 := actor.NewActor(types.SomeCid(), types.NewAttoFILFromFIL(50))
+	actor1 := actor.NewActor(types.CidFromString(t, "somecid"), types.NewAttoFILFromFIL(100))
+	actor2 := actor.NewActor(types.CidFromString(t, "somecid"), types.NewAttoFILFromFIL(50))
 	newMsg := types.NewMessageForTestGetter()
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())

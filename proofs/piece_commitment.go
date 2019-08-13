@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 // GeneratePieceCommitmentRequest represents a request to generate a piece
@@ -49,7 +49,7 @@ func GeneratePieceCommitment(req GeneratePieceCommitmentRequest) (res GeneratePi
 		return
 	}
 
-	commP, err := libsectorbuilder.GeneratePieceCommitment(file.Name(), req.PieceSize.Uint64())
+	commP, err := go_sectorbuilder.GeneratePieceCommitment(file.Name(), req.PieceSize.Uint64())
 	if err != nil {
 		retErr = err
 		return

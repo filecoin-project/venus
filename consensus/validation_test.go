@@ -57,7 +57,7 @@ func TestMessageValidator(t *testing.T) {
 
 	t.Run("non-account actor fails", func(t *testing.T) {
 		badActor := newActor(t, 1000, 100)
-		badActor.Code = types.SomeCid()
+		badActor.Code = types.CidFromString(t, "somecid")
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		assert.Errorf(t, validator.Validate(ctx, msg, badActor), "account")
 	})

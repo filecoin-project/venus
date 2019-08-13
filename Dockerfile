@@ -19,6 +19,7 @@ COPY . $SRC_DIR
 # Build the thing.
 RUN cd $SRC_DIR \
   && . $HOME/.cargo/env \
+  && git submodule update --init --recursive \
   && go run ./build/*go deps \
   && go run ./build/*go build
 
