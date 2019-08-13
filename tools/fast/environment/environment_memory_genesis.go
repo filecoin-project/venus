@@ -43,6 +43,9 @@ type MemoryGenesis struct {
 	processesMu sync.Mutex
 	processes   []*fast.Filecoin
 
+	processCountMu sync.Mutex
+	processCount   int
+
 	proofsMode types.ProofsMode
 }
 
@@ -118,11 +121,15 @@ func (e *MemoryGenesis) NewProcess(ctx context.Context, processType string, opti
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
+	e.processCountMu.Lock()
+	defer e.processCountMu.Unlock()
+
 	ns := iptb.NodeSpec{
 		Type:  processType,
-		Dir:   fmt.Sprintf("%s/%d", e.location, len(e.processes)),
+		Dir:   fmt.Sprintf("%s/%d", e.location, e.processCount),
 		Attrs: options,
 	}
+	e.processCount = e.processCount + 1
 
 	e.log.Infof("New Process type: %s, dir: %s", processType, ns.Dir)
 
