@@ -55,7 +55,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
 
-		// one deal should be stored and it should have been accepted
+		// one deal should be stored and it should have been accepted and signed
 		require.Len(t, porcelainAPI.deals, 1)
 		for _, deal := range porcelainAPI.deals {
 			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
