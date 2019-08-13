@@ -1260,15 +1260,22 @@ func TestVerifyPIP(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
 		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
 
+		comm1 := th.MakeCommitments()
+		comm2 := th.MakeCommitments()
+
+		commitments := NewSectorSet()
+		commitments.Add(1, types.Commitments{CommR: comm1.CommR})
+		commitments.Add(2, types.Commitments{CommR: comm2.CommR})
+
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
-		minerState.SectorCommitments = nil
+		minerState.SectorCommitments = commitments
 
 		vmctx := th.NewFakeVMContext(message, minerState)
 		miner := Actor{}
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
 
-		require.Error(t, err, "not active")
+		require.EqualError(t, err, "miner not active")
 		require.NotEqual(t, uint8(0), code)
 	})
 
@@ -1298,7 +1305,7 @@ func TestVerifyPIP(t *testing.T) {
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
 
-		require.Error(t, err, "miner is tardy")
+		require.EqualError(t, err, "miner is tardy")
 		require.NotEqual(t, uint8(0), code)
 	})
 
