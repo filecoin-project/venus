@@ -69,7 +69,12 @@ func TestMiningSealNow(t *testing.T) {
 	require.NoError(t, series.Connect(ctx, genesisNode, minerNode))
 
 	// Calls MiningOnce on genesis (client). This also starts the Miner.
-	_, err := series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000))
+	pparams, err := minerNode.Protocol(ctx)
+	require.NoError(t, err)
+
+	sectorSize := pparams.SupportedSectorSizes[0]
+
+	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sectorSize)
 	require.NoError(t, err)
 
 	// get address of miner so we can check power

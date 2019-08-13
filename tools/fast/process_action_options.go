@@ -123,3 +123,10 @@ func AOAllowDuplicates(allow bool) ActionOption {
 		return []string{sAllowDupes}
 	}
 }
+
+// AOSectorSize provides the `--sectorsize` option to actions
+func AOSectorSize(ba *types.BytesAmount) ActionOption {
+	return func() []string {
+		return []string{"--sectorsize", ba.String()}
+	}
+}

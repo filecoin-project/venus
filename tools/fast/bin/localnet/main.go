@@ -273,7 +273,15 @@ func main() {
 			return
 		}
 
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry)
+		pparams, err := miner.Protocol(ctx)
+		if err != nil {
+			exitcode = handleError(err, "failed to get protocol;")
+			return
+		}
+
+		sectorSize := pparams.SupportedSectorSizes[0]
+
+		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sectorSize)
 		if err != nil {
 			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return
