@@ -231,7 +231,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(ctx, &response, miner, proposal, res.CommP); err != nil {
+	if err := smc.recordResponse(ctx, &response, miner, proposal, pieceCommitmentResponse.CommP); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
