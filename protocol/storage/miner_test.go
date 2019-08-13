@@ -38,16 +38,8 @@ const (
 func TestReceiveStorageProposal(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("Accepts proposals with sufficient TotalPrice and signs response", func(t *testing.T) {
-		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
-		miner := Miner{
-			porcelainAPI:        porcelainAPI,
-			ownerAddr:           porcelainAPI.targetAddress,
-			workerAddr:          porcelainAPI.targetAddress,
-			sectorSize:          types.OneKiBSectorSize,
-			storageFaultSlasher: &TrivialTestSlasher{},
-			proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
-		}
+	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
+		porcelainAPI, miner, _ := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, defaultAmountInc)
 		proposal := testSignedDealProposal(porcelainAPI, vouchers, defaultPieceSize)
@@ -55,15 +47,11 @@ func TestReceiveStorageProposal(t *testing.T) {
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
 
-		// one deal should be stored and it should have been accepted and signed
+		// one deal should be stored and it should have been accepted
 		require.Len(t, porcelainAPI.deals, 1)
 		for _, deal := range porcelainAPI.deals {
 			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
 			assert.Equal(t, "", deal.Response.Message)
-
-			valid, err := deal.Response.VerifySignature(porcelainAPI.workerAddress)
-			require.NoError(t, err)
-			assert.True(t, valid)
 		}
 	})
 
@@ -72,7 +60,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 		miner := Miner{
 			porcelainAPI:        porcelainAPI,
 			ownerAddr:           porcelainAPI.targetAddress,
-			workerAddr:          porcelainAPI.targetAddress,
+			workerAddr:          porcelainAPI.workerAddress,
 			sectorSize:          types.OneKiBSectorSize,
 			storageFaultSlasher: &TrivialTestSlasher{},
 			proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
@@ -89,6 +77,24 @@ func TestReceiveStorageProposal(t *testing.T) {
 		for _, deal := range porcelainAPI.deals {
 			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
 			assert.Equal(t, "", deal.Response.Message)
+		}
+	})
+
+	t.Run("Accepted proposals have signed responses", func(t *testing.T) {
+		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
+
+		_, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		// one deal should be stored and it should have been accepted and signed
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+
+			valid, err := deal.Response.VerifySignature(porcelainAPI.workerAddress)
+			require.NoError(t, err)
+			assert.True(t, valid)
 		}
 	})
 
@@ -834,7 +840,7 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
 		porcelainAPI:        api,
 		ownerAddr:           api.targetAddress,
-		workerAddr:          api.targetAddress,
+		workerAddr:          api.workerAddress,
 		prover:              &FakeProver{},
 		sectorSize:          types.OneKiBSectorSize,
 		storageFaultSlasher: &TrivialTestSlasher{},
