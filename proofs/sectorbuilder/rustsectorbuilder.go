@@ -12,9 +12,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/bytesink"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var log = logging.Logger("rustsectorbuilder") // nolint: deadcode
@@ -57,7 +57,7 @@ type RustSectorBuilderConfig struct {
 
 // NewRustSectorBuilder instantiates a SectorBuilder through the FFI.
 func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, error) {
-	ptr, err := libsectorbuilder.InitSectorBuilder(cfg.SectorClass.SectorSize().Uint64(), uint8(cfg.SectorClass.PoRepProofPartitions().Int()), uint8(cfg.SectorClass.PoStProofPartitions().Int()), cfg.LastUsedSectorID, cfg.MetadataDir, AddressToProverID(cfg.MinerAddr), cfg.SealedSectorDir, cfg.StagedSectorDir, MaxNumStagedSectors)
+	ptr, err := go_sectorbuilder.InitSectorBuilder(cfg.SectorClass.SectorSize().Uint64(), uint8(cfg.SectorClass.PoRepProofPartitions().Int()), uint8(cfg.SectorClass.PoStProofPartitions().Int()), cfg.LastUsedSectorID, cfg.MetadataDir, AddressToProverID(cfg.MinerAddr), cfg.SealedSectorDir, cfg.StagedSectorDir, MaxNumStagedSectors)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 	// goroutine makes CGO call, which blocks until FIFO pipe opened for writing
 	// from within other goroutine
 	go func() {
-		id, err := libsectorbuilder.AddPiece(sb.ptr, pieceRef.String(), pieceSize, fifoFile.ID())
+		id, err := go_sectorbuilder.AddPiece(sb.ptr, pieceRef.String(), pieceSize, fifoFile.ID())
 		if err != nil {
 			msg := "CGO add_piece returned an error (err=%s, fifo path=%s)"
 			log.Errorf(msg, err, fifoFile.ID())
@@ -171,7 +171,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 }
 
 func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedSectorMetadata, error) {
-	status, err := libsectorbuilder.GetSectorSealingStatusByID(sb.ptr, sectorID)
+	status, err := go_sectorbuilder.GetSectorSealingStatusByID(sb.ptr, sectorID)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (sb *RustSectorBuilder) findSealedSectorMetadata(sectorID uint64) (*SealedS
 // ReadPieceFromSealedSector produces a Reader used to get original piece-bytes
 // from a sealed sector.
 func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
-	buffer, err := libsectorbuilder.ReadPieceFromSealedSector(sb.ptr, pieceCid.String())
+	buffer, err := go_sectorbuilder.ReadPieceFromSealedSector(sb.ptr, pieceCid.String())
 	if err != nil {
 		return nil, err
 	}
@@ -229,12 +229,12 @@ func (sb *RustSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Rea
 
 // SealAllStagedSectors schedules sealing of all staged sectors.
 func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
-	return libsectorbuilder.SealAllStagedSectors(sb.ptr)
+	return go_sectorbuilder.SealAllStagedSectors(sb.ptr)
 }
 
 // stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) stagedSectors() ([]libsectorbuilder.StagedSectorMetadata, error) {
-	return libsectorbuilder.GetAllStagedSectors(sb.ptr)
+func (sb *RustSectorBuilder) stagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error) {
+	return go_sectorbuilder.GetAllStagedSectors(sb.ptr)
 }
 
 // SectorSealResults returns an unbuffered channel that is sent a value whenever
@@ -247,7 +247,7 @@ func (sb *RustSectorBuilder) SectorSealResults() <-chan SectorSealResult {
 // it unusable for I/O.
 func (sb *RustSectorBuilder) Close() error {
 	sb.sealStatusPoller.stop()
-	libsectorbuilder.DestroySectorBuilder(sb.ptr)
+	go_sectorbuilder.DestroySectorBuilder(sb.ptr)
 	sb.ptr = nil
 
 	return nil
@@ -260,7 +260,7 @@ func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoSt
 		copy(asArrays[idx][:], comm[:])
 	}
 
-	proofs, faults, err := libsectorbuilder.GeneratePoSt(sb.ptr, asArrays, req.ChallengeSeed)
+	proofs, faults, err := go_sectorbuilder.GeneratePoSt(sb.ptr, asArrays, req.ChallengeSeed)
 	if err != nil {
 		return GeneratePoStResponse{}, err
 	}

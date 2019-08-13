@@ -122,7 +122,7 @@ func newAPI(t *testing.T, assert *ast.Assertions) (bapi.MiningAPI, *node.Node) {
 	bt := nd.PorcelainAPI.BlockTime()
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
-	_, err := storage.NewMiner(mAddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI)
+	_, err := storage.NewMiner(mAddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, nd, nd.Repo.DealsDatastore(), nd.PorcelainAPI, &storage.TrivialTestSlasher{})
 	assert.NoError(err)
 	return bapi.New(
 		nd.MiningAddress,

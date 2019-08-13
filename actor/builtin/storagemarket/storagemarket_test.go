@@ -182,15 +182,20 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 
 		tc := []testCase{
 			{Name: "1st commit bh", BlockHeight: firstCommitBlockHeight, ExpectedMiners: emptyMiners},
-			{Name: "2nd proving pd start", BlockHeight: secondProvingPeriodStart, ExpectedMiners: emptyMiners},
-			{Name: "just after 2nd proving period start", BlockHeight: secondProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
-				addr1.String(): miner.PoStStateAfterProvingPeriod,
-				addr2.String(): miner.PoStStateAfterProvingPeriod},
-			},
-			{Name: "after 3rd proving period start", BlockHeight: thirdProvingPeriodStart + 1, ExpectedMiners: map[string]uint64{
-				addr1.String(): miner.PoStStateAfterGenerationAttackThreshold,
-				addr2.String(): miner.PoStStateAfterGenerationAttackThreshold},
-			},
+			{
+				Name:           "2nd proving pd start",
+				BlockHeight:    secondProvingPeriodStart,
+				ExpectedMiners: emptyMiners},
+			{
+				Name:           "just after 2nd proving period start",
+				BlockHeight:    secondProvingPeriodStart + 1,
+				ExpectedMiners: emptyMiners},
+			{
+				Name:        "after 3rd proving period start",
+				BlockHeight: thirdProvingPeriodStart + 1,
+				ExpectedMiners: map[string]uint64{
+					addr1.String(): miner.PoStStateAfterGenerationAttackThreshold,
+					addr2.String(): miner.PoStStateAfterGenerationAttackThreshold}},
 		}
 		for _, el := range tc {
 			t.Run(el.Name, func(t *testing.T) {

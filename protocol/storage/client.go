@@ -21,10 +21,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/proofs/libsectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 const (
@@ -114,7 +114,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "failed to get sector size")
 	}
 
-	maxUserBytes := libsectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
+	maxUserBytes := go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
 	if pieceSize > maxUserBytes {
 		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", pieceSize, maxUserBytes)
 	}
@@ -126,7 +126,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Generating the piece commitment is a computationally expensive operation and can take
 	// many minutes depending on the size of the piece.
-	res, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+	pieceCommitmentResponse, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
 		PieceReader: pieceReader,
 		PieceSize:   types.NewBytesAmount(pieceSize),
 	})
@@ -194,7 +194,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 			Value:           totalCost,
 			Duration:        duration,
 			MinerAddress:    miner,
-			CommP:           res.CommP,
+			CommP:           pieceCommitmentResponse.CommP,
 			PaymentInterval: VoucherInterval,
 			PieceSize:       types.NewBytesAmount(pieceSize),
 			ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
