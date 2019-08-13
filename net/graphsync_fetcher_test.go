@@ -51,19 +51,25 @@ func TestGraphsyncFetcher(t *testing.T) {
 	}).Selector()
 	require.NoError(t, err)
 	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.Matcher())
-		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(
-			ssb.ExploreAll(ssb.Matcher()),
+			ssb.ExploreAll(
+				ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+					efsb.Insert("messages", ssb.Matcher())
+					efsb.Insert("messageReceipts", ssb.Matcher())
+				}),
+			),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
 		))
 	})).Selector()
 	require.NoError(t, err)
 	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.Matcher())
-		efsb.Insert("messageReceipts", ssb.Matcher())
 		efsb.Insert("parents", ssb.ExploreUnion(
-			ssb.ExploreAll(ssb.Matcher()),
+			ssb.ExploreAll(
+				ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+					efsb.Insert("messages", ssb.Matcher())
+					efsb.Insert("messageReceipts", ssb.Matcher())
+				}),
+			),
 			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
 		))
 	})).Selector()
@@ -372,22 +378,17 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
 	gen := builder.NewGenesis()
-	antepenultimate := builder.AppendManyOn(29, gen)
-
-	// add a message and receipt to the head's parent
 	keys := types.MustGenerateKeyInfo(1, 42)
+	var i uint64 = 0
 	mm := types.NewMessageMaker(t, keys)
-	msg1 := mm.NewSignedMessage(mm.Addresses()[0], 1)
-	rcpt1 := &types.MessageReceipt{ExitCode: 42}
-	penultimate := builder.BuildOn(antepenultimate, func(bb *chain.BlockBuilder) {
-		bb.AddMessages([]*types.SignedMessage{msg1}, []*types.MessageReceipt{rcpt1})
-	})
-
-	// add a message and receipt to the head
-	msg2 := mm.NewSignedMessage(mm.Addresses()[0], 2)
-	rcpt2 := &types.MessageReceipt{ExitCode: 67}
-	final := builder.BuildOn(penultimate, func(bb *chain.BlockBuilder) {
-		bb.AddMessages([]*types.SignedMessage{msg2}, []*types.MessageReceipt{rcpt2})
+	var messages []*types.SignedMessage
+	var receipts []*types.MessageReceipt
+	final := builder.BuildManyOn(22, gen, func(bb *chain.BlockBuilder) {
+		msg := mm.NewSignedMessage(mm.Addresses()[0], i)
+		rcpt := &types.MessageReceipt{ExitCode: uint8(i)}
+		messages = append(messages, msg)
+		receipts = append(receipts, rcpt)
+		bb.AddMessages([]*types.SignedMessage{msg}, []*types.MessageReceipt{rcpt})
 	})
 
 	// setup network
@@ -437,7 +438,11 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
 
 	tipsets, err := fetcher.FetchTipSets(ctx, final.Key(), host2.ID(), func(ts types.TipSet) (bool, error) {
-		if ts.Key().Equals(gen.Key()) {
+		parents, err := ts.Parents()
+		if err != nil {
+			return false, err
+		}
+		if parents.Equals(gen.Key()) {
 			return true, nil
 		}
 		return false, nil
@@ -445,7 +450,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	require.NoError(t, err)
 
-	require.Equal(t, 32, len(tipsets))
+	require.Equal(t, 22, len(tipsets))
 
 	for _, ts := range tipsets {
 		matchedTs, err := builder.GetTipSet(ts.Key())
@@ -453,20 +458,16 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NotNil(t, matchedTs)
 	}
 
-	// check that the fetcher's storage has messages and receipts linked by
-	// the chain.
-	hasMsg1, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg1}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasMsg1)
-	hasRcpt1, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt1}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasRcpt1)
-	hasMsg2, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg2}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasMsg2)
-	hasRcpt2, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt2}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasRcpt2)
+	for _, msg := range messages {
+		hasMsg, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg}).Cid())
+		require.NoError(t, err)
+		assert.True(t, hasMsg)
+	}
+	for _, rcpt := range receipts {
+		hasRcpt, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt}).Cid())
+		require.NoError(t, err)
+		assert.True(t, hasRcpt)
+	}
 }
 
 func tryBlockMessageReceipt(ctx context.Context, f *chain.Builder, c cid.Cid) ([]byte, error) {

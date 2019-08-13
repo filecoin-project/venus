@@ -214,10 +214,13 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
 	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.Matcher())
-		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
-			gsf.ssb.ExploreAll(gsf.ssb.Matcher()),
+			gsf.ssb.ExploreAll(
+				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+					efsb.Insert("messages", gsf.ssb.Matcher())
+					efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+				}),
+			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
 		))
 	})).Node()
