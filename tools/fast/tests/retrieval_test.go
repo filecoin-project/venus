@@ -36,7 +36,6 @@ func init() {
 func TestRetrievalLocalNetwork(t *testing.T) {
 	tf.FunctionalTest(t)
 
-	sectorSize := int64(1016)
 	blocktime := time.Second * 5
 
 	// This test should run in 20 block times, with 120 seconds for sealing, and no longer
@@ -116,7 +115,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(t, err)
 
-	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+	RunRetrievalTest(ctx, t, miner, client)
 }
 
 // TestRetrieval exercises storing and retreiving with the filecoin protocols on a kittyhawk deployed
@@ -128,7 +127,6 @@ func TestRetrievalDevnet(t *testing.T) {
 	t.SkipNow()
 
 	blocktime := time.Second * 30
-	sectorSize := int64(266338304)
 
 	// This test should run in and hour and no longer
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(blocktime*120))
@@ -186,16 +184,26 @@ func TestRetrievalDevnet(t *testing.T) {
 	err = env.GetFunds(ctx, client)
 	require.NoError(t, err)
 
-	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+	RunRetrievalTest(ctx, t, miner, client)
 }
 
-func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin, sectorSize int64) {
+func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin) {
 	collateral := big.NewInt(10)            // FIL
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
+	sectorSizeToUsable := map[uint64]int64{
+		1024:      1016,
+		268435456: 266338304,
+	}
+
+	pparams, err := miner.Protocol(ctx)
+	require.NoError(t, err)
+
+	sectorSize := pparams.SupportedSectorSizes[0]
+
 	// Create a miner on the miner node
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry, sectorSize)
 	require.NoError(t, err)
 
 	// Connect the client and the miner
@@ -205,7 +213,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, sectorSize)
+	dataReader := io.LimitReader(rand.Reader, sectorSizeToUsable[sectorSize.Uint64()])
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)

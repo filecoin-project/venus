@@ -50,7 +50,13 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(1))
 	expiry := big.NewInt(int64(10000))
-	_, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry)
+
+	pparams, err := minerDaemon.Protocol(ctx)
+	require.NoError(t, err)
+
+	sectorSize := pparams.SupportedSectorSizes[0]
+
+	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sectorSize)
 	require.NoError(t, err)
 
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
