@@ -24,13 +24,14 @@ func SetCtxSleepDelay(ctx context.Context, d time.Duration) context.Context {
 }
 
 // CtxSleepDelay is a helper method to make sure people don't call `time.Sleep`
-// themselves in series. It will use the time.Duration in the context, or
-// default to `mining.DefaultBlockTime` from the go-filecoin/mining package.
-func CtxSleepDelay(ctx context.Context) {
+// or `time.After` themselves in series. It will use the time.Duration in the
+// context, or default to `mining.DefaultBlockTime` from the go-filecoin/mining package.
+// A channel is return which will receive a time.Time value after the delay.
+func CtxSleepDelay(ctx context.Context) <-chan time.Time {
 	d, ok := ctx.Value(sleepDelayKey).(time.Duration)
 	if !ok {
 		d = defaultSleepDelay
 	}
 
-	time.Sleep(d)
+	return time.After(d)
 }

@@ -21,6 +21,6 @@ func WaitForDealState(ctx context.Context, client *fast.Filecoin, deal *storaged
 			return dr, nil
 		}
 
-		CtxSleepDelay(ctx)
+		<-CtxSleepDelay(ctx)
 	}
 }
