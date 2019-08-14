@@ -71,10 +71,10 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0])
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
-		root := blocks.BuildOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(103)
 		})
-		b1 := blocks.BuildOn(root, func(b *chain.BlockBuilder) {
+		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[0]},
 				types.EmptyReceipts(1),
@@ -94,7 +94,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
 		// Block with both alice and bob's next message
-		b3 := blocks.BuildOn(b2, func(b *chain.BlockBuilder) {
+		b3 := blocks.BuildOneOn(b2, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[1], msgs[3]},
 				types.EmptyReceipts(2),
@@ -106,7 +106,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Empty(t, q.List(bob)) // None left
 
 		// Block with alice's last message
-		b4 := blocks.BuildOn(b3, func(b *chain.BlockBuilder) {
+		b4 := blocks.BuildOneOn(b3, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[2]},
 				types.EmptyReceipts(1),

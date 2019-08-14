@@ -124,12 +124,17 @@ type MessageCollection []*SignedMessage
 
 // Cid returns the cid of the message collection.
 func (mC MessageCollection) Cid() cid.Cid {
-	nd, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
+	return mC.ToNode().Cid()
+}
+
+// ToNode converts the collection to an IPLD node.
+func (mC MessageCollection) ToNode() ipld.Node {
+	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
 	if err != nil {
 		panic(err)
 	}
 
-	return nd.Cid()
+	return obj
 }
 
 // ReceiptCollection tracks a group of receipts and assigns it a cid.
@@ -137,10 +142,15 @@ type ReceiptCollection []*MessageReceipt
 
 // Cid returns the cid of the receipt collection.
 func (rC ReceiptCollection) Cid() cid.Cid {
-	nd, err := cbor.WrapObject(rC, DefaultHashFunction, -1)
+	return rC.ToNode().Cid()
+}
+
+// ToNode converts the collection to an IPLD node.
+func (rC ReceiptCollection) ToNode() ipld.Node {
+	obj, err := cbor.WrapObject(rC, DefaultHashFunction, -1)
 	if err != nil {
 		panic(err)
 	}
 
-	return nd.Cid()
+	return obj
 }
