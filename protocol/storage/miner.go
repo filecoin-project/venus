@@ -51,11 +51,6 @@ const (
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
-// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
-type storageFaultSlasher interface {
-	Slash(context.Context, *types.BlockHeight) error
-}
-
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr  address.Address
@@ -74,8 +69,6 @@ type Miner struct {
 
 	porcelainAPI minerPorcelain
 	node         node
-
-	storageFaultSlasher storageFaultSlasher
 
 	proposalProcessor func(context.Context, *Miner, cid.Cid)
 }
@@ -113,7 +106,7 @@ type node interface {
 }
 
 // NewMiner is for construction of a new storage miner.
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain, slasher storageFaultSlasher) (*Miner, error) {
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
@@ -123,7 +116,6 @@ func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, 
 		prover:              prover,
 		sectorSize:          sectorSize,
 		node:                nd,
-		storageFaultSlasher: slasher,
 		proposalProcessor:   processStorageDeal,
 	}
 
@@ -643,9 +635,9 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// isBootstrapMinerActor is a convenience method used to determine if the miner
-// actor was created when bootstrapping the network. If it was,
-func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
+// IsBootstrapMinerActor is a convenience method used to determine if the miner
+// actor was created when bootstrapping the network.
+func (sm *Miner) IsBootstrapMinerActor(ctx context.Context) (bool, error) {
 	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
@@ -742,7 +734,7 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	ctx := context.Background()
 
-	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
+	isBootstrapMinerActor, err := sm.IsBootstrapMinerActor(ctx)
 	if err != nil {
 		return errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
 	}
@@ -815,7 +807,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 		}
 	}
 	// slash any late miners w/ unreported storage faults
-	return sm.storageFaultSlasher.Slash(ctx, h)
+	return nil
 }
 
 func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {

@@ -98,6 +98,11 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
+// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
+type storageFaultSlasher interface {
+	OnNewHeaviestTipSet(context.Context, types.TipSet) error
+}
+
 // Node represents a full Filecoin node.
 type Node struct {
 	host     host.Host
@@ -109,10 +114,11 @@ type Node struct {
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
 
-	BlockMiningAPI *block.MiningAPI
-	PorcelainAPI   *porcelain.API
-	RetrievalAPI   *retrieval.API
-	StorageAPI     *storage.API
+	BlockMiningAPI      *block.MiningAPI
+	PorcelainAPI        *porcelain.API
+	RetrievalAPI        *retrieval.API
+	StorageAPI          *storage.API
+	StorageFaultSlasher storageFaultSlasher
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
@@ -745,6 +751,9 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
+				if err := node.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
+					log.Error(err)
+				}
 			}
 		case <-ctx.Done():
 			return
@@ -877,11 +886,16 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
 	// initialize a storage miner
-	storageMiner, err := initStorageMinerForNode(ctx, node)
+	storageMiner, ownerAddress, err := initStorageMinerForNode(ctx, node)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize storage miner")
 	}
+
+	// initialize the storage fault slasher if appropriate
 	node.StorageMiner = storageMiner
+	if err = node.initStorageFaultSlasherForNode(ctx, ownerAddress); err != nil {
+		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
+	}
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -1007,21 +1021,23 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
+// initStorageMinerForNode initializes the storage miner, returnning the miner, the miner owner address (to be
+// passed to storage fault slasher) and any error
+func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, address.Address, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get node's mining address")
+		return nil, address.Undef, errors.Wrap(err, "failed to get node's mining address")
 	}
 
 	ownerAddress, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
+		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 	workerAddress := ownerAddress
 
 	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch miner's sector size")
+		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's sector size")
 	}
 
 	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
@@ -1034,13 +1050,25 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, e
 		sectorSize,
 		node,
 		node.Repo.DealsDatastore(),
-		node.PorcelainAPI,
-		consensus.NewStorageFaultSlasher(node.PorcelainAPI, node.Outbox, ownerAddress))
+		node.PorcelainAPI)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to instantiate storage miner")
+		return nil, address.Undef, errors.Wrap(err, "failed to instantiate storage miner")
 	}
 
-	return miner, nil
+	return miner, ownerAddress, nil
+}
+
+// initStorageFaultSlasherForNode sets node.StorageFaultSlasher only if the node's miner actor
+// is not a bootstrap miner
+func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, ownerAddress address.Address) error {
+	isBootstrapMinerActor, err := node.StorageMiner.IsBootstrapMinerActor(ctx)
+	if err != nil {
+		return errors.Wrap(err, "could not get bootstrap status of miner actor")
+	}
+	if !isBootstrapMinerActor {
+		node.StorageFaultSlasher = storage.NewStorageFaultSlasher(node.PorcelainAPI, node.Outbox, ownerAddress)
+	}
+	return nil
 }
 
 // StopMining stops mining on new blocks.

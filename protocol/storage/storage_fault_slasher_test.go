@@ -1,4 +1,4 @@
-package consensus_test
+package storage_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	. "github.com/filecoin-project/go-filecoin/consensus"
+	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
