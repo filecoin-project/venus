@@ -34,22 +34,24 @@ func TestProposeDeal(t *testing.T) {
 	ctx := context.Background()
 	addressCreator := address.NewForTestGetter()
 
-	var proposal *storagedeal.SignedDealProposal
+	var proposal *storagedeal.SignedProposal
 
 	pieceSize := uint64(7)
 	pieceReader := bytes.NewReader(make([]byte, pieceSize))
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*storagedeal.SignedDealProposal)
+		p, ok := request.(*storagedeal.SignedProposal)
 		require.True(t, ok)
 		proposal = p
 
-		pcid, err := convert.ToCid(p.Proposal)
+		pcid, err := convert.ToCid(p)
 		require.NoError(t, err)
-		resp := &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
 		}
 		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
 		return resp, nil
@@ -135,7 +137,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 
 	client := NewClient(th.NewFakeHost(), testAPI)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p := request.(*storagedeal.SignedDealProposal)
+		p := request.(*storagedeal.SignedProposal)
 
 		// assert that client does not send payment information in deal
 		assert.Equal(t, types.ZeroAttoFIL, p.TotalPrice)
@@ -145,13 +147,15 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 		assert.Equal(t, testAPI.payer, p.Payment.Payer)
 		assert.Nil(t, p.Payment.Vouchers)
 
-		pcid, err := convert.ToCid(p.Proposal)
+		pcid, err := convert.ToCid(p)
 		require.NoError(t, err)
 
-		resp := &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
 		}
 		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
 		return resp, nil
@@ -175,15 +179,17 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	pieceReader := bytes.NewReader(make([]byte, pieceSize))
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*storagedeal.SignedDealProposal)
+		p, ok := request.(*storagedeal.SignedProposal)
 		require.True(t, ok)
 
-		pcid, err := convert.ToCid(p.Proposal)
+		pcid, err := convert.ToCid(p)
 		require.NoError(t, err)
-		resp := &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
 		}
 		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
 		return resp, nil
@@ -213,15 +219,17 @@ func TestProposeDealFailsWhenSignatureIsInvalid(t *testing.T) {
 	pieceReader := bytes.NewReader(make([]byte, pieceSize))
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*storagedeal.SignedDealProposal)
+		p, ok := request.(*storagedeal.SignedProposal)
 		require.True(t, ok)
 
 		pcid, err := convert.ToCid(p.Proposal)
 		require.NoError(t, err)
-		resp := &storagedeal.Response{
-			State:       storagedeal.Rejected,
-			Message:     "OK",
-			ProposalCid: pcid,
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Rejected,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
 		}
 		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
 
@@ -383,12 +391,12 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 // response for a protocol request.
 // It ignores the host param required for the storage client interface.
 func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, _ host.Host, request interface{}, response interface{}) error {
-	dealResponse := response.(*storagedeal.Response)
+	dealResponse := response.(*storagedeal.SignedResponse)
 	res, err := tcn.responder(request)
 	if err != nil {
 		return err
 	}
-	*dealResponse = *res.(*storagedeal.Response)
+	*dealResponse = *res.(*storagedeal.SignedResponse)
 	return nil
 }
 

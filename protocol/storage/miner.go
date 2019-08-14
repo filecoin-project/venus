@@ -142,7 +142,7 @@ func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, 
 func (sm *Miner) handleMakeDeal(s inet.Stream) {
 	defer s.Close() // nolint: errcheck
 
-	var signedProposal storagedeal.SignedDealProposal
+	var signedProposal storagedeal.SignedProposal
 	if err := cbu.NewMsgReader(s).ReadMsg(&signedProposal); err != nil {
 		log.Errorf("received invalid proposal: %s", err)
 		return
@@ -161,41 +161,40 @@ func (sm *Miner) handleMakeDeal(s inet.Stream) {
 }
 
 // receiveStorageProposal is the entry point for the miner storage protocol
-func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.SignedDealProposal) (*storagedeal.Response, error) {
+func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.SignedProposal) (*storagedeal.SignedResponse, error) {
 	// Validate deal signature
 	bdp, err := sp.Proposal.Marshal()
 	if err != nil {
 		return nil, err
 	}
-	p := &sp.Proposal
 
 	if !types.IsValidSignature(bdp, sp.Payment.Payer, sp.Signature) {
-		return sm.rejectProposal(p, fmt.Sprint("invalid deal signature"))
+		return sm.rejectProposal(sp, fmt.Sprint("invalid deal signature"))
 	}
 
 	// compute expected total price for deal (storage price * duration * bytes)
 	price, err := sm.getStoragePrice()
 	if err != nil {
-		return sm.rejectProposal(p, err.Error())
+		return sm.rejectProposal(sp, err.Error())
 	}
 
 	// skip payment validation (assume there is no payment) if miner is not charging for storage.
 	if price.GreaterThan(types.ZeroAttoFIL) {
-		if err := sm.validateDealPayment(ctx, p, price); err != nil {
-			return sm.rejectProposal(p, err.Error())
+		if err := sm.validateDealPayment(ctx, sp, price); err != nil {
+			return sm.rejectProposal(sp, err.Error())
 		}
 	}
 
 	maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sm.sectorSize.Uint64()))
 	if sp.Size.GreaterThan(maxUserBytes) {
-		return sm.rejectProposal(p, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
+		return sm.rejectProposal(sp, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
 	}
 
 	// Payment is valid, everything else checks out, let's accept this proposal
-	return sm.acceptProposal(ctx, p)
+	return sm.acceptProposal(ctx, sp)
 }
 
-func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposal, price types.AttoFIL) error {
+func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.SignedProposal, price types.AttoFIL) error {
 	if p.Size == nil {
 		return fmt.Errorf("proposed deal has no size")
 	}
@@ -294,7 +293,7 @@ func (sm *Miner) getStoragePrice() (types.AttoFIL, error) {
 }
 
 // some parts of this should be porcelain
-func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal) (*paymentbroker.PaymentChannel, error) {
+func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedProposal) (*paymentbroker.PaymentChannel, error) {
 	// wait for create channel message
 	messageCid := p.Payment.ChannelMsgCid
 
@@ -328,7 +327,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 	return channel, nil
 }
 
-func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.Proposal) (*storagedeal.Response, error) {
+func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedProposal) (*storagedeal.SignedResponse, error) {
 	if sm.porcelainAPI.SectorBuilder() == nil {
 		return nil, errors.New("Mining disabled, can not process proposal")
 	}
@@ -338,9 +337,11 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.Proposal) (*
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.Response{
-		State:       storagedeal.Accepted,
-		ProposalCid: proposalCid,
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Accepted,
+			ProposalCid: proposalCid,
+		},
 	}
 
 	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
@@ -363,17 +364,20 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.Proposal) (*
 	return resp, nil
 }
 
-func (sm *Miner) rejectProposal(p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
+func (sm *Miner) rejectProposal(p *storagedeal.SignedProposal, reason string) (*storagedeal.SignedResponse, error) {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.Response{
-		State:       storagedeal.Rejected,
-		ProposalCid: proposalCid,
-		Message:     reason,
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Rejected,
+			ProposalCid: proposalCid,
+			Message:     reason,
+		},
 	}
+
 	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
 		return nil, errors.Wrap(err, "failed to sign deal")
 	}
@@ -397,7 +401,7 @@ func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, ca
 		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
 
-	callback(deal.Response)
+	callback(&deal.Response.Response)
 
 	if err = deal.Response.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
 		return errors.Wrap(err, "could not sign deal response")
@@ -700,16 +704,18 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 }
 
 // Query responds to a query for the proposal referenced by the given cid
-func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.Response {
-	storageDeal, err := sm.porcelainAPI.DealGet(ctx, c)
+func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.SignedResponse {
+	deal, err := sm.porcelainAPI.DealGet(ctx, c)
 	if err != nil {
-		return &storagedeal.Response{
-			State:   storagedeal.Unknown,
-			Message: "no such deal",
+		return &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:   storagedeal.Unknown,
+				Message: "no such deal",
+			},
 		}
 	}
 
-	return storageDeal.Response
+	return deal.Response
 }
 
 func (sm *Miner) handleQueryDeal(s inet.Stream) {

@@ -848,14 +848,14 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 	}
 }
 
-func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
+func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedProposal) {
 	papi := newMinerTestPorcelain(t, defaultMinerPrice)
 	miner, sdp := newMinerTestSetup(papi, voucherInverval, amountInc)
 	return papi, miner, sdp
 }
 
 // simulates a miner in the state where a proposal has been sent and the miner has accepted
-func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
+func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedProposal) {
 	// start with miner and signed proposal
 	porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
@@ -870,15 +870,16 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	miner.dealsAwaitingSeal.onSuccess = miner.onCommitSuccess
 
 	// create the response and the deal
-	resp := &storagedeal.Response{
-		State:       storagedeal.Accepted,
-		ProposalCid: proposalCid,
-		Signature:   proposal.Signature,
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Accepted,
+			ProposalCid: proposalCid,
+		},
 	}
 
 	storageDeal := &storagedeal.Deal{
 		Miner:    miner.minerAddr,
-		Proposal: &proposal.Proposal,
+		Proposal: proposal,
 		Response: resp,
 	}
 
@@ -890,7 +891,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	return porcelainAPI, miner, proposal
 }
 
-func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) (*Miner, *storagedeal.SignedDealProposal) {
+func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) (*Miner, *storagedeal.SignedProposal) {
 	vouchers := testPaymentVouchers(porcelainAPI, voucherInterval, amountInc)
 	miner := newTestMiner(porcelainAPI)
 	return miner, testSignedDealProposal(porcelainAPI, vouchers, 1000)
@@ -937,7 +938,7 @@ func testSectorMetadata(pieceRef cid.Cid) *sectorbuilder.SealedSectorMetadata {
 	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, CommR: commR, CommRStar: commRStar, Pieces: []*sectorbuilder.PieceInfo{piece}}
 }
 
-func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
+func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedProposal {
 	duration := uint64(10000)
 	minerPrice, _ := types.NewAttoFILFromFILString(defaultMinerPrice)
 	totalPrice := minerPrice.MulBigInt(big.NewInt(int64(size * duration)))
