@@ -190,6 +190,8 @@ func TestDealsList(t *testing.T) {
 
 func TestDealsShow(t *testing.T) {
 	tf.IntegrationTest(t)
+	// Skipping due to flake (#3236)
+	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{
@@ -258,6 +260,8 @@ func TestDealsShow(t *testing.T) {
 
 func TestDealsShowPaymentVouchers(t *testing.T) {
 	tf.IntegrationTest(t)
+	// Skipping due to flake (#3236)
+	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{
@@ -324,6 +328,8 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 
 func TestFreeDealsShowPaymentVouchers(t *testing.T) {
 	tf.IntegrationTest(t)
+	// Skipping due to flake (#3236)
+	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{

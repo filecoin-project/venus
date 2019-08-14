@@ -281,6 +281,16 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize
 	return address.NewFromBytes(res[0])
 }
 
+// MinerGetWorkerAddress queries for the worker address of the given miner
+func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewFromBytes(res[0])
+}
+
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.

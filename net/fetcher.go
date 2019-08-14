@@ -2,15 +2,15 @@ package net
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/types"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -104,12 +104,11 @@ func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator c
 	for _, u := range unsanitized {
 		block, err := types.DecodeBlock(u.RawData())
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("fetched data (cid %s) was not a block", u.Cid().String()))
+			return nil, errors.Wrapf(err, "fetched data (cid %s) was not a block", u.Cid().String())
 		}
 
-		// reject blocks that are syntactically invalid.
 		if err := validator.ValidateSyntax(ctx, block); err != nil {
-			continue
+			return nil, errors.Wrapf(err, "invalid block %s", block.Cid())
 		}
 
 		blocks = append(blocks, block)

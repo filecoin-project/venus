@@ -65,6 +65,7 @@ type clientPorcelainAPI interface {
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error
@@ -92,7 +93,7 @@ func NewClient(host host.Host, api clientPorcelainAPI) *Client {
 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.SignedResponse, error) {
 	pid, err := smc.api.MinerGetPeerID(ctx, miner)
 	if err != nil {
 		return nil, err
@@ -151,6 +152,11 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	minerOwner, err := smc.api.MinerGetOwnerAddress(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+
+	minerWorker, err := smc.api.MinerGetWorkerAddress(ctx, miner)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +223,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	// send proposal
-	var response storagedeal.Response
+	var response storagedeal.SignedResponse
 	// We reset the context to not timeout to allow large file transfers
 	// to complete.
 	err = smc.ProtocolRequestFunc(ctx, makeDealProtocol, pid, smc.host, signedProposal, &response)
@@ -225,13 +231,13 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "error sending proposal")
 	}
 
-	if err := smc.checkDealResponse(ctx, &response); err != nil {
+	if err := smc.checkDealResponse(ctx, &response, minerWorker); err != nil {
 		return nil, errors.Wrap(err, "response check failed")
 	}
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(ctx, &response, miner, proposal, pieceCommitmentResponse.CommP); err != nil {
+	if err := smc.recordResponse(ctx, &response, miner, signedProposal, pieceCommitmentResponse.CommP); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
@@ -239,7 +245,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal, commP types.CommP) error {
+func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.SignedResponse, miner address.Address, p *storagedeal.SignedProposal, commP types.CommP) error {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return errors.New("failed to get cid of proposal")
@@ -263,7 +269,16 @@ func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Respons
 	})
 }
 
-func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Response) error {
+func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.SignedResponse, workerAddr address.Address) error {
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return errors.Wrap(err, "Could not verify response signature")
+	}
+
+	if !valid {
+		return errors.New("Response signature is invalid")
+	}
+
 	switch resp.State {
 	case storagedeal.Rejected:
 		return fmt.Errorf("deal rejected: %s", resp.Message)
@@ -285,8 +300,13 @@ func (smc *Client) minerForProposal(ctx context.Context, c cid.Cid) (address.Add
 }
 
 // QueryDeal queries an in-progress proposal.
-func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Response, error) {
+func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.SignedResponse, error) {
 	mineraddr, err := smc.minerForProposal(ctx, proposalCid)
+	if err != nil {
+		return nil, err
+	}
+
+	workerAddr, err := smc.api.MinerGetWorkerAddress(ctx, mineraddr)
 	if err != nil {
 		return nil, err
 	}
@@ -297,10 +317,18 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 	}
 
 	q := storagedeal.QueryRequest{Cid: proposalCid}
-	var resp storagedeal.Response
+	var resp storagedeal.SignedResponse
 	err = smc.ProtocolRequestFunc(ctx, queryDealProtocol, minerpid, smc.host, q, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying deal")
+	}
+
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return nil, err
+	}
+	if !valid {
+		return nil, errors.New("deal response has invalid signature")
 	}
 
 	return &resp, nil
