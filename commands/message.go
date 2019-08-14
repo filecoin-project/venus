@@ -81,9 +81,9 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		method := ""
-		if len(req.Arguments) > 1 {
-			method = req.Arguments[1]
+		method, ok := req.Options["method"].(string)
+		if !ok {
+			method = ""
 		}
 
 		if preview {
