@@ -254,8 +254,8 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 
 // Loads the IPLD blocks for all blocks in a tipset, and checks for the presence of the
 // message and receipt list structures in the store.
-// Returns the tipset with an empty `incomplete`, or Undef and the CIDs of all blockchain-blocks
-// for which the expected IPLD blocks are not all present.
+// Returns the tipset if complete. Otherwise it returns UndefTipSet and the CIDs of
+// all blocks missing either their header, messages or receipts.
 func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSetKey) (types.TipSet, []cid.Cid, error) {
 	// Load the block headers that exist.
 	tip, incomplete, err := gsf.loadTipHeaders(ctx, key)
