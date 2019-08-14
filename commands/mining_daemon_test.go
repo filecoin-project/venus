@@ -46,7 +46,7 @@ func TestMiningGenBlock(t *testing.T) {
 }
 
 func TestMiningSealNow(t *testing.T) {
-	tf.FunctionalTest(t)
+	//tf.FunctionalTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
@@ -75,11 +75,6 @@ func TestMiningSealNow(t *testing.T) {
 	miningAddress, err := minerNode.MiningAddress(ctx)
 	require.NoError(t, err)
 
-	// get initial power
-	initialPower, err := minerNode.MinerPower(ctx, miningAddress)
-	require.NoError(t, err)
-	assert.Equal(t, types.ZeroBytes, initialPower)
-
 	// start sealing
 	err = minerNode.SealNow(ctx)
 	require.NoError(t, err)
@@ -90,9 +85,8 @@ func TestMiningSealNow(t *testing.T) {
 		power, err := minerNode.MinerPower(ctx, miningAddress)
 		require.NoError(t, err)
 
-		if power.Power.GreaterThan(&initialPower.Power) {
-			// seal was successful
-			assert.True(t, types.NewBytesAmount(1024).Equal(&power.Power))
+		if power.Power.GreaterThan(types.ZeroBytes) {
+			// miner has gained power, so seal was successful
 			return
 		}
 		time.Sleep(time.Second)
