@@ -416,7 +416,18 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 type minerQueryAndDeserializePlumbing struct{}
 
 func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	return [][]byte{address.TestAddress.Bytes()}, nil
+	switch method {
+	case "getOwner":
+		return [][]byte{address.TestAddress.Bytes()}, nil
+	case "getWorker":
+		return [][]byte{address.TestAddress2.Bytes()}, nil
+	case "getPower":
+		return [][]byte{types.NewBytesAmount(2).Bytes()}, nil
+	case "getTotalStorage":
+		return [][]byte{types.NewBytesAmount(4).Bytes()}, nil
+	default:
+		return nil, fmt.Errorf("unsupported method: %s", method)
+	}
 }
 
 func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
@@ -443,7 +454,7 @@ func TestMinerGetWorkerAddress(t *testing.T) {
 
 	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
-	assert.Equal(t, address.TestAddress, addr)
+	assert.Equal(t, address.TestAddress2, addr)
 }
 
 func TestMinerGetPower(t *testing.T) {
@@ -451,7 +462,7 @@ func TestMinerGetPower(t *testing.T) {
 
 	power, err := MinerGetPower(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
-	assert.Equal(t, "2", power.Total.String())
+	assert.Equal(t, "4", power.Total.String())
 	assert.Equal(t, "2", power.Power.String())
 }
 
