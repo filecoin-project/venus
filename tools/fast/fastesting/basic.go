@@ -149,6 +149,12 @@ func (env *TestEnvironment) DumpEnvOutputOnFail() {
 	dumpEnvOutputOnFail(env.t, env.Processes())
 }
 
+// RunAsyncMiner unset MiningOnce for conflict
+func (env *TestEnvironment) RunAsyncMiner() {
+	var MiningOnce series.MiningOnceFunc = func() {}
+	env.ctx = series.SetCtxMiningOnce(env.ctx, MiningOnce)
+}
+
 // helper to dump the output using the t.Log method.
 func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 	if t.Failed() {

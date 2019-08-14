@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/pkg/errors"
 )
 
 type miningChainReader interface {
@@ -62,6 +63,10 @@ func (a *MiningAPI) MiningIsActive() bool {
 
 // MiningOnce mines a single block in the given context, and returns the new block.
 func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
+	if a.isMiningFunc() {
+		return nil, errors.New("Node is already mining")
+	}
+
 	ts, err := a.chainReader.GetTipSet(a.chainReader.GetHead())
 	if err != nil {
 		return nil, err

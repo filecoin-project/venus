@@ -209,6 +209,7 @@ func TestDealsShow(t *testing.T) {
 		require.NoError(t, clientNode.MiningStop(ctx))
 	}()
 
+	env.RunAsyncMiner()
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode
@@ -373,6 +374,7 @@ func setupDeal(
 		require.NoError(t, clientNode.MiningStop(ctx))
 	}()
 
+	env.RunAsyncMiner()
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode

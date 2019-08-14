@@ -95,6 +95,7 @@ func TestDuplicateDeals(t *testing.T) {
 		require.NoError(t, clientDaemon.MiningStop(ctx))
 	}()
 
+	env.RunAsyncMiner()
 	minerDaemon := env.RequireNewNodeWithFunds(1111)
 
 	duration := uint64(5)
