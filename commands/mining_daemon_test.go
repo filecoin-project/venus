@@ -46,7 +46,7 @@ func TestMiningGenBlock(t *testing.T) {
 }
 
 func TestMiningSealNow(t *testing.T) {
-	//tf.FunctionalTest(t)
+	tf.FunctionalTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
