@@ -2,12 +2,12 @@ package commands_test
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,6 +15,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 )
 
 func parseInt(t *testing.T, s string) *big.Int {
@@ -47,7 +48,6 @@ func TestMiningGenBlock(t *testing.T) {
 func TestMiningSealNow(t *testing.T) {
 	tf.FunctionalTest(t)
 
-	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
@@ -78,18 +78,21 @@ func TestMiningSealNow(t *testing.T) {
 	// get initial power
 	initialPower, err := minerNode.MinerPower(ctx, miningAddress)
 	require.NoError(t, err)
+	assert.Equal(t, types.ZeroBytes, initialPower)
 
 	// start sealing
 	err = minerNode.SealNow(ctx)
 	require.NoError(t, err)
 
-	// wait up to three minutes for miner to gain power from sealing
+	// We know the miner has sealed and committed a sector if their power increases on chain.
+	// Wait up to 3 minutes for that to happen.
 	for i := 0; i < 180; i++ {
 		power, err := minerNode.MinerPower(ctx, miningAddress)
 		require.NoError(t, err)
 
 		if power.Power.GreaterThan(&initialPower.Power) {
 			// seal was successful
+			assert.True(t, types.NewBytesAmount(1024).Equal(&power.Power))
 			return
 		}
 		time.Sleep(time.Second)

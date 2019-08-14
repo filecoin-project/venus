@@ -34,7 +34,7 @@ func TestSealNow(t *testing.T) {
 		err := SealNow(context.Background(), p)
 		require.NoError(t, err)
 
-		// adds a piece
+		// does not add a piece
 		assert.Equal(t, 0, p.sectorbuilder.addPieceCount)
 
 		// seals sectors
