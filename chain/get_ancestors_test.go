@@ -68,7 +68,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	head = builder.AppendManyOn(30, head)
 
 	// Now add 10 null blocks and 1 tipset.
-	head = builder.BuildOn(head, func(b *chain.BlockBuilder) {
+	head = builder.BuildOneOn(head, func(b *chain.BlockBuilder) {
 		b.IncHeight(10)
 	})
 
@@ -177,7 +177,7 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	// Add 30 tipsets to the head of the chainStore.
 	head = builder.AppendManyOn(30, head)
 	// Add 10 null blocks and 1 tipset.
-	head = builder.BuildOn(head, func(b *chain.BlockBuilder) {
+	head = builder.BuildOneOn(head, func(b *chain.BlockBuilder) {
 		b.IncHeight(10)
 	})
 	// Add 19 more tipsets.
@@ -268,7 +268,7 @@ func TestFindCommonAncestorNullBlockFork(t *testing.T) {
 	commonHead := builder.AppendManyOn(10, head)
 
 	// From the common ancestor, add a block following a null block.
-	headAfterNull := builder.BuildOn(commonHead, func(b *chain.BlockBuilder) {
+	headAfterNull := builder.BuildOneOn(commonHead, func(b *chain.BlockBuilder) {
 		b.IncHeight(1)
 	})
 	afterNullItr := chain.IterAncestors(ctx, builder, headAfterNull)

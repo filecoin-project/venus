@@ -45,7 +45,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 
 		// Add new head so as to produce null blocks between 20 and 25
 		// i.e.: 25 20 19 18 ... 0
-		headAfterNulls := builder.BuildOn(ch[0], func(b *chain.BlockBuilder) {
+		headAfterNulls := builder.BuildOneOn(ch[0], func(b *chain.BlockBuilder) {
 			b.IncHeight(4)
 			b.SetTicket(types.Signature(strconv.Itoa(25)))
 		})
