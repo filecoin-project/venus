@@ -52,6 +52,7 @@ func TestMiningSealNow(t *testing.T) {
 		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
 	})
+	env.RunAsyncMiner()
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
