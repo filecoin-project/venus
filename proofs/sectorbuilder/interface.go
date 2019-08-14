@@ -2,6 +2,7 @@ package sectorbuilder
 
 import (
 	"context"
+	"github.com/filecoin-project/go-sectorbuilder"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -32,6 +33,9 @@ type SectorBuilder interface {
 
 	// SealAllStagedSectors seals any non-empty staged sectors.
 	SealAllStagedSectors(ctx context.Context) error
+
+	// GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
+	GetAllStagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error)
 
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the

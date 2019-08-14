@@ -69,3 +69,17 @@ func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResul
 
 	return out, nil
 }
+
+// SealNow adds a staged sector if none exists and then triggers sealing on it
+func (f *Filecoin) SealNow(ctx context.Context) error {
+	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "seal-now")
+	if err != nil {
+		return err
+	}
+
+	if out.ExitCode() > 0 {
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+	}
+
+	return nil
+}

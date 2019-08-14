@@ -70,7 +70,7 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	}
 
 	// load staged sector metadata and use it to initialize the poller
-	metadata, err := sb.stagedSectors()
+	metadata, err := sb.GetAllStagedSectors()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load staged sectors")
 	}
@@ -232,8 +232,8 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 	return go_sectorbuilder.SealAllStagedSectors(sb.ptr)
 }
 
-// stagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
-func (sb *RustSectorBuilder) stagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error) {
+// GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
+func (sb *RustSectorBuilder) GetAllStagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error) {
 	return go_sectorbuilder.GetAllStagedSectors(sb.ptr)
 }
 
