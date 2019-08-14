@@ -20,6 +20,8 @@ import (
 
 func TestFilecoin_MinerPower(t *testing.T) {
 	tf.IntegrationTest(t)
+	// Skipping due to flake (#3236)
+	t.SkipNow()
 
 	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
