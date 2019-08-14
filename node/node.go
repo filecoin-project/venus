@@ -1066,7 +1066,9 @@ func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, ownerAddre
 		return errors.Wrap(err, "could not get bootstrap status of miner actor")
 	}
 	if !isBootstrapMinerActor {
-		node.StorageFaultSlasher = storage.NewStorageFaultSlasher(node.PorcelainAPI, node.Outbox, ownerAddress)
+		node.StorageFaultSlasher = storage.NewStorageFaultSlasher(
+			node.PorcelainAPI, node.Outbox, ownerAddress,
+			storage.DefaultFaultSlasherGasPrice, storage.DefaultFaultSlasherGasLimit)
 	}
 	return nil
 }

@@ -12,6 +12,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// DefaultFaultSlasherGasPrice is the default gas price to be used when sending messages
+var DefaultFaultSlasherGasPrice = types.NewAttoFILFromFIL(1)
+
+// DefaultFaultSlasherGasLimit is the default gas limit to be used when sending messages
+var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
+
 // monitorPlumbing is an interface for the functionality StorageFaultSlasher needs
 type monitorPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
@@ -33,6 +39,9 @@ type slashingMsgOutbox interface {
 // Storage faults are distinct from consensus faults.
 // See https://github.com/filecoin-project/specs/blob/master/faults.md
 type StorageFaultSlasher struct { // nolint: golint
+	// nolint: golint
+	gasPrice  types.AttoFIL  // gas price to use when sending messages
+	gasLimit  types.GasUnits // gas limit to use when sending messages
 	log       logging.EventLogger
 	msgSender address.Address   // what signs the slashing message and receives slashing reward
 	outbox    slashingMsgOutbox // what sends the slashing message
@@ -41,12 +50,14 @@ type StorageFaultSlasher struct { // nolint: golint
 
 // NewStorageFaultSlasher creates a new StorageFaultSlasher with the provided plumbing, outbox and message sender.
 // Message sender must be an account actor address.
-func NewStorageFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address) *StorageFaultSlasher {
+func NewStorageFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) *StorageFaultSlasher {
 	return &StorageFaultSlasher{
 		plumbing:  plumbing,
 		log:       logging.Logger("StorFltMon"),
 		outbox:    outbox,
 		msgSender: msgSender,
+		gasPrice:  gasPrice,
+		gasLimit:  gasLimit,
 	}
 }
 
@@ -91,8 +102,8 @@ func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.
 		// add slash message to message pull w/o broadcasting
 		sfm.log.Debugf("Slashing %s with state %d\n", minerStr, state)
 
-		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, types.NewAttoFILFromFIL(1),
-			types.NewGasUnits(300), false, "slashStorageFault")
+		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, sfm.gasPrice,
+			sfm.gasLimit, false, "slashStorageFault")
 		if err != nil {
 			return errors.Wrap(err, "slashStorageFault message failed")
 		}
