@@ -2,9 +2,9 @@ package sectorbuilder
 
 import (
 	"context"
-	"github.com/filecoin-project/go-sectorbuilder"
 	"io"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
