@@ -99,6 +99,9 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 		}
 		ret = append(ret, iterator.Value())
 	}
+	if len(ret) == 0 {
+		return nil, errors.New("empty TipSet")
+	}
 	return ret, nil
 }
 
@@ -112,6 +115,9 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 		if err = iterator.Next(); err != nil {
 			return nil, err
 		}
+	}
+	if len(ret) == 0 {
+		return nil, errors.New("empty TipSet")
 	}
 	return ret, nil
 }
