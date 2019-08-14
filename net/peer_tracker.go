@@ -34,11 +34,10 @@ func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	pidKey := peer.IDB58Encode(ci.Peer)
-	if _, tracking := tracker.peers[pidKey]; tracking {
-		logPeerTracker.Warningf("unexpected duplicate track on peer: %s", pidKey)
-	}
+	pidKey := ci.Peer.Pretty()
+	_, tracking := tracker.peers[pidKey]
 	tracker.peers[pidKey] = ci
+	logPeerTracker.Infof("Tracking %s, new=%t, count=%d", ci, !tracking, len(tracker.peers))
 }
 
 // List returns the chain info of the currently tracked peers.  The info
@@ -63,8 +62,9 @@ func (tracker *PeerTracker) Remove(pid peer.ID) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	pidKey := peer.IDB58Encode(pid)
+	pidKey := pid.Pretty()
 	if _, tracking := tracker.peers[pidKey]; tracking {
+		logPeerTracker.Infof("Dropping peer %s", pidKey)
 		delete(tracker.peers, pidKey)
 	}
 }
