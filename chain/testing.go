@@ -120,12 +120,17 @@ func (f *Builder) BuildOnBlock(parent *types.Block, build func(b *BlockBuilder))
 	if parent != nil {
 		tip = types.RequireNewTipSet(f.t, parent)
 	}
-	return f.BuildOn(tip, build).At(0)
+	return f.BuildOneOn(tip, build).At(0)
 }
 
-// BuildOn creates and returns a new single-block tipset child of `parent`.
-func (f *Builder) BuildOn(parent types.TipSet, build func(b *BlockBuilder)) types.TipSet {
+// BuildOneOn creates and returns a new single-block tipset child of `parent`.
+func (f *Builder) BuildOneOn(parent types.TipSet, build func(b *BlockBuilder)) types.TipSet {
 	return f.Build(parent, 1, singleBuilder(build))
+}
+
+// BuildOn creates and returns a new `width` block tipset child of `parent`.
+func (f *Builder) BuildOn(parent types.TipSet, width int, build func(b *BlockBuilder, i int)) types.TipSet {
+	return f.Build(parent, width, build)
 }
 
 // BuildManyOn builds a chain by invoking Build `height` times.

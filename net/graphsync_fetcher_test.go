@@ -18,7 +18,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
-	ipld "github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
@@ -43,6 +43,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 	bv := th.NewFakeBlockValidator()
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	alice := mm.Addresses()[0]
 
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
@@ -50,51 +53,68 @@ func TestGraphsyncFetcher(t *testing.T) {
 		efsb.Insert("messageReceipts", ssb.Matcher())
 	}).Selector()
 	require.NoError(t, err)
-	gsSelector, err := ssb.ExploreRecursive(1, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.Matcher())
-		efsb.Insert("messageReceipts", ssb.Matcher())
-		efsb.Insert("parents", ssb.ExploreUnion(
-			ssb.ExploreAll(ssb.Matcher()),
-			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-		))
-	})).Selector()
-	require.NoError(t, err)
-	gsSelectorRound2, err := ssb.ExploreRecursive(4, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.Matcher())
-		efsb.Insert("messageReceipts", ssb.Matcher())
-		efsb.Insert("parents", ssb.ExploreUnion(
-			ssb.ExploreAll(ssb.Matcher()),
-			ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
-		))
-	})).Selector()
-	require.NoError(t, err)
+	recursiveSelector := func(levels int) selector.Selector {
+		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+			efsb.Insert("parents", ssb.ExploreUnion(
+				ssb.ExploreAll(
+					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+						efsb.Insert("messages", ssb.Matcher())
+						efsb.Insert("messageReceipts", ssb.Matcher())
+					}),
+				),
+				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
+			))
+		})).Selector()
+		require.NoError(t, err)
+		return s
+	}
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid2 := th.RequireIntPeerID(t, 2)
 
+	// Returns an array of IPLD nodes for the headers, messages, and receipts of some blocks.
+	ipldBlocks := func(bs ...*types.Block) []format.Node {
+		nodes := make([]format.Node, 3*len(bs))
+		for i, b := range bs {
+			nodes[3*i] = b.ToNode()
+			m, err := builder.LoadMessages(ctx, b.Messages)
+			require.NoError(t, err)
+			nodes[3*i+1] = types.MessageCollection(m).ToNode()
+			r, err := builder.LoadReceipts(ctx, b.MessageReceipts)
+			require.NoError(t, err)
+			nodes[3*i+2] = types.ReceiptCollection(r).ToNode()
+		}
+		return nodes
+	}
+
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
 		gen := builder.NewGenesis()
-		final := builder.AppendOn(gen, 3)
+		final := builder.BuildOn(gen, 3, func(b *chain.BlockBuilder, i int) {
+			b.AddMessages(
+				[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+				types.EmptyReceipts(1),
+			)
+		})
 
 		stubs := []requestResponse{
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(0))},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(1).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(1))},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(2).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(2))},
 			},
-			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
+			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
 					makeGsResponse("", final.At(0).Cid()),
 					makeGsResponse("parents", final.At(0).Cid()),
 					makeGsResponse("parents/0", gen.At(0).Cid()),
 				},
-				blks: []format.Node{final.At(0).ToNode(), gen.At(0).ToNode()},
+				blks: ipldBlocks(final.At(0), gen.At(0)),
 			}},
 		}
 		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
@@ -118,7 +138,12 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("initial request fails on a block but fallback peer succeeds", func(t *testing.T) {
 		gen := builder.NewGenesis()
-		final := builder.AppendOn(gen, 3)
+		final := builder.BuildOn(gen, 3, func(b *chain.BlockBuilder, i int) {
+			b.AddMessages(
+				[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+				types.EmptyReceipts(1),
+			)
+		})
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
@@ -128,35 +153,35 @@ func TestGraphsyncFetcher(t *testing.T) {
 		stubs := []requestResponse{
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(0))},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid1, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(1).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(1))},
 			},
 			{
 				fakeRequest{pid1, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid2, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(2).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(2))},
 			},
-			{fakeRequest{pid2, cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
+			{fakeRequest{pid2, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
 					makeGsResponse("", final.At(0).Cid()),
 					makeGsResponse("parents", final.At(0).Cid()),
 					makeGsResponse("parents/0", gen.At(0).Cid()),
 				},
-				blks: []format.Node{final.At(0).ToNode(), gen.At(0).ToNode()},
+				blks: ipldBlocks(final.At(0), gen.At(0)),
 			}},
 		}
 		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
@@ -187,7 +212,12 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("initial request fails and no other peers succeed", func(t *testing.T) {
 		gen := builder.NewGenesis()
-		final := builder.AppendOn(gen, 3)
+		final := builder.BuildOn(gen, 3, func(b *chain.BlockBuilder, i int) {
+			b.AddMessages(
+				[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+				types.EmptyReceipts(1),
+			)
+		})
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
@@ -197,31 +227,31 @@ func TestGraphsyncFetcher(t *testing.T) {
 		stubs := []requestResponse{
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(0))},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid1, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid1, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid2, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 			{
 				fakeRequest{pid2, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("Everything failed")}, nil},
+				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
 			},
 		}
 		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
@@ -250,57 +280,61 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
 		gen := builder.NewGenesis()
-		final := builder.AppendManyOn(5, gen)
+		final := builder.BuildManyOn(5, gen, func(b *chain.BlockBuilder) {
+			b.AddMessages(
+				[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+				types.EmptyReceipts(1),
+			)
+		})
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
 
-		middleNodes := make([]format.Node, 4)
-		current := final
+		blocks := make([]*types.Block, 4) // in fetch order
+		prev := final.At(0)
 		for i := 0; i < 4; i++ {
-			key, err := current.Parents()
+			parent := prev.Parents.Iter().Value()
+			prev, err = builder.GetBlock(ctx, parent)
 			require.NoError(t, err)
-			current, err = builder.GetTipSet(key)
-			require.NoError(t, err)
-			middleNodes[i] = current.At(0).ToNode()
+			blocks[i] = prev
 		}
 
 		stubs := []requestResponse{
 			{
 				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: []format.Node{final.At(0).ToNode()}},
+				fakeResponse{blks: ipldBlocks(final.At(0))},
 			},
-			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, gsSelector}, fakeResponse{
+			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
 					makeGsResponse("", final.At(0).Cid()),
 					makeGsResponse("parents", final.At(0).Cid()),
-					makeGsResponse("parents/0", middleNodes[0].Cid()),
+					makeGsResponse("parents/0", blocks[0].Cid()),
 				},
-				blks: []format.Node{final.At(0).ToNode(), middleNodes[0]},
+				blks: ipldBlocks(final.At(0), blocks[0]),
 			}},
-			{fakeRequest{pid0, cidlink.Link{Cid: middleNodes[0].Cid()}, gsSelectorRound2}, fakeResponse{
+			{fakeRequest{pid0, cidlink.Link{Cid: blocks[0].Cid()}, recursiveSelector(4)}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", middleNodes[0].Cid()),
-					makeGsResponse("parents", middleNodes[0].Cid()),
-					makeGsResponse("parents/0", middleNodes[1].Cid()),
-					makeGsResponse("parents/0/parents", middleNodes[1].Cid()),
-					makeGsResponse("parents/0/parents/0", middleNodes[2].Cid()),
+					makeGsResponse("", blocks[0].Cid()),
+					makeGsResponse("parents", blocks[0].Cid()),
+					makeGsResponse("parents/0", blocks[1].Cid()),
+					makeGsResponse("parents/0/parents", blocks[1].Cid()),
+					makeGsResponse("parents/0/parents/0", blocks[2].Cid()),
 				},
-				errs: []error{fmt.Errorf("Everything failed")},
-				blks: []format.Node{middleNodes[0], middleNodes[1], middleNodes[2]},
+				errs: []error{fmt.Errorf("everything failed")},
+				blks: ipldBlocks(blocks[0], blocks[1], blocks[2]),
 			}},
-			{fakeRequest{pid1, cidlink.Link{Cid: middleNodes[2].Cid()}, gsSelectorRound2}, fakeResponse{
+			{fakeRequest{pid1, cidlink.Link{Cid: blocks[2].Cid()}, recursiveSelector(4)}, fakeResponse{
 				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", middleNodes[2].Cid()),
-					makeGsResponse("parents", middleNodes[2].Cid()),
-					makeGsResponse("parents/0", middleNodes[3].Cid()),
-					makeGsResponse("parents/0/parents", middleNodes[3].Cid()),
+					makeGsResponse("", blocks[2].Cid()),
+					makeGsResponse("parents", blocks[2].Cid()),
+					makeGsResponse("parents/0", blocks[3].Cid()),
+					makeGsResponse("parents/0/parents", blocks[3].Cid()),
 					makeGsResponse("parents/0/parents/0", gen.At(0).Cid()),
 					makeGsResponse("parents/0/parents/0/parents", gen.At(0).Cid()),
 				},
-				blks: []format.Node{middleNodes[2], middleNodes[3], gen.At(0).ToNode()},
+				blks: ipldBlocks(blocks[2], blocks[3], gen.At(0)),
 			}},
 		}
 		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
@@ -371,23 +405,17 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	ctx := context.Background()
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
-	gen := builder.NewGenesis()
-	antepenultimate := builder.AppendManyOn(29, gen)
-
-	// add a message and receipt to the head's parent
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
-	msg1 := mm.NewSignedMessage(mm.Addresses()[0], 1)
-	rcpt1 := &types.MessageReceipt{ExitCode: 42}
-	penultimate := builder.BuildOn(antepenultimate, func(bb *chain.BlockBuilder) {
-		bb.AddMessages([]*types.SignedMessage{msg1}, []*types.MessageReceipt{rcpt1})
-	})
-
-	// add a message and receipt to the head
-	msg2 := mm.NewSignedMessage(mm.Addresses()[0], 2)
-	rcpt2 := &types.MessageReceipt{ExitCode: 67}
-	final := builder.BuildOn(penultimate, func(bb *chain.BlockBuilder) {
-		bb.AddMessages([]*types.SignedMessage{msg2}, []*types.MessageReceipt{rcpt2})
+	alice := mm.Addresses()[0]
+	gen := builder.NewGenesis()
+	i := uint64(0)
+	tipCount := 32
+	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
+		b.AddMessages(
+			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
+			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
+		)
 	})
 
 	// setup network
@@ -442,31 +470,25 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		}
 		return false, nil
 	})
-
 	require.NoError(t, err)
 
-	require.Equal(t, 32, len(tipsets))
+	require.Equal(t, tipCount+1, len(tipsets))
 
-	for _, ts := range tipsets {
-		matchedTs, err := builder.GetTipSet(ts.Key())
+	// Check the headers, messages, and receipt structures are in the store.
+	expectedTips := builder.RequireTipSets(final.Key(), tipCount+1)
+	for _, ts := range expectedTips {
+		stored, err := bs.Has(ts.At(0).Cid())
 		require.NoError(t, err)
-		require.NotNil(t, matchedTs)
-	}
+		assert.True(t, stored)
 
-	// check that the fetcher's storage has messages and receipts linked by
-	// the chain.
-	hasMsg1, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg1}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasMsg1)
-	hasRcpt1, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt1}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasRcpt1)
-	hasMsg2, err := bs.Has(types.MessageCollection([]*types.SignedMessage{msg2}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasMsg2)
-	hasRcpt2, err := bs.Has(types.ReceiptCollection([]*types.MessageReceipt{rcpt2}).Cid())
-	require.NoError(t, err)
-	assert.True(t, hasRcpt2)
+		stored, err = bs.Has(ts.At(0).Messages)
+		require.NoError(t, err)
+		assert.True(t, stored)
+
+		stored, err = bs.Has(ts.At(0).MessageReceipts)
+		require.NoError(t, err)
+		assert.True(t, stored)
+	}
 }
 
 func tryBlockMessageReceipt(ctx context.Context, f *chain.Builder, c cid.Cid) ([]byte, error) {
@@ -529,7 +551,7 @@ func (mgs *mockableGraphsync) toChans(mr fakeResponse) (<-chan graphsync.Respons
 func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
 	parsed, err := selector.ParseSelector(selectorSpec)
 	if err != nil {
-		return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("Invalid selector")}, nil})
+		return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil})
 	}
 	request := fakeRequest{p, root, parsed}
 	mgs.receivedRequests = append(mgs.receivedRequests, request)
@@ -538,7 +560,7 @@ func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.
 			return mgs.toChans(stub.response)
 		}
 	}
-	return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("Missing Mocked Request")}, nil})
+	return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil})
 }
 
 func makeGsResponse(path string, blockCid cid.Cid) graphsync.ResponseProgress {

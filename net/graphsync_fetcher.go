@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"fmt"
+	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -21,6 +22,13 @@ import (
 )
 
 var logGraphsyncFetcher = logging.Logger("net.graphsync_fetcher")
+
+const (
+	// Timeout for a single graphsync request (which may be for many blocks).
+	// We might prefer this timeout to scale with the number of blocks expected in the fetch,
+	// when that number is large.
+	requestTimeout = 60 * time.Second
+)
 
 // interface conformance check
 var _ Fetcher = (*GraphSyncFetcher)(nil)
@@ -102,28 +110,33 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	return gsf.fetchRemainingTipsets(ctx, startingTipset, rpf, done)
 }
 
-func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, tsKey types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
-	cids := tsKey.ToSlice()
+func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
+	blocksToFetch := key.ToSlice()
 	for {
 		peer := rpf.CurrentPeer()
-		logGraphsyncFetcher.Infof("fetching initial tipset %s from peer %s", tsKey, peer)
-		err := gsf.fetchBlocks(ctx, cids, peer)
-		if err == nil {
-			break
+		logGraphsyncFetcher.Infof("fetching initial tipset %s from peer %s", key, peer)
+		err := gsf.fetchBlocks(ctx, blocksToFetch, peer)
+		if err != nil {
+			logGraphsyncFetcher.Infof("request failed: %s", err)
 		}
-		// something went wrong in a graphsync request, but we want to keep trying other peers, so
-		// just log error
-		logGraphsyncFetcher.Infof("request failed, trying another peer: %s", err)
-		cids, err = gsf.missingCids(cids)
+
+		var verifiedTip types.TipSet
+		verifiedTip, blocksToFetch, err = gsf.loadAndVerify(ctx, key)
 		if err != nil {
 			return types.UndefTipSet, err
 		}
+		if len(blocksToFetch) == 0 {
+			return verifiedTip, nil
+		}
+
+		logGraphsyncFetcher.Warningf("incomplete fetch for first tipset %s, trying new peer", key)
+		// Some of the blocks may have been fetched, but avoid tricksy optimization here and just
+		// request the whole bunch again. Graphsync internally will avoid redundant network requests.
 		err = rpf.FindNextPeer()
 		if err != nil {
-			return types.UndefTipSet, errors.Wrapf(err, "fetching tipset: %s", tsKey)
+			return types.UndefTipSet, errors.Wrapf(err, "fetching tipset: %s", key)
 		}
 	}
-	return gsf.loadTipsetFromCids(ctx, tsKey.ToSlice())
 }
 
 func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf *requestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
@@ -135,12 +148,12 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 
 	// fetch remaining tipsets recursively
 	recursionDepth := 1
-	ts := startingTipset
+	anchor := startingTipset // The tipset above the one we actually want to fetch.
 	for !isDone {
 		// Because a graphsync query always starts from a single CID,
-		// we fetch tipsets starting from the first block in the last tipset and
-		// recursively getting sets of parents
-		childBlock := ts.At(0)
+		// we fetch tipsets anchored from any block in the last (i.e. highest) tipset and
+		// recursively fetching sets of parents.
+		childBlock := anchor.At(0)
 		peer := rpf.CurrentPeer()
 		logGraphsyncFetcher.Infof("fetching chain from height %d, block %s, peer %s, %d levels", childBlock.Height, childBlock.Cid(), peer, recursionDepth)
 		err := gsf.fetchBlocksRecursively(ctx, childBlock.Cid(), peer, recursionDepth)
@@ -149,38 +162,35 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 			// just log error
 			logGraphsyncFetcher.Infof("request failed, trying another peer: %s", err)
 		}
-		cidsAreMissing := false
-		for i := 0; i < recursionDepth; i++ {
-			tsKey, err := ts.Parents()
+		var incomplete []cid.Cid
+		for i := 0; !isDone && i < recursionDepth; i++ {
+			tsKey, err := anchor.Parents()
 			if err != nil {
 				return nil, err
 			}
-			cidsAreMissing, err = gsf.areCidsMissing(tsKey)
+
+			var verifiedTip types.TipSet
+			verifiedTip, incomplete, err = gsf.loadAndVerify(ctx, tsKey)
 			if err != nil {
 				return nil, err
 			}
-			if cidsAreMissing {
-				logGraphsyncFetcher.Warningf("missing CIDs for tipset %s, trying new peer", tsKey)
+			if len(incomplete) == 0 {
+				out = append(out, verifiedTip)
+				isDone, err = done(verifiedTip)
+				if err != nil {
+					return nil, err
+				}
+				anchor = verifiedTip
+			} else {
+				logGraphsyncFetcher.Warningf("incomplete fetch for tipset %s, trying new peer", tsKey)
 				err := rpf.FindNextPeer()
 				if err != nil {
 					return nil, errors.Wrapf(err, "fetching tipset: %s", tsKey)
 				}
-				break
-			}
-			ts, err = gsf.loadTipsetFromCids(ctx, tsKey.ToSlice())
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, ts)
-			isDone, err = done(ts)
-			if err != nil {
-				return nil, err
-			}
-			if isDone {
-				break
+				break // Stop verifying, make another fetch
 			}
 		}
-		if !cidsAreMissing && recursionDepth < maxRecursionDepth {
+		if len(incomplete) == 0 && recursionDepth < maxRecursionDepth {
 			recursionDepth *= recursionMultiplier
 		}
 	}
@@ -195,36 +205,42 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, ta
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
 	errChans := make([]<-chan error, 0, len(cids))
-	requestCtx, requestCancel := context.WithCancel(ctx)
+	requestCtx, requestCancel := context.WithTimeout(ctx, requestTimeout)
 	defer requestCancel()
 	for _, c := range cids {
 		_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
 		errChans = append(errChans, errChan)
 	}
+	// Any of the multiple parallel requests might fail. Wait for all of them to complete, then
+	// return any error (in this case, the last one to be received).
+	var anyError error
 	for _, errChan := range errChans {
 		for err := range errChan {
-			return err
+			anyError = err
 		}
 	}
-	return nil
+	return anyError
 }
 
 // fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
 // starting from baseCid.
 func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) error {
-	requestCtx, requestCancel := context.WithCancel(ctx)
+	requestCtx, requestCancel := context.WithTimeout(ctx, requestTimeout)
 	defer requestCancel()
 
 	// recursive selector to fetch n sets of parent blocks
 	// starting from block matching base cid:
-	//   - fetch all parent blocks
+	//   - fetch all parent blocks, with messages/receipts
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
 	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.Matcher())
-		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
-			gsf.ssb.ExploreAll(gsf.ssb.Matcher()),
+			gsf.ssb.ExploreAll(
+				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+					efsb.Insert("messages", gsf.ssb.Matcher())
+					efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+				}),
+			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
 		))
 	})).Node()
@@ -236,46 +252,65 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 	return nil
 }
 
-func (gsf *GraphSyncFetcher) loadTipsetFromCids(ctx context.Context, cids []cid.Cid) (types.TipSet, error) {
-	blks := make([]blocks.Block, 0, len(cids))
-	for _, cid := range cids {
-		block, err := gsf.store.Get(cid)
-		if err != nil {
-			return types.UndefTipSet, err
-		}
-		blks = append(blks, block)
-	}
-	validatedBlocks, err := sanitizeBlocks(ctx, blks, gsf.validator)
+// Loads the IPLD blocks for all blocks in a tipset, and checks for the presence of the
+// message and receipt list structures in the store.
+// Returns the tipset with an empty `incomplete`, or Undef and the CIDs of all blockchain-blocks
+// for which the expected IPLD blocks are not all present.
+func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSetKey) (types.TipSet, []cid.Cid, error) {
+	// Load the block headers that exist.
+	tip, incomplete, err := gsf.loadTipHeaders(ctx, key)
 	if err != nil {
-		return types.UndefTipSet, err
+		return types.UndefTipSet, nil, err
 	}
 
-	return types.NewTipSet(validatedBlocks...)
+	// Check that nested structures are also stored, recording any that are missing as incomplete.
+	for i := 0; i < tip.Len(); i++ {
+		blk := tip.At(i)
+		for _, link := range []cid.Cid{blk.Messages, blk.MessageReceipts} {
+			// TODO: validate the structures, don't just check for their presence #3232
+			ok, err := gsf.store.Has(link)
+			if err != nil {
+				return types.UndefTipSet, nil, err
+			}
+			if !ok {
+				incomplete = append(incomplete, blk.Cid())
+			}
+		}
+	}
+	if len(incomplete) > 0 {
+		tip = types.UndefTipSet
+	}
+	return tip, incomplete, nil
 }
 
-func (gsf *GraphSyncFetcher) missingCids(cids []cid.Cid) ([]cid.Cid, error) {
-	missing := make([]cid.Cid, 0, len(cids))
-	for _, cid := range cids {
-		hasBlock, err := gsf.store.Has(cid)
+// Loads and validates the block headers for a tipset. Returns the tipset if complete,
+// else the cids of blocks which are not yet stored.
+func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key types.TipSetKey) (types.TipSet, []cid.Cid, error) {
+	rawBlocks := make([]blocks.Block, 0, key.Len())
+	var incomplete []cid.Cid
+	for it := key.Iter(); !it.Complete(); it.Next() {
+		hasBlock, err := gsf.store.Has(it.Value())
 		if err != nil {
-			return nil, err
+			return types.UndefTipSet, nil, err
 		}
 		if !hasBlock {
-			missing = append(missing, cid)
+			incomplete = append(incomplete, it.Value())
+			continue
 		}
+		rawBlock, err := gsf.store.Get(it.Value())
+		if err != nil {
+			return types.UndefTipSet, nil, err
+		}
+		rawBlocks = append(rawBlocks, rawBlock)
 	}
-	return missing, nil
-}
 
-func (gsf *GraphSyncFetcher) areCidsMissing(tsKey types.TipSetKey) (bool, error) {
-	missing, err := gsf.missingCids(tsKey.ToSlice())
-	if err != nil {
-		return false, err
+	// Validate the headers.
+	validatedBlocks, err := sanitizeBlocks(ctx, rawBlocks, gsf.validator)
+	if err != nil || len(validatedBlocks) == 0 {
+		return types.UndefTipSet, incomplete, err
 	}
-	if len(missing) != 0 {
-		return true, nil
-	}
-	return false, nil
+	tip, err := types.NewTipSet(validatedBlocks...)
+	return tip, incomplete, err
 }
 
 type requestPeerFinder struct {

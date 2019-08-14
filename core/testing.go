@@ -60,7 +60,7 @@ func RequireChainWithMessages(t *testing.T, builder *chain.Builder, root types.T
 
 	for _, tsMsgSet := range msgSets {
 		if len(tsMsgSet) == 0 {
-			parent = builder.BuildOn(parent, nil)
+			parent = builder.BuildOneOn(parent, nil)
 		} else {
 			parent = builder.Build(parent, len(tsMsgSet), msgBuild(t, tsMsgSet))
 		}
