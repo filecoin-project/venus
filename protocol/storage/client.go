@@ -231,7 +231,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(ctx, &response, miner, proposal); err != nil {
+	if err := smc.recordResponse(ctx, &response, miner, proposal, pieceCommitmentResponse.CommP); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
@@ -239,7 +239,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
+func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal, commP types.CommP) error {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return errors.New("failed to get cid of proposal")
@@ -259,6 +259,7 @@ func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Respons
 		Miner:    miner,
 		Proposal: p,
 		Response: resp,
+		CommP:    commP,
 	})
 }
 

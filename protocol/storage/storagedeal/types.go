@@ -121,12 +121,22 @@ type Deal struct {
 	Miner    address.Address
 	Proposal *Proposal
 	Response *Response
+	CommP    types.CommP
 }
 
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
 type ProofInfo struct {
 	// Sector id allows us to find the committed sector metadata on chain
 	SectorID uint64
+
+	// CommD of the sector
+	CommD []byte
+
+	// CommR of the replica
+	CommR []byte
+
+	// CommRStar of the replica
+	CommRStar []byte
 
 	// CommitmentMessage is the cid of the message that committed the sector. It's used to track when the sector goes on chain.
 	CommitmentMessage cid.Cid

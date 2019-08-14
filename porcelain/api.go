@@ -225,6 +225,11 @@ func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
 }
 
+// ClientValidateDeal checks to see that a storage deal is in the `Complete` state, and that its PIP is valid
+func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
+	return ClientVerifyStorageDeal(ctx, a, proposalCid, proofInfo)
+}
+
 // CalculatePoSt invokes the sector builder to calculate a proof-of-spacetime.
 func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
 	return CalculatePoSt(ctx, a, sortedCommRs, seed)

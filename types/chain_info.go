@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -21,6 +23,11 @@ func NewChainInfo(peer peer.ID, head TipSetKey, height uint64) *ChainInfo {
 		Height:  height,
 		Trusted: true,
 	}
+}
+
+// Returns a human-readable string representation of a chain info
+func (i *ChainInfo) String() string {
+	return fmt.Sprintf("{peer=%s height=%d head=%s}", i.Peer, i.Height, i.Head)
 }
 
 // CISlice is for sorting chain infos
