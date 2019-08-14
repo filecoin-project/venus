@@ -58,11 +58,11 @@ func TestReceiveStorageProposal(t *testing.T) {
 	t.Run("Accepts proposals with no payments when price is zero", func(t *testing.T) {
 		porcelainAPI := newMinerTestPorcelain(t, "0")
 		miner := Miner{
-			porcelainAPI:        porcelainAPI,
-			ownerAddr:           porcelainAPI.targetAddress,
-			workerAddr:          porcelainAPI.workerAddress,
-			sectorSize:          types.OneKiBSectorSize,
-			proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
+			porcelainAPI:      porcelainAPI,
+			ownerAddr:         porcelainAPI.targetAddress,
+			workerAddr:        porcelainAPI.workerAddress,
+			sectorSize:        types.OneKiBSectorSize,
+			proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},
 		}
 
 		// do not create payment info
@@ -700,12 +700,12 @@ func (mtp *minerTestPorcelain) SignBytes(data []byte, addr address.Address) (typ
 
 func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
-		porcelainAPI:        api,
-		ownerAddr:           api.targetAddress,
-		workerAddr:          api.workerAddress,
-		prover:              &FakeProver{},
-		sectorSize:          types.OneKiBSectorSize,
-		proposalProcessor:   func(ctx context.Context, m *Miner, cid cid.Cid) {},
+		porcelainAPI:      api,
+		ownerAddr:         api.targetAddress,
+		workerAddr:        api.workerAddress,
+		prover:            &FakeProver{},
+		sectorSize:        types.OneKiBSectorSize,
+		proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},
 	}
 }
 

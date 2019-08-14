@@ -751,8 +751,10 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
-				if err := node.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
-					log.Error(err)
+				if node.StorageFaultSlasher != nil {
+					if err := node.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
+						log.Error(err)
+					}
 				}
 			}
 		case <-ctx.Done():
