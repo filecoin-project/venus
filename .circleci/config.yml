@@ -393,12 +393,12 @@ jobs:
             export AWS_SECRET_ACCESS_KEY=$AWS_ECR_SECRET_ACCESS_KEY
             eval $(aws --region us-east-1 ecr --no-include-email get-login)
       - checkout
+      - update_submodules
       - generate_rust_submodules_checksums
       - attach_workspace:
           at: "."
       - restore_cache:
           key: v1-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
-      - update_submodules
       - run:
           name: build a base image
           command: |
