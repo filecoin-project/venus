@@ -19,11 +19,12 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"address": miningAddrCmd,
-		"once":    miningOnceCmd,
-		"start":   miningStartCmd,
-		"status":  miningStatusCmd,
-		"stop":    miningStopCmd,
+		"address":  miningAddrCmd,
+		"once":     miningOnceCmd,
+		"start":    miningStartCmd,
+		"status":   miningStatusCmd,
+		"stop":     miningStopCmd,
+		"seal-now": miningSealCmd,
 	},
 }
 
@@ -158,6 +159,19 @@ var miningStopCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		GetBlockAPI(env).MiningStop(req.Context)
 		return re.Emit("Stopped mining")
+	},
+	Encoders: stringEncoderMap,
+}
+
+var miningSealCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Start sealing all staged sectors or create and seal a new sector",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if err := GetPorcelainAPI(env).SealNow(req.Context); err != nil {
+			return err
+		}
+		return re.Emit("sealing started")
 	},
 	Encoders: stringEncoderMap,
 }
