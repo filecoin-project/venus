@@ -570,7 +570,7 @@ func (node *Node) Start(ctx context.Context) error {
 			trusted := true
 			err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
 			if err != nil {
-				log.Infof("error handling blocks: %s", ci.Head.String())
+				log.Infof("error handling tipset from hello %s: %s", ci, err)
 				return
 			}
 			// For now, consider the initial bootstrap done after the syncer has (synchronously)

@@ -43,7 +43,7 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.S
 	var out types.MessageCollection
 	err := ms.ipldStore.Get(ctx, c, &out)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not load message collection with cid: %s", c.String())
+		return nil, errors.Wrapf(err, "failed to load messages %s", c.String())
 	}
 	return []*types.SignedMessage(out), nil
 }
@@ -63,7 +63,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.M
 	var out types.ReceiptCollection
 	err := ms.ipldStore.Get(ctx, c, &out)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not load receipt collection with cid: %s", c.String())
+		return nil, errors.Wrapf(err, "failed to load receipts %s", c.String())
 	}
 	return []*types.MessageReceipt(out), nil
 }
