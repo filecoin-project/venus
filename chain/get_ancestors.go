@@ -116,9 +116,6 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 			return nil, err
 		}
 	}
-	if len(ret) == 0 {
-		return nil, errors.New("empty TipSet")
-	}
 	return ret, nil
 }
 
