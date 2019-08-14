@@ -34,25 +34,29 @@ func TestProposeDeal(t *testing.T) {
 	ctx := context.Background()
 	addressCreator := address.NewForTestGetter()
 
-	var proposal *storagedeal.SignedDealProposal
-
-	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*storagedeal.SignedDealProposal)
-		require.True(t, ok)
-		proposal = p
-
-		pcid, err := convert.ToCid(p.Proposal)
-		require.NoError(t, err)
-		return &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
-		}, nil
-	})
+	var proposal *storagedeal.SignedProposal
 
 	pieceSize := uint64(7)
 	pieceReader := bytes.NewReader(make([]byte, pieceSize))
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p, ok := request.(*storagedeal.SignedProposal)
+		require.True(t, ok)
+		proposal = p
+
+		pcid, err := convert.ToCid(p)
+		require.NoError(t, err)
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
+		}
+		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
+		return resp, nil
+	})
+
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -133,7 +137,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 
 	client := NewClient(th.NewFakeHost(), testAPI)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p := request.(*storagedeal.SignedDealProposal)
+		p := request.(*storagedeal.SignedProposal)
 
 		// assert that client does not send payment information in deal
 		assert.Equal(t, types.ZeroAttoFIL, p.TotalPrice)
@@ -143,13 +147,18 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 		assert.Equal(t, testAPI.payer, p.Payment.Payer)
 		assert.Nil(t, p.Payment.Vouchers)
 
-		pcid, err := convert.ToCid(p.Proposal)
+		pcid, err := convert.ToCid(p)
 		require.NoError(t, err)
-		return &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
-		}, nil
+
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
+		}
+		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
+		return resp, nil
 	})
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -166,22 +175,26 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	ctx := context.Background()
 	addressCreator := address.NewForTestGetter()
 
-	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
-		p, ok := request.(*storagedeal.SignedDealProposal)
-		require.True(t, ok)
-
-		pcid, err := convert.ToCid(p.Proposal)
-		require.NoError(t, err)
-		return &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     "OK",
-			ProposalCid: pcid,
-		}, nil
-	})
-
 	pieceSize := uint64(7)
 	pieceReader := bytes.NewReader(make([]byte, pieceSize))
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p, ok := request.(*storagedeal.SignedProposal)
+		require.True(t, ok)
+
+		pcid, err := convert.ToCid(p)
+		require.NoError(t, err)
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
+		}
+		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
+		return resp, nil
+	})
+
 	client := NewClient(th.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
@@ -196,6 +209,49 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestProposeDealFailsWhenSignatureIsInvalid(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	addressCreator := address.NewForTestGetter()
+
+	pieceSize := uint64(7)
+	pieceReader := bytes.NewReader(make([]byte, pieceSize))
+	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
+	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
+		p, ok := request.(*storagedeal.SignedProposal)
+		require.True(t, ok)
+
+		pcid, err := convert.ToCid(p.Proposal)
+		require.NoError(t, err)
+		resp := &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Rejected,
+				Message:     "OK",
+				ProposalCid: pcid,
+			},
+		}
+		require.NoError(t, resp.Sign(testAPI.signer, testAPI.worker))
+
+		// Change a detail to invalidate signature
+		resp.State = storagedeal.Accepted
+
+		return resp, nil
+	})
+
+	client := NewClient(th.NewFakeHost(), testAPI)
+	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
+
+	dataCid := types.CidFromString(t, "somecid")
+
+	minerAddr := addressCreator()
+	askID := uint64(67)
+	duration := uint64(10000)
+	_, err := client.ProposeDeal(ctx, minerAddr, dataCid, askID, duration, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "signature is invalid")
+}
+
 type clientTestAPI struct {
 	askPrice       types.AttoFIL
 	createdPayment bool
@@ -204,16 +260,21 @@ type clientTestAPI struct {
 	msgCid         cid.Cid
 	payer          address.Address
 	target         address.Address
+	worker         address.Address
 	perPayment     types.AttoFIL
 	testing        *testing.T
 	deals          map[cid.Cid]*storagedeal.Deal
 	pieceReader    io.Reader
 	pieceSize      uint64
+	signer         types.Signer
 }
 
 func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *clientTestAPI {
 	cidGetter := types.NewCidForTestGetter()
 	addressGetter := address.NewForTestGetter()
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
+	workerAddr, err := ki[0].Address()
+	require.NoError(t, err, "Could not create worker address")
 
 	return &clientTestAPI{
 		askPrice:       types.NewAttoFILFromFIL(32),
@@ -223,7 +284,9 @@ func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *cl
 		channelID:      types.NewChannelID(23),
 		payer:          addressGetter(),
 		target:         addressGetter(),
+		worker:         workerAddr,
 		perPayment:     types.NewAttoFILFromFIL(10),
+		signer:         mockSigner,
 		testing:        t,
 		deals:          make(map[cid.Cid]*storagedeal.Deal),
 		pieceReader:    pieceReader,
@@ -286,6 +349,10 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 	return address.TestAddress, nil
 }
 
+func (ctp *clientTestAPI) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return ctp.worker, nil
+}
+
 func (ctp *clientTestAPI) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
 	return types.OneKiBSectorSize, nil
 }
@@ -324,12 +391,12 @@ func newTestClientNode(responder func(request interface{}) (interface{}, error))
 // response for a protocol request.
 // It ignores the host param required for the storage client interface.
 func (tcn *testClientNode) MakeTestProtocolRequest(ctx context.Context, protocol protocol.ID, peer peer.ID, _ host.Host, request interface{}, response interface{}) error {
-	dealResponse := response.(*storagedeal.Response)
+	dealResponse := response.(*storagedeal.SignedResponse)
 	res, err := tcn.responder(request)
 	if err != nil {
 		return err
 	}
-	*dealResponse = *res.(*storagedeal.Response)
+	*dealResponse = *res.(*storagedeal.SignedResponse)
 	return nil
 }
 

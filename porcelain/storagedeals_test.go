@@ -43,8 +43,10 @@ func TestDealGet(t *testing.T) {
 	cidGetter := types.NewCidForTestGetter()
 	dealCid := cidGetter()
 	expectedDeal := &storagedeal.Deal{
-		Response: &storagedeal.Response{
-			ProposalCid: dealCid,
+		Response: &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				ProposalCid: dealCid,
+			},
 		},
 	}
 
@@ -65,8 +67,10 @@ func TestDealGetNotFound(t *testing.T) {
 	dealCid := cidGetter()
 	badCid := cidGetter()
 	expectedDeal := &storagedeal.Deal{
-		Response: &storagedeal.Response{
-			ProposalCid: dealCid,
+		Response: &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				ProposalCid: dealCid,
+			},
 		},
 	}
 
@@ -105,9 +109,11 @@ func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagede
 	require.Equal(trp.t, trp.dealCid, c)
 
 	deal := &storagedeal.Deal{
-		Proposal: &storagedeal.Proposal{
-			Payment: storagedeal.PaymentInfo{
-				Vouchers: trp.vouchers,
+		Proposal: &storagedeal.SignedProposal{
+			Proposal: storagedeal.Proposal{
+				Payment: storagedeal.PaymentInfo{
+					Vouchers: trp.vouchers,
+				},
 			},
 		},
 	}

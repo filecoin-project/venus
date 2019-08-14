@@ -126,6 +126,11 @@ func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Addres
 	return MinerGetOwnerAddress(ctx, a, minerAddr)
 }
 
+// MinerGetWorkerAddress queries for the worker address of the given miner
+func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return MinerGetWorkerAddress(ctx, a, minerAddr)
+}
+
 // MinerGetSectorSize queries for the sector size of the given miner.
 func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
 	return MinerGetSectorSize(ctx, a, minerAddr)
