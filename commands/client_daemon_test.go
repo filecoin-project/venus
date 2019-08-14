@@ -78,6 +78,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 func TestDuplicateDeals(t *testing.T) {
 	tf.IntegrationTest(t)
+	// Skipping due to flake (#3236)
 	t.SkipNow()
 
 	// Give the deal time to complete
