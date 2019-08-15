@@ -834,6 +834,7 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 // SetupMining initializes all the functionality the node needs to start mining.
 // This method is idempotent.
 func (node *Node) SetupMining(ctx context.Context) error {
+	// ensure we have a miner actor before we even consider mining
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
@@ -850,13 +851,14 @@ func (node *Node) SetupMining(ctx context.Context) error {
 		}
 	}
 
+	// ensure we have a mining worker
 	if node.MiningWorker == nil {
 		if node.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
 			return err
 		}
 	}
 
-	// initialize a storage miner
+	// ensure we have a storage miner
 	if node.StorageMiner == nil {
 		storageMiner, _, err := initStorageMinerForNode(ctx, node)
 		if err != nil {
@@ -1138,7 +1140,7 @@ func (node *Node) setupProtocols() error {
 		mineDelay,
 		node.StartMining,
 		node.StopMining,
-		node.CreateMiningWorker)
+		node.GetMiningWorker)
 
 	node.BlockMiningAPI = &blockMiningAPI
 
@@ -1151,6 +1153,14 @@ func (node *Node) setupProtocols() error {
 	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
+}
+
+// GetMiningWorker ensures mining is setup and then returns the worker
+func (node *Node) GetMiningWorker(ctx context.Context) (mining.Worker, error) {
+	if err := node.SetupMining(ctx); err != nil {
+		return nil, err
+	}
+	return node.MiningWorker, nil
 }
 
 // CreateMiningWorker creates a mining.Worker for the node using the configured

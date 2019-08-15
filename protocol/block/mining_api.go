@@ -17,14 +17,14 @@ type miningChainReader interface {
 
 // MiningAPI provides an interface to the block mining protocol.
 type MiningAPI struct {
-	minerAddress     func() (address.Address, error)
-	addNewBlockFunc  func(context.Context, *types.Block) (err error)
-	chainReader      miningChainReader
-	isMiningFunc     func() bool
-	mineDelay        time.Duration
-	startMiningFunc  func(context.Context) error
-	stopMiningFunc   func(context.Context)
-	createWorkerFunc func(ctx context.Context) (mining.Worker, error)
+	minerAddress    func() (address.Address, error)
+	addNewBlockFunc func(context.Context, *types.Block) (err error)
+	chainReader     miningChainReader
+	isMiningFunc    func() bool
+	mineDelay       time.Duration
+	startMiningFunc func(context.Context) error
+	stopMiningFunc  func(context.Context)
+	getWorkerFunc   func(ctx context.Context) (mining.Worker, error)
 }
 
 // New creates a new MiningAPI instance with the provided deps
@@ -36,17 +36,17 @@ func New(
 	blockMineDelay time.Duration,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
-	createWorkerFunc func(ctx context.Context) (mining.Worker, error),
+	getWorkerFunc func(ctx context.Context) (mining.Worker, error),
 ) MiningAPI {
 	return MiningAPI{
-		minerAddress:     minerAddr,
-		addNewBlockFunc:  addNewBlockFunc,
-		chainReader:      chainReader,
-		isMiningFunc:     isMiningFunc,
-		mineDelay:        blockMineDelay,
-		startMiningFunc:  startMiningFunc,
-		stopMiningFunc:   stopMiningfunc,
-		createWorkerFunc: createWorkerFunc,
+		minerAddress:    minerAddr,
+		addNewBlockFunc: addNewBlockFunc,
+		chainReader:     chainReader,
+		isMiningFunc:    isMiningFunc,
+		mineDelay:       blockMineDelay,
+		startMiningFunc: startMiningFunc,
+		stopMiningFunc:  stopMiningfunc,
+		getWorkerFunc:   getWorkerFunc,
 	}
 }
 
@@ -72,7 +72,7 @@ func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
 		return nil, err
 	}
 
-	miningWorker, err := a.createWorkerFunc(ctx)
+	miningWorker, err := a.getWorkerFunc(ctx)
 	if err != nil {
 		return nil, err
 	}
