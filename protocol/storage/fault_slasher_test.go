@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestStorageFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
+func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -31,7 +31,7 @@ func TestStorageFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	minerOwnerAddr := signer.Addresses[0]
 	ob := outbox{}
 
-	fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+	fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 	t.Run("with bad tipset", func(t *testing.T) {
 		ts := types.UndefTipSet
 		err := fm.OnNewHeaviestTipSet(ctx, ts)
@@ -47,7 +47,7 @@ func TestStorageFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	})
 }
 
-func TestStorageFaultSlasher_Slash(t *testing.T) {
+func TestFaultSlasher_Slash(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -62,7 +62,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		minerOwnerAddr := signer.Addresses[0]
 
 		ob := outbox{}
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		require.NoError(t, err)
 		assert.Equal(t, 0, ob.msgCount)
@@ -86,7 +86,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, ob.msgCount)
@@ -107,7 +107,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{failSend: true, failErr: "Boom"}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Boom")
@@ -124,7 +124,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		}
 		minerOwnerAddr := signer.Addresses[0]
 
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err := fm.Slash(ctx, types.NewBlockHeight(42))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "message query failed")
@@ -144,7 +144,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		}
 		minerOwnerAddr := signer.Addresses[0]
 
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, types.NewBlockHeight(42))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "deserializing MinerPoStStates failed")

@@ -98,7 +98,7 @@ type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
 }
 
-// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
+// storageFaultSlasher is the interface for needed FaultSlasher functionality
 type storageFaultSlasher interface {
 	OnNewHeaviestTipSet(context.Context, types.TipSet) error
 }
@@ -1060,7 +1060,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	return miner, ownerAddress, nil
 }
 
-// initStorageFaultSlasherForNode sets node.StorageFaultSlasher only if the node's miner actor
+// initStorageFaultSlasherForNode sets node.FaultSlasher only if the node's miner actor
 // is not a bootstrap miner
 func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, ownerAddress address.Address) error {
 	isBootstrapMinerActor, err := node.StorageMiner.IsBootstrapMinerActor(ctx)
@@ -1068,7 +1068,7 @@ func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, ownerAddre
 		return errors.Wrap(err, "could not get bootstrap status of miner actor")
 	}
 	if !isBootstrapMinerActor {
-		node.StorageFaultSlasher = storage.NewStorageFaultSlasher(
+		node.StorageFaultSlasher = storage.NewFaultSlasher(
 			node.PorcelainAPI, node.Outbox, ownerAddress,
 			storage.DefaultFaultSlasherGasPrice, storage.DefaultFaultSlasherGasLimit)
 	}

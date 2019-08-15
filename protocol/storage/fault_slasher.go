@@ -18,12 +18,12 @@ var DefaultFaultSlasherGasPrice = types.NewAttoFILFromFIL(1)
 // DefaultFaultSlasherGasLimit is the default gas limit to be used when sending messages
 var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
 
-// monitorPlumbing is an interface for the functionality StorageFaultSlasher needs
+// monitorPlumbing is an interface for the functionality FaultSlasher needs
 type monitorPlumbing interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
-// slashingMsgOutbox is the interface for the functionality of Outbox StorageFaultSlasher needs
+// slashingMsgOutbox is the interface for the functionality of Outbox FaultSlasher needs
 type slashingMsgOutbox interface {
 	Send(ctx context.Context,
 		from, to address.Address,
@@ -35,11 +35,10 @@ type slashingMsgOutbox interface {
 		params ...interface{}) (out cid.Cid, err error)
 }
 
-// StorageFaultSlasher checks for unreported storage faults by miners, a.k.a. market faults.
+// FaultSlasher checks for unreported storage faults by miners, a.k.a. market faults.
 // Storage faults are distinct from consensus faults.
 // See https://github.com/filecoin-project/specs/blob/master/faults.md
-type StorageFaultSlasher struct { // nolint: golint
-	// nolint: golint
+type FaultSlasher struct {
 	gasPrice  types.AttoFIL  // gas price to use when sending messages
 	gasLimit  types.GasUnits // gas limit to use when sending messages
 	log       logging.EventLogger
@@ -48,10 +47,10 @@ type StorageFaultSlasher struct { // nolint: golint
 	plumbing  monitorPlumbing   // what does the message query
 }
 
-// NewStorageFaultSlasher creates a new StorageFaultSlasher with the provided plumbing, outbox and message sender.
+// NewFaultSlasher creates a new FaultSlasher with the provided plumbing, outbox and message sender.
 // Message sender must be an account actor address.
-func NewStorageFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) *StorageFaultSlasher {
-	return &StorageFaultSlasher{
+func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) *FaultSlasher {
+	return &FaultSlasher{
 		plumbing:  plumbing,
 		log:       logging.Logger("StorFltMon"),
 		outbox:    outbox,
@@ -62,7 +61,7 @@ func NewStorageFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, 
 }
 
 // OnNewHeaviestTipSet is a wrapper for calling the Slash function, after getting the TipSet height.
-func (sfm *StorageFaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSet) error {
+func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSet) error {
 	height, err := ts.Height()
 	if err != nil {
 		return errors.Wrap(err, "failed to get tipset height")
@@ -75,7 +74,7 @@ func (sfm *StorageFaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts type
 // Slash checks for miners with unreported faults, then slashes them
 // Slashing messages are not broadcast to the network, but included in the next block mined by the slashing
 // node.
-func (sfm *StorageFaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHeight) error {
+func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHeight) error {
 	res, err := sfm.plumbing.MessageQuery(ctx, sfm.msgSender, address.StorageMarketAddress, "getLateMiners")
 	if err != nil {
 		return errors.Wrap(err, "getLateMiners message failed")

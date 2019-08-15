@@ -21,7 +21,8 @@ type TrivialTestSlasher struct {
 	SendCalls uint64
 }
 
-// Slash is a required function for storageFaultSlasher interfaces and is intended to do nothing.
+// Slash is a required function for storageFaultSlasher interfaces and does nothing but track
+// how many times it's called.
 func (ts *TrivialTestSlasher) Slash(context.Context, *types.BlockHeight) error {
 	ts.SendCalls++
 	return nil
