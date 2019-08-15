@@ -192,18 +192,13 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
-	sectorSizeToUsable := map[uint64]int64{
-		1024:      1016,
-		268435456: 266338304,
-	}
-
 	pparams, err := miner.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
 	// Create a miner on the miner node
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry, sectorSize)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	// Connect the client and the miner
@@ -213,7 +208,7 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, sectorSizeToUsable[sectorSize.Uint64()])
+	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)

@@ -106,9 +106,9 @@ func TestDuplicateDeals(t *testing.T) {
 	pparams, err := minerDaemon.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
-	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry, sectorSize)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
@@ -298,9 +298,9 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	pparams, err := miningNode.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry, sectorSize)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry, sinfo.Size)
 	minerCreateDoneCh <- struct{}{}
 	require.NoError(t, err)
 
