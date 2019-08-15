@@ -168,7 +168,6 @@ type State struct {
 	// ProvingPeriodEnd is the block height at the end of the current proving period.
 	// This is the last round in which a proof will be considered to be on-time.
 	ProvingPeriodEnd *types.BlockHeight
-	LastPoSt         *types.BlockHeight
 
 	// The amount of space proven to the network by this miner in the
 	// latest proving period.
@@ -941,7 +940,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, fa
 
 		// transition to the next proving period
 		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
-		state.LastPoSt = chainHeight
 
 		// Update miner power to the amount of data actually proved
 		// during the last proving period.
