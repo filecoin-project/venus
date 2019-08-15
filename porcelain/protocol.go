@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
@@ -11,12 +12,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// SectorInfo provides information about a sector construction
+type SectorInfo struct {
+	Size         *types.BytesAmount
+	MaxPieceSize *types.BytesAmount
+}
+
 // ProtocolParams contains parameters that modify the filecoin nodes protocol
 type ProtocolParams struct {
-	AutoSealInterval     uint
-	BlockTime            time.Duration
-	ProofsMode           types.ProofsMode
-	SupportedSectorSizes []*types.BytesAmount
+	AutoSealInterval uint
+	BlockTime        time.Duration
+	ProofsMode       types.ProofsMode
+	SupportedSectors []SectorInfo
 }
 
 type protocolParamsPlumbing interface {
@@ -25,7 +32,7 @@ type protocolParamsPlumbing interface {
 	BlockTime() time.Duration
 }
 
-// ProtocolParameters TODO(rosa)
+// ProtocolParameters returns protocol parameter information about the node
 func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*ProtocolParams, error) {
 	autoSealIntervalInterface, err := plumbing.ConfigGet("mining.autoSealIntervalSeconds")
 	if err != nil {
@@ -42,24 +49,30 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve proofs mode")
 	}
 
-	supportedSectorSizes := []*types.BytesAmount{types.OneKiBSectorSize}
+	sectorSizes := []*types.BytesAmount{types.OneKiBSectorSize}
 	if proofsMode == types.LiveProofsMode {
-		supportedSectorSizes[0] = types.TwoHundredFiftySixMiBSectorSize
+		sectorSizes[0] = types.TwoHundredFiftySixMiBSectorSize
+	}
+
+	supportedSectors := []SectorInfo{}
+	for _, sectorSize := range sectorSizes {
+		maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+		supportedSectors = append(supportedSectors, SectorInfo{sectorSize, maxUserBytes})
 	}
 
 	return &ProtocolParams{
-		AutoSealInterval:     autoSealInterval,
-		BlockTime:            plumbing.BlockTime(),
-		ProofsMode:           proofsMode,
-		SupportedSectorSizes: supportedSectorSizes,
+		AutoSealInterval: autoSealInterval,
+		BlockTime:        plumbing.BlockTime(),
+		ProofsMode:       proofsMode,
+		SupportedSectors: supportedSectors,
 	}, nil
 }
 
 // IsSupportedSectorSize returns true if the given sector size is supported by
 // the network.
 func (pp *ProtocolParams) IsSupportedSectorSize(sectorSize *types.BytesAmount) bool {
-	for _, size := range pp.SupportedSectorSizes {
-		if size.Equal(sectorSize) {
+	for _, sector := range pp.SupportedSectors {
+		if sector.Size.Equal(sectorSize) {
 			return true
 		}
 	}

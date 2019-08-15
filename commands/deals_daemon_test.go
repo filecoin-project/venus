@@ -57,9 +57,9 @@ func TestDealsRedeem(t *testing.T) {
 	pparams, err := minerDaemon.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
-	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sectorSize)
+	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
@@ -229,9 +229,9 @@ func TestDealsShow(t *testing.T) {
 	pparams, err := minerNode.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
-	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sectorSize)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, minerNode.MiningStop(ctx))
@@ -398,10 +398,10 @@ func setupDeal(
 	pparams, err := minerNode.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
 	// Calls MiningOnce on genesis (client). This also starts the Miner.
-	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sectorSize)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 	require.NoError(t, minerNode.MiningStop(ctx))
 

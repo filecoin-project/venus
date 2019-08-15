@@ -68,7 +68,7 @@ additional sectors.`,
 			return err
 		}
 
-		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectorSizes[0])
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectors[0].Size)
 		if err != nil {
 			return err
 		}
@@ -79,9 +79,9 @@ additional sectors.`,
 		// supported.
 		// https://github.com/filecoin-project/specs/pull/318
 		if !pp.IsSupportedSectorSize(sectorSize) {
-			supportedStrs := make([]string, len(pp.SupportedSectorSizes))
-			for i, ss := range pp.SupportedSectorSizes {
-				supportedStrs[i] = ss.String()
+			supportedStrs := make([]string, len(pp.SupportedSectors))
+			for i, si := range pp.SupportedSectors {
+				supportedStrs[i] = si.Size.String()
 			}
 			return fmt.Errorf("unsupported sector size: %s (supported sizes: %s)", sectorSize, strings.Join(supportedStrs, ", "))
 		}

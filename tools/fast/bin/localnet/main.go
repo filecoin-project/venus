@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
-	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var (
@@ -279,16 +278,16 @@ func main() {
 			return
 		}
 
-		sectorSize := pparams.SupportedSectorSizes[0]
+		sinfo := pparams.SupportedSectors[0]
 
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sectorSize)
+		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sinfo.Size)
 		if err != nil {
 			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return
 		}
 
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(getMaxUserBytesPerStagedSector()))
+		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -355,10 +354,6 @@ func main() {
 	fmt.Println("Ctrl-C to exit")
 
 	<-exit
-}
-
-func getMaxUserBytesPerStagedSector() uint64 {
-	return go_sectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
 }
 
 func handleError(err error, msg ...string) int {
