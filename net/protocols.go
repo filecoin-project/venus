@@ -5,4 +5,4 @@ import (
 )
 
 // FilecoinDHT is the protocol of the filecoin DHT.
-const FilecoinDHT protocol.ID = "/fil/kad/devnet-3"
+const FilecoinDHT protocol.ID = "/fil/kad/devnet-4"
