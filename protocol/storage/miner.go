@@ -635,9 +635,9 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 	log.Errorf("commit failure but could not update to deal 'Failed' state: %s", err)
 }
 
-// IsBootstrapMinerActor is a convenience method used to determine if the miner
+// isBootstrapMinerActor is a convenience method used to determine if the miner
 // actor was created when bootstrapping the network.
-func (sm *Miner) IsBootstrapMinerActor(ctx context.Context) (bool, error) {
+func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
 		address.Address{},
@@ -734,7 +734,7 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	ctx := context.Background()
 
-	isBootstrapMinerActor, err := sm.IsBootstrapMinerActor(ctx)
+	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
 	if err != nil {
 		return errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
 	}

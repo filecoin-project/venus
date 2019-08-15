@@ -751,10 +751,10 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
-				if node.StorageFaultSlasher != nil {
-					if err := node.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
-						log.Error(err)
-					}
+			}
+			if node.StorageFaultSlasher != nil {
+				if err := node.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
+					log.Error(err)
 				}
 			}
 		case <-ctx.Done():
@@ -888,14 +888,14 @@ func (node *Node) StartMining(ctx context.Context) error {
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
 	// initialize a storage miner
-	storageMiner, ownerAddress, err := initStorageMinerForNode(ctx, node)
+	storageMiner, workerAddress, err := initStorageMinerForNode(ctx, node)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize storage miner")
 	}
 
 	// initialize the storage fault slasher if appropriate
 	node.StorageMiner = storageMiner
-	if err = node.initStorageFaultSlasherForNode(ctx, ownerAddress); err != nil {
+	if err = node.initStorageFaultSlasherForNode(ctx, workerAddress); err != nil {
 		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
 	}
 
@@ -1057,21 +1057,17 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 		return nil, address.Undef, errors.Wrap(err, "failed to instantiate storage miner")
 	}
 
-	return miner, ownerAddress, nil
+	return miner, workerAddress, nil
 }
 
-// initStorageFaultSlasherForNode sets node.FaultSlasher only if the node's miner actor
-// is not a bootstrap miner
-func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, ownerAddress address.Address) error {
-	isBootstrapMinerActor, err := node.StorageMiner.IsBootstrapMinerActor(ctx)
-	if err != nil {
-		return errors.Wrap(err, "could not get bootstrap status of miner actor")
-	}
-	if !isBootstrapMinerActor {
-		node.StorageFaultSlasher = storage.NewFaultSlasher(
-			node.PorcelainAPI, node.Outbox, ownerAddress,
-			storage.DefaultFaultSlasherGasPrice, storage.DefaultFaultSlasherGasLimit)
-	}
+// initStorageFaultSlasherForNode sets node.FaultSlasher
+func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, workerAddress address.Address) error {
+	node.StorageFaultSlasher = storage.NewFaultSlasher(
+		node.PorcelainAPI,
+		node.Outbox,
+		workerAddress,
+		storage.DefaultFaultSlasherGasPrice,
+		storage.DefaultFaultSlasherGasLimit)
 	return nil
 }
 

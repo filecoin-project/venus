@@ -67,7 +67,6 @@ func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSe
 		return errors.Wrap(err, "failed to get tipset height")
 	}
 
-	//isBootstrap, err := IsBootstrapMinerActor(ctx, )
 	return sfm.Slash(ctx, types.NewBlockHeight(height))
 }
 

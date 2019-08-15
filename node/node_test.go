@@ -167,7 +167,7 @@ func TestNodeStartMining(t *testing.T) {
 	t.Run("bootstrap miner does not set a storage fault slasher", func(t *testing.T) {
 		assert.NoError(t, minerNode.StartMining(ctx))
 		defer minerNode.StopMining(ctx)
-		assert.Nil(t, minerNode.StorageFaultSlasher)
+		assert.NotNil(t, minerNode.StorageFaultSlasher)
 	})
 }
 
