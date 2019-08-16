@@ -30,6 +30,7 @@ func main() {
 
 	logging.SetLogLevel("dht", "error")          // nolint: errcheck
 	logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
+	logging.SetLogLevel("graphsync", "info")     // nolint: errcheck
 	logging.SetLogLevel("heartbeat", "error")    // nolint: errcheck
 	logging.SetLogLevel("blockservice", "error") // nolint: errcheck
 	logging.SetLogLevel("peerqueue", "error")    // nolint: errcheck
