@@ -590,6 +590,14 @@ func (node *Node) Start(ctx context.Context) error {
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
 			chainSynced.Wait()
+
+			// Log some information about the synced chain
+			if ts, err := node.ChainReader.GetTipSet(node.ChainReader.GetHead()); err == nil {
+				if height, err := ts.Height(); err == nil {
+					log.Infof("initial chain sync complete! chain head height %d, tipset key %s, blocks %s\n", height, ts.Key(), ts.String())
+				}
+			}
+
 			if syncCtx.Err() == nil {
 				// Subscribe to block pubsub topic to learn about new chain heads.
 				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic, node.processBlock)
