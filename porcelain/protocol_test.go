@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,11 +45,14 @@ func TestProtocolParams(t *testing.T) {
 			autoSealInterval: 120,
 		}
 
+		sectorSize := types.OneKiBSectorSize
+		maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64()))
+
 		expected := &porcelain.ProtocolParams{
-			AutoSealInterval:     120,
-			ProofsMode:           types.TestProofsMode,
-			SupportedSectorSizes: []*types.BytesAmount{types.OneKiBSectorSize},
-			BlockTime:            protocolTestParamBlockTime,
+			AutoSealInterval: 120,
+			ProofsMode:       types.TestProofsMode,
+			SupportedSectors: []porcelain.SectorInfo{{sectorSize, maxUserBytes}},
+			BlockTime:        protocolTestParamBlockTime,
 		}
 
 		out, err := porcelain.ProtocolParameters(context.TODO(), plumbing)

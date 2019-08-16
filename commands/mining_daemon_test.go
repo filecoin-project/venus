@@ -72,9 +72,9 @@ func TestMiningSealNow(t *testing.T) {
 	pparams, err := minerNode.Protocol(ctx)
 	require.NoError(t, err)
 
-	sectorSize := pparams.SupportedSectorSizes[0]
+	sinfo := pparams.SupportedSectors[0]
 
-	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sectorSize)
+	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sinfo.Size)
 	require.NoError(t, err)
 
 	// get address of miner so we can check power
