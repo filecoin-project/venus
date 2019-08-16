@@ -33,7 +33,6 @@ func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWei
 		Parents:         NewTipSetKey(parentCid),
 		ParentWeight:    Uint64(parentWeight),
 		Height:          Uint64(42 + uint64(height)),
-		Nonce:           7,
 		Messages:        cidGetter(),
 		StateRoot:       cidGetter(),
 		MessageReceipts: cidGetter(),

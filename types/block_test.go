@@ -63,7 +63,6 @@ func TestTriangleEncoding(t *testing.T) {
 			Miner:           newAddress(),
 			Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 			Height:          Uint64(2),
-			Nonce:           3,
 			Messages:        CidFromString(t, "somecid"),
 			MessageReceipts: CidFromString(t, "somecid"),
 			Parents:         NewTipSetKey(CidFromString(t, "somecid")),
@@ -151,10 +150,10 @@ func TestEquals(t *testing.T) {
 	var n1 Uint64 = 1234
 	var n2 Uint64 = 9876
 
-	b1 := &Block{Parents: NewTipSetKey(c1), Nonce: n1}
-	b2 := &Block{Parents: NewTipSetKey(c1), Nonce: n1}
-	b3 := &Block{Parents: NewTipSetKey(c1), Nonce: n2}
-	b4 := &Block{Parents: NewTipSetKey(c2), Nonce: n1}
+	b1 := &Block{Parents: NewTipSetKey(c1)}
+	b2 := &Block{Parents: NewTipSetKey(c1)}
+	b3 := &Block{Parents: NewTipSetKey(c1)}
+	b4 := &Block{Parents: NewTipSetKey(c2)}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -167,10 +166,9 @@ func TestParanoidPanic(t *testing.T) {
 
 	paranoid = true
 
-	b1 := &Block{Nonce: 1}
+	b1 := &Block{}
 	b1.Cid()
 
-	b1.Nonce = 2
 	assert.Panics(t, func() {
 		b1.Cid()
 	})
@@ -182,7 +180,6 @@ func TestBlockJsonMarshal(t *testing.T) {
 	var parent, child Block
 	child.Miner = address.NewForTestGetter()()
 	child.Height = 1
-	child.Nonce = Uint64(2)
 	child.Parents = NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 

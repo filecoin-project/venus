@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -44,10 +46,10 @@ func TestHelloHandshake(t *testing.T) {
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &types.Block{Nonce: 451}
+	genesisA := &types.Block{}
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -97,11 +99,13 @@ func TestHelloBadGenesis(t *testing.T) {
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &types.Block{Nonce: 451}
-	genesisB := &types.Block{Nonce: 101}
+	builder := chain.NewBuilder(t, address.Undef)
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
+	genesisA := builder.AppendBlockOn(types.UndefTipSet)
+	genesisB := builder.AppendBlockOn(types.UndefTipSet)
+
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -132,9 +136,9 @@ func TestHelloWrongVersion(t *testing.T) {
 
 	a, b := mn.Hosts()[0], mn.Hosts()[1]
 
-	genesisA := &types.Block{Nonce: 451}
+	genesisA := &types.Block{}
 
-	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -165,9 +169,9 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 
 	a, b := mn.Hosts()[0], mn.Hosts()[1]
 
-	genesisA := &types.Block{Nonce: 451}
+	genesisA := &types.Block{}
 
-	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -199,24 +203,19 @@ func TestHelloMultiBlock(t *testing.T) {
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &types.Block{Nonce: 452}
+	builder := chain.NewBuilder(t, address.Undef)
 
-	heavy1 := th.RequireNewTipSet(t,
-		&types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-		&types.Block{Nonce: 1002, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-		&types.Block{Nonce: 1004, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-	)
-	heavy2 := th.RequireNewTipSet(t,
-		&types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-		&types.Block{Nonce: 1003, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-		&types.Block{Nonce: 1005, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
-	)
+	genesisTipset := builder.NewGenesis()
+	assert.Equal(t, 1, genesisTipset.Len())
+	heavy1 := builder.AppendOn(genesisTipset, 3)
+	heavy1 = builder.AppendOn(heavy1, 3)
+	heavy2 := builder.AppendOn(heavy1, 3)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
