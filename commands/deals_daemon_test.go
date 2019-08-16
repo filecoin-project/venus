@@ -196,8 +196,6 @@ func TestDealsList(t *testing.T) {
 
 func TestDealsShow(t *testing.T) {
 	tf.IntegrationTest(t)
-	// Skipping due to flake (#3236)
-	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{
@@ -210,12 +208,7 @@ func TestDealsShow(t *testing.T) {
 	}()
 
 	clientNode := env.GenesisMiner
-	require.NoError(t, clientNode.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, clientNode.MiningStop(ctx))
-	}()
 
-	env.RunAsyncMiner()
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode
@@ -233,9 +226,6 @@ func TestDealsShow(t *testing.T) {
 
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, minerNode.MiningStop(ctx))
-	}()
 
 	// Create some data that is the full sector size and make it autoseal asap
 
