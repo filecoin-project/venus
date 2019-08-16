@@ -30,6 +30,7 @@ var minerCmd = &cmds.Command{
 		"update-peerid":  minerUpdatePeerIDCmd,
 		"collateral":     minerCollateralCmd,
 		"proving-period": minerProvingPeriodCmd,
+		"worker":         minerSetWorkerAddressCmd,
 	},
 }
 
@@ -489,4 +490,36 @@ ProvingSet: %s
 			return err
 		}),
 	},
+}
+
+var minerSetWorkerAddressCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Set the address of the miner worker",
+		ShortDescription: "Sets the address of the miner worker to the provided address. The new address must be that of a worker that has already been created. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("newAddress", true, false, "The address of the new miner worker."),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		var currentWorker, newWorker address.Address
+
+		newWorker, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		gasPrice, gasLimit, _, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		err = GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, gasPrice, gasLimit)
+		if err != nil {
+			return err
+		}
+
+		return cmds.EmitOnce(re, fmt.Sprintf("Changed worker from '%s', to '%s'", currentWorker.String(), newWorker.String()))
+	},
+	Type:     "",
+	Encoders: stringEncoderMap,
 }

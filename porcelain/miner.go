@@ -510,30 +510,45 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 	return types.NewAttoFILFromBytes(rets[0]), nil
 }
 
-// mmswaAPI is the subset of the plumbing.API that MinerSetWorkerAddress uses.
-type mmswaAPI interface {
+// mswaAPI is the subset of the plumbing.API that MinerSetWorkerAddress uses.
+type mswaAPI interface {
+	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }
 
 // MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
 // waits for the message to appear on chain and then sets miner.workerAddr config to the new address.
 func MinerSetWorkerAddress(
 	ctx context.Context,
-	plumbing mmswaAPI,
-	minerOwnerAddr,
-	minerActorAddr,
+	plumbing mswaAPI,
 	workerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
 ) error {
-	// message send
-	smsgCid, err := plumbing.MessageSend(ctx, minerOwnerAddr, minerActorAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "changeWorker", workerAddr)
+
+	minerAddr, err := getAddrConfig(plumbing, "mining.minerAddr")
+	if err != nil {
+		return errors.Wrap(err, "could not get miner owner address")
+	}
+
+	minerWorkerAddr, err := getAddrConfig(plumbing, "mining.minerWorkerAddr")
+	if err != nil {
+		return errors.Wrap(err, "could not get miner owner address")
+	}
+
+	minerOwnerAddr, err := plumbing.MinerGetOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "could not get miner address")
+	}
+
+	smsgCid, err := plumbing.MessageSend(ctx, minerOwnerAddr, minerWorkerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "changeWorker", workerAddr)
 	if err != nil {
 		return err
 	}
-	// message wait
+
 	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
@@ -543,6 +558,19 @@ func MinerSetWorkerAddress(
 	if err != nil {
 		return err
 	}
+
 	// set config
 	return plumbing.ConfigSet("mining.workerAddr", workerAddr.String())
+}
+
+func getAddrConfig(plumbing mswaAPI, dottedKey string) (address.Address, error) {
+	ret, err := plumbing.ConfigGet(dottedKey)
+	if err != nil {
+		return address.Undef, errors.Wrap(err, fmt.Sprintf("could not get %s", dottedKey))
+	}
+	configAddr, ok := ret.(address.Address)
+	if !ok {
+		return address.Undef, errors.New(fmt.Sprintf("Problem converting %s to address", configAddr))
+	}
+	return configAddr, nil
 }

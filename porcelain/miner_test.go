@@ -10,9 +10,7 @@ import (
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -24,12 +22,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/filecoin-project/go-leb128"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
 
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -617,7 +610,7 @@ func (mswap *minerSetWorkerAddressPlumbing) MessageSend(ctx context.Context, fro
 	if mswap.msgFail {
 		return cid.Cid{}, errors.New("MsgFail")
 	}
-	mswap.msgCid = types.SomeCid()
+	mswap.msgCid = types.EmptyMessagesCID
 	return mswap.msgCid, nil
 }
 
