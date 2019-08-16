@@ -196,7 +196,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
-		addr1:                  act1,
+		addr1: act1,
 	})
 
 	ctx := context.Background()
@@ -247,7 +247,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	CreatePoSTFunc := func() {}
 
 	mockSigner, blockSignerAddr := setupSigner()
-	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
 		return st, nil
@@ -280,30 +279,20 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		MessageStore:  messages,
 	}, CreatePoSTFunc)
 
-	parents := types.NewTipSetKey(newCid())
-	stateRoot := newCid()
-	baseBlock1 := types.Block{
-		Parents:      parents,
-		Height:       types.Uint64(100),
-		ParentWeight: types.Uint64(1000),
-		StateRoot:    stateRoot,
-		Tickets:      []types.Ticket{{VRFProof: []byte{0}}},
-	}
-	baseBlock2 := types.Block{
-		Parents:      parents,
-		Height:       types.Uint64(100),
-		ParentWeight: types.Uint64(1000),
-		StateRoot:    stateRoot,
-		Nonce:        1,
-		Tickets:      []types.Ticket{{VRFProof: []byte{1}}},
-	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock1, &baseBlock2), types.Ticket{VRFProof: []byte{2}}, types.PoStProof{}, 0)
+	builder := chain.NewBuilder(t, address.Undef)
+	genesis := builder.NewGenesis()
+
+	parentTipset := builder.AppendManyOn(99, genesis)
+	baseTipset := builder.AppendOn(parentTipset, 2)
+	assert.Equal(t, 2, baseTipset.Len())
+
+	blk, err := worker.Generate(ctx, baseTipset, types.Ticket{VRFProof: []byte{2}}, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
 	assert.Equal(t, types.EmptyMessagesCID, blk.Messages)
 	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
-	assert.Equal(t, types.Uint64(1020), blk.ParentWeight)
+	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
 	assert.Equal(t, types.Ticket{VRFProof: []byte{2}}, blk.Tickets[0])
 }
 
