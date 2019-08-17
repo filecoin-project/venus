@@ -7,7 +7,7 @@ fetch_params() {
 }
 
 generate_params() {
-  ./proofs/bin/paramcache
+  RUST_LOG=info ./proofs/bin/paramcache
 }
 
 fetch_params
