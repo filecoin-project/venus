@@ -196,7 +196,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(1000000)),
-		addr1: act1,
+		addr1:                  act1,
 	})
 
 	ctx := context.Background()
