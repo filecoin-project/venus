@@ -36,6 +36,18 @@ func TestAPI_MineOnce(t *testing.T) {
 	assert.NotNil(t, blk.Ticket)
 }
 
+func TestMiningAPI_MiningSetup(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	api, nd := newAPI(t)
+	require.NoError(t, nd.Start(ctx))
+	defer nd.Stop(ctx)
+
+	require.NoError(t, api.MiningSetup(ctx))
+	assert.NotNil(t, nd.SectorBuilder())
+}
+
 func TestMiningAPI_MiningStart(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -137,6 +149,7 @@ func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
 		nd.ChainReader,
 		nd.IsMining,
 		bt,
+		nd.SetupMining,
 		nd.StartMining,
 		nd.StopMining,
 		nd.CreateMiningWorker), nd

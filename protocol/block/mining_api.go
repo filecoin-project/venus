@@ -22,6 +22,7 @@ type MiningAPI struct {
 	chainReader     miningChainReader
 	isMiningFunc    func() bool
 	mineDelay       time.Duration
+	setupMiningFunc func(context.Context) error
 	startMiningFunc func(context.Context) error
 	stopMiningFunc  func(context.Context)
 	getWorkerFunc   func(ctx context.Context) (mining.Worker, error)
@@ -34,6 +35,7 @@ func New(
 	chainReader miningChainReader,
 	isMiningFunc func() bool,
 	blockMineDelay time.Duration,
+	setupMiningFunc func(ctx context.Context) error,
 	startMiningFunc func(context.Context) error,
 	stopMiningfunc func(context.Context),
 	getWorkerFunc func(ctx context.Context) (mining.Worker, error),
@@ -44,6 +46,7 @@ func New(
 		chainReader:     chainReader,
 		isMiningFunc:    isMiningFunc,
 		mineDelay:       blockMineDelay,
+		setupMiningFunc: setupMiningFunc,
 		startMiningFunc: startMiningFunc,
 		stopMiningFunc:  stopMiningfunc,
 		getWorkerFunc:   getWorkerFunc,
@@ -90,6 +93,11 @@ func (a *MiningAPI) MiningOnce(ctx context.Context) (*types.Block, error) {
 	}
 
 	return res.NewBlock, nil
+}
+
+// MiningSetup sets up a storage miner without running repeated tasks like mining
+func (a *MiningAPI) MiningSetup(ctx context.Context) error {
+	return a.setupMiningFunc(ctx)
 }
 
 // MiningStart calls the node's StartMining function

@@ -45,11 +45,6 @@ func TestDealsRedeem(t *testing.T) {
 	clientDaemon := env.GenesisMiner
 	minerDaemon := env.RequireNewNodeWithFunds(10000)
 
-	require.NoError(t, clientDaemon.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, clientDaemon.MiningStop(ctx))
-	}()
-
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(1))
 	expiry := big.NewInt(int64(10000))
@@ -61,6 +56,8 @@ func TestDealsRedeem(t *testing.T) {
 
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
+
+	require.NoError(t, minerDaemon.MiningSetup(ctx))
 
 	f := files.NewBytesFile([]byte("HODLHODLHODL"))
 	dataCid, err := clientDaemon.ClientImport(ctx, f)
@@ -89,8 +86,13 @@ func TestDealsRedeem(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait until deal period is complete.
-	err = series.WaitForBlockHeight(ctx, minerDaemon, types.NewBlockHeight(dealDuration).Add(atLeastStartH))
-	require.NoError(t, err)
+	completeHeight := types.NewBlockHeight(dealDuration).Add(atLeastStartH)
+	for height := atLeastStartH; completeHeight.GreaterThan(height); {
+		_, err := clientDaemon.MiningOnce(ctx)
+		require.NoError(t, err)
+		height, err = series.GetHeadBlockHeight(ctx, clientDaemon)
+		require.NoError(t, err)
+	}
 
 	oldWalletBalance, err := minerDaemon.WalletBalance(ctx, minerOwnerAddress)
 	require.NoError(t, err)
@@ -101,6 +103,9 @@ func TestDealsRedeem(t *testing.T) {
 	// block rewards.  In practice sealing takes much longer so we never
 	// lose the race.
 	redeemCid, err := minerDaemon.DealsRedeem(ctx, dealResponse.ProposalCid, fast.AOPrice(big.NewFloat(0.001)), fast.AOLimit(100))
+	require.NoError(t, err)
+
+	_, err = clientDaemon.MiningOnce(ctx)
 	require.NoError(t, err)
 
 	_, err = minerDaemon.MessageWait(ctx, redeemCid)
@@ -208,7 +213,6 @@ func TestDealsShow(t *testing.T) {
 	}()
 
 	clientNode := env.GenesisMiner
-
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode
@@ -225,6 +229,10 @@ func TestDealsShow(t *testing.T) {
 	sinfo := pparams.SupportedSectors[0]
 
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
+	require.NoError(t, err)
+
+	// enable storage protocol
+	err = minerNode.MiningSetup(ctx)
 	require.NoError(t, err)
 
 	// Create some data that is the full sector size and make it autoseal asap

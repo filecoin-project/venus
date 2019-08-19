@@ -24,11 +24,15 @@ var miningCmd = &cmds.Command{
 		"start":    miningStartCmd,
 		"status":   miningStatusCmd,
 		"stop":     miningStopCmd,
+		"setup":    miningSetupCmd,
 		"seal-now": miningSealCmd,
 	},
 }
 
 var miningAddrCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Retrieve address of miner actor associated with this node",
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		minerAddress, err := GetBlockAPI(env).MinerAddress()
 		if err != nil {
@@ -46,6 +50,9 @@ var miningAddrCmd = &cmds.Command{
 }
 
 var miningOnceCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Mine a single block",
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		blk, err := GetBlockAPI(env).MiningOnce(req.Context)
 		if err != nil {
@@ -62,7 +69,24 @@ var miningOnceCmd = &cmds.Command{
 	},
 }
 
+var miningSetupCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Prepare node to receive storage deals without starting the mining scheduler",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		if err := GetBlockAPI(env).MiningSetup(req.Context); err != nil {
+			return err
+		}
+		return re.Emit("mining ready")
+	},
+	Type:     "",
+	Encoders: stringEncoderMap,
+}
+
 var miningStartCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Start mining blocks and other mining related operations",
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if err := GetBlockAPI(env).MiningStart(req.Context); err != nil {
 			return err
@@ -84,6 +108,9 @@ type MiningStatusResult struct {
 }
 
 var miningStatusCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Report on mining status",
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		isMining := GetBlockAPI(env).MiningIsActive()
 
@@ -156,6 +183,9 @@ Proving Set:   %s
 }
 
 var miningStopCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Stop block mining",
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		GetBlockAPI(env).MiningStop(req.Context)
 		return re.Emit("Stopped mining")

@@ -1138,6 +1138,7 @@ func (node *Node) setupProtocols() error {
 		node.ChainReader,
 		node.IsMining,
 		mineDelay,
+		node.SetupMining,
 		node.StartMining,
 		node.StopMining,
 		node.GetMiningWorker)
