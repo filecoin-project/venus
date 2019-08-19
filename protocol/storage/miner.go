@@ -806,7 +806,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
-	// slash any late miners w/ unreported storage faults
+
 	return nil
 }
 

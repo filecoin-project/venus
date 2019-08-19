@@ -114,11 +114,10 @@ type Node struct {
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
 
-	BlockMiningAPI      *block.MiningAPI
-	PorcelainAPI        *porcelain.API
-	RetrievalAPI        *retrieval.API
-	StorageAPI          *storage.API
-	StorageFaultSlasher storageFaultSlasher
+	BlockMiningAPI *block.MiningAPI
+	PorcelainAPI   *porcelain.API
+	RetrievalAPI   *retrieval.API
+	StorageAPI     *storage.API
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
@@ -147,6 +146,8 @@ type Node struct {
 
 	// Storage Market Interfaces
 	StorageMiner *storage.Miner
+
+	StorageFaultSlasher storageFaultSlasher
 
 	// Retrieval Interfaces
 	RetrievalMiner *retrieval.Miner

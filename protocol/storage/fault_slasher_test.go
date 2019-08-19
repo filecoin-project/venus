@@ -41,9 +41,8 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 
 	t.Run("calls slasher if tipset can get height", func(t *testing.T) {
 		store := chain.NewBuilder(t, minerOwnerAddr)
-		root := store.AppendBlockOnBlocks()
-		t0 := types.RequireNewTipSet(t, root)
-		assert.NoError(t, fm.OnNewHeaviestTipSet(ctx, t0))
+		baseTs := store.NewGenesis()
+		assert.NoError(t, fm.OnNewHeaviestTipSet(ctx, baseTs))
 	})
 }
 
