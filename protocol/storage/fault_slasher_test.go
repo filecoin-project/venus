@@ -1,4 +1,4 @@
-package consensus_test
+package storage_test
 
 import (
 	"context"
@@ -13,12 +13,40 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	. "github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/chain"
+	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-func TestStorageFaultSlasher_Slash(t *testing.T) {
+func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx := context.Background()
+	signer, _ := types.NewMockSignersAndKeyInfo(1)
+
+	data, err := cbor.DumpObject(&map[string]uint64{})
+	require.NoError(t, err)
+	queryer := makeQueryer([][]byte{data})
+	minerOwnerAddr := signer.Addresses[0]
+	ob := outbox{}
+
+	fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+	t.Run("with bad tipset", func(t *testing.T) {
+		ts := types.UndefTipSet
+		err := fm.OnNewHeaviestTipSet(ctx, ts)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get tipset height")
+	})
+
+	t.Run("calls slasher if tipset can get height", func(t *testing.T) {
+		store := chain.NewBuilder(t, minerOwnerAddr)
+		baseTs := store.NewGenesis()
+		assert.NoError(t, fm.OnNewHeaviestTipSet(ctx, baseTs))
+	})
+}
+
+func TestFaultSlasher_Slash(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
@@ -33,7 +61,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		minerOwnerAddr := signer.Addresses[0]
 
 		ob := outbox{}
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		require.NoError(t, err)
 		assert.Equal(t, 0, ob.msgCount)
@@ -57,7 +85,7 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, ob.msgCount)
@@ -78,13 +106,49 @@ func TestStorageFaultSlasher_Slash(t *testing.T) {
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{failSend: true, failErr: "Boom"}
 		minerOwnerAddr := signer.Addresses[0]
-		fm := NewStorageFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr)
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Boom")
 		assert.Equal(t, 0, ob.msgCount)
 	})
 
+	t.Run("when getLateMiners fails, returns error", func(t *testing.T) {
+		ob := outbox{}
+		queryer := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+			if method == "getLateMiners" {
+				return nil, errors.New("message query failed")
+			}
+			return nil, errors.New("test failed")
+		}
+		minerOwnerAddr := signer.Addresses[0]
+
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		err := fm.Slash(ctx, types.NewBlockHeight(42))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "message query failed")
+	})
+
+	t.Run("when message response is malformed, returns error", func(t *testing.T) {
+		ob := outbox{}
+
+		badBytes, err := cbor.DumpObject("junk")
+		require.NoError(t, err)
+
+		queryer := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+			if method == "getLateMiners" {
+				return [][]byte{badBytes}, nil
+			}
+			return nil, errors.New("test failed")
+		}
+		minerOwnerAddr := signer.Addresses[0]
+
+		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		err = fm.Slash(ctx, types.NewBlockHeight(42))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "deserializing MinerPoStStates failed")
+
+	})
 }
 
 func makeQueryer(returnData [][]byte) msgQueryer {

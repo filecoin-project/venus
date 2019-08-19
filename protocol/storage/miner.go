@@ -51,11 +51,6 @@ const (
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
-// storageFaultSlasher is the interface for needed StorageFaultSlasher functionality
-type storageFaultSlasher interface {
-	Slash(context.Context, *types.BlockHeight) error
-}
-
 // Miner represents a storage miner.
 type Miner struct {
 	minerAddr  address.Address
@@ -74,8 +69,6 @@ type Miner struct {
 
 	porcelainAPI minerPorcelain
 	node         node
-
-	storageFaultSlasher storageFaultSlasher
 
 	proposalProcessor func(context.Context, *Miner, cid.Cid)
 }
@@ -113,7 +106,7 @@ type node interface {
 }
 
 // NewMiner is for construction of a new storage miner.
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain, slasher storageFaultSlasher) (*Miner, error) {
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
@@ -123,7 +116,6 @@ func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, 
 		prover:              prover,
 		sectorSize:          sectorSize,
 		node:                nd,
-		storageFaultSlasher: slasher,
 		proposalProcessor:   processStorageDeal,
 	}
 
@@ -644,7 +636,7 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 }
 
 // isBootstrapMinerActor is a convenience method used to determine if the miner
-// actor was created when bootstrapping the network. If it was,
+// actor was created when bootstrapping the network.
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
@@ -814,8 +806,8 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
-	// slash any late miners w/ unreported storage faults
-	return sm.storageFaultSlasher.Slash(ctx, h)
+
+	return nil
 }
 
 func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
