@@ -20,6 +20,9 @@ type TipSet struct {
 	blocks []*Block
 	// Key is computed at construction and cached.
 	key TipSetKey
+	// Size is the size of the tipset in bytes,
+	// it is computed by summing the size of all blocks it contains.
+	size uint64
 }
 
 var (
@@ -39,6 +42,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 		return UndefTipSet, errNoBlocks
 	}
 
+	var size uint64
 	first := blocks[0]
 	height := first.Height
 	parents := first.Parents
@@ -60,6 +64,11 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 		}
 		sorted[i] = blk
 		cids[i] = blk.Cid()
+		bsize, err := blk.ToNode().Size()
+		if err != nil {
+			return UndefTipSet, err
+		}
+		size += bsize
 	}
 
 	// Sort blocks by ticket.
@@ -77,7 +86,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 	if err != nil {
 		return UndefTipSet, err
 	}
-	return TipSet{sorted, key}, nil
+	return TipSet{sorted, key, size}, nil
 }
 
 // Defined checks whether the tipset is defined.
@@ -159,6 +168,12 @@ func (ts TipSet) ParentWeight() (uint64, error) {
 // Equality is not tested deeply: two tipsets are considered equal if their keys (ordered block CIDs) are equal.
 func (ts TipSet) Equals(ts2 TipSet) bool {
 	return ts.Key().Equals(ts2.Key())
+}
+
+// Size is the size in bytes of the TipSet. It is computed by summing the size of
+// all blocks in the TipSet.
+func (ts TipSet) Size() uint64 {
+	return ts.size
 }
 
 // String returns a formatted string of the CIDs in the TipSet.

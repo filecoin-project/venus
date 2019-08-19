@@ -82,6 +82,16 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, 3, t3.Len())
 	})
 
+	t.Run("size", func(t *testing.T) {
+		var expSize uint64
+		t3 := RequireNewTipSet(t, b1, b2, b3)
+		expSize += requireBlockSize(t, b1)
+		expSize += requireBlockSize(t, b2)
+		expSize += requireBlockSize(t, b3)
+		assert.Equal(t, expSize, t3.Size())
+
+	})
+
 	t.Run("key", func(t *testing.T) {
 		assert.Equal(t, NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
 		assert.Equal(t, NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
@@ -200,4 +210,13 @@ func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
 	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
 	return b1, b2, b3
+}
+
+func requireBlockSize(t *testing.T, b *Block) uint64 {
+	s, err := b.ToNode().Size()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+
 }

@@ -26,6 +26,12 @@ var (
 	// Timers
 	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds", msgMethodKey)
 	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
+	ptTimer = metrics.NewTimerMs("consensus/process_tipset", "Duration of tipset processing in milliseconds")
+
+	// Sizes
+	pbSize = metrics.NewInt64ByteBucket("consensus/block_size", "The size in bytes of a block")
+	amSize = metrics.NewInt64ByteBucket("consensus/message_size", "The size in bytes of a message", msgMethodKey)
+	tsSize = metrics.NewInt64ByteBucket("consensus/tipset_size", "The size in bytes of a tipset")
 )
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
@@ -111,6 +117,12 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
+	blkSize, err := blk.ToNode().Size()
+	if err != nil {
+		return nil, err
+	}
+	pbSize.Add(ctx, int64(blkSize))
+
 	pbsw := pbTimer.Start(ctx)
 	defer pbsw.Stop(ctx)
 
@@ -149,6 +161,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
+
+	tsSize.Add(ctx, int64(ts.Size()))
+	sw := ptTimer.Start(ctx)
+	defer sw.Stop(ctx)
 
 	h, err := ts.Height()
 	if err != nil {
@@ -293,6 +309,16 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 	if err != nil {
 		log.Debugf("failed to insert tag for message method: %s", err.Error())
 	}
+
+	msgNode, err := msg.ToNode()
+	if err != nil {
+		return nil, err
+	}
+	msgSize, err := msgNode.Size()
+	if err != nil {
+		return nil, err
+	}
+	amSize.Add(ctx, int64(msgSize))
 
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ApplyMessage")
 	span.AddAttributes(trace.StringAttribute("message", msgCid.String()))

@@ -18,7 +18,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
+)
+
+var (
+	tsSize       = metrics.NewInt64ByteBucket("net/tipset_size", "The size in bytes of a tipset")
+	fetchTsTimer = metrics.NewTimerMs("net/fetch_tipset", "Duration of tipset fetching in milliseconds")
 )
 
 var logGraphsyncFetcher = logging.Logger("net.graphsync_fetcher")
@@ -98,6 +104,9 @@ const recursionMultiplier = 4
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
 func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, initialPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	sw := fetchTsTimer.Start(ctx)
+	defer sw.Stop(ctx)
+
 	rpf := newRequestPeerFinder(gsf.peerTracker, initialPeer)
 
 	// fetch initial tipset
@@ -125,6 +134,7 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.Tip
 		if err != nil {
 			return types.UndefTipSet, err
 		}
+		tsSize.Add(ctx, int64(verifiedTip.Size()))
 		if len(blocksToFetch) == 0 {
 			return verifiedTip, nil
 		}
@@ -174,6 +184,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 			if err != nil {
 				return nil, err
 			}
+			tsSize.Add(ctx, int64(verifiedTip.Size()))
 			if len(incomplete) == 0 {
 				out = append(out, verifiedTip)
 				isDone, err = done(verifiedTip)
