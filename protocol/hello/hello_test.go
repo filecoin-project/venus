@@ -204,9 +204,16 @@ func TestHelloMultiBlock(t *testing.T) {
 	b := mn.Hosts()[1]
 
 	builder := chain.NewBuilder(t, address.Undef)
+<<<<<<< HEAD
 
 	genesisTipset := builder.NewGenesis()
 	assert.Equal(t, 1, genesisTipset.Len())
+=======
+
+	genesisA := builder.AppendBlockOn(types.UndefTipSet)
+	genesisTipset := th.RequireNewTipSet(t, genesisA)
+
+>>>>>>> fix test error
 	heavy1 := builder.AppendOn(genesisTipset, 3)
 	heavy1 = builder.AppendOn(heavy1, 3)
 	heavy2 := builder.AppendOn(heavy1, 3)

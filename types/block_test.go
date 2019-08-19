@@ -74,7 +74,7 @@ func TestTriangleEncoding(t *testing.T) {
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 13, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 12, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }
@@ -147,18 +147,40 @@ func TestEquals(t *testing.T) {
 	c1 := CidFromString(t, "a")
 	c2 := CidFromString(t, "b")
 
-	var n1 Uint64 = 1234
-	var n2 Uint64 = 9876
+	s1 := CidFromString(t, "state1")
+	s2 := CidFromString(t, "state2")
 
-	b1 := &Block{Parents: NewTipSetKey(c1)}
-	b2 := &Block{Parents: NewTipSetKey(c1)}
-	b3 := &Block{Parents: NewTipSetKey(c1)}
-	b4 := &Block{Parents: NewTipSetKey(c2)}
+	var h1 Uint64 = 1
+	var h2 Uint64 = 2
+
+	b1 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b2 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b3 := &Block{Parents: NewTipSetKey(c1), StateRoot: s2, Height: h1}
+	b4 := &Block{Parents: NewTipSetKey(c2), StateRoot: s1, Height: h1}
+	b5 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h2}
+	b6 := &Block{Parents: NewTipSetKey(c2), StateRoot: s1, Height: h2}
+	b7 := &Block{Parents: NewTipSetKey(c1), StateRoot: s2, Height: h2}
+	b8 := &Block{Parents: NewTipSetKey(c2), StateRoot: s2, Height: h1}
+	b9 := &Block{Parents: NewTipSetKey(c2), StateRoot: s2, Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
 	assert.False(t, b1.Equals(b4))
+	assert.False(t, b1.Equals(b5))
+	assert.False(t, b1.Equals(b6))
+	assert.False(t, b1.Equals(b7))
+	assert.False(t, b1.Equals(b8))
+	assert.False(t, b1.Equals(b9))
+	assert.True(t, b3.Equals(b3))
 	assert.False(t, b3.Equals(b4))
+	assert.False(t, b3.Equals(b6))
+	assert.False(t, b3.Equals(b9))
+	assert.False(t, b4.Equals(b5))
+	assert.False(t, b5.Equals(b6))
+	assert.False(t, b6.Equals(b7))
+	assert.False(t, b7.Equals(b8))
+	assert.False(t, b8.Equals(b9))
+	assert.True(t, b9.Equals(b9))
 }
 
 func TestParanoidPanic(t *testing.T) {
@@ -166,8 +188,10 @@ func TestParanoidPanic(t *testing.T) {
 
 	paranoid = true
 
-	b1 := &Block{}
+	b1 := &Block{Height: 1}
 	b1.Cid()
+
+	b1.Height = 2
 
 	assert.Panics(t, func() {
 		b1.Cid()

@@ -242,7 +242,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
 
-	fakeChildParams.Nonce = uint64(1)
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f2b1Ticket types.Ticket
@@ -281,8 +280,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a.Tickets = []types.Ticket{f1b2aTicket}
 	f1b2a.Messages = emptyMessagesCid
 	f1b2a.MessageReceipts = emptyReceiptsCid
-
-	fakeChildParams.Nonce = uint64(1)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	fakeChildParams.MinerWorker = minerWorker2
