@@ -4,14 +4,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ipfs/go-cid"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
 )
 
 // Outbox validates and marshals messages for sending and maintains the outbound message queue.
@@ -27,16 +28,11 @@ type Outbox struct {
 	// Maintains message queue in response to new tipsets.
 	policy QueuePolicy
 
-	chains outboxChainProvider
+	chains chainProvider
 	actors actorProvider
 
 	// Protects the "next nonce" calculation to avoid collisions.
 	nonceLock sync.Mutex
-}
-
-type outboxChainProvider interface {
-	GetHead() types.TipSetKey
-	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 type actorProvider interface {
@@ -52,7 +48,7 @@ var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of er
 
 // NewOutbox creates a new outbox
 func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *MessageQueue,
-	publisher publisher, policy QueuePolicy, chains outboxChainProvider, actors actorProvider) *Outbox {
+	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
 	return &Outbox{
 		signer:    signer,
 		validator: validator,
@@ -130,8 +126,8 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 }
 
 // HandleNewHead maintains the message queue in response to a new head tipset.
-func (ob *Outbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSet) error {
-	return ob.policy.HandleNewHead(ctx, ob.queue, oldHead, newHead)
+func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []types.TipSet) error {
+	return ob.policy.HandleNewHead(ctx, ob.queue, oldTips, newTips)
 }
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
@@ -149,7 +145,7 @@ func nextNonce(act *actor.Actor, queue *MessageQueue, address address.Address) (
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider outboxChainProvider, key types.TipSetKey) (uint64, error) {
+func tipsetHeight(provider chainProvider, key types.TipSetKey) (uint64, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err
