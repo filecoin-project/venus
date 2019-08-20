@@ -81,8 +81,8 @@ func TestMinerHelp(t *testing.T) {
 			"go-filecoin miner set-worker <new-address> - Set the address of the miner worker",
 			"go-filecoin miner set-worker [--gas-price=<gas-price>] [--gas-limit=<gas-limit>] [--] <new-address>",
 			"<new-address> - The address of the new miner worker.",
-			"--gas-price string - Price (FIL e.g. 0.00013) to pay per GasUnit consumed mining this message.",
-			" --gas-limit uint64 - Maximum GasUnits this message is allowed to consume.",
+			"--gas-price string - Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message.",
+			"--gas-limit uint64 - Maximum GasUnits this message is allowed to consume.",
 			"Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
 		}
 		result := runHelpSuccess(t, "miner", "set-worker", "--help")
@@ -92,7 +92,7 @@ func TestMinerHelp(t *testing.T) {
 	})
 	t.Run("worker --help shows worker help", func(t *testing.T) {
 		result := runHelpSuccess(t, "miner", "worker", "--help")
-		assert.Contains(t, result, "go-filecoin miner worker - Get the address of the miner worker")
+		assert.Contains(t, result, "go-filecoin miner worker - Show the address of the miner worker")
 	})
 }
 
@@ -449,6 +449,7 @@ var testConfig = &gengen.GenesisCfg{
 
 func TestMinerWorker(t *testing.T) {
 	tf.IntegrationTest(t)
+
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
@@ -462,13 +463,13 @@ func TestMinerWorker(t *testing.T) {
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	t.Run("if there is no miner worker, returns error and outputs nothing", func(t *testing.T) {
-		resultAddr, err := minerNode.MinerWorker(ctx)
+		res, err := minerNode.MinerWorker(ctx)
 		require.NotNil(t, err)
 		lastErr, err := minerNode.LastCmdStdErrStr()
 		require.NoError(t, err)
 		require.Contains(t, lastErr, "problem getting worker address")
 		require.Contains(t, lastErr, "actor not found")
-		assert.Equal(t, address.Undef, resultAddr)
+		assert.Equal(t, address.Undef, res.WorkerAddress)
 	})
 
 	t.Run("if there is a miner, shows the correct worker address", func(t *testing.T) {
@@ -477,9 +478,10 @@ func TestMinerWorker(t *testing.T) {
 		workerAddr, err := minerNode.MinerOwner(ctx, minerAddr)
 		require.NoError(t, err)
 
-		resultAddr, err := minerNode.MinerWorker(ctx)
+		res, err := minerNode.MinerWorker(ctx)
+		fmt.Println(minerNode.LastCmdStdErrStr())
 		require.NoError(t, err)
-		assert.Equal(t, workerAddr.String(), resultAddr.String())
+		assert.Equal(t, workerAddr.String(), res.WorkerAddress.String())
 	})
 }
 
@@ -498,13 +500,13 @@ func TestMinerSetWorker(t *testing.T) {
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	t.Run("fails if there is no miner worker", func(t *testing.T) {
-		resultAddr, err := minerNode.MinerWorker(ctx)
+		res, err := minerNode.MinerWorker(ctx)
 		require.NotNil(t, err)
 		lastErr, err := minerNode.LastCmdStdErrStr()
 		require.NoError(t, err)
 		assert.Contains(t, lastErr, "problem getting worker address")
 		assert.Contains(t, lastErr, "actor not found")
-		assert.Equal(t, address.Undef, resultAddr)
+		assert.Equal(t, address.Undef, res.WorkerAddress)
 	})
 
 	t.Run("succceeds if there is a miner", func(t *testing.T) {
@@ -512,11 +514,13 @@ func TestMinerSetWorker(t *testing.T) {
 
 		newAddr := address.NewForTestGetter()()
 
-		err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+		res, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 		assert.NoError(t, err)
 
-		workerAddr, err := minerNode.MinerWorker(ctx)
+		res2, err := minerNode.MinerWorker(ctx)
 		require.NoError(t, err)
-		require.Equal(t, newAddr.String(), workerAddr.String())
+
+		assert.Equal(t, newAddr.String(), res.WorkerAddress.String())
+		assert.Equal(t, newAddr.String(), res2.WorkerAddress.String())
 	})
 }

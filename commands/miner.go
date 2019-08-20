@@ -493,6 +493,11 @@ ProvingSet: %s
 	},
 }
 
+// MinerWorkerResult is a struct containing the result of a MinerWorker or MinerSetWorker command.
+type MinerWorkerResult struct {
+	WorkerAddress address.Address `json:"WorkerAddress"`
+}
+
 var minerSetWorkerAddressCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "Set the address of the miner worker",
@@ -521,10 +526,16 @@ var minerSetWorkerAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return cmds.EmitOnce(re, fmt.Sprintf("Changed worker to '%s'", newWorker.String()))
+		return re.Emit(&MinerWorkerResult{WorkerAddress: newWorker})
 	},
-	Type:     "",
-	Encoders: stringEncoderMap,
+	Type: &MinerWorkerResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *MinerWorkerResult) error {
+			outStr := fmt.Sprintf("Changed worker address to %s", result.WorkerAddress.String())
+			_, err := fmt.Fprintln(w, outStr)
+			return err
+		}),
+	},
 }
 
 var minerWorkerAddressCmd = &cmds.Command{
@@ -537,15 +548,22 @@ var minerWorkerAddressCmd = &cmds.Command{
 		if err != nil {
 			return errors.Wrap(err, "problem getting miner address")
 		}
-
 		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr)
 		if err != nil {
 			return errors.Wrap(err, "problem getting worker address")
 		}
-		return cmds.EmitOnce(re, workerAddr.String())
+
+		res := MinerWorkerResult{WorkerAddress: workerAddr}
+		fmt.Printf("workerAddr: %s", res.WorkerAddress.String())
+		return re.Emit(&res)
 	},
-	Type:     "",
-	Encoders: stringEncoderMap,
+	Type: &MinerWorkerResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *MinerWorkerResult) error {
+			fmt.Fprintln(w, result.WorkerAddress.String()) // nolint: errcheck
+			return nil
+		}),
+	},
 }
 
 func getMinerAddress(env cmds.Environment) (address.Address, error) {
