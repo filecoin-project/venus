@@ -16,7 +16,6 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
@@ -71,21 +70,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid2 := th.RequireIntPeerID(t, 2)
 
-	// Returns an array of IPLD nodes for the headers, messages, and receipts of some blocks.
-	ipldBlocks := func(bs ...*types.Block) []format.Node {
-		nodes := make([]format.Node, 3*len(bs))
-		for i, b := range bs {
-			nodes[3*i] = b.ToNode()
-			m, err := builder.LoadMessages(ctx, b.Messages)
-			require.NoError(t, err)
-			nodes[3*i+1] = types.MessageCollection(m).ToNode()
-			r, err := builder.LoadReceipts(ctx, b.MessageReceipts)
-			require.NoError(t, err)
-			nodes[3*i+2] = types.ReceiptCollection(r).ToNode()
-		}
-		return nodes
-	}
-
 	t.Run("happy path returns correct tipsets", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildOn(gen, 3, func(b *chain.BlockBuilder, i int) {
@@ -94,30 +78,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 		})
-
-		stubs := []requestResponse{
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(0))},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(1))},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(2))},
-			},
-			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
-				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", final.At(0).Cid()),
-					makeGsResponse("parents", final.At(0).Cid()),
-					makeGsResponse("parents/0", gen.At(0).Cid()),
-				},
-				blks: ipldBlocks(final.At(0), gen.At(0)),
-			}},
-		}
-		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
+		mgs := newMockableGraphsync(ctx, builder, bs, t)
+		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(0).Cid(), recursiveSelector(1), nil)
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
 
@@ -150,41 +115,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
 
-		stubs := []requestResponse{
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(0))},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid1, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(1))},
-			},
-			{
-				fakeRequest{pid1, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid2, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(2))},
-			},
-			{fakeRequest{pid2, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
-				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", final.At(0).Cid()),
-					makeGsResponse("parents", final.At(0).Cid()),
-					makeGsResponse("parents/0", gen.At(0).Cid()),
-				},
-				blks: ipldBlocks(final.At(0), gen.At(0)),
-			}},
-		}
-		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
+		mgs := newMockableGraphsync(ctx, builder, bs, t)
+		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponse(pid1, final.At(1).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponse(pid2, final.At(2).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid2, final.At(2).Cid(), recursiveSelector(1), nil)
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -223,38 +161,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
-
-		stubs := []requestResponse{
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(0))},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid1, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid1, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid2, cidlink.Link{Cid: final.At(1).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-			{
-				fakeRequest{pid2, cidlink.Link{Cid: final.At(2).Cid()}, layer1Selector},
-				fakeResponse{nil, []error{fmt.Errorf("everything failed")}, nil},
-			},
-		}
-		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
+		mgs := newMockableGraphsync(ctx, builder, bs, t)
+		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponse(pid1, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponse(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponse(pid2, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponse(pid2, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -301,43 +215,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blocks[i] = prev
 		}
 
-		stubs := []requestResponse{
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, layer1Selector},
-				fakeResponse{blks: ipldBlocks(final.At(0))},
-			},
-			{fakeRequest{pid0, cidlink.Link{Cid: final.At(0).Cid()}, recursiveSelector(1)}, fakeResponse{
-				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", final.At(0).Cid()),
-					makeGsResponse("parents", final.At(0).Cid()),
-					makeGsResponse("parents/0", blocks[0].Cid()),
-				},
-				blks: ipldBlocks(final.At(0), blocks[0]),
-			}},
-			{fakeRequest{pid0, cidlink.Link{Cid: blocks[0].Cid()}, recursiveSelector(4)}, fakeResponse{
-				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", blocks[0].Cid()),
-					makeGsResponse("parents", blocks[0].Cid()),
-					makeGsResponse("parents/0", blocks[1].Cid()),
-					makeGsResponse("parents/0/parents", blocks[1].Cid()),
-					makeGsResponse("parents/0/parents/0", blocks[2].Cid()),
-				},
-				errs: []error{fmt.Errorf("everything failed")},
-				blks: ipldBlocks(blocks[0], blocks[1], blocks[2]),
-			}},
-			{fakeRequest{pid1, cidlink.Link{Cid: blocks[2].Cid()}, recursiveSelector(4)}, fakeResponse{
-				responses: []graphsync.ResponseProgress{
-					makeGsResponse("", blocks[2].Cid()),
-					makeGsResponse("parents", blocks[2].Cid()),
-					makeGsResponse("parents/0", blocks[3].Cid()),
-					makeGsResponse("parents/0/parents", blocks[3].Cid()),
-					makeGsResponse("parents/0/parents/0", gen.At(0).Cid()),
-					makeGsResponse("parents/0/parents/0/parents", gen.At(0).Cid()),
-				},
-				blks: ipldBlocks(blocks[2], blocks[3], gen.At(0)),
-			}},
-		}
-		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
+		mgs := newMockableGraphsync(ctx, builder, bs, t)
+		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
+		mgs.stubResponse(pid0, final.At(0).Cid(), recursiveSelector(1), nil)
+		mgs.stubResponse(pid0, blocks[0].Cid(), recursiveSelector(4), []cid.Cid{blocks[3].Cid()})
+		mgs.stubResponse(pid1, blocks[2].Cid(), recursiveSelector(4), nil)
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -456,11 +338,11 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		raw, err := tryBlockMessageReceipt(ctx, builder, cid)
+		node, err := tryBlockMessageReceiptNode(ctx, builder, cid)
 		if err != nil {
 			return nil, err
 		}
-		return bytes.NewBuffer(raw), nil
+		return bytes.NewBuffer(node.RawData()), nil
 	}
 	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
 
@@ -491,15 +373,15 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	}
 }
 
-func tryBlockMessageReceipt(ctx context.Context, f *chain.Builder, c cid.Cid) ([]byte, error) {
+func tryBlockMessageReceiptNode(ctx context.Context, f *chain.Builder, c cid.Cid) (format.Node, error) {
 	if block, err := f.GetBlock(ctx, c); err == nil {
-		return cbor.DumpObject(block)
+		return block.ToNode(), nil
 	}
 	if messages, err := f.LoadMessages(ctx, c); err == nil {
-		return cbor.DumpObject(messages)
+		return types.MessageCollection(messages).ToNode(), nil
 	}
 	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
-		return cbor.DumpObject(receipts)
+		return types.ReceiptCollection(receipts).ToNode(), nil
 	}
 	return nil, fmt.Errorf("cid could not be resolved through builder")
 }
@@ -522,10 +404,64 @@ type requestResponse struct {
 }
 
 type mockableGraphsync struct {
+	ctx              context.Context
+	builder          *chain.Builder
 	stubs            []requestResponse
 	receivedRequests []fakeRequest
 	store            bstore.Blockstore
 	t                *testing.T
+}
+
+func newMockableGraphsync(ctx context.Context, builder *chain.Builder, store bstore.Blockstore, t *testing.T) *mockableGraphsync {
+	return &mockableGraphsync{
+		ctx:     ctx,
+		builder: builder,
+		store:   store,
+		t:       t,
+	}
+}
+
+func (mgs *mockableGraphsync) stubResponse(pid peer.ID, c cid.Cid, s selector.Selector, missingCids []cid.Cid) {
+	var blks []format.Node
+	var responses []graphsync.ResponseProgress
+
+	loader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
+		cid := lnk.(cidlink.Link).Cid
+		for _, testCid := range missingCids {
+			if cid.Equals(testCid) {
+				return nil, fmt.Errorf("everything failed")
+			}
+		}
+		node, err := tryBlockMessageReceiptNode(mgs.ctx, mgs.builder, cid)
+		if err != nil {
+			return nil, err
+		}
+		blks = append(blks, node)
+		return bytes.NewBuffer(node.RawData()), nil
+	}
+	root := cidlink.Link{Cid: c}
+	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), loader)
+	if err != nil {
+		mgs.stubs = append(mgs.stubs, requestResponse{
+			fakeRequest{pid, root, s},
+			fakeResponse{errs: []error{err}},
+		})
+		return
+	}
+	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
+		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
+		return nil
+	}
+	err = ipldbridge.TraversalProgress{
+		Cfg: &ipldbridge.TraversalConfig{
+			Ctx:        mgs.ctx,
+			LinkLoader: loader,
+		},
+	}.TraverseInformatively(node, s, visitor)
+	mgs.stubs = append(mgs.stubs, requestResponse{
+		fakeRequest{pid, root, s},
+		fakeResponse{responses, []error{err}, blks},
+	})
 }
 
 func (mgs *mockableGraphsync) toChans(mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
@@ -561,18 +497,6 @@ func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.
 		}
 	}
 	return mgs.toChans(fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil})
-}
-
-func makeGsResponse(path string, blockCid cid.Cid) graphsync.ResponseProgress {
-	return graphsync.ResponseProgress{
-		Path: ipld.ParsePath(path),
-		LastBlock: struct {
-			Path ipld.Path
-			Link ipld.Link
-		}{
-			Link: cidlink.Link{Cid: blockCid},
-		},
-	}
 }
 
 type fakePeerTracker struct {
