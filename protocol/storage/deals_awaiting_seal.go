@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
@@ -128,4 +129,19 @@ func (dealsAwaitingSeal *dealsAwaitingSeal) commitMessageCid(sectorID uint64) (c
 		return cid.Undef, false
 	}
 	return sectorData.CommitMessageCid, sectorData.CommitMessageCid != cid.Undef
+}
+
+// MarhsalJSON ensures that we have a lock while we marshal this structure to avoid concurrent
+// iteration / writes.
+func (dealsAwaitingSeal *dealsAwaitingSeal) MarshalJSON() ([]byte, error) {
+	dealsAwaitingSeal.l.Lock()
+	defer dealsAwaitingSeal.l.Unlock()
+
+	return json.Marshal(struct {
+		SectorsToDeals map[uint64][]cid.Cid
+		SealedSectors  map[uint64]*sectorInfo
+	}{
+		SectorsToDeals: dealsAwaitingSeal.SectorsToDeals,
+		SealedSectors:  dealsAwaitingSeal.SealedSectors,
+	})
 }
