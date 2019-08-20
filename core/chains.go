@@ -29,10 +29,10 @@ func CollectTipsToCommonAncestor(ctx context.Context, store chain.TipSetProvider
 
 	// Add 1 to the height argument so that the common ancestor is not
 	// included in the outputs.
-	oldTips, err = chain.CollectRecentTipSets(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)), 0)
+	oldTips, err = chain.CollectTipSetsOfHeightAtLeast(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
 	if err != nil {
 		return
 	}
-	newTips, err = chain.CollectRecentTipSets(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)), 0)
+	newTips, err = chain.CollectTipSetsOfHeightAtLeast(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
 	return
 }

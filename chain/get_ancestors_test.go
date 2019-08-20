@@ -14,66 +14,6 @@ import (
 )
 
 // Happy path
-func TestCollectRecentTipSets(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-
-	chainLen := 15
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
-
-	stopHeight := types.NewBlockHeight(uint64(4))
-	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 1)
-	assert.NoError(t, err)
-	latestHeight, err := tipsets[0].Height()
-	require.NoError(t, err)
-	assert.Equal(t, uint64(14), latestHeight)
-	earliestHeight, err := tipsets[len(tipsets)-1].Height()
-	require.NoError(t, err)
-	assert.Equal(t, uint64(3), earliestHeight)
-	assert.Equal(t, 12, len(tipsets))
-}
-
-// collect zero tipset
-func TestCollectRecentTipSetsZero(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-
-	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
-
-	stopHeight := types.NewBlockHeight(uint64(25))
-	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 0)
-	require.NoError(t, err)
-	assert.Equal(t, 0, len(tipsets))
-}
-
-// collect to genesis
-func TestCollectRecentTipSetsGenesis(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-
-	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
-
-	stopHeight := types.NewBlockHeight(uint64(10))
-	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 10)
-	assert.NoError(t, err)
-	latestHeight, err := tipsets[0].Height()
-	require.NoError(t, err)
-	assert.Equal(t, uint64(24), latestHeight)
-	earliestHeight, err := tipsets[len(tipsets)-1].Height()
-	require.NoError(t, err)
-	assert.Equal(t, uint64(0), earliestHeight)
-	assert.Equal(t, chainLen, len(tipsets))
-}
-
-// Happy path
 func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -84,7 +24,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 0)
+	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -106,7 +46,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 0)
+	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -115,6 +55,22 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint64(0), earliestHeight)
 	assert.Equal(t, chainLen, len(tipsets))
+}
+
+// tipsets at least 0.
+func TestCollectTipSetsOfHeightAtLeastTipsetZero(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+
+	chainLen := 25
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+
+	stopHeight := types.NewBlockHeight(uint64(25))
+	iterator := chain.IterAncestors(ctx, builder, head)
+	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(tipsets))
 }
 
 // The starting epoch is a null block.
@@ -137,7 +93,7 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(35))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectRecentTipSets(ctx, iterator, stopHeight, 0)
+	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -159,27 +115,21 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		number := uint(10)
 		iterator := chain.IterAncestors(ctx, builder, head)
-		height, err := head.Height()
-		assert.NoError(t, err)
-		tipsets, err := chain.CollectRecentTipSets(ctx, iterator, types.NewBlockHeight(height+1), number)
+		tipsets, err := chain.CollectAtMostNTipSets(ctx, iterator, number)
 		assert.NoError(t, err)
 		assert.Equal(t, 10, len(tipsets))
 	})
 	t.Run("hit genesis", func(t *testing.T) {
 		number := uint(400)
 		iterator := chain.IterAncestors(ctx, builder, head)
-		height, err := head.Height()
-		assert.NoError(t, err)
-		tipsets, err := chain.CollectRecentTipSets(ctx, iterator, types.NewBlockHeight(height+1), number)
+		tipsets, err := chain.CollectAtMostNTipSets(ctx, iterator, number)
 		assert.NoError(t, err)
 		assert.Equal(t, 25, len(tipsets))
 	})
 	t.Run("hit zero", func(t *testing.T) {
 		number := uint(0)
 		iterator := chain.IterAncestors(ctx, builder, head)
-		height, err := head.Height()
-		assert.NoError(t, err)
-		tipsets, err := chain.CollectRecentTipSets(ctx, iterator, types.NewBlockHeight(height+1), number)
+		tipsets, err := chain.CollectAtMostNTipSets(ctx, iterator, number)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(tipsets))
 	})
