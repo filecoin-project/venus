@@ -9,8 +9,8 @@ count=0
 while ! ${filecoin_exec} id >&2 2> /dev/null
 do
   echo "Waiting for daemon to start..." && sleep 1
-  ((count++))
-  if (( $count > $limit )); then
+  count=`expr $count + 1`
+  if [ "$count" -gt "$limit" ]; then
     echo "API did not come online in $limit seconds"
     exit 1
   fi
