@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
-	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-cmdkit"
+	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 

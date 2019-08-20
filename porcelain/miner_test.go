@@ -279,7 +279,7 @@ func TestMinerSetPrice(t *testing.T) {
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Test error in MessageSend")
+		assert.Contains(t, err.Error(), "test error in MessageSend")
 
 		configPrice, err := plumbing.config.Get("mining.storagePrice")
 		require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestMinerSetPrice(t *testing.T) {
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Test error in MessageWait")
+		assert.Contains(t, err.Error(), "test error in MessageWait")
 	})
 
 	t.Run("returns interesting information about adding the ask", func(t *testing.T) {
