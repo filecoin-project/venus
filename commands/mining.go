@@ -197,7 +197,7 @@ var miningStopCmd = &cmds.Command{
 
 var miningSealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Start sealing all staged sectors or create and seal a new sector",
+		Tagline: "Start sealing all staged sectors",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if err := GetPorcelainAPI(env).SealNow(req.Context); err != nil {
@@ -236,12 +236,12 @@ Stages a piece (a local file) into a staged sector.
 			return fmt.Errorf("given file was not a files.File")
 		}
 
-		sectorId, err := GetPorcelainAPI(env).AddPiece(req.Context, fi)
+		sectorID, err := GetPorcelainAPI(env).AddPiece(req.Context, fi)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(sectorId)
+		return re.Emit(sectorID)
 	},
 	Type: uint64(0),
 	Encoders: cmds.EncoderMap{

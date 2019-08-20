@@ -241,7 +241,7 @@ func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommR
 	return CalculatePoSt(ctx, a, sortedCommRs, seed)
 }
 
-// SealNow forces the sectorbuilder to either seal the staged sectors it has or create a new one and seal it immediately
+// SealNow forces the sectorbuilder to either seal the staged sectors it has
 func (a *API) SealNow(ctx context.Context) error {
 	return SealNow(ctx, a)
 }
