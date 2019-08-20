@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
@@ -30,7 +30,8 @@ var minerCmd = &cmds.Command{
 		"update-peerid":  minerUpdatePeerIDCmd,
 		"collateral":     minerCollateralCmd,
 		"proving-period": minerProvingPeriodCmd,
-		"worker":         minerSetWorkerAddressCmd,
+		"set-worker":     minerSetWorkerAddressCmd,
+		"worker":         minerWorkerAddressCmd,
 	},
 }
 
@@ -495,14 +496,16 @@ ProvingSet: %s
 var minerSetWorkerAddressCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "Set the address of the miner worker",
-		ShortDescription: "Sets the address of the miner worker to the provided address. The new address must be that of a worker that has already been created. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
+		ShortDescription: "Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
 	},
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("newAddress", true, false, "The address of the new miner worker."),
+		cmdkit.StringArg("new-address", true, false, "The address of the new miner worker."),
+	},
+	Options: []cmdkit.Option{
+		priceOption,
+		limitOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		var currentWorker, newWorker address.Address
-
 		newWorker, err := address.NewFromString(req.Arguments[0])
 		if err != nil {
 			return err
@@ -518,8 +521,41 @@ var minerSetWorkerAddressCmd = &cmds.Command{
 			return err
 		}
 
-		return cmds.EmitOnce(re, fmt.Sprintf("Changed worker from '%s', to '%s'", currentWorker.String(), newWorker.String()))
+		return cmds.EmitOnce(re, fmt.Sprintf("Changed worker to '%s'", newWorker.String()))
 	},
 	Type:     "",
 	Encoders: stringEncoderMap,
+}
+
+var minerWorkerAddressCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Show the address of the miner worker",
+		ShortDescription: "Show the address of the miner worker",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddr, err := getMinerAddress(env)
+		if err != nil {
+			return errors.Wrap(err, "problem getting miner address")
+		}
+
+		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr)
+		if err != nil {
+			return errors.Wrap(err, "problem getting worker address")
+		}
+		return cmds.EmitOnce(re, workerAddr.String())
+	},
+	Type:     "",
+	Encoders: stringEncoderMap,
+}
+
+func getMinerAddress(env cmds.Environment) (address.Address, error) {
+	retVal, err := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
+	if err != nil {
+		return address.Undef, err
+	}
+	minerAddr, ok := retVal.(address.Address)
+	if !ok {
+		return address.Undef, err
+	}
+	return minerAddr, nil
 }

@@ -600,9 +600,8 @@ func TestMinerGetLastCommittedSectorID(t *testing.T) {
 }
 
 type minerSetWorkerAddressPlumbing struct {
-	msgCid                        cid.Cid
-	msgFail, msgWaitFail, cfgFail bool
-	workerAddr                    string
+	getOwnerFail, getWorkerFail, msgFail, msgWaitFail, cfgFail bool
+	minerAddr, ownerAddr, workerAddr                           address.Address
 }
 
 func (mswap *minerSetWorkerAddressPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
@@ -610,8 +609,7 @@ func (mswap *minerSetWorkerAddressPlumbing) MessageSend(ctx context.Context, fro
 	if mswap.msgFail {
 		return cid.Cid{}, errors.New("MsgFail")
 	}
-	mswap.msgCid = types.EmptyMessagesCID
-	return mswap.msgCid, nil
+	return types.EmptyMessagesCID, nil
 }
 
 func (mswap *minerSetWorkerAddressPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
@@ -621,12 +619,21 @@ func (mswap *minerSetWorkerAddressPlumbing) MessageWait(ctx context.Context, msg
 	return nil
 }
 
-func (mswap *minerSetWorkerAddressPlumbing) ConfigSet(dottedKey string, jsonString string) error {
+func (mswap *minerSetWorkerAddressPlumbing) ConfigGet(dottedKey string) (interface{}, error) {
 	if mswap.cfgFail {
-		return errors.New("CfgFail")
+		return address.Undef, errors.New("ConfigGet failed")
 	}
-	mswap.workerAddr = jsonString
-	return nil
+	if dottedKey == "mining.minerAddress" {
+		return mswap.minerAddr, nil
+	}
+	return address.Undef, fmt.Errorf("unknown config %s", dottedKey)
+}
+
+func (mswap *minerSetWorkerAddressPlumbing) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	if mswap.getOwnerFail {
+		return address.Undef, errors.New("MinerGetOwnerAddress failed")
+	}
+	return mswap.ownerAddr, nil
 }
 
 func TestMinerSetWorkerAddress(t *testing.T) {
@@ -640,14 +647,14 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 
 	t.Run("Calling set worker address sets address", func(t *testing.T) {
 		plumbing := &minerSetWorkerAddressPlumbing{
-			cfgFail:     false,
-			msgFail:     false,
-			msgWaitFail: false,
+			workerAddr: workerAddr,
+			ownerAddr:  minerOwner,
+			minerAddr:  minerAddr,
 		}
 
-		err := MinerSetWorkerAddress(context.Background(), plumbing, minerOwner, minerAddr, workerAddr, gprice, glimit)
+		err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, gprice, glimit)
 		assert.NoError(t, err)
-		assert.Equal(t, workerAddr.String(), plumbing.workerAddr)
+		assert.Equal(t, workerAddr.String(), plumbing.workerAddr.String())
 	})
 
 	testCases := []struct {
@@ -657,24 +664,29 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 	}{
 		{
 			name:     "When MessageSend fails, returns the error and does not set worker address",
-			plumbing: &minerSetWorkerAddressPlumbing{cfgFail: false, msgFail: true, msgWaitFail: false},
+			plumbing: &minerSetWorkerAddressPlumbing{msgFail: true},
 			error:    "MsgFail",
 		},
 		{
-			name:     "When MessageSend fails, returns the error and does not set worker address",
-			plumbing: &minerSetWorkerAddressPlumbing{cfgFail: false, msgFail: false, msgWaitFail: true},
+			name:     "When MessageWait fails, returns the error and does not set worker address",
+			plumbing: &minerSetWorkerAddressPlumbing{msgWaitFail: true},
 			error:    "MsgWaitFail",
 		},
 		{
-			name:     "When MessageSend fails, returns the error and does not set worker address",
-			plumbing: &minerSetWorkerAddressPlumbing{cfgFail: true, msgFail: false, msgWaitFail: false},
+			name:     "When ConfigGet fails, returns the error and does not set worker address",
+			plumbing: &minerSetWorkerAddressPlumbing{cfgFail: true},
+			error:    "CfgFail",
+		},
+		{
+			name:     "When MinerGetOwnerAddress fails, returns the error and does not set worker address",
+			plumbing: &minerSetWorkerAddressPlumbing{getOwnerFail: true},
 			error:    "CfgFail",
 		},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			err := MinerSetWorkerAddress(context.Background(), test.plumbing, minerOwner, minerAddr, workerAddr, gprice, glimit)
+			err := MinerSetWorkerAddress(context.Background(), test.plumbing, workerAddr, gprice, glimit)
 			assert.Error(t, err, test.error)
 			assert.Empty(t, test.plumbing.workerAddr)
 		})

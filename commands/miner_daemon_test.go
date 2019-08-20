@@ -3,6 +3,7 @@ package commands_test
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -24,6 +25,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/tools/fast"
+	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -69,6 +72,20 @@ func TestMinerHelp(t *testing.T) {
 		}
 
 		result := runHelpSuccess(t, "miner", "create", "--help")
+		for _, elem := range expected {
+			assert.Contains(t, result, elem)
+		}
+	})
+	t.Run("worker --help shows worker help", func(t *testing.T) {
+		expected := []string{
+			"go-filecoin miner worker <newAddress> - Set the address of the miner worker",
+			"go-filecoin miner worker [--gas-price=<gas-price>] [--gas-limit=<gas-limit>] [--] <newAddress>",
+			"<newAddress> - The address of the new miner worker.",
+			"--gas-price string - Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message.",
+			" --gas-limit uint64 - Maximum number of GasUnits this message is allowed to consume.",
+			" Sets the address of the miner worker to the provided address. The new address must be that of a worker that has already been created. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
+		}
+		result := runHelpSuccess(t, "miner", "worker", "--help")
 		for _, elem := range expected {
 			assert.Contains(t, result, elem)
 		}
@@ -209,23 +226,33 @@ func TestMinerSetPrice(t *testing.T) {
 func TestMinerCreateSuccess(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := makeTestDaemonWithMinerAndStart(t)
-	defer d1.ShutdownSuccess()
-	d := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2])).Start()
-	defer d.ShutdownSuccess()
-	d1.ConnectSuccess(d)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "1", "--gas-limit", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
-		assert.NoError(t, err)
-		assert.NotEqual(t, addr, address.Undef)
-		wg.Done()
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
 	}()
-	// ensure mining runs after the command in our goroutine
-	d1.MineAndPropagate(time.Second, d)
-	wg.Wait()
+	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
+	}()
+	env.RunAsyncMiner()
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+
+	minerAddress := requireMinerCreate(ctx, t, env, minerNode)
+	assert.NotEqual(t, address.Undef, minerAddress)
+}
+
+func requireMinerCreate(ctx context.Context, t *testing.T, env *fastesting.TestEnvironment, minerNode *fast.Filecoin) address.Address {
+
+	pparams, err := minerNode.Protocol(ctx)
+	require.NoError(t, err)
+
+	sinfo := pparams.SupportedSectors[0]
+
+	minerAddress, err := minerNode.MinerCreate(ctx, big.NewInt(1), fast.AOSectorSize(sinfo.Size), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+	require.NoError(t, err)
+
+	return minerAddress
 }
 
 func TestMinerCreateChargesGas(t *testing.T) {
@@ -246,8 +273,8 @@ func TestMinerCreateChargesGas(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		miner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
-		addr, err := address.NewFromString(strings.Trim(miner.ReadStdout(), "\n"))
+		testMiner := d.RunSuccess("miner", "create", "--from", fixtures.TestAddresses[2], "--gas-price", "333", "--gas-limit", "100", "200")
+		addr, err := address.NewFromString(strings.Trim(testMiner.ReadStdout(), "\n"))
 		assert.NoError(t, err)
 		assert.NotEqual(t, addr, address.Undef)
 		wg.Done()
@@ -415,4 +442,78 @@ var testConfig = &gengen.GenesisCfg{
 		},
 	},
 	Network: "minerDaemonTest",
+}
+
+func TestMinerWorker(t *testing.T) {
+	tf.IntegrationTest(t)
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
+	}()
+	env.RunAsyncMiner()
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+
+	t.Run("if there is no miner worker, returns error and outputs nothing", func(t *testing.T) {
+		resultAddr, err := minerNode.MinerWorker(ctx)
+		require.NotNil(t, err)
+		lastErr, err := minerNode.LastCmdStdErrStr()
+		require.NoError(t, err)
+		require.Contains(t, lastErr, "problem getting worker address")
+		require.Contains(t, lastErr, "actor not found")
+		assert.Equal(t, address.Undef, resultAddr)
+	})
+
+	t.Run("if there is a miner, shows the correct worker address", func(t *testing.T) {
+		minerAddr := requireMinerCreate(ctx, t, env, minerNode)
+
+		workerAddr, err := minerNode.MinerOwner(ctx, minerAddr)
+		require.NoError(t, err)
+
+		resultAddr, err := minerNode.MinerWorker(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, workerAddr.String(), resultAddr.String())
+	})
+}
+
+func TestMinerSetWorker(t *testing.T) {
+	tf.IntegrationTest(t)
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
+	}()
+	env.RunAsyncMiner()
+
+	minerNode := env.RequireNewNodeWithFunds(1000)
+
+	t.Run("fails if there is no miner worker", func(t *testing.T) {
+		resultAddr, err := minerNode.MinerWorker(ctx)
+		require.NotNil(t, err)
+		lastErr, err := minerNode.LastCmdStdErrStr()
+		require.NoError(t, err)
+		assert.Contains(t, lastErr, "problem getting worker address")
+		assert.Contains(t, lastErr, "actor not found")
+		assert.Equal(t, address.Undef, resultAddr)
+	})
+
+	t.Run("succceeds if there is a miner", func(t *testing.T) {
+		_ = requireMinerCreate(ctx, t, env, minerNode)
+
+		newAddr := address.NewForTestGetter()()
+
+		err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+		assert.NoError(t, err)
+
+		workerAddr, err := minerNode.MinerWorker(ctx)
+		require.NoError(t, err)
+		require.Equal(t, newAddr.String(), workerAddr.String())
+	})
 }
