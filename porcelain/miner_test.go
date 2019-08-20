@@ -243,7 +243,7 @@ func TestMinerSetPrice(t *testing.T) {
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Test error in ConfigGet")
+		assert.Contains(t, err.Error(), "test error in ConfigGet")
 	})
 
 	t.Run("reports error when setting into config", func(t *testing.T) {
@@ -254,7 +254,7 @@ func TestMinerSetPrice(t *testing.T) {
 		price := types.NewAttoFILFromFIL(50)
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Test error in ConfigSet")
+		assert.Contains(t, err.Error(), "test error in ConfigSet")
 	})
 
 	t.Run("sets price into config", func(t *testing.T) {

@@ -76,21 +76,24 @@ func TestMinerHelp(t *testing.T) {
 			assert.Contains(t, result, elem)
 		}
 	})
-	t.Run("worker --help shows worker help", func(t *testing.T) {
+	t.Run("set-worker --help shows set-worker help", func(t *testing.T) {
 		expected := []string{
-			"go-filecoin miner worker <newAddress> - Set the address of the miner worker",
-			"go-filecoin miner worker [--gas-price=<gas-price>] [--gas-limit=<gas-limit>] [--] <newAddress>",
-			"<newAddress> - The address of the new miner worker.",
-			"--gas-price string - Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message.",
-			" --gas-limit uint64 - Maximum number of GasUnits this message is allowed to consume.",
-			" Sets the address of the miner worker to the provided address. The new address must be that of a worker that has already been created. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
+			"go-filecoin miner set-worker <new-address> - Set the address of the miner worker",
+			"go-filecoin miner set-worker [--gas-price=<gas-price>] [--gas-limit=<gas-limit>] [--] <new-address>",
+			"<new-address> - The address of the new miner worker.",
+			"--gas-price string - Price (FIL e.g. 0.00013) to pay per GasUnit consumed mining this message.",
+			" --gas-limit uint64 - Maximum GasUnits this message is allowed to consume.",
+			"Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
 		}
-		result := runHelpSuccess(t, "miner", "worker", "--help")
+		result := runHelpSuccess(t, "miner", "set-worker", "--help")
 		for _, elem := range expected {
 			assert.Contains(t, result, elem)
 		}
 	})
-
+	t.Run("worker --help shows worker help", func(t *testing.T) {
+		result := runHelpSuccess(t, "miner", "worker", "--help")
+		assert.Contains(t, result, "go-filecoin miner worker - Get the address of the miner worker")
+	})
 }
 
 func runHelpSuccess(t *testing.T, args ...string) string {
