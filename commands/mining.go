@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -19,13 +20,14 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"address":  miningAddrCmd,
-		"once":     miningOnceCmd,
-		"start":    miningStartCmd,
-		"status":   miningStatusCmd,
-		"stop":     miningStopCmd,
-		"setup":    miningSetupCmd,
-		"seal-now": miningSealCmd,
+		"address":   miningAddrCmd,
+		"once":      miningOnceCmd,
+		"start":     miningStartCmd,
+		"status":    miningStatusCmd,
+		"stop":      miningStopCmd,
+		"setup":     miningSetupCmd,
+		"seal-now":  miningSealCmd,
+		"add-piece": miningAddPieceCmd,
 	},
 }
 
@@ -211,4 +213,41 @@ var stringEncoderMap = cmds.EncoderMap{
 		fmt.Fprintln(w, t) // nolint: errcheck
 		return nil
 	}),
+}
+
+var miningAddPieceCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Add a piece from a local file",
+		ShortDescription: `
+Stages a piece (a local file) into a staged sector. 
+`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.FileArg("file", true, false, "Path of file to add").EnableStdin(),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		iter := req.Files.Entries()
+		if !iter.Next() {
+			return fmt.Errorf("no file given: %s", iter.Err())
+		}
+
+		fi, ok := iter.Node().(files.File)
+		if !ok {
+			return fmt.Errorf("given file was not a files.File")
+		}
+
+		sectorId, err := GetPorcelainAPI(env).AddPiece(req.Context, fi)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(sectorId)
+	},
+	Type: uint64(0),
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, sectorId uint64) error {
+			fmt.Fprintf(w, "piece staged in sector %d\n", sectorId) // nolint: errcheck
+			return nil
+		}),
+	},
 }

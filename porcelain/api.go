@@ -2,6 +2,7 @@ package porcelain
 
 import (
 	"context"
+	"io"
 	"math/big"
 	"time"
 
@@ -243,6 +244,11 @@ func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommR
 // SealNow forces the sectorbuilder to either seal the staged sectors it has or create a new one and seal it immediately
 func (a *API) SealNow(ctx context.Context) error {
 	return SealNow(ctx, a)
+}
+
+// AddPiece adds a piece to a staged sector
+func (a *API) AddPiece(ctx context.Context, reader io.Reader) (uint64, error) {
+	return AddPiece(ctx, a, reader)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given
