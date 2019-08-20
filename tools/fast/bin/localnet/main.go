@@ -27,6 +27,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
@@ -351,6 +352,25 @@ func main() {
 	}
 
 	fmt.Println("Finished!")
+	var nodeDetails []*commands.IDDetails
+	nodes := env.Processes()
+	for _, node := range nodes {
+		details, err := node.ID(ctx)
+		if err != nil {
+			exitcode = handleError(err, "failed to fetch details of node")
+			return
+		}
+
+		nodeDetails = append(nodeDetails, details)
+	}
+
+	fmt.Printf("Genesis %s\n", genesisURI)
+	for i, details := range nodeDetails {
+		for _, addr := range details.Addresses {
+			fmt.Printf("node %d addr: %s\n", i, addr)
+		}
+	}
+
 	fmt.Println("Ctrl-C to exit")
 
 	<-exit
