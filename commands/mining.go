@@ -215,11 +215,17 @@ var stringEncoderMap = cmds.EncoderMap{
 	}),
 }
 
+// MiningAddPieceResult is a wrapper around the uint64 sectorID
+type MiningAddPieceResult struct {
+	SectorID uint64
+}
+
 var miningAddPieceCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Add a piece from a local file",
+		Tagline: "Add data directly to a staged sector",
 		ShortDescription: `
-Stages a piece (a local file) into a staged sector. 
+Adds a piece (a local file) to a staged sector.  This is used
+to add data outside of a deal.
 `,
 	},
 	Arguments: []cmdkit.Argument{
@@ -241,12 +247,12 @@ Stages a piece (a local file) into a staged sector.
 			return err
 		}
 
-		return re.Emit(sectorID)
+		return re.Emit(MiningAddPieceResult{SectorID: sectorID})
 	},
-	Type: uint64(0),
+	Type: MiningAddPieceResult{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, sectorId uint64) error {
-			fmt.Fprintf(w, "piece staged in sector %d\n", sectorId) // nolint: errcheck
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result MiningAddPieceResult) error {
+			fmt.Fprintf(w, "piece staged in sector %d\n", result.SectorID) // nolint: errcheck
 			return nil
 		}),
 	},

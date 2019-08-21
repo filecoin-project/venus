@@ -67,7 +67,7 @@ func AddPiece(ctx context.Context, plumbing sbPlumbing, pieceReader io.Reader) (
 	return sectorID, nil
 }
 
-// SealNow forces the sectorbuilder to either seal the staged sectors it has or create a new one and seal it immediately
+// SealNow forces the sectorbuilder to seal the staged sectors it has, if any
 func SealNow(ctx context.Context, plumbing sbPlumbing) error {
 	if plumbing.SectorBuilder() == nil {
 		return errors.New("must be mining to seal sectors")
@@ -78,7 +78,7 @@ func SealNow(ctx context.Context, plumbing sbPlumbing) error {
 		return errors.Wrap(err, "could not retrieved staged sectors")
 	}
 
-	// if no sectors are staged, nothing to do
+	// nothing to do if no sectors are staged
 	if len(stagedSectors) == 0 {
 		return nil
 	}
