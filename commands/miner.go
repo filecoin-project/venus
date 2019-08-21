@@ -495,7 +495,7 @@ ProvingSet: %s
 
 // MinerWorkerResult is a struct containing the result of a MinerWorker or MinerSetWorker command.
 type MinerWorkerResult struct {
-	WorkerAddress address.Address `json:"WorkerAddress"`
+	WorkerAddress address.Address `json:"workerAddress"`
 }
 
 var minerSetWorkerAddressCmd = &cmds.Command{
