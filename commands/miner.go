@@ -543,9 +543,13 @@ var minerWorkerAddressCmd = &cmds.Command{
 		ShortDescription: "Show the address of the miner worker",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		minerAddr, err := getMinerAddress(env)
+		ret, err := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
 		if err != nil {
 			return errors.Wrap(err, "problem getting miner address")
+		}
+		minerAddr, ok := ret.(address.Address)
+		if !ok {
+			return errors.New("problem converting miner address")
 		}
 		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr)
 		if err != nil {
@@ -563,16 +567,4 @@ var minerWorkerAddressCmd = &cmds.Command{
 			return nil
 		}),
 	},
-}
-
-func getMinerAddress(env cmds.Environment) (address.Address, error) {
-	retVal, err := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
-	if err != nil {
-		return address.Undef, err
-	}
-	minerAddr, ok := retVal.(address.Address)
-	if !ok {
-		return address.Undef, err
-	}
-	return minerAddr, nil
 }

@@ -527,14 +527,13 @@ func MinerSetWorkerAddress(
 	gasLimit types.GasUnits,
 ) (cid.Cid, error) {
 
-	ret, err := plumbing.ConfigGet("mining.minerAddress")
+	retVal, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return cid.Undef, err
 	}
-
-	minerAddr, ok := ret.(address.Address)
+	minerAddr, ok := retVal.(address.Address)
 	if !ok {
-		return cid.Undef, errors.New("Problem getting miner address")
+		return cid.Undef, errors.New("problem converting miner address")
 	}
 
 	minerOwnerAddr, err := plumbing.MinerGetOwnerAddress(ctx, minerAddr)
