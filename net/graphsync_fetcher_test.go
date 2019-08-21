@@ -16,6 +16,7 @@ import (
 	gsnet "github.com/ipfs/go-graphsync/network"
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
@@ -79,10 +80,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 			)
 		})
 		mgs := newMockableGraphsync(ctx, builder, bs, t)
-		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(0).Cid(), recursiveSelector(1), nil)
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), layer1Selector)
+		mgs.stubResponseWithSuccess(pid0, final.At(1).Cid(), layer1Selector)
+		mgs.stubResponseWithSuccess(pid0, final.At(2).Cid(), layer1Selector)
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), recursiveSelector(1))
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
 
@@ -116,13 +117,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
 
 		mgs := newMockableGraphsync(ctx, builder, bs, t)
-		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
-		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
-		mgs.stubResponse(pid1, final.At(1).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
-		mgs.stubResponse(pid2, final.At(2).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid2, final.At(2).Cid(), recursiveSelector(1), nil)
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), layer1Selector)
+		mgs.stubResponseWithErrorOnCids(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponseWithSuccess(pid1, final.At(1).Cid(), layer1Selector)
+		mgs.stubResponseWithErrorOnCids(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponseWithSuccess(pid2, final.At(2).Cid(), layer1Selector)
+		mgs.stubResponseWithSuccess(pid2, final.At(0).Cid(), recursiveSelector(1))
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -162,13 +163,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
 		mgs := newMockableGraphsync(ctx, builder, bs, t)
-		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
-		mgs.stubResponse(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
-		mgs.stubResponse(pid1, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
-		mgs.stubResponse(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
-		mgs.stubResponse(pid2, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
-		mgs.stubResponse(pid2, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), layer1Selector)
+		mgs.stubResponseWithErrorOnCids(pid0, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid0, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid1, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid1, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid2, final.At(1).Cid(), layer1Selector, []cid.Cid{final.At(1).Cid()})
+		mgs.stubResponseWithErrorOnCids(pid2, final.At(2).Cid(), layer1Selector, []cid.Cid{final.At(2).Cid()})
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -216,10 +217,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 		}
 
 		mgs := newMockableGraphsync(ctx, builder, bs, t)
-		mgs.stubResponse(pid0, final.At(0).Cid(), layer1Selector, nil)
-		mgs.stubResponse(pid0, final.At(0).Cid(), recursiveSelector(1), nil)
-		mgs.stubResponse(pid0, blocks[0].Cid(), recursiveSelector(4), []cid.Cid{blocks[3].Cid()})
-		mgs.stubResponse(pid1, blocks[2].Cid(), recursiveSelector(4), nil)
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), layer1Selector)
+		mgs.stubResponseWithSuccess(pid0, final.At(0).Cid(), recursiveSelector(1))
+		mgs.stubResponseWithErrorOnCids(pid0, blocks[0].Cid(), recursiveSelector(4), []cid.Cid{blocks[3].Cid()})
+		mgs.stubResponseWithSuccess(pid1, blocks[2].Cid(), recursiveSelector(4))
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
 
@@ -251,32 +252,19 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("value returned with non block format", func(t *testing.T) {
-		notABlock := types.NewMsgs(1)[0]
-		notABlockObj, err := notABlock.ToNode()
-		require.NoError(t, err)
-
-		notABlockCid, err := notABlock.Cid()
-		require.NoError(t, err)
-		originalCids := types.NewTipSetKey(notABlockCid)
-
-		stubs := []requestResponse{
-			{
-				fakeRequest{pid0, cidlink.Link{Cid: notABlockCid}, layer1Selector},
-				fakeResponse{blks: []format.Node{notABlockObj}},
-			},
-		}
-		mgs := &mockableGraphsync{stubs: stubs, t: t, store: bs}
-
+		gen := builder.NewGenesis()
+		mgs := newMockableGraphsync(ctx, builder, bs, t)
+		mgs.stubResponseWithUndecodableBlocks(pid0, gen.At(0).Cid(), layer1Selector, []cid.Cid{gen.At(0).Cid()})
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
 
 		done := func(ts types.TipSet) (bool, error) {
-			if ts.Key().Equals(originalCids) {
+			if ts.Key().Equals(gen.Key()) {
 				return true, nil
 			}
 			return false, nil
 		}
-		ts, err := fetcher.FetchTipSets(ctx, originalCids, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a block", notABlockCid.String())
+		ts, err := fetcher.FetchTipSets(ctx, gen.Key(), pid0, done)
+		require.Errorf(t, err, "fetched data (cid %s) was not a block", gen.At(0).Cid().String())
 		require.Nil(t, ts)
 	})
 
@@ -421,18 +409,15 @@ func newMockableGraphsync(ctx context.Context, builder *chain.Builder, store bst
 	}
 }
 
-func (mgs *mockableGraphsync) stubResponse(pid peer.ID, c cid.Cid, s selector.Selector, missingCids []cid.Cid) {
+type mockGraphsyncLoader func(cid.Cid) (format.Node, error)
+
+func (mgs *mockableGraphsync) stubResponseWithLoader(pid peer.ID, c cid.Cid, s selector.Selector, loader mockGraphsyncLoader) {
 	var blks []format.Node
 	var responses []graphsync.ResponseProgress
 
-	loader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
+	linkLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		for _, testCid := range missingCids {
-			if cid.Equals(testCid) {
-				return nil, fmt.Errorf("everything failed")
-			}
-		}
-		node, err := tryBlockMessageReceiptNode(mgs.ctx, mgs.builder, cid)
+		node, err := loader(cid)
 		if err != nil {
 			return nil, err
 		}
@@ -440,7 +425,7 @@ func (mgs *mockableGraphsync) stubResponse(pid peer.ID, c cid.Cid, s selector.Se
 		return bytes.NewBuffer(node.RawData()), nil
 	}
 	root := cidlink.Link{Cid: c}
-	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), loader)
+	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), linkLoader)
 	if err != nil {
 		mgs.stubs = append(mgs.stubs, requestResponse{
 			fakeRequest{pid, root, s},
@@ -455,13 +440,58 @@ func (mgs *mockableGraphsync) stubResponse(pid peer.ID, c cid.Cid, s selector.Se
 	err = ipldbridge.TraversalProgress{
 		Cfg: &ipldbridge.TraversalConfig{
 			Ctx:        mgs.ctx,
-			LinkLoader: loader,
+			LinkLoader: linkLoader,
 		},
 	}.TraverseInformatively(node, s, visitor)
 	mgs.stubs = append(mgs.stubs, requestResponse{
 		fakeRequest{pid, root, s},
 		fakeResponse{responses, []error{err}, blks},
 	})
+}
+
+// stubResponseWithSuccess stubs a successful response when the mocked graphsync
+// instance is called with the given peer, cid, and selector
+// by executing the specified root and selector against the chain builder
+func (mgs *mockableGraphsync) stubResponseWithSuccess(pid peer.ID, c cid.Cid, s selector.Selector) {
+	loader := func(cidToLoad cid.Cid) (format.Node, error) {
+		return tryBlockMessageReceiptNode(mgs.ctx, mgs.builder, cidToLoad)
+	}
+	mgs.stubResponseWithLoader(pid, c, s, loader)
+}
+
+// stubResponseWithUndecodableBlocks stubs a response when the mocked graphsync
+// instance is called with the given peer, cid, and selector
+// by executing the specified root and selector against the chain builder
+// and substituting a block that will not decode if any of the specified cids are loaded while executing the query
+func (mgs *mockableGraphsync) stubResponseWithUndecodableBlocks(pid peer.ID, c cid.Cid, s selector.Selector, undecodableCids []cid.Cid) {
+	loader := func(cidToLoad cid.Cid) (format.Node, error) {
+		for _, testCid := range undecodableCids {
+			if cidToLoad.Equals(testCid) {
+				return cbor.WrapObject(struct {
+					x int
+					y string
+				}{5, "applesauce"}, types.DefaultHashFunction, -1)
+			}
+		}
+		return tryBlockMessageReceiptNode(mgs.ctx, mgs.builder, cidToLoad)
+	}
+	mgs.stubResponseWithLoader(pid, c, s, loader)
+}
+
+// stubResponseWithErrorOnCids stubs a response when the mocked graphsync
+// instance is called with the given peer, cid, and selector
+// by executing the specified root and selector against the chain builder
+// and erroring any of the given cids are loaded while executing the query
+func (mgs *mockableGraphsync) stubResponseWithErrorOnCids(pid peer.ID, c cid.Cid, s selector.Selector, errorOnCids []cid.Cid) {
+	loader := func(cidToLoad cid.Cid) (format.Node, error) {
+		for _, testCid := range errorOnCids {
+			if cidToLoad.Equals(testCid) {
+				return nil, fmt.Errorf("Everything failed")
+			}
+		}
+		return tryBlockMessageReceiptNode(mgs.ctx, mgs.builder, cidToLoad)
+	}
+	mgs.stubResponseWithLoader(pid, c, s, loader)
 }
 
 func (mgs *mockableGraphsync) toChans(mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
