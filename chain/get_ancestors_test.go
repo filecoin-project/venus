@@ -57,8 +57,8 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	assert.Equal(t, chainLen, len(tipsets))
 }
 
-// tipsets at least 0.
-func TestCollectTipSetsOfHeightAtLeastTipsetZero(t *testing.T) {
+// tipsets at least 1.
+func TestCollectTipSetsOfHeightAtLeastTipsetOne(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
@@ -70,7 +70,7 @@ func TestCollectTipSetsOfHeightAtLeastTipsetZero(t *testing.T) {
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(tipsets))
+	assert.Equal(t, 1, len(tipsets))
 }
 
 // The starting epoch is a null block.
@@ -100,8 +100,8 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	assert.Equal(t, uint64(60), latestHeight)
 	earliestHeight, err := tipsets[len(tipsets)-1].Height()
 	require.NoError(t, err)
-	assert.Equal(t, uint64(41), earliestHeight)
-	assert.Equal(t, 20, len(tipsets))
+	assert.Equal(t, uint64(30), earliestHeight)
+	assert.Equal(t, 21, len(tipsets))
 }
 
 func TestCollectAtMostNTipSets(t *testing.T) {
@@ -214,11 +214,11 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), uint(lookback))
 	require.NoError(t, err)
 
-	// We expect to see 20 blocks in the first 28 epochs and an additional 6 for the lookback parameter
-	assert.Equal(t, len2+lookback+1, len(ancestors))
+	// We expect to see 20+1 blocks include less than earliest block in the first 28 epochs and an additional 6 for the lookback parameter
+	assert.Equal(t, len2+lookback+2, len(ancestors))
 	lastBlockHeight, err := ancestors[len(ancestors)-1].Height()
 	require.NoError(t, err)
-	assert.Equal(t, uint64(25), lastBlockHeight)
+	assert.Equal(t, uint64(24), lastBlockHeight)
 }
 
 func TestFindCommonAncestorSameChain(t *testing.T) {

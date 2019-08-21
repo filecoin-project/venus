@@ -59,7 +59,15 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, provider TipSetP
 		return nil, err
 	}
 
-	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
+	// Step 2 -- skip the next tipset which added if iterator not complete
+	if !iterator.Complete() {
+		err = iterator.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Step 3 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
