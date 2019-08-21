@@ -1094,7 +1094,6 @@ func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, workerAddr
 	node.StorageFaultSlasher = storage.NewFaultSlasher(
 		node.PorcelainAPI,
 		node.Outbox,
-		workerAddress,
 		storage.DefaultFaultSlasherGasPrice,
 		storage.DefaultFaultSlasherGasLimit)
 	return nil

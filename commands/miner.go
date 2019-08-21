@@ -493,15 +493,10 @@ ProvingSet: %s
 	},
 }
 
-// MinerWorkerResult is a struct containing the result of a MinerWorker or MinerSetWorker command.
-type MinerWorkerResult struct {
-	WorkerAddress address.Address `json:"workerAddress"`
-}
-
 var minerSetWorkerAddressCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "Set the address of the miner worker",
-		ShortDescription: "Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default.",
+		Tagline:          "Set the address of the miner worker. Returns a message CID",
+		ShortDescription: "Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default. Returns a message CID to wait for the message to appear on chain.",
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("new-address", true, false, "The address of the new miner worker."),
@@ -521,21 +516,25 @@ var minerSetWorkerAddressCmd = &cmds.Command{
 			return err
 		}
 
-		err = GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, gasPrice, gasLimit)
+		msgCid, err := GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, gasPrice, gasLimit)
 		if err != nil {
 			return err
 		}
 
-		return re.Emit(&MinerWorkerResult{WorkerAddress: newWorker})
+		return re.Emit(msgCid)
 	},
-	Type: &MinerWorkerResult{},
+	Type: cid.Cid{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *MinerWorkerResult) error {
-			outStr := fmt.Sprintf("Changed worker address to %s", result.WorkerAddress.String())
-			_, err := fmt.Fprintln(w, outStr)
-			return err
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
+			fmt.Fprintln(w, c) // nolint: errcheck
+			return nil
 		}),
 	},
+}
+
+// MinerWorkerResult is a struct containing the result of a MinerWorker or MinerSetWorker command.
+type MinerWorkerResult struct {
+	WorkerAddress address.Address `json:"workerAddress"`
 }
 
 var minerWorkerAddressCmd = &cmds.Command{

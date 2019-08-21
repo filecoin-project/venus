@@ -652,7 +652,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 			minerAddr:  minerAddr,
 		}
 
-		err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, gprice, glimit)
+		_, err := MinerSetWorkerAddress(context.Background(), plumbing, workerAddr, gprice, glimit)
 		assert.NoError(t, err)
 		assert.Equal(t, workerAddr.String(), plumbing.workerAddr.String())
 	})
@@ -668,11 +668,6 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 			error:    "MsgFail",
 		},
 		{
-			name:     "When MessageWait fails, returns the error and does not set worker address",
-			plumbing: &minerSetWorkerAddressPlumbing{msgWaitFail: true},
-			error:    "MsgWaitFail",
-		},
-		{
 			name:     "When ConfigGet fails, returns the error and does not set worker address",
 			plumbing: &minerSetWorkerAddressPlumbing{cfgFail: true},
 			error:    "CfgFail",
@@ -686,7 +681,7 @@ func TestMinerSetWorkerAddress(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			err := MinerSetWorkerAddress(context.Background(), test.plumbing, workerAddr, gprice, glimit)
+			_, err := MinerSetWorkerAddress(context.Background(), test.plumbing, workerAddr, gprice, glimit)
 			assert.Error(t, err, test.error)
 			assert.Empty(t, test.plumbing.workerAddr)
 		})

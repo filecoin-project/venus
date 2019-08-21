@@ -510,11 +510,10 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 	return types.NewAttoFILFromBytes(rets[0]), nil
 }
 
-// mwapi is the subset of the plumbing.API that Miner(Set|Get)WorkerAddress use.
+// mwapi is the subset of the plumbing.API that MinerSetWorkerAddress use.
 type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }
 
@@ -526,24 +525,24 @@ func MinerSetWorkerAddress(
 	workerAddr address.Address,
 	gasPrice types.AttoFIL,
 	gasLimit types.GasUnits,
-) error {
+) (cid.Cid, error) {
 
 	ret, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	minerAddr, ok := ret.(address.Address)
 	if !ok {
-		return errors.New("Problem getting miner address")
+		return cid.Undef, errors.New("Problem getting miner address")
 	}
 
 	minerOwnerAddr, err := plumbing.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		return errors.Wrap(err, "could not get miner owner address")
+		return cid.Undef, errors.Wrap(err, "could not get miner owner address")
 	}
 
-	smsgCid, err := plumbing.MessageSend(
+	return plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		minerAddr,
@@ -552,14 +551,4 @@ func MinerSetWorkerAddress(
 		gasLimit,
 		"changeWorker",
 		workerAddr)
-	if err != nil {
-		return err
-	}
-
-	return plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
-		if receipt.ExitCode != uint8(0) {
-			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
-		}
-		return nil
-	})
 }

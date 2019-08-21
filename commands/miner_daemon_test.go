@@ -498,29 +498,29 @@ func TestMinerSetWorker(t *testing.T) {
 	env.RunAsyncMiner()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
+	newAddr := address.NewForTestGetter()()
 
 	t.Run("fails if there is no miner worker", func(t *testing.T) {
-		res, err := minerNode.MinerWorker(ctx)
+		_, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 		require.NotNil(t, err)
 		lastErr, err := minerNode.LastCmdStdErrStr()
 		require.NoError(t, err)
-		assert.Contains(t, lastErr, "problem getting worker address")
 		assert.Contains(t, lastErr, "actor not found")
-		assert.Equal(t, address.Undef, res.WorkerAddress)
 	})
 
 	t.Run("succceeds if there is a miner", func(t *testing.T) {
 		_ = requireMinerCreate(ctx, t, env, minerNode)
 
-		newAddr := address.NewForTestGetter()()
+		msgCid, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+		require.NoError(t, err)
 
-		res, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
-		assert.NoError(t, err)
+		resp, err := minerNode.MessageWait(ctx, msgCid)
+		require.NoError(t, err)
+		require.Equal(t, 0, int(resp.Receipt.ExitCode))
 
 		res2, err := minerNode.MinerWorker(ctx)
 		require.NoError(t, err)
 
-		assert.Equal(t, newAddr.String(), res.WorkerAddress.String())
 		assert.Equal(t, newAddr.String(), res2.WorkerAddress.String())
 	})
 }

@@ -122,8 +122,8 @@ func (f *Filecoin) MinerWorker(ctx context.Context) (commands.MinerWorkerResult,
 }
 
 // MinerSetWorker runs the `miner set-worker` command against the filecoin process
-func (f *Filecoin) MinerSetWorker(ctx context.Context, newAddr address.Address, options ...ActionOption) (commands.MinerWorkerResult, error) {
-	var out commands.MinerWorkerResult
+func (f *Filecoin) MinerSetWorker(ctx context.Context, newAddr address.Address, options ...ActionOption) (cid.Cid, error) {
+	var out cid.Cid
 
 	args := []string{"go-filecoin", "miner", "set-worker", newAddr.String()}
 
