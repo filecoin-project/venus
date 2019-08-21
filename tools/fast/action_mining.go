@@ -95,7 +95,7 @@ func (f *Filecoin) AddPiece(ctx context.Context, data files.File) (commands.Mini
 	return out, nil
 }
 
-// SealNow adds a staged sector if none exists and then triggers sealing on it
+// SealNow seals any staged sectors
 func (f *Filecoin) SealNow(ctx context.Context) error {
 	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "seal-now")
 	if err != nil {

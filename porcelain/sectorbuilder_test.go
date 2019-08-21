@@ -19,7 +19,7 @@ import (
 )
 
 func TestSealNow(t *testing.T) {
-	t.Run("triggers sealing if there are staged sectors", func(t *testing.T) {
+	t.Run("triggers sealing", func(t *testing.T) {
 		p := newTestSectorBuilderPlumbing(1)
 
 		err := SealNow(context.Background(), p)
@@ -27,19 +27,6 @@ func TestSealNow(t *testing.T) {
 
 		// seals sectors
 		assert.Equal(t, 1, p.sectorbuilder.sealAllSectorsCount)
-	})
-
-	t.Run("doesn't seal if there are no staged sectors", func(t *testing.T) {
-		p := newTestSectorBuilderPlumbing(0)
-
-		err := SealNow(context.Background(), p)
-		require.NoError(t, err)
-
-		// does not add a piece
-		assert.Equal(t, 0, p.sectorbuilder.addPieceCount)
-
-		// seals sectors
-		assert.Equal(t, 0, p.sectorbuilder.sealAllSectorsCount)
 	})
 }
 

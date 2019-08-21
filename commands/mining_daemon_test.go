@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/types"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func parseInt(t *testing.T, s string) *big.Int {

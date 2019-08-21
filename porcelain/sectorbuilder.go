@@ -73,16 +73,6 @@ func SealNow(ctx context.Context, plumbing sbPlumbing) error {
 		return errors.New("must be mining to seal sectors")
 	}
 
-	stagedSectors, err := plumbing.SectorBuilder().GetAllStagedSectors()
-	if err != nil {
-		return errors.Wrap(err, "could not retrieved staged sectors")
-	}
-
-	// nothing to do if no sectors are staged
-	if len(stagedSectors) == 0 {
-		return nil
-	}
-
 	// start sealing on all existing staged sectors
 	return plumbing.SectorBuilder().SealAllStagedSectors(ctx)
 }
