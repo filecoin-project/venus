@@ -29,10 +29,33 @@ func CollectTipsToCommonAncestor(ctx context.Context, store chain.TipSetProvider
 
 	// Add 1 to the height argument so that the common ancestor is not
 	// included in the outputs.
-	oldTips, err = chain.CollectTipSetsOfHeightAtLeast(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	oldTips, err = CollectTipSetsOfHeight(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
 	if err != nil {
 		return
 	}
-	newTips, err = chain.CollectTipSetsOfHeightAtLeast(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	newTips, err = CollectTipSetsOfHeight(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
 	return
+}
+
+// CollectTipSetsOfHeight collects all tipsets with a height greater than the earliest
+// possible proving period start still in scope for the given head.
+func CollectTipSetsOfHeight(ctx context.Context, iterator *chain.TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+	var ret []types.TipSet
+	var err error
+	var h uint64
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
+		if types.NewBlockHeight(h).LessThan(minHeight) {
+			break
+		}
+		ret = append(ret, iterator.Value())
+	}
+
+	return ret, nil
 }
