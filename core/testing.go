@@ -239,3 +239,16 @@ type NullPolicy struct {
 func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldChain, newChain []types.TipSet) error {
 	return nil
 }
+
+// MockNetworkPublisher records the last topic and message published.
+type MockNetworkPublisher struct {
+	Topic string
+	Data  []byte
+}
+
+// Publish records the topic and message.
+func (p *MockNetworkPublisher) Publish(topic string, data []byte) error {
+	p.Topic = topic
+	p.Data = data
+	return nil
+}
