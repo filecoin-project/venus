@@ -210,8 +210,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	assert.Equal(t, 1, genesisTipset.Len())
 =======
 
-	genesisA := builder.AppendBlockOn(types.UndefTipSet)
-	genesisTipset := th.RequireNewTipSet(t, genesisA)
+	genesisTipset := builder.NewGenesis()
+	assert.Equal(t, 1, genesisTipset.Len())
 
 >>>>>>> fix test error
 	heavy1 := builder.AppendOn(genesisTipset, 3)
