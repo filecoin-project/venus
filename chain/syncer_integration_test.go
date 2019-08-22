@@ -332,12 +332,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
 
-func initGenesis(minerAddress address.Address, minerOwnerAddress address.Address, minerPeerID peer.ID, cst *hamt.CborIpldStore, bs bstore.Blockstore) (*types.Block, error) {
-	return consensus.MakeGenesisFunc(
-		consensus.MinerActor(minerAddress, minerOwnerAddress, minerPeerID, types.ZeroAttoFIL, types.OneKiBSectorSize),
-	)(cst, bs)
-}
-
 type requireTsAddedChainStore interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetAndStatesByParentsAndHeight(types.TipSetKey, uint64) ([]*chain.TipSetAndState, error)

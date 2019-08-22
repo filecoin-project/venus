@@ -19,16 +19,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Chain diagram below.  Note that blocks in the same tipset are in parentheses.
+// Default Chain diagram below.  Note that blocks in the same tipset are in parentheses.
 //
 // genesis -> (link1blk1, link1blk2) -> (link2blk1, link2blk2, link2blk3) -> link3blk1 -> (null block) -> (null block) -> (link4blk1, link4blk2)
-func newChainStore2(r repo.Repo, genCid cid.Cid) *chain.Store {
+
+// newChainStore creates a new chain store for tests.
+func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
 	return chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, genCid)
 }
 
-// requirePutTestChain2 puts the count tipsets preceding head in the source to 
+// requirePutTestChain puts the count tipsets preceding head in the source to
 // the input chain store.
-func requirePutTestChain2(ctx context.Context, t *testing.T, chainStore *chain.Store, head types.TipSetKey, source *chain.Builder, count int) {
+func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.Store, head types.TipSetKey, source *chain.Builder, count int) {
 	tss := source.RequireTipSets(head, count)
 	for _, ts := range tss {
 		tsas := &chain.TipSetAndState{
@@ -37,7 +39,7 @@ func requirePutTestChain2(ctx context.Context, t *testing.T, chainStore *chain.S
 		}
 		require.NoError(t, chainStore.PutTipSetAndState(ctx, tsas))
 	}
-	
+
 }
 
 func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey types.TipSetKey, h uint64) []*chain.TipSetAndState {
@@ -74,8 +76,8 @@ func TestPutTipSet(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())
-	
+	cs := newChainStore(r, genTS.At(0).Cid())
+
 	genTsas := &chain.TipSetAndState{
 		TipSet:          genTS,
 		TipSetStateRoot: genTS.At(0).StateRoot,
@@ -92,16 +94,16 @@ func TestGetByKey(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Put the test chain to the store
-	requirePutTestChain2(ctx, t, cs, link4.Key(), builder, 5)
+	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
 
 	// Check that we can get all tipsets by key
 	gotGTS := requireGetTipSet(ctx, t, cs, genTS.Key())
@@ -185,16 +187,16 @@ func TestGetByParent(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Put the test chain to the store
-	requirePutTestChain2(ctx, t, cs, link4.Key(), builder, 5)
+	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
 
 	gotG := requireGetTsasByParentAndHeight(t, cs, types.TipSetKey{}, uint64(0))
 	got1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), uint64(1))
@@ -222,16 +224,16 @@ func TestGetMultipleByParent(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Put the test chain to the store
-	requirePutTestChain2(ctx, t, cs, link4.Key(), builder, 5)
+	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
 
 	// Add extra children to the genesis tipset
 	otherLink1 := builder.AppendOn(genTS, 1)
@@ -261,7 +263,7 @@ func TestSetGenesis(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())	
+	cs := newChainStore(r, genTS.At(0).Cid())
 
 	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
 }
@@ -279,13 +281,13 @@ func TestHead(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore2(r, genTS.At(0).Cid())
+	cs := newChainStore(r, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Head starts as an empty cid set
 	assert.Equal(t, types.TipSetKey{}, cs.GetHead())
@@ -318,13 +320,13 @@ func TestHeadEvents(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	chainStore := newChainStore2(r, genTS.At(0).Cid())
+	chainStore := newChainStore(r, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 	ps := chainStore.HeadEvents()
 	chA := ps.Sub(chain.NewHeadTopic)
 	chB := ps.Sub(chain.NewHeadTopic)
@@ -361,7 +363,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
-	genTS := builder.NewGenesis()	
+	genTS := builder.NewGenesis()
 	rPriv := repo.NewInMemoryRepo()
 	ds := rPriv.Datastore()
 	cst := hamt.NewCborStore()
@@ -370,8 +372,8 @@ func TestLoadAndReboot(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) {bb.IncHeight(2)})	
-	
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+
 	// Add blocks to blockstore
 	requirePutBlocksToCborStore(t, cst, genTS.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link1.ToSlice()...)
@@ -380,7 +382,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
 	chainStore := chain.NewStore(ds, cst, &state.TreeStateLoader{}, genTS.At(0).Cid())
-	requirePutTestChain2(ctx, t, chainStore, link4.Key(), builder, 5)	
+	requirePutTestChain(ctx, t, chainStore, link4.Key(), builder, 5)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
 	assertSetHead(t, chainStore, link4)
