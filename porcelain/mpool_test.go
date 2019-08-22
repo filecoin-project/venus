@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/net"
-	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -17,8 +15,7 @@ import (
 
 type fakeMpoolWaitPlumbing struct {
 	pending            []*types.SignedMessage
-	subscription       *pubsub.FakeSubscription // Receives subscription as is it opened
-	afterPendingCalled func()                   // Invoked after each call to MessagePoolPending
+	afterPendingCalled func() // Invoked after each call to MessagePoolPending
 }
 
 func newFakeMpoolWaitPlumbing(onPendingCalled func()) *fakeMpoolWaitPlumbing {
@@ -32,12 +29,6 @@ func (plumbing *fakeMpoolWaitPlumbing) MessagePoolPending() []*types.SignedMessa
 		defer plumbing.afterPendingCalled()
 	}
 	return plumbing.pending
-}
-
-func (plumbing *fakeMpoolWaitPlumbing) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
-	subscription := pubsub.NewFakeSubscription(net.MessageTopic, 1)
-	plumbing.subscription = subscription
-	return subscription, nil
 }
 
 func TestMessagePoolWait(t *testing.T) {
@@ -74,15 +65,9 @@ func TestMessagePoolWait(t *testing.T) {
 		handlePendingCalled := func() {
 			if callCount == 0 {
 				// The first call is checking for the fast path; do nothing.
-			} else if callCount == 1 {
-				// Pubsub subscribed but not yet waited.
-				// Bump the pubsub but *don't* add to message pool; the waiter must wait longer.
-				plumbing.subscription.Post(nil)
 			} else if callCount == 2 {
-				// First pubsub bump processed.
-				// Add a message to the pool then bump pubsub again.
+				// Add a message to the pool.
 				plumbing.pending = types.NewSignedMsgs(1, signer)
-				plumbing.subscription.Post(nil)
 			}
 			callCount++
 		}
@@ -91,24 +76,6 @@ func TestMessagePoolWait(t *testing.T) {
 		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
 
 		finished.Wait()
-		plumbing.subscription.AwaitCancellation()
-	})
-
-	t.Run("message races pubsub", func(t *testing.T) {
-
-		var plumbing *fakeMpoolWaitPlumbing
-
-		handlePendingCalled := func() {
-			// The first call is checking for the fast path. It returns empty, but
-			// then a message appears, racing the pubsub subscription.
-			plumbing.pending = types.NewSignedMsgs(1, signer)
-		}
-
-		plumbing = newFakeMpoolWaitPlumbing(handlePendingCalled)
-		finished := assertMessagePoolWaitAsync(plumbing, 1, t)
-
-		finished.Wait()
-		plumbing.subscription.AwaitCancellation()
 	})
 }
 

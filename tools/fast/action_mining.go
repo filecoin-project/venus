@@ -20,7 +20,7 @@ func (f *Filecoin) MiningOnce(ctx context.Context) (*types.Block, error) {
 	return &out, nil
 }
 
-// MiningSettup prepares the node to receive storage deals
+// MiningSetup prepares the node to receive storage deals
 func (f *Filecoin) MiningSetup(ctx context.Context) error {
 	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "setup")
 	if err != nil {

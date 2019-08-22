@@ -65,6 +65,8 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 
 	minerAddress := requireGetMinerAddress(ctx, t, minerDaemon)
 
+	series.CtxMiningNext(ctx, 1)
+
 	dealDuration := uint64(5)
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
 	require.NoError(t, err)

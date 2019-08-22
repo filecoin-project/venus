@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -16,11 +15,8 @@ import (
 // created ask. This series will run until it finds an ask, or the context is
 // canceled.
 func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float, expiry *big.Int) (porcelain.Ask, error) {
-	go func() {
-		// give miner create enough time to get the message in the queue
-		time.Sleep(200 * time.Millisecond)
-		CtxMiningOnce(ctx)
-	}()
+	// mine the ask message when it appears in the message pool
+	CtxMiningNext(ctx, 1)
 
 	// Set a price
 	pinfo, err := miner.MinerSetPrice(ctx, price, expiry, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))

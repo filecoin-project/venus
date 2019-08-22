@@ -78,8 +78,6 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 
 func TestDuplicateDeals(t *testing.T) {
 	tf.IntegrationTest(t)
-	// Skipping due to flake (#3236)
-	t.SkipNow()
 
 	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -90,12 +88,7 @@ func TestDuplicateDeals(t *testing.T) {
 		require.NoError(t, env.Teardown(ctx))
 	}()
 	clientDaemon := env.GenesisMiner
-	require.NoError(t, clientDaemon.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, clientDaemon.MiningStop(ctx))
-	}()
 
-	env.RunAsyncMiner()
 	minerDaemon := env.RequireNewNodeWithFunds(1111)
 
 	duration := uint64(5)
@@ -111,10 +104,17 @@ func TestDuplicateDeals(t *testing.T) {
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry, sinfo.Size)
 	require.NoError(t, err)
 
+	err = minerDaemon.MiningSetup(ctx)
+	require.NoError(t, err)
+
+	series.CtxMiningNext(ctx, 1)
+
 	_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
 	require.NoError(t, err)
 
 	t.Run("Can make a second deal if --allow-duplicates is passed", func(t *testing.T) {
+		series.CtxMiningNext(ctx, 1)
+
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
 		assert.NoError(t, err)
 		require.NotNil(t, dealResp)
@@ -275,22 +275,6 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	// Start mining.
 	miningNode := env.RequireNewNodeWithFunds(1000)
 
-	// This is what mining start should do, but FAST uses mining once
-	// for some very helpful builtins and because of issue 2579 we need to
-	// mine once in a loop instead of calling start.  Once #2579 is fixed
-	// this can be replaced with start.
-	minerCreateDoneCh := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-minerCreateDoneCh:
-				return
-			default:
-				series.CtxMiningOnce(ctx)
-			}
-		}
-	}()
-
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(0.001))
 	expiry := big.NewInt(int64(500))
@@ -301,7 +285,6 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	sinfo := pparams.SupportedSectors[0]
 
 	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry, sinfo.Size)
-	minerCreateDoneCh <- struct{}{}
 	require.NoError(t, err)
 
 	// Try to make a storage deal with self and fail on self dial.

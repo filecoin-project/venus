@@ -33,7 +33,6 @@ import (
 func TestDealsRedeem(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	// Give the deal time to complete
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
 	})
@@ -73,6 +72,8 @@ func TestDealsRedeem(t *testing.T) {
 	minerOwnerAddress := minerOwnerAddresses[0]
 
 	dealDuration := uint64(5)
+
+	series.CtxMiningNext(ctx, 1)
 
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
 	require.NoError(t, err)
@@ -240,6 +241,8 @@ func TestDealsShow(t *testing.T) {
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
 
+	series.CtxMiningNext(ctx, 1)
+
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
@@ -269,8 +272,6 @@ func TestDealsShow(t *testing.T) {
 
 func TestDealsShowPaymentVouchers(t *testing.T) {
 	tf.IntegrationTest(t)
-	// Skipping due to flake (#3236)
-	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{
@@ -337,8 +338,6 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 
 func TestFreeDealsShowPaymentVouchers(t *testing.T) {
 	tf.IntegrationTest(t)
-	// Skipping due to flake (#3236)
-	t.SkipNow()
 
 	// increase block time to give it it a chance to seal
 	opts := fast.FilecoinOpts{
@@ -378,12 +377,7 @@ func setupDeal(
 ) (*fast.Filecoin, porcelain.Ask, address.Address, *storagedeal.Response) {
 
 	clientNode := env.GenesisMiner
-	require.NoError(t, clientNode.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, clientNode.MiningStop(ctx))
-	}()
 
-	env.RunAsyncMiner()
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
 	// Connect the clientNode and the minerNode
@@ -403,12 +397,20 @@ func setupDeal(
 	require.NoError(t, err)
 	require.NoError(t, minerNode.MiningStop(ctx))
 
+	// Setup miner to listen to storage deals
+	err = minerNode.MiningSetup(ctx)
+	require.NoError(t, err)
+
 	// Create some data that is the full sector size and make it autoseal asap
 	dataReader := io.LimitReader(rand.Reader, maxBytes)
 
 	var clientAddr address.Address
 	err = clientNode.ConfigGet(ctx, "wallet.defaultAddress", &clientAddr)
 	require.NoError(t, err)
+
+	if price.Cmp(big.NewFloat(0)) > 0 {
+		series.CtxMiningNext(ctx, 1)
+	}
 
 	_, deal, err := series.ImportAndStoreWithDuration(ctx, clientNode, ask, duration, files.NewReaderFile(dataReader))
 	require.NoError(t, err)

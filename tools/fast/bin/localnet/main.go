@@ -287,6 +287,8 @@ func main() {
 			return
 		}
 
+		series.CtxMiningNext(ctx, 1)
+
 		var data bytes.Buffer
 		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 		dataReader = io.TeeReader(dataReader, &data)

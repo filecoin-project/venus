@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
@@ -51,12 +50,6 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 	for _, opt := range options {
 		args = append(args, opt()...)
 	}
-
-	go func() {
-		// give miner create enough time to get the message in the queue
-		time.Sleep(200 * time.Millisecond)
-		f.MiningOnce(ctx)
-	}()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return nil, err
