@@ -40,7 +40,7 @@ func CtxMiningOnce(ctx context.Context) {
 	}
 }
 
-// CtxMiningOnceForBlockingCommand will call CtxMiningOnce after a small delay.
+// CtxMiningNext will call CtxMiningOnce only after a message is in the message pool ready to mine.
 // This lets us run blocking commands that require mining by configuring the mining beforehand.
 func CtxMiningNext(ctx context.Context, count int) {
 	mpoolWait, ok := ctx.Value(mpoolWaitKey).(MpoolWaitFunc)
