@@ -182,13 +182,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 
 	challenge, err := consensus.CreateChallengeSeed(base, uint64(nullBlkCount))
 	if err != nil {
+		log.Warningf("Worker.Mine couldn't create challenge seed: %s", err.Error())
 		outCh <- Output{Err: err}
 		return false
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
 	var proof types.PoStProof
-	var ticket []byte
+	var ticket types.Ticket
 	select {
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)

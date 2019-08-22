@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/testhelpers"
@@ -58,7 +59,9 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	require.NotNil(t, baseTS)
 	proof := testhelpers.MakeRandomPoStProofForTest()
 
-	ticket, err := signer.CreateTicket(proof, mockSignerPubKey)
+	signerAddr, err := signer.GetAddressForPubKey(mockSignerPubKey)
+	require.NoError(t, err)
+	ticket, err := consensus.CreateTicket(proof, signerAddr, signer)
 	require.NoError(t, err)
 
 	nextBlk := &types.Block{
@@ -67,8 +70,8 @@ func TestBlockPropsManyNodes(t *testing.T) {
 		Height:          types.Uint64(1),
 		ParentWeight:    types.Uint64(10000),
 		StateRoot:       baseTS.ToSlice()[0].StateRoot,
-		Proof:           proof,
-		Ticket:          ticket,
+		ElectionProof:   proof,
+		Tickets:         []types.Ticket{ticket},
 		Messages:        types.EmptyMessagesCID,
 		MessageReceipts: types.EmptyReceiptsCID,
 	}

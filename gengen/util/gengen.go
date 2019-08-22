@@ -164,6 +164,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		StateRoot:       stateRoot,
 		Messages:        emptyMessagesCid,
 		MessageReceipts: emptyReceiptsCid,
+		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}}},
 	}
 
 	c, err := cst.Put(ctx, geneblk)

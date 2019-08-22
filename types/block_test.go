@@ -61,14 +61,14 @@ func TestTriangleEncoding(t *testing.T) {
 
 		b := &Block{
 			Miner:           newAddress(),
-			Ticket:          []byte{0x01, 0x02, 0x03},
+			Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 			Height:          Uint64(2),
 			Nonce:           3,
 			Messages:        CidFromString(t, "somecid"),
 			MessageReceipts: CidFromString(t, "somecid"),
 			Parents:         NewTipSetKey(CidFromString(t, "somecid")),
 			ParentWeight:    Uint64(1000),
-			Proof:           NewTestPoSt(),
+			ElectionProof:   NewTestPoSt(),
 			StateRoot:       CidFromString(t, "somecid"),
 			Timestamp:       Uint64(1),
 		}
@@ -121,7 +121,7 @@ func TestDecodeBlock(t *testing.T) {
 
 		before := &Block{
 			Miner:           addrGetter(),
-			Ticket:          []uint8{},
+			Tickets:         []Ticket{{VRFProof: []uint8{}}},
 			Parents:         NewTipSetKey(c1),
 			Height:          2,
 			Messages:        cM,

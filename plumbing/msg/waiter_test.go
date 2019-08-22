@@ -182,7 +182,7 @@ func TestWaitConflicting(t *testing.T) {
 	require.NoError(t, err)
 	b1.Messages = sm1Cid
 	b1.MessageReceipts = emptyReceiptsCid
-	b1.Ticket = []byte{0} // block 1 comes first in message application
+	b1.Tickets = []types.Ticket{{VRFProof: []byte{0}}} // block 1 comes first in message application
 	core.MustPut(cst, b1)
 
 	b2 := th.RequireMkFakeChild(t,
@@ -199,7 +199,7 @@ func TestWaitConflicting(t *testing.T) {
 	require.NoError(t, err)
 	b2.Messages = sm2Cid
 	b2.MessageReceipts = emptyReceiptsCid
-	b2.Ticket = []byte{1}
+	b2.Tickets = []types.Ticket{{VRFProof: []byte{1}}}
 	core.MustPut(cst, b2)
 
 	ts := th.RequireNewTipSet(t, b1, b2)
