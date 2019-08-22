@@ -158,9 +158,12 @@ func (env *TestEnvironment) DumpEnvOutputOnFail() {
 }
 
 // RunAsyncMiner unset MiningOnce for conflict
-func (env *TestEnvironment) RunAsyncMiner() {
-	var MiningOnce series.MiningOnceFunc = func() {}
-	env.ctx = series.SetCtxMiningOnce(env.ctx, MiningOnce)
+func (env *TestEnvironment) RunAsyncMiner() context.Context {
+	var miningOnce series.MiningOnceFunc = func() {}
+	var mpoolWait series.MpoolWaitFunc = func() {}
+	env.ctx = series.SetCtxMiningOnce(env.ctx, miningOnce)
+	env.ctx = series.SetCtxWaitForMpool(env.ctx, mpoolWait)
+	return env.ctx
 }
 
 // helper to dump the output using the t.Log method.
