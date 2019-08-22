@@ -3,8 +3,9 @@ package core
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // DefaultMessagePublisher adds messages to a message pool and can publish them to its topic.
