@@ -13,18 +13,17 @@ import (
 
 var blockTopicLogger = logging.Logger("net/block_validator")
 
-// BlockTopicValidator may be registered on go-libp2p-pubsub to validate
-// pubsub messages on the BlockTopic.
+// BlockTopicValidator may be registered on go-libp2p-pubsub to validate pubsub messages on the
+// BlockTopic.
 type BlockTopicValidator struct {
 	validator pubsub.Validator
 	opts      []pubsub.ValidatorOpt
 }
 
-// NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for
-// message validation
+// NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
 func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
 	return &BlockTopicValidator{
-		opts: nil,
+		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
 			blk, err := types.DecodeBlock(msg.GetData())
 			if err != nil {
@@ -45,14 +44,12 @@ func (btv *BlockTopicValidator) Topic() string {
 	return BlockTopic
 }
 
-// Validator returns a validation method matching the Validator pubsub
-// function signature.
+// Validator returns a validation method matching the Validator pubsub function signature.
 func (btv *BlockTopicValidator) Validator() pubsub.Validator {
 	return btv.validator
 }
 
-// Opts returns the pubsub ValidatorOpts the BlockTopicValidator is configured
-// to use.
+// Opts returns the pubsub ValidatorOpts the BlockTopicValidator is configured to use.
 func (btv *BlockTopicValidator) Opts() []pubsub.ValidatorOpt {
 	return btv.opts
 }
