@@ -442,6 +442,11 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to set up network")
 	}
+	// register block validation on floodsub
+	btv := net.NewBlockTopicValidator(blkValid)
+	if err := fsub.RegisterTopicValidator(btv.Topic(), btv.Validator(), btv.Opts()...); err != nil {
+		return nil, errors.Wrap(err, "failed to register block validator")
+	}
 
 	backend, err := wallet.NewDSBackend(nc.Repo.WalletDatastore())
 	if err != nil {
