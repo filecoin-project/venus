@@ -8,10 +8,13 @@ import (
 	"github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var blockTopicLogger = logging.Logger("net/block_validator")
+var mDecodeBlkFail = metrics.NewInt64Counter("net/pubsub_block_decode_failure", "Number of blocks that fail to decode seen on BlockTopic pubsub channel")
+var mInvalidBlk = metrics.NewInt64Counter("net/pubsub_invalid_block", "Number of blocks that fail syntax validation seen on BlockTopic pubsub channel")
 
 // BlockTopicValidator may be registered on go-libp2p-pubsub to validate pubsub messages on the
 // BlockTopic.
@@ -28,10 +31,12 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 			blk, err := types.DecodeBlock(msg.GetData())
 			if err != nil {
 				blockTopicLogger.Debugf("block from peer: %s failed to decode: %s", p.String(), err.Error())
+				mDecodeBlkFail.Inc(ctx, 1)
 				return false
 			}
 			if err := bv.ValidateSyntax(ctx, blk); err != nil {
 				blockTopicLogger.Debugf("block: %s from peer: %s failed to validate: %s", blk.Cid().String(), p.String(), err.Error())
+				mInvalidBlk.Inc(ctx, 1)
 				return false
 			}
 			return true
