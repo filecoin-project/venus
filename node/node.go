@@ -1093,7 +1093,6 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	miner, err := storage.NewMiner(
 		minerAddr,
 		ownerAddress,
-		workerAddress,
 		prover,
 		sectorSize,
 		node,

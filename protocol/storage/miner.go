@@ -53,9 +53,8 @@ const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
 // Miner represents a storage miner.
 type Miner struct {
-	minerAddr  address.Address
-	ownerAddr  address.Address
-	workerAddr address.Address
+	minerAddr address.Address
+	ownerAddr address.Address
 
 	dealsAwaitingSealDs repo.Datastore
 
@@ -88,6 +87,7 @@ type minerPorcelain interface {
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	SectorBuilder() sectorbuilder.SectorBuilder
 	types.Signer
 }
@@ -106,11 +106,10 @@ type node interface {
 }
 
 // NewMiner is for construction of a new storage miner.
-func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+func NewMiner(minerAddr, ownerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
 		ownerAddr:           ownerAddr,
-		workerAddr:          workerAddr,
 		porcelainAPI:        porcelainAPI,
 		dealsAwaitingSealDs: dealsDs,
 		prover:              prover,
@@ -161,25 +160,25 @@ func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.Sig
 	}
 
 	if !types.IsValidSignature(bdp, sp.Payment.Payer, sp.Signature) {
-		return sm.rejectProposal(sp, fmt.Sprint("invalid deal signature"))
+		return sm.rejectProposal(ctx, sp, fmt.Sprint("invalid deal signature"))
 	}
 
 	// compute expected total price for deal (storage price * duration * bytes)
 	price, err := sm.getStoragePrice()
 	if err != nil {
-		return sm.rejectProposal(sp, err.Error())
+		return sm.rejectProposal(ctx, sp, err.Error())
 	}
 
 	// skip payment validation (assume there is no payment) if miner is not charging for storage.
 	if price.GreaterThan(types.ZeroAttoFIL) {
 		if err := sm.validateDealPayment(ctx, sp, price); err != nil {
-			return sm.rejectProposal(sp, err.Error())
+			return sm.rejectProposal(ctx, sp, err.Error())
 		}
 	}
 
 	maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sm.sectorSize.Uint64()))
 	if sp.Size.GreaterThan(maxUserBytes) {
-		return sm.rejectProposal(sp, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
+		return sm.rejectProposal(ctx, sp, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
 	}
 
 	// Payment is valid, everything else checks out, let's accept this proposal
@@ -336,7 +335,12 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedPropos
 		},
 	}
 
-	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get worker address")
+	}
+
+	if err = resp.Sign(sm.porcelainAPI, workerAddr); err != nil {
 		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
@@ -356,7 +360,7 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedPropos
 	return resp, nil
 }
 
-func (sm *Miner) rejectProposal(p *storagedeal.SignedProposal, reason string) (*storagedeal.SignedResponse, error) {
+func (sm *Miner) rejectProposal(ctx context.Context, p *storagedeal.SignedProposal, reason string) (*storagedeal.SignedResponse, error) {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
@@ -370,7 +374,12 @@ func (sm *Miner) rejectProposal(p *storagedeal.SignedProposal, reason string) (*
 		},
 	}
 
-	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get worker address")
+	}
+
+	if err = resp.Sign(sm.porcelainAPI, workerAddr); err != nil {
 		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
@@ -394,8 +403,12 @@ func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, ca
 	}
 
 	callback(&deal.Response.Response)
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "failed to get worker address")
+	}
 
-	if err = deal.Response.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+	if err = deal.Response.Sign(sm.porcelainAPI, workerAddr); err != nil {
 		return errors.Wrap(err, "could not sign deal response")
 	}
 
@@ -835,7 +848,12 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proof, submission.Faults, done)
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	if err != nil {
+		log.Errorf("failed to get worker address: %s", err)
+		return
+	}
+	_, err = sm.porcelainAPI.MessageSend(ctx, workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proof, submission.Faults, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return
