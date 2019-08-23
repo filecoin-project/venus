@@ -69,6 +69,9 @@ func TestMiningSealNow(t *testing.T) {
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sinfo.Size)
 	require.NoError(t, err)
 
@@ -82,7 +85,8 @@ func TestMiningSealNow(t *testing.T) {
 		require.NoError(t, minerNode.MiningStop(ctx))
 	}()
 
-	// Mine the commitSector and the submitPoSt
+	// Since the miner does not yet have power, we still need the genesis node to mine
+	// the miner's commitSector and the submitPoSt messages
 	series.CtxMiningNext(ctx, 2)
 
 	// start sealing

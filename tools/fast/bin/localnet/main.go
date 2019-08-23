@@ -281,12 +281,16 @@ func main() {
 
 		sinfo := pparams.SupportedSectors[0]
 
+		// mine the create storage message, then mine the set ask message
+		series.CtxMiningNext(ctx, 2)
+
 		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sinfo.Size)
 		if err != nil {
 			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return
 		}
 
+		// mine the createChannel message required to make a storage deal
 		series.CtxMiningNext(ctx, 1)
 
 		var data bytes.Buffer

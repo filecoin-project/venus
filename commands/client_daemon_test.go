@@ -101,18 +101,23 @@ func TestDuplicateDeals(t *testing.T) {
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	err = minerDaemon.MiningSetup(ctx)
 	require.NoError(t, err)
 
+	// mine createChannel message
 	series.CtxMiningNext(ctx, 1)
 
 	_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
 	require.NoError(t, err)
 
 	t.Run("Can make a second deal if --allow-duplicates is passed", func(t *testing.T) {
+		// mine createChannel message
 		series.CtxMiningNext(ctx, 1)
 
 		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
@@ -283,6 +288,9 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	require.NoError(t, err)
 
 	sinfo := pparams.SupportedSectors[0]
+
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
 
 	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)

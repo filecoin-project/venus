@@ -50,10 +50,6 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(t, err)
 
-	// Don't attempt to wait for messages or mine once
-	ctx = series.SetCtxMiningOnce(ctx, func() {})
-	ctx = series.SetCtxWaitForMpool(ctx, func() {})
-
 	// Teardown will shutdown all running processes the environment knows about
 	// and cleanup anything the evironment setup. This includes the directory
 	// the environment was created to use.
@@ -151,10 +147,6 @@ func TestRetrievalDevnet(t *testing.T) {
 		require.NoError(t, env.Teardown(ctx))
 	}()
 
-	// Don't attempt to wait for messages or mine once
-	ctx = series.SetCtxMiningOnce(ctx, func() {})
-	ctx = series.SetCtxWaitForMpool(ctx, func() {})
-
 	// Setup options for nodes.
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "0"                               // Disable JSON logs
@@ -214,8 +206,6 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 
 	// Start the miner
 	require.NoError(t, miner.MiningStart(ctx))
-
-	series.CtxMiningNext(ctx, 1)
 
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created

@@ -15,9 +15,6 @@ import (
 // created ask. This series will run until it finds an ask, or the context is
 // canceled.
 func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float, expiry *big.Int) (porcelain.Ask, error) {
-	// mine the ask message when it appears in the message pool
-	CtxMiningNext(ctx, 1)
-
 	// Set a price
 	pinfo, err := miner.MinerSetPrice(ctx, price, expiry, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	if err != nil {

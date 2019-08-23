@@ -53,6 +53,9 @@ func TestDealsRedeem(t *testing.T) {
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
@@ -73,6 +76,7 @@ func TestDealsRedeem(t *testing.T) {
 
 	dealDuration := uint64(5)
 
+	// mine the createChannel message needed to create a storage proposal
 	series.CtxMiningNext(ctx, 1)
 
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)
@@ -229,6 +233,9 @@ func TestDealsShow(t *testing.T) {
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
@@ -241,6 +248,7 @@ func TestDealsShow(t *testing.T) {
 	maxBytesi64 := int64(getMaxUserBytesPerStagedSector())
 	dataReader := io.LimitReader(rand.Reader, maxBytesi64)
 
+	// mine the createChannel message needed to create a storage proposal
 	series.CtxMiningNext(ctx, 1)
 
 	_, deal, err := series.ImportAndStore(ctx, clientNode, ask, files.NewReaderFile(dataReader))
@@ -392,6 +400,9 @@ func setupDeal(
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	// Calls MiningOnce on genesis (client). This also starts the Miner.
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
@@ -408,6 +419,8 @@ func setupDeal(
 	err = clientNode.ConfigGet(ctx, "wallet.defaultAddress", &clientAddr)
 	require.NoError(t, err)
 
+	// Mine the createChannel message needed to create a storage proposal.
+	// The channel will only be created if the price is greater than zero.
 	if price.Cmp(big.NewFloat(0)) > 0 {
 		series.CtxMiningNext(ctx, 1)
 	}
