@@ -960,11 +960,20 @@ func (node *Node) StartMining(ctx context.Context) error {
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult
+
+					// look up miner worker address. If this fails, something is really wrong
+					// so we bail and don't commit sectors.
+					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr)
+					if err != nil {
+						log.Errorf("failed to get worker address %s", err)
+						continue
+					}
+
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
 					msgCid, err := node.PorcelainAPI.MessageSend(
 						miningCtx,
-						minerOwnerAddr,
+						workerAddr,
 						minerAddr,
 						types.ZeroAttoFIL,
 						gasPrice,
@@ -1069,7 +1078,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-// initStorageMinerForNode initializes the storage miner, returnning the miner, the miner owner address (to be
+// initStorageMinerForNode initializes the storage miner, returning the miner, the miner owner address (to be
 // passed to storage fault slasher) and any error
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, address.Address, error) {
 	minerAddr, err := node.MiningAddress()
