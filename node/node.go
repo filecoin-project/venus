@@ -1198,11 +1198,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerWorker, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get key from miner actor")
-	}
-
 	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		log.Errorf("could not get owner address of miner actor")
@@ -1213,7 +1208,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
-		MinerWorker:    minerWorker,
 		WorkerSigner:   node.Wallet,
 
 		GetStateTree: node.getStateTree,

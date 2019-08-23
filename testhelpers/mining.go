@@ -1,9 +1,11 @@
 package testhelpers
 
 import (
+	"context"
 	"crypto/rand"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -12,17 +14,23 @@ const BlockTimeTest = time.Second
 
 // TestWorkerPorcelainAPI implements the WorkerPorcelainAPI>
 type TestWorkerPorcelainAPI struct {
-	blockTime time.Duration
+	blockTime  time.Duration
+	workerAddr address.Address
 }
 
-// NewDefaultTestWorkerPorcelainAPI returns a TestWrokerPorcelainAPI.
-func NewDefaultTestWorkerPorcelainAPI() *TestWorkerPorcelainAPI {
-	return &TestWorkerPorcelainAPI{blockTime: BlockTimeTest}
+// NewDefaultTestWorkerPorcelainAPI returns a TestWorkerPorcelainAPI.
+func NewDefaultTestWorkerPorcelainAPI(signer address.Address) *TestWorkerPorcelainAPI {
+	return &TestWorkerPorcelainAPI{blockTime: BlockTimeTest, workerAddr: signer}
 }
 
-// BlockTime returns the blocktime TestWrokerPorcelainAPI si configured with.
+// BlockTime returns the blocktime TestWorkerPorcelainAPI is configured with.
 func (t *TestWorkerPorcelainAPI) BlockTime() time.Duration {
 	return t.blockTime
+}
+
+// MinerGetWorkerAddress returns the worker address set in TestWorkerPorcelainAPI
+func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return t.workerAddr, nil
 }
 
 // MakeCommitment creates a random commitment.
