@@ -446,7 +446,7 @@ func calcTotalPrice(duration *big.Int, maxBytes int64, price *types.AttoFIL) *ty
 
 func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.PaymenVoucherResult) {
 	require.Len(t, actual, len(expected))
-	var channelId *types.ChannelID
+	var channelID *types.ChannelID
 	for i, vr := range expected {
 		assert.Equal(t, vr.Index, actual[i].Index)
 		assert.Equal(t, vr.Payer.String(), actual[i].Payer.String())
@@ -462,11 +462,11 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt), "expva %s, actualva %s", vr.ValidAt.String(), actual[i].Channel.String())
 
 		// verify channel ids exist and are the same
-		if channelId == nil {
+		if channelID == nil {
 			assert.NotNil(t, actual[i].Channel)
-			channelId = vr.Channel
+			channelID = vr.Channel
 		} else {
-			assert.True(t, channelId.Equal(actual[i].Channel), "expch %s, actualch %s", channelId.String(), actual[i].Channel.String())
+			assert.True(t, channelID.Equal(actual[i].Channel), "expch %s, actualch %s", channelID.String(), actual[i].Channel.String())
 		}
 	}
 }
