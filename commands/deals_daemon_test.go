@@ -311,14 +311,11 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 		// ValidAt block height should be at least as high as the (period index + 1) * duration / # of proving periods
 		// so if there are 2 periods, 1 is valid at block height >= 1*duration/2,
 		// 2 is valid at 2*duration/2
-		// The channelID == message nonce, which happens to be 5
-		msgNonceChID := uint64(5)
 
 		expected := []*commands.PaymenVoucherResult{
 			{
-				Index:   0,
-				Amount:  &firstAmount,
-				Channel: types.NewChannelID(msgNonceChID),
+				Index:  0,
+				Amount: &firstAmount,
 				Condition: &types.Predicate{
 					Method: "verifyPieceInclusion",
 					To:     ask.Miner,
@@ -329,7 +326,6 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 			{
 				Index:     1,
 				Amount:    totalPrice,
-				Channel:   types.NewChannelID(msgNonceChID),
 				Condition: nil,
 				Payer:     &clientAddr,
 				ValidAt:   types.NewBlockHeight(durationui64),
@@ -403,7 +399,7 @@ func setupDeal(
 	// mine the create storage message, then mine the set ask message
 	series.CtxMiningNext(ctx, 2)
 
-	// Calls MiningOnce on genesis (client). This also starts the Miner.
+	// This also starts the Miner.
 	ask, err := series.CreateStorageMinerWithAsk(ctx, minerNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 	require.NoError(t, minerNode.MiningStop(ctx))
@@ -450,6 +446,7 @@ func calcTotalPrice(duration *big.Int, maxBytes int64, price *types.AttoFIL) *ty
 
 func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.PaymenVoucherResult) {
 	require.Len(t, actual, len(expected))
+	var channelId *types.ChannelID
 	for i, vr := range expected {
 		assert.Equal(t, vr.Index, actual[i].Index)
 		assert.Equal(t, vr.Payer.String(), actual[i].Payer.String())
@@ -463,6 +460,13 @@ func assertEqualVoucherResults(t *testing.T, expected, actual []*commands.Paymen
 
 		assert.True(t, vr.Amount.Equal(*actual[i].Amount))
 		assert.True(t, vr.ValidAt.LessEqual(actual[i].ValidAt), "expva %s, actualva %s", vr.ValidAt.String(), actual[i].Channel.String())
-		assert.True(t, vr.Channel.Equal(actual[i].Channel), "expch %s, actualch %s", vr.Channel.String(), actual[i].Channel.String())
+
+		// verify channel ids exist and are the same
+		if channelId == nil {
+			assert.NotNil(t, actual[i].Channel)
+			channelId = vr.Channel
+		} else {
+			assert.True(t, channelId.Equal(actual[i].Channel), "expch %s, actualch %s", channelId.String(), actual[i].Channel.String())
+		}
 	}
 }
