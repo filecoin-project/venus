@@ -10,10 +10,10 @@ import (
 func TestSwarmConnectPeersValid(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/0.0.0.0/tcp/6000")).Start()
+	d1 := th.NewDaemon(t).Start()
 	defer d1.ShutdownSuccess()
 
-	d2 := th.NewDaemon(t, th.SwarmAddr("/ip4/0.0.0.0/tcp/6001")).Start()
+	d2 := th.NewDaemon(t).Start()
 	defer d2.ShutdownSuccess()
 
 	d1.ConnectSuccess(d2)
@@ -22,7 +22,7 @@ func TestSwarmConnectPeersValid(t *testing.T) {
 func TestSwarmConnectPeersInvalid(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := th.NewDaemon(t, th.SwarmAddr("/ip4/0.0.0.0/tcp/6000")).Start()
+	d1 := th.NewDaemon(t).Start()
 	defer d1.ShutdownSuccess()
 
 	d1.RunFail("failed to parse ip4 addr",

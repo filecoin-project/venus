@@ -98,7 +98,6 @@ func RunSuccessLines(td *TestDaemon, args ...string) []string {
 
 // TestDaemon is used to manage a Filecoin daemon instance for testing purposes.
 type TestDaemon struct {
-	swarmAddr        string
 	containerDir     string // Path to directory containing repo and sectors
 	genesisFile      string
 	keyFiles         []string
@@ -148,11 +147,6 @@ func (td *TestDaemon) Config() *config.Config {
 	return cfg
 }
 
-// SwarmAddr returns the swarm address of the test daemon.
-func (td *TestDaemon) SwarmAddr() string {
-	return td.swarmAddr
-}
-
 // GetMinerAddress returns the miner address for this daemon.
 func (td *TestDaemon) GetMinerAddress() address.Address {
 	return td.Config().Mining.MinerAddress
@@ -183,7 +177,7 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	finalArgs := append(args, "--repodir="+td.RepoDir(), "--cmdapiaddr="+addr.String())
 
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+	td.logRun(finalArgs...)
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 
 	if stdin != nil {
@@ -692,13 +686,6 @@ func tryAPICheck(td *TestDaemon) error {
 	return nil
 }
 
-// SwarmAddr allows setting the `swarmAddr` config option on the daemon.
-func SwarmAddr(addr string) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.swarmAddr = addr
-	}
-}
-
 // ContainerDir sets the `containerDir` path for the daemon.
 func ContainerDir(dir string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -822,17 +809,11 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 
 	// Defer allocation of a command API port until listening. The node will write the
 	// listening address to the "api" file in the repo, from where we can read it when issuing commands.
-	cmdAddr := fmt.Sprintf("/ip4/127.0.0.1/tcp/0")
+	cmdAddr := "/ip4/127.0.0.1/tcp/0"
 	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", cmdAddr)
 
-	// Find a free port for swarm listen.
-	// TODO: defer port allocation until binding since this port might not remain available, issue #3145.
-	swarmPort, err := GetFreePort()
-	if err != nil {
-		t.Fatal(err)
-	}
-	td.swarmAddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort)
-	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
+	swarmAddr := "/ip4/127.0.0.1/tcp/0"
+	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", swarmAddr)
 
 	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
@@ -850,7 +831,7 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin := MustGetFilecoinBinary()
 
 	finalArgs := append([]string{"init"}, opts...)
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+	td.logRun(finalArgs...)
 
 	process := exec.Command(filecoinBin, finalArgs...)
 	return process.CombinedOutput()
@@ -874,7 +855,7 @@ func ProjectRoot(paths ...string) string {
 }
 
 func (td *TestDaemon) createNewProcess() {
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(td.daemonArgs, " "))
+	td.logRun(td.daemonArgs...)
 
 	td.process = exec.Command(td.daemonArgs[0], td.daemonArgs[1:]...)
 	// disable REUSEPORT, it creates problems in tests
@@ -907,4 +888,10 @@ func (td *TestDaemon) cleanupFilesystem() {
 	} else {
 		td.test.Logf("testdaemon has nil container dir")
 	}
+}
+
+// Logs a message prefixed by a daemon identifier
+func (td *TestDaemon) logRun(args ...string) {
+	name := path.Base(td.containerDir)
+	td.test.Logf("(%s) run: %q\n", name, strings.Join(args, " "))
 }
