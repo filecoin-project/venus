@@ -11,7 +11,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multiaddr-net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +34,7 @@ func TestVersionOverHttp(t *testing.T) {
 	td := th.NewDaemon(t).Start()
 	defer td.ShutdownSuccess()
 
-	maddr, err := multiaddr.NewMultiaddr(td.CmdAddr())
+	maddr, err := td.CmdAddr()
 	require.NoError(t, err)
 
 	_, host, err := manet.DialArgs(maddr)
