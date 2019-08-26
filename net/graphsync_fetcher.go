@@ -274,6 +274,7 @@ func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSet
 			}
 			if !ok {
 				incomplete = append(incomplete, blk.Cid())
+				break
 			}
 		}
 	}
