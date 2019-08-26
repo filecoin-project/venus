@@ -2,8 +2,9 @@ package types
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -66,4 +67,21 @@ func EmptyReceipts(n int) []*MessageReceipt {
 		out[i] = &MessageReceipt{}
 	}
 	return out
+}
+
+// ReceiptMaker generates unique receipts
+type ReceiptMaker struct {
+	seq uint
+}
+
+// NewReceiptMaker creates a new receipt maker
+func NewReceiptMaker() *ReceiptMaker {
+	return &ReceiptMaker{0}
+}
+
+// NewReceipt creates a new distinct receipt.
+func (rm *ReceiptMaker) NewReceipt() *MessageReceipt {
+	seq := rm.seq
+	rm.seq++
+	return &MessageReceipt{Return: [][]byte{[]byte(fmt.Sprintf("%d", seq))}}
 }
