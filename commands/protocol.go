@@ -24,7 +24,12 @@ var protocolCmd = &cmds.Command{
 	Type: porcelain.ProtocolParams{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, pp *porcelain.ProtocolParams) error {
-			_, err := fmt.Fprintf(w, "Auto-Seal Interval: %d seconds\nSector Sizes:\n", pp.AutoSealInterval)
+			_, err := fmt.Fprintf(w, "Network: %s\n", pp.Network)
+			if err != nil {
+				return err
+			}
+
+			_, err = fmt.Fprintf(w, "Auto-Seal Interval: %d seconds\nSector Sizes:\n", pp.AutoSealInterval)
 			if err != nil {
 				return err
 			}

@@ -2,16 +2,17 @@ package porcelain_test
 
 import (
 	"context"
+	"testing"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-sectorbuilder"
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 const protocolTestParamBlockTime = time.Second
@@ -27,7 +28,12 @@ func (tppp *testProtocolParamsPlumbing) ConfigGet(path string) (interface{}, err
 }
 
 func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	return [][]byte{{byte(types.TestProofsMode)}}, nil
+	if method == "getProofsMode" {
+		return [][]byte{{byte(types.TestProofsMode)}}, nil
+	} else if method == "getNetwork" {
+		return [][]byte{[]byte("protocolTest")}, nil
+	}
+	return [][]byte{}, errors.Errorf("call to unknown method %s", method)
 }
 
 func (tppp *testProtocolParamsPlumbing) BlockTime() time.Duration {
@@ -50,6 +56,7 @@ func TestProtocolParams(t *testing.T) {
 
 		expected := &porcelain.ProtocolParams{
 			AutoSealInterval: 120,
+			Network:          "protocolTest",
 			ProofsMode:       types.TestProofsMode,
 			SupportedSectors: []porcelain.SectorInfo{{sectorSize, maxUserBytes}},
 			BlockTime:        protocolTestParamBlockTime,
