@@ -389,7 +389,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
+	sysClock := clock.NewSystemClock()
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, sysClock)
 
 	// set up peer tracking
 	peerTracker := net.NewPeerTracker()
@@ -455,7 +456,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher)
+	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, sysClock)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
 
