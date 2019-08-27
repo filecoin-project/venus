@@ -25,7 +25,7 @@ func TestBlockTopicValidator(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	mbv := th.NewMockBlockValidator()
+	mbv := th.NewStubBlockValidator()
 	tv := net.NewBlockTopicValidator(mbv, nil)
 	builder := chain.NewBuilder(t, address.Undef)
 	pid1 := th.RequireIntPeerID(t, 1)
@@ -114,6 +114,8 @@ func TestBlockPubSubValidation(t *testing.T) {
 	// one invalid block and one valid block.
 	// If this test ever flakes we know there is an issue with libp2p since the block validator has
 	// a test and sine TestBlockTopicValidator tests the plumbing of this code.
+	// This test should be reimplemented by starting an in-process node using something like GenNode
+	// refer to #3285 for details.
 	received, err := sub1.Next(ctx)
 	assert.NoError(t, err, "Receieved an invalid block over pubsub, seee issue #3285 for help debugging")
 

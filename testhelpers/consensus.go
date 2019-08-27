@@ -145,40 +145,40 @@ func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Bl
 	return nil
 }
 
-// MockBlockValidator is a mockable block validator.
-type MockBlockValidator struct {
+// StubBlockValidator is a mockable block validator.
+type StubBlockValidator struct {
 	syntaxStubs   map[cid.Cid]error
 	semanticStubs map[cid.Cid]error
 }
 
-// NewMockBlockValidator creates a MockBlockValidator that allows errors to configured
+// NewStubBlockValidator creates a StubBlockValidator that allows errors to configured
 // for blocks passed to the Validate* methods.
-func NewMockBlockValidator() *MockBlockValidator {
-	return &MockBlockValidator{
+func NewStubBlockValidator() *StubBlockValidator {
+	return &StubBlockValidator{
 		syntaxStubs:   make(map[cid.Cid]error),
 		semanticStubs: make(map[cid.Cid]error),
 	}
 }
 
 // ValidateSemantic returns nil or error for stubbed block `child`.
-func (mbv *MockBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
 	return mbv.semanticStubs[child.Cid()]
 }
 
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *MockBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
 	return mbv.syntaxStubs[blk.Cid()]
 }
 
 // StubSyntaxValidationForBlock stubs an error when the ValidateSyntax is called
 // on the with the given block.
-func (mbv *MockBlockValidator) StubSyntaxValidationForBlock(blk *types.Block, err error) {
+func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *types.Block, err error) {
 	mbv.syntaxStubs[blk.Cid()] = err
 }
 
 // StubSemanticValidationForBlock stubs an error when the ValidateSemantic is called
 // on the with the given child block.
-func (mbv *MockBlockValidator) StubSemanticValidationForBlock(child *types.Block, err error) {
+func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block, err error) {
 	mbv.semanticStubs[child.Cid()] = err
 }
 
