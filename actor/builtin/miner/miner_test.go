@@ -1398,7 +1398,7 @@ func TestGetProofsMode(t *testing.T) {
 			Ancestors:   []types.TipSet{},
 		})
 
-		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.TestProofsMode))
+		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.TestProofsMode, "test"))
 
 		mode, err := GetProofsMode(vmCtx)
 		require.NoError(t, err)
@@ -1417,7 +1417,7 @@ func TestGetProofsMode(t *testing.T) {
 			Ancestors:   []types.TipSet{},
 		})
 
-		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.LiveProofsMode))
+		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.LiveProofsMode, "main"))
 
 		mode, err := GetProofsMode(vmCtx)
 		require.NoError(t, err)

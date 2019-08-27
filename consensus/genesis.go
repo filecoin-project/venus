@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -46,6 +47,7 @@ type Config struct {
 	nonces     map[address.Address]uint64
 	actors     map[address.Address]*actor.Actor
 	miners     map[address.Address]*minerActorConfig
+	network    string
 	proofsMode types.ProofsMode
 }
 
@@ -104,6 +106,7 @@ func NewEmptyConfig() *Config {
 		nonces:     make(map[address.Address]uint64),
 		actors:     make(map[address.Address]*actor.Actor),
 		miners:     make(map[address.Address]*minerActorConfig),
+		network:    "",
 		proofsMode: types.TestProofsMode,
 	}
 }
@@ -161,7 +164,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 				return nil, err
 			}
 		}
-		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode); err != nil {
+		if err := SetupDefaultActors(ctx, st, storageMap, genCfg.proofsMode, genCfg.network); err != nil {
 			return nil, err
 		}
 		// Now add any other actors configured.
@@ -210,7 +213,7 @@ func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.B
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode) error {
+func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode, network string) error {
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
 		if err != nil {
@@ -236,5 +239,14 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 	if err != nil {
 		return err
 	}
-	return st.SetActor(ctx, address.PaymentBrokerAddress, pbAct)
+	if err = st.SetActor(ctx, address.PaymentBrokerAddress, pbAct); err != nil {
+		return err
+	}
+
+	intAct := initactor.NewActor()
+	err = (&initactor.Actor{}).InitializeState(storageMap.NewStorage(address.InitAddress, intAct), network)
+	if err != nil {
+		return err
+	}
+	return st.SetActor(ctx, address.InitAddress, intAct)
 }

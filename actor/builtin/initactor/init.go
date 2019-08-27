@@ -1,6 +1,7 @@
 package initactor
 
 import (
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -37,6 +38,11 @@ var initExports = exec.Exports{
 // Exports makes the available methods for this contract available.
 func (a *Actor) Exports() exec.Exports {
 	return initExports
+}
+
+// NewActor returns a new storage market actor.
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
 }
 
 // InitializeState for init actor.

@@ -414,4 +414,5 @@ var testConfig = &gengen.GenesisCfg{
 			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
+	Network: "minerDaemonTest",
 }

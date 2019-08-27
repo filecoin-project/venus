@@ -154,6 +154,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
+		Network: "syncerIntegrationTest",
 	}
 
 	totalPower := types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize)
