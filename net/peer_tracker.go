@@ -18,14 +18,14 @@ var logPeerTracker = logging.Logger("peer-tracker")
 type PeerTracker struct {
 	// mu protects peers
 	mu sync.RWMutex
-	// peers maps stringified peer.IDs to info about their chains
-	peers map[string]*types.ChainInfo
+	// peers maps peer.IDs to info about their chains
+	peers map[peer.ID]*types.ChainInfo
 }
 
 // NewPeerTracker creates a peer tracker.
 func NewPeerTracker() *PeerTracker {
 	return &PeerTracker{
-		peers: make(map[string]*types.ChainInfo),
+		peers: make(map[peer.ID]*types.ChainInfo),
 	}
 }
 
@@ -34,9 +34,8 @@ func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	pidKey := ci.Peer.Pretty()
-	_, tracking := tracker.peers[pidKey]
-	tracker.peers[pidKey] = ci
+	_, tracking := tracker.peers[ci.Peer]
+	tracker.peers[ci.Peer] = ci
 	logPeerTracker.Infof("Tracking %s, new=%t, count=%d", ci, !tracking, len(tracker.peers))
 }
 
@@ -57,15 +56,27 @@ func (tracker *PeerTracker) List() []*types.ChainInfo {
 	return out
 }
 
+// Peers returns a slice of peers the PeerTracker is tracking. The order of the returned slice is
+// not determininistic.
+func (tracker *PeerTracker) Peers() []peer.ID {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	var peers []peer.ID
+	for p := range tracker.peers {
+		peers = append(peers, p)
+	}
+	return peers
+
+}
+
 // Remove removes a peer ID from the tracker.
 func (tracker *PeerTracker) Remove(pid peer.ID) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	pidKey := pid.Pretty()
-	if _, tracking := tracker.peers[pidKey]; tracking {
-		logPeerTracker.Infof("Dropping peer %s", pidKey)
-		delete(tracker.peers, pidKey)
+	if _, tracking := tracker.peers[pid]; tracking {
+		logPeerTracker.Infof("Dropping peer %s", pid.Pretty())
+		delete(tracker.peers, pid)
 	}
 }
 
