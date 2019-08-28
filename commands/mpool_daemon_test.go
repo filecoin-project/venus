@@ -16,7 +16,7 @@ import (
 func TestMpoolLs(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	sendMessage := func(d *th.TestDaemon, from string, to string) *th.Output {
+	sendMessage := func(d *th.TestDaemon, from string, to string) *th.CmdOutput {
 		return d.RunSuccess("message", "send",
 			"--from", from,
 			"--gas-price", "1", "--gas-limit", "300",
