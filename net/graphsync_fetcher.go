@@ -258,49 +258,43 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 // all blocks missing either their header, messages or receipts.
 func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSetKey) (types.TipSet, []cid.Cid, error) {
 	// Load the block headers that exist.
-	tip, incomplete, err := gsf.loadTipHeaders(ctx, key)
+	incomplete := make(map[cid.Cid]struct{})
+	tip, err := gsf.loadTipHeaders(ctx, key, incomplete)
 	if err != nil {
 		return types.UndefTipSet, nil, err
 	}
 
-	// Check that nested structures are also stored, recording any that are missing as incomplete.
-	for i := 0; i < tip.Len(); i++ {
-		blk := tip.At(i)
-		for _, link := range []cid.Cid{blk.Messages, blk.MessageReceipts} {
-			// TODO: validate the structures, don't just check for their presence #3232
-			ok, err := gsf.store.Has(link)
-			if err != nil {
-				return types.UndefTipSet, nil, err
-			}
-			if !ok {
-				incomplete = append(incomplete, blk.Cid())
-				break
-			}
-		}
+	err = gsf.loadMessages(ctx, tip, incomplete)
+	if err != nil {
+		return types.UndefTipSet, nil, err
 	}
 	if len(incomplete) > 0 {
-		tip = types.UndefTipSet
+		incompleteArr := make([]cid.Cid, 0, len(incomplete))
+		for cid := range incomplete {
+			incompleteArr = append(incompleteArr, cid)
+		}
+		return types.UndefTipSet, incompleteArr, nil
 	}
-	return tip, incomplete, nil
+
+	return tip, nil, nil
 }
 
 // Loads and validates the block headers for a tipset. Returns the tipset if complete,
 // else the cids of blocks which are not yet stored.
-func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key types.TipSetKey) (types.TipSet, []cid.Cid, error) {
+func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key types.TipSetKey, incomplete map[cid.Cid]struct{}) (types.TipSet, error) {
 	rawBlocks := make([]blocks.Block, 0, key.Len())
-	var incomplete []cid.Cid
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		hasBlock, err := gsf.store.Has(it.Value())
 		if err != nil {
-			return types.UndefTipSet, nil, err
+			return types.UndefTipSet, err
 		}
 		if !hasBlock {
-			incomplete = append(incomplete, it.Value())
+			incomplete[it.Value()] = struct{}{}
 			continue
 		}
 		rawBlock, err := gsf.store.Get(it.Value())
 		if err != nil {
-			return types.UndefTipSet, nil, err
+			return types.UndefTipSet, err
 		}
 		rawBlocks = append(rawBlocks, rawBlock)
 	}
@@ -308,10 +302,54 @@ func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key types.TipSe
 	// Validate the headers.
 	validatedBlocks, err := sanitizeBlocks(ctx, rawBlocks, gsf.validator)
 	if err != nil || len(validatedBlocks) == 0 {
-		return types.UndefTipSet, incomplete, err
+		return types.UndefTipSet, err
 	}
 	tip, err := types.NewTipSet(validatedBlocks...)
-	return tip, incomplete, err
+	return tip, err
+}
+
+// Loads and validates the block messages for a tipset. Returns the tipset if complete,
+// else the cids of blocks which are not yet stored.
+func (gsf *GraphSyncFetcher) loadMessages(ctx context.Context, tip types.TipSet, incomplete map[cid.Cid]struct{}) error {
+	var collections [2][]blocks.Block
+	for i := range collections {
+		collections[i] = make([]blocks.Block, 0, tip.Len())
+	}
+
+	// Check that nested structures are also stored, recording any that are missing as incomplete.
+	for i := 0; i < tip.Len(); i++ {
+		blk := tip.At(i)
+		for j, link := range []cid.Cid{blk.Messages, blk.MessageReceipts} {
+			// TODO: validate the structures, don't just check for their presence #3232
+			ok, err := gsf.store.Has(link)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				incomplete[blk.Cid()] = struct{}{}
+				continue
+			}
+			rawBlock, err := gsf.store.Get(link)
+			if err != nil {
+				return err
+			}
+			collections[j] = append(collections[j], rawBlock)
+		}
+	}
+
+	for _, rawBlock := range collections[0] {
+		_, err := types.DecodeMessages(rawBlock.RawData())
+		if err != nil {
+			return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
+		}
+	}
+	for _, rawBlock := range collections[1] {
+		_, err := types.DecodeReceipts(rawBlock.RawData())
+		if err != nil {
+			return errors.Wrapf(err, "fetched data (cid %s) was not a message receipt collection", rawBlock.Cid().String())
+		}
+	}
+	return nil
 }
 
 type requestPeerFinder struct {

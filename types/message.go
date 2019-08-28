@@ -117,6 +117,16 @@ func (msg *Message) Equals(other *Message) bool {
 // MessageCollection tracks a group of messages and assigns it a cid.
 type MessageCollection []*SignedMessage
 
+// DecodeMessages decodes raw bytes into an array of signed messages
+func DecodeMessages(b []byte) ([]*SignedMessage, error) {
+	var out MessageCollection
+	if err := cbor.DecodeInto(b, &out); err != nil {
+		return nil, err
+	}
+
+	return []*SignedMessage(out), nil
+}
+
 // TODO #3078 the panics here and in types.Block should go away.  We need to
 // keep them in order to use the ipld cborstore with the default hash function
 // because we need to implement hamt.cidProvider which doesn't handle errors.
@@ -139,6 +149,16 @@ func (mC MessageCollection) ToNode() ipld.Node {
 
 // ReceiptCollection tracks a group of receipts and assigns it a cid.
 type ReceiptCollection []*MessageReceipt
+
+// DecodeReceipts decodes raw bytes into an array of message receipts
+func DecodeReceipts(b []byte) ([]*MessageReceipt, error) {
+	var out ReceiptCollection
+	if err := cbor.DecodeInto(b, &out); err != nil {
+		return nil, err
+	}
+
+	return []*MessageReceipt(out), nil
+}
 
 // Cid returns the cid of the receipt collection.
 func (rC ReceiptCollection) Cid() cid.Cid {

@@ -3,6 +3,7 @@ package net_test
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"reflect"
@@ -256,13 +257,34 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
+		mgs := newMockableGraphsync(ctx, bs, t)
+		block := requireSimpleValidBlock(t, 3, address.Undef)
+		block.Messages = notDecodableBlock.Cid()
+		key := types.NewTipSetKey(block.Cid())
+		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
+		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
 
+		done := doneAt(key)
+		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
+		require.Errorf(t, err, "fetched data (cid %s) was not a message collection", notDecodableBlock.Cid())
+		require.Nil(t, ts)
 	})
 
-	t.Run("blocks present but message receipts don't decode", func(t *testing.T) {
+	t.Run("blocks present but receipts don't decode", func(t *testing.T) {
+		mgs := newMockableGraphsync(ctx, bs, t)
+		block := requireSimpleValidBlock(t, 3, address.Undef)
+		block.MessageReceipts = notDecodableBlock.Cid()
+		key := types.NewTipSetKey(block.Cid())
+		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.MessageCollection{}.ToNode()})
+		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
 
+		done := doneAt(key)
+		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
+		require.Errorf(t, err, "fetched data (cid %s) was not a message receipt collection", notDecodableBlock.Cid())
+		require.Nil(t, ts)
 	})
-
 	t.Run("missing single block in multi block tip during recursive fetch", func(t *testing.T) {
 
 	})
@@ -667,7 +689,6 @@ func (fpt *fakePeerTracker) List() []*types.ChainInfo {
 	return fpt.peers
 }
 
-/*
 func simpleBlock() *types.Block {
 	return &types.Block{
 		ParentWeight:    0,
@@ -678,7 +699,7 @@ func simpleBlock() *types.Block {
 	}
 }
 
-func requireSimpleValidBlock(t * testing.T, nonce uint64, miner address.Address) * types.Block {
+func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) *types.Block {
 	b := simpleBlock()
 	ticket := make(types.Signature, binary.Size(nonce))
 	binary.BigEndian.PutUint64(ticket, nonce)
@@ -686,11 +707,12 @@ func requireSimpleValidBlock(t * testing.T, nonce uint64, miner address.Address)
 	b.Ticket = ticket
 	bytes, err := cbor.DumpObject("null")
 	require.NoError(t, err)
-	b.StateRoot = cid.Prefix{
+	b.StateRoot, _ = cid.Prefix{
 		Version:  1,
 		Codec:    cid.DagCBOR,
 		MhType:   types.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
 	b.Miner = miner
-}*/
+	return b
+}
