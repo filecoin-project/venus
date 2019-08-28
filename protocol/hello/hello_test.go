@@ -85,6 +85,44 @@ func TestHelloHandshake(t *testing.T) {
 	}))
 }
 
+func TestHelloWithResponse(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mn, err := mocknet.WithNPeers(ctx, 2)
+	require.NoError(t, err)
+
+	a := mn.Hosts()[0]
+	b := mn.Hosts()[1]
+
+	genesisA := &types.Block{Nonce: 451}
+
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
+
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
+	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
+
+	helloa := New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+
+	require.NoError(t, mn.LinkAll())
+	require.NoError(t, mn.ConnectAllButSelf())
+
+	msgb, err := helloa.SayHello(context.Background(), b.ID(), true)
+	assert.NoError(t, err)
+	assert.Equal(t, heavy2.Key(), msgb.HeaviestTipSetCids)
+
+	nilMsg, err := helloa.SayHello(context.Background(), b.ID(), false)
+	assert.NoError(t, err)
+	assert.Nil(t, nilMsg)
+}
+
 func TestHelloBadGenesis(t *testing.T) {
 	tf.UnitTest(t)
 

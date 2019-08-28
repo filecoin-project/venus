@@ -37,6 +37,7 @@ type Message struct {
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
 	CommitSha            string
+	Response             bool
 }
 
 type helloCallback func(ci *types.ChainInfo)
@@ -95,6 +96,12 @@ func (h *Handler) handleNewStream(s net.Stream) {
 		return
 	}
 
+	if hello.Response {
+		if err := cbu.NewMsgWriter(s).WriteMsg(h.getOurHelloMessage()); err != nil {
+			log.Errorf("failed to respond to hello message from %s:%s", from, err.Error())
+		}
+	}
+
 	switch err := h.processHelloMessage(from, &hello); err {
 	case ErrBadGenesis:
 		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
@@ -149,16 +156,31 @@ func (h *Handler) getOurHelloMessage() *Message {
 	}
 }
 
-func (h *Handler) sayHello(ctx context.Context, p peer.ID) error {
+// SayHello sends a hello protocol message to peer `p`. When `response` is false the SayHello
+// returns after sending the message. When `response` is true SayHello will block until a response
+// is received and return it.
+func (h *Handler) SayHello(ctx context.Context, p peer.ID, response bool) (*Message, error) {
 	s, err := h.host.NewStream(ctx, p, protocol)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer s.Close() // nolint: errcheck
 
 	msg := h.getOurHelloMessage()
+	msg.Response = response
 
-	return cbu.NewMsgWriter(s).WriteMsg(&msg)
+	// if we don't expect a response fire and forget
+	if !response {
+		return nil, cbu.NewMsgWriter(s).WriteMsg(&msg)
+	}
+	if err := cbu.NewMsgWriter(s).WriteMsg(&msg); err != nil {
+		return nil, err
+	}
+	var helloResp Message
+	if err := cbu.NewMsgReader(s).ReadMsg(&helloResp); err != nil {
+		return nil, err
+	}
+	return &helloResp, nil
 }
 
 // New peer connection notifications
@@ -176,7 +198,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 		defer cancel()
 		p := c.RemotePeer()
-		if err := hn.hello().sayHello(ctx, p); err != nil {
+		if _, err := hn.hello().SayHello(ctx, p, false); err != nil {
 			log.Warningf("failed to send hello handshake to peer %s: %s", p, err)
 		}
 	}()
