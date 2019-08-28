@@ -46,6 +46,7 @@ type API struct {
 
 	bitswap       exchange.Interface
 	chain         *cst.ChainStateProvider
+	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
 	expected      consensus.Protocol
@@ -64,6 +65,7 @@ type API struct {
 type APIDeps struct {
 	Bitswap       exchange.Interface
 	Chain         *cst.ChainStateProvider
+	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
 	Deals         *strgdls.Store
@@ -85,6 +87,7 @@ func New(deps *APIDeps) *API {
 
 		bitswap:       deps.Bitswap,
 		chain:         deps.Chain,
+		syncer:        deps.Sync,
 		config:        deps.Config,
 		dag:           deps.DAG,
 		expected:      deps.Expected,
@@ -168,6 +171,17 @@ func (api *API) ChainLs(ctx context.Context) (*chain.TipsetIterator, error) {
 // generation.
 func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
 	return api.chain.SampleRandomness(ctx, sampleHeight)
+}
+
+// ChainSyncStatus returns the current status of the active or last active chain sync operation.
+func (api *API) ChainSyncStatus() *chain.SyncerStatus {
+	return api.syncer.Status()
+}
+
+// ChainSyncHandleNewTipSet submits a chain head to the syncer for processing. If the head is trusted
+// the syncer will attempt to sync the new head regardless of length.
+func (api *API) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error {
+	return api.syncer.HandleNewTipSet(ctx, ci, trusted)
 }
 
 // DealsIterator returns an iterator to access all deals

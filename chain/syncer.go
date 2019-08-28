@@ -346,25 +346,10 @@ type SyncerStatus struct {
 
 // Status returns the syncers current status, this includes whether or not the syncer is currently
 // running, the chain being synced, and the time it started processing said chain.
-func (syncer *Syncer) Status() SyncerStatus {
+func (syncer *Syncer) Status() *SyncerStatus {
+	syncer.statusMu.Lock()
+	defer syncer.statusMu.Unlock()
 	return syncer.status
-}
-
-func (syncer *Syncer) setRunStatus(curHead types.TipSetKey, curHeight uint64, trusted bool, newChain *types.ChainInfo) {
-	syncer.status = SyncerStatus{
-		ValidatedHead:          curHead,
-		ValidatedHeadHeight:    curHeight,
-		SyncingTip:             newChain.Head,
-		SyncingHeight:          newChain.Height,
-		SyncingTrusted:         trusted,
-		SyncingFetchedToHeight: 0,
-		SyncingFetchComplete:   false,
-		SyncStarted:            syncer.clock.Now(),
-	}
-}
-
-func (syncer *Syncer) completeRunStatus() {
-	syncer.status.SyncingFetchComplete = true
 }
 
 // HandleNewTipSet extends the Syncer's chain store with the given tipset if they
