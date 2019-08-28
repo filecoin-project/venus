@@ -32,6 +32,7 @@ import (
 	circuit "github.com/libp2p/go-libp2p-circuit"
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/opts"
@@ -575,24 +576,67 @@ func (node *Node) Start(ctx context.Context) error {
 			// TODO Implement principled trusting of ChainInfo's
 			// to address in #2674
 			trusted := true
-			err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
-			if err != nil {
+			if err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted); err != nil {
 				log.Infof("error handling tipset from hello %s: %s", ci, err)
 				return
 			}
-			// For now, consider the initial bootstrap done after the syncer has (synchronously)
-			// processed the chain up to the head reported by the first peer to respond to hello.
-			// This is an interim sequence until a secure network bootstrap is implemented:
-			// https://github.com/filecoin-project/go-filecoin/issues/2674.
-			// For now, we trust that the first node to respond will be a configured bootstrap node
-			// and that we trust that node to inform us of the chain head.
-			// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
-			// sync done until it's caught up enough that it will accept blocks from pubsub.
-			// This might require additional rounds of hello.
-			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			chainSynced.Done()
 		}
 		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
+
+		// The below routine ensures we have caught up to trusted peers enough before enabling the
+		// block pubsub topic and disabling trust when calling to the syncer.
+		go func() {
+			for {
+				var friends []peer.ID
+				if friends = node.PeerTracker.Peers(); len(friends) == 0 {
+					time.Sleep(5 * time.Second)
+					continue
+				}
+
+				helloCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				// say hello to a peer and expect a response
+				friendsHead, err := node.HelloSvc.SayHello(helloCtx, friends[0], true)
+				if err != nil {
+					log.Warningf("failed to say hello to peer %s:%s", friends[0], err.Error())
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				newCi := types.NewChainInfo(friends[0], friendsHead.HeaviestTipSetCids, friendsHead.HeaviestTipSetHeight)
+
+				// get our current head and height
+				var curHead types.TipSet
+				if curHead, err = node.ChainReader.GetTipSet(node.ChainReader.GetHead()); err != nil {
+					log.Errorf("failed to get head:%s", err.Error())
+					time.Sleep(5 * time.Second)
+					continue
+				}
+				curHeight, err := curHead.Height()
+				if err != nil {
+					log.Errorf("failed to read head height: %s", err.Error())
+					time.Sleep(5 * time.Second)
+					continue
+				}
+
+				trusted := true
+				// if the difference is greater than half of finality do another round
+				if (newCi.Height - curHeight) > uint64(chain.FinalityLimit)/2 {
+					log.Infof("continue initial sync friend head height: %d our head height: %d", newCi.Height, curHeight)
+					if err := node.Syncer.HandleNewTipSet(context.Background(), newCi, trusted); err != nil {
+						log.Errorf("failed to handle tipset %s during initial sync: %s", friendsHead, err)
+					}
+					continue
+				}
+				// otherwise sync this head and we are mostly caught up
+				if err := node.Syncer.HandleNewTipSet(context.Background(), newCi, trusted); err != nil {
+					log.Errorf("failed to handle tipset %s during initial sync, retrying:%s", friendsHead, err)
+					continue
+					// retry here as we may fall back out of max untrsuted chain length range
+				}
+				chainSynced.Done()
+				return
+			}
+		}()
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
