@@ -45,6 +45,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock.NewSystemClock())
+	mv := mockMessageValidator{}
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
@@ -133,7 +134,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, mv, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -162,7 +163,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, mv, pt)
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -189,7 +190,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, mv, pt)
 
 		done := doneAt(gen.Key())
 
@@ -220,7 +221,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Nil(t, ts)
 	})
 
-	t.Run("blocks present but are missing message receips", func(t *testing.T) {
+	t.Run("blocks present but are missing message receipts", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
@@ -240,7 +241,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Nil(t, ts)
 	})
 
-	t.Run("blocks missing/message receipts but recoves through fall back", func(t *testing.T) {
+	t.Run("blocks missing/message receipts but recovers through fall back", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
@@ -295,7 +296,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), pid0Loader, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, mv, pt)
 
 		done := func(ts types.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -514,6 +515,46 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Nil(t, ts)
 	})
 
+	t.Run("messages don't validate", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
+
+		errorMv := mockMessageValidator{
+			validateMessagesError: fmt.Errorf("Everything Failed"),
+		}
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, errorMv, newFakePeerTracker(chain0))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.Nil(t, ts)
+		require.Error(t, err, "invalid messages for for message collection (cid %s)", final.At(0).Messages.String())
+	})
+
+	t.Run("receipts don't validate", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
+
+		errorMv := mockMessageValidator{
+			validateReceiptsError: fmt.Errorf("Everything Failed"),
+		}
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, errorMv, newFakePeerTracker(chain0))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.Nil(t, ts)
+		require.Error(t, err, "invalid receipts for for receipt collection (cid %s)", final.At(0).MessageReceipts.String())
+	})
+
 }
 
 func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
@@ -561,6 +602,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
+	mv := mockMessageValidator{}
 	pt := net.NewPeerTracker(peer.ID(""))
 	pt.Track(types.NewChainInfo(host2.ID(), types.TipSetKey{}, 0))
 
@@ -569,7 +611,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
 
-	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, pt)
+	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, mv, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -668,7 +710,7 @@ func simpleLoader(store []format.Node) mockGraphsyncLoader {
 	}
 }
 
-// fake request captures the parameters neccesary to uniquely
+// fake request captures the parameters necessary to uniquely
 // identify a graphsync request
 type fakeRequest struct {
 	p        peer.ID
@@ -676,7 +718,7 @@ type fakeRequest struct {
 	selector selector.Selector
 }
 
-// fake response represents the neccesary data to simulate a graphsync query
+// fake response represents the necessary data to simulate a graphsync query
 // a graphsync query has:
 // - two return values:
 //   - a channel of ResponseProgress
@@ -887,4 +929,17 @@ func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) 
 	}.Sum(bytes)
 	b.Miner = miner
 	return b
+}
+
+type mockMessageValidator struct {
+	validateMessagesError error
+	validateReceiptsError error
+}
+
+func (mv mockMessageValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+	return mv.validateMessagesError
+}
+
+func (mv mockMessageValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+	return mv.validateReceiptsError
 }
