@@ -586,6 +586,10 @@ func (node *Node) Start(ctx context.Context) error {
 		// The below routine ensures we have caught up to trusted peers enough before enabling the
 		// block pubsub topic and disabling trust when calling to the syncer.
 		go func() {
+			// how long to wait until trying initial sync again when a failure is encountered
+			initSyncRetryDelay := time.Second * 5
+			// how long to wait for a reply to a hello message
+			helloRespTimeout := time.Second * 10
 			for {
 				var friends []peer.ID
 				if friends = node.PeerTracker.Peers(); len(friends) == 0 {
@@ -593,13 +597,13 @@ func (node *Node) Start(ctx context.Context) error {
 					continue
 				}
 
-				helloCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				helloCtx, cancel := context.WithTimeout(context.Background(), helloRespTimeout)
 				defer cancel()
 				// say hello to a peer and expect a response
 				friendsHead, err := node.HelloSvc.SayHello(helloCtx, friends[0], true)
 				if err != nil {
 					log.Warningf("failed to say hello to peer %s:%s", friends[0], err.Error())
-					time.Sleep(5 * time.Second)
+					time.Sleep(initSyncRetryDelay)
 					continue
 				}
 				newCi := types.NewChainInfo(friends[0], friendsHead.HeaviestTipSetCids, friendsHead.HeaviestTipSetHeight)
@@ -608,13 +612,13 @@ func (node *Node) Start(ctx context.Context) error {
 				var curHead types.TipSet
 				if curHead, err = node.ChainReader.GetTipSet(node.ChainReader.GetHead()); err != nil {
 					log.Errorf("failed to get head:%s", err.Error())
-					time.Sleep(5 * time.Second)
+					time.Sleep(initSyncRetryDelay)
 					continue
 				}
 				curHeight, err := curHead.Height()
 				if err != nil {
 					log.Errorf("failed to read head height: %s", err.Error())
-					time.Sleep(5 * time.Second)
+					time.Sleep(initSyncRetryDelay)
 					continue
 				}
 
