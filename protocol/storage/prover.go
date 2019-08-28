@@ -3,11 +3,11 @@ package storage
 import (
 	"context"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -37,7 +37,7 @@ type ProofReader interface {
 type ProofCalculator interface {
 	// CalculatePoSt computes a proof-of-spacetime for a list of sector ids and matching seeds.
 	// It returns the Snark Proof for the PoSt and a list of sector ids that failed.
-	CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error)
+	CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error)
 }
 
 // Prover orchestrates the calculation and submission of a proof-of-spacetime.
@@ -59,7 +59,7 @@ type PoStInputs struct {
 
 // PoStSubmission is the information to be submitted on-chain for a proof.
 type PoStSubmission struct {
-	Proofs   []types.PoStProof
+	Proof    types.PoStProof
 	Fee      types.AttoFIL
 	GasLimit types.GasUnits
 	Faults   types.FaultSet
@@ -85,17 +85,16 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 	}
 
 	// Compute the actual proof.
-	commRs := make([]types.CommR, len(inputs))
+	sectorInfos := make([]go_sectorbuilder.SectorInfo, len(inputs))
 	for i, input := range inputs {
-		commRs[i] = input.CommR
+		info := go_sectorbuilder.SectorInfo{
+			CommR: input.CommR,
+		}
+		sectorInfos[i] = info
 	}
-	proof, faults, err := p.calculator.CalculatePoSt(ctx, proofs.NewSortedCommRs(commRs...), seed)
+	proof, err := p.calculator.CalculatePoSt(ctx, go_sectorbuilder.NewSortedSectorInfo(sectorInfos...), seed)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to calculate PoSt")
-	}
-
-	if len(faults) != 0 {
-		log.Warningf("some faults when generating PoSt: %v", faults)
 	}
 
 	// Compute fees.
@@ -122,10 +121,9 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 	}
 
 	return &PoStSubmission{
-		Proofs:   proof,
+		Proof:    proof,
 		Fee:      feeDue,
 		GasLimit: types.NewGasUnits(submitPostGasLimit),
-		Faults:   types.NewFaultSet(faults),
 	}, nil
 }
 

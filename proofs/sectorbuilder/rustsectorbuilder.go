@@ -255,23 +255,12 @@ func (sb *RustSectorBuilder) Close() error {
 
 // GeneratePoSt produces a proof-of-spacetime for the provided replica commitments.
 func (sb *RustSectorBuilder) GeneratePoSt(req GeneratePoStRequest) (GeneratePoStResponse, error) {
-	asArrays := make([][32]byte, len(req.SortedCommRs.Values()))
-	for idx, comm := range req.SortedCommRs.Values() {
-		copy(asArrays[idx][:], comm[:])
-	}
-
-	proofs, faults, err := go_sectorbuilder.GeneratePoSt(sb.ptr, asArrays, req.ChallengeSeed)
+	proof, err := go_sectorbuilder.GeneratePoSt(sb.ptr, req.SortedSectorInfo, req.ChallengeSeed, []uint64{})
 	if err != nil {
 		return GeneratePoStResponse{}, err
 	}
 
-	poStProofs := make([]types.PoStProof, len(proofs))
-	for idx, proof := range proofs {
-		poStProofs[idx] = append(proof[:0:0], proof...)
-	}
-
 	return GeneratePoStResponse{
-		Faults: faults,
-		Proofs: poStProofs,
+		Proof: proof,
 	}, nil
 }

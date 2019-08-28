@@ -3,6 +3,7 @@ package miner
 import (
 	"math/big"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -263,7 +263,7 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.PoStProofs, abi.FaultSet, abi.IntSet},
+		Params: []abi.Type{abi.PoStProof, abi.FaultSet, abi.IntSet},
 		Return: []abi.Type{},
 	},
 	"slashStorageFault": &exec.FunctionSignature{
@@ -604,7 +604,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			copy(req.CommRStar[:], commRStar)
 			req.Proof = proof
 			req.ProverID = sectorbuilder.AddressToProverID(ctx.Message().To)
-			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
+			req.SectorID = sectorID
 			req.SectorSize = state.SectorSize
 
 			res, err := ctx.Verifier().VerifySeal(req)
@@ -849,7 +849,7 @@ func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, 
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -910,23 +910,27 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, fa
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
 
-			var commRs []types.CommR
+			var sectorInfos []go_sectorbuilder.SectorInfo
 			for _, id := range state.ProvingSet.Values() {
 				commitment, found := state.SectorCommitments.Get(id)
 				if !found {
 					return nil, errors.NewFaultErrorf("miner ProvingSet sector id %d missing in SectorCommitments", id)
 				}
-				commRs = append(commRs, commitment.CommR)
+				sectorInfo := go_sectorbuilder.SectorInfo{
+					SectorID: id,
+					CommR:    commitment.CommR,
+				}
+				sectorInfos = append(sectorInfos, sectorInfo)
 			}
 
-			sortedCommRs := proofs.NewSortedCommRs(commRs...)
+			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(sectorInfos...)
 
 			req := verification.VerifyPoStRequest{
-				ChallengeSeed: seed,
-				SortedCommRs:  sortedCommRs,
-				Faults:        faults.SectorIds.Values(),
-				Proofs:        poStProofs,
-				SectorSize:    state.SectorSize,
+				ChallengeSeed:    seed,
+				SortedSectorInfo: sortedSectorInfo,
+				Faults:           faults.SectorIds.Values(),
+				Proof:            poStProof,
+				SectorSize:       state.SectorSize,
 			}
 
 			res, err := ctx.Verifier().VerifyPoSt(req)

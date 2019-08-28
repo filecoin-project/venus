@@ -49,7 +49,7 @@ func TestProver(t *testing.T) {
 		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
 		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.NoError(t, e)
-		assert.Equal(t, pc.proofs, submission.Proofs)
+		assert.Equal(t, pc.proofs, submission.Proof)
 		assert.Equal(t, types.ZeroAttoFIL, submission.Fee)
 	})
 
@@ -69,7 +69,7 @@ func TestProver(t *testing.T) {
 			prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
 			submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 			require.NoError(t, e)
-			assert.Equal(t, pc.proofs, submission.Proofs)
+			assert.Equal(t, pc.proofs, submission.Proof)
 			assert.True(t, submission.Fee.GreaterThan(types.ZeroAttoFIL))
 		}
 	})

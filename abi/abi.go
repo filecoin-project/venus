@@ -46,8 +46,6 @@ const (
 	SectorID
 	// CommitmentsMap is a map of stringified sector id (uint64) to commitments
 	CommitmentsMap
-	// PoStProofs is an array of proof-of-spacetime proofs
-	PoStProofs
 	// Boolean is a bool
 	Boolean
 	// ProofsMode is an enumeration of possible modes of proof operation
@@ -97,8 +95,6 @@ func (t Type) String() string {
 		return "uint64"
 	case CommitmentsMap:
 		return "map[string]types.Commitments"
-	case PoStProofs:
-		return "[]types.PoStProof"
 	case Boolean:
 		return "bool"
 	case ProofsMode:
@@ -156,8 +152,6 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(uint64))
 	case CommitmentsMap:
 		return fmt.Sprint(av.Val.(map[string]types.Commitments))
-	case PoStProofs:
-		return fmt.Sprint(av.Val.([]types.PoStProof))
 	case Boolean:
 		return fmt.Sprint(av.Val.(bool))
 	case ProofsMode:
@@ -275,13 +269,6 @@ func (av *Value) Serialize() ([]byte, error) {
 		}
 
 		return cbor.DumpObject(m)
-	case PoStProofs:
-		m, ok := av.Val.([]types.PoStProof)
-		if !ok {
-			return nil, &typeError{[]types.PoStProof{}, av.Val}
-		}
-
-		return cbor.DumpObject(m)
 	case Boolean:
 		v, ok := av.Val.(bool)
 		if !ok {
@@ -384,8 +371,6 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: SectorID, Val: v})
 		case map[string]types.Commitments:
 			out = append(out, &Value{Type: CommitmentsMap, Val: v})
-		case []types.PoStProof:
-			out = append(out, &Value{Type: PoStProofs, Val: v})
 		case bool:
 			out = append(out, &Value{Type: Boolean, Val: v})
 		case types.ProofsMode:
@@ -505,15 +490,6 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  m,
 		}, nil
-	case PoStProofs:
-		var slice []types.PoStProof
-		if err := cbor.DecodeInto(data, &slice); err != nil {
-			return nil, err
-		}
-		return &Value{
-			Type: t,
-			Val:  slice,
-		}, nil
 	case Boolean:
 		var b bool
 		if data[0] == 1 {
@@ -604,7 +580,6 @@ var typeTable = map[Type]reflect.Type{
 	PeerID:          reflect.TypeOf(peer.ID("")),
 	SectorID:        reflect.TypeOf(uint64(0)),
 	CommitmentsMap:  reflect.TypeOf(map[string]types.Commitments{}),
-	PoStProofs:      reflect.TypeOf([]types.PoStProof{}),
 	Boolean:         reflect.TypeOf(false),
 	ProofsMode:      reflect.TypeOf(types.TestProofsMode),
 	PoRepProof:      reflect.TypeOf(types.PoRepProof{}),

@@ -338,18 +338,18 @@ func TestSectorBuilder(t *testing.T) {
 
 			// generate a proof-of-spacetime
 			gres, gerr := h.SectorBuilder.GeneratePoSt(sectorbuilder.GeneratePoStRequest{
-				SortedCommRs:  sortedCommRs,
-				ChallengeSeed: challengeSeed,
+				SortedSectorInfo: sortedCommRs,
+				ChallengeSeed:    challengeSeed,
 			})
 			require.NoError(t, gerr)
 
 			// verify the proof-of-spacetime
 			vres, verr := (&verification.RustVerifier{}).VerifyPoSt(verification.VerifyPoStRequest{
-				ChallengeSeed: challengeSeed,
-				SortedCommRs:  sortedCommRs,
-				Faults:        gres.Faults,
-				Proofs:        gres.Proofs,
-				SectorSize:    types.OneKiBSectorSize,
+				ChallengeSeed:    challengeSeed,
+				SortedSectorInfo: sortedCommRs,
+				Faults:           gres.Faults,
+				Proof:            gres.Proofs,
+				SectorSize:       types.OneKiBSectorSize,
 			})
 
 			require.NoError(t, verr)

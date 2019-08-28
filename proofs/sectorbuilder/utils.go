@@ -2,7 +2,6 @@ package sectorbuilder
 
 import (
 	"bytes"
-	"encoding/binary"
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
@@ -30,15 +29,4 @@ func AddressToProverID(addr address.Address) [31]byte {
 	}
 
 	return prid
-}
-
-// SectorIDToBytes encodes the uint64 sector id as a fixed length byte array.
-func SectorIDToBytes(sectorID uint64) [31]byte {
-	slice := make([]byte, 31)
-	binary.LittleEndian.PutUint64(slice, sectorID)
-
-	var sectorIDAsBytes [31]byte
-	copy(sectorIDAsBytes[:], slice)
-
-	return sectorIDAsBytes
 }

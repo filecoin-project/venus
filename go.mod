@@ -26,7 +26,7 @@ require (
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/golangci/golangci-lint v1.17.0
+	github.com/golangci/golangci-lint v1.17.1
 	github.com/golangci/govet v0.0.0-20180818181408-44ddbe260190 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect

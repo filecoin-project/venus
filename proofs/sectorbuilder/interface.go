@@ -8,7 +8,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -90,12 +89,11 @@ type SealedSectorMetadata struct {
 
 // GeneratePoStRequest represents a request to generate a proof-of-spacetime.
 type GeneratePoStRequest struct {
-	SortedCommRs  proofs.SortedCommRs
-	ChallengeSeed types.PoStChallengeSeed
+	SortedSectorInfo go_sectorbuilder.SortedSectorInfo
+	ChallengeSeed    types.PoStChallengeSeed
 }
 
 // GeneratePoStResponse contains PoST proof and any faults that may have occurred.
 type GeneratePoStResponse struct {
-	Faults []uint64
-	Proofs []types.PoStProof
+	Proof types.PoStProof
 }
