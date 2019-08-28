@@ -46,23 +46,25 @@ type graphsyncFallbackPeerTracker interface {
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
-	exchange    GraphExchange
-	validator   consensus.BlockSyntaxValidator
-	store       bstore.Blockstore
-	ssb         selectorbuilder.SelectorSpecBuilder
-	peerTracker graphsyncFallbackPeerTracker
+	exchange         GraphExchange
+	messageValidator consensus.MessageSyntaxValidator
+	validator        consensus.BlockSyntaxValidator
+	store            bstore.Blockstore
+	ssb              selectorbuilder.SelectorSpecBuilder
+	peerTracker      graphsyncFallbackPeerTracker
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.BlockSyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	bv consensus.BlockSyntaxValidator, mv consensus.MessageSyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
-		store:       blockstore,
-		validator:   bv,
-		exchange:    exchange,
-		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
-		peerTracker: pt,
+		store:            blockstore,
+		validator:        bv,
+		messageValidator: mv,
+		exchange:         exchange,
+		ssb:              selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		peerTracker:      pt,
 	}
 	return gsf
 }
@@ -338,17 +340,25 @@ func (gsf *GraphSyncFetcher) loadMessages(ctx context.Context, tip types.TipSet,
 	}
 
 	for _, rawBlock := range collections[0] {
-		_, err := types.DecodeMessages(rawBlock.RawData())
+		messages, err := types.DecodeMessages(rawBlock.RawData())
 		if err != nil {
 			return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
 		}
+		if err := gsf.messageValidator.ValidateMessagesSyntax(ctx, messages); err != nil {
+			return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
+		}
 	}
+
 	for _, rawBlock := range collections[1] {
-		_, err := types.DecodeReceipts(rawBlock.RawData())
+		receipts, err := types.DecodeReceipts(rawBlock.RawData())
 		if err != nil {
 			return errors.Wrapf(err, "fetched data (cid %s) was not a message receipt collection", rawBlock.Cid().String())
 		}
+		if err := gsf.messageValidator.ValidateReceiptsSyntax(ctx, receipts); err != nil {
+			return errors.Wrapf(err, "invalid receipts for for receipt collection (cid %s)", rawBlock.Cid())
+		}
 	}
+
 	return nil
 }
 

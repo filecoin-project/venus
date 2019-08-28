@@ -22,8 +22,8 @@ import (
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-interface"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipfs/go-merkledag"
@@ -33,8 +33,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -390,6 +390,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
+	messageValid := consensus.NewDefaultMessageSyntaxValidator()
 
 	// set up peer tracking
 	peerTracker := net.NewPeerTracker()
@@ -405,7 +406,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	loader := gsstoreutil.LoaderForBlockstore(bs)
 	storer := gsstoreutil.StorerForBlockstore(bs)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, messageValid, peerTracker)
 
 	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	genCid, err := readGenesisCid(nc.Repo.Datastore())
