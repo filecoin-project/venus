@@ -199,8 +199,8 @@ func init() {
 }
 
 // Run processes the arguments and stdin
-func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
-	err := cli.Run(context.Background(), rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
+func Run(ctx context.Context, args []string, stdin, stdout, stderr *os.File) (int, error) {
+	err := cli.Run(ctx, rootCmd, args, stdin, stdout, stderr, buildEnv, makeExecutor)
 	if err == nil {
 		return 0, nil
 	}
