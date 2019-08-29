@@ -46,8 +46,8 @@ func TestHelloHandshake(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -100,8 +100,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := &types.Block{Nonce: 451}
 	genesisB := &types.Block{Nonce: 101}
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3})
+	heavy1 := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -134,7 +134,7 @@ func TestHelloWrongVersion(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
+	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -167,7 +167,7 @@ func TestHelloWrongVersionTestDevnet(t *testing.T) {
 
 	genesisA := &types.Block{Nonce: 451}
 
-	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2})
+	heavy := th.RequireNewTipSet(t, &types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg := &mockHeaviestGetter{heavy}
@@ -202,14 +202,14 @@ func TestHelloMultiBlock(t *testing.T) {
 	genesisA := &types.Block{Nonce: 452}
 
 	heavy1 := th.RequireNewTipSet(t,
-		&types.Block{Nonce: 1000, Height: 2},
-		&types.Block{Nonce: 1002, Height: 2},
-		&types.Block{Nonce: 1004, Height: 2},
+		&types.Block{Nonce: 1000, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
+		&types.Block{Nonce: 1002, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
+		&types.Block{Nonce: 1004, Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
 	)
 	heavy2 := th.RequireNewTipSet(t,
-		&types.Block{Nonce: 1001, Height: 3},
-		&types.Block{Nonce: 1003, Height: 3},
-		&types.Block{Nonce: 1005, Height: 3},
+		&types.Block{Nonce: 1001, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
+		&types.Block{Nonce: 1003, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
+		&types.Block{Nonce: 1005, Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{0}}}},
 	)
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)

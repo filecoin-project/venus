@@ -213,7 +213,7 @@ func TestWallet_CreateTicket(t *testing.T) {
 		proof := types.PoStProof{0xbb}
 		ticket, err := consensus.CreateTicket(proof, addr, w)
 		assert.NoError(t, err)
-		assert.NotNil(t, ticket)
+		assert.NotNil(t, ticket.VRFProof)
 	})
 
 	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
@@ -221,6 +221,6 @@ func TestWallet_CreateTicket(t *testing.T) {
 		badAddress := address.TestAddress
 		ticket, err := consensus.CreateTicket(proof, badAddress, w)
 		assert.Error(t, err, "t, SignBytes error in CreateTicket: public key not found")
-		assert.Equal(t, types.Signature(nil), ticket)
+		assert.Equal(t, types.VRFPi(nil), ticket.VRFProof)
 	})
 }

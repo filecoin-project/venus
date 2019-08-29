@@ -86,8 +86,13 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 	if blk.Miner.Empty() {
 		return fmt.Errorf("block %s has nil miner address", blk.Cid().String())
 	}
-	if len(blk.Ticket) == 0 {
-		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
+	if len(blk.Tickets) == 0 {
+		return fmt.Errorf("block %s has no tickets", blk.Cid().String())
+	}
+	for _, ticket := range blk.Tickets {
+		if len(ticket.VRFProof) == 0 {
+			return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
+		}
 	}
 	// TODO validate block signature: 1054
 	return nil

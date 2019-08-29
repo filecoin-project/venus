@@ -47,9 +47,9 @@
         "stateRoot": {
           "$ref": "#/definitions/Cid"
         },
-        "ticket": {
+        "tickets": {
           "type": [
-            "string",
+            "array",
             "null"
           ]
         },
@@ -65,7 +65,7 @@
         "parents",
         "proof",
         "stateRoot",
-        "ticket",
+        "tickets",
         "timestamp"
       ],
       "type": "object"

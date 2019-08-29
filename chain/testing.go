@@ -164,12 +164,13 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 	require.NoError(f.t, err)
 
 	for i := 0; i < width; i++ {
-		ticket := make(types.Signature, binary.Size(f.seq))
-		binary.BigEndian.PutUint64(ticket, f.seq)
+		ticket := types.Ticket{}
+		ticket.VRFProof = types.VRFPi(make([]byte, binary.Size(f.seq)))
+		binary.BigEndian.PutUint64(ticket.VRFProof, f.seq)
 		f.seq++
 
 		b := &types.Block{
-			Ticket:          ticket,
+			Tickets:         []types.Ticket{ticket},
 			Miner:           f.minerAddress,
 			ParentWeight:    types.Uint64(parentWeight),
 			Parents:         parent.Key(),
@@ -259,8 +260,8 @@ type BlockBuilder struct {
 }
 
 // SetTicket sets the block's ticket.
-func (bb *BlockBuilder) SetTicket(ticket []byte) {
-	bb.block.Ticket = ticket
+func (bb *BlockBuilder) SetTicket(raw []byte) {
+	bb.block.Tickets = []types.Ticket{{VRFProof: types.VRFPi(raw)}}
 }
 
 // SetTimestamp sets the block's timestamp.

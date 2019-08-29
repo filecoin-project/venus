@@ -235,16 +235,20 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b1.Proof, f1b1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
+	var f1b1Ticket types.Ticket
+	f1b1.ElectionProof, f1b1Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b1.Tickets = []types.Ticket{f1b1Ticket}
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
 
 	fakeChildParams.Nonce = uint64(1)
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b1.Proof, f2b1.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[2].Power, totalPower, mockSigner)
+	var f2b1Ticket types.Ticket
+	f2b1.ElectionProof, f2b1Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f2b1.Tickets = []types.Ticket{f2b1Ticket}
 	f2b1.Messages = emptyMessagesCid
 	f2b1.MessageReceipts = emptyReceiptsCid
 
@@ -271,8 +275,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerWorker: minerWorker1,
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2a.Proof, f1b2a.Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
+	var f1b2aTicket types.Ticket
+	f1b2a.ElectionProof, f1b2aTicket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b2a.Tickets = []types.Ticket{f1b2aTicket}
 	f1b2a.Messages = emptyMessagesCid
 	f1b2a.MessageReceipts = emptyReceiptsCid
 
@@ -281,8 +287,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	fakeChildParams.MinerWorker = minerWorker2
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f1b2b.Proof, f1b2b.Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[2].Power, totalPower, mockSigner)
+	var f1b2bTicket types.Ticket
+	f1b2b.ElectionProof, f1b2bTicket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[2].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f1b2b.Tickets = []types.Ticket{f1b2bTicket}
 	f1b2b.Messages = emptyMessagesCid
 	f1b2b.MessageReceipts = emptyReceiptsCid
 
@@ -312,8 +320,10 @@ func TestTipSetWeightDeep(t *testing.T) {
 		MinerWorker: minerWorker2,
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
-	f2b2.Proof, f2b2.Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[3].Power, totalPower, mockSigner)
+	var f2b2Ticket types.Ticket
+	f2b2.ElectionProof, f2b2Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[3].Power, totalPower, mockSigner)
 	require.NoError(t, err)
+	f2b2.Tickets = []types.Ticket{f2b2Ticket}
 	f2b2.Messages = emptyMessagesCid
 	f2b2.MessageReceipts = emptyReceiptsCid
 

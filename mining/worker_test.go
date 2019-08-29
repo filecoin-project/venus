@@ -37,7 +37,7 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot}
+	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot, Tickets: []types.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
@@ -287,6 +287,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		Height:       types.Uint64(100),
 		ParentWeight: types.Uint64(1000),
 		StateRoot:    stateRoot,
+		Tickets:      []types.Ticket{{VRFProof: []byte{0}}},
 	}
 	baseBlock2 := types.Block{
 		Parents:      parents,
@@ -294,14 +295,16 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		ParentWeight: types.Uint64(1000),
 		StateRoot:    stateRoot,
 		Nonce:        1,
+		Tickets:      []types.Ticket{{VRFProof: []byte{1}}},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock1, &baseBlock2), nil, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock1, &baseBlock2), types.Ticket{VRFProof: []byte{2}}, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
 	assert.Equal(t, types.EmptyMessagesCID, blk.Messages)
 	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(1020), blk.ParentWeight)
+	assert.Equal(t, types.Ticket{VRFProof: []byte{2}}, blk.Tickets[0])
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -386,12 +389,12 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	require.NoError(t, err)
 
 	baseBlock := types.Block{
-		Parents:   types.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
-		StateRoot: stateRoot,
-		Proof:     types.PoStProof{},
+		Parents:       types.NewTipSetKey(newCid()),
+		Height:        types.Uint64(100),
+		StateRoot:     stateRoot,
+		ElectionProof: types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), nil, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -454,19 +457,19 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
 	baseBlock := types.Block{
-		Height:       h,
-		ParentWeight: w,
-		StateRoot:    newCid(),
-		Proof:        types.PoStProof{},
+		Height:        h,
+		ParentWeight:  w,
+		StateRoot:     newCid(),
+		ElectionProof: types.PoStProof{},
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+1, blk.Height)
 	assert.Equal(t, minerAddr, blk.Miner)
 
-	blk, err = worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 1)
+	blk, err = worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
@@ -514,12 +517,12 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
-		Parents:   types.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
-		StateRoot: newCid(),
-		Proof:     types.PoStProof{},
+		Parents:       types.NewTipSetKey(newCid()),
+		Height:        types.Uint64(100),
+		StateRoot:     newCid(),
+		ElectionProof: types.PoStProof{},
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), nil, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -574,13 +577,13 @@ func TestGenerateError(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 1)
 	baseBlock := types.Block{
-		Parents:   types.NewTipSetKey(newCid()),
-		Height:    types.Uint64(100),
-		StateRoot: newCid(),
-		Proof:     types.PoStProof{},
+		Parents:       types.NewTipSetKey(newCid()),
+		Height:        types.Uint64(100),
+		StateRoot:     newCid(),
+		ElectionProof: types.PoStProof{},
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, nil, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
 	assert.Error(t, err, "boom")
 	assert.Nil(t, blk)
 

@@ -17,7 +17,7 @@ import (
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet types.TipSet,
-	ticket types.Signature,
+	ticket types.Ticket,
 	proof types.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
 
@@ -100,9 +100,9 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		MessageReceipts: rcptsCid,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
-		Proof:           proof,
+		ElectionProof:   proof,
 		StateRoot:       newStateTreeCid,
-		Ticket:          ticket,
+		Tickets:         []types.Ticket{ticket},
 		// TODO when #2961 is resolved do the needful here.
 		Timestamp: types.Uint64(time.Now().Unix()),
 	}
