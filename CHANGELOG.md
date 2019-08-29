@@ -1,5 +1,71 @@
 # go-filecoin changelog
 
+## go-filecoin 0.4.6
+
+This release includes the first steps towards increasing the performance for new nodes joining the network through the graphsync protocol.
+It also includes the new command `mining status` which allows users to understand the current state of their miner by providing the current proving period, as well as the current proving sector set.
+We've also shipped piece inclusion proofs which allow for storage clients to verify the inclusion of their data in the sealed sector reported back by the storage miner.
+
+### Features
+
+#### Chain sync
+
+Chain downloads have switched to [go-graphsync](https://github.com/ipfs/go-graphsync) for more efficient downloads, and we’ve also reduced block header size by moving messages and receipts out of the header.
+We’re expecting this to significantly reduce the memory requirements for running a node, and to greatly speed up the chain downloading & setup time.
+
+#### Piece inclusion proofs
+
+[Piece inclusion proofs](https://github.com/filecoin-project/specs/blob/840aa9a9777d955fdcd61017444741aabc96dbea/proofs.md#piece-inclusion-proof) are now calculated during deal proposal.
+We expect small increases in (1) time to create a deal and (2) CPU consumption during sealing, but both should be minor.
+
+#### Miners validate piece commitments
+
+Miners now validate that a client has supplied the correct piece commitment (commP).
+This is a computationally expensive operation that will be apparent for high-throughput miner operators.
+
+#### Slashing
+
+Storage slashing is now implemented as outlined in [Mining Spec](https://github.com/filecoin-project/specs/blob/master/mining.md#on-being-slashed-wip-needs-discussion) and [Storage Market Spec](https://github.com/filecoin-project/specs/blob/master/storage-market.md) on the actors.
+Miners automatically monitor for storage faults by other miners and include `SlashStorageFault` messages in their own blocks (these messages will later carry a rewards).
+
+#### Free deals
+
+Previously when accepting storage deals with zero costs a payment channel would be created regardless.
+This added additional costs to the deal that were not needed.
+Miners now accept deals with zero price and will not require a payment channel to exist before accepting the deal.
+This can simplify operations for miners automating deals among their own nodes.
+
+#### Sealing sectors without a deal
+
+Previously the only way to stage pieces into sectors was through the Storage Market.
+This process required interacting with an additional node on the network and added unnecessary overhead for miners to gain power on the network.
+Miners now can use the `mining seal-now` command to seal "empty" sectors directly to increase their power on the network for block mining.
+
+### CLI diff
+
+| go-filecoin command         | change       |
+| --------------------------- | ------------ |
+| mining status               | added        |
+| mining seal-now             | added        |
+| miner proving-period        | added        |
+| show header                 | added        |
+| show messages               | added        |
+| show receipts               | added        |
+| client verify-deal-proposal | added        |
+
+
+### Important changes
+
+- The mining start command will fail if Groth parameters for the sector size which the miner is configured do not yet exists in the parameter cache.
+  Previously Groth parameters would be generated on demand if they were missing.
+- The Groth parameters cache location has changed from `/tmp/filecoin-proof-parameters` to `/var/tmp/filecoin-proof-parameters`.
+- Parameters are no longer downloaded by default. Nodes intending to mine must fetch parameters explicitly. See the [wiki](https://github.com/filecoin-project/go-filecoin/wiki/Mining-Filecoin#start-mining) for more information.
+- The paramfetch binary now uses ipget to download Groth parameters and keys instead of hitting the IPFS (HTTP) Gateway.
+  This will make paramfetch slow, but more reliable.
+- Proof logs will no longer be displayed in log output by default and must be enabled by setting `RUST_LOG=info` before starting the daemon.
+- When building go-filecoin, `git submodules init --recursive` is required to be ran before `go run ./build deps`.
+- Sector size for PoSt construction has been increased from 2 to 4. This has resulted in a slight increase of memory usage, but supports proof calculation over more storage within a single proving period.
+
 ## go-filecoin 0.3.2
 
 We're happy to announce go-filecoin 0.3.2. This release is a big step towards completing the filecoin storage protocol. It includes many changes to the miner actor builtin smart contract that will allow the network to securely account for verifiable storage power once fault handling is in place. Many less visible but high impact code and testing improvements ship with this release. 0.3.2 also includes a big UX improvement with the new and improved `go-filecoin deals` command for user friendly management of storage deals. Getting paid as a storage miner is now as simple as a single CLI call.
