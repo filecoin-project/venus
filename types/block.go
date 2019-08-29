@@ -20,8 +20,8 @@ type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
-	// Ticket is the winning ticket that was submitted with this block.
-	Ticket Signature `json:"ticket"`
+	// Tickets is the array of tickets submitted with this block.
+	Tickets []Ticket `json:"tickets"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -48,9 +48,9 @@ type Block struct {
 	// MessageReceipts is a set of receipts matching to the sending of the `Messages`.
 	MessageReceipts cid.Cid `json:"messageReceipts,omitempty" refmt:",omitempty"`
 
-	// Proof is a proof of spacetime generated using the hash of the previous ticket as
-	// a challenge
-	Proof PoStProof `json:"proof"`
+	// ElectionProof is the "scratched ticket" proving that this block won
+	// an election.
+	ElectionProof PoStProof `json:"proof"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp Uint64 `json:"timestamp"`

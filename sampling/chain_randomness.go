@@ -58,5 +58,6 @@ func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []
 		}
 	}
 
-	return tipSetsDescending[lookbackIdx].MinTicket()
+	ticket, err := tipSetsDescending[lookbackIdx].MinTicket()
+	return ticket.SortKey(), err
 }

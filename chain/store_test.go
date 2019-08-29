@@ -39,7 +39,6 @@ func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.St
 		}
 		require.NoError(t, chainStore.PutTipSetAndState(ctx, tsas))
 	}
-
 }
 
 func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey types.TipSetKey, h uint64) []*chain.TipSetAndState {

@@ -77,14 +77,14 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 	ticket, _ := consensus.CreateTicket(poStProof, minerWorker, signer)
 
 	return &types.Block{
-		Miner:        minerAddr,
-		Ticket:       ticket,
-		Parents:      baseTipSet.Key(),
-		ParentWeight: types.Uint64(10000 * height),
-		Height:       types.Uint64(height),
-		Nonce:        types.Uint64(height),
-		StateRoot:    stateRootCid,
-		Proof:        poStProof,
+		Miner:         minerAddr,
+		Tickets:       []types.Ticket{ticket},
+		Parents:       baseTipSet.Key(),
+		ParentWeight:  types.Uint64(10000 * height),
+		Height:        types.Uint64(height),
+		Nonce:         types.Uint64(height),
+		StateRoot:     stateRootCid,
+		ElectionProof: poStProof,
 	}
 }
 

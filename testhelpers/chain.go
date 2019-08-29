@@ -177,9 +177,9 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Ticket, error) {
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
-	var ticket types.Signature
+	var ticket types.Ticket
 
 	quot := totalPower.Quo(minerPower)
 	threshold := types.NewBytesAmount(100000).Mul(types.OneKiBSectorSize)

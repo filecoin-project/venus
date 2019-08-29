@@ -176,7 +176,7 @@ func TestIsWinningTicket(t *testing.T) {
 			ptv := th.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 			ticket := [65]byte{}
 			ticket[0] = c.ticket
-			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
+			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
@@ -193,7 +193,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ptv1 := NewFailingTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [65]byte{}
 		ticket[0] = testCase.ticket
-		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, ticket[:], minerAddress)
+		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
 
@@ -203,7 +203,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ptv2 := NewFailingMinerTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [sha256.Size]byte{}
 		ticket[0] = testCase.ticket
-		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, ticket[:], minerAddress)
+		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 
@@ -233,9 +233,9 @@ func TestCompareTicketPower(t *testing.T) {
 		{0xFF, 0, 5, false},
 	}
 	for _, c := range cases {
-		ticket := [65]byte{}
+		ticket := make([]byte, 65)
 		ticket[0] = c.ticket
-		res := consensus.CompareTicketPower(ticket[:], types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
+		res := consensus.CompareTicketPower(types.Ticket{VRFProof: ticket}, types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 		assert.Equal(t, c.wins, res, "%+v", c)
 	}
 }
@@ -268,7 +268,8 @@ func TestCreateChallenge(t *testing.T) {
 
 		var parents []*types.Block
 		for _, ticket := range c.parentTickets {
-			b := types.Block{Ticket: ticket}
+
+			b := types.Block{Tickets: []types.Ticket{{VRFProof: ticket}}}
 			parents = append(parents, &b)
 		}
 		parentTs := types.RequireNewTipSet(t, parents...)
