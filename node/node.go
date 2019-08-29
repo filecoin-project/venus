@@ -11,6 +11,7 @@ import (
 	"time"
 
 	ps "github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -113,6 +114,7 @@ type Node struct {
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
+	UpgradeTable consensus.ProtocolUpgradeTable
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -440,6 +442,14 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
+
+	// create protocol upgrade table
+	network, err := networkNameFromGenesis(ctx, chainStore, bs)
+	if err != nil {
+		return nil, err
+	}
+	upgradeTable := consensus.NewProtocolUpgradeTable(network)
+	ConfigureNetworkProtocols(upgradeTable)
 
 	// set up processor
 	var processor consensus.Processor
@@ -1018,6 +1028,27 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.setIsMining(true)
 
 	return nil
+}
+
+// NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
+// The network name can not change while this node is running. Since the network name determines
+// the protocol version, we must retrieve it at genesis where the protocol is known.
+func networkNameFromGenesis(ctx context.Context, store *chain.Store, bs bstore.Blockstore) (string, error) {
+	// retrieve state from genesis block
+	genesisTipsetKey := types.NewTipSetKey(store.GenesisCid())
+	st, err := store.GetTipSetState(ctx, genesisTipsetKey)
+	if err != nil {
+		return "", err
+	}
+
+	// retrieve network name
+	vms := vm.NewStorageMap(bs)
+	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
+	if err != nil {
+		return "", err
+	}
+
+	return string(res[0]), nil
 }
 
 func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
