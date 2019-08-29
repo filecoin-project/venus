@@ -831,12 +831,10 @@ func (node *Node) MiningTimes() (time.Duration, time.Duration) {
 	return blockTime, mineDelay
 }
 
-// StartMining causes the node to start feeding blocks to the mining worker and initializes
-// the SectorBuilder for the mining address.
-func (node *Node) StartMining(ctx context.Context) error {
-	if node.IsMining() {
-		return errors.New("Node is already mining")
-	}
+// SetupMining initializes all the functionality the node needs to start mining.
+// This method is idempotent.
+func (node *Node) SetupMining(ctx context.Context) error {
+	// ensure we have a miner actor before we even consider mining
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
 		return errors.Wrap(err, "failed to get mining address")
@@ -853,18 +851,54 @@ func (node *Node) StartMining(ctx context.Context) error {
 		}
 	}
 
-	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
-	}
-
-	_, mineDelay := node.MiningTimes()
-
+	// ensure we have a mining worker
 	if node.MiningWorker == nil {
 		if node.MiningWorker, err = node.CreateMiningWorker(ctx); err != nil {
 			return err
 		}
 	}
+
+	// ensure we have a storage miner
+	if node.StorageMiner == nil {
+		storageMiner, _, err := initStorageMinerForNode(ctx, node)
+		if err != nil {
+			return errors.Wrap(err, "failed to initialize storage miner")
+		}
+		node.StorageMiner = storageMiner
+	}
+
+	return nil
+}
+
+// StartMining causes the node to start feeding blocks to the mining worker and initializes
+// the SectorBuilder for the mining address.
+func (node *Node) StartMining(ctx context.Context) error {
+	if node.IsMining() {
+		return errors.New("Node is already mining")
+	}
+
+	err := node.SetupMining(ctx)
+	if err != nil {
+		return err
+	}
+
+	minerAddr, err := node.MiningAddress()
+	if err != nil {
+		return errors.Wrap(err, "failed to get mining address")
+	}
+
+	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
+	}
+
+	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "could not get worker address from miner actor")
+	}
+
+	_, mineDelay := node.MiningTimes()
+
 	if node.MiningScheduler == nil {
 		node.MiningScheduler = mining.NewScheduler(node.MiningWorker, mineDelay, node.PorcelainAPI.ChainHead)
 	} else if node.MiningScheduler.IsStarted() {
@@ -881,15 +915,8 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.miningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
-	// initialize a storage miner
-	storageMiner, workerAddress, err := initStorageMinerForNode(ctx, node)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize storage miner")
-	}
-
 	// initialize the storage fault slasher if appropriate
-	node.StorageMiner = storageMiner
-	if err = node.initStorageFaultSlasherForNode(ctx, workerAddress); err != nil {
+	if err = node.initStorageFaultSlasherForNode(ctx, minerWorkerAddr); err != nil {
 		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
 	}
 
@@ -1111,9 +1138,10 @@ func (node *Node) setupProtocols() error {
 		node.ChainReader,
 		node.IsMining,
 		mineDelay,
+		node.SetupMining,
 		node.StartMining,
 		node.StopMining,
-		node.CreateMiningWorker)
+		node.GetMiningWorker)
 
 	node.BlockMiningAPI = &blockMiningAPI
 
@@ -1126,6 +1154,14 @@ func (node *Node) setupProtocols() error {
 	smcAPI := storage.NewAPI(smc)
 	node.StorageAPI = &smcAPI
 	return nil
+}
+
+// GetMiningWorker ensures mining is setup and then returns the worker
+func (node *Node) GetMiningWorker(ctx context.Context) (mining.Worker, error) {
+	if err := node.SetupMining(ctx); err != nil {
+		return nil, err
+	}
+	return node.MiningWorker, nil
 }
 
 // CreateMiningWorker creates a mining.Worker for the node using the configured

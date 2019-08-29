@@ -20,6 +20,20 @@ func (f *Filecoin) MiningOnce(ctx context.Context) (*types.Block, error) {
 	return &out, nil
 }
 
+// MiningSetup prepares the node to receive storage deals
+func (f *Filecoin) MiningSetup(ctx context.Context) error {
+	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "setup")
+	if err != nil {
+		return err
+	}
+
+	if out.ExitCode() > 0 {
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+	}
+
+	return nil
+}
+
 // MiningStart runs the `mining Start` command against the filecoin process
 func (f *Filecoin) MiningStart(ctx context.Context) error {
 	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "start")

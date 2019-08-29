@@ -56,6 +56,9 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
@@ -64,6 +67,9 @@ func requireMinerClientMakeADeal(ctx context.Context, t *testing.T, minerDaemon,
 	require.NoError(t, err)
 
 	minerAddress := requireGetMinerAddress(ctx, t, minerDaemon)
+
+	// mine the createChannel message required to create the storage deal
+	series.CtxMiningNext(ctx, 1)
 
 	dealDuration := uint64(5)
 	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, 0, dealDuration)

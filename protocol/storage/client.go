@@ -189,12 +189,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	// create payment information
 	totalCost := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
 	if totalCost.GreaterThan(types.ZeroAttoFIL) {
-		// The payment setup requires that the payment is mined into a block, currently we
-		// will wait for at most 5 blocks to be mined before giving up
-		ctxPaymentSetup, cancel := context.WithTimeout(ctx, 5*smc.api.BlockTime())
-		defer cancel()
-
-		cpResp, err := smc.api.CreatePayments(ctxPaymentSetup, porcelain.CreatePaymentsParams{
+		cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 			From:            fromAddress,
 			To:              minerOwner,
 			Value:           totalCost,

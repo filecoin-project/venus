@@ -202,8 +202,10 @@ func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Fil
 	require.NoError(t, err)
 
 	// Connect the client and the miner
-	err = series.Connect(ctx, client, miner)
-	require.NoError(t, err)
+	require.NoError(t, series.Connect(ctx, client, miner))
+
+	// Start the miner
+	require.NoError(t, miner.MiningStart(ctx))
 
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created

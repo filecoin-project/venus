@@ -3,6 +3,7 @@ package fast
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -128,5 +129,12 @@ func AOAllowDuplicates(allow bool) ActionOption {
 func AOSectorSize(ba *types.BytesAmount) ActionOption {
 	return func() []string {
 		return []string{"--sectorsize", ba.String()}
+	}
+}
+
+// AOWaitForCount provides the `--wait-for-count` option to actions
+func AOWaitForCount(count uint) ActionOption {
+	return func() []string {
+		return []string{"--wait-for-count", strconv.Itoa(int(count))}
 	}
 }
