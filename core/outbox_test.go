@@ -218,6 +218,6 @@ func (v nullValidator) Validate(ctx context.Context, msg *types.SignedMessage, f
 type nullPolicy struct {
 }
 
-func (nullPolicy) HandleNewHead(ctx context.Context, target core.PolicyTarget, oldHead, newHead types.TipSet) error {
+func (nullPolicy) HandleNewHead(ctx context.Context, target core.PolicyTarget, oldChain, newChain []types.TipSet) error {
 	return nil
 }

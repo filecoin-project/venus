@@ -52,7 +52,8 @@ func msgBuild(t *testing.T, msgSet [][]*types.SignedMessage) func(*chain.BlockBu
 // each msgSet argument is a slice of message slices.  Each slice of slices
 // goes into a successive tipset and each subslice goes into one tipset block.
 // Precondition: the root tipset must be defined.  The chain of tipsets is
-// returned.
+// returned in descending height order (head-first).
+// TODO: move this onto the builder, #3110
 func RequireChainWithMessages(t *testing.T, builder *chain.Builder, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
 	var tipSets []types.TipSet
 	parent := root
@@ -66,6 +67,7 @@ func RequireChainWithMessages(t *testing.T, builder *chain.Builder, root types.T
 		}
 		tipSets = append(tipSets, parent)
 	}
+	chain.Reverse(tipSets)
 	return tipSets
 }
 
