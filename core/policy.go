@@ -48,8 +48,8 @@ type DefaultQueuePolicy struct {
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(messages MessageProvider, maxAge uint64) *DefaultQueuePolicy {
-	return &DefaultQueuePolicy{messages, maxAge}
+func NewMessageQueuePolicy(messages MessageProvider, maxAge uint) *DefaultQueuePolicy {
+	return &DefaultQueuePolicy{messages, uint64(maxAge)}
 }
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.

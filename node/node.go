@@ -456,7 +456,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	msgQueue := core.NewMessageQueue()
 	outboxPolicy := core.NewMessageQueuePolicy(messageStore, core.OutboxMaxAgeRounds)
-	msgPublisher := newDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
+	msgPublisher := core.NewDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	nd := &Node{
@@ -723,6 +723,7 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 
 func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet) {
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
+	handler := core.NewHandler(node.Inbox, node.Outbox, node.ChainReader, prevHead)
 
 	for {
 		select {
@@ -735,25 +736,9 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 				log.Warning("non-tipset published on heaviest tipset channel")
 				continue
 			}
-			if !newHead.Defined() {
-				log.Warning("tipset of size 0 published on heaviest tipset channel. ignoring and waiting for a new heaviest tipset.")
-				continue
-			}
-			if newHead.Equals(prevHead) {
-				log.Warningf("non-new head published on heaviest tipset channel, ignoring %s", newHead.Key())
-				continue
-			}
 
-			oldTips, newTips, err := chain.CollectTipsToCommonAncestor(ctx, node.ChainReader, prevHead, newHead)
-			if err == nil {
-				if err := node.Outbox.HandleNewHead(ctx, oldTips, newTips); err != nil {
-					log.Errorf("updating outbound message queue for tipset %s, prev %s: %s", newHead.Key(), prevHead.Key(), err)
-				}
-				if err := node.Inbox.HandleNewHead(ctx, oldTips, newTips); err != nil {
-					log.Errorf("updating message pool for tipset %s, prev %s: %s", newHead.Key(), prevHead.Key(), err)
-				}
-			} else {
-				log.Errorf("traversing chain with new head %s, prev %s: %s", newHead.Key(), prevHead.Key(), err)
+			if err := handler.HandleNewHead(ctx, newHead); err != nil {
+				log.Error(err)
 			}
 
 			if node.StorageMiner != nil {
@@ -766,9 +751,6 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 					log.Error(err)
 				}
 			}
-
-			prevHead = newHead
-
 		case <-ctx.Done():
 			return
 		}
