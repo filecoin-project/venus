@@ -20,7 +20,7 @@ func TestId(t *testing.T) {
 	id := d.RunSuccess("id")
 
 	idContent := id.ReadStdout()
-	assert.Containsf(t, idContent, d.SwarmAddr(), "default addr")
+	assert.Containsf(t, idContent, "/ip4/127.0.0.1/tcp/", "default addr")
 	assert.Contains(t, idContent, "ID")
 
 }
@@ -37,7 +37,7 @@ func TestIdFormat(t *testing.T) {
 
 	assert.Contains(t, idContent, "\t")
 	assert.Contains(t, idContent, "\n")
-	assert.Containsf(t, idContent, d.SwarmAddr(), "default addr")
+	assert.Containsf(t, idContent, "/ip4/127.0.0.1/tcp/", "default addr")
 	assert.NotContains(t, idContent, "ID")
 }
 

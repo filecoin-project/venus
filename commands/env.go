@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 )
 
-// Env is the environment passed to commands. Implements cmds.Environment.
+// Env is the environment for command API handlers.
 type Env struct {
 	blockMiningAPI *block.MiningAPI
 	ctx            context.Context
@@ -22,6 +22,12 @@ type Env struct {
 }
 
 var _ cmds.Environment = (*Env)(nil)
+
+// NewClientEnv returns a new environment for command API clients.
+// This environment lacks direct access to any internal APIs.
+func NewClientEnv(ctx context.Context) *Env {
+	return &Env{ctx: ctx}
+}
 
 // Context returns the context of the environment.
 func (ce *Env) Context() context.Context {

@@ -1,4 +1,4 @@
-package node
+package core_test
 
 import (
 	"context"
@@ -22,34 +22,32 @@ func TestDefaultMessagePublisher_Publish(t *testing.T) {
 	require.NoError(t, err)
 	msgCid, err := signed.Cid()
 	require.NoError(t, err)
+	encoded, e := signed.Marshal()
+	require.NoError(t, e)
 
 	testCases := []struct {
-		name     string
-		bcast    bool
-		expected string
+		name  string
+		bcast bool
 	}{
-		{"Msg added to pool and Publish is called when bcast is true", true, "Stuff"},
-		{"Msg added to pool and Publish is NOT called when bcast is false", false, ""},
+		{"Msg added to pool and Publish is called when bcast is true", true},
+		{"Msg added to pool and Publish is NOT called when bcast is false", false},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			mnp := mockNetworkPublisher{}
-			pub := newDefaultMessagePublisher(&mnp, "Stuff", pool)
+			mnp := core.MockNetworkPublisher{}
+			pub := core.NewDefaultMessagePublisher(&mnp, "Topic", pool)
 			assert.NoError(t, pub.Publish(context.Background(), signed, 0, test.bcast))
 			smsg, ok := pool.Get(msgCid)
 			assert.True(t, ok)
 			assert.NotNil(t, smsg)
-			assert.Equal(t, test.expected, mnp.Topic)
+			if test.bcast {
+				assert.Equal(t, "Topic", mnp.Topic)
+				assert.Equal(t, encoded, mnp.Data)
+			} else {
+				assert.Equal(t, "", mnp.Topic)
+				assert.Nil(t, mnp.Data)
+			}
 		})
 	}
-}
-
-type mockNetworkPublisher struct {
-	Topic string
-}
-
-func (mnp *mockNetworkPublisher) Publish(topic string, data []byte) error {
-	mnp.Topic = topic
-	return nil
 }

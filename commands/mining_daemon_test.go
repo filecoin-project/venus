@@ -52,16 +52,11 @@ func TestMiningSealNow(t *testing.T) {
 		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
 		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
 	})
-	env.RunAsyncMiner()
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
 
 	genesisNode := env.GenesisMiner
-	require.NoError(t, genesisNode.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, genesisNode.MiningStop(ctx))
-	}()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
@@ -74,12 +69,25 @@ func TestMiningSealNow(t *testing.T) {
 
 	sinfo := pparams.SupportedSectors[0]
 
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sinfo.Size)
 	require.NoError(t, err)
 
 	// get address of miner so we can check power
 	miningAddress, err := minerNode.MiningAddress(ctx)
 	require.NoError(t, err)
+
+	// start mining for miner node to seal and schedule PoSting
+	require.NoError(t, minerNode.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, minerNode.MiningStop(ctx))
+	}()
+
+	// Since the miner does not yet have power, we still need the genesis node to mine
+	// the miner's commitSector and the submitPoSt messages
+	series.CtxMiningNext(ctx, 2)
 
 	// start sealing
 	err = minerNode.SealNow(ctx)

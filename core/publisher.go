@@ -1,33 +1,33 @@
-package node
+package core
 
 import (
 	"context"
 
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// defaultMessagePublisher adds messages to a message pool and can publish them to its topic.
+// DefaultMessagePublisher adds messages to a message pool and can publish them to its topic.
 // This is wiring for message publication from the outbox.
-type defaultMessagePublisher struct {
+type DefaultMessagePublisher struct {
 	network networkPublisher
 	topic   string
-	pool    *core.MessagePool
+	pool    *MessagePool
 }
 
 type networkPublisher interface {
 	Publish(topic string, data []byte) error
 }
 
-func newDefaultMessagePublisher(pubsub networkPublisher, topic string, pool *core.MessagePool) *defaultMessagePublisher {
-	return &defaultMessagePublisher{pubsub, topic, pool}
+// NewDefaultMessagePublisher creates a new publisher.
+func NewDefaultMessagePublisher(pubsub networkPublisher, topic string, pool *MessagePool) *DefaultMessagePublisher {
+	return &DefaultMessagePublisher{pubsub, topic, pool}
 }
 
 // Publish marshals and publishes a message to the core message pool, and if bcast is true,
 // broadcasts it to the network with the publisher's topic.
-func (p *defaultMessagePublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
+func (p *DefaultMessagePublisher) Publish(ctx context.Context, message *types.SignedMessage, height uint64, bcast bool) error {
 	encoded, err := message.Marshal()
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal message")

@@ -21,9 +21,6 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		return porcelain.Ask{}, err
 	}
 
-	// Remove for issue #2579 mining start and once disallow together
-	// CtxMiningOnce(ctx)
-
 	response, err := miner.MessageWait(ctx, pinfo.AddAskCid)
 	if err != nil {
 		return porcelain.Ask{}, err

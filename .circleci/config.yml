@@ -445,7 +445,10 @@ jobs:
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             export ARTIFACT_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
+            export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters"
             tar -xf "bundle/filecoin-$ARTIFACT_TAG-Linux.tar.gz"
+            ./filecoin/paramfetch --all -v || true
+            ./filecoin/paramcache
             mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA

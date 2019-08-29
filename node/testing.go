@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"testing"
@@ -21,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -250,9 +248,7 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	r := repo.NewInMemoryRepo()
 
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r.Config().SectorBase.RootDir = sectorDir
 
@@ -260,13 +256,6 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	if !tno.OfflineMode {
 		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 	}
-	// set a random port here so things don't break in the event we make
-	// a parallel request
-	port, err := testhelpers.GetFreePort()
-	require.NoError(t, err)
-	r.Config().API.Address = fmt.Sprintf(":%d", port)
-
-	require.NoError(t, err)
 
 	if tno.GenesisFunc != nil {
 		err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)

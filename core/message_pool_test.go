@@ -165,7 +165,7 @@ func TestLargestNonce(t *testing.T) {
 		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
-		core.MustAdd(p, 0, m[0], m[1])
+		reqAdd(t, p, 0, m[0], m[1])
 
 		_, found := p.LargestNonce(address.NewForTestGetter()())
 		assert.False(t, found)
@@ -180,7 +180,7 @@ func TestLargestNonce(t *testing.T) {
 		sm, err := types.SignMsgs(mockSigner, m)
 		require.NoError(t, err)
 
-		core.MustAdd(p, 0, sm...)
+		reqAdd(t, p, 0, sm...)
 
 		largest, found := p.LargestNonce(m[0].From)
 		assert.True(t, found)
@@ -198,7 +198,7 @@ func TestLargestNonce(t *testing.T) {
 		sm, err := types.SignMsgs(mockSigner, m)
 		require.NoError(t, err)
 
-		core.MustAdd(p, 0, sm...)
+		reqAdd(t, p, 0, sm...)
 
 		largest, found := p.LargestNonce(m[2].From)
 		assert.True(t, found)
@@ -225,4 +225,12 @@ func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func
 
 func signMessage(signer types.Signer, message types.Message) (*types.SignedMessage, error) {
 	return types.NewSignedMessage(message, signer, types.NewGasPrice(0), types.NewGasUnits(0))
+}
+
+func reqAdd(t *testing.T, p *core.MessagePool, height uint64, msgs ...*types.SignedMessage) {
+	ctx := context.Background()
+	for _, m := range msgs {
+		_, err := p.Add(ctx, m, height)
+		require.NoError(t, err)
+	}
 }
