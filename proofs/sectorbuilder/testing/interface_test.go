@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/proofs"
@@ -211,7 +212,7 @@ func TestSectorBuilder(t *testing.T) {
 				CommRStar:  val.SealingResult.CommRStar,
 				Proof:      val.SealingResult.Proof,
 				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
-				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				SectorID:   val.SealingResult.SectorID,
 				SectorSize: types.OneKiBSectorSize,
 			})
 			require.NoError(t, err)
@@ -324,7 +325,7 @@ func TestSectorBuilder(t *testing.T) {
 				CommRStar:  val.SealingResult.CommRStar,
 				Proof:      val.SealingResult.Proof,
 				ProverID:   sectorbuilder.AddressToProverID(h.MinerAddr),
-				SectorID:   sectorbuilder.SectorIDToBytes(val.SealingResult.SectorID),
+				SectorID:   val.SealingResult.SectorID,
 				SectorSize: types.OneKiBSectorSize,
 			})
 			require.NoError(t, serr, "seal proof-verification produced an error")
@@ -334,11 +335,11 @@ func TestSectorBuilder(t *testing.T) {
 			// entropy, e.g. the blockchain
 			challengeSeed := types.PoStChallengeSeed{1, 2, 3}
 
-			sortedCommRs := proofs.NewSortedCommRs(val.SealingResult.CommR)
+			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(go_sectorbuilder.SectorInfo{CommR: val.SealingResult.CommR})
 
 			// generate a proof-of-spacetime
 			gres, gerr := h.SectorBuilder.GeneratePoSt(sectorbuilder.GeneratePoStRequest{
-				SortedSectorInfo: sortedCommRs,
+				SortedSectorInfo: sortedSectorInfo,
 				ChallengeSeed:    challengeSeed,
 			})
 			require.NoError(t, gerr)
@@ -346,9 +347,9 @@ func TestSectorBuilder(t *testing.T) {
 			// verify the proof-of-spacetime
 			vres, verr := (&verification.RustVerifier{}).VerifyPoSt(verification.VerifyPoStRequest{
 				ChallengeSeed:    challengeSeed,
-				SortedSectorInfo: sortedCommRs,
-				Faults:           gres.Faults,
-				Proof:            gres.Proofs,
+				SortedSectorInfo: sortedSectorInfo,
+				Faults:           []uint64{},
+				Proof:            gres.Proof,
 				SectorSize:       types.OneKiBSectorSize,
 			})
 

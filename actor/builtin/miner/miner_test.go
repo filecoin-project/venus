@@ -574,7 +574,7 @@ func (mal *minerActorLiason) requireTotalStorage(queryHeight uint64) *types.Byte
 
 func (mal *minerActorLiason) assertPoStFail(blockHeight uint64, done types.IntSet, exitCode uint8) {
 	mal.requireHeightNotPast(blockHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, []types.PoStProof{th.MakeRandomPoStProofForTest()}, types.EmptyFaultSet(), done)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, th.MakeRandomPoStProofForTest(), types.EmptyFaultSet(), done)
 	assert.NoError(mal.t, err)
 	assert.Error(mal.t, res.ExecutionError)
 	assert.Equal(mal.t, exitCode, res.Receipt.ExitCode)
@@ -775,11 +775,10 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 
 		assert.Equal(t, seed, verifier.LastReceivedVerifyPoStRequest.ChallengeSeed)
 		assert.Equal(t, 0, len(verifier.LastReceivedVerifyPoStRequest.Faults))
-		assert.Equal(t, 1, len(verifier.LastReceivedVerifyPoStRequest.Proof))
 		assert.Equal(t, testProof, verifier.LastReceivedVerifyPoStRequest.Proof)
 		assert.Equal(t, 2, len(verifier.LastReceivedVerifyPoStRequest.SortedSectorInfo.Values()))
-		assert.Equal(t, sortedRs.Values()[0].CommR, verifier.LastReceivedVerifyPoStRequest.SortedSectorInfo.Values()[0])
-		assert.Equal(t, sortedRs.Values()[1].CommR, verifier.LastReceivedVerifyPoStRequest.SortedSectorInfo.Values()[1])
+		assert.Equal(t, sortedRs.Values()[0].CommR, verifier.LastReceivedVerifyPoStRequest.SortedSectorInfo.Values()[0].CommR)
+		assert.Equal(t, sortedRs.Values()[1].CommR, verifier.LastReceivedVerifyPoStRequest.SortedSectorInfo.Values()[1].CommR)
 	})
 
 	t.Run("Faults if proving set commitment is missing from sector commitments", func(t *testing.T) {
@@ -1048,7 +1047,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	t.Run("on-time PoSt succeeds", func(t *testing.T) {
 		// submit post
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -1062,14 +1061,14 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	t.Run("after generation attack grace period rejected", func(t *testing.T) {
 		// Rejected one block late
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.Error(t, res.ExecutionError)
 	})
 
 	t.Run("late submission charged fee", func(t *testing.T) {
 		// Rejected on the deadline with message value not carrying sufficient fees
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.Error(t, res.ExecutionError)
 
@@ -1079,7 +1078,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		fee := types.NewAttoFILFromBytes(res.Receipt.Return[0])
 		require.False(t, fee.IsZero())
 
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -1127,11 +1126,11 @@ func TestActorSlashStorageFault(t *testing.T) {
 		require.NoError(t, err)
 
 		// submit post (first sector only)
-		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		require.NoError(t, err)
 
 		// submit post (both sectors
-		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart, "submitPoSt", ancestors, []types.PoStProof{proof}, faultsDefault, doneDefault)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 
 		return st, vms, minerAddr
