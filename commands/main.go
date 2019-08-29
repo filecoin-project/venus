@@ -209,8 +209,8 @@ func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
 	return 1, err
 }
 
-func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
-	return &Env{ctx: ctx}, nil
+func buildEnv(ctx context.Context, _ *cmds.Request) (cmds.Environment, error) {
+	return NewClientEnv(ctx), nil
 }
 
 type executor struct {
