@@ -124,6 +124,7 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		Proof:    proof,
 		Fee:      feeDue,
 		GasLimit: types.NewGasUnits(submitPostGasLimit),
+		Faults:   types.EmptyFaultSet(),
 	}, nil
 }
 
