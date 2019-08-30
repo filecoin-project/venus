@@ -93,7 +93,7 @@ type GeneratePoStRequest struct {
 	ChallengeSeed    types.PoStChallengeSeed
 }
 
-// GeneratePoStResponse contains PoST proof and any faults that may have occurred.
+// GeneratePoStResponse contains PoST proof.
 type GeneratePoStResponse struct {
 	Proof types.PoStProof
 }

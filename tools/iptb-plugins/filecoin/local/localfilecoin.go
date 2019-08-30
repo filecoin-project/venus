@@ -48,7 +48,7 @@ const defaultSectorsPath = "sectors"
 const defaultLogLevel = "3"
 
 // defaultRustLogLevel is the value that will be used for RUST_LOG
-const defaultRustLogLevel = "info"
+const defaultRustLogLevel = ""
 
 // defaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
 const defaultLogJSON = "false"

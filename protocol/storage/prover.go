@@ -37,7 +37,7 @@ type ProofReader interface {
 type ProofCalculator interface {
 	// CalculatePoSt computes a proof-of-spacetime for a list of sector ids and matching seeds.
 	// It returns the Snark Proof for the PoSt and a list of sector ids that failed.
-	CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error)
+	CalculatePoSt(ctx context.Context, sectorInfo go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error)
 }
 
 // Prover orchestrates the calculation and submission of a proof-of-spacetime.
