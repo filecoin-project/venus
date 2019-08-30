@@ -86,10 +86,13 @@ type Store struct {
 
 	// Tracks tipsets by height/parentset for use by expected consensus.
 	tipIndex *TipIndex
+
+	// Reporter is used by the store to update the current status of the chain.
+	reporter Reporter
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
 		stateTreeLoader:     stl,
@@ -97,6 +100,7 @@ func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, gene
 		headEvents:          pubsub.New(128),
 		tipIndex:            NewTipIndex(),
 		genesis:             genesisCid,
+		reporter:            sr,
 	}
 }
 
@@ -289,6 +293,11 @@ func (store *Store) SetHead(ctx context.Context, ts types.TipSet) error {
 		return err
 	}
 
+	h, err := ts.Height()
+	if err != nil {
+		return err
+	}
+	store.reporter.UpdateStatus(validateHead(ts.Key()), validateHeight(h))
 	// Publish an event that we have a new head.
 	store.HeadEvents().Pub(ts, NewHeadTopic)
 
@@ -363,4 +372,9 @@ func (store *Store) GenesisCid() cid.Cid {
 // Stop stops all activities and cleans up.
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
+}
+
+// Status returns the current chain status.
+func (store *Store) Status() Status {
+	return store.reporter.Status()
 }

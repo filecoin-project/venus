@@ -25,7 +25,7 @@ import (
 
 // newChainStore creates a new chain store for tests.
 func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
-	return chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, genCid)
+	return chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genCid)
 }
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
@@ -157,7 +157,7 @@ func TestGetTipSetState(t *testing.T) {
 	// setup chain store
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, gen.At(0).Cid())
+	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -294,14 +294,17 @@ func TestHead(t *testing.T) {
 	// Set Head
 	assertSetHead(t, cs, genTS)
 	assert.Equal(t, genTS.Key(), cs.GetHead())
+	assert.Equal(t, genTS.Key(), cs.Status().ValidatedHead)
 
 	// Move head forward
 	assertSetHead(t, cs, link4)
 	assert.Equal(t, link4.Key(), cs.GetHead())
+	assert.Equal(t, link4.Key(), cs.Status().ValidatedHead)
 
 	// Move head back
 	assertSetHead(t, cs, link1)
 	assert.Equal(t, link1.Key(), cs.GetHead())
+	assert.Equal(t, link1.Key(), cs.Status().ValidatedHead)
 }
 
 func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
@@ -380,7 +383,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, cst, &state.TreeStateLoader{}, genTS.At(0).Cid())
+	chainStore := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), genTS.At(0).Cid())
 	requirePutTestChain(ctx, t, chainStore, link4.Key(), builder, 5)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -388,7 +391,7 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 

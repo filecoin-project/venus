@@ -173,8 +173,8 @@ func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.B
 	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 
-// ChainSyncStatus returns the current status of the active or last active chain sync operation.
-func (api *API) ChainSyncStatus() *chain.SyncerStatus {
+// ChainStatus returns the current status of the active or last active chain sync operation.
+func (api *API) ChainStatus() chain.Status {
 	return api.syncer.Status()
 }
 

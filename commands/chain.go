@@ -10,8 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -21,10 +19,9 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head":        storeHeadCmd,
-		"ls":          storeLsCmd,
-		"sync-status": syncStatusCmd,
-		"sync-tipset": syncTipSetCmd,
+		"head":   storeHeadCmd,
+		"ls":     storeLsCmd,
+		"status": storeStatusCmd,
 	},
 }
 
@@ -113,50 +110,12 @@ var storeLsCmd = &cmds.Command{
 	},
 }
 
-var syncStatusCmd = &cmds.Command{
+var storeStatusCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := GetPorcelainAPI(env).ChainSyncStatus()
-		if err := re.Emit(syncStatus); err != nil {
-			return err
-		}
-		return nil
-	},
-}
-
-var syncTipSetCmd = &cmds.Command{
-	Helptext: cmdkit.HelpText{
-		Tagline: "Sync and validate a chain.",
-	},
-	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID that a chain will be synced from"),
-		cmdkit.StringArg("cid", true, false, "CID of the TipSet to sync"),
-	},
-	Options: []cmdkit.Option{
-		cmdkit.BoolOption("trusted", "Trust the TipSet when syncing").WithDefault(true),
-		cmdkit.Uint64Option("height", "Height of the TipSet to sync").WithDefault(0),
-	},
-	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		peer, err := peer.IDB58Decode(req.Arguments[0])
-		if err != nil {
-			return err
-		}
-
-		tsCid, err := cid.Parse(req.Arguments[1])
-		if err != nil {
-			return errors.Wrap(err, "invalid cid "+req.Arguments[0])
-		}
-		head := types.NewTipSetKey(tsCid)
-
-		trusted := req.Options["trusted"].(bool)
-		height, err := strconv.ParseUint(req.Options["height"].(string), 10, 64)
-		if err != nil {
-			return err
-		}
-		ci := types.NewChainInfo(peer, head, height)
-		syncStatus := GetPorcelainAPI(env).ChainSyncHandleNewTipSet(req.Context, ci, trusted)
+		syncStatus := GetPorcelainAPI(env).ChainStatus()
 		if err := re.Emit(syncStatus); err != nil {
 			return err
 		}

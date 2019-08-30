@@ -8,20 +8,18 @@ import (
 
 // ChainInfo is used to track metadata about a peer and its chain.
 type ChainInfo struct {
-	Peer    peer.ID
-	Head    TipSetKey
-	Height  uint64
-	Trusted bool
+	Peer   peer.ID
+	Head   TipSetKey
+	Height uint64
 }
 
 // NewChainInfo creates a chain info from a peer id a head tipset key and a
 // chain height.
 func NewChainInfo(peer peer.ID, head TipSetKey, height uint64) *ChainInfo {
 	return &ChainInfo{
-		Peer:    peer,
-		Head:    head,
-		Height:  height,
-		Trusted: true,
+		Peer:   peer,
+		Head:   head,
+		Height: height,
 	}
 }
 

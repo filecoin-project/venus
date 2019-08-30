@@ -3,7 +3,6 @@ package chain
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
@@ -102,12 +101,14 @@ type Syncer struct {
 	// Provides message collections given cids
 	messageProvider MessageProvider
 
-	clock  clock.Clock
-	status SyncerStatus
+	clock clock.Clock
+
+	// Reporter is used by the syncer to update the current status of the chain.
+	reporter Reporter
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, c clock.Clock) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -117,16 +118,7 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvide
 		chainStore:      s,
 		messageProvider: m,
 		clock:           c,
-		status: SyncerStatus{
-			ValidatedHead:          types.UndefTipSet.Key(),
-			ValidatedHeadHeight:    0,
-			SyncingTip:             types.UndefTipSet.Key(),
-			SyncingHeight:          0,
-			SyncingTrusted:         false,
-			SyncingFetchedToHeight: 0,
-			SyncingFetchComplete:   true,
-			SyncStarted:            c.Now(),
-		},
+		reporter:        sr,
 	}
 }
 
@@ -233,6 +225,11 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 		}
 		// Gather the entire new chain for reorg comparison and logging.
 		syncer.logReorg(ctx, headTipSet, next)
+		nh, err := next.Height()
+		if err != nil {
+			return err
+		}
+		syncer.reporter.UpdateStatus(validateHead(next.Key()), validateHeight(nh))
 	}
 
 	return nil
@@ -324,34 +321,6 @@ func (syncer *Syncer) widen(ctx context.Context, ts types.TipSet) (types.TipSet,
 	return wts, nil
 }
 
-// SyncerStatus defines a structured used to represent the state of a syncer.
-type SyncerStatus struct {
-	// The heaviest that has been fully validated
-	ValidatedHead types.TipSetKey
-	// The height of ValidatedHead
-	ValidatedHeadHeight uint64
-	// They key of the head of the chain currently being fetched/validator, or undef if none
-	SyncingTip types.TipSetKey
-	// The height of SyncingTip
-	SyncingHeight uint64
-	// Whether SyncingTip is trusted as a head far away from the validated head
-	SyncingTrusted bool
-	// The lowest height fetched for SyncingTip
-	SyncingFetchedToHeight uint64
-	// Whether fetching for SyncingTip has completed (reached ValidatedHead)
-	SyncingFetchComplete bool
-	// The time at which SyncingTip began
-	SyncStarted time.Time
-}
-
-// Status returns the syncers current status, this includes whether or not the syncer is currently
-// running, the chain being synced, and the time it started processing said chain.
-func (syncer *Syncer) Status() *SyncerStatus {
-	syncer.statusMu.Lock()
-	defer syncer.statusMu.Unlock()
-	return syncer.status
-}
-
 // HandleNewTipSet extends the Syncer's chain store with the given tipset if they
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
@@ -382,14 +351,17 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		return err
 	}
 
-	syncer.setRunStatus(curHead.Key(), curHeight, trusted, ci)
-	defer syncer.completeRunStatus()
+	syncer.reporter.UpdateStatus(validateHead(curHead.Key()), validateHeight(curHeight), validateStarted(syncer.clock.Now().Unix()),
+		syncHead(ci.Head), syncHeight(ci.Height), syncTrusted(trusted), syncComplete(false))
+	defer syncer.reporter.UpdateStatus(syncComplete(true))
 
 	// If we do not trust the peer head check finality
 	if !trusted && syncer.exceedsFinalityLimit(curHeight, ci.Height) {
 		return ErrNewChainTooLong
 	}
 
+	syncer.reporter.UpdateStatus(syncFetchComplete(false))
+	defer syncer.reporter.UpdateStatus(syncFetchComplete(true))
 	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
@@ -399,7 +371,9 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		if err != nil {
 			return false, err
 		}
-		syncer.status.SyncingFetchedToHeight = height
+
+		// update status with latest fetched head and height
+		syncer.reporter.UpdateStatus(fetchHead(t.Key()), fetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
 	if err != nil {
@@ -448,14 +422,13 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())
 		}
 		parent = ts
-		syncer.status.ValidatedHead = ts.Key()
-		h, err := ts.Height()
-		if err != nil {
-			return err
-		}
-		syncer.status.ValidatedHeadHeight = h
 	}
 	return nil
+}
+
+// Status returns the current chain status.
+func (syncer *Syncer) Status() Status {
+	return syncer.reporter.Status()
 }
 
 func (syncer *Syncer) exceedsFinalityLimit(curHeight, newHeight uint64) bool {

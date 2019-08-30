@@ -9,7 +9,7 @@ import (
 
 type chainSync interface {
 	HandleNewTipSet(context.Context, *types.ChainInfo, bool) error
-	Status() *chain.SyncerStatus
+	Status() chain.Status
 }
 
 // ChainSyncProvider provides access to chain sync operations and their status.
@@ -24,9 +24,9 @@ func NewChainSyncProvider(chainSyncer chainSync) *ChainSyncProvider {
 	}
 }
 
-// Status returns the syncers current status, this includes whether or not the syncer is currently
+// Status returns the chains current status, this includes whether or not the syncer is currently
 // running, the chain being synced, and the time it started processing said chain.
-func (chs *ChainSyncProvider) Status() *chain.SyncerStatus {
+func (chs *ChainSyncProvider) Status() chain.Status {
 	return chs.sync.Status()
 }
 
