@@ -23,7 +23,6 @@ type FakeChildParams struct {
 	Consensus      consensus.Protocol
 	GenesisCid     cid.Cid
 	MinerAddr      address.Address
-	Nonce          uint64
 	NullBlockCount uint64
 	Parent         types.TipSet
 	StateRoot      cid.Cid
@@ -75,7 +74,6 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	}
 	return MkFakeChildCore(params.Parent,
 		params.StateRoot,
-		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
 		params.MinerWorker,
@@ -87,7 +85,6 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 // NOTE: This is NOT deterministic because it generates a random value for the Proof field.
 func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
-	nonce uint64,
 	nullBlockCount uint64,
 	minerAddr address.Address,
 	minerWorker address.Address,
@@ -114,7 +111,6 @@ func MkFakeChildCore(parent types.TipSet,
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
-	newBlock.Nonce = types.Uint64(nonce)
 	newBlock.StateRoot = stateRoot
 
 	return newBlock, nil
@@ -157,7 +153,6 @@ func RequireMkFakeChildCore(t *testing.T,
 	wFun func(types.TipSet) (uint64, error)) *types.Block {
 	child, err := MkFakeChildCore(params.Parent,
 		params.StateRoot,
-		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
 		params.MinerWorker,

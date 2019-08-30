@@ -34,9 +34,6 @@ type Block struct {
 	// Height is the chain height of this block.
 	Height Uint64 `json:"height"`
 
-	// Nonce is a temporary field used to differentiate blocks for testing
-	Nonce Uint64 `json:"nonce"`
-
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
 	Messages cid.Cid `json:"messages,omitempty" refmt:",omitempty"`

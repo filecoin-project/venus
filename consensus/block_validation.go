@@ -70,9 +70,9 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 }
 
 // ValidateSyntax validates a single block is correctly formed.
+// TODO this is an incomplete implementation #3277
 func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
-	// TODO special handling for genesis block
-	// figure out in: https://github.com/filecoin-project/go-filecoin/issues/3121
+	// TODO special handling for genesis block #3121
 	if blk.Height == 0 {
 		return nil
 	}
@@ -94,7 +94,7 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 			return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
 		}
 	}
-	// TODO validate block signature: 1054
+	// TODO validate block signature #1054
 	return nil
 }
 
