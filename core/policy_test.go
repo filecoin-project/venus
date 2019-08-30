@@ -234,6 +234,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 			b.SetTicket([]byte{2})
 			b.SetTimestamp(0) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
+
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)
 
 		// With blocks ordered [b1, b2], everything is ok.

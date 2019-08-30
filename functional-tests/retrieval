@@ -8,6 +8,7 @@ source "$DIR/lib/helpers.bash"
 
 export GO_FILECOIN_LOG_LEVEL=3
 export FILECOIN_PROOFS_FAST_DELAY_SECONDS=1
+export RUST_LOG=info
 
 if [ -z "$1" ]; then
     FIXTURES_PATH="./fixtures/test"

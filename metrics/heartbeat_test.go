@@ -190,7 +190,6 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 		Parents:         types.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
-		Nonce:           0,
 		MessageReceipts: types.EmptyMessagesCID,
 		Messages:        types.EmptyReceiptsCID,
 	})

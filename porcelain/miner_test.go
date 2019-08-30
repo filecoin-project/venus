@@ -208,9 +208,7 @@ func (mtp *minerSetPricePlumbing) MessageWait(ctx context.Context, msgCid cid.Ci
 
 	require.True(mtp.testing, msgCid.Equals(mtp.msgCid))
 
-	block := &types.Block{
-		Nonce: 393,
-	}
+	block := &types.Block{}
 	mtp.blockCid = block.Cid()
 
 	// call back

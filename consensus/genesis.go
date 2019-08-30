@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -186,7 +187,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		genesis := &types.Block{
 			StateRoot:       c,
-			Nonce:           1337,
 			Messages:        emptyMessagesCid,
 			MessageReceipts: emptyReceiptsCid,
 		}
