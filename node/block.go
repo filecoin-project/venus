@@ -31,6 +31,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
 	trusted := true
+	log.Info("Calling Syncer.HandleNewTipSet from AddNewBlock")
 	if err := node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
 		return err
 	}
@@ -63,7 +64,8 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	trusted := true
+	trusted := false
+	log.Info("Calling Syncer.HandleNewTipSet from processBlock")
 	err = node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
 	if err != nil {
 		return errors.Wrap(err, "processing block from network")

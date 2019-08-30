@@ -575,6 +575,7 @@ func (node *Node) Start(ctx context.Context) error {
 			// TODO Implement principled trusting of ChainInfo's
 			// to address in #2674
 			trusted := true
+			log.Info("Calling Syncer.HandleNewTipSet from hello")
 			err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
 			if err != nil {
 				log.Infof("error handling tipset from hello %s: %s", ci, err)
