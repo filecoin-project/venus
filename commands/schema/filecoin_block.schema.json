@@ -20,9 +20,6 @@
         "miner": {
           "type": "string"
         },
-        "nonce": {
-          "type": "string"
-        },
         "parents": {
           "items": {
             "$ref": "#/definitions/Cid"
@@ -61,7 +58,6 @@
         "height",
         "messageReceipts",
         "messages",
-        "nonce",
         "parents",
         "proof",
         "stateRoot",

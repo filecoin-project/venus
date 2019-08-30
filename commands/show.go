@@ -63,7 +63,6 @@ all other block properties will be included as well.`,
 Miner:  %s
 Weight: %s
 Height: %s
-Nonce:  %s
 Messages:  %s
 Receipts:  %s
 Timestamp:  %s
@@ -71,7 +70,6 @@ Timestamp:  %s
 				block.Header.Miner,
 				wStr,
 				strconv.FormatUint(uint64(block.Header.Height), 10),
-				strconv.FormatUint(uint64(block.Header.Nonce), 10),
 				block.Header.Messages.String(),
 				block.Header.MessageReceipts.String(),
 				strconv.FormatUint(uint64(block.Header.Timestamp), 10),
@@ -131,13 +129,11 @@ all other block properties will be included as well.`,
 Miner:  %s
 Weight: %s
 Height: %s
-Nonce:  %s
 Timestamp:  %s
 `,
 				block.Miner,
 				wStr,
 				strconv.FormatUint(uint64(block.Height), 10),
-				strconv.FormatUint(uint64(block.Nonce), 10),
 				strconv.FormatUint(uint64(block.Timestamp), 10),
 			)
 			return err

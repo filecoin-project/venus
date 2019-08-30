@@ -193,7 +193,6 @@ func TestWaitConflicting(t *testing.T) {
 			StateRoot:   baseBlock.StateRoot,
 			Signer:      mockSigner,
 			MinerWorker: worker2,
-			Nonce:       uint64(1),
 		})
 	sm2Cid, err := msgStore.StoreMessages(ctx, []*types.SignedMessage{sm2})
 	require.NoError(t, err)

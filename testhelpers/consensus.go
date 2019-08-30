@@ -82,7 +82,6 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		Parents:       baseTipSet.Key(),
 		ParentWeight:  types.Uint64(10000 * height),
 		Height:        types.Uint64(height),
-		Nonce:         types.Uint64(height),
 		StateRoot:     stateRootCid,
 		ElectionProof: poStProof,
 	}
