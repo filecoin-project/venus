@@ -194,6 +194,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 			recursionDepth *= recursionMultiplier
 		}
 	}
+
 	return out, nil
 }
 

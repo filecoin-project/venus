@@ -323,6 +323,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	// It's better for multiple calls to wait here than to try to fetch the chain independently.
 	syncer.mu.Lock()
 	defer syncer.mu.Unlock()
+	logSyncer.Infof("Handling new block from network cid: %s, height %d", ci.Head.String(), ci.Height)
 
 	// If the store already has this tipset then the syncer is finished.
 	if syncer.chainStore.HasTipSetAndState(ctx, ci.Head) {

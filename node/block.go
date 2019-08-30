@@ -54,7 +54,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	}
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 
-	log.Infof("Received new block from network cid: %s", blk.Cid().String())
+	log.Infof("Received new block from network cid: %s, height %d", blk.Cid().String(), uint64(blk.Height))
 	log.Debugf("Received new block from network: %s", blk)
 
 	// The block we went to all that effort decoding is dropped on the floor!
