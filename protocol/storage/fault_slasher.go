@@ -46,6 +46,9 @@ type FaultSlasher struct {
 	log      logging.EventLogger
 	outbox   slashingMsgOutbox // what sends the slashing message
 	plumbing monitorPlumbing   // what does the message query
+
+	// Records addresses of miners the slasher has already attempted to penalise.
+	slashed map[string]struct{}
 }
 
 // NewFaultSlasher creates a new FaultSlasher with the provided plumbing, outbox and message sender.
@@ -57,6 +60,8 @@ func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, gasPric
 		outbox:   outbox,
 		gasPrice: gasPrice,
 		gasLimit: gasLimit,
+
+		slashed: make(map[string]struct{}),
 	}
 }
 
@@ -103,6 +108,19 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 
 	// Slash late miners.
 	for minerStr, state := range *lms {
+		if _, ok := sfm.slashed[minerStr]; ok {
+			// Skip slashed miner.
+			// This logic is not perfect. A miner that appears to be late could redeem itself
+			// (e.g. due to a chain re-org) such that a submitted slashing message fails, but
+			// this slasher will remember that it has attempted to slash that miner, and won't
+			// re-attempt to do so in the future.
+			// The `slashed` cache key should include the proving period for which the attempt was
+			// made so that if a miner does enter another period, it becomes slashable again.
+			// Getting that information requires painful plumbing of data through actor methods
+			// and the ABI, until we have better direct state access ability for non-actor code.
+			// Alternatives are discussed in #3358
+			continue
+		}
 		minerAddr, err := address.NewFromString(minerStr)
 		if err != nil {
 			return errors.Wrap(err, "could not create minerAddr string")
@@ -116,6 +134,7 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 		if err != nil {
 			return errors.Wrap(err, "slashStorageFault message failed")
 		}
+		sfm.slashed[minerStr] = struct{}{}
 	}
 	return nil
 }
