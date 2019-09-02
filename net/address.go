@@ -23,3 +23,12 @@ func PeerAddrsToAddrInfo(addrs []string) ([]peer.AddrInfo, error) {
 	}
 	return pis, nil
 }
+
+// AddrInfoToPeerIDs converts a slice of AddrInfo to a slice of peerID's.
+func AddrInfoToPeerIDs(ai []peer.AddrInfo) []peer.ID {
+	var pis []peer.ID
+	for _, a := range ai {
+		pis = append(pis, a.ID)
+	}
+	return pis
+}
