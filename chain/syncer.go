@@ -370,27 +370,30 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	for i, ts := range chain {
 		// TODO: this "i==0" leaks EC specifics into syncer abstraction
 		// for the sake of efficiency, consider plugging up this leak.
+		var wts types.TipSet
 		if i == 0 {
-			wts, err := syncer.widen(ctx, ts)
+			wts, err = syncer.widen(ctx, ts)
 			if err != nil {
 				return err
 			}
-			if wts.Defined() {
-				logSyncer.Debug("attempt to sync after widen")
-				err = syncer.syncOne(ctx, parent, wts)
-				if err != nil {
-					return err
-				}
-			}
 		}
-		if err = syncer.syncOne(ctx, parent, ts); err != nil {
-			// While `syncOne` can indeed fail for reasons other than consensus,
-			// adding to the badTipSets at this point is the simplest, since we
-			// have access to the chain. If syncOne fails for non-consensus reasons,
-			// there is no assumption that the running node's data is valid at all,
-			// so we don't really lose anything with this simplification.
-			syncer.badTipSets.AddChain(chain[i:])
-			return err
+		if wts.Defined() {
+			logSyncer.Debug("attempt to sync after widen")
+			err = syncer.syncOne(ctx, parent, wts)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = syncer.syncOne(ctx, parent, ts)
+			if err != nil {
+				// While `syncOne` can indeed fail for reasons other than consensus,
+				// adding to the badTipSets at this point is the simplest, since we
+				// have access to the chain. If syncOne fails for non-consensus reasons,
+				// there is no assumption that the running node's data is valid at all,
+				// so we don't really lose anything with this simplification.
+				syncer.badTipSets.AddChain(chain[i:])
+				return err
+			}
 		}
 		if i%500 == 0 {
 			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())
