@@ -407,7 +407,6 @@ func TestRepoJournal(t *testing.T) {
 	t.Run("test", func(t *testing.T) {
 		r.Record("test", "message", "a", 1, "b", 2)
 		journalText := getJournalText(filepath.Join(repoPath, "journal/test.json"))
-		fmt.Println(journalText)
 		assert.Contains(t, journalText, `"a":1`)
 		assert.Contains(t, journalText, `"b":2`)
 	})

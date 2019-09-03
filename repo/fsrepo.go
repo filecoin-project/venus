@@ -294,9 +294,8 @@ func (r *FSRepo) newJournal(topic string) (*zap.SugaredLogger, error) {
 	zapCfg.EncoderConfig.MessageKey = "message"
 	journalFileName := filepath.Join(r.path, journalPrefix, genJournalFileName(topic))
 	zapCfg.OutputPaths = []string{journalFileName}
-	cfg := zap.Config(zapCfg)
 
-	journal, err := cfg.Build()
+	journal, err := zapCfg.Build()
 	if err != nil {
 		return nil, err
 	}
