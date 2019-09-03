@@ -29,11 +29,10 @@ func init() {
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
 	return &Block{
-		Ticket:          ticket,
+		Tickets:         []Ticket{{VRFProof: ticket}},
 		Parents:         NewTipSetKey(parentCid),
 		ParentWeight:    Uint64(parentWeight),
 		Height:          Uint64(42 + uint64(height)),
-		Nonce:           7,
 		Messages:        cidGetter(),
 		StateRoot:       cidGetter(),
 		MessageReceipts: cidGetter(),
@@ -105,13 +104,13 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("min ticket", func(t *testing.T) {
 		tsTicket, _ := RequireNewTipSet(t, b1).MinTicket()
-		assert.Equal(t, b1.Ticket, tsTicket)
+		assert.Equal(t, b1.Tickets[0], tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b2).MinTicket()
-		assert.Equal(t, b2.Ticket, tsTicket)
+		assert.Equal(t, b2.Tickets[0], tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b3, b2, b1).MinTicket()
-		assert.Equal(t, b1.Ticket, tsTicket)
+		assert.Equal(t, b1.Tickets[0], tsTicket)
 	})
 
 	t.Run("min timestamp", func(t *testing.T) {

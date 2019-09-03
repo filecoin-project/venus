@@ -156,7 +156,9 @@ function wait_for_message_in_chain_by_method_and_sender {
         exit 1
     fi
 
-    __hodl=$(echo "$(chain_ls "$3")" | jq ".[] | select(.messages != null) | .messages[].meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
+    __hodl=$(echo "$(chain_ls $3)" \
+        | jq -r '.[].messages["/"]' | while read -r cid; do ./go-filecoin show messages $cid --enc=json --repodir=$3; done | jq -s 'add' \
+        | jq ".[] | select(.meteredMessage != null) | .meteredMessage.message | select(.method == \"$1\").from | select(. == \"$2\")" 2>/dev/null | head -n 1 || true)
 
     __polls_remaining=$((__polls_remaining - 1))
     local seconds_remaining=$((__polls_remaining*10))

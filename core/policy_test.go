@@ -223,16 +223,18 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.SignedMessage{msgs[0]},
 				types.EmptyReceipts(1),
 			)
-			b.SetTicket([]byte{0})
+			b.SetTicket([]byte{1})
+			b.SetTimestamp(1)
 		})
 		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[1]},
 				types.EmptyReceipts(1),
 			)
-			b.SetTicket([]byte{1})
+			b.SetTicket([]byte{2})
 			b.SetTimestamp(0) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
+
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)
 
 		// With blocks ordered [b1, b2], everything is ok.
@@ -244,9 +246,9 @@ func TestMessageQueuePolicy(t *testing.T) {
 		// processing the blocks in canonical (ticket) order.
 		requireEnqueue(q, msgs[0], 200)
 		requireEnqueue(q, msgs[1], 201)
-		b1.Ticket = []byte{1}
-		b2.Ticket = []byte{0}
-		err = policy.HandleNewHead(ctx, q, nil, []types.TipSet{requireTipset(t, b1, b2)})
+		b1.Tickets = []types.Ticket{{VRFProof: []byte{1}}}
+		b2.Tickets = []types.Ticket{{VRFProof: []byte{0}}}
+		err = policy.HandleNewHead(ctx, q, []types.TipSet{requireTipset(t, root)}, []types.TipSet{requireTipset(t, b1, b2)})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})

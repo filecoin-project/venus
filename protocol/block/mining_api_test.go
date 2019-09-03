@@ -33,7 +33,7 @@ func TestAPI_MineOnce(t *testing.T) {
 	blk, err := api.MiningOnce(ctx)
 	require.Nil(t, err)
 	require.NotNil(t, blk)
-	assert.NotNil(t, blk.Ticket)
+	assert.Equal(t, 1, len(blk.Tickets))
 }
 
 func TestMiningAPI_MiningSetup(t *testing.T) {
@@ -128,7 +128,7 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 	blk, err = api.MiningOnce(ctx)
 	require.Nil(t, err)
 	require.NotNil(t, blk)
-	assert.NotNil(t, blk.Ticket)
+	assert.Equal(t, 1, len(blk.Tickets))
 }
 
 func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {

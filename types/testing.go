@@ -117,26 +117,6 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	return addr, errors.New("public key not found in wallet")
 }
 
-// CreateTicket is effectively a duplicate of Wallet CreateTicket for testing purposes.
-func (ms MockSigner) CreateTicket(proof PoStProof, signerPubKey []byte) (Signature, error) {
-	var ticket Signature
-
-	signerAddr, err := ms.GetAddressForPubKey(signerPubKey)
-	if err != nil {
-		return ticket, err
-	}
-
-	buf := append(proof[:], signerAddr.Bytes()...)
-	h := blake2b.Sum256(buf)
-
-	ticket, err = ms.SignBytes(h[:], signerAddr)
-	if err != nil {
-		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
-		panic(errMsg)
-	}
-	return ticket, nil
-}
-
 // NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.
 // The message is unique wrt the closure returned, not globally. You can use this function
 // in tests instead of manually creating messages -- it both reduces duplication and gives us

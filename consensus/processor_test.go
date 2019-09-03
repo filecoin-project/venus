@@ -134,6 +134,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		StateRoot: stCid,
 		Miner:     minerAddr,
 		Messages:  cidGetter(),
+		Tickets:   []types.Ticket{{VRFProof: []byte{0x1}}},
 	}
 
 	msg2 := types.NewMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil)
@@ -145,6 +146,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		StateRoot: stCid,
 		Miner:     minerAddr,
 		Messages:  cidGetter(),
+		Tickets:   []types.Ticket{{VRFProof: []byte{0x2}}},
 	}
 
 	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
@@ -202,7 +204,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	blk1 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Ticket:    []byte{0, 0}, // Block with smaller ticket
+		Tickets:   []types.Ticket{{VRFProof: []byte{0, 0}}}, // Block with smaller ticket
 		Miner:     minerAddr,
 	}
 
@@ -213,7 +215,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	blk2 := &types.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Ticket:    []byte{1, 1},
+		Tickets:   []types.Ticket{{VRFProof: []byte{1, 1}}},
 		Miner:     minerAddr,
 	}
 

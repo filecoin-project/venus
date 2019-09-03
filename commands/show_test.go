@@ -30,7 +30,6 @@ func TestBlockDaemon(t *testing.T) {
 		assert.Contains(t, output, "Block Details")
 		assert.Contains(t, output, "Weight: 0")
 		assert.Contains(t, output, "Height: 1")
-		assert.Contains(t, output, "Nonce:  0")
 		assert.Contains(t, output, "Timestamp:  ")
 	})
 
@@ -47,7 +46,6 @@ func TestBlockDaemon(t *testing.T) {
 		assert.Contains(t, output, "Block Details")
 		assert.Contains(t, output, "Weight: 0")
 		assert.Contains(t, output, "Height: 1")
-		assert.Contains(t, output, "Nonce:  0")
 		assert.Contains(t, output, "Timestamp:  ")
 		assert.Contains(t, output, "Messages:  ")
 	})

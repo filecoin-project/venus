@@ -27,6 +27,8 @@ var (
 	errNoBlocks = errors.New("no blocks for tipset")
 	// errUndefTipSet is returned from tipset methods invoked on an undefined tipset.
 	errUndefTipSet = errors.New("undefined tipset")
+	// errNoTickets is returned from tipset methods invoked on tipsets with malformed ticket arrays.
+	errNoTickets = errors.New("Incomparable block with empty ticket array in tipset")
 )
 
 // UndefTipSet is a singleton representing a nil or undefined tipset.
@@ -57,14 +59,18 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 			if blk.ParentWeight != weight {
 				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
 			}
+
+			if len(blk.Tickets) == 0 {
+				return UndefTipSet, errors.Errorf("Uncomparible block %s with empty ticket array", blk.Cid().String())
+			}
 		}
 		sorted[i] = blk
 		cids[i] = blk.Cid()
 	}
 
-	// Sort blocks by ticket.
+	// Sort blocks by first ticket.
 	sort.Slice(sorted, func(i, j int) bool {
-		cmp := bytes.Compare(sorted[i].Ticket, sorted[j].Ticket)
+		cmp := bytes.Compare(sorted[i].Tickets[0].SortKey(), sorted[j].Tickets[0].SortKey())
 		if cmp == 0 {
 			// Break ticket ties with the block CIDs, which are distinct.
 			cmp = bytes.Compare(sorted[i].Cid().Bytes(), sorted[j].Cid().Bytes())
@@ -110,11 +116,15 @@ func (ts TipSet) ToSlice() []*Block {
 }
 
 // MinTicket returns the smallest ticket of all blocks in the tipset.
-func (ts TipSet) MinTicket() (Signature, error) {
+func (ts TipSet) MinTicket() (Ticket, error) {
 	if len(ts.blocks) == 0 {
-		return nil, errUndefTipSet
+		return Ticket{}, errUndefTipSet
 	}
-	return ts.blocks[0].Ticket, nil
+	// TODO #2223 fix this to properly handle multiple tickts per block
+	if len(ts.blocks[0].Tickets) == 0 {
+		return Ticket{}, errNoTickets
+	}
+	return ts.blocks[0].Tickets[0], nil
 }
 
 // MinTimestamp returns the smallest timestamp of all blocks in the tipset.

@@ -227,7 +227,7 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, b
 		return false, err
 	}
 
-	cmp := bytes.Compare(bTicket, aTicket)
+	cmp := bytes.Compare(bTicket.VRFProof, aTicket.VRFProof)
 	if cmp != 0 {
 		// a is heavier if b's ticket is greater than a's ticket.
 		return cmp == 1, nil
@@ -297,7 +297,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		// the mined block.
 
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
-		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
+		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Tickets[0], blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "can't check for winning ticket")
 		}
@@ -314,7 +314,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 //    See https://github.com/filecoin-project/specs/blob/master/expected-consensus.md
 //    for an explanation of the math here.
 func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree,
-	ticket types.Signature, miner address.Address) (bool, error) {
+	ticket types.Ticket, miner address.Address) (bool, error) {
 
 	totalPower, err := ptv.Total(ctx, st, bs)
 	if err != nil {
@@ -331,12 +331,13 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 
 // CompareTicketPower abstracts the actual comparison logic so it can be used by some test
 // helpers
-func CompareTicketPower(ticket types.Signature, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
+func CompareTicketPower(ticket types.Ticket, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
 	lhs := &big.Int{}
-	lhs.SetBytes(ticket)
+	lhs.SetBytes(ticket.VRFProof)
 	lhs.Mul(lhs, totalPower.BigInt())
 	rhs := &big.Int{}
 	rhs.Mul(minerPower.BigInt(), ticketDomain)
+
 	return lhs.Cmp(rhs) < 0
 }
 
@@ -352,7 +353,7 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStC
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, nullBlkCount)
-	buf = append(smallest, buf[:n]...)
+	buf = append(smallest.VRFProof, buf[:n]...)
 
 	h := sha256.Sum256(buf)
 	return h, nil
@@ -422,9 +423,15 @@ func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, e
 // 			 signerAddr address.Address, the the signer's address. Must exist in the wallet
 //      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
 //  returns:  types.Signature ( []byte ), error
-func CreateTicket(proof types.PoStProof, signerAddr address.Address, signer TicketSigner) (types.Signature, error) {
-
+func CreateTicket(proof types.PoStProof, signerAddr address.Address, signer TicketSigner) (types.Ticket, error) {
 	buf := append(proof[:], signerAddr.Bytes()...)
 	// Don't hash it here; it gets hashed in walletutil.Sign
-	return signer.SignBytes(buf[:], signerAddr)
+	sig, err := signer.SignBytes(buf[:], signerAddr)
+	if err != nil {
+		return types.Ticket{}, err
+	}
+
+	return types.Ticket{
+		VRFProof: types.VRFPi(sig),
+	}, nil
 }
