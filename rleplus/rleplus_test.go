@@ -64,7 +64,7 @@ func TestRleplus(t *testing.T) {
 	})
 
 	t.Run("Encode allows all runs sizes possible uint64", func(t *testing.T) {
-		// create a run of math.MaxUint64 - 1
+		// create a run of math.MaxUint64
 		ints := []uint64{math.MaxUint64}
 		_, _, err := rleplus.Encode(ints)
 		assert.NilError(t, err)
