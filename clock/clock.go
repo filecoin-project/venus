@@ -8,6 +8,7 @@ import (
 // time module.
 type Clock interface {
 	Now() time.Time
+	Sleep(d time.Duration)
 }
 
 // SystemClock delegates calls to the time package.
@@ -19,6 +20,12 @@ func NewSystemClock() *SystemClock {
 }
 
 // Now returns the current local time.
-func (bc *SystemClock) Now() time.Time {
+func (sc *SystemClock) Now() time.Time {
 	return time.Now()
+}
+
+// Sleep pauses the current goroutine for at least the duration d.
+// A negative or zero duration causes Sleep to return immediately.
+func (sc *SystemClock) Sleep(d time.Duration) {
+	time.Sleep(d)
 }
