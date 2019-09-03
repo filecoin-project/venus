@@ -190,6 +190,11 @@ type Node struct {
 
 	// Router is a router from IPFS
 	Router routing.Routing
+
+	// ChainSynced is a latch that releases when a nodes chain reaches a caught-up state.
+	// It serves as a barrier to be released when the initial chain sync has completed.
+	// Services which depend on a more-or-less synced chain can wait for this before starting up.
+	ChainSynced *moresync.Latch
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
@@ -470,6 +475,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		cborStore:    &ipldCborStore,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
+		ChainSynced:  moresync.NewLatch(1),
 		MessageStore: messageStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
@@ -570,10 +576,6 @@ func (node *Node) Start(ctx context.Context) error {
 		// Register peer tracker disconnect function with network.
 		net.TrackerRegisterDisconnect(node.host.Network(), node.PeerTracker)
 
-		// Establish a barrier to be released when the initial chain sync has completed.
-		// Services which depend on a more-or-less synced chain can wait for this before starting up.
-		chainSynced := moresync.NewLatch(1)
-
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
@@ -595,13 +597,13 @@ func (node *Node) Start(ctx context.Context) error {
 			// sync done until it's caught up enough that it will accept blocks from pubsub.
 			// This might require additional rounds of hello.
 			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			chainSynced.Done()
+			node.ChainSynced.Done()
 		}
 		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
-			chainSynced.Wait()
+			node.ChainSynced.Wait()
 
 			// Log some information about the synced chain
 			if ts, err := node.ChainReader.GetTipSet(node.ChainReader.GetHead()); err == nil {
