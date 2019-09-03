@@ -126,6 +126,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.1.0
 	go.etcd.io/bbolt v1.3.3 // indirect
 	go.opencensus.io v0.22.0
+	go.uber.org/zap v1.10.0
 	golang.org/x/exp v0.0.0-20190718202018-cfdd5522f6f6 // indirect
 	golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9 // indirect
 	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028 // indirect

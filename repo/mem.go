@@ -40,6 +40,10 @@ func NewInMemoryRepo() *MemRepo {
 	}
 }
 
+// Record not implement in mem repo
+func (mr *MemRepo) Record(topic string, msg string, keysAndValues ...interface{}) {
+}
+
 // Config returns the configuration object.
 func (mr *MemRepo) Config() *config.Config {
 	mr.lk.RLock()

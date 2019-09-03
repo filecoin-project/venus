@@ -391,6 +391,28 @@ func TestRepoAPIFile(t *testing.T) {
 	})
 }
 
+func TestRepoJournal(t *testing.T) {
+	tf.UnitTest(t)
+	container, err := ioutil.TempDir("", "container")
+	require.NoError(t, err)
+	defer RequireRemoveAll(t, container)
+	repoPath := path.Join(container, "repo")
+
+	cfg := config.NewDefaultConfig()
+	assert.NoError(t, err, InitFSRepo(repoPath, 42, cfg))
+
+	r, err := OpenFSRepo(repoPath, 42)
+	assert.NoError(t, err)
+
+	t.Run("test", func(t *testing.T) {
+		r.Record("test", "message", "a", 1, "b", 2)
+		journalText := getJournalText(filepath.Join(repoPath, "journal/test.json"))
+		fmt.Println(journalText)
+		assert.Contains(t, journalText, `"a":1`)
+		assert.Contains(t, journalText, `"b":2`)
+	})
+}
+
 func checkNewRepoFiles(t *testing.T, path string, version uint) {
 	content, err := ioutil.ReadFile(filepath.Join(path, configFilename))
 	assert.NoError(t, err)
@@ -453,4 +475,12 @@ func ConfigExists(dir string) bool {
 		return false
 	}
 	return err == nil
+}
+
+func getJournalText(path string) string {
+	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }
