@@ -1,44 +1,49 @@
 package porcelain_test
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	. "github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func TestSealNow(t *testing.T) {
-	t.Run("adds piece and triggers sealing when staged sectors is empty", func(t *testing.T) {
-		p := newTestSectorBuilderPlumbing(0)
+	t.Run("triggers sealing", func(t *testing.T) {
+		p := newTestSectorBuilderPlumbing(1)
 
 		err := SealNow(context.Background(), p)
+		require.NoError(t, err)
+
+		// seals sectors
+		assert.Equal(t, 1, p.sectorbuilder.sealAllSectorsCount)
+	})
+}
+
+func TestAddPiece(t *testing.T) {
+	t.Run("adds piece", func(t *testing.T) {
+		p := newTestSectorBuilderPlumbing(0)
+
+		assert.Equal(t, 0, p.sectorbuilder.addPieceCount)
+
+		_, err := AddPiece(context.Background(), p, bytes.NewReader(testPieceData))
 		require.NoError(t, err)
 
 		// adds a piece
 		assert.Equal(t, 1, p.sectorbuilder.addPieceCount)
 
-		// seals sectors
-		assert.Equal(t, 1, p.sectorbuilder.sealAllSectorsCount)
-	})
-
-	t.Run("does not add a piece when staged sectors exist", func(t *testing.T) {
-		p := newTestSectorBuilderPlumbing(4)
-
-		err := SealNow(context.Background(), p)
-		require.NoError(t, err)
-
-		// does not add a piece
-		assert.Equal(t, 0, p.sectorbuilder.addPieceCount)
-
-		// seals sectors
-		assert.Equal(t, 1, p.sectorbuilder.sealAllSectorsCount)
+		// doesn't seal sectors
+		assert.Equal(t, 0, p.sectorbuilder.sealAllSectorsCount)
 	})
 }
 
@@ -53,8 +58,22 @@ type testSectorBuilderPlumbing struct {
 	sectorbuilder *testSectorBuilder
 }
 
+var testPieceData = []byte{1, 2, 3}
+
 func (tsbp *testSectorBuilderPlumbing) SectorBuilder() sectorbuilder.SectorBuilder {
 	return tsbp.sectorbuilder
+}
+
+func (tsbp *testSectorBuilderPlumbing) DAGImportData(ctx context.Context, pieceReader io.Reader) (ipld.Node, error) {
+	return cbor.WrapObject(testPieceData, types.DefaultHashFunction, -1)
+}
+
+func (tsbp *testSectorBuilderPlumbing) DAGCat(ctx context.Context, cid cid.Cid) (io.Reader, error) {
+	return bytes.NewReader(testPieceData), nil
+}
+
+func (tsbp *testSectorBuilderPlumbing) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
+	return uint64(len(testPieceData)), nil
 }
 
 type testSectorBuilder struct {
