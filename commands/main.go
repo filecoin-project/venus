@@ -125,6 +125,7 @@ ACTOR COMMANDS
 MESSAGE COMMANDS
   go-filecoin message                - Manage messages
   go-filecoin mpool                  - Manage the message pool
+  go-filecoin outbox                 - Manage the outbound message queue
 
 TOOL COMMANDS
   go-filecoin inspect                - Show info about the go-filecoin node
