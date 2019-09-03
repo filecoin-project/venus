@@ -225,11 +225,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 		}
 		// Gather the entire new chain for reorg comparison and logging.
 		syncer.logReorg(ctx, headTipSet, next)
-		nh, err := next.Height()
-		if err != nil {
-			return err
-		}
-		syncer.reporter.UpdateStatus(validateHead(next.Key()), validateHeight(nh))
 	}
 
 	return nil
@@ -351,8 +346,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		return err
 	}
 
-	syncer.reporter.UpdateStatus(validateHead(curHead.Key()), validateHeight(curHeight), validateStarted(syncer.clock.Now().Unix()),
-		syncHead(ci.Head), syncHeight(ci.Height), syncTrusted(trusted), syncComplete(false))
+	syncer.reporter.UpdateStatus(syncingStarted(syncer.clock.Now().Unix()), syncHead(ci.Head), syncHeight(ci.Height), syncTrusted(trusted), syncComplete(false))
 	defer syncer.reporter.UpdateStatus(syncComplete(true))
 
 	// If we do not trust the peer head check finality
@@ -361,7 +355,6 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	}
 
 	syncer.reporter.UpdateStatus(syncFetchComplete(false))
-	defer syncer.reporter.UpdateStatus(syncFetchComplete(true))
 	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
@@ -376,6 +369,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		syncer.reporter.UpdateStatus(fetchHead(t.Key()), fetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
+	syncer.reporter.UpdateStatus(syncFetchComplete(true))
 	if err != nil {
 		return err
 	}

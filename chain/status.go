@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"sync"
 
+	logging "github.com/ipfs/go-log"
+
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var logChainStatus = logging.Logger("chain/status")
 
 // Reporter defines an interface to updating and reporting the status of the blockchain.
 type Reporter interface {
@@ -26,7 +30,7 @@ func (sr *StatusReporter) UpdateStatus(update ...StatusUpdates) {
 	for _, u := range update {
 		u(sr.status)
 	}
-	logSyncer.Infof("syncing status: %s", sr.status.String())
+	logChainStatus.Debugf("syncing status: %s", sr.status.String())
 }
 
 // Status returns a copy of the current status.
@@ -41,21 +45,21 @@ func NewStatusReporter() *StatusReporter {
 	}
 }
 
-// Status defines a structured used to represent the state of a chain store and syncer.
+// Status defines a structure used to represent the state of a chain store and syncer.
 type Status struct {
-	// The heaviest that has been fully validated.
+	// The heaviest TipSet that has been fully validated.
 	ValidatedHead types.TipSetKey
 	// The height of ValidatedHead.
 	ValidatedHeadHeight uint64
-	// Unix time at which validation of chain at head SyncingTip began, zero if valdation hasn't started.
-	ValidatedStarted int64
 
-	// They key of the head of the chain currently being fetched/validator, or undef if none.
+	// They head of the chain currently being fetched/validated, or undef if none.
 	SyncingHead types.TipSetKey
 	// The height of SyncingHead.
 	SyncingHeight uint64
 	// Whether SyncingTip is trusted as a head far away from the validated head.
 	SyncingTrusted bool
+	// Unix time at which syncing of chain at SyncingHead began, zero if valdation hasn't started.
+	SyncingStarted int64
 	// Whether SyncingHead has been validated.
 	SyncingComplete bool
 	// Whether SyncingHead has been fetched.
@@ -72,10 +76,10 @@ func newDefaultChainStatus() *Status {
 	return &Status{
 		ValidatedHead:        types.UndefTipSet.Key(),
 		ValidatedHeadHeight:  0,
-		ValidatedStarted:     0,
 		SyncingHead:          types.UndefTipSet.Key(),
 		SyncingHeight:        0,
 		SyncingTrusted:       false,
+		SyncingStarted:       0,
 		SyncingComplete:      true,
 		SyncingFetchComplete: true,
 		FetchingHead:         types.UndefTipSet.Key(),
@@ -85,13 +89,13 @@ func newDefaultChainStatus() *Status {
 
 // String returns the Status as a string
 func (s Status) String() string {
-	return fmt.Sprintf("validatedHead=%s, validatedHeight=%d, validatedStarted=%d, syncingHead=%s, syncingHeight=%d, syncingTrusted=%t, syncingComplete=%t syncingFetchComplete=%t fetchingHead=%s, fetchingHeight=%d",
-		s.ValidatedHead, s.ValidatedHeadHeight, s.ValidatedStarted,
+	return fmt.Sprintf("validatedHead=%s, validatedHeight=%d, syncingStarted=%d, syncingHead=%s, syncingHeight=%d, syncingTrusted=%t, syncingComplete=%t syncingFetchComplete=%t fetchingHead=%s, fetchingHeight=%d",
+		s.ValidatedHead, s.ValidatedHeadHeight, s.SyncingStarted,
 		s.SyncingHead, s.SyncingHeight, s.SyncingTrusted, s.SyncingComplete, s.SyncingFetchComplete,
 		s.FetchingHead, s.FetchingHeight)
 }
 
-// StatusUpdates defines a type for updateing syncer status.
+// StatusUpdates defines a type for ipdating syncer status.
 type StatusUpdates func(*Status)
 
 //
@@ -106,12 +110,6 @@ func validateHead(u types.TipSetKey) StatusUpdates {
 func validateHeight(u uint64) StatusUpdates {
 	return func(s *Status) {
 		s.ValidatedHeadHeight = u
-	}
-}
-
-func validateStarted(u int64) StatusUpdates {
-	return func(s *Status) {
-		s.ValidatedStarted = u
 	}
 }
 
@@ -134,6 +132,12 @@ func syncHeight(u uint64) StatusUpdates {
 func syncTrusted(u bool) StatusUpdates {
 	return func(s *Status) {
 		s.SyncingTrusted = u
+	}
+}
+
+func syncingStarted(u int64) StatusUpdates {
+	return func(s *Status) {
+		s.SyncingStarted = u
 	}
 }
 

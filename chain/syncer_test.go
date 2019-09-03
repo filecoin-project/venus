@@ -396,9 +396,9 @@ func TestSyncerStatus(t *testing.T) {
 
 	// verify default status
 	s0 := syncer.Status()
-	assert.Equal(t, types.UndefTipSet.Key(), s0.ValidatedHead)
+	assert.Equal(t, genesis.Key(), s0.ValidatedHead)
 	assert.Equal(t, uint64(0), s0.ValidatedHeadHeight)
-	assert.Equal(t, int64(0), s0.ValidatedStarted)
+	assert.Equal(t, int64(0), s0.SyncingStarted)
 	assert.Equal(t, types.UndefTipSet.Key(), s0.SyncingHead)
 	assert.Equal(t, uint64(0), s0.SyncingHeight)
 	assert.Equal(t, false, s0.SyncingTrusted)
@@ -460,7 +460,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
 
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
+	sr := chain.NewStatusReporter()
+	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, sr, genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{genStateRoot, genesis}))
 	require.NoError(t, store.SetHead(ctx, genesis))
@@ -468,7 +469,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(eval, store, builder, builder, sr, th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }
