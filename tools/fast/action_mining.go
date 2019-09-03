@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -17,6 +18,20 @@ func (f *Filecoin) MiningOnce(ctx context.Context) (*types.Block, error) {
 	}
 
 	return &out, nil
+}
+
+// MiningSetup prepares the node to receive storage deals
+func (f *Filecoin) MiningSetup(ctx context.Context) error {
+	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "setup")
+	if err != nil {
+		return err
+	}
+
+	if out.ExitCode() > 0 {
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+	}
+
+	return nil
 }
 
 // MiningStart runs the `mining Start` command against the filecoin process
@@ -47,6 +62,17 @@ func (f *Filecoin) MiningStop(ctx context.Context) error {
 	return nil
 }
 
+// MiningAddress runs the `mining address` command against the filecoin process
+func (f *Filecoin) MiningAddress(ctx context.Context) (address.Address, error) {
+	var out address.Address
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "mining", "address"); err != nil {
+		return address.Undef, err
+	}
+
+	return out, nil
+}
+
 // MiningStatus runs the `mining status` command against the filecoin process
 func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResult, error) {
 	var out commands.MiningStatusResult
@@ -56,4 +82,18 @@ func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResul
 	}
 
 	return out, nil
+}
+
+// SealNow adds a staged sector if none exists and then triggers sealing on it
+func (f *Filecoin) SealNow(ctx context.Context) error {
+	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "seal-now")
+	if err != nil {
+		return err
+	}
+
+	if out.ExitCode() > 0 {
+		return fmt.Errorf("filecoin command: %s, exited with non-zero exitcode: %d", out.Args(), out.ExitCode())
+	}
+
+	return nil
 }

@@ -25,9 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
-// exposed here, to be available during testing
-var sigCh = make(chan os.Signal, 1)
-
 var daemonCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Start a long-running daemon process",
@@ -41,14 +38,14 @@ var daemonCmd = &cmds.Command{
 		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(consensus.DefaultBlockTime.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		return daemonRun(req, re, env)
+		return daemonRun(req, re)
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.Encoders[cmds.Text],
 	},
 }
 
-func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	// third precedence is config file.
 	rep, err := getRepo(req)
 	if err != nil {
@@ -103,11 +100,11 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 	}
 
 	if fcn.OfflineMode {
-		re.Emit("Filecoin node running in offline mode (libp2p is disabled)\n") // nolint: errcheck
+		_ = re.Emit("Filecoin node running in offline mode (libp2p is disabled)\n")
 	} else {
-		re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host().ID().Pretty())) // nolint: errcheck
+		_ = re.Emit(fmt.Sprintf("My peer ID is %s\n", fcn.Host().ID().Pretty()))
 		for _, a := range fcn.Host().Addrs() {
-			re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a)) // nolint: errcheck
+			_ = re.Emit(fmt.Sprintf("Swarm listening on: %s\n", a))
 		}
 	}
 
@@ -115,7 +112,20 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment)
 		writer.WriterGroup.AddWriter(os.Stdout)
 	}
 
-	return runAPIAndWait(req.Context, fcn, rep.Config(), req)
+	ready := make(chan interface{}, 1)
+	go func() {
+		<-ready
+		_ = re.Emit(fmt.Sprintf("API server listening on %s\n", rep.Config().API.Address))
+	}()
+
+	var terminate = make(chan os.Signal, 1)
+	signal.Notify(terminate, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(terminate)
+
+	// The request is expected to remain open so the daemon uses the request context.
+	// Pass a new context here if the flow changes such that the command should exit while leaving
+	// a forked deamon running.
+	return RunAPIAndWait(req.Context, fcn, rep.Config().API, ready, terminate)
 }
 
 func getRepo(req *cmds.Request) (repo.Repo, error) {
@@ -127,16 +137,19 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 	return repo.OpenFSRepo(repoDir, repo.Version)
 }
 
-func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, req *cmds.Request) error {
+// RunAPIAndWait starts an API server and waits for it to finish.
+// The `ready` channel is closed when the server is running and its API address has been
+// saved to the node's repo.
+// A message sent to or closure of the `terminate` channel signals the server to stop.
+func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
 	if err := nd.Start(ctx); err != nil {
 		return err
 	}
 	defer nd.Stop(ctx)
 
 	servenv := &Env{
-		// TODO: should this be the passed in context?  Issue 2641
 		blockMiningAPI: nd.BlockMiningAPI,
-		ctx:            context.Background(),
+		ctx:            ctx,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
 		retrievalAPI:   nd.RetrievalAPI,
@@ -145,26 +158,21 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 
 	cfg := cmdhttp.NewServerConfig()
 	cfg.APIPath = APIPrefix
-	cfg.SetAllowedOrigins(config.API.AccessControlAllowOrigin...)
-	cfg.SetAllowedMethods(config.API.AccessControlAllowMethods...)
-	cfg.SetAllowCredentials(config.API.AccessControlAllowCredentials)
+	cfg.SetAllowedOrigins(config.AccessControlAllowOrigin...)
+	cfg.SetAllowedMethods(config.AccessControlAllowMethods...)
+	cfg.SetAllowCredentials(config.AccessControlAllowCredentials)
 
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(sigCh)
-
-	maddr, err := ma.NewMultiaddr(config.API.Address)
+	maddr, err := ma.NewMultiaddr(config.Address)
 	if err != nil {
 		return err
 	}
 
-	// For the case when /ip4/127.0.0.1/tcp/0 is passed,
-	// we want to fetch the new multiaddr from the listener, as it may (should)
-	// have resolved to some other value. i.e. resolve port zero to real value.
-	apiLis, err := manet.Listen(maddr)
+	// Listen on the configured address in order to bind the port number in case it has
+	// been configured as zero (i.e. OS-provided)
+	apiListener, err := manet.Listen(maddr)
 	if err != nil {
 		return err
 	}
-	config.API.Address = apiLis.Multiaddr().String()
 
 	handler := http.NewServeMux()
 	handler.Handle("/debug/pprof/", http.DefaultServeMux)
@@ -175,26 +183,31 @@ func runAPIAndWait(ctx context.Context, nd *node.Node, config *config.Config, re
 	}
 
 	go func() {
-		err := apiserv.Serve(manet.NetListener(apiLis))
+		err := apiserv.Serve(manet.NetListener(apiListener))
 		if err != nil && err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
 
-	// write our api address to file
-	if err := nd.Repo.SetAPIAddr(config.API.Address); err != nil {
+	// Write the resolved API address to the repo
+	config.Address = apiListener.Multiaddr().String()
+	if err := nd.Repo.SetAPIAddr(config.Address); err != nil {
 		return errors.Wrap(err, "Could not save API address to repo")
 	}
+	// Signal that the sever has started and then wait for a signal to stop.
+	close(ready)
+	received := <-terminate
+	if received != nil {
+		fmt.Println("Received signal", received)
+	}
+	fmt.Println("Shutting down...")
 
-	signal := <-sigCh
-	fmt.Printf("Got %s, shutting down...\n", signal)
-
-	// allow 5 seconds for clean shutdown. Ideally it would never take this long.
+	// Allow a grace period for clean shutdown.
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	if err := apiserv.Shutdown(ctx); err != nil {
-		fmt.Println("failed to shut down api server:", err)
+		fmt.Println("Error shutting down API server:", err)
 	}
 
 	return nil

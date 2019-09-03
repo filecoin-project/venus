@@ -3,12 +3,14 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -115,26 +117,6 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	return addr, errors.New("public key not found in wallet")
 }
 
-// CreateTicket is effectively a duplicate of Wallet CreateTicket for testing purposes.
-func (ms MockSigner) CreateTicket(proof PoStProof, signerPubKey []byte) (Signature, error) {
-	var ticket Signature
-
-	signerAddr, err := ms.GetAddressForPubKey(signerPubKey)
-	if err != nil {
-		return ticket, err
-	}
-
-	buf := append(proof[:], signerAddr.Bytes()...)
-	h := blake2b.Sum256(buf)
-
-	ticket, err = ms.SignBytes(h[:], signerAddr)
-	if err != nil {
-		errMsg := fmt.Sprintf("SignBytes error in CreateTicket: %s", err.Error())
-		panic(errMsg)
-	}
-	return ticket, nil
-}
-
 // NewSignedMessageForTestGetter returns a closure that returns a SignedMessage unique to that invocation.
 // The message is unique wrt the closure returned, not globally. You can use this function
 // in tests instead of manually creating messages -- it both reduces duplication and gives us
@@ -167,22 +149,26 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 
 // Type-related test helpers.
 
-// SomeCid generates a Cid for use in tests where you want a Cid but don't care
-// what it is.
-func SomeCid() cid.Cid {
-	b := &Block{}
-	return b.Cid()
+// CidFromString generates Cid from string input
+func CidFromString(t *testing.T, input string) cid.Cid {
+	prefix := cid.V1Builder{Codec: cid.DagCBOR, MhType: DefaultHashFunction}
+	cid, err := prefix.Sum([]byte(input))
+	require.NoError(t, err)
+	return cid
 }
 
 // NewCidForTestGetter returns a closure that returns a Cid unique to that invocation.
 // The Cid is unique wrt the closure returned, not globally. You can use this function
 // in tests.
 func NewCidForTestGetter() func() cid.Cid {
-	i := Uint64(31337)
+	i := 31337
 	return func() cid.Cid {
-		b := &Block{Height: i}
+		obj, err := cbor.WrapObject([]int{i}, DefaultHashFunction, -1)
+		if err != nil {
+			panic(err)
+		}
 		i++
-		return b.Cid()
+		return obj.Cid()
 	}
 }
 
@@ -212,25 +198,6 @@ func NewMessageForTestGetter() func() *Message {
 			s,
 			nil)
 	}
-}
-
-// NewBlockForTest returns a new block. If a parent block is provided, the returned
-// block will be configured as if it were a child of that parent. The returned block
-// has not been persisted into the store.
-func NewBlockForTest(parent *Block, nonce uint64) *Block {
-	block := &Block{
-		Nonce:           Uint64(nonce),
-		Messages:        []*SignedMessage{},
-		MessageReceipts: []*MessageReceipt{},
-	}
-
-	if parent != nil {
-		block.Height = parent.Height + 1
-		block.StateRoot = parent.StateRoot
-		block.Parents.Add(parent.Cid())
-	}
-
-	return block
 }
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks

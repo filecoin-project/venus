@@ -21,8 +21,6 @@ func SetPriceGetAsk(ctx context.Context, miner *fast.Filecoin, price *big.Float,
 		return porcelain.Ask{}, err
 	}
 
-	CtxMiningOnce(ctx)
-
 	response, err := miner.MessageWait(ctx, pinfo.AddAskCid)
 	if err != nil {
 		return porcelain.Ask{}, err

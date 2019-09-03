@@ -3,17 +3,18 @@ package commands_test
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
-	"github.com/filecoin-project/go-filecoin/protocol/storage"
+	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
@@ -78,36 +79,70 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 func TestDuplicateDeals(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	miner := th.NewDaemon(t,
-		th.WithMiner(fixtures.TestMiners[0]),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(fixtures.TestAddresses[0]),
-	).Start()
-	defer miner.ShutdownSuccess()
-
-	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
-	defer client.ShutdownSuccess()
-
-	miner.RunSuccess("mining start")
-	miner.UpdatePeerID()
-
-	miner.ConnectSuccess(client)
-
-	miner.MinerSetPrice(fixtures.TestMiners[0], fixtures.TestAddresses[0], "20", "10")
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
-	client.RunSuccess("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5")
-
-	t.Run("propose a duplicate deal with the '--allow-duplicates' flag", func(t *testing.T) {
-		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
-		client.RunSuccess("client", "propose-storage-deal", "--allow-duplicates", fixtures.TestMiners[0], dataCid, "0", "5")
+	// Give the deal time to complete
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
 	})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+	clientDaemon := env.GenesisMiner
 
-	t.Run("propose a duplicate deal _WITHOUT_ the '--allow-duplicates' flag", func(t *testing.T) {
-		proposeDealOutput := client.Run("client", "propose-storage-deal", fixtures.TestMiners[0], dataCid, "0", "5").ReadStderr()
-		expectedError := fmt.Sprintf("Error: %s", storage.Errors[storage.ErrDuplicateDeal].Error())
-		assert.Equal(t, expectedError, proposeDealOutput)
+	minerDaemon := env.RequireNewNodeWithFunds(1111)
+
+	duration := uint64(5)
+	collateral := big.NewInt(int64(100))
+	askPrice := big.NewFloat(0.5)
+	expiry := big.NewInt(int64(10000))
+
+	pparams, err := minerDaemon.Protocol(ctx)
+	require.NoError(t, err)
+
+	sinfo := pparams.SupportedSectors[0]
+
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
+	ask, err := series.CreateStorageMinerWithAsk(ctx, minerDaemon, collateral, askPrice, expiry, sinfo.Size)
+	require.NoError(t, err)
+
+	err = minerDaemon.MiningSetup(ctx)
+	require.NoError(t, err)
+
+	// mine createChannel message
+	series.CtxMiningNext(ctx, 1)
+
+	_, err = minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+	require.NoError(t, err)
+
+	t.Run("Can make a second deal if --allow-duplicates is passed", func(t *testing.T) {
+		// mine createChannel message
+		series.CtxMiningNext(ctx, 1)
+
+		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, true, minerDaemon, clientDaemon, ask.ID, duration)
+		assert.NoError(t, err)
+		require.NotNil(t, dealResp)
+		assert.Equal(t, storagedeal.Accepted, dealResp.State)
 	})
+	t.Run("Cannot make a second deal --allow-duplicates is NOT passed", func(t *testing.T) {
+		dealResp, err := minerClientMakeDealWithAllowDupes(ctx, t, false, minerDaemon, clientDaemon, ask.ID, duration)
+		assert.Error(t, err)
+		assert.Nil(t, dealResp)
+	})
+}
+
+// requireMakeDeal creates a deal with allowDuplicates set to true
+func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowDupes bool, minerDaemon, clientDaemon *fast.Filecoin, askID uint64, duration uint64) (*storagedeal.Response, error) {
+	f := files.NewBytesFile([]byte("HODLHODLHODL"))
+	dataCid, err := clientDaemon.ClientImport(ctx, f)
+	require.NoError(t, err)
+
+	var minerAddress address.Address
+	err = minerDaemon.ConfigGet(ctx, "mining.minerAddress", &minerAddress)
+	require.NoError(t, err)
+	dealResponse, err := clientDaemon.ClientProposeStorageDeal(ctx, dataCid, minerAddress, askID, duration, fast.AOAllowDuplicates(allowDupes))
+	return dealResponse, err
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
@@ -230,7 +265,12 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 func TestSelfDialStorageGoodError(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})
+	// set block time sufficiently high that client can import its piece
+	// and generate a commitment before the deal proposing context expires
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)},
+	})
+
 	// Teardown after test ends.
 	defer func() {
 		err := env.Teardown(ctx)
@@ -240,27 +280,19 @@ func TestSelfDialStorageGoodError(t *testing.T) {
 	// Start mining.
 	miningNode := env.RequireNewNodeWithFunds(1000)
 
-	// This is what mining start should do, but FAST uses mining once
-	// for some very helpful builtins and because of issue 2579 we need to
-	// mine once in a loop instead of calling start.  Once #2579 is fixed
-	// this can be replaced with start.
-	minerCreateDoneCh := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-minerCreateDoneCh:
-				return
-			default:
-				series.CtxMiningOnce(ctx)
-			}
-		}
-	}()
-
 	collateral := big.NewInt(int64(1))
 	price := big.NewFloat(float64(0.001))
 	expiry := big.NewInt(int64(500))
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry)
-	minerCreateDoneCh <- struct{}{}
+
+	pparams, err := miningNode.Protocol(ctx)
+	require.NoError(t, err)
+
+	sinfo := pparams.SupportedSectors[0]
+
+	// mine the create storage message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miningNode, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	// Try to make a storage deal with self and fail on self dial.

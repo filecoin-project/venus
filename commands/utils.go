@@ -3,7 +3,12 @@ package commands
 import (
 	"fmt"
 	"io"
+	"strconv"
 
+	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/pkg/errors"
+
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -95,4 +100,38 @@ func optionalBlockHeight(o interface{}) (ret *types.BlockHeight, err error) {
 		return nil, ErrInvalidBlockHeight
 	}
 	return validAt, nil
+}
+
+func optionalAddr(o interface{}) (ret address.Address, err error) {
+	if o != nil {
+		ret, err = address.NewFromString(o.(string))
+		if err != nil {
+			err = errors.Wrap(err, "invalid from address")
+		}
+	}
+	return
+}
+
+func optionalSectorSizeWithDefault(o interface{}, def *types.BytesAmount) (*types.BytesAmount, error) {
+	if o != nil {
+		n, err := strconv.ParseUint(o.(string), 10, 64)
+		if err != nil || n == 0 {
+			return nil, fmt.Errorf("invalid sector size: %s", o.(string))
+		}
+
+		return types.NewBytesAmount(n), nil
+	}
+
+	return def, nil
+}
+
+func fromAddrOrDefault(req *cmds.Request, env cmds.Environment) (address.Address, error) {
+	addr, err := optionalAddr(req.Options["from"])
+	if err != nil {
+		return address.Undef, err
+	}
+	if addr.Empty() {
+		return GetPorcelainAPI(env).WalletDefaultAddress()
+	}
+	return addr, nil
 }

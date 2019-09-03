@@ -21,7 +21,7 @@ func WaitForBlockHeight(ctx context.Context, client *fast.Filecoin, bh *types.Bl
 			break
 		}
 
-		CtxSleepDelay(ctx)
+		<-CtxSleepDelay(ctx)
 	}
 
 	return nil

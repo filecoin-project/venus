@@ -8,9 +8,9 @@ import (
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-host"
-	net "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	host "github.com/libp2p/go-libp2p-core/host"
+	net "github.com/libp2p/go-libp2p-core/network"
+	peer "github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -33,13 +33,13 @@ var log = logging.Logger("/fil/hello")
 
 // Message is the data structure of a single message in the hello protocol.
 type Message struct {
-	HeaviestTipSetCids   []cid.Cid
+	HeaviestTipSetCids   types.TipSetKey
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
 	CommitSha            string
 }
 
-type syncCallback func(from peer.ID, cids []cid.Cid, height uint64)
+type helloCallback func(ci *types.ChainInfo)
 
 type getTipSetFunc func() (types.TipSet, error)
 
@@ -52,8 +52,8 @@ type Handler struct {
 
 	genesis cid.Cid
 
-	// chainSyncCB is called when new peers tell us about their chain
-	chainSyncCB syncCallback
+	// callBack is called when new peers tell us about their chain
+	callBack helloCallback
 
 	//  is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
@@ -65,11 +65,11 @@ type Handler struct {
 
 // New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func New(h host.Host, gen cid.Cid, syncCallback syncCallback, getHeaviestTipSet getTipSetFunc, net string, commitSha string) *Handler {
+func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, net string, commitSha string) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,
-		chainSyncCB:       syncCallback,
+		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
 		net:               net,
 		commitSha:         commitSha,
@@ -122,11 +122,12 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return ErrBadGenesis
 	}
-	if (h.net == "devnet-test" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
+	if (h.net == "devnet-staging" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
 		return ErrWrongVersion
 	}
 
-	h.chainSyncCB(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight)
+	ci := types.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight)
+	h.callBack(ci)
 	return nil
 }
 
@@ -142,7 +143,7 @@ func (h *Handler) getOurHelloMessage() *Message {
 
 	return &Message{
 		GenesisHash:          h.genesis,
-		HeaviestTipSetCids:   heaviest.ToSortedCidSet().ToSlice(),
+		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		CommitSha:            h.commitSha,
 	}

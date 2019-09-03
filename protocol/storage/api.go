@@ -22,13 +22,13 @@ func NewAPI(storageClient *Client) API {
 
 // ProposeStorageDeal calls the storage client ProposeDeal function
 func (a *API) ProposeStorageDeal(ctx context.Context, data cid.Cid, miner address.Address,
-	askid uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
+	askid uint64, duration uint64, allowDuplicates bool) (*storagedeal.SignedResponse, error) {
 
 	return a.sc.ProposeDeal(ctx, miner, data, askid, duration, allowDuplicates)
 }
 
 // QueryStorageDeal calls the storage client QueryDeal function
-func (a *API) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.Response, error) {
+func (a *API) QueryStorageDeal(ctx context.Context, prop cid.Cid) (*storagedeal.SignedResponse, error) {
 	return a.sc.QueryDeal(ctx, prop)
 }
 

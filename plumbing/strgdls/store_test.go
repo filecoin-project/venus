@@ -46,13 +46,15 @@ func TestDealStoreRoundTrip(t *testing.T) {
 			ValidAt: *validAt,
 		}}}
 
-	proposal := &storagedeal.Proposal{
-		PieceRef:     pieceRefCid,
-		Size:         size,
-		TotalPrice:   totalPrice,
-		Duration:     duration,
-		MinerAddress: minerAddr,
-		Payment:      payment,
+	proposal := &storagedeal.SignedProposal{
+		Proposal: storagedeal.Proposal{
+			PieceRef:     pieceRefCid,
+			Size:         size,
+			TotalPrice:   totalPrice,
+			Duration:     duration,
+			MinerAddress: minerAddr,
+			Payment:      payment,
+		},
 	}
 
 	proposalCid, err := convert.ToCid(proposal)
@@ -64,12 +66,14 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	storageDeal := &storagedeal.Deal{
 		Miner:    minerAddr,
 		Proposal: proposal,
-		Response: &storagedeal.Response{
-			State:       storagedeal.Accepted,
-			Message:     responseMessage,
-			ProposalCid: proposalCid,
-			ProofInfo:   &storagedeal.ProofInfo{CommitmentMessage: messageCid},
-			Signature:   []byte("signature"),
+		Response: &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:       storagedeal.Accepted,
+				Message:     responseMessage,
+				ProposalCid: proposalCid,
+				ProofInfo:   &storagedeal.ProofInfo{CommitmentMessage: messageCid},
+			},
+			Signature: []byte("signature"),
 		},
 	}
 

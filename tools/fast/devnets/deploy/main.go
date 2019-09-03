@@ -171,8 +171,8 @@ func NetworkPO(network string) fast.ProcessInitOption {
 	switch network {
 	case "user":
 		return fast.PODevnetUser()
-	case "test":
-		return fast.PODevnetTest()
+	case "staging":
+		return fast.PODevnetStaging()
 	case "nightly":
 		return fast.PODevnetNightly()
 	}

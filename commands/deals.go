@@ -111,7 +111,7 @@ Redeem vouchers for FIL on the storage deal specified with the given deal CID.
 		previewOption,
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,8 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -45,7 +47,7 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		someCid := types.SomeCid()
+		someCid := types.CidFromString(t, "somecid")
 
 		_, err := dag.GetNode(ctx, someCid.String())
 		assert.EqualError(t, err, "merkledag: not found")
@@ -61,7 +63,7 @@ func TestDAGGet(t *testing.T) {
 		dserv := merkledag.NewDAGService(blkserv)
 		dag := NewDAG(dserv)
 
-		ipldnode := types.NewBlockForTest(nil, 1234).ToNode()
+		ipldnode := chain.NewBuilder(t, address.Undef).NewGenesis().At(0).ToNode()
 
 		// put into out blockservice
 		assert.NoError(t, blkserv.AddBlock(ipldnode))

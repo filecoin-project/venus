@@ -3,13 +3,15 @@ package testhelpers
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"testing"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-peer"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -17,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -113,26 +116,11 @@ func VMStorage() vm.StorageMap {
 	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
-// MustSign signs a given address with the provided mocksigner or panics if it
-// cannot.
-func MustSign(s types.MockSigner, msgs ...*types.Message) []*types.SignedMessage {
-	var smsgs []*types.SignedMessage
-	for _, m := range msgs {
-		gasLimit := types.NewGasUnits(999)
-		sm, err := types.NewSignedMessage(*m, &s, types.NewGasPrice(0), gasLimit)
-		if err != nil {
-			panic(err)
-		}
-		smsgs = append(smsgs, sm)
-	}
-	return smsgs
-}
-
 // CreateTestMiner creates a new test miner with the given peerID and miner
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
 func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
-	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid)
+	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid, 0)
 }
 
 // CreateTestMinerWith creates a new test miner with the given peerID miner
@@ -144,17 +132,29 @@ func CreateTestMinerWith(
 	vms vm.StorageMap,
 	minerOwnerAddr address.Address,
 	pid peer.ID,
+	height uint64,
 ) address.Address {
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
 	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
-	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(0))
+	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)
-
+	require.NotNil(t, result)
+	require.NoError(t, result.ExecutionError)
 	addr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return addr
+}
+
+// GetTotalPower get total miner power from storage market
+func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesAmount {
+	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getTotalStorage", nil)
+	require.NoError(t, err)
+	require.NoError(t, res.ExecutionError)
+	require.Equal(t, uint8(0), res.Receipt.ExitCode)
+	require.Equal(t, 1, len(res.Receipt.Return))
+	return types.NewBytesAmountFromBytes(res.Receipt.Return[0])
 }
 
 // RequireGetNonce returns the next nonce of the actor at address a within
@@ -183,4 +183,146 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 	vms := vm.NewStorageMap(bs)
 
 	return st, vms
+}
+
+type testStorage struct {
+	state interface{}
+}
+
+var _ exec.Storage = testStorage{}
+
+// Put satisfies the Storage interface but does nothing.
+func (ts testStorage) Put(v interface{}) (cid.Cid, error) {
+	return cid.Cid{}, nil
+}
+
+// Get returns the internal state variable encoded into bytes
+func (ts testStorage) Get(cid.Cid) ([]byte, error) {
+	node, err := cbor.WrapObject(ts.state, types.DefaultHashFunction, -1)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return node.RawData(), nil
+}
+
+// Commit satisfies the Storage interface but does nothing
+func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
+	return nil
+}
+
+// Head returns an empty Cid to satisfy the Storage interface
+func (ts testStorage) Head() cid.Cid {
+	return cid.Cid{}
+}
+
+// FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
+type FakeVMContext struct {
+	MessageValue            *types.Message
+	StorageValue            exec.Storage
+	BalanceValue            types.AttoFIL
+	BlockHeightValue        *types.BlockHeight
+	VerifierValue           verification.Verifier
+	RandomnessValue         []byte
+	IsFromAccountActorValue bool
+	Sender                  func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Addresser               func() (address.Address, error)
+	Charger                 func(cost types.GasUnits) error
+	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
+	ActorCreator            func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+}
+
+var _ exec.VMContext = &FakeVMContext{}
+
+// NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
+func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
+	randomness := make([]byte, 32)
+	copy(randomness[:], []byte("only random in the figurative sense"))
+
+	addressGetter := address.NewForTestGetter()
+	return &FakeVMContext{
+		MessageValue:            message,
+		StorageValue:            &testStorage{state: state},
+		BlockHeightValue:        types.NewBlockHeight(0),
+		BalanceValue:            types.ZeroAttoFIL,
+		RandomnessValue:         randomness,
+		IsFromAccountActorValue: true,
+		Charger: func(cost types.GasUnits) error {
+			return nil
+		},
+		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			return randomness, nil
+		},
+		Sender: func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+			return [][]byte{}, 0, nil
+		},
+		Addresser: func() (address.Address, error) {
+			return addressGetter(), nil
+		},
+		ActorCreator: func(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
+			return nil
+		},
+	}
+}
+
+// NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
+func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier verification.Verifier) *FakeVMContext {
+	vmctx := NewFakeVMContext(message, state)
+	vmctx.VerifierValue = verifier
+	return vmctx
+}
+
+// Message is the message that triggered this invocation
+func (tc *FakeVMContext) Message() *types.Message {
+	return tc.MessageValue
+}
+
+// Storage provides and interface to actor state
+func (tc *FakeVMContext) Storage() exec.Storage {
+	return tc.StorageValue
+}
+
+// Send sends a message to another actor
+func (tc *FakeVMContext) Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+	return tc.Sender(to, method, value, params)
+}
+
+// AddressForNewActor creates an address to be used to create a new actor
+func (tc *FakeVMContext) AddressForNewActor() (address.Address, error) {
+	return tc.Addresser()
+}
+
+// BlockHeight is the current chain height
+func (tc *FakeVMContext) BlockHeight() *types.BlockHeight {
+	return tc.BlockHeightValue
+}
+
+// MyBalance is the balance of the current actor
+func (tc *FakeVMContext) MyBalance() types.AttoFIL {
+	return tc.BalanceValue
+}
+
+// IsFromAccountActor returns true if the actor that sent the message is an account actor
+func (tc *FakeVMContext) IsFromAccountActor() bool {
+	return tc.IsFromAccountActorValue
+}
+
+// Charge charges gas for the current action
+func (tc *FakeVMContext) Charge(cost types.GasUnits) error {
+	return tc.Charger(cost)
+}
+
+// SampleChainRandomness provides random bytes used in verification challenges
+func (tc *FakeVMContext) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
+	return tc.Sampler(sampleHeight)
+}
+
+// CreateNewActor creates an actor of a given type
+func (tc *FakeVMContext) CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error {
+	return tc.ActorCreator(addr, code, initalizationParams)
+}
+
+// Verifier provides an interface to the proofs verifier
+func (tc *FakeVMContext) Verifier() verification.Verifier {
+	return tc.VerifierValue
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -32,6 +33,9 @@ type SectorBuilder interface {
 
 	// SealAllStagedSectors seals any non-empty staged sectors.
 	SealAllStagedSectors(ctx context.Context) error
+
+	// GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
+	GetAllStagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error)
 
 	// SectorSealResults returns an unbuffered channel that is sent a value
 	// whenever sealing completes. All calls to SectorSealResults will get the
@@ -68,9 +72,10 @@ type SectorSealResult struct {
 
 // PieceInfo is information about a filecoin piece
 type PieceInfo struct {
-	Ref            cid.Cid `json:"ref"`
-	Size           uint64  `json:"size"` // TODO: use BytesAmount
-	InclusionProof []byte  `json:"inclusionProof"`
+	Ref            cid.Cid     `json:"ref"`
+	Size           uint64      `json:"size"` // TODO: use BytesAmount
+	InclusionProof []byte      `json:"inclusionProof"`
+	CommP          types.CommP `json:"commP"`
 }
 
 // SealedSectorMetadata is a sector that has been sealed by the PoRep setup process

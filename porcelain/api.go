@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	minerActor "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -49,9 +50,19 @@ func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
 	return ChainBlockHeight(a)
 }
 
+// ChainGetFullBlock returns the full block given the header cid
+func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
+	return GetFullBlock(ctx, a, id)
+}
+
 // CreatePayments establishes a payment channel and create multiple payments against it
 func (a *API) CreatePayments(ctx context.Context, config CreatePaymentsParams) (*CreatePaymentsReturn, error) {
 	return CreatePayments(ctx, a, config)
+}
+
+// ValidatePaymentVoucherCondition validates that the given condition is a payment condition and has the right values
+func (a *API) ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	return ValidatePaymentVoucherCondition(ctx, condition, minerAddr, commP, pieceSize)
 }
 
 // DealGet returns a single deal matching a given cid or an error
@@ -80,31 +91,6 @@ func (a *API) DealsLs(ctx context.Context) (<-chan *StorageDealLsResult, error) 
 // It's useful for integration testing.
 func (a *API) MessagePoolWait(ctx context.Context, messageCount uint) ([]*types.SignedMessage, error) {
 	return MessagePoolWait(ctx, a, messageCount)
-}
-
-// MessageSendWithDefaultAddress calls MessageSend but with a default from
-// address if none is provided
-func (a *API) MessageSendWithDefaultAddress(
-	ctx context.Context,
-	from,
-	to address.Address,
-	value types.AttoFIL,
-	gasPrice types.AttoFIL,
-	gasLimit types.GasUnits,
-	method string,
-	params ...interface{},
-) (cid.Cid, error) {
-	return MessageSendWithDefaultAddress(
-		ctx,
-		a,
-		from,
-		to,
-		value,
-		gasPrice,
-		gasLimit,
-		method,
-		params...,
-	)
 }
 
 // MinerCreate creates a miner
@@ -140,9 +126,19 @@ func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Addres
 	return MinerGetOwnerAddress(ctx, a, minerAddr)
 }
 
+// MinerGetWorkerAddress queries for the worker address of the given miner
+func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return MinerGetWorkerAddress(ctx, a, minerAddr)
+}
+
 // MinerGetSectorSize queries for the sector size of the given miner.
 func (a *API) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
 	return MinerGetSectorSize(ctx, a, minerAddr)
+}
+
+// MinerCalculateLateFee queries for the fee required for a PoSt submitted at some height.
+func (a *API) MinerCalculateLateFee(ctx context.Context, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	return MinerCalculateLateFee(ctx, a, minerAddr, height)
 }
 
 // MinerGetLastCommittedSectorID queries for the sector size of the given miner.
@@ -163,6 +159,21 @@ func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (pe
 // MinerSetPrice configures the price of storage. See implementation for details.
 func (a *API) MinerSetPrice(ctx context.Context, from address.Address, miner address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits, price types.AttoFIL, expiry *big.Int) (MinerSetPriceResponse, error) {
 	return MinerSetPrice(ctx, a, from, miner, gasPrice, gasLimit, price, expiry)
+}
+
+// MinerGetPower queries for the power of the given miner
+func (a *API) MinerGetPower(ctx context.Context, minerAddr address.Address) (MinerPower, error) {
+	return MinerGetPower(ctx, a, minerAddr)
+}
+
+// MinerGetProvingPeriod queries for the proving period of the given miner
+func (a *API) MinerGetProvingPeriod(ctx context.Context, minerAddr address.Address) (MinerProvingPeriod, error) {
+	return MinerGetProvingPeriod(ctx, a, minerAddr)
+}
+
+// MinerGetCollateral queries for the proving period of the given miner
+func (a *API) MinerGetCollateral(ctx context.Context, minerAddr address.Address) (types.AttoFIL, error) {
+	return MinerGetCollateral(ctx, a, minerAddr)
 }
 
 // MinerPreviewSetPrice calculates the amount of Gas needed for a call to MinerSetPrice.
@@ -217,6 +228,21 @@ func (a *API) PaymentChannelVoucher(
 // ClientListAsks returns a channel with asks from the latest chain state
 func (a *API) ClientListAsks(ctx context.Context) <-chan Ask {
 	return ClientListAsks(ctx, a)
+}
+
+// ClientValidateDeal checks to see that a storage deal is in the `Complete` state, and that its PIP is valid
+func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proofInfo *storagedeal.ProofInfo) error {
+	return ClientVerifyStorageDeal(ctx, a, proposalCid, proofInfo)
+}
+
+// CalculatePoSt invokes the sector builder to calculate a proof-of-spacetime.
+func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+	return CalculatePoSt(ctx, a, sortedCommRs, seed)
+}
+
+// SealNow forces the sectorbuilder to either seal the staged sectors it has or create a new one and seal it immediately
+func (a *API) SealNow(ctx context.Context) error {
+	return SealNow(ctx, a)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given

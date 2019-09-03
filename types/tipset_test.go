@@ -7,9 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
@@ -18,10 +16,11 @@ const parentWeight = uint64(1337000)
 var (
 	cid1, cid2        cid.Cid
 	mockSignerForTest MockSigner
+	cidGetter         func() cid.Cid
 )
 
 func init() {
-	cidGetter := NewCidForTestGetter()
+	cidGetter = NewCidForTestGetter()
 	cid1 = cidGetter()
 	cid2 = cidGetter()
 
@@ -29,22 +28,14 @@ func init() {
 }
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
-	addrGetter := address.NewForTestGetter()
-
-	m1 := NewMessage(mockSignerForTest.Addresses[0], addrGetter(), 0, NewAttoFILFromFIL(10), "hello", []byte(msg))
-	sm1, err := NewSignedMessage(*m1, &mockSignerForTest, NewGasPrice(0), NewGasUnits(0))
-	require.NoError(t, err)
-	ret := []byte{1, 2}
-
 	return &Block{
-		Ticket:          ticket,
-		Parents:         NewSortedCidSet(parentCid),
+		Tickets:         []Ticket{{VRFProof: ticket}},
+		Parents:         NewTipSetKey(parentCid),
 		ParentWeight:    Uint64(parentWeight),
 		Height:          Uint64(42 + uint64(height)),
-		Nonce:           7,
-		Messages:        []*SignedMessage{sm1},
-		StateRoot:       SomeCid(),
-		MessageReceipts: []*MessageReceipt{{ExitCode: 1, Return: [][]byte{ret}}},
+		Messages:        cidGetter(),
+		StateRoot:       cidGetter(),
+		MessageReceipts: cidGetter(),
 		Timestamp:       Uint64(timestamp),
 	}
 }
@@ -91,9 +82,9 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("key", func(t *testing.T) {
-		assert.Equal(t, NewSortedCidSet(b1.Cid()), RequireNewTipSet(t, b1).ToSortedCidSet())
-		assert.Equal(t, NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid()),
-			RequireNewTipSet(t, b1, b2, b3).ToSortedCidSet())
+		assert.Equal(t, NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
+		assert.Equal(t, NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
+			RequireNewTipSet(t, b1, b2, b3).Key())
 	})
 
 	t.Run("height", func(t *testing.T) {
@@ -113,13 +104,13 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("min ticket", func(t *testing.T) {
 		tsTicket, _ := RequireNewTipSet(t, b1).MinTicket()
-		assert.Equal(t, b1.Ticket, tsTicket)
+		assert.Equal(t, b1.Tickets[0], tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b2).MinTicket()
-		assert.Equal(t, b2.Ticket, tsTicket)
+		assert.Equal(t, b2.Tickets[0], tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b3, b2, b1).MinTicket()
-		assert.Equal(t, b1.Ticket, tsTicket)
+		assert.Equal(t, b1.Tickets[0], tsTicket)
 	})
 
 	t.Run("min timestamp", func(t *testing.T) {
@@ -160,7 +151,7 @@ func TestTipSet(t *testing.T) {
 		// datastore key and depends on the format exactly.
 		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
 
-		expected := NewSortedCidSet(b1.Cid(), b2.Cid(), b3.Cid()).String()
+		expected := NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
 		assert.Equal(t, expected, RequireNewTipSet(t, b3, b2, b1).String())
 	})
 
@@ -187,7 +178,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("mismatched parents fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.Parents = NewSortedCidSet(cid1, cid2)
+		b1.Parents = NewTipSetKey(cid1, cid2)
 		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
@@ -202,7 +193,7 @@ func TestTipSet(t *testing.T) {
 	})
 }
 
-// Test methods: String, ToSortedCidSet, ToSlice, MinTicket, Height, NewTipSet, Equals
+// Test methods: String, Key, ToSlice, MinTicket, Height, NewTipSet, Equals
 func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
 	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")

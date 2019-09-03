@@ -8,7 +8,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
+	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -20,11 +21,13 @@ import (
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+var log = logging.Logger("porcelain")
+
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -63,7 +66,7 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	smsgCid, err := plumbing.MessageSendWithDefaultAddress(
+	smsgCid, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		address.StorageMarketAddress,
@@ -152,7 +155,7 @@ func MinerPreviewCreate(
 type mspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
-	MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -196,7 +199,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// create ask
-	res.AddAskCid, err = plumbing.MessageSendWithDefaultAddress(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "addAsk", price, expiry)
+	res.AddAskCid, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, "addAsk", price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}
@@ -278,6 +281,16 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize
 	return address.NewFromBytes(res[0])
 }
 
+// MinerGetWorkerAddress queries for the worker address of the given miner
+func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewFromBytes(res[0])
+}
+
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.
@@ -313,6 +326,21 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 	}
 
 	return sectorSize, nil
+}
+
+// MinerCalculateLateFee calculates the fee due if a miner's PoSt were to be mined at `height`.
+func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "calculateLateFee", height)
+	if err != nil {
+		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
+	}
+
+	coll, ok := abiVal.Val.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, errors.New("failed to convert returned ABI value")
+	}
+
+	return coll, nil
 }
 
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
@@ -378,4 +406,106 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 		return peer.ID(""), errors.Wrap(err, "could not decode to peer.ID from message-bytes")
 	}
 	return pid, nil
+}
+
+// MinerProvingPeriod contains a miners proving period start and end as well
+// as a set of their proving set.
+type MinerProvingPeriod struct {
+	Start      types.BlockHeight
+	End        types.BlockHeight
+	ProvingSet map[string]types.Commitments
+}
+
+// MinerGetProvingPeriod gets the proving period and commitments for miner `minerAddr`.
+func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingPeriod, error) {
+	res, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getProvingPeriod",
+	)
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query ProvingPeriod method failed")
+	}
+	start, end := types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1])
+
+	res, err = plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getProvingSetCommitments",
+	)
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query SetCommitments method failed")
+	}
+
+	sig, err := plumbing.ActorGetSignature(ctx, minerAddr, "getProvingSetCommitments")
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "query method failed")
+	}
+
+	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
+	if err != nil {
+		return MinerProvingPeriod{}, errors.Wrap(err, "deserialization failed")
+	}
+	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
+	if !ok {
+		return MinerProvingPeriod{}, errors.New("type assertion failed")
+	}
+
+	return MinerProvingPeriod{
+		Start:      *start,
+		End:        *end,
+		ProvingSet: commitments,
+	}, nil
+}
+
+// MinerPower contains a miners power and the total power of the network
+type MinerPower struct {
+	Power types.BytesAmount
+	Total types.BytesAmount
+}
+
+// MinerGetPower queries the power of a given miner.
+func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Address) (MinerPower, error) {
+	bytes, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getPower",
+	)
+	if err != nil {
+		return MinerPower{}, err
+	}
+	power := types.NewBytesAmountFromBytes(bytes[0])
+
+	bytes, err = plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		address.StorageMarketAddress,
+		"getTotalStorage",
+	)
+	if err != nil {
+		return MinerPower{}, err
+	}
+	total := types.NewBytesAmountFromBytes(bytes[0])
+
+	return MinerPower{
+		Power: *power,
+		Total: *total,
+	}, nil
+}
+
+// MinerGetCollateral queries the collateral of a given miner.
+func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.Address) (types.AttoFIL, error) {
+	rets, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		minerAddr,
+		"getActiveCollateral",
+	)
+	if err != nil {
+		return types.AttoFIL{}, err
+	}
+	return types.NewAttoFILFromBytes(rets[0]), nil
 }

@@ -15,12 +15,16 @@ import (
 // pools a little before the sending node gives up on them.
 const OutboxMaxAgeRounds = 10
 
-var log = logging.Logger("mqueue")
+var log = logging.Logger("core")
 
 // QueuePolicy manages a message queue state in response to changes on the blockchain.
 type QueuePolicy interface {
-	// HandleNewHead updates a message queue in response to a new head tipset.
-	HandleNewHead(ctx context.Context, target PolicyTarget, oldHead, newHead types.TipSet) error
+	// HandleNewHead updates a message queue in response to a new chain head. The new head may be based
+	// directly on the previous head, or it may be based on a prior tipset (aka a re-org).
+	// - `oldTips` is a list of tipsets that used to be on the main chain but are no longer.
+	// - `newTips` is a list of tipsets that now form the head of the main chain.
+	// Both lists are in descending height order, down to but not including the common ancestor tipset.
+	HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error
 }
 
 // PolicyTarget is outbound queue object on which the policy acts.
@@ -36,37 +40,35 @@ type PolicyTarget interface {
 // There is no special handling for re-orgs and messages do not revert to the queue if the block
 // ends up childless (in contrast to the message pool).
 type DefaultQueuePolicy struct {
-	// Provides blocks for chain traversal.
-	store chain.TipSetProvider
+	// Provides messages collections from cids.
+	messageProvider MessageProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(store chain.TipSetProvider, maxAge uint64) *DefaultQueuePolicy {
-	return &DefaultQueuePolicy{store, maxAge}
+func NewMessageQueuePolicy(messages MessageProvider, maxAge uint) *DefaultQueuePolicy {
+	return &DefaultQueuePolicy{messages, uint64(maxAge)}
 }
 
-// HandleNewHead updates the policy target in response to a new head tipset.
-func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldHead, newHead types.TipSet) error {
-	_, newTips, err := CollectTipsToCommonAncestor(ctx, p.store, oldHead, newHead)
-	if err != nil {
-		return err
-	}
-
-	// Remove from the queue all messages that have now been mined in new blocks.
+// HandleNewHead removes from the queue all messages that have now been mined in new blocks.
+func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error {
 	// Rearrange the tipsets into increasing height order so messages are discovered in nonce order.
-	reverse(newTips)
+	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			for _, minedMsg := range tipset.At(i).Messages {
+			msgs, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			if err != nil {
+				return err
+			}
+			for _, minedMsg := range msgs {
 				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
 				if err != nil {
 					return err
 				}
 				if found && !minedMsg.Equals(removed) {
-					log.Errorf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
+					log.Warningf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
 				}
 				// Else if not found, the message was not sent by this node, or has already been removed
 				// from the queue (e.g. a blockchain re-org).
@@ -75,23 +77,17 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	}
 
 	// Expire messages that have been in the queue for too long; they will probably never be mined.
-	height, err := newHead.Height()
-	if err != nil {
-		return err
-	}
-	if height >= p.maxAgeRounds { // avoid uint subtraction overflow
-		expired := target.ExpireBefore(ctx, (height - p.maxAgeRounds))
-		for _, msg := range expired {
-			log.Errorf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
+	if len(newTips) > 0 {
+		height, err := newTips[0].Height()
+		if err != nil {
+			return err
+		}
+		if height >= p.maxAgeRounds { // avoid uint subtraction overflow
+			expired := target.ExpireBefore(ctx, (height - p.maxAgeRounds))
+			for _, msg := range expired {
+				log.Warningf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
+			}
 		}
 	}
 	return nil
-}
-
-func reverse(list []types.TipSet) {
-	// https://github.com/golang/go/wiki/SliceTricks#reversing
-	for i := len(list)/2 - 1; i >= 0; i-- {
-		opp := len(list) - 1 - i
-		list[i], list[opp] = list[opp], list[i]
-	}
 }

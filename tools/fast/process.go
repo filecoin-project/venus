@@ -1,6 +1,7 @@
 package fast
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,7 +11,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	iptb "github.com/ipfs/iptb/testbed"
 	"github.com/ipfs/iptb/testbed/interfaces"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	fcconfig "github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastutil"
@@ -114,6 +115,8 @@ func (f *Filecoin) InitDaemon(ctx context.Context, args ...string) (testbedi.Out
 		}
 	}
 
+	f.Log.Infof("InitDaemon: %s %s", f.core.Dir(), args)
+
 	return f.core.Init(ctx, args...)
 }
 
@@ -128,6 +131,8 @@ func (f *Filecoin) StartDaemon(ctx context.Context, wait bool, args ...string) (
 			args = append(args, opt()...)
 		}
 	}
+
+	f.Log.Infof("StartDaemon: %s %s", f.core.Dir(), args)
 
 	out, err := f.core.Start(ctx, wait, args...)
 	if err != nil {
@@ -197,6 +202,16 @@ func (f *Filecoin) DumpLastOutputJSON(w io.Writer) {
 // LastCmdStdErr is the standard error output from the last command run
 func (f *Filecoin) LastCmdStdErr() io.ReadCloser {
 	return f.lastCmdOutput.Stderr()
+}
+
+// LastCmdStdErrStr is a shortcut to just get the output as string
+func (f *Filecoin) LastCmdStdErrStr() (string, error) {
+	buf := new(bytes.Buffer)
+	out := f.LastCmdStdErr()
+	if _, err := buf.ReadFrom(out); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 // RunCmdWithStdin runs `args` against Filecoin process `f`, a testbedi.Output and an error are returned.

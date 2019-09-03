@@ -77,14 +77,13 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 	ticket, _ := consensus.CreateTicket(poStProof, minerWorker, signer)
 
 	return &types.Block{
-		Miner:        minerAddr,
-		Ticket:       ticket,
-		Parents:      baseTipSet.ToSortedCidSet(),
-		ParentWeight: types.Uint64(10000 * height),
-		Height:       types.Uint64(height),
-		Nonce:        types.Uint64(height),
-		StateRoot:    stateRootCid,
-		Proof:        poStProof,
+		Miner:         minerAddr,
+		Tickets:       []types.Ticket{ticket},
+		Parents:       baseTipSet.Key(),
+		ParentWeight:  types.Uint64(10000 * height),
+		Height:        types.Uint64(height),
+		StateRoot:     stateRootCid,
+		ElectionProof: poStProof,
 	}
 }
 
@@ -143,6 +142,43 @@ func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *type
 // ValidateSyntax does nothing.
 func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
 	return nil
+}
+
+// StubBlockValidator is a mockable block validator.
+type StubBlockValidator struct {
+	syntaxStubs   map[cid.Cid]error
+	semanticStubs map[cid.Cid]error
+}
+
+// NewStubBlockValidator creates a StubBlockValidator that allows errors to configured
+// for blocks passed to the Validate* methods.
+func NewStubBlockValidator() *StubBlockValidator {
+	return &StubBlockValidator{
+		syntaxStubs:   make(map[cid.Cid]error),
+		semanticStubs: make(map[cid.Cid]error),
+	}
+}
+
+// ValidateSemantic returns nil or error for stubbed block `child`.
+func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+	return mbv.semanticStubs[child.Cid()]
+}
+
+// ValidateSyntax return nil or error for stubbed block `blk`.
+func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+	return mbv.syntaxStubs[blk.Cid()]
+}
+
+// StubSyntaxValidationForBlock stubs an error when the ValidateSyntax is called
+// on the with the given block.
+func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *types.Block, err error) {
+	mbv.syntaxStubs[blk.Cid()] = err
+}
+
+// StubSemanticValidationForBlock stubs an error when the ValidateSemantic is called
+// on the with the given child block.
+func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block, err error) {
+	mbv.semanticStubs[child.Cid()] = err
 }
 
 // NewTestProcessor creates a processor with a test validator and test rewarder

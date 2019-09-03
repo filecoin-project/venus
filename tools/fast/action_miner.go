@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
@@ -66,16 +66,16 @@ func (f *Filecoin) MinerOwner(ctx context.Context, minerAddr address.Address) (a
 }
 
 // MinerPower runs the `miner power` command against the filecoin process
-func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (*big.Int, error) {
-	var out big.Int
+func (f *Filecoin) MinerPower(ctx context.Context, minerAddr address.Address) (porcelain.MinerPower, error) {
+	var out porcelain.MinerPower
 
 	sMinerAddr := minerAddr.String()
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "power", sMinerAddr); err != nil {
-		return big.NewInt(0), err
+		return porcelain.MinerPower{}, err
 	}
 
-	return &out, nil
+	return out, nil
 }
 
 // MinerSetPrice runs the `miner set-price` command against the filecoin process
@@ -98,4 +98,15 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 	}
 
 	return &out.MinerSetPriceResponse, nil
+}
+
+// MinerProvingPeriod runs the `miner proving-period` command against the filecoin process
+func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address) (porcelain.MinerProvingPeriod, error) {
+	var out porcelain.MinerProvingPeriod
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-period", miner.String()); err != nil {
+		return porcelain.MinerProvingPeriod{}, err
+	}
+
+	return out, nil
 }

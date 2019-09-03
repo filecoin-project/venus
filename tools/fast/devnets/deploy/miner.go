@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	lpfc "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type MinerConfig struct {
@@ -28,7 +29,7 @@ type MinerConfig struct {
 	Collateral       int
 	AskPrice         string
 	AskExpiry        int
-	SectorSize       int
+	SectorSize       types.BytesAmount
 }
 
 type MinerProfile struct {
@@ -147,7 +148,7 @@ func (p *MinerProfile) Post() error {
 
 		expiry := big.NewInt(int64(p.config.AskExpiry))
 
-		_, err = series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
+		_, err = series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry, &p.config.SectorSize)
 		if err != nil {
 			return err
 		}

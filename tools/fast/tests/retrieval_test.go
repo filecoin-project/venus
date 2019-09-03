@@ -36,7 +36,6 @@ func init() {
 func TestRetrievalLocalNetwork(t *testing.T) {
 	tf.FunctionalTest(t)
 
-	sectorSize := int64(1016)
 	blocktime := time.Second * 5
 
 	// This test should run in 20 block times, with 120 seconds for sealing, and no longer
@@ -116,7 +115,7 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 	err = series.SendFilecoinDefaults(ctx, genesis, client, 1000)
 	require.NoError(t, err)
 
-	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+	RunRetrievalTest(ctx, t, miner, client)
 }
 
 // TestRetrieval exercises storing and retreiving with the filecoin protocols on a kittyhawk deployed
@@ -128,7 +127,6 @@ func TestRetrievalDevnet(t *testing.T) {
 	t.SkipNow()
 
 	blocktime := time.Second * 30
-	sectorSize := int64(266338304)
 
 	// This test should run in and hour and no longer
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(blocktime*120))
@@ -186,32 +184,46 @@ func TestRetrievalDevnet(t *testing.T) {
 	err = env.GetFunds(ctx, client)
 	require.NoError(t, err)
 
-	RunRetrievalTest(ctx, t, miner, client, sectorSize)
+	RunRetrievalTest(ctx, t, miner, client)
 }
 
-func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin, sectorSize int64) {
+func RunRetrievalTest(ctx context.Context, t *testing.T, miner, client *fast.Filecoin) {
 	collateral := big.NewInt(10)            // FIL
 	price := big.NewFloat(0.000000001)      // price per byte/block
 	expiry := big.NewInt(24 * 60 * 60 / 30) // ~24 hours
 
+	pparams, err := miner.Protocol(ctx)
+	require.NoError(t, err)
+
+	sinfo := pparams.SupportedSectors[0]
+
 	// Create a miner on the miner node
-	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry)
+	ask, err := series.CreateStorageMinerWithAsk(ctx, miner, collateral, price, expiry, sinfo.Size)
 	require.NoError(t, err)
 
 	// Connect the client and the miner
-	err = series.Connect(ctx, client, miner)
-	require.NoError(t, err)
+	require.NoError(t, series.Connect(ctx, client, miner))
+
+	// Start the miner
+	require.NoError(t, miner.MiningStart(ctx))
 
 	// Store some data with the miner with the given ask, returns the cid for
 	// the imported data, and the deal which was created
 	var data bytes.Buffer
-	dataReader := io.LimitReader(rand.Reader, sectorSize)
+	dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 	dataReader = io.TeeReader(dataReader, &data)
 	dcid, deal, err := series.ImportAndStore(ctx, client, ask, files.NewReaderFile(dataReader))
 	require.NoError(t, err)
 
 	// Wait for the deal to be complete
-	err = series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	proposalResponse, err := series.WaitForDealState(ctx, client, deal, storagedeal.Complete)
+	require.NoError(t, err)
+
+	_, err = client.MessageWait(ctx, proposalResponse.ProofInfo.CommitmentMessage)
+	require.NoError(t, err)
+
+	// Verify PIP
+	_, err = client.ClientVerifyStorageDeal(ctx, deal.ProposalCid)
 	require.NoError(t, err)
 
 	// Retrieve the stored piece of data

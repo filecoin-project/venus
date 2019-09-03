@@ -70,7 +70,12 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 }
 
 // ValidateSyntax validates a single block is correctly formed.
+// TODO this is an incomplete implementation #3277
 func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+	// TODO special handling for genesis block #3121
+	if blk.Height == 0 {
+		return nil
+	}
 	now := uint64(dv.Now().Unix())
 	if uint64(blk.Timestamp) > now {
 		return fmt.Errorf("block %s with timestamp %d generate in future at time %d", blk.Cid().String(), blk.Timestamp, now)
@@ -79,12 +84,17 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 		return fmt.Errorf("block %s has nil StateRoot", blk.Cid().String())
 	}
 	if blk.Miner.Empty() {
-		return fmt.Errorf("block %s has nil miner address", blk.Miner.String())
+		return fmt.Errorf("block %s has nil miner address", blk.Cid().String())
 	}
-	if len(blk.Ticket) == 0 {
-		return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
+	if len(blk.Tickets) == 0 {
+		return fmt.Errorf("block %s has no tickets", blk.Cid().String())
 	}
-	// TODO validate block signature: 1054
+	for _, ticket := range blk.Tickets {
+		if len(ticket.VRFProof) == 0 {
+			return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
+		}
+	}
+	// TODO validate block signature #1054
 	return nil
 }
 

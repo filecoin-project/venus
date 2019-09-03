@@ -17,7 +17,7 @@ import (
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet types.TipSet,
-	ticket types.Signature,
+	ticket types.Ticket,
 	proof types.PoStProof,
 	nullBlockCount uint64) (*types.Block, error) {
 
@@ -71,21 +71,38 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "generate flush vm storage map")
 	}
 
-	var receipts []*types.MessageReceipt
+	// By default no receipts/messages is serialized as the zero length
+	// slice, not the nil slice.
+	receipts := []*types.MessageReceipt{}
 	for _, r := range res.Results {
 		receipts = append(receipts, r.Receipt)
+	}
+
+	minedMessages := []*types.SignedMessage{}
+	for _, msg := range res.SuccessfulMessages {
+		minedMessages = append(minedMessages, msg)
+	}
+
+	// Persist messages to ipld storage
+	msgsCid, err := w.messageStore.StoreMessages(ctx, minedMessages)
+	if err != nil {
+		return nil, errors.Wrap(err, "error persisting messages")
+	}
+	rcptsCid, err := w.messageStore.StoreReceipts(ctx, receipts)
+	if err != nil {
+		return nil, errors.Wrap(err, "error persisting receipts")
 	}
 
 	next := &types.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
-		Messages:        res.SuccessfulMessages,
-		MessageReceipts: receipts,
-		Parents:         baseTipSet.ToSortedCidSet(),
+		Messages:        msgsCid,
+		MessageReceipts: rcptsCid,
+		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
-		Proof:           proof,
+		ElectionProof:   proof,
 		StateRoot:       newStateTreeCid,
-		Ticket:          ticket,
+		Tickets:         []types.Ticket{ticket},
 		// TODO when #2961 is resolved do the needful here.
 		Timestamp: types.Uint64(time.Now().Unix()),
 	}

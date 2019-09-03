@@ -13,6 +13,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -28,11 +30,11 @@ type Protocol interface {
 
 	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
 	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt state.Tree) (bool, error)
+	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 
-	// RunStateTransition returns the state resulting from applying the input ts to the parent
-	// state pSt.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, pSt state.Tree) (state.Tree, error)
+	// RunStateTransition returns the state root CID resulting from applying the input ts to the
+	// prior `stateID`.  It returns an error if the transition is invalid.
+	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
 
 	// ValidateSyntax validates a single block is correctly formed.
 	ValidateSyntax(ctx context.Context, b *types.Block) error

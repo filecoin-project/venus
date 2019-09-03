@@ -13,7 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -23,7 +23,6 @@ type FakeChildParams struct {
 	Consensus      consensus.Protocol
 	GenesisCid     cid.Cid
 	MinerAddr      address.Address
-	Nonce          uint64
 	NullBlockCount uint64
 	Parent         types.TipSet
 	StateRoot      cid.Cid
@@ -58,7 +57,11 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 		NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
-		proofs.NewFakeVerifier(true, nil),
+		&verification.FakeVerifier{
+			VerifyPoStValid:                true,
+			VerifyPieceInclusionProofValid: true,
+			VerifySealValid:                true,
+		},
 		BlockTimeTest)
 	params.Consensus = con
 	return MkFakeChildWithCon(params)
@@ -71,7 +74,6 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	}
 	return MkFakeChildCore(params.Parent,
 		params.StateRoot,
-		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
 		params.MinerWorker,
@@ -83,7 +85,6 @@ func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 // NOTE: This is NOT deterministic because it generates a random value for the Proof field.
 func MkFakeChildCore(parent types.TipSet,
 	stateRoot cid.Cid,
-	nonce uint64,
 	nullBlockCount uint64,
 	minerAddr address.Address,
 	minerWorker address.Address,
@@ -103,14 +104,13 @@ func MkFakeChildCore(parent types.TipSet,
 	}
 	height := pHeight + uint64(1) + nullBlockCount
 
-	pIDs := parent.ToSortedCidSet()
+	pIDs := parent.Key()
 
 	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
 	newBlock.ParentWeight = types.Uint64(w)
-	newBlock.Nonce = types.Uint64(nonce)
 	newBlock.StateRoot = stateRoot
 
 	return newBlock, nil
@@ -153,7 +153,6 @@ func RequireMkFakeChildCore(t *testing.T,
 	wFun func(types.TipSet) (uint64, error)) *types.Block {
 	child, err := MkFakeChildCore(params.Parent,
 		params.StateRoot,
-		params.Nonce,
 		params.NullBlockCount,
 		params.MinerAddr,
 		params.MinerWorker,
@@ -173,9 +172,9 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 }
 
 // MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Signature, error) {
+func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Ticket, error) {
 	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
-	var ticket types.Signature
+	var ticket types.Ticket
 
 	quot := totalPower.Quo(minerPower)
 	threshold := types.NewBytesAmount(100000).Mul(types.OneKiBSectorSize)
@@ -195,57 +194,4 @@ func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.Byt
 			return poStProof, ticket, nil
 		}
 	}
-}
-
-///// Fake traversal chain provider implementation
-
-// FakeChainProvider is a fake chain provider.
-type FakeChainProvider struct {
-	blocks map[cid.Cid]*types.Block
-	seq    int
-}
-
-// NewFakeChainProvider returns a new, empty fake chain provider.
-func NewFakeChainProvider() *FakeChainProvider {
-	return &FakeChainProvider{
-		make(map[cid.Cid]*types.Block),
-		0,
-	}
-}
-
-// GetTipSet returns a tipset by key.
-func (bs *FakeChainProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
-	var blocks []*types.Block
-	for it := tsKey.Iter(); !it.Complete(); it.Next() {
-		block, ok := bs.blocks[it.Value()]
-		if !ok {
-			return types.UndefTipSet, errors.New("no such block")
-		}
-		blocks = append(blocks, block)
-	}
-	return types.NewTipSet(blocks...)
-}
-
-// NewBlockWithMessages creates and stores a new block in this provider.
-func (bs *FakeChainProvider) NewBlockWithMessages(nonce uint64, messages []*types.SignedMessage, parents ...*types.Block) *types.Block {
-	b := &types.Block{
-		Nonce:    types.Uint64(nonce),
-		Messages: messages,
-	}
-
-	if len(parents) > 0 {
-		b.Height = parents[0].Height + 1
-		b.StateRoot = parents[0].StateRoot
-		for _, p := range parents {
-			b.Parents.Add(p.Cid())
-		}
-	}
-
-	bs.blocks[b.Cid()] = b
-	return b
-}
-
-// NewBlock creates and stores a new block in this provider.
-func (bs *FakeChainProvider) NewBlock(nonce uint64, parents ...*types.Block) *types.Block {
-	return bs.NewBlockWithMessages(nonce, []*types.SignedMessage{}, parents...)
 }

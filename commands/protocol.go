@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/proofs"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 var protocolCmd = &cmds.Command{
@@ -30,16 +29,11 @@ var protocolCmd = &cmds.Command{
 				return err
 			}
 
-			sectorSize := types.OneKiBSectorSize
-			if pp.ProofsMode == types.LiveProofsMode {
-				sectorSize = types.TwoHundredFiftySixMiBSectorSize
-			}
-
-			maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize)
-
-			_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorSize.Uint64())), readableBytesAmount(float64(maxUserBytes.Uint64())))
-			if err != nil {
-				return err
+			for _, sectorInfo := range pp.SupportedSectors {
+				_, err = fmt.Fprintf(w, "\t%s (%s writeable)\n", readableBytesAmount(float64(sectorInfo.Size.Uint64())), readableBytesAmount(float64(sectorInfo.MaxPieceSize.Uint64())))
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil

@@ -2,22 +2,6 @@ FROM golang:1.12.1-stretch AS builder
 MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang jq
-RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
-
-ARG FILECOIN_USE_PRECOMPILED_RUST_PROOFS=yes
-ARG FILECOIN_USE_PRECOMPILED_BLS_SIGNATURES=yes
-
-COPY . /go/go-filecoin
-WORKDIR /go/go-filecoin
-
-RUN go mod download
-RUN ./scripts/install-rust-fil-proofs.sh
-RUN ./scripts/install-bls-signatures.sh
-
-RUN go run ./build build-filecoin
-RUN go run ./build build-deploy
-RUN go run ./build build-gengen
-RUN go run ./build build-faucet
 
 FROM busybox:1-glibc AS filecoin
 MAINTAINER Filecoin Dev Team
@@ -30,11 +14,13 @@ COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1  /lib/libgcc_s.so.1
 COPY --from=builder /lib/x86_64-linux-gnu/libutil.so.1   /lib/libutil.so.1
 
 # Built resources
-COPY --from=builder /go/go-filecoin/tools/fast/devnets/deploy/deploy-sh  /usr/local/bin/deploy-sh
-COPY --from=builder /go/go-filecoin/go-filecoin                          /usr/local/bin/go-filecoin
-COPY --from=builder /go/go-filecoin/gengen/gengen                        /usr/local/bin/gengen
-COPY --from=builder /go/go-filecoin/tools/faucet/faucet                  /usr/local/bin/faucet
-COPY --from=builder /go/go-filecoin/tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
+COPY tools/fast/devnets/deploy/deploy-sh  /usr/local/bin/deploy-sh
+COPY go-filecoin                          /usr/local/bin/go-filecoin
+COPY gengen/gengen                        /usr/local/bin/gengen
+COPY tools/faucet/faucet                  /usr/local/bin/faucet
+COPY tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
+COPY proofs/bin/paramfetch				 /usr/local/bin/paramfetch
+COPY proofs/bin/paramcache				 /usr/local/bin/paramcache
 
 RUN adduser -D -h /var/filecoin -u 1000 -G users filecoin
 

@@ -12,15 +12,15 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-crypto"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/host"
+	net "github.com/libp2p/go-libp2p-core/network"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -81,6 +81,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
 			BeatPeriod:      "3s",
@@ -88,7 +89,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
 	)
@@ -109,6 +110,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      "",
 			BeatPeriod:      "3s",
@@ -116,7 +118,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			Nickname:        "BobHoblaw",
 		},
 		func() (types.TipSet, error) {
-			tipSet := testhelpers.MustNewTipSet(types.NewBlockForTest(nil, 1))
+			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
 	)
@@ -160,6 +162,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	hbs := metrics.NewHeartbeatService(
 		filecoin.Host,
+		testCid,
 		&config.HeartbeatConfig{
 			BeatTarget:      aggregator.Address,
 			BeatPeriod:      "1s",
@@ -178,19 +181,17 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 
 	assert.NoError(t, hbs.Run(runCtx))
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
-
 }
 
 func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 	ts, err := types.NewTipSet(&types.Block{
 		Miner:           address.NewForTestGetter()(),
-		Ticket:          nil,
-		Parents:         types.SortedCidSet{},
+		Tickets:         []types.Ticket{{VRFProof: []byte{0}}},
+		Parents:         types.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
-		Nonce:           0,
-		Messages:        nil,
-		MessageReceipts: nil,
+		MessageReceipts: types.EmptyMessagesCID,
+		Messages:        types.EmptyReceiptsCID,
 	})
 	if err != nil {
 		t.Fatal(err)

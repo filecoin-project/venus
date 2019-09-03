@@ -7,7 +7,9 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
@@ -36,7 +38,7 @@ func (f *Filecoin) ClientImport(ctx context.Context, data files.File) (cid.Cid, 
 
 // ClientProposeStorageDeal runs the client propose-storage-deal command against the filecoin process.
 func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
-	miner address.Address, ask uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
+	miner address.Address, ask uint64, duration uint64, options ...ActionOption) (*storagedeal.Response, error) {
 
 	var out storagedeal.Response
 	sData := data.String()
@@ -44,7 +46,12 @@ func (f *Filecoin) ClientProposeStorageDeal(ctx context.Context, data cid.Cid,
 	sAsk := fmt.Sprintf("%d", ask)
 	sDuration := fmt.Sprintf("%d", duration)
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration); err != nil {
+	args := []string{"go-filecoin", "client", "propose-storage-deal", sMiner, sData, sAsk, sDuration}
+	for _, opt := range options {
+		args = append(args, opt()...)
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -60,8 +67,30 @@ func (f *Filecoin) ClientQueryStorageDeal(ctx context.Context, prop cid.Cid) (*s
 	return &out, nil
 }
 
+// ClientVerifyStorageDeal runs the client verify-storage-deal command against the filecoin process.
+func (f *Filecoin) ClientVerifyStorageDeal(ctx context.Context, prop cid.Cid) (*commands.VerifyStorageDealResult, error) {
+	var out commands.VerifyStorageDealResult
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "verify-storage-deal", prop.String()); err != nil {
+		return nil, err
+	}
+
+	return &out, nil
+}
+
 // ClientListAsks runs the client list-asks command against the filecoin process.
 // A json decoer is returned that asks may be decoded from.
 func (f *Filecoin) ClientListAsks(ctx context.Context) (*json.Decoder, error) {
 	return f.RunCmdLDJSONWithStdin(ctx, nil, "go-filecoin", "client", "list-asks")
+}
+
+// ClientPayments runs the client payments command against the filecoin process.
+func (f *Filecoin) ClientPayments(ctx context.Context, deal cid.Cid) ([]types.PaymentVoucher, error) {
+	var out []types.PaymentVoucher
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "client", "payments", deal.String()); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

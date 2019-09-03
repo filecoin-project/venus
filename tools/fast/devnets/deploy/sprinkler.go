@@ -163,7 +163,7 @@ func (p *SprinklerPro) Main() error {
 			return err
 		}
 
-		err = series.WaitForDealState(ctx, node, deal, storagedeal.Complete)
+		_, err = series.WaitForDealState(ctx, node, deal, storagedeal.Complete)
 		if err != nil {
 			return err
 		}

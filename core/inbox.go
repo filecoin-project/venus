@@ -21,26 +21,35 @@ type Inbox struct {
 	// Maximum age of a pool message.
 	maxAgeTipsets uint
 
-	chain InboxChainProvider
+	// Provides tipsets for chain traversal.
+	chain           chainProvider
+	messageProvider MessageProvider
 }
 
-// InboxChainProvider provides chain access for updating the message pool in response to new heads.
-// Exported for testing.
-type InboxChainProvider interface {
-	chain.TipSetProvider
-	BlockHeight() (uint64, error)
+// MessageProvider provides message collections given their cid.
+type MessageProvider interface {
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 }
 
 // NewInbox constructs a new inbox.
-func NewInbox(pool *MessagePool, maxAgeRounds uint, chain InboxChainProvider) *Inbox {
-	return &Inbox{pool: pool, maxAgeTipsets: maxAgeRounds, chain: chain}
+func NewInbox(pool *MessagePool, maxAgeRounds uint, chain chainProvider, messages MessageProvider) *Inbox {
+	return &Inbox{
+		pool:            pool,
+		maxAgeTipsets:   maxAgeRounds,
+		chain:           chain,
+		messageProvider: messages,
+	}
 }
 
 // Add adds a message to the pool, tagged with the current block height.
 // An error probably means the message failed to validate,
 // but it could indicate a more serious problem with the system.
 func (ib *Inbox) Add(ctx context.Context, msg *types.SignedMessage) (cid.Cid, error) {
-	blockTime, err := ib.chain.BlockHeight()
+	head, err := ib.chain.GetTipSet(ib.chain.GetHead())
+	if err != nil {
+		return cid.Undef, err
+	}
+	blockTime, err := head.Height()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -56,23 +65,22 @@ func (ib *Inbox) Pool() *MessagePool {
 // HandleNewHead updates the message pool in response to a new head tipset.
 // This removes messages from the pool that are found in the newly adopted chain and adds back
 // those from the removed chain (if any) that do not appear in the new chain.
-// We think that the right model for keeping the message pool up to date is
-// to think about it like a garbage collector.
-func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSet) error {
-	oldTips, newTips, err := CollectTipsToCommonAncestor(ctx, ib.chain, oldHead, newHead)
-	if err != nil {
-		return err
-	}
-
+// The `oldChain` and `newChain` lists are expected in descending height order, and each may be empty.
+func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.TipSet) error {
 	// Add all message from the old tipsets to the message pool, so they can be mined again.
-	// The tipsets are iterated in reverse height order, but the order doesn't matter here.
-	for _, tipset := range oldTips {
+	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			for _, msg := range block.Messages {
+			msgs, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
+			if err != nil {
+				return err
+			}
+			for _, msg := range msgs {
 				_, err = ib.pool.Add(ctx, msg, uint64(block.Height))
 				if err != nil {
-					log.Info(err)
+					// Messages from the removed chain are frequently invalidated, e.g. because that
+					// same message is already mined on the new chain.
+					log.Debug(err)
 				}
 			}
 		}
@@ -81,9 +89,13 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 	// Remove all messages in the new tipsets from the pool, now mined.
 	// Cid() can error, so collect all the CIDs up front.
 	var removeCids []cid.Cid
-	for _, tipset := range newTips {
+	for _, tipset := range newChain {
 		for i := 0; i < tipset.Len(); i++ {
-			for _, msg := range tipset.At(i).Messages {
+			msgs, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			if err != nil {
+				return err
+			}
+			for _, msg := range msgs {
 				cid, err := msg.Cid()
 				if err != nil {
 					return err
@@ -97,7 +109,10 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldHead, newHead types.TipSe
 	}
 
 	// prune all messages that have been in the pool too long
-	return timeoutMessages(ctx, ib.pool, ib.chain, newHead, ib.maxAgeTipsets)
+	if len(newChain) > 0 {
+		return timeoutMessages(ctx, ib.pool, ib.chain, newChain[0], ib.maxAgeTipsets)
+	}
+	return nil
 }
 
 // timeoutMessages removes all messages from the pool that arrived more than maxAgeTipsets tip sets ago.

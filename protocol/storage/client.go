@@ -3,14 +3,15 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/big"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/multiformats/go-multistream"
 	"github.com/pkg/errors"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 const (
@@ -56,12 +58,14 @@ type clientPorcelainAPI interface {
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
+	DAGCat(context.Context, cid.Cid) (io.Reader, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error
@@ -89,11 +93,8 @@ func NewClient(host host.Host, api clientPorcelainAPI) *Client {
 
 // ProposeDeal proposes a storage deal to a miner.  Pass allowDuplicates = true to
 // allow duplicate proposals without error.
-func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.Response, error) {
-	ctxSetup, cancel := context.WithTimeout(ctx, 5*smc.api.BlockTime())
-	defer cancel()
-
-	pid, err := smc.api.MinerGetPeerID(ctxSetup, miner)
+func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data cid.Cid, askID uint64, duration uint64, allowDuplicates bool) (*storagedeal.SignedResponse, error) {
+	pid, err := smc.api.MinerGetPeerID(ctx, miner)
 	if err != nil {
 		return nil, err
 	}
@@ -101,29 +102,40 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	minerAlive := make(chan error, 1)
 	go func() {
 		defer close(minerAlive)
-		minerAlive <- smc.api.PingMinerWithTimeout(ctxSetup, pid, 15*time.Second)
+		minerAlive <- smc.api.PingMinerWithTimeout(ctx, pid, 15*time.Second)
 	}()
 
-	size, err := smc.api.DAGGetFileSize(ctxSetup, data)
+	pieceSize, err := smc.api.DAGGetFileSize(ctx, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to determine the size of the data")
 	}
 
-	// TODO This is fake. CommP should be the merkle root of data, rather than its CID (issue #2792)
-	var commP types.CommP
-	copy(commP[:], data.Bytes())
-
-	sectorSize, err := smc.api.MinerGetSectorSize(ctxSetup, miner)
+	sectorSize, err := smc.api.MinerGetSectorSize(ctx, miner)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get sector size")
 	}
 
-	maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize).Uint64()
-	if size > maxUserBytes {
-		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", size, maxUserBytes)
+	maxUserBytes := go_sectorbuilder.GetMaxUserBytesPerStagedSector(sectorSize.Uint64())
+	if pieceSize > maxUserBytes {
+		return nil, fmt.Errorf("piece is %d bytes but sector size is %d bytes", pieceSize, maxUserBytes)
 	}
 
-	ask, err := smc.api.MinerGetAsk(ctxSetup, miner, askID)
+	pieceReader, err := smc.api.DAGCat(ctx, data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make piece reader")
+	}
+
+	// Generating the piece commitment is a computationally expensive operation and can take
+	// many minutes depending on the size of the piece.
+	pieceCommitmentResponse, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+		PieceReader: pieceReader,
+		PieceSize:   types.NewBytesAmount(pieceSize),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate piece commitment")
+	}
+
+	ask, err := smc.api.MinerGetAsk(ctx, miner, askID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get ask price")
 	}
@@ -139,16 +151,21 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	minerOwner, err := smc.api.MinerGetOwnerAddress(ctxSetup, miner)
+	minerOwner, err := smc.api.MinerGetOwnerAddress(ctx, miner)
 	if err != nil {
 		return nil, err
 	}
 
-	totalPrice := price.MulBigInt(big.NewInt(int64(size * duration)))
+	minerWorker, err := smc.api.MinerGetWorkerAddress(ctx, miner)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPrice := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
 
 	proposal := &storagedeal.Proposal{
 		PieceRef:     data,
-		Size:         types.NewBytesAmount(size),
+		Size:         types.NewBytesAmount(pieceSize),
 		TotalPrice:   totalPrice,
 		Duration:     duration,
 		MinerAddress: miner,
@@ -159,40 +176,41 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	// see if we managed to connect to the miner
-	select {
-	case err := <-minerAlive:
-		if err == net.ErrPingSelf {
-			return nil, errors.New("attempting to make storage deal with self. This is currently unsupported.  Please use a separate go-filecoin node as client")
-		}
-		if err != nil {
-			return nil, err
-		}
-	case <-ctxSetup.Done():
-		return nil, ctxSetup.Err()
+	err = <-minerAlive
+	if err == net.ErrPingSelf {
+		return nil, errors.New("attempting to make storage deal with self. This is currently unsupported.  Please use a separate go-filecoin node as client")
+	} else if err != nil {
+		return nil, err
 	}
+
+	// Always set payer because it is used for signing
+	proposal.Payment.Payer = fromAddress
 
 	// create payment information
-	cpResp, err := smc.api.CreatePayments(ctxSetup, porcelain.CreatePaymentsParams{
-		From:            fromAddress,
-		To:              minerOwner,
-		Value:           price.MulBigInt(big.NewInt(int64(size * duration))),
-		Duration:        duration,
-		MinerAddress:    miner,
-		CommP:           commP,
-		PaymentInterval: VoucherInterval,
-		ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
-		GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
-		GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating payment")
-	}
+	totalCost := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
+	if totalCost.GreaterThan(types.ZeroAttoFIL) {
+		cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
+			From:            fromAddress,
+			To:              minerOwner,
+			Value:           totalCost,
+			Duration:        duration,
+			MinerAddress:    miner,
+			CommP:           pieceCommitmentResponse.CommP,
+			PaymentInterval: VoucherInterval,
+			PieceSize:       types.NewBytesAmount(pieceSize),
+			ChannelExpiry:   *chainHeight.Add(types.NewBlockHeight(duration + ChannelExpiryInterval)),
+			GasPrice:        types.NewAttoFIL(big.NewInt(CreateChannelGasPrice)),
+			GasLimit:        types.NewGasUnits(CreateChannelGasLimit),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating payment")
+		}
 
-	proposal.Payment.Channel = cpResp.Channel
-	proposal.Payment.PayChActor = address.PaymentBrokerAddress
-	proposal.Payment.Payer = fromAddress
-	proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
-	proposal.Payment.Vouchers = cpResp.Vouchers
+		proposal.Payment.Channel = cpResp.Channel
+		proposal.Payment.PayChActor = address.PaymentBrokerAddress
+		proposal.Payment.ChannelMsgCid = &cpResp.ChannelMsgCid
+		proposal.Payment.Vouchers = cpResp.Vouchers
+	}
 
 	signedProposal, err := proposal.NewSignedProposal(fromAddress, smc.api)
 	if err != nil {
@@ -200,7 +218,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 
 	// send proposal
-	var response storagedeal.Response
+	var response storagedeal.SignedResponse
 	// We reset the context to not timeout to allow large file transfers
 	// to complete.
 	err = smc.ProtocolRequestFunc(ctx, makeDealProtocol, pid, smc.host, signedProposal, &response)
@@ -208,13 +226,13 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, errors.Wrap(err, "error sending proposal")
 	}
 
-	if err := smc.checkDealResponse(ctx, &response); err != nil {
+	if err := smc.checkDealResponse(ctx, &response, minerWorker); err != nil {
 		return nil, errors.Wrap(err, "response check failed")
 	}
 
 	// Note: currently the miner requests the data out of band
 
-	if err := smc.recordResponse(ctx, &response, miner, proposal); err != nil {
+	if err := smc.recordResponse(ctx, &response, miner, signedProposal, pieceCommitmentResponse.CommP); err != nil {
 		return nil, errors.Wrap(err, "failed to track response")
 	}
 	smc.log.Debugf("proposed deal for: %s, %v\n", miner.String(), proposal)
@@ -222,7 +240,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	return &response, nil
 }
 
-func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Response, miner address.Address, p *storagedeal.Proposal) error {
+func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.SignedResponse, miner address.Address, p *storagedeal.SignedProposal, commP types.CommP) error {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return errors.New("failed to get cid of proposal")
@@ -242,10 +260,20 @@ func (smc *Client) recordResponse(ctx context.Context, resp *storagedeal.Respons
 		Miner:    miner,
 		Proposal: p,
 		Response: resp,
+		CommP:    commP,
 	})
 }
 
-func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.Response) error {
+func (smc *Client) checkDealResponse(ctx context.Context, resp *storagedeal.SignedResponse, workerAddr address.Address) error {
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return errors.Wrap(err, "Could not verify response signature")
+	}
+
+	if !valid {
+		return errors.New("Response signature is invalid")
+	}
+
 	switch resp.State {
 	case storagedeal.Rejected:
 		return fmt.Errorf("deal rejected: %s", resp.Message)
@@ -267,8 +295,13 @@ func (smc *Client) minerForProposal(ctx context.Context, c cid.Cid) (address.Add
 }
 
 // QueryDeal queries an in-progress proposal.
-func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Response, error) {
+func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storagedeal.SignedResponse, error) {
 	mineraddr, err := smc.minerForProposal(ctx, proposalCid)
+	if err != nil {
+		return nil, err
+	}
+
+	workerAddr, err := smc.api.MinerGetWorkerAddress(ctx, mineraddr)
 	if err != nil {
 		return nil, err
 	}
@@ -279,10 +312,18 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 	}
 
 	q := storagedeal.QueryRequest{Cid: proposalCid}
-	var resp storagedeal.Response
+	var resp storagedeal.SignedResponse
 	err = smc.ProtocolRequestFunc(ctx, queryDealProtocol, minerpid, smc.host, q, &resp)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying deal")
+	}
+
+	valid, err := resp.VerifySignature(workerAddr)
+	if err != nil {
+		return nil, err
+	}
+	if !valid {
+		return nil, errors.New("deal response has invalid signature")
 	}
 
 	return &resp, nil

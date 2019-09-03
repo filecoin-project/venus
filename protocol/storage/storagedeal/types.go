@@ -11,8 +11,9 @@ import (
 func init() {
 	cbor.RegisterCborType(PaymentInfo{})
 	cbor.RegisterCborType(Proposal{})
+	cbor.RegisterCborType(SignedProposal{})
 	cbor.RegisterCborType(Response{})
-	cbor.RegisterCborType(SignedDealProposal{})
+	cbor.RegisterCborType(SignedResponse{})
 	cbor.RegisterCborType(ProofInfo{})
 	cbor.RegisterCborType(QueryRequest{})
 	cbor.RegisterCborType(Deal{})
@@ -73,8 +74,8 @@ func (dp *Proposal) Marshal() ([]byte, error) {
 	return cbor.DumpObject(dp)
 }
 
-// NewSignedProposal signs Proposal with address `addr` and returns a SignedDealProposal.
-func (dp *Proposal) NewSignedProposal(addr address.Address, signer types.Signer) (*SignedDealProposal, error) {
+// NewSignedProposal signs Proposal with address `addr` and returns a SignedProposal.
+func (dp *Proposal) NewSignedProposal(addr address.Address, signer types.Signer) (*SignedProposal, error) {
 	data, err := dp.Marshal()
 	if err != nil {
 		return nil, err
@@ -84,14 +85,14 @@ func (dp *Proposal) NewSignedProposal(addr address.Address, signer types.Signer)
 	if err != nil {
 		return nil, err
 	}
-	return &SignedDealProposal{
+	return &SignedProposal{
 		Proposal:  *dp,
 		Signature: sig,
 	}, nil
 }
 
-// SignedDealProposal is a deal proposal signed by the proposing client
-type SignedDealProposal struct {
+// SignedProposal is a deal proposal signed by the proposing client
+type SignedProposal struct {
 	Proposal
 	// Signature is the signature of the client proposing the deal.
 	Signature types.Signature
@@ -111,22 +112,58 @@ type Response struct {
 	// ProofInfo is a collection of information needed to convince the client that
 	// the miner has sealed the data into a sector.
 	ProofInfo *ProofInfo
+}
+
+// SignedResponse is a signed wrapper around response
+type SignedResponse struct {
+	Response
 
 	// Signature is a signature from the miner over the response
 	Signature types.Signature
 }
 
+// Sign signs this response
+func (r *SignedResponse) Sign(signer types.Signer, addr address.Address) error {
+	respBytes, err := cbor.DumpObject(r.Response)
+	if err != nil {
+		return err
+	}
+
+	r.Signature, err = signer.SignBytes(respBytes, addr)
+	return err
+}
+
+// VerifySignature verifies the signature of this response
+func (r *SignedResponse) VerifySignature(addr address.Address) (bool, error) {
+	respBytes, err := cbor.DumpObject(r.Response)
+	if err != nil {
+		return false, err
+	}
+
+	return types.IsValidSignature(respBytes, addr, r.Signature), nil
+}
+
 // Deal is a storage deal struct
 type Deal struct {
 	Miner    address.Address
-	Proposal *Proposal
-	Response *Response
+	CommP    types.CommP
+	Proposal *SignedProposal
+	Response *SignedResponse
 }
 
 // ProofInfo contains the details about a seal proof, that the client needs to know to verify that his deal was posted on chain.
 type ProofInfo struct {
 	// Sector id allows us to find the committed sector metadata on chain
 	SectorID uint64
+
+	// CommD of the sector
+	CommD []byte
+
+	// CommR of the replica
+	CommR []byte
+
+	// CommRStar of the replica
+	CommRStar []byte
 
 	// CommitmentMessage is the cid of the message that committed the sector. It's used to track when the sector goes on chain.
 	CommitmentMessage cid.Cid

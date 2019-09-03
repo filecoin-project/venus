@@ -69,8 +69,8 @@ const (
 	// GenesisFile is the path of file containing archive of genesis block DAG data
 	GenesisFile = "genesisfile"
 
-	// DevnetTest populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters
-	DevnetTest = "devnet-test"
+	// DevnetStaging populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters
+	DevnetStaging = "devnet-staging"
 
 	// DevnetNightly populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters
 	DevnetNightly = "devnet-nightly"
@@ -183,6 +183,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"stats":            statsCmd,
 	"swarm":            swarmCmd,
 	"wallet":           walletCmd,
+	"version":          versionCmd,
 }
 
 func init() {
@@ -208,8 +209,8 @@ func Run(args []string, stdin, stdout, stderr *os.File) (int, error) {
 	return 1, err
 }
 
-func buildEnv(ctx context.Context, req *cmds.Request) (cmds.Environment, error) {
-	return &Env{ctx: ctx}, nil
+func buildEnv(ctx context.Context, _ *cmds.Request) (cmds.Environment, error) {
+	return NewClientEnv(ctx), nil
 }
 
 type executor struct {
@@ -334,7 +335,7 @@ var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this c
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
 	priceOption := req.Options["gas-price"]
 	if priceOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("price option is required")
+		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-price option is required")
 	}
 
 	price, ok := types.NewAttoFILFromFILString(priceOption.(string))
@@ -344,7 +345,7 @@ func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, er
 
 	limitOption := req.Options["gas-limit"]
 	if limitOption == nil {
-		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("limit option is required")
+		return types.ZeroAttoFIL, types.NewGasUnits(0), false, errors.New("gas-limit option is required")
 	}
 
 	gasLimitInt, ok := limitOption.(uint64)

@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -84,10 +84,10 @@ const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessBlock processes all messages in a block.
-	ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, ancestors []types.TipSet) ([]*ApplicationResult, error)
+	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *types.Block, []*types.SignedMessage, []types.TipSet) ([]*ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // Expected implements expected consensus.
@@ -112,7 +112,7 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
-	verifier proofs.Verifier
+	verifier verification.Verifier
 
 	blockTime time.Duration
 }
@@ -121,7 +121,7 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier proofs.Verifier, bt time.Duration) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, verifier verification.Verifier, bt time.Duration) *Expected {
 	return &Expected{
 		cstore:         cs,
 		blockTime:      bt,
@@ -187,7 +187,22 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt state.Tree) (bool, error) {
+func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
+	var aSt, bSt state.Tree
+	var err error
+	if aStateID.Defined() {
+		aSt, err = c.loadStateTree(ctx, aStateID)
+		if err != nil {
+			return false, err
+		}
+	}
+	if bStateID.Defined() {
+		bSt, err = c.loadStateTree(ctx, bStateID)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	aW, err := c.Weight(ctx, a, aSt)
 	if err != nil {
 		return false, err
@@ -212,7 +227,7 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt st
 		return false, err
 	}
 
-	cmp := bytes.Compare(bTicket, aTicket)
+	cmp := bytes.Compare(bTicket.VRFProof, aTicket.VRFProof)
 	if cmp != 0 {
 		// a is heavier if b's ticket is greater than a's ticket.
 		return cmp == 1, nil
@@ -229,35 +244,40 @@ func (c *Expected) IsHeavier(ctx context.Context, a, b types.TipSet, aSt, bSt st
 	return cmp == 1, nil
 }
 
-// RunStateTransition is the chain transition function that goes from a
-// starting state and a tipset to a new state.  It errors if the tipset was not
-// mined according to the EC rules, or if running the messages in the tipset
-// results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, ancestors []types.TipSet, pSt state.Tree) (st state.Tree, err error) {
+// RunStateTransition applies the messages in a tipset to a state, and persists that new state.
+// It errors if the tipset was not mined according to the EC rules, or if any of the messages
+// in the tipset results in an error.
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, priorStateID cid.Cid) (root cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	for i := 0; i < ts.Len(); i++ {
 		if err := c.BlockValidator.ValidateSemantic(ctx, ts.At(i), &ancestors[0]); err != nil {
-			return nil, err
+			return cid.Undef, err
 		}
 	}
 
-	if err := c.validateMining(ctx, pSt, ts, ancestors[0]); err != nil {
-		return nil, err
+	priorState, err := c.loadStateTree(ctx, priorStateID)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0]); err != nil {
+		return cid.Undef, err
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err = c.runMessages(ctx, pSt, vms, ts, ancestors)
+	st, err := c.runMessages(ctx, priorState, vms, ts, tsMessages, tsReceipts, ancestors)
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
 	err = vms.Flush()
 	if err != nil {
-		return nil, err
+		return cid.Undef, err
 	}
-	return st, nil
+
+	return st.Flush(ctx)
 }
 
 // validateMining checks validity of the block ticket, proof, and miner address.
@@ -277,7 +297,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		// the mined block.
 
 		// See https://github.com/filecoin-project/specs/blob/master/mining.md#ticket-checking
-		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Ticket, blk.Miner)
+		result, err := IsWinningTicket(ctx, c.bstore, c.PwrTableView, st, blk.Tickets[0], blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "can't check for winning ticket")
 		}
@@ -294,7 +314,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 //    See https://github.com/filecoin-project/specs/blob/master/expected-consensus.md
 //    for an explanation of the math here.
 func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree,
-	ticket types.Signature, miner address.Address) (bool, error) {
+	ticket types.Ticket, miner address.Address) (bool, error) {
 
 	totalPower, err := ptv.Total(ctx, st, bs)
 	if err != nil {
@@ -311,12 +331,13 @@ func IsWinningTicket(ctx context.Context, bs blockstore.Blockstore, ptv PowerTab
 
 // CompareTicketPower abstracts the actual comparison logic so it can be used by some test
 // helpers
-func CompareTicketPower(ticket types.Signature, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
+func CompareTicketPower(ticket types.Ticket, minerPower *types.BytesAmount, totalPower *types.BytesAmount) bool {
 	lhs := &big.Int{}
-	lhs.SetBytes(ticket)
+	lhs.SetBytes(ticket.VRFProof)
 	lhs.Mul(lhs, totalPower.BigInt())
 	rhs := &big.Int{}
 	rhs.Mul(minerPower.BigInt(), ticketDomain)
+
 	return lhs.Cmp(rhs) < 0
 }
 
@@ -332,7 +353,7 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStC
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, nullBlkCount)
-	buf = append(smallest, buf[:n]...)
+	buf = append(smallest.VRFProof, buf[:n]...)
 
 	h := sha256.Sum256(buf)
 	return h, nil
@@ -346,7 +367,7 @@ func CreateChallengeSeed(parents types.TipSet, nullBlkCount uint64) (types.PoStC
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, ancestors []types.TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: don't process messages twice
@@ -357,17 +378,17 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 		// state copied so changes don't propagate between block validations
-		cpySt, err = state.LoadStateTree(ctx, c.cstore, cpyCid, builtin.Actors)
+		cpySt, err = c.loadStateTree(ctx, cpyCid)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, ancestors)
+		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, tsMessages[i], ancestors)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 		// TODO: check that receipts actually match
-		if len(receipts) != len(blk.MessageReceipts) {
+		if len(receipts) != len(tsReceipts[i]) {
 			return nil, fmt.Errorf("found invalid message receipts: %v %v", receipts, blk.MessageReceipts)
 		}
 
@@ -386,11 +407,15 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, ancestors)
+	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, tsMessages, ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
 	}
 	return st, nil
+}
+
+func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
+	return state.LoadStateTree(ctx, c.cstore, id, builtin.Actors)
 }
 
 // CreateTicket computes a valid ticket.
@@ -398,9 +423,15 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 // 			 signerAddr address.Address, the the signer's address. Must exist in the wallet
 //      	 signer, implements TicketSigner interface. Must have signerPubKey in its keyinfo.
 //  returns:  types.Signature ( []byte ), error
-func CreateTicket(proof types.PoStProof, signerAddr address.Address, signer TicketSigner) (types.Signature, error) {
-
+func CreateTicket(proof types.PoStProof, signerAddr address.Address, signer TicketSigner) (types.Ticket, error) {
 	buf := append(proof[:], signerAddr.Bytes()...)
 	// Don't hash it here; it gets hashed in walletutil.Sign
-	return signer.SignBytes(buf[:], signerAddr)
+	sig, err := signer.SignBytes(buf[:], signerAddr)
+	if err != nil {
+		return types.Ticket{}, err
+	}
+
+	return types.Ticket{
+		VRFProof: types.VRFPi(sig),
+	}, nil
 }

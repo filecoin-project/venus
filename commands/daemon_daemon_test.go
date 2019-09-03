@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,7 +48,7 @@ func TestDaemonCORS(t *testing.T) {
 		td := th.NewDaemon(t).Start()
 		defer td.ShutdownSuccess()
 
-		maddr, err := ma.NewMultiaddr(td.CmdAddr())
+		maddr, err := td.CmdAddr()
 		assert.NoError(t, err)
 
 		_, host, err := manet.DialArgs(maddr)
@@ -89,7 +88,7 @@ func TestDaemonCORS(t *testing.T) {
 		td := th.NewDaemon(t).Start()
 		defer td.ShutdownSuccess()
 
-		maddr, err := ma.NewMultiaddr(td.CmdAddr())
+		maddr, err := td.CmdAddr()
 		assert.NoError(t, err)
 
 		_, host, err := manet.DialArgs(maddr)
@@ -111,7 +110,7 @@ func TestDaemonOverHttp(t *testing.T) {
 	td := th.NewDaemon(t).Start()
 	defer td.ShutdownSuccess()
 
-	maddr, err := ma.NewMultiaddr(td.CmdAddr())
+	maddr, err := td.CmdAddr()
 	require.NoError(t, err)
 
 	_, host, err := manet.DialArgs(maddr)

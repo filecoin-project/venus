@@ -8,15 +8,16 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/host"
+	net "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/ipfs/go-cid"
 )
 
 // HeartbeatProtocol is the libp2p protocol used for the heartbeat service
@@ -44,12 +45,16 @@ type Heartbeat struct {
 
 	// Address of this node's active miner. Can be empty - will return the zero address
 	MinerAddress address.Address
+
+	// CID of this chain's genesis block.
+	GenesisCID cid.Cid
 }
 
 // HeartbeatService is responsible for sending heartbeats.
 type HeartbeatService struct {
-	Host   host.Host
-	Config *config.HeartbeatConfig
+	Host       host.Host
+	GenesisCID cid.Cid
+	Config     *config.HeartbeatConfig
 
 	// A function that returns the heaviest tipset
 	HeadGetter func() (types.TipSet, error)
@@ -76,9 +81,10 @@ func defaultMinerAddressGetter() address.Address {
 }
 
 // NewHeartbeatService returns a HeartbeatService
-func NewHeartbeatService(h host.Host, hbc *config.HeartbeatConfig, hg func() (types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
+func NewHeartbeatService(h host.Host, genesisCID cid.Cid, hbc *config.HeartbeatConfig, hg func() (types.TipSet, error), options ...HeartbeatServiceOption) *HeartbeatService {
 	srv := &HeartbeatService{
 		Host:               h,
+		GenesisCID:         genesisCID,
 		Config:             hbc,
 		HeadGetter:         hg,
 		MinerAddressGetter: defaultMinerAddressGetter,
@@ -197,7 +203,7 @@ func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	if err != nil {
 		log.Errorf("unable to fetch chain head: %s", err)
 	}
-	tipset := ts.ToSortedCidSet().String()
+	tipset := ts.Key().String()
 	height, err := ts.Height()
 	if err != nil {
 		log.Warningf("heartbeat service failed to get chain height: %s", err)
@@ -205,6 +211,7 @@ func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	addr := hbs.MinerAddressGetter()
 	return Heartbeat{
 		Head:         tipset,
+		GenesisCID:   hbs.GenesisCID,
 		Height:       height,
 		Nickname:     nick,
 		MinerAddress: addr,
@@ -235,7 +242,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 		fmt.Sprintf("/p2p/%s", peer.IDB58Encode(peerid)))
 	targetAddr := targetMaddr.Decapsulate(targetPeerAddr)
 
-	hbs.Host.Peerstore().AddAddr(peerid, targetAddr, pstore.PermanentAddrTTL)
+	hbs.Host.Peerstore().AddAddr(peerid, targetAddr, peerstore.PermanentAddrTTL)
 
 	s, err := hbs.Host.NewStream(ctx, peerid, HeartbeatProtocol)
 	if err != nil {

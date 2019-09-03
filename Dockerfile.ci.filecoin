@@ -1,9 +1,9 @@
-FROM busybox:1-glibc AS filecoin
+FROM busybox:1.30.1-glibc AS filecoin
 MAINTAINER Filecoin Dev Team
 
 # Get the filecoin binary, entrypoint script, and TLS CAs from the build container.
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
-COPY filecoin-proof-parameters /tmp/filecoin-proof-parameters
+COPY filecoin-proof-parameters /var/tmp/filecoin-proof-parameters
 COPY filecoin/go-filecoin /usr/local/bin/go-filecoin
 COPY bin/container_daemon /usr/local/bin/start_filecoin
 COPY bin/devnet_start /usr/local/bin/devnet_start
@@ -14,7 +14,6 @@ COPY --from=filecoin:all /tmp/su-exec/su-exec /sbin/su-exec
 COPY --from=filecoin:all /tmp/tini /sbin/tini
 COPY --from=filecoin:all /etc/ssl/certs /etc/ssl/certs
 
-RUN ln -sf /tmp/filecoin-proof-parameters/v9-zigzag-proof-of-replication-52431242c129794fe51d373ae29953f2ff52abd94c78756e318ce45f3e4946d8 /tmp/filecoin-proof-parameters/params.out
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/libdl-2.24.so /lib/libdl.so.2
 COPY --from=filecoin:all /lib/x86_64-linux-gnu/librt.so.1 /lib/librt.so.1

@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -23,11 +23,13 @@ var minerCmd = &cmds.Command{
 		Tagline: "Manage a single miner actor",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"create":        minerCreateCmd,
-		"owner":         minerOwnerCmd,
-		"power":         minerPowerCmd,
-		"set-price":     minerSetPriceCmd,
-		"update-peerid": minerUpdatePeerIDCmd,
+		"create":         minerCreateCmd,
+		"owner":          minerOwnerCmd,
+		"power":          minerPowerCmd,
+		"set-price":      minerSetPriceCmd,
+		"update-peerid":  minerUpdatePeerIDCmd,
+		"collateral":     minerCollateralCmd,
+		"proving-period": minerProvingPeriodCmd,
 	},
 }
 
@@ -61,12 +63,12 @@ additional sectors.`,
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		var err error
 
-		pp, err := GetPorcelainAPI(env).ProtocolParameters(env.Context())
+		pp, err := GetPorcelainAPI(env).ProtocolParameters(req.Context)
 		if err != nil {
 			return err
 		}
 
-		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectorSizes[0])
+		sectorSize, err := optionalSectorSizeWithDefault(req.Options["sectorsize"], pp.SupportedSectors[0].Size)
 		if err != nil {
 			return err
 		}
@@ -77,14 +79,14 @@ additional sectors.`,
 		// supported.
 		// https://github.com/filecoin-project/specs/pull/318
 		if !pp.IsSupportedSectorSize(sectorSize) {
-			supportedStrs := make([]string, len(pp.SupportedSectorSizes))
-			for i, ss := range pp.SupportedSectorSizes {
-				supportedStrs[i] = ss.String()
+			supportedStrs := make([]string, len(pp.SupportedSectors))
+			for i, si := range pp.SupportedSectors {
+				supportedStrs[i] = si.Size.String()
 			}
 			return fmt.Errorf("unsupported sector size: %s (supported sizes: %s)", sectorSize, strings.Join(supportedStrs, ", "))
 		}
 
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -190,7 +192,7 @@ This command waits for the ask to be mined.`,
 			return ErrInvalidPrice
 		}
 
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -298,7 +300,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			return err
 		}
 
-		fromAddr, err := optionalAddr(req.Options["from"])
+		fromAddr, err := fromAddrOrDefault(req, env)
 		if err != nil {
 			return err
 		}
@@ -332,7 +334,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSendWithDefaultAddress(
+		c, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			minerAddr,
@@ -375,17 +377,7 @@ var minerOwnerCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getOwner",
-		)
-		if err != nil {
-			return err
-		}
-		ownerAddr, err := address.NewFromBytes(bytes[0])
+		ownerAddr, err := GetPorcelainAPI(env).MinerGetOwnerAddress(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
@@ -415,37 +407,85 @@ Values will be output as a ratio where the first number is the miner power and s
 			return err
 		}
 
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			minerAddr,
-			"getPower",
-		)
+		minerPower, err := GetPorcelainAPI(env).MinerGetPower(req.Context, minerAddr)
 		if err != nil {
 			return err
 		}
-		power := types.NewBytesAmountFromBytes(bytes[0])
-
-		bytes, err = GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			address.StorageMarketAddress,
-			"getTotalStorage",
-		)
-		if err != nil {
-			return err
-		}
-		total := types.NewBytesAmountFromBytes(bytes[0])
-
-		str := fmt.Sprintf("%s / %s", power, total) // nolint: govet
-		return re.Emit(str)
+		return re.Emit(minerPower)
 	},
+	Type: porcelain.MinerPower{},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("miner", true, false, "The address of the miner"),
 	},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a string) error {
-			_, err := fmt.Fprintln(w, a)
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, out *porcelain.MinerPower) error {
+			outStr := fmt.Sprintf("%s / %s", out.Power.String(), out.Total.String())
+			_, err := fmt.Fprintln(w, outStr)
+			return err
+		}),
+	},
+}
+
+var minerCollateralCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Get the active collateral of a miner",
+		ShortDescription: `Check the actively staked collateral of a given miner. Values reported in attoFIL`,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		minerAddr, err := optionalAddr(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+		collateral, err := GetPorcelainAPI(env).MinerGetCollateral(req.Context, minerAddr)
+		if err != nil {
+			return err
+		}
+		return re.Emit(collateral)
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "The address of the miner"),
+	},
+	Type: types.AttoFIL{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, af types.AttoFIL) error {
+			return PrintString(w, af)
+		}),
+	},
+}
+
+var minerProvingPeriodCmd = &cmds.Command{
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("miner", true, false, "Miner address to get proving period for"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		// Get the Miner Address
+		minerAddress, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
+		if err != nil {
+			return err
+		}
+		return re.Emit(mpp)
+	},
+	Type: porcelain.MinerProvingPeriod{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
+			var pSet []string
+			for p := range res.ProvingSet {
+				pSet = append(pSet, p)
+			}
+			_, err := fmt.Fprintf(w, `Proving Period
+Start:      %s
+End:        %s
+ProvingSet: %s
+`,
+				res.Start.String(),
+				res.End.String(),
+				pSet,
+			)
 			return err
 		}),
 	},

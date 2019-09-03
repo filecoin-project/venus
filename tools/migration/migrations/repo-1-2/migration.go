@@ -16,9 +16,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// ==============  IMPORTANT ================
-// PLEASE SEE THE README IF YOU ARE HERE BECAUSE YOUR CHANGES BROKE A MIGRATION TEST
-// ==========================================
+// This migration was written for a prior development state in order to demonstrate migration
+// functionality and workflow. It's not expected to run against a current repo and the tests have
+// since been removed. This code remains for the next migration author to use as a reference,
+// after which we can probably remove it.
+
 // duplicate head key here to protect against future changes
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
@@ -187,7 +189,7 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 	}
 
 	// write head back out as CBOR
-	err = m.writeHeadAsCBOR(ctx, headTs.ToSortedCidSet())
+	err = m.writeHeadAsCBOR(ctx, headTs.Key())
 	if err != nil {
 		return err
 	}
@@ -196,7 +198,7 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 
 // writeHeadAsCBOR writes the head. Taken from Store.writeHead, which was called by
 // setHeadPersistent. We don't need mutexes for this
-func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids types.SortedCidSet) error {
+func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids types.TipSetKey) error {
 	val, err := cbor.DumpObject(cids)
 	if err != nil {
 		return err
@@ -230,25 +232,25 @@ func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetA
 }
 
 // loadChainHeadAsJSON loads the latest known head from disk assuming JSON format
-func loadChainHeadAsJSON(chainStore *migrationChainStore) (types.SortedCidSet, error) {
+func loadChainHeadAsJSON(chainStore *migrationChainStore) (types.TipSetKey, error) {
 	return loadChainHead(false, chainStore)
 }
 
 // loadChainHeadAsCBOR loads the latest known head from disk assuming CBOR format
-func loadChainHeadAsCBOR(store *migrationChainStore) (types.SortedCidSet, error) {
+func loadChainHeadAsCBOR(store *migrationChainStore) (types.TipSetKey, error) {
 	return loadChainHead(true, store)
 }
 
 // loadChainHead loads the chain head CIDs as either CBOR or JSON
-func loadChainHead(asCBOR bool, store *migrationChainStore) (types.SortedCidSet, error) {
-	var emptyCidSet types.SortedCidSet
+func loadChainHead(asCBOR bool, store *migrationChainStore) (types.TipSetKey, error) {
+	var emptyCidSet types.TipSetKey
 
 	bb, err := store.Ds.Get(headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
 
-	var cids types.SortedCidSet
+	var cids types.TipSetKey
 	if asCBOR {
 		err = cbor.DecodeInto(bb, &cids)
 
@@ -354,7 +356,7 @@ func compareChainStores(ctx context.Context, oldStore *migrationChainStore, newS
 	return nil
 }
 
-func loadTipSet(ctx context.Context, cidSet types.SortedCidSet, chainStore *migrationChainStore) (headTs types.TipSet, err error) {
+func loadTipSet(ctx context.Context, cidSet types.TipSetKey, chainStore *migrationChainStore) (headTs types.TipSet, err error) {
 	var blocks []*types.Block
 	for iter := cidSet.Iter(); !iter.Complete(); iter.Next() {
 		blk, err := chainStore.GetBlock(ctx, iter.Value())

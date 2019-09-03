@@ -5,14 +5,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"testing"
 	"time"
 
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,35 +28,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var (
+const (
 	defaultAmountInc = uint64(1773)
 	defaultPieceSize = uint64(1000)
 
-	minerPriceString = ".00025"
+	defaultMinerPrice = ".00025"
 )
 
 func TestReceiveStorageProposal(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("Accepts proposals with sufficient TotalPrice", func(t *testing.T) {
-		accepted := false
-		rejected := false
-		var message string
-
-		porcelainAPI := newMinerTestPorcelain(t)
-		miner := Miner{
-			porcelainAPI:   porcelainAPI,
-			minerOwnerAddr: porcelainAPI.targetAddress,
-			proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-				accepted = true
-				return &storagedeal.Response{State: storagedeal.Accepted}, nil
-			},
-			proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-				message = reason
-				rejected = true
-				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-			},
-		}
+		porcelainAPI, miner, _ := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, defaultAmountInc)
 		proposal := testSignedDealProposal(porcelainAPI, vouchers, defaultPieceSize)
@@ -67,12 +47,57 @@ func TestReceiveStorageProposal(t *testing.T) {
 		_, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
 
-		assert.True(t, accepted, "Proposal has been accepted")
-		assert.False(t, rejected, "Proposal has not been rejected")
-		assert.Equal(t, "", message)
+		// one deal should be stored and it should have been accepted
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+		}
 	})
 
-	t.Run("Rejects proposals with insufficient TotalPrice", func(t *testing.T) {
+	t.Run("Accepts proposals with no payments when price is zero", func(t *testing.T) {
+		porcelainAPI := newMinerTestPorcelain(t, "0")
+		miner := Miner{
+			porcelainAPI:      porcelainAPI,
+			ownerAddr:         porcelainAPI.targetAddress,
+			workerAddr:        porcelainAPI.workerAddress,
+			sectorSize:        types.OneKiBSectorSize,
+			proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},
+		}
+
+		// do not create payment info
+		proposal := testSignedDealProposal(porcelainAPI, nil, defaultPieceSize)
+
+		_, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		// one deal should be stored and it should have been accepted
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+		}
+	})
+
+	t.Run("Accepted proposals have signed responses", func(t *testing.T) {
+		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
+
+		_, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		// one deal should be stored and it should have been accepted and signed
+		require.Len(t, porcelainAPI.deals, 1)
+		for _, deal := range porcelainAPI.deals {
+			assert.Equal(t, storagedeal.Accepted, deal.Response.State)
+			assert.Equal(t, "", deal.Response.Message)
+
+			valid, err := deal.Response.VerifySignature(porcelainAPI.workerAddress)
+			require.NoError(t, err)
+			assert.True(t, valid)
+		}
+	})
+
+	t.Run("Rejects proposals with insufficient TotalPrice and signs response", func(t *testing.T) {
 		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
 		// configure storage price
@@ -83,6 +108,20 @@ func TestReceiveStorageProposal(t *testing.T) {
 
 		assert.Equal(t, storagedeal.Rejected, res.State)
 		assert.Equal(t, "proposed price (2500) is less than expected (5000) given asking price of 0.0005", res.Message)
+	})
+
+	t.Run("Rejected proposals are signed", func(t *testing.T) {
+		porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
+
+		// configure storage price
+		assert.NoError(t, porcelainAPI.config.Set("mining.storagePrice", `".0005"`))
+
+		res, err := miner.receiveStorageProposal(context.Background(), proposal)
+		require.NoError(t, err)
+
+		valid, err := res.VerifySignature(porcelainAPI.workerAddress)
+		require.NoError(t, err)
+		assert.True(t, valid)
 	})
 
 	t.Run("Rejects proposals with invalid payment channel", func(t *testing.T) {
@@ -100,7 +139,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 	t.Run("Rejects proposals with wrong target", func(t *testing.T) {
 		_, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
 
-		miner.minerOwnerAddr = address.TestAddress
+		miner.ownerAddr = address.TestAddress
 
 		res, err := miner.receiveStorageProposal(context.Background(), proposal)
 		require.NoError(t, err)
@@ -146,7 +185,7 @@ func TestReceiveStorageProposal(t *testing.T) {
 	})
 
 	t.Run("Rejects proposals with when payments start too late", func(t *testing.T) {
-		porcelainAPI := newMinerTestPorcelain(t)
+		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
 		porcelainAPI.paymentStart = porcelainAPI.paymentStart.Add(types.NewBlockHeight(15))
 
 		miner, _ := newMinerTestSetup(porcelainAPI, VoucherInterval, defaultAmountInc)
@@ -196,18 +235,8 @@ func TestReceiveStorageProposal(t *testing.T) {
 	})
 
 	t.Run("Rejects proposals piece larger than sector size", func(t *testing.T) {
-		porcelainAPI := newMinerTestPorcelain(t)
-		miner := Miner{
-			porcelainAPI:   porcelainAPI,
-			minerOwnerAddr: porcelainAPI.targetAddress,
-			proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-				return &storagedeal.Response{State: storagedeal.Accepted}, nil
-			},
-			proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-				return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-			},
-		}
-
+		porcelainAPI := newMinerTestPorcelain(t, defaultMinerPrice)
+		miner := newTestMiner(porcelainAPI)
 		vouchers := testPaymentVouchers(porcelainAPI, VoucherInterval, 2*defaultAmountInc)
 		proposal := testSignedDealProposal(porcelainAPI, vouchers, 2*defaultPieceSize)
 
@@ -262,7 +291,7 @@ func TestDealsAwaitingSealPersistence(t *testing.T) {
 	})
 }
 
-func TestOnCommitmentAddedToChain(t *testing.T) {
+func TestOnCommitmentSent(t *testing.T) {
 	tf.UnitTest(t)
 
 	cidGetter := types.NewCidForTestGetter()
@@ -273,7 +302,7 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 
 	t.Run("On successful commitment", func(t *testing.T) {
 		// create new miner with deal in the accepted state and mapped to a sector
-		_, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
+		porcelainAPI, miner, proposal := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		miner.OnCommitmentSent(sector, msgCid, nil)
 
@@ -285,6 +314,14 @@ func TestOnCommitmentAddedToChain(t *testing.T) {
 		assert.Equal(t, sector.SectorID, dealResponse.ProofInfo.SectorID, "sector id should match committed sector")
 		assert.Equal(t, msgCid, dealResponse.ProofInfo.CommitmentMessage, "CommitmentMessage should be cid of commitSector messsage")
 		assert.Equal(t, sector.Pieces[0].InclusionProof, dealResponse.ProofInfo.PieceInclusionProof, "PieceInclusionProof should be proof generated after sealing")
+		assert.Equal(t, sector.CommD[:], dealResponse.ProofInfo.CommD)
+		assert.Equal(t, sector.CommR[:], dealResponse.ProofInfo.CommR)
+		assert.Equal(t, sector.CommRStar[:], dealResponse.ProofInfo.CommRStar)
+
+		// response is signed
+		valid, err := dealResponse.VerifySignature(porcelainAPI.workerAddress)
+		require.NoError(t, err)
+		assert.True(t, valid)
 	})
 
 	t.Run("OnCommit doesn't fail when piece info is missing", func(t *testing.T) {
@@ -346,7 +383,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return nil, errors.New("test error")
 		}
 		api.messageHandlers = handlers
@@ -362,7 +399,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			commitments := map[string]types.Commitments{}
 			commitments["notanumber"] = types.Commitments{}
 			return mustEncodeResults(t, commitments), nil
@@ -429,7 +466,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		time.Sleep(1 * time.Second)
 
 		// assert proof generated in sector builder is sent to submitPoSt
-		require.Equal(t, 2, len(postParams))
+		require.Equal(t, 3, len(postParams))
 		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
 	})
 
@@ -491,7 +528,7 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 		return mustEncodeResults(t, false), nil
 	}
 
-	handlers["getSectorCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		commitments := map[string]types.Commitments{}
 		commitments["42"] = types.Commitments{}
 		return mustEncodeResults(t, commitments), nil
@@ -503,35 +540,6 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 		return [][]byte{}, nil
 	}
 	return handlers
-}
-
-type testNode struct{}
-
-func (tn *testNode) BlockService() bserv.BlockService           { return nil }
-func (tn *testNode) Host() host.Host                            { return nil }
-func (tn *testNode) SectorBuilder() sectorbuilder.SectorBuilder { return &testSectorBuilder{} }
-
-type testSectorBuilder struct{}
-
-func (tsb *testSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pieceSize uint64, pieceReader io.Reader) (sectorID uint64, err error) {
-	return 0, nil
-}
-func (tsb *testSectorBuilder) ReadPieceFromSealedSector(pieceCid cid.Cid) (io.Reader, error) {
-	return nil, nil
-}
-func (tsb *testSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
-	return nil
-}
-func (tsb *testSectorBuilder) SectorSealResults() <-chan sectorbuilder.SectorSealResult {
-	return nil
-}
-func (tsb *testSectorBuilder) GeneratePoSt(gpr sectorbuilder.GeneratePoStRequest) (sectorbuilder.GeneratePoStResponse, error) {
-	return sectorbuilder.GeneratePoStResponse{
-		Proofs: []types.PoStProof{[]byte("test proof")},
-	}, nil
-}
-func (tsb *testSectorBuilder) Close() error {
-	return nil
 }
 
 func mustEncodeResults(t *testing.T, results ...interface{}) [][]byte {
@@ -551,6 +559,7 @@ type minerTestPorcelain struct {
 	config          *cfg.Config
 	payerAddress    address.Address
 	targetAddress   address.Address
+	workerAddress   address.Address
 	channelID       *types.ChannelID
 	messageCid      *cid.Cid
 	signer          types.MockSigner
@@ -558,36 +567,23 @@ type minerTestPorcelain struct {
 	blockHeight     *types.BlockHeight
 	channelEol      *types.BlockHeight
 	paymentStart    *types.BlockHeight
-	randError       bool
 	deals           map[cid.Cid]*storagedeal.Deal
+	walletBalance   types.AttoFIL
 	messageHandlers map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 	testing *testing.T
 }
 
-func (mtp *minerTestPorcelain) MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error) {
-	return types.OneKiBSectorSize, nil
-}
-
-func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	if mtp.randError {
-		return []byte{}, errors.New("failure to sample chain randomness")
-	}
-
-	bytes := make([]byte, 42)
-	if _, err := rand.Read(bytes); err != nil {
-		panic(err)
-	}
-
-	return bytes, nil
-}
+var _ minerPorcelain = (*minerTestPorcelain)(nil)
 
 type messageHandlerMap map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
-func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
-	mockSigner, ki := types.NewMockSignersAndKeyInfo(1)
+func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorcelain {
+	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
 	payerAddr, err := ki[0].Address()
 	require.NoError(t, err, "Could not create payer address")
+	workerAddr, err := ki[1].Address()
+	require.NoError(t, err, "Could not create worker address")
 
 	addressGetter := address.NewForTestGetter()
 	cidGetter := types.NewCidForTestGetter()
@@ -602,6 +598,7 @@ func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
 		config:          config,
 		payerAddress:    payerAddr,
 		targetAddress:   addressGetter(),
+		workerAddress:   workerAddr,
 		channelID:       types.NewChannelID(73),
 		messageCid:      &messageCid,
 		signer:          mockSigner,
@@ -609,9 +606,11 @@ func newMinerTestPorcelain(t *testing.T) *minerTestPorcelain {
 		channelEol:      types.NewBlockHeight(13773),
 		blockHeight:     blockHeight,
 		paymentStart:    blockHeight,
-		messageHandlers: messageHandlerMap{},
-		testing:         t,
 		deals:           make(map[cid.Cid]*storagedeal.Deal),
+		walletBalance:   types.NewAttoFILFromFIL(100),
+		messageHandlers: messageHandlerMap{},
+
+		testing: t,
 	}
 }
 
@@ -670,36 +669,56 @@ func (mtp *minerTestPorcelain) ChainBlockHeight() (*types.BlockHeight, error) {
 	return mtp.blockHeight, nil
 }
 
+func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	bytes := make([]byte, 42)
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err)
+	}
+
+	return bytes, nil
+}
+
+func (mtp *minerTestPorcelain) ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	return nil
+}
+
 func (mtp *minerTestPorcelain) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return nil
 }
 
+func (mtp *minerTestPorcelain) WalletBalance(ctx context.Context, address address.Address) (types.AttoFIL, error) {
+	return mtp.walletBalance, nil
+}
+
+func (mtp *minerTestPorcelain) MinerCalculateLateFee(ctx context.Context, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
+	return types.ZeroAttoFIL, nil
+}
+
+func (mtp *minerTestPorcelain) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	return mtp.signer.SignBytes(data, addr)
+}
+
 func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
-		porcelainAPI:   api,
-		minerOwnerAddr: api.targetAddress,
-		proposalAcceptor: func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-			return &storagedeal.Response{State: storagedeal.Accepted}, nil
-		},
-		proposalRejector: func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
-			return &storagedeal.Response{State: storagedeal.Rejected, Message: reason}, nil
-		},
+		porcelainAPI:      api,
+		ownerAddr:         api.targetAddress,
+		workerAddr:        api.workerAddress,
+		prover:            &FakeProver{},
+		sectorSize:        types.OneKiBSectorSize,
+		proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},
 	}
 }
 
-func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
-	papi := newMinerTestPorcelain(t)
+func defaultMinerTestSetup(t *testing.T, voucherInverval int, amountInc uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedProposal) {
+	papi := newMinerTestPorcelain(t, defaultMinerPrice)
 	miner, sdp := newMinerTestSetup(papi, voucherInverval, amountInc)
 	return papi, miner, sdp
 }
 
 // simulates a miner in the state where a proposal has been sent and the miner has accepted
-func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedDealProposal) {
+func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID uint64) (*minerTestPorcelain, *Miner, *storagedeal.SignedProposal) {
 	// start with miner and signed proposal
 	porcelainAPI, miner, proposal := defaultMinerTestSetup(t, VoucherInterval, defaultAmountInc)
-
-	// give miner a test node that will return a test sector builder
-	miner.node = &testNode{}
 
 	// give the miner some place to store the deal
 	miner.dealsAwaitingSealDs = repo.NewInMemoryRepo().DealsDs
@@ -712,15 +731,16 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	miner.dealsAwaitingSeal.onSuccess = miner.onCommitSuccess
 
 	// create the response and the deal
-	resp := &storagedeal.Response{
-		State:       storagedeal.Accepted,
-		ProposalCid: proposalCid,
-		Signature:   proposal.Signature,
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Accepted,
+			ProposalCid: proposalCid,
+		},
 	}
 
 	storageDeal := &storagedeal.Deal{
 		Miner:    miner.minerAddr,
-		Proposal: &proposal.Proposal,
+		Proposal: proposal,
 		Response: resp,
 	}
 
@@ -732,7 +752,7 @@ func minerWithAcceptedDealTestSetup(t *testing.T, proposalCid cid.Cid, sectorID 
 	return porcelainAPI, miner, proposal
 }
 
-func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) (*Miner, *storagedeal.SignedDealProposal) {
+func newMinerTestSetup(porcelainAPI *minerTestPorcelain, voucherInterval int, amountInc uint64) (*Miner, *storagedeal.SignedProposal) {
 	vouchers := testPaymentVouchers(porcelainAPI, voucherInterval, amountInc)
 	miner := newTestMiner(porcelainAPI)
 	return miner, testSignedDealProposal(porcelainAPI, vouchers, 1000)
@@ -768,13 +788,20 @@ func testSectorMetadata(pieceRef cid.Cid) *sectorbuilder.SealedSectorMetadata {
 	copy(commD[:], []byte{9, 9, 9, 9})
 	pip := []byte{3, 3, 3, 3, 3}
 
+	// Make some values that aren't the zero value
+	var commR types.CommR
+	copy(commR[:], []byte{1, 2, 3, 4})
+
+	var commRStar types.CommRStar
+	copy(commRStar[:], []byte{5, 6, 7, 8})
+
 	piece := &sectorbuilder.PieceInfo{Ref: pieceRef, Size: 10999, InclusionProof: pip}
-	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, Pieces: []*sectorbuilder.PieceInfo{piece}}
+	return &sectorbuilder.SealedSectorMetadata{SectorID: sectorID, CommD: commD, CommR: commR, CommRStar: commRStar, Pieces: []*sectorbuilder.PieceInfo{piece}}
 }
 
-func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedDealProposal {
+func testSignedDealProposal(porcelainAPI *minerTestPorcelain, vouchers []*types.PaymentVoucher, size uint64) *storagedeal.SignedProposal {
 	duration := uint64(10000)
-	minerPrice, _ := types.NewAttoFILFromFILString(minerPriceString)
+	minerPrice, _ := types.NewAttoFILFromFILString(defaultMinerPrice)
 	totalPrice := minerPrice.MulBigInt(big.NewInt(int64(size * duration)))
 
 	proposal := &storagedeal.Proposal{
@@ -808,4 +835,8 @@ func (mtp *minerTestPorcelain) DealGet(_ context.Context, dealCid cid.Cid) (*sto
 func (mtp *minerTestPorcelain) DealPut(storageDeal *storagedeal.Deal) error {
 	mtp.deals[storageDeal.Response.ProposalCid] = storageDeal
 	return nil
+}
+
+func (mtp *minerTestPorcelain) SectorBuilder() sectorbuilder.SectorBuilder {
+	return &sectorbuilder.RustSectorBuilder{}
 }

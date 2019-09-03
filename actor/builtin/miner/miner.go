@@ -1,12 +1,11 @@
 package miner
 
 import (
-	"bytes"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -15,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -47,13 +47,6 @@ const LargestSectorGenerationAttackThresholdBlocks = 100
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
 
-// ClientProofOfStorageTimeoutBlocks is the number of blocks between LastPoSt and the current block height
-// after which the miner is no longer considered to be storing the client's piece and they are entitled to
-// a refund.
-// TODO: what is a fair value for this? Value is arbitrary right now.
-// See https://github.com/filecoin-project/go-filecoin/issues/1887
-const PieceInclusionGracePeriodBlocks = 10000
-
 const (
 	// ErrInvalidSector indicates and invalid sector id.
 	ErrInvalidSector = 34
@@ -75,21 +68,36 @@ const (
 	ErrGetProofsModeFailed = 42
 	// ErrInsufficientCollateral indicates that the miner does not have sufficient collateral to commit additional sectors.
 	ErrInsufficientCollateral = 43
+	// ErrMinerAlreadySlashed indicates that an attempt has been made to slash an already slashed miner
+	ErrMinerAlreadySlashed = 44
+	// ErrMinerNotSlashable indicates that an attempt has been made to slash a miner that does not meet the criteria for slashing.
+	ErrMinerNotSlashable = 45
+	// ErrInvalidPieceInclusionProof indicates that the piece inclusion proof was
+	// malformed or did not succesfully verify.
+	ErrInvalidPieceInclusionProof = 46
 )
 
 // Errors map error codes to revert errors this actor may return.
 var Errors = map[uint8]error{
-	ErrInvalidSector:           errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
-	ErrSectorIDInUse:           errors.NewCodedRevertErrorf(ErrSectorIDInUse, "sector already committed at this ID"),
-	ErrStoragemarketCallFailed: errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
-	ErrCallerUnauthorized:      errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
-	ErrInsufficientPledge:      errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
-	ErrInvalidPoSt:             errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
-	ErrAskNotFound:             errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
-	ErrInvalidSealProof:        errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
-	ErrGetProofsModeFailed:     errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
-	ErrInsufficientCollateral:  errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
+	ErrInvalidSector:              errors.NewCodedRevertErrorf(ErrInvalidSector, "sectorID out of range"),
+	ErrSectorIDInUse:              errors.NewCodedRevertErrorf(ErrSectorIDInUse, "sector already committed at this ID"),
+	ErrStoragemarketCallFailed:    errors.NewCodedRevertErrorf(ErrStoragemarketCallFailed, "call to StorageMarket failed"),
+	ErrCallerUnauthorized:         errors.NewCodedRevertErrorf(ErrCallerUnauthorized, "not authorized to call the method"),
+	ErrInsufficientPledge:         errors.NewCodedRevertErrorf(ErrInsufficientPledge, "not enough pledged"),
+	ErrInvalidPoSt:                errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt proof did not validate"),
+	ErrAskNotFound:                errors.NewCodedRevertErrorf(ErrAskNotFound, "no ask was found"),
+	ErrInvalidSealProof:           errors.NewCodedRevertErrorf(ErrInvalidSealProof, "seal proof was invalid"),
+	ErrGetProofsModeFailed:        errors.NewCodedRevertErrorf(ErrGetProofsModeFailed, "failed to get proofs mode"),
+	ErrInsufficientCollateral:     errors.NewCodedRevertErrorf(ErrInsufficientCollateral, "insufficient collateral"),
+	ErrInvalidPieceInclusionProof: errors.NewCodedRevertErrorf(ErrInvalidPieceInclusionProof, "piece inclusion proof did not validate"),
 }
+
+const (
+	PoStStateNoStorage = iota
+	PoStStateWithinProvingPeriod
+	PoStStateAfterProvingPeriod
+	PoStStateAfterGenerationAttackThreshold
+)
 
 // Actor is the miner actor.
 //
@@ -137,34 +145,47 @@ type State struct {
 	NextAskID *big.Int
 
 	// SectorCommitments maps sector id to commitments, for all sectors this
-	// miner has committed. Due to a bug in refmt, the sector id-keys need to be
+	// miner has committed.  Sector ids are removed from this collection
+	// when they are included in the done or fault parameters of submitPoSt.
+	// Due to a bug in refmt, the sector id-keys need to be
 	// stringified.
 	//
 	// See also: https://github.com/polydawn/refmt/issues/35
 	SectorCommitments SectorSet
 
-	// NextDoneSet is a set of sectorIDs reported during the last PoSt
+	// NextDoneSet is a set of sector ids reported during the last PoSt
 	// submission as being 'done'.  The collateral for them is still being
 	// held until the next PoSt submission in case early sector removal
 	// penalization is needed.
 	NextDoneSet types.IntSet
 
-	// ProvingSet is the set of sectorIDs this miner is currently proving.
-	// It is only updated when a PoSt is submitted.
+	// ProvingSet is the set of sector ids of sectors this miner is
+	// currently required to prove.
 	ProvingSet types.IntSet
 
 	LastUsedSectorID uint64
 
-	// ProvingPeriodEnd is the block height at the end of the current proving period
+	// ProvingPeriodEnd is the block height at the end of the current proving period.
+	// This is the last round in which a proof will be considered to be on-time.
 	ProvingPeriodEnd *types.BlockHeight
-	LastPoSt         *types.BlockHeight
 
-	// The amount of space committed to the network by this miner.
+	// The amount of space proven to the network by this miner in the
+	// latest proving period.
 	Power *types.BytesAmount
 
 	// SectorSize is the amount of space in each sector committed to the network
 	// by this miner.
 	SectorSize *types.BytesAmount
+
+	// SlashedSet is a set of sector ids that have been slashed
+	SlashedSet types.IntSet
+
+	// SlashedAt is the time at which this miner was slashed
+	SlashedAt *types.BlockHeight
+
+	// OwedStorageCollateral is the collateral for sectors that have been slashed.
+	// This collateral can be collected from arbitrated deals, but not de-pledged.
+	OwedStorageCollateral types.AttoFIL
 }
 
 // NewActor returns a new miner actor with the provided balance.
@@ -184,6 +205,7 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
 		SectorSize:        sectorSize,
+		SlashedSet:        types.EmptyIntSet(),
 		ActiveCollateral:  types.ZeroAttoFIL,
 	}
 }
@@ -211,25 +233,14 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 var _ exec.ExecutableActor = (*Actor)(nil)
 
 var minerExports = exec.Exports{
+	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
 	"addAsk": &exec.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
-	"getAsks": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.UintArray},
-	},
-	"getAsk": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Integer},
-		Return: []abi.Type{abi.Bytes},
-	},
 	"getOwner": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
-	},
-	"getLastUsedSectorID": &exec.FunctionSignature{
-		Params: nil,
-		Return: []abi.Type{abi.SectorID},
 	},
 	"commitSector": &exec.FunctionSignature{
 		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
@@ -252,18 +263,45 @@ var minerExports = exec.Exports{
 		Return: []abi.Type{abi.BytesAmount},
 	},
 	"submitPoSt": &exec.FunctionSignature{
-		Params: []abi.Type{abi.PoStProofs, abi.IntSet},
+		Params: []abi.Type{abi.PoStProofs, abi.FaultSet, abi.IntSet},
+		Return: []abi.Type{},
+	},
+	"slashStorageFault": &exec.FunctionSignature{
+		Params: []abi.Type{},
 		Return: []abi.Type{},
 	},
 	"changeWorker": &exec.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{},
 	},
+	// verifyPieceInclusion is not in spec, but should be.
 	"verifyPieceInclusion": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Bytes, abi.SectorID, abi.Bytes},
+		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
-	"getSectorCommitments": &exec.FunctionSignature{
+	"getSectorSize": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.BytesAmount},
+	},
+
+	// Non-exported methods below here.
+	// These methods are not part of the actor's protocol specification and should not be exported,
+	// but are because we lack a mechanism to invoke actor methods without going through the
+	// queryMessage infrastructure. These should be removed when we have another way of invoking
+	// them from worker code. https://github.com/filecoin-project/go-filecoin/issues/2973
+	"getAsks": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.UintArray},
+	},
+	"getAsk": &exec.FunctionSignature{
+		Params: []abi.Type{abi.Integer},
+		Return: []abi.Type{abi.Bytes},
+	},
+	"getLastUsedSectorID": &exec.FunctionSignature{
+		Params: nil,
+		Return: []abi.Type{abi.SectorID},
+	},
+	"getProvingSetCommitments": &exec.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
@@ -271,13 +309,21 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Boolean},
 	},
-	"getSectorSize": &exec.FunctionSignature{
+	"getPoStState": &exec.FunctionSignature{
 		Params: nil,
-		Return: []abi.Type{abi.BytesAmount},
+		Return: []abi.Type{abi.Integer},
 	},
 	"getProvingPeriod": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
+	},
+	"calculateLateFee": &exec.FunctionSignature{
+		Params: []abi.Type{abi.BlockHeight},
+		Return: []abi.Type{abi.AttoFIL},
+	},
+	"getActiveCollateral": &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.AttoFIL},
 	},
 }
 
@@ -458,26 +504,52 @@ func (ma *Actor) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
 	return ma.Bootstrap, 0, nil
 }
 
-// GetSectorCommitments returns all sector commitments posted by this miner.
-func (ma *Actor) GetSectorCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+// GetPoStState returns whether the miner's last submitPoSt is within the proving period,
+// late or after the generation attack threshold.
+func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
+	var state State
+	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		// Don't check lateness unless there is storage to prove
+		if state.ProvingSet.Size() == 0 {
+			return int64(PoStStateNoStorage), nil
+		}
+		lateState, _ := lateState(state.ProvingPeriodEnd, ctx.BlockHeight(), GenerationAttackTime(state.SectorSize))
+		return lateState, nil
+	})
+
+	if err != nil {
+		return nil, errors.CodeError(err), err
+	}
+
+	result, ok := out.(int64)
+	if !ok {
+		return nil, 1, errors.NewFaultErrorf("expected a int64, but got %T instead", out)
+	}
+
+	return big.NewInt(result), 0, nil
+}
+
+// GetProvingSetCommitments returns all sector commitments posted by this miner.
+func (ma *Actor) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		return (map[string]types.Commitments)(state.SectorCommitments), nil
-	})
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return map[string]types.Commitments{}, errors.CodeError(err), err
 	}
 
-	a, ok := out.(map[string]types.Commitments)
-	if !ok {
-		return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("expected a map[string]types.Commitments, but got %T instead", out)
+	commitments := NewSectorSet()
+	for _, sectorID := range state.ProvingSet.Values() {
+		c, found := state.SectorCommitments.Get(sectorID)
+		if !found {
+			return map[string]types.Commitments{}, 1, errors.NewFaultErrorf("proving set id, %d, missing in sector commitments", sectorID)
+		}
+		commitments.Add(sectorID, c)
 	}
-
-	return a, 0, nil
+	return (map[string]types.Commitments)(commitments), 0, nil
 }
 
 // GetSectorSize returns the size of the sectors committed to the network by
@@ -526,7 +598,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			req := proofs.VerifySealRequest{}
+			req := verification.VerifySealRequest{}
 			copy(req.CommD[:], commD)
 			copy(req.CommR[:], commR)
 			copy(req.CommRStar[:], commRStar)
@@ -535,7 +607,7 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 			req.SectorID = sectorbuilder.SectorIDToBytes(sectorID)
 			req.SectorSize = state.SectorSize
 
-			res, err := (&proofs.RustVerifier{}).VerifySeal(req)
+			res, err := ctx.Verifier().VerifySeal(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify seal proof")
 			}
@@ -561,11 +633,18 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 		state.ActiveCollateral = state.ActiveCollateral.Add(collateral)
 
-		if state.Power.Equal(types.NewBytesAmount(0)) {
+		// Case 1: If the miner is not currently proving any sectors,
+		// start proving immediately on this sector.
+		//
+		// Case 2: If the miner is adding sectors during genesis
+		// construction all committed sectors accumulate in their
+		// proving set.  This  allows us to add power immediately in
+		// genesis with commitSector and submitPoSt calls without
+		// adding special casing for bootstrappers.
+		if state.ProvingSet.Size() == 0 || ctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
+			state.ProvingSet = state.ProvingSet.Add(sectorID)
 			state.ProvingPeriodEnd = ctx.BlockHeight().Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
-		inc := state.SectorSize
-		state.Power = state.Power.Add(inc)
 		comms := types.Commitments{
 			CommD:     types.CommD{},
 			CommR:     types.CommR{},
@@ -577,13 +656,6 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 
 		state.LastUsedSectorID = sectorID
 		state.SectorCommitments.Add(sectorID, comms)
-		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{inc})
-		if err != nil {
-			return nil, err
-		}
-		if ret != 0 {
-			return nil, Errors[ErrStoragemarketCallFailed]
-		}
 		return nil, nil
 	})
 	if err != nil {
@@ -593,12 +665,15 @@ func (ma *Actor) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR,
 	return 0, nil
 }
 
-// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector.
+// VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
+// verifies that this miner is not slashable
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
-func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID uint64, proof []byte) (uint8, error) {
+func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
+
+	chainHeight := ctx.BlockHeight()
 
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -609,26 +684,32 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, sectorID
 			return nil, errors.NewRevertError("sector not committed")
 		}
 
-		// If miner is not up-to-date on their PoSts, proof is invalid
-		if state.LastPoSt == nil {
-			return nil, errors.NewRevertError("proofs out of date")
+		if state.ProvingPeriodEnd == nil {
+			return nil, errors.NewRevertError("miner not active")
 		}
 
-		clientProofsTimeout := state.LastPoSt.Add(types.NewBlockHeight(PieceInclusionGracePeriodBlocks))
-		if ctx.BlockHeight().GreaterThan(clientProofsTimeout) {
-			return nil, errors.NewRevertError("proofs out of date")
+		// Ensure the miner is active
+		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		if chainHeight.GreaterThan(deadline) {
+			return nil, errors.NewRevertError("miner is tardy")
 		}
 
 		// Verify proof proves CommP is in sector's CommD
 		var typedCommP types.CommP
 		copy(typedCommP[:], commP)
-		valid, err := verifyInclusionProof(typedCommP, commitment.CommD, proof)
-		if err != nil {
-			return nil, err
-		}
 
-		if !valid {
-			return nil, errors.NewRevertError("invalid inclusion proof")
+		res, err := ctx.Verifier().VerifyPieceInclusionProof(verification.VerifyPieceInclusionProofRequest{
+			CommD:               commitment.CommD,
+			CommP:               typedCommP,
+			PieceInclusionProof: proof,
+			PieceSize:           pieceSize,
+			SectorSize:          state.SectorSize,
+		})
+		if err != nil {
+			return nil, errors.RevertErrorWrap(err, "failed to verify piece inclusion proof")
+		}
+		if !res.IsValid {
+			return nil, Errors[ErrInvalidPieceInclusionProof]
 		}
 
 		return nil, nil
@@ -690,12 +771,8 @@ func (ma *Actor) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 
 	var state State
 
-	chunk, err := ctx.ReadStorage()
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
-		return peer.ID(""), errors.CodeError(err), err
-	}
-
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
 		return peer.ID(""), errors.CodeError(err), err
 	}
 
@@ -748,9 +825,31 @@ func (ma *Actor) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error)
 	return power, 0, nil
 }
 
+// GetActiveCollateral returns the active collateral a miner is holding to
+// protect storage.
+func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return types.ZeroAttoFIL, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+	var state State
+	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		return state.ActiveCollateral, nil
+	})
+	if err != nil {
+		return types.ZeroAttoFIL, errors.CodeError(err), err
+	}
+
+	collateral, ok := ret.(types.AttoFIL)
+	if !ok {
+		return types.ZeroAttoFIL, 1, errors.NewFaultErrorf("expected types.AttoFIL to be returned, but got %T instead", ret)
+	}
+
+	return collateral, 0, nil
+}
+
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, done types.IntSet) (uint8, error) {
+func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -775,11 +874,11 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 				generationAttackGracePeriod)
 		}
 
-		feeRequired := LatePoStFee(state.ActiveCollateral, state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
+		feeRequired := latePoStFee(ma.getPledgeCollateralRequirement(state, chainHeight), state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
-		// balance (whichs forms pledge & storage collateral) is not less than it was before.
+		// balance (which forms pledge & storage collateral) is not less than it was before.
 		messageValue := ctx.Message().Value
 		if messageValue.LessThan(feeRequired) {
 			return nil, errors.NewRevertErrorf("PoSt message requires value of at least %s attofil to cover fees, got %s", feeRequired, messageValue)
@@ -812,21 +911,25 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 			}
 
 			var commRs []types.CommR
-			for _, v := range state.SectorCommitments {
-				commRs = append(commRs, v.CommR)
+			for _, id := range state.ProvingSet.Values() {
+				commitment, found := state.SectorCommitments.Get(id)
+				if !found {
+					return nil, errors.NewFaultErrorf("miner ProvingSet sector id %d missing in SectorCommitments", id)
+				}
+				commRs = append(commRs, commitment.CommR)
 			}
 
 			sortedCommRs := proofs.NewSortedCommRs(commRs...)
 
-			req := proofs.VerifyPoStRequest{
+			req := verification.VerifyPoStRequest{
 				ChallengeSeed: seed,
 				SortedCommRs:  sortedCommRs,
-				Faults:        []uint64{},
+				Faults:        faults.SectorIds.Values(),
 				Proofs:        poStProofs,
 				SectorSize:    state.SectorSize,
 			}
 
-			res, err := (&proofs.RustVerifier{}).VerifyPoST(req)
+			res, err := ctx.Verifier().VerifyPoSt(req)
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}
@@ -837,20 +940,40 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 
 		// transition to the next proving period
 		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
-		state.LastPoSt = chainHeight
+
+		// Update miner power to the amount of data actually proved
+		// during the last proving period.
+		oldPower := state.Power
+		newPower := types.NewBytesAmount(uint64(state.ProvingSet.Size() - faults.SectorIds.Size())).Mul(state.SectorSize)
+		state.Power = newPower
+		delta := newPower.Sub(oldPower)
+
+		if !delta.IsZero() {
+			_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{delta})
+			if err != nil {
+				return nil, err
+			}
+			if ret != 0 {
+				return nil, Errors[ErrStoragemarketCallFailed]
+			}
+		}
 
 		// Update SectorSet, DoneSet and ProvingSet
 		if err = state.SectorCommitments.Drop(done.Values()); err != nil {
 			return nil, err
 		}
-		
+
+		if err = state.SectorCommitments.Drop(faults.SectorIds.Values()); err != nil {
+			return nil, err
+		}
+
 		sectorIDsToProve, err := state.SectorCommitments.IDs()
 		if err != nil {
 			return nil, err
 		}
 		state.ProvingSet = types.NewIntSet(sectorIDsToProve...)
 		state.NextDoneSet = done
-		
+
 		return nil, nil
 	})
 	if err != nil {
@@ -860,8 +983,100 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProofs []types.PoStProof, do
 	return 0, nil
 }
 
+// SlashStorageFault is called by an independent actor to remove power and
+// take collateral from this miner when the miner has failed to submit a
+// PoSt on time.
+func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	chainHeight := ctx.BlockHeight()
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		// You can only be slashed once for missing your PoSt.
+		if state.SlashedAt != nil {
+			return nil, errors.NewCodedRevertError(ErrMinerAlreadySlashed, "miner already slashed")
+		}
+
+		// Only a miner who is expected to prove, can be slashed.
+		if state.ProvingSet.Size() == 0 {
+			return nil, errors.NewCodedRevertError(ErrMinerNotSlashable, "miner is inactive")
+		}
+
+		// Only if the miner is actually late, they can be slashed.
+		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		if chainHeight.LessEqual(deadline) {
+			return nil, errors.NewCodedRevertError(ErrMinerNotSlashable, "miner not yet tardy")
+		}
+
+		// Strip the miner of their power.
+		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
+		_, ret, err := ctx.Send(address.StorageMarketAddress, "updateStorage", types.ZeroAttoFIL, []interface{}{powerDelta})
+		if err != nil {
+			return nil, err
+		}
+		if ret != 0 {
+			return nil, Errors[ErrStoragemarketCallFailed]
+		}
+		state.Power = types.NewBytesAmount(0)
+
+		// record what has been slashed
+		state.SlashedSet = state.ProvingSet
+
+		// reserve collateral for arbitration
+		// TODO: We currently do not know the correct amount of collateral to reserve here: https://github.com/filecoin-project/go-filecoin/issues/3050
+		state.OwedStorageCollateral = types.ZeroAttoFIL
+
+		// remove proving set from our sectors
+		state.SectorCommitments.Drop(state.SlashedSet.Values())
+
+		// clear proving set
+		state.ProvingSet = types.NewIntSet()
+
+		// save chain height, so we know when this miner was slashed
+		state.SlashedAt = chainHeight
+
+		return nil, nil
+	})
+
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
+// GetProvingPeriod returns the proving period start and proving period end
+func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+	var state State
+	err := actor.ReadState(ctx, &state)
+	if err != nil {
+		return nil, nil, errors.CodeError(err), err
+	}
+
+	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+}
+
+// CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current
+// power and proving period.
+func (ma *Actor) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
+	var state State
+	err := actor.ReadState(ctx, &state)
+	if err != nil {
+		return types.ZeroAttoFIL, errors.CodeError(err), err
+	}
+
+	collateral := ma.getPledgeCollateralRequirement(state, ctx.BlockHeight())
+	gracePeriod := GenerationAttackTime(state.SectorSize)
+	fee := latePoStFee(collateral, state.ProvingPeriodEnd, height, gracePeriod)
+	return fee, 0, nil
+}
+
 //
 // Un-exported methods
+// These are methods, rather than free functions, even when they don't use the actor struct in
+// expectation of this being important for future protocol upgrade mechanisms.
 //
 
 func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
@@ -869,19 +1084,10 @@ func (ma *Actor) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
 	return err
 }
 
-// GetProvingPeriod returns the proving period start and proving period end
-func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
-	chunk, err := ctx.ReadStorage()
-	if err != nil {
-		return nil, nil, errors.CodeError(err), err
-	}
-
-	var state State
-	if err := actor.UnmarshalStorage(chunk, &state); err != nil {
-		return nil, nil, errors.CodeError(err), err
-	}
-
-	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+func (ma *Actor) getPledgeCollateralRequirement(state State, height *types.BlockHeight) types.AttoFIL {
+	// The pledge collateral is expected to be a function of power and block height, but is currently
+	// a state variable.
+	return state.ActiveCollateral
 }
 
 // getPoStChallengeSeed returns some chain randomness
@@ -922,14 +1128,6 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	return MinimumCollateralPerSector
 }
 
-// calculates proving period start from the proving period end and the proving period duration
-func provingPeriodStart(state State) *types.BlockHeight {
-	if state.ProvingPeriodEnd == nil {
-		return types.NewBlockHeight(0)
-	}
-	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
-}
-
 // GenerationAttackTime is the number of blocks after a proving period ends
 // after which a storage miner will be subject to storage fault slashing.
 //
@@ -954,17 +1152,19 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 // fraction of the maximum possible lateness (i.e. the generation attack grace period).
 // If the submission is on-time, the fee is zero. If the submission is after the maximum allowed lateness
 // the fee amounts to the entire pledge collateral.
-func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
-	roundsLate := chainHeight.Sub(provingPeriodEnd)
-	if roundsLate.GreaterEqual(maxRoundsLate) {
+func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
+	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
+
+	if lateState == PoStStateAfterGenerationAttackThreshold {
 		return pledgeCollateral
-	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+	} else if lateState == PoStStateAfterProvingPeriod {
 		// fee = collateral * (roundsLate / maxRoundsLate)
 		var fee big.Int
 		fee.Mul(pledgeCollateral.AsBigInt(), roundsLate.AsBigInt())
 		fee.Div(&fee, maxRoundsLate.AsBigInt()) // Integer division in AttoFIL, rounds towards zero.
 		return types.NewAttoFIL(&fee)
 	}
+
 	return types.ZeroAttoFIL
 }
 
@@ -972,27 +1172,22 @@ func LatePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 // Internal functions
 //
 
-func currentProvingPeriodPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
-	bytes, err := ctx.SampleChainRandomness(state.ProvingPeriodEnd)
-	if err != nil {
-		return types.PoStChallengeSeed{}, err
+// calculates proving period start from the proving period end and the proving period duration
+func provingPeriodStart(state State) *types.BlockHeight {
+	if state.ProvingPeriodEnd == nil {
+		return types.NewBlockHeight(0)
 	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-
-	return seed, nil
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 }
 
-// TODO: This is a fake implementation pending availability of the verification algorithm in rust proofs
-// see https://github.com/filecoin-project/go-filecoin/issues/2629
-func verifyInclusionProof(commP types.CommP, commD types.CommD, proof []byte) (bool, error) {
-	if len(proof) != 2*int(types.CommitmentBytesLen) {
-		return false, errors.NewRevertError("malformed inclusion proof")
+// lateState determines whether given a proving period and chain height, what is the
+// degree of lateness and how many rounds they are late
+func lateState(provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) (int64, *types.BlockHeight) {
+	roundsLate := chainHeight.Sub(provingPeriodEnd)
+	if roundsLate.GreaterEqual(maxRoundsLate) {
+		return PoStStateAfterGenerationAttackThreshold, roundsLate
+	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
+		return PoStStateAfterProvingPeriod, roundsLate
 	}
-	combined := []byte{}
-	combined = append(combined, commP[:]...)
-	combined = append(combined, commD[:]...)
-
-	return bytes.Equal(combined, proof), nil
+	return PoStStateWithinProvingPeriod, roundsLate
 }

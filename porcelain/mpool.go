@@ -2,37 +2,23 @@ package porcelain
 
 import (
 	"context"
+	"time"
 
-	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // The subset of plumbing used by MessagePoolWait
 type mpwPlumbing interface {
 	MessagePoolPending() []*types.SignedMessage
-	PubSubSubscribe(topic string) (pubsub.Subscription, error)
 }
 
 // MessagePoolWait waits until the message pool contains at least messageCount unmined messages.
 func MessagePoolWait(ctx context.Context, plumbing mpwPlumbing, messageCount uint) ([]*types.SignedMessage, error) {
 	pending := plumbing.MessagePoolPending()
-	if len(pending) < int(messageCount) {
-		subscription, err := plumbing.PubSubSubscribe(core.Topic)
-		defer subscription.Cancel()
-		if err != nil {
-			return nil, err
-		}
-
+	for len(pending) < int(messageCount) {
 		// Poll pending again after subscribing in case a message arrived since.
 		pending = plumbing.MessagePoolPending()
-		for len(pending) < int(messageCount) {
-			_, err = subscription.Next(ctx)
-			if err != nil {
-				return nil, err
-			}
-			pending = plumbing.MessagePoolPending()
-		}
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	return pending, nil

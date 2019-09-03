@@ -2,39 +2,82 @@ package net
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// Fetcher is used to fetch data over the network.  It is implemented with
+// Fetcher defines an interface that may be used to fetch data from the network.
+type Fetcher interface {
+	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
+	// this includes the provided `ts`. The TipSet that evaluates to true when
+	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
+}
+
+// BitswapFetcher is used to fetch data over the network.  It is implemented with
 // a persistent bitswap session on a networked blockservice.
-type Fetcher struct {
+type BitswapFetcher struct {
 	// session is a bitswap session that enables efficient transfer.
 	session   *bserv.Session
 	validator consensus.BlockSyntaxValidator
 }
 
-// NewFetcher returns a Fetcher wired up to the input BlockService and a newly
+// NewBitswapFetcher returns a BitswapFetcher wired up to the input BlockService and a newly
 // initialized persistent session of the block service.
-func NewFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensus.BlockSyntaxValidator) *Fetcher {
-	return &Fetcher{
+func NewBitswapFetcher(ctx context.Context, bsrv bserv.BlockService, bv consensus.BlockSyntaxValidator) *BitswapFetcher {
+	return &BitswapFetcher{
 		session:   bserv.NewSession(ctx, bsrv),
 		validator: bv,
 	}
 }
 
+// FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers bitswap session.
+func (bsf *BitswapFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	var out []types.TipSet
+	cur := tsKey
+	for {
+		res, err := bsf.GetBlocks(ctx, cur.ToSlice())
+		if err != nil {
+			return nil, err
+		}
+
+		ts, err := types.NewTipSet(res...)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, ts)
+		ok, err := done(ts)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			break
+		}
+
+		cur, err = ts.Parents()
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	return out, nil
+
+}
+
 // GetBlocks fetches the blocks with the given cids from the network using the
-// Fetcher's bitswap session.
-func (f *Fetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
+// BitswapFetcher's bitswap session.
+func (bsf *BitswapFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
 	var unsanitized []blocks.Block
-	for b := range f.session.GetBlocks(ctx, cids) {
+	for b := range bsf.session.GetBlocks(ctx, cids) {
 		unsanitized = append(unsanitized, b)
 	}
 
@@ -48,16 +91,24 @@ func (f *Fetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block
 		return nil, err
 	}
 
+	filBlocks, err := sanitizeBlocks(ctx, unsanitized, bsf.validator)
+	if err != nil {
+		return nil, err
+	}
+
+	return filBlocks, nil
+}
+
+func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {
 	var blocks []*types.Block
 	for _, u := range unsanitized {
 		block, err := types.DecodeBlock(u.RawData())
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("fetched data (cid %s) was not a block", u.Cid().String()))
+			return nil, errors.Wrapf(err, "fetched data (cid %s) was not a block", u.Cid().String())
 		}
 
-		// reject blocks that are syntactically invalid.
-		if err := f.validator.ValidateSyntax(ctx, block); err != nil {
-			continue
+		if err := validator.ValidateSyntax(ctx, block); err != nil {
+			return nil, errors.Wrapf(err, "invalid block %s", block.Cid())
 		}
 
 		blocks = append(blocks, block)

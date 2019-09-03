@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -90,39 +90,36 @@ type DefaultWorker struct {
 	// core filecoin things
 	messageSource MessageSource
 	processor     MessageApplier
+	messageStore  chain.MessageWriter // nolint: structcheck
 	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
-	cstore        *hamt.CborIpldStore
+}
+
+// WorkerParameters use for NewDefaultWorker parameters
+type WorkerParameters struct {
+	API workerPorcelainAPI
+
+	MinerAddr      address.Address
+	MinerOwnerAddr address.Address
+	MinerWorker    address.Address
+	WorkerSigner   consensus.TicketSigner
+
+	// consensus things
+	GetStateTree GetStateTree
+	GetWeight    GetWeight
+	GetAncestors GetAncestors
+
+	// core filecoin things
+	MessageSource MessageSource
+	Processor     MessageApplier
+	PowerTable    consensus.PowerTableView
+	MessageStore  chain.MessageWriter
+	Blockstore    blockstore.Blockstore
 }
 
 // NewDefaultWorker instantiates a new Worker.
-func NewDefaultWorker(messageSource MessageSource,
-	getStateTree GetStateTree,
-	getWeight GetWeight,
-	getAncestors GetAncestors,
-	processor MessageApplier,
-	powerTable consensus.PowerTableView,
-	bs blockstore.Blockstore,
-	cst *hamt.CborIpldStore,
-	miner address.Address,
-	minerOwner address.Address,
-	minerWorker address.Address,
-	workerSigner consensus.TicketSigner,
-	api workerPorcelainAPI) *DefaultWorker {
-
-	w := NewDefaultWorkerWithDeps(messageSource,
-		getStateTree,
-		getWeight,
-		getAncestors,
-		processor,
-		powerTable,
-		bs,
-		cst,
-		miner,
-		minerOwner,
-		minerWorker,
-		workerSigner,
-		api,
+func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
+	w := NewDefaultWorkerWithDeps(parameters,
 		func() {})
 
 	// TODO: create real PoST.
@@ -133,35 +130,23 @@ func NewDefaultWorker(messageSource MessageSource,
 }
 
 // NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(messageSource MessageSource,
-	getStateTree GetStateTree,
-	getWeight GetWeight,
-	getAncestors GetAncestors,
-	processor MessageApplier,
-	powerTable consensus.PowerTableView,
-	bs blockstore.Blockstore,
-	cst *hamt.CborIpldStore,
-	miner address.Address,
-	minerOwner address.Address,
-	minerWorker address.Address,
-	workerSigner consensus.TicketSigner,
-	api workerPorcelainAPI,
+func NewDefaultWorkerWithDeps(parameters WorkerParameters,
 	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
-		api:            api,
-		getStateTree:   getStateTree,
-		getWeight:      getWeight,
-		getAncestors:   getAncestors,
-		messageSource:  messageSource,
-		processor:      processor,
-		powerTable:     powerTable,
-		blockstore:     bs,
-		cstore:         cst,
+		api:            parameters.API,
+		getStateTree:   parameters.GetStateTree,
+		getWeight:      parameters.GetWeight,
+		getAncestors:   parameters.GetAncestors,
+		messageSource:  parameters.MessageSource,
+		messageStore:   parameters.MessageStore,
+		processor:      parameters.Processor,
+		powerTable:     parameters.PowerTable,
+		blockstore:     parameters.Blockstore,
 		createPoSTFunc: createPoST,
-		minerAddr:      miner,
-		minerOwnerAddr: minerOwner,
-		minerWorker:    minerWorker,
-		workerSigner:   workerSigner,
+		minerAddr:      parameters.MinerAddr,
+		minerOwnerAddr: parameters.MinerOwnerAddr,
+		minerWorker:    parameters.MinerWorker,
+		workerSigner:   parameters.WorkerSigner,
 	}
 }
 
@@ -197,13 +182,14 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 
 	challenge, err := consensus.CreateChallengeSeed(base, uint64(nullBlkCount))
 	if err != nil {
+		log.Warningf("Worker.Mine couldn't create challenge seed: %s", err.Error())
 		outCh <- Output{Err: err}
 		return false
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
 	var proof types.PoStProof
-	var ticket []byte
+	var ticket types.Ticket
 	select {
 	case <-ctx.Done():
 		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)

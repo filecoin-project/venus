@@ -3,7 +3,7 @@
 [![CircleCI](https://circleci.com/gh/filecoin-project/go-filecoin.svg?style=svg)](https://circleci.com/gh/filecoin-project/go-filecoin)
 [![User Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/user-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases/latest)
 [![Nightly Devnet Release](https://img.shields.io/endpoint.svg?color=blue&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/nightly-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
-[![Test Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/test-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
+[![Staging Devnet Release](https://img.shields.io/endpoint.svg?color=brightgreen&style=flat&logo=GitHub&url=https://raw.githubusercontent.com/filecoin-project/go-filecoin-badges/master/staging-devnet.json)](https://github.com/filecoin-project/go-filecoin/releases)
 
 > Filecoin implementation in Go, turning the world’s unused storage into an algorithmic market.
 
@@ -99,6 +99,12 @@ Due to our use of `cgo`, you'll need a C compiler to build go-filecoin whether y
 `go-filecoin` depends on some proofs code written in Rust, housed in the
 [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) repo and consumed as a submodule. You will need to have `cargo` and `jq` installed.
 
+First we need to load all the submodules.
+
+```sh
+git submodule update --init --recursive
+```
+
 To install golangci-lint and other build and test dependencies (with precompiled
 proofs, recommended), run:
 
@@ -186,7 +192,7 @@ To see a full list of commands, run `go-filecoin --help`.
 #### Connecting to a devnet with different code
 
 In order to prevent user error, code has been added to filecoin that makes it hard to accidentally connect to the user
-or test devnets without the correct code. If you are actively developing filecoin and would like to check compatibility
+or staging devnets without the correct code. If you are actively developing filecoin and would like to check compatibility
 of your code with these devnets, you can still run your node on the devnet. This is done by building filecoin with the
 following command:
 

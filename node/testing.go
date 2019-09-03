@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"testing"
@@ -12,17 +11,15 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/libp2p/go-libp2p-crypto"
-	"github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -144,7 +141,7 @@ func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, configopts []ConfigOpt
 // ConnectNodes connects two nodes together
 func ConnectNodes(t *testing.T, a, b *Node) {
 	t.Helper()
-	pi := pstore.PeerInfo{
+	pi := peer.AddrInfo{
 		ID:    b.Host().ID(),
 		Addrs: b.Host().Addrs(),
 	}
@@ -191,7 +188,11 @@ func MakeOfflineNode(t *testing.T) *Node {
 // DefaultTestingConfig returns default configuration for testing
 func DefaultTestingConfig() []ConfigOpt {
 	return []ConfigOpt{
-		VerifierConfigOption(proofs.NewFakeVerifier(true, nil)),
+		VerifierConfigOption(&verification.FakeVerifier{
+			VerifyPoStValid:                true,
+			VerifyPieceInclusionProofValid: true,
+			VerifySealValid:                true,
+		}),
 	}
 }
 
@@ -247,9 +248,7 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	r := repo.NewInMemoryRepo()
 
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r.Config().SectorBase.RootDir = sectorDir
 
@@ -257,13 +256,6 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	if !tno.OfflineMode {
 		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
 	}
-	// set a random port here so things don't break in the event we make
-	// a parallel request
-	port, err := testhelpers.GetFreePort()
-	require.NoError(t, err)
-	r.Config().API.Address = fmt.Sprintf(":%d", port)
-
-	require.NoError(t, err)
 
 	if tno.GenesisFunc != nil {
 		err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)

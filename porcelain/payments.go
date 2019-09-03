@@ -49,6 +49,9 @@ type CreatePaymentsParams struct {
 	// CommP is the client's data commitment. It will be the basis of piece inclusion conditions added to the payments.
 	CommP types.CommP
 
+	// PieceSize represents the size of the user-provided piece, in bytes.
+	PieceSize *types.BytesAmount
+
 	// PaymentInterval is the time between payments (in block height)
 	PaymentInterval uint64
 
@@ -153,7 +156,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	condition := &types.Predicate{
 		To:     config.MinerAddress,
 		Method: verifyPieceInclusionMethod,
-		Params: []interface{}{config.CommP[:]},
+		Params: []interface{}{config.CommP[:], config.PieceSize},
 	}
 
 	// generate payments
@@ -180,6 +183,52 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	}
 
 	return response, nil
+}
+
+// ValidatePaymentVoucherCondition validates that condition of a voucher created for a storage payment meets expectations
+func ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error {
+	// a nil condition is always valid
+	if condition == nil {
+		return nil
+	}
+
+	if condition.To != minerAddr {
+		return errors.Errorf("voucher condition addressed to %s, should be %s", condition.To, minerAddr)
+	}
+
+	if condition.Method != verifyPieceInclusionMethod {
+		return errors.Errorf("payment condition method, %s, should be %s", condition.Method, verifyPieceInclusionMethod)
+	}
+
+	if condition.Params == nil || len(condition.Params) != 2 {
+		return errors.New("payment condition does not contain exactly 2 parameters")
+	}
+
+	var clientCommP types.CommP
+	clientCommPBytes, ok := condition.Params[0].([]byte)
+	if ok {
+		copy(clientCommP[:], clientCommPBytes)
+	} else {
+		return errors.New("piece commitment is not a CommP")
+	}
+
+	if clientCommP != commP {
+		return errors.Errorf("piece commitment, [% x] does not match payment condition commitment: [% x]", clientCommP[:], commP[:])
+	}
+
+	var clientPieceSize *types.BytesAmount
+	clientPieceSizeBytes, ok := condition.Params[1].([]byte)
+	if ok {
+		clientPieceSize = types.NewBytesAmountFromBytes(clientPieceSizeBytes)
+	} else {
+		return errors.New("piece size is not a bytes amount")
+	}
+
+	if !pieceSize.Equal(clientPieceSize) {
+		return errors.Errorf("piece size, %v,  does not match piece size supplied in payment condition: %v", pieceSize, clientPieceSize)
+	}
+
+	return nil
 }
 
 func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {

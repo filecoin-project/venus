@@ -95,13 +95,14 @@ func TestBlockValidSyntax(t *testing.T) {
 	validTs := types.Uint64(ts.Unix())
 	validSt := types.NewCidForTestGetter()()
 	validAd := address.NewForTestGetter()()
-	validTi := []byte{1}
+	validTi := types.Ticket{VRFProof: []byte{1}}
 	// create a valid block
 	blk := &types.Block{
 		Timestamp: validTs,
 		StateRoot: validSt,
 		Miner:     validAd,
-		Ticket:    validTi,
+		Tickets:   []types.Ticket{validTi},
+		Height:    1,
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
@@ -127,9 +128,9 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate ticket
-	blk.Ticket = []byte{}
+	blk.Tickets = []types.Ticket{}
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
-	blk.Ticket = validTi
+	blk.Tickets = []types.Ticket{validTi}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 }

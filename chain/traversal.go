@@ -10,7 +10,7 @@ import (
 
 // TipSetProvider provides tipsets for traversal.
 type TipSetProvider interface {
-	GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error)
+	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 }
 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
@@ -59,7 +59,7 @@ type BlockProvider interface {
 }
 
 // LoadTipSetBlocks loads all the blocks for a tipset from the store.
-func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.SortedCidSet) (types.TipSet, error) {
+func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.TipSetKey) (types.TipSet, error) {
 	var blocks []*types.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
@@ -84,6 +84,36 @@ func TipSetProviderFromBlocks(ctx context.Context, blocks BlockProvider) TipSetP
 }
 
 // GetTipSet loads the blocks for a tipset.
-func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
+func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
 	return LoadTipSetBlocks(p.ctx, p.blocks, tsKey)
+}
+
+// CollectTipsToCommonAncestor traverses chains from two tipsets (called old and new) until their common
+// ancestor, collecting all tipsets that are in one chain but not the other.
+// The resulting lists of tipsets are ordered by decreasing height.
+func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldHead, newHead types.TipSet) (oldTips, newTips []types.TipSet, err error) {
+	oldIter := IterAncestors(ctx, store, oldHead)
+	newIter := IterAncestors(ctx, store, newHead)
+
+	commonAncestor, err := FindCommonAncestor(oldIter, newIter)
+	if err != nil {
+		return
+	}
+	commonHeight, err := commonAncestor.Height()
+	if err != nil {
+		return
+	}
+
+	// Refresh iterators modified by FindCommonAncestors
+	oldIter = IterAncestors(ctx, store, oldHead)
+	newIter = IterAncestors(ctx, store, newHead)
+
+	// Add 1 to the height argument so that the common ancestor is not
+	// included in the outputs.
+	oldTips, err = CollectTipSetsOfHeightAtLeast(ctx, oldIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	if err != nil {
+		return
+	}
+	newTips, err = CollectTipSetsOfHeightAtLeast(ctx, newIter, types.NewBlockHeight(commonHeight+uint64(1)))
+	return
 }

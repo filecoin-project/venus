@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -16,15 +16,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
+	sbtesting "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/testing"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestVerifyPieceInclusionInRedeem(t *testing.T) {
-	tf.UnitTest(t)
+	tf.FunctionalTest(t)
 
 	ctx := context.Background()
 	addrGetter := address.NewForTestGetter()
@@ -38,13 +41,34 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Establish our state
 	_, st, vms := requireGenesis(ctx, t, target)
 
+	// if piece consumes all available space in the staged sector, sealing will be triggered
+	pieceSize := go_sectorbuilder.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize.Uint64())
+	pieceData := make([]byte, pieceSize)
+
+	sbh := sbtesting.NewBuilder(t).Build()
+	defer sbh.Close()
+
+	_, _, err := sbh.AddPiece(ctx, pieceData)
+	require.NoError(t, err)
+
+	sealResults := sbh.SectorBuilder.SectorSealResults()
+
+	// wait for sector to be sealed
+	sealedSectorResult := <-sealResults
+	require.NoError(t, sealedSectorResult.SealingErr)
+
+	sectorMetadata := sealedSectorResult.SealingResult
+	require.Len(t, sectorMetadata.Pieces, 1)
+
 	// Create a miner actor with fake commitments
 	minerAddr := addrGetter()
-	sectorID := uint64(123)
-	commP := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-	commD := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
-	lastPoSt := types.NewBlockHeight(10)
-	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, lastPoSt))
+	sectorID := sectorMetadata.SectorID
+	piece := sectorMetadata.Pieces[0]
+	pip := piece.InclusionProof
+	commD := sectorMetadata.CommD[:]
+	commP := piece.CommP[:]
+	provingPeriodEnd := types.NewBlockHeight(10)
+	require.NoError(t, createStorageMinerWithCommitment(ctx, st, vms, minerAddr, sectorID, commD, provingPeriodEnd))
 
 	// Create the payer actor
 	var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -55,15 +79,8 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	// Create a payment channel from payer -> target
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
-	// Make a pip
-	// TODO: This pip is very Fake
-	// https://github.com/filecoin-project/go-filecoin/issues/2629
-	pip := []byte{}
-	pip = append(pip, commP[:]...)
-	pip = append(pip, commD[:]...)
-
 	makeCondition := func() *types.Predicate {
-		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP}}
+		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP, pieceSize}}
 	}
 
 	makeAndSignVoucher := func(condition *types.Predicate) []byte {
@@ -108,16 +125,14 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		condition := makeCondition()
 		signature := makeAndSignVoucher(condition)
 
-		badPip := make([]byte, len(pip))
-		copy(badPip, pip)
-		badPip[12]++
+		badPip := []byte{8, 3, 3, 5, 6, 7, 8}
 
 		msg := makeRedeemMsg(condition, sectorID, badPip, signature)
 		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: invalid inclusion proof")
+		require.Contains(t, appResult.ExecutionError.Error(), "failed to verify piece inclusion proof")
 	})
 
 	t.Run("Voucher with piece inclusion condition and wrong sectorID fails", func(t *testing.T) {
@@ -134,7 +149,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: sector not committed")
 	})
 
-	t.Run("Voucher with piece inclusion condition and out of date Last PoSt", func(t *testing.T) {
+	t.Run("Voucher with piece inclusion condition and slashable miner", func(t *testing.T) {
 		condition := makeCondition()
 		signature := makeAndSignVoucher(condition)
 		msg := makeRedeemMsg(condition, sectorID, pip, signature)
@@ -145,7 +160,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
-		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: proofs out of date")
+		require.Contains(t, appResult.ExecutionError.Error(), "miner is tardy")
 	})
 
 	t.Run("Signed voucher cannot be altered", func(t *testing.T) {
@@ -163,7 +178,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	})
 }
 
-func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, lastPoSt *types.BlockHeight) error {
+func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, provingPeriodEnd *types.BlockHeight) error {
 	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 
@@ -176,7 +191,9 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 		SectorCommitments: commitments,
 		NextDoneSet:       types.EmptyIntSet(),
 		ProvingSet:        types.EmptyIntSet(),
-		LastPoSt:          lastPoSt,
+		SlashedSet:        types.EmptyIntSet(),
+		ProvingPeriodEnd:  provingPeriodEnd,
+		SectorSize:        types.OneKiBSectorSize,
 	}
 	executableActor := miner.Actor{}
 	if err := executableActor.InitializeState(storage, minerState); err != nil {

@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
@@ -56,11 +56,12 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mpc.msgFail {
 		return cid.Cid{}, errors.New("Test Error")
 	}
-	mpc.msgCid = types.SomeCid()
+	mpc.msgCid = types.CidFromString(mpc.testing, "somecid")
+
 	return mpc.msgCid, nil
 }
 
@@ -184,7 +185,7 @@ func newMinerSetPricePlumbing(t *testing.T) *minerSetPricePlumbing {
 	}
 }
 
-func (mtp *minerSetPricePlumbing) MessageSendWithDefaultAddress(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerSetPricePlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	if mtp.failSend {
 		return cid.Cid{}, errors.New("Test error in MessageSend")
 	}
@@ -207,9 +208,7 @@ func (mtp *minerSetPricePlumbing) MessageWait(ctx context.Context, msgCid cid.Ci
 
 	require.True(mtp.testing, msgCid.Equals(mtp.msgCid))
 
-	block := &types.Block{
-		Nonce: 393,
-	}
+	block := &types.Block{}
 	mtp.blockCid = block.Cid()
 
 	// call back
@@ -412,13 +411,24 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 	})
 }
 
-type minerGetOwnerPlumbing struct{}
+type minerQueryAndDeserializePlumbing struct{}
 
-func (mgop *minerGetOwnerPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	return [][]byte{address.TestAddress.Bytes()}, nil
+func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	switch method {
+	case "getOwner":
+		return [][]byte{address.TestAddress.Bytes()}, nil
+	case "getWorker":
+		return [][]byte{address.TestAddress2.Bytes()}, nil
+	case "getPower":
+		return [][]byte{types.NewBytesAmount(2).Bytes()}, nil
+	case "getTotalStorage":
+		return [][]byte{types.NewBytesAmount(4).Bytes()}, nil
+	default:
+		return nil, fmt.Errorf("unsupported method: %s", method)
+	}
 }
 
-func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
 	if method == "getSectorSize" {
 		return &exec.FunctionSignature{
 			Params: nil,
@@ -432,9 +442,66 @@ func (mgop *minerGetOwnerPlumbing) ActorGetSignature(ctx context.Context, actorA
 func TestMinerGetOwnerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	addr, err := MinerGetOwnerAddress(context.Background(), &minerGetOwnerPlumbing{}, address.TestAddress2)
+	addr, err := MinerGetOwnerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, address.TestAddress, addr)
+}
+
+func TestMinerGetWorkerAddress(t *testing.T) {
+	tf.UnitTest(t)
+
+	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, address.TestAddress2, addr)
+}
+
+func TestMinerGetPower(t *testing.T) {
+	tf.UnitTest(t)
+
+	power, err := MinerGetPower(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, "4", power.Total.String())
+	assert.Equal(t, "2", power.Power.String())
+}
+
+type minerGetProvingPeriodPlumbing struct{}
+
+func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getProvingPeriod" {
+		return [][]byte{types.NewBlockHeight(10).Bytes(), types.NewBlockHeight(20).Bytes()}, nil
+	}
+	if method == "getProvingSetCommitments" {
+		commitments := make(map[string]types.Commitments)
+		commitments["foo"] = types.Commitments{
+			CommD:     [32]byte{1},
+			CommR:     [32]byte{1},
+			CommRStar: [32]byte{1},
+		}
+		thing, _ := cbor.DumpObject(commitments)
+		return [][]byte{thing}, nil
+	}
+	return nil, fmt.Errorf("unsupported method: %s", method)
+}
+
+func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+	if method == "getProvingSetCommitments" {
+		return &exec.FunctionSignature{
+			Params: nil,
+			Return: []abi.Type{abi.CommitmentsMap},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("unsupported method: %s", method)
+}
+
+func TestMinerProvingPeriod(t *testing.T) {
+	tf.UnitTest(t)
+
+	pp, err := MinerGetProvingPeriod(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
+	assert.NoError(t, err)
+	assert.Equal(t, "10", pp.Start.String())
+	assert.Equal(t, "20", pp.End.String())
+	assert.NotNil(t, pp.ProvingSet["foo"])
 }
 
 type minerGetPeerIDPlumbing struct{}

@@ -3,7 +3,7 @@ package pubsub
 import (
 	"context"
 
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	libp2p "github.com/libp2p/go-libp2p-pubsub"
 )
 

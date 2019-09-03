@@ -13,12 +13,13 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p-host"
-	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-protocol"
+	"github.com/libp2p/go-libp2p-core/host"
+	inet "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -33,24 +34,28 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 var log = logging.Logger("/fil/storage")
 
-const makeDealProtocol = protocol.ID("/fil/storage/mk/1.0.0")
-const queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
+const (
+	makeDealProtocol  = protocol.ID("/fil/storage/mk/1.0.0")
+	queryDealProtocol = protocol.ID("/fil/storage/qry/1.0.0")
 
-// TODO: replace this with a queries to pick reasonable gas price and limits.
-const submitPostGasPrice = 1
+	// TODO: replace this with a queries to pick reasonable gas price and limits.
+	submitPostGasPrice = 1
 
-const waitForPaymentChannelDuration = 2 * time.Minute
+	waitForPaymentChannelDuration = 2 * time.Minute
+)
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
 
 // Miner represents a storage miner.
 type Miner struct {
-	minerAddr      address.Address
-	minerOwnerAddr address.Address
+	minerAddr  address.Address
+	ownerAddr  address.Address
+	workerAddr address.Address
 
 	dealsAwaitingSealDs repo.Datastore
 
@@ -59,11 +64,13 @@ type Miner struct {
 
 	dealsAwaitingSeal *dealsAwaitingSeal
 
+	prover     prover
+	sectorSize *types.BytesAmount
+
 	porcelainAPI minerPorcelain
 	node         node
 
-	proposalAcceptor func(m *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error)
-	proposalRejector func(m *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error)
+	proposalProcessor func(context.Context, *Miner, cid.Cid)
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
@@ -71,17 +78,23 @@ type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
 	ChainBlockHeight() (*types.BlockHeight, error)
-	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DealPut(*storagedeal.Deal) error
 
+	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
+
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	SectorBuilder() sectorbuilder.SectorBuilder
+	types.Signer
+}
 
-	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
+// prover computes PoSts for submission by a miner.
+type prover interface {
+	CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -90,23 +103,20 @@ type minerPorcelain interface {
 type node interface {
 	BlockService() bserv.BlockService
 	Host() host.Host
-	SectorBuilder() sectorbuilder.SectorBuilder
 }
 
-// Static check that miner implements the needs of the Prover
-var _ ProofReader = (*Miner)(nil)
-var _ ProofCalculator = (*Miner)(nil)
-
-// NewMiner is
-func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
+// NewMiner is for construction of a new storage miner.
+func NewMiner(minerAddr, ownerAddr address.Address, workerAddr address.Address, prover prover, sectorSize *types.BytesAmount, nd node, dealsDs repo.Datastore, porcelainAPI minerPorcelain) (*Miner, error) {
 	sm := &Miner{
 		minerAddr:           minerAddr,
-		minerOwnerAddr:      minerOwnerAddr,
+		ownerAddr:           ownerAddr,
+		workerAddr:          workerAddr,
 		porcelainAPI:        porcelainAPI,
 		dealsAwaitingSealDs: dealsDs,
+		prover:              prover,
+		sectorSize:          sectorSize,
 		node:                nd,
-		proposalAcceptor:    acceptProposal,
-		proposalRejector:    rejectProposal,
+		proposalProcessor:   processStorageDeal,
 	}
 
 	if err := sm.loadDealsAwaitingSeal(); err != nil {
@@ -124,7 +134,7 @@ func NewMiner(minerAddr, minerOwnerAddr address.Address, nd node, dealsDs repo.D
 func (sm *Miner) handleMakeDeal(s inet.Stream) {
 	defer s.Close() // nolint: errcheck
 
-	var signedProposal storagedeal.SignedDealProposal
+	var signedProposal storagedeal.SignedProposal
 	if err := cbu.NewMsgReader(s).ReadMsg(&signedProposal); err != nil {
 		log.Errorf("received invalid proposal: %s", err)
 		return
@@ -143,43 +153,40 @@ func (sm *Miner) handleMakeDeal(s inet.Stream) {
 }
 
 // receiveStorageProposal is the entry point for the miner storage protocol
-func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.SignedDealProposal) (*storagedeal.Response, error) {
+func (sm *Miner) receiveStorageProposal(ctx context.Context, sp *storagedeal.SignedProposal) (*storagedeal.SignedResponse, error) {
 	// Validate deal signature
 	bdp, err := sp.Proposal.Marshal()
 	if err != nil {
 		return nil, err
 	}
-	p := &sp.Proposal
 
 	if !types.IsValidSignature(bdp, sp.Payment.Payer, sp.Signature) {
-		return sm.proposalRejector(sm, p, fmt.Sprint("invalid deal signature"))
+		return sm.rejectProposal(sp, fmt.Sprint("invalid deal signature"))
 	}
 
-	if err := sm.validateDealPayment(ctx, p); err != nil {
-		return sm.proposalRejector(sm, p, err.Error())
-	}
-
-	sectorSize, err := sm.porcelainAPI.MinerGetSectorSize(ctx, sm.minerAddr)
-	if err != nil {
-		return sm.proposalRejector(sm, p, "failed to get miner's sector size")
-	}
-
-	maxUserBytes := proofs.GetMaxUserBytesPerStagedSector(sectorSize)
-	if sp.Size.GreaterThan(maxUserBytes) {
-		return sm.proposalRejector(sm, p, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
-	}
-
-	// Payment is valid, everything else checks out, let's accept this proposal
-	return sm.proposalAcceptor(sm, p)
-}
-
-func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposal) error {
 	// compute expected total price for deal (storage price * duration * bytes)
 	price, err := sm.getStoragePrice()
 	if err != nil {
-		return err
+		return sm.rejectProposal(sp, err.Error())
 	}
 
+	// skip payment validation (assume there is no payment) if miner is not charging for storage.
+	if price.GreaterThan(types.ZeroAttoFIL) {
+		if err := sm.validateDealPayment(ctx, sp, price); err != nil {
+			return sm.rejectProposal(sp, err.Error())
+		}
+	}
+
+	maxUserBytes := types.NewBytesAmount(go_sectorbuilder.GetMaxUserBytesPerStagedSector(sm.sectorSize.Uint64()))
+	if sp.Size.GreaterThan(maxUserBytes) {
+		return sm.rejectProposal(sp, fmt.Sprintf("piece is %s bytes but sector size is %s bytes", sp.Size.String(), maxUserBytes))
+	}
+
+	// Payment is valid, everything else checks out, let's accept this proposal
+	return sm.acceptProposal(ctx, sp)
+}
+
+func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.SignedProposal, price types.AttoFIL) error {
 	if p.Size == nil {
 		return fmt.Errorf("proposed deal has no size")
 	}
@@ -198,8 +205,8 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.Proposa
 	}
 
 	// confirm we are target of channel
-	if channel.Target != sm.minerOwnerAddr {
-		return fmt.Errorf("miner account (%s) is not target of payment channel (%s)", sm.minerOwnerAddr.String(), channel.Target.String())
+	if channel.Target != sm.ownerAddr {
+		return fmt.Errorf("miner account (%s) is not target of payment channel (%s)", sm.ownerAddr.String(), channel.Target.String())
 	}
 
 	// confirm channel contains enough funds
@@ -278,7 +285,7 @@ func (sm *Miner) getStoragePrice() (types.AttoFIL, error) {
 }
 
 // some parts of this should be porcelain
-func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal) (*paymentbroker.PaymentChannel, error) {
+func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedProposal) (*paymentbroker.PaymentChannel, error) {
 	// wait for create channel message
 	messageCid := p.Payment.ChannelMsgCid
 
@@ -312,8 +319,8 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.Proposal)
 	return channel, nil
 }
 
-func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, error) {
-	if sm.node.SectorBuilder() == nil {
+func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedProposal) (*storagedeal.SignedResponse, error) {
+	if sm.porcelainAPI.SectorBuilder() == nil {
 		return nil, errors.New("Mining disabled, can not process proposal")
 	}
 
@@ -322,10 +329,15 @@ func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, 
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.Response{
-		State:       storagedeal.Accepted,
-		ProposalCid: proposalCid,
-		Signature:   types.Signature("signaturrreee"),
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Accepted,
+			ProposalCid: proposalCid,
+		},
+	}
+
+	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
 	storageDeal := &storagedeal.Deal{
@@ -339,22 +351,27 @@ func acceptProposal(sm *Miner, p *storagedeal.Proposal) (*storagedeal.Response, 
 	}
 
 	// TODO: use some sort of nicer scheduler
-	go sm.processStorageDeal(proposalCid)
+	go sm.proposalProcessor(ctx, sm, proposalCid)
 
 	return resp, nil
 }
 
-func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storagedeal.Response, error) {
+func (sm *Miner) rejectProposal(p *storagedeal.SignedProposal, reason string) (*storagedeal.SignedResponse, error) {
 	proposalCid, err := convert.ToCid(p)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.Response{
-		State:       storagedeal.Rejected,
-		ProposalCid: proposalCid,
-		Message:     reason,
-		Signature:   types.Signature("signaturrreee"),
+	resp := &storagedeal.SignedResponse{
+		Response: storagedeal.Response{
+			State:       storagedeal.Rejected,
+			ProposalCid: proposalCid,
+			Message:     reason,
+		},
+	}
+
+	if err = resp.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+		return nil, errors.Wrap(err, "failed to sign deal")
 	}
 
 	storageDeal := &storagedeal.Deal{
@@ -369,24 +386,31 @@ func rejectProposal(sm *Miner, p *storagedeal.Proposal, reason string) (*storage
 	return resp, nil
 }
 
-func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, f func(*storagedeal.Response)) error {
-	storageDeal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
+// updateDealResponse retrieves a deal, operates on its response with a provided callback then signs the deal and stores it.
+func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, callback func(*storagedeal.Response)) error {
+	deal, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get retrive deal with proposal CID %s", proposalCid.String())
+		return errors.Wrapf(err, "failed to get retrieve deal with proposal CID %s", proposalCid.String())
 	}
-	f(storageDeal.Response)
-	err = sm.porcelainAPI.DealPut(storageDeal)
+
+	callback(&deal.Response.Response)
+
+	if err = deal.Response.Sign(sm.porcelainAPI, sm.workerAddr); err != nil {
+		return errors.Wrap(err, "could not sign deal response")
+	}
+
+	err = sm.porcelainAPI.DealPut(deal)
 	if err != nil {
 		return errors.Wrap(err, "failed to store updated deal response in datastore")
 	}
 
-	log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), storageDeal.Response)
+	log.Debugf("Miner.updatedeal.Response(%s) - %d", proposalCid.String(), deal.Response)
 	return nil
 }
 
-func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
+func processStorageDeal(ctx context.Context, sm *Miner, proposalCid cid.Cid) {
 	log.Debugf("Miner.processStorageDeal(%s)", proposalCid.String())
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	d, err := sm.porcelainAPI.DealGet(ctx, proposalCid)
@@ -408,7 +432,6 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 		err := sm.updateDealResponse(ctx, proposalCid, func(resp *storagedeal.Response) {
 			resp.Message = "Transfer failed"
 			resp.State = storagedeal.Failed
-			// TODO: signature?
 		})
 		if err != nil {
 			log.Errorf("could not update to deal to 'Failed' state: %s", err)
@@ -435,6 +458,13 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 		return
 	}
 
+	// Before adding piece, confirm that client has generated payment conditions correctly now that
+	// we can compute CommP
+	if err := sm.validatePieceCommitments(ctx, d, rootIpldNode, dagService); err != nil {
+		fail("payment error", fmt.Sprintf("failed to add piece: %s", err))
+		return
+	}
+
 	r, err := uio.NewDagReader(ctx, rootIpldNode, dagService)
 	if err != nil {
 		fail("internal error", fmt.Sprintf("failed to add piece: %s", err))
@@ -450,7 +480,7 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	//
 	// Also, this pattern of not being able to set up book-keeping ahead of
 	// the call is inelegant.
-	sectorID, err := sm.node.SectorBuilder().AddPiece(ctx, d.Proposal.PieceRef, d.Proposal.Size.Uint64(), r)
+	sectorID, err := sm.porcelainAPI.SectorBuilder().AddPiece(ctx, d.Proposal.PieceRef, d.Proposal.Size.Uint64(), r)
 	if err != nil {
 		fail("failed to submit seal proof", fmt.Sprintf("failed to add piece: %s", err))
 		return
@@ -469,6 +499,32 @@ func (sm *Miner) processStorageDeal(proposalCid cid.Cid) {
 	if err := sm.saveDealsAwaitingSeal(); err != nil {
 		log.Errorf("could not save deal awaiting seal: %s", err)
 	}
+}
+
+func (sm *Miner) validatePieceCommitments(ctx context.Context, deal *storagedeal.Deal, rootIpldNode format.Node, serv format.NodeGetter) error {
+	pieceReader, err := uio.NewDagReader(ctx, rootIpldNode, serv)
+	if err != nil {
+		return err
+	}
+
+	// Generating the piece commitment is a computationally expensive operation and can take
+	// many minutes depending on the size of the piece.
+	pieceCommitmentResponse, err := proofs.GeneratePieceCommitment(proofs.GeneratePieceCommitmentRequest{
+		PieceReader: pieceReader,
+		PieceSize:   types.NewBytesAmount(deal.Proposal.Size.Uint64()),
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to generate pieceCommitmentResponse commitment")
+	}
+
+	for _, voucher := range deal.Proposal.Payment.Vouchers {
+		err := porcelain.ValidatePaymentVoucherCondition(ctx, voucher.Condition, sm.minerAddr, pieceCommitmentResponse.CommP, deal.Proposal.Size)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (sm *Miner) loadDealsAwaitingSeal() error {
@@ -537,6 +593,9 @@ func (sm *Miner) onCommitSuccess(ctx context.Context, dealCid cid.Cid, sector *s
 		resp.ProofInfo = &storagedeal.ProofInfo{
 			SectorID:          sector.SectorID,
 			CommitmentMessage: commitMessageCid,
+			CommD:             sector.CommD[:],
+			CommR:             sector.CommR[:],
+			CommRStar:         sector.CommRStar[:],
 		}
 		if pieceInfo != nil {
 			resp.ProofInfo.PieceInclusionProof = pieceInfo.InclusionProof
@@ -577,7 +636,7 @@ func (sm *Miner) onCommitFail(ctx context.Context, dealCid cid.Cid, message stri
 }
 
 // isBootstrapMinerActor is a convenience method used to determine if the miner
-// actor was created when bootstrapping the network. If it was,
+// actor was created when bootstrapping the network.
 func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 	returnValues, err := sm.porcelainAPI.MessageQuery(
 		ctx,
@@ -613,12 +672,12 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 		ctx,
 		address.Undef,
 		sm.minerAddr,
-		"getSectorCommitments",
+		"getProvingSetCommitments",
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getSectorCommitments")
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getProvingSetCommitments")
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
@@ -637,16 +696,18 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 }
 
 // Query responds to a query for the proposal referenced by the given cid
-func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.Response {
-	storageDeal, err := sm.porcelainAPI.DealGet(ctx, c)
+func (sm *Miner) Query(ctx context.Context, c cid.Cid) *storagedeal.SignedResponse {
+	deal, err := sm.porcelainAPI.DealGet(ctx, c)
 	if err != nil {
-		return &storagedeal.Response{
-			State:   storagedeal.Unknown,
-			Message: "no such deal",
+		return &storagedeal.SignedResponse{
+			Response: storagedeal.Response{
+				State:   storagedeal.Unknown,
+				Message: "no such deal",
+			},
 		}
 	}
 
-	return storageDeal.Response
+	return deal.Response
 }
 
 func (sm *Miner) handleQueryDeal(s inet.Stream) {
@@ -688,6 +749,9 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	if err != nil {
 		return errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
+
+	// get ProvingSet
+	// iterate through ProvingSetValues pulling commitment from commitments
 
 	var inputs []PoStInputs
 	for k, v := range commitments {
@@ -742,6 +806,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}
+
 	return nil
 }
 
@@ -760,8 +825,7 @@ func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, err
 }
 
 func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {
-	prover := NewProver(sm.minerAddr, sm.minerOwnerAddr, sm, sm)
-	submission, err := prover.CalculatePoSt(ctx, start, end, inputs)
+	submission, err := sm.prover.CalculatePoSt(ctx, start, end, inputs)
 	if err != nil {
 		log.Errorf("failed to calculate PoSt: %s", err)
 		return
@@ -771,50 +835,11 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	_, err = sm.porcelainAPI.MessageSend(ctx, sm.minerOwnerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, done)
+	_, err = sm.porcelainAPI.MessageSend(ctx, sm.workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proofs, submission.Faults, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return
 	}
 
 	log.Info("submitted PoSt")
-}
-
-//
-// Implementation of ProofReader.
-//
-
-// ChainHeight provides the chain height to the Prover.
-func (sm *Miner) ChainHeight() (*types.BlockHeight, error) {
-	return sm.porcelainAPI.ChainBlockHeight()
-}
-
-// ChallengeSeed provides a challenge seed to the Prover.
-func (sm *Miner) ChallengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, periodStart)
-	if err != nil {
-		return types.PoStChallengeSeed{}, errors.Wrap(err, "error sampling chain for randomness")
-	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-	return seed, nil
-}
-
-//
-// Implementation of ProofCalculator.
-//
-
-// CalculatePost calls the sector builder to compute a proof.
-func (sm *Miner) CalculatePost(sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
-	req := sectorbuilder.GeneratePoStRequest{
-		SortedCommRs:  sortedCommRs,
-		ChallengeSeed: seed,
-	}
-	res, err := sm.node.SectorBuilder().GeneratePoSt(req)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to generate PoSt")
-	}
-
-	return res.Proofs, res.Faults, nil
 }

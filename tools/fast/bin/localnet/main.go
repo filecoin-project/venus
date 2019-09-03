@@ -27,7 +27,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
@@ -273,14 +273,22 @@ func main() {
 			return
 		}
 
-		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry)
+		pparams, err := miner.Protocol(ctx)
+		if err != nil {
+			exitcode = handleError(err, "failed to get protocol;")
+			return
+		}
+
+		sinfo := pparams.SupportedSectors[0]
+
+		ask, err := series.CreateStorageMinerWithAsk(ctx, miner, minerCollateral, minerPrice, minerExpiry, sinfo.Size)
 		if err != nil {
 			exitcode = handleError(err, "failed series.CreateStorageMinerWithAsk;")
 			return
 		}
 
 		var data bytes.Buffer
-		dataReader := io.LimitReader(rand.Reader, int64(getMaxUserBytesPerStagedSector()))
+		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 		dataReader = io.TeeReader(dataReader, &data)
 		_, deal, err := series.ImportAndStore(ctx, genesis, ask, files.NewReaderFile(dataReader))
 		if err != nil {
@@ -292,7 +300,7 @@ func main() {
 	}
 
 	for _, deal := range deals {
-		err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Complete)
+		_, err = series.WaitForDealState(ctx, genesis, deal, storagedeal.Complete)
 		if err != nil {
 			exitcode = handleError(err, "failed series.WaitForDealState;")
 			return
@@ -344,13 +352,28 @@ func main() {
 	}
 
 	fmt.Println("Finished!")
+	var nodeDetails []*commands.IDDetails
+	nodes := env.Processes()
+	for _, node := range nodes {
+		details, err := node.ID(ctx)
+		if err != nil {
+			exitcode = handleError(err, "failed to fetch details of node")
+			return
+		}
+
+		nodeDetails = append(nodeDetails, details)
+	}
+
+	fmt.Printf("Genesis %s\n", genesisURI)
+	for i, details := range nodeDetails {
+		for _, addr := range details.Addresses {
+			fmt.Printf("node %d addr: %s\n", i, addr)
+		}
+	}
+
 	fmt.Println("Ctrl-C to exit")
 
 	<-exit
-}
-
-func getMaxUserBytesPerStagedSector() uint64 {
-	return proofs.GetMaxUserBytesPerStagedSector(types.OneKiBSectorSize).Uint64()
 }
 
 func handleError(err error, msg ...string) int {

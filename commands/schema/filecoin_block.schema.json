@@ -11,28 +11,13 @@
         "height": {
           "type": "string"
         },
-        "messageReceipts": {
-          "items": {
-            "$ref": "#/definitions/MessageReceipt"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
+          "messageReceipts": {
+	      "$ref": "#/definitions/Cid"
         },
         "messages": {
-          "items": {
-            "$ref": "#/definitions/SignedMessage"
-          },
-          "type": [
-            "array",
-            "null"
-          ]
+	    "$ref": "#/definitions/Cid"
         },
         "miner": {
-          "type": "string"
-        },
-        "nonce": {
           "type": "string"
         },
         "parents": {
@@ -59,9 +44,9 @@
         "stateRoot": {
           "$ref": "#/definitions/Cid"
         },
-        "ticket": {
+        "tickets": {
           "type": [
-            "string",
+            "array",
             "null"
           ]
         },
@@ -73,11 +58,10 @@
         "height",
         "messageReceipts",
         "messages",
-        "nonce",
         "parents",
         "proof",
         "stateRoot",
-        "ticket",
+        "tickets",
         "timestamp"
       ],
       "type": "object"

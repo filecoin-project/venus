@@ -36,6 +36,7 @@ type TestEnvironment struct {
 
 // NewTestEnvironment creates a TestEnvironment with a basic setup for writing tests using the FAST library.
 func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.FilecoinOpts) (context.Context, *TestEnvironment) {
+
 	// Create a directory for the test using the test name (mostly for FAST)
 	// Replace the forward slash as tempdir can't handle them
 	dir, err := ioutil.TempDir("", strings.Replace(t.Name(), "/", ".", -1))
@@ -59,9 +60,10 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	genesisMiner, err := env.GenesisMiner()
 	require.NoError(t, err)
 
-	fastenvOpts = fast.FilecoinOpts{
-		InitOpts:   append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...),
-		DaemonOpts: append([]fast.ProcessDaemonOption{fast.POBlockTime(100 * time.Millisecond)}, fastenvOpts.DaemonOpts...),
+	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
+
+	if isMissingBlockTimeOpt(fastenvOpts) {
+		fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Millisecond)}, fastenvOpts.DaemonOpts...)
 	}
 
 	// Setup the first node which is used to help coordinate the other nodes by providing
@@ -74,12 +76,20 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 
 	// Define a MiningOnce function which will bet set on the context to provide
 	// a way to mine blocks in the series used during testing
-	var MiningOnce series.MiningOnceFunc = func() {
+	var miningOnce series.MiningOnceFunc = func() {
 		_, err := genesis.MiningOnce(ctx)
 		require.NoError(t, err)
 	}
 
-	ctx = series.SetCtxMiningOnce(ctx, MiningOnce)
+	// Define a MessageWait function which will bet set on the context to provide
+	// a way to wait for a message to appear on the mining queue
+	var waitForMpool series.MpoolWaitFunc = func() {
+		_, err := genesis.MpoolLs(ctx, fast.AOWaitForCount(1))
+		require.NoError(t, err)
+	}
+
+	ctx = series.SetCtxMiningOnce(ctx, miningOnce)
+	ctx = series.SetCtxWaitForMpool(ctx, waitForMpool)
 	ctx = series.SetCtxSleepDelay(ctx, time.Second)
 
 	return ctx, &TestEnvironment{
@@ -147,6 +157,15 @@ func (env *TestEnvironment) DumpEnvOutputOnFail() {
 	dumpEnvOutputOnFail(env.t, env.Processes())
 }
 
+// RunAsyncMiner unset MiningOnce for conflict
+func (env *TestEnvironment) RunAsyncMiner() context.Context {
+	var miningOnce series.MiningOnceFunc = func() {}
+	var mpoolWait series.MpoolWaitFunc = func() {}
+	env.ctx = series.SetCtxMiningOnce(env.ctx, miningOnce)
+	env.ctx = series.SetCtxWaitForMpool(env.ctx, mpoolWait)
+	return env.ctx
+}
+
 // helper to dump the output using the t.Log method.
 func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 	if t.Failed() {
@@ -156,4 +175,14 @@ func dumpEnvOutputOnFail(t *testing.T, procs []*fast.Filecoin) {
 		}
 		require.NoError(t, w.Close())
 	}
+}
+
+func isMissingBlockTimeOpt(opts fast.FilecoinOpts) bool {
+	for _, fn := range opts.DaemonOpts {
+		s := fn()
+		if len(s) > 0 && s[0] == "--block-time" {
+			return false
+		}
+	}
+	return true
 }

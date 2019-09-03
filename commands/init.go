@@ -14,7 +14,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -37,7 +37,7 @@ var initCmd = &cmds.Command{
 		cmdkit.StringOption(OptionSectorDir, "path of directory into which staged and sealed sectors will be written"),
 		cmdkit.StringOption(DefaultAddress, "when set, sets the daemons's default address to the provided address"),
 		cmdkit.UintOption(AutoSealIntervalSeconds, "when set to a number > 0, configures the daemon to check for and seal any staged sectors on an interval.").WithDefault(uint(120)),
-		cmdkit.BoolOption(DevnetTest, "when set, populates config bootstrap addrs with the dns multiaddrs of the test devnet and other test devnet specific bootstrap parameters."),
+		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 	},
@@ -110,7 +110,7 @@ func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 		}
 	}
 
-	devnetTest, _ := options[DevnetTest].(bool)
+	devnetTest, _ := options[DevnetStaging].(bool)
 	devnetNightly, _ := options[DevnetNightly].(bool)
 	devnetUser, _ := options[DevnetUser].(bool)
 	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
@@ -123,10 +123,10 @@ func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 		newConfig.Bootstrap.Period = "10s"
 	}
 
-	// Setup devnet test specific config options.
+	// Setup devnet staging specific config options.
 	if devnetTest {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetTestBootstrapAddrs
-		newConfig.Net = "devnet-test"
+		newConfig.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
+		newConfig.Net = "devnet-staging"
 	}
 
 	// Setup devnet nightly specific config options.
@@ -162,7 +162,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 	var source io.ReadCloser
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
-		// recently deployed test devnet.
+		// recently deployed staging devnet.
 		response, err := http.Get(sourceName)
 		if err != nil {
 			return nil, err

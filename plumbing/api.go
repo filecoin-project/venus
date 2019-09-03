@@ -11,10 +11,9 @@ import (
 	"github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
-	uio "github.com/ipfs/go-unixfs/io"
-	"github.com/libp2p/go-libp2p-metrics"
-	"github.com/libp2p/go-libp2p-peer"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -30,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/dag"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
+	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -44,36 +44,38 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	bitswap      exchange.Interface
-	chain        *cst.ChainStateProvider
-	config       *cfg.Config
-	dag          *dag.DAG
-	expected     consensus.Protocol
-	msgPool      *core.MessagePool
-	msgPreviewer *msg.Previewer
-	msgQueryer   *msg.Queryer
-	msgWaiter    *msg.Waiter
-	network      *net.Network
-	outbox       *core.Outbox
-	storagedeals *strgdls.Store
-	wallet       *wallet.Wallet
+	bitswap       exchange.Interface
+	chain         *cst.ChainStateProvider
+	config        *cfg.Config
+	dag           *dag.DAG
+	expected      consensus.Protocol
+	msgPool       *core.MessagePool
+	msgPreviewer  *msg.Previewer
+	msgQueryer    *msg.Queryer
+	msgWaiter     *msg.Waiter
+	network       *net.Network
+	outbox        *core.Outbox
+	sectorBuilder func() sectorbuilder.SectorBuilder
+	storagedeals  *strgdls.Store
+	wallet        *wallet.Wallet
 }
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Bitswap      exchange.Interface
-	Chain        *cst.ChainStateProvider
-	Config       *cfg.Config
-	DAG          *dag.DAG
-	Deals        *strgdls.Store
-	Expected     consensus.Protocol
-	MsgPool      *core.MessagePool
-	MsgPreviewer *msg.Previewer
-	MsgQueryer   *msg.Queryer
-	MsgWaiter    *msg.Waiter
-	Network      *net.Network
-	Outbox       *core.Outbox
-	Wallet       *wallet.Wallet
+	Bitswap       exchange.Interface
+	Chain         *cst.ChainStateProvider
+	Config        *cfg.Config
+	DAG           *dag.DAG
+	Deals         *strgdls.Store
+	Expected      consensus.Protocol
+	MsgPool       *core.MessagePool
+	MsgPreviewer  *msg.Previewer
+	MsgQueryer    *msg.Queryer
+	MsgWaiter     *msg.Waiter
+	Network       *net.Network
+	Outbox        *core.Outbox
+	SectorBuilder func() sectorbuilder.SectorBuilder
+	Wallet        *wallet.Wallet
 }
 
 // New constructs a new instance of the API.
@@ -81,19 +83,20 @@ func New(deps *APIDeps) *API {
 	return &API{
 		logger: logging.Logger("porcelain"),
 
-		bitswap:      deps.Bitswap,
-		chain:        deps.Chain,
-		config:       deps.Config,
-		dag:          deps.DAG,
-		expected:     deps.Expected,
-		msgPool:      deps.MsgPool,
-		msgPreviewer: deps.MsgPreviewer,
-		msgQueryer:   deps.MsgQueryer,
-		msgWaiter:    deps.MsgWaiter,
-		network:      deps.Network,
-		outbox:       deps.Outbox,
-		storagedeals: deps.Deals,
-		wallet:       deps.Wallet,
+		bitswap:       deps.Bitswap,
+		chain:         deps.Chain,
+		config:        deps.Config,
+		dag:           deps.DAG,
+		expected:      deps.Expected,
+		msgPool:       deps.MsgPool,
+		msgPreviewer:  deps.MsgPreviewer,
+		msgQueryer:    deps.MsgQueryer,
+		msgWaiter:     deps.MsgWaiter,
+		network:       deps.Network,
+		outbox:        deps.Outbox,
+		sectorBuilder: deps.SectorBuilder,
+		storagedeals:  deps.Deals,
+		wallet:        deps.Wallet,
 	}
 }
 
@@ -138,6 +141,16 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 // ChainGetBlock gets a block by CID
 func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	return api.chain.GetBlock(ctx, id)
+}
+
+// ChainGetMessages gets a message collection by CID
+func (api *API) ChainGetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
+	return api.chain.GetMessages(ctx, id)
+}
+
+// ChainGetReceipts gets a receipt collection by CID
+func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+	return api.chain.GetReceipts(ctx, id)
 }
 
 // ChainHead returns the head tipset
@@ -213,10 +226,9 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain. Note that no default from address is provided. If you need
-// a default address, use MessageSendWithDefaultAddress instead.
+// message to go on chain. Note that no default from address is provided.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
-	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.
@@ -259,7 +271,7 @@ func (api *API) NetworkGetPeerID() peer.ID {
 }
 
 // NetworkFindProvidersAsync issues a findProviders query to the filecoin network content router.
-func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan pstore.PeerInfo {
+func (api *API) NetworkFindProvidersAsync(ctx context.Context, key cid.Cid, count int) <-chan peer.AddrInfo {
 	return api.network.Router.FindProvidersAsync(ctx, key, count)
 }
 
@@ -269,12 +281,12 @@ func (api *API) NetworkGetClosestPeers(ctx context.Context, key string) (<-chan 
 }
 
 // NetworkPing sends echo request packets over the network.
-func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan time.Duration, error) {
+func (api *API) NetworkPing(ctx context.Context, pid peer.ID) (<-chan ping.Result, error) {
 	return api.network.Pinger.Ping(ctx, pid)
 }
 
 // NetworkFindPeer searches the libp2p router for a given peer id
-func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (pstore.PeerInfo, error) {
+func (api *API) NetworkFindPeer(ctx context.Context, peerID peer.ID) (peer.AddrInfo, error) {
 	return api.network.FindPeer(ctx, peerID)
 }
 
@@ -335,7 +347,7 @@ func (api *API) DAGGetFileSize(ctx context.Context, c cid.Cid) (uint64, error) {
 
 // DAGCat returns an iostream with a piece of data stored on the merkeldag with
 // the given cid.
-func (api *API) DAGCat(ctx context.Context, c cid.Cid) (uio.DagReader, error) {
+func (api *API) DAGCat(ctx context.Context, c cid.Cid) (io.Reader, error) {
 	return api.dag.Cat(ctx, c)
 }
 
@@ -349,4 +361,9 @@ func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, e
 // BitswapGetStats returns bitswaps stats.
 func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
 	return api.bitswap.(*bitswap.Bitswap).Stat()
+}
+
+// SectorBuilder returns the sector builder
+func (api *API) SectorBuilder() sectorbuilder.SectorBuilder {
+	return api.sectorBuilder()
 }

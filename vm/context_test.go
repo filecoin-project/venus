@@ -2,7 +2,6 @@ package vm
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -20,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -63,14 +61,17 @@ func TestVMContextStorage(t *testing.T) {
 	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
 	assert.NoError(t, err)
 
-	assert.NoError(t, vmCtx.WriteStorage(node.RawData()))
+	cid, err := vmCtx.Storage().Put(node.RawData())
+	require.NoError(t, err)
+	err = vmCtx.Storage().Commit(cid, vmCtx.Storage().Head())
+	require.NoError(t, err)
 	assert.NoError(t, cstate.Commit(ctx))
 
 	// make sure we can read it back
 	toActorBack, err := st.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
 	vmCtxParams.To = toActorBack
-	storage, err := NewVMContext(vmCtxParams).ReadStorage()
+	storage, err := vmCtx.Storage().Get(vmCtx.Storage().Head())
 	assert.NoError(t, err)
 	assert.Equal(t, storage, node.RawData())
 }
@@ -284,86 +285,4 @@ func TestVMContextIsAccountActor(t *testing.T) {
 	vmCtxParams.From = nonAccountActor
 	ctx = NewVMContext(vmCtxParams)
 	assert.False(t, ctx.IsFromAccountActor())
-}
-
-func TestVMContextRand(t *testing.T) {
-	tf.UnitTest(t)
-
-	var tipSetsDescBlockHeight []types.TipSet
-	// setup ancestor chain
-	head := types.NewBlockForTest(nil, uint64(0))
-	head.Ticket = []byte(strconv.Itoa(0))
-	for i := 0; i < 20; i++ {
-		tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
-		newBlock := types.NewBlockForTest(head, uint64(0))
-		newBlock.Ticket = []byte(strconv.Itoa(i + 1))
-		head = newBlock
-	}
-	tipSetsDescBlockHeight = append([]types.TipSet{types.RequireNewTipSet(t, head)}, tipSetsDescBlockHeight...)
-
-	// set a tripwire
-	require.Equal(t, sampling.LookbackParameter, 3, "these tests assume LookbackParameter=3")
-
-	t.Run("happy path", func(t *testing.T) {
-		ctx := NewVMContext(NewContextParams{
-			Ancestors: tipSetsDescBlockHeight,
-		})
-
-		r, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(20)))
-		assert.NoError(t, err)
-		assert.Equal(t, []byte(strconv.Itoa(17)), r)
-
-		r, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(3)))
-		assert.NoError(t, err)
-		assert.Equal(t, []byte(strconv.Itoa(0)), r)
-
-		r, err = ctx.SampleChainRandomness(types.NewBlockHeight(uint64(10)))
-		assert.NoError(t, err)
-		assert.Equal(t, []byte(strconv.Itoa(7)), r)
-	})
-
-	t.Run("faults with height out of range", func(t *testing.T) {
-		// edit `tipSetsDescBlockHeight` to include null blocks at heights 21
-		// through 24
-		baseBlock := tipSetsDescBlockHeight[1].ToSlice()[0]
-		afterNull := types.NewBlockForTest(baseBlock, uint64(0))
-		afterNull.Height += types.Uint64(uint64(5))
-		afterNull.Ticket = []byte(strconv.Itoa(int(afterNull.Height)))
-		modAncestors := append([]types.TipSet{types.RequireNewTipSet(t, afterNull)}, tipSetsDescBlockHeight...)
-
-		// ancestor block heights:
-		//
-		// 25 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
-		ctx := NewVMContext(NewContextParams{
-			Ancestors: modAncestors,
-		})
-
-		// no tip set with height 30 exists in ancestors
-		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(30)))
-		assert.Error(t, err)
-	})
-
-	t.Run("faults with lookback out of range", func(t *testing.T) {
-		// ancestor block heights:
-		//
-		// 25 20
-		ctx := NewVMContext(NewContextParams{
-			Ancestors: tipSetsDescBlockHeight[:5],
-		})
-
-		// going back in time by `LookbackParameter`-number of tip sets from
-		// block height 25 does not find us the genesis block
-		_, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(25)))
-		assert.Error(t, err)
-	})
-
-	t.Run("falls back to genesis block", func(t *testing.T) {
-		vmCtxParams := NewContextParams{
-			Ancestors: tipSetsDescBlockHeight,
-		}
-		ctx := NewVMContext(vmCtxParams)
-		r, err := ctx.SampleChainRandomness(types.NewBlockHeight(uint64(1))) // lookback height lower than all tipSetsDescBlockHeight
-		assert.NoError(t, err)
-		assert.Equal(t, []byte(strconv.Itoa(0)), r)
-	})
 }

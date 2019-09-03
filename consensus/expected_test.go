@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -33,7 +33,7 @@ func TestNewExpected(t *testing.T) {
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore, verifier := setupCborBlockstoreProofs()
 		ptv := th.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
-		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier, th.BlockTimeTest)
+		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), verifier, th.BlockTimeTest)
 		assert.NotNil(t, exp)
 	})
 }
@@ -106,14 +106,21 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
+		var emptyMessages [][]*types.SignedMessage
+		var emptyReceipts [][]*types.MessageReceipt
+		for i := 0; i < len(blocks); i++ {
+			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+		}
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns nil + mining error when IsWinningTicket fails due to miner power error", func(t *testing.T) {
 
 		ptv := NewFailingMinerTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5))
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.SomeCid(), verifier, th.BlockTimeTest)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), verifier, th.BlockTimeTest)
 
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 
@@ -126,7 +133,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, []types.TipSet{pTipSet}, stateTree)
+		var emptyMessages [][]*types.SignedMessage
+		var emptyReceipts [][]*types.MessageReceipt
+		for i := 0; i < len(blocks); i++ {
+			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+		}
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "can't check for winning ticket: Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
@@ -162,7 +176,7 @@ func TestIsWinningTicket(t *testing.T) {
 			ptv := th.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 			ticket := [65]byte{}
 			ticket[0] = c.ticket
-			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, ticket[:], minerAddress)
+			r, err := consensus.IsWinningTicket(ctx, bs, ptv, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
@@ -179,7 +193,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ptv1 := NewFailingTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [65]byte{}
 		ticket[0] = testCase.ticket
-		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, ticket[:], minerAddress)
+		r, err := consensus.IsWinningTicket(ctx, bs, ptv1, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
 
@@ -189,7 +203,7 @@ func TestIsWinningTicket(t *testing.T) {
 		ptv2 := NewFailingMinerTestPowerTableView(types.NewBytesAmount(testCase.myPower), types.NewBytesAmount(testCase.totalPower))
 		ticket := [sha256.Size]byte{}
 		ticket[0] = testCase.ticket
-		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, ticket[:], minerAddress)
+		r, err := consensus.IsWinningTicket(ctx, bs, ptv2, st, types.Ticket{VRFProof: ticket[:]}, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 
@@ -219,9 +233,9 @@ func TestCompareTicketPower(t *testing.T) {
 		{0xFF, 0, 5, false},
 	}
 	for _, c := range cases {
-		ticket := [65]byte{}
+		ticket := make([]byte, 65)
 		ticket[0] = c.ticket
-		res := consensus.CompareTicketPower(ticket[:], types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
+		res := consensus.CompareTicketPower(types.Ticket{VRFProof: ticket}, types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
 		assert.Equal(t, c.wins, res, "%+v", c)
 	}
 }
@@ -254,7 +268,8 @@ func TestCreateChallenge(t *testing.T) {
 
 		var parents []*types.Block
 		for _, ticket := range c.parentTickets {
-			b := types.Block{Ticket: ticket}
+
+			b := types.Block{Tickets: []types.Ticket{{VRFProof: ticket}}}
 			parents = append(parents, &b)
 		}
 		parentTs := types.RequireNewTipSet(t, parents...)
@@ -265,13 +280,15 @@ func TestCreateChallenge(t *testing.T) {
 	}
 }
 
-func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, proofs.Verifier) {
+func setupCborBlockstoreProofs() (*hamt.CborIpldStore, blockstore.Blockstore, verification.Verifier) {
 	mds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(mds)
 	offl := offline.Exchange(bs)
 	blkserv := blockservice.New(bs, offl)
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
-	pv := proofs.NewFakeVerifier(true, nil)
+	pv := &verification.FakeVerifier{
+		VerifyPoStValid: true,
+	}
 	return cis, bs, pv
 }
 

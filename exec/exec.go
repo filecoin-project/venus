@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -79,14 +80,11 @@ type VMContext interface {
 
 	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 
-	// TODO: Remove these when Storage above is completely implemented
-	ReadStorage() ([]byte, error)
-	WriteStorage(interface{}) error
+	Verifier() verification.Verifier
 }
 
 // Storage defines the storage module exposed to actors.
 type Storage interface {
-	// TODO: Forgot that Put() can fail in the spec, need to update.
 	Put(interface{}) (cid.Cid, error)
 	Get(cid.Cid) ([]byte, error)
 	Commit(cid.Cid, cid.Cid) error

@@ -4,32 +4,32 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/pkg/errors"
 )
 
 type chainReader interface {
-	BlockHeight() (uint64, error)
-	GetBlock(context.Context, cid.Cid) (*types.Block, error)
-	GetHead() types.SortedCidSet
-	GetTipSet(types.SortedCidSet) (types.TipSet, error)
-	GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error)
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
 }
 
 // ChainStateProvider composes a chain and a state store to provide access to
 // the state (including actors) derived from a chain.
 type ChainStateProvider struct {
-	reader chainReader         // Provides chain blocks and tipsets.
-	cst    *hamt.CborIpldStore // Provides state trees.
+	reader          chainReader         // Provides chain tipsets and state roots.
+	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
+	messageProvider chain.MessageProvider
 }
 
 var (
@@ -43,10 +43,11 @@ var (
 )
 
 // NewChainStateProvider returns a new ChainStateProvider.
-func NewChainStateProvider(chainReader chainReader, cst *hamt.CborIpldStore) *ChainStateProvider {
+func NewChainStateProvider(chainReader chainReader, messages chain.MessageProvider, cst *hamt.CborIpldStore) *ChainStateProvider {
 	return &ChainStateProvider{
-		reader: chainReader,
-		cst:    cst,
+		reader:          chainReader,
+		cst:             cst,
+		messageProvider: messages,
 	}
 }
 
@@ -70,12 +71,30 @@ func (chn *ChainStateProvider) Ls(ctx context.Context) (*chain.TipsetIterator, e
 
 // GetBlock gets a block by CID
 func (chn *ChainStateProvider) GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	return chn.reader.GetBlock(ctx, id)
+	var out types.Block
+	err := chn.cst.Get(ctx, id, &out)
+	return &out, err
+}
+
+// GetMessages gets a message collection by CID.
+func (chn *ChainStateProvider) GetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
+	return chn.messageProvider.LoadMessages(ctx, id)
+}
+
+// GetReceipts gets a receipt collection by CID.
+func (chn *ChainStateProvider) GetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
 // SampleRandomness samples randomness from the chain at the given height.
 func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	tipSetBuffer, err := chain.GetRecentAncestorsOfHeaviestChain(ctx, chn.reader, sampleHeight)
+	head := chn.reader.GetHead()
+	headTipSet, err := chn.reader.GetTipSet(head)
+	if err != nil {
+		return nil, err
+	}
+	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight, ancestorHeight, sampling.LookbackParameter)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
@@ -89,17 +108,13 @@ func (chn *ChainStateProvider) GetActor(ctx context.Context, addr address.Addres
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.SortedCidSet, addr address.Address) (*actor.Actor, error) {
-	stateCid, err := chn.reader.GetTipSetStateRoot(tipKey)
-	if err != nil {
-		return nil, err
-	}
-	tree, err := state.LoadStateTree(ctx, chn.cst, stateCid, builtin.Actors)
+func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
+	st, err := chn.reader.GetTipSetState(ctx, tipKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
 
-	actr, err := tree.GetActor(ctx, addr)
+	actr, err := st.GetActor(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "no actor at address %s", addr)
 	}
@@ -108,7 +123,7 @@ func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.Sort
 
 // LsActors returns a channel with actors from the latest state on the chain
 func (chn *ChainStateProvider) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
+	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +145,7 @@ func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr 
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chain.LatestState(ctx, chn.reader, chn.cst)
+	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}

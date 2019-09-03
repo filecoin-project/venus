@@ -25,7 +25,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 )
@@ -146,8 +146,25 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
+	emptyMessagesCid, err := cst.Put(ctx, types.MessageCollection{})
+	if err != nil {
+		return nil, err
+	}
+	emptyReceiptsCid, err := cst.Put(ctx, types.ReceiptCollection{})
+	if err != nil {
+		return nil, err
+	}
+
+	if !emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
+		!emptyReceiptsCid.Equals(types.EmptyReceiptsCID) {
+		return nil, errors.New("bad CID for empty messages/receipts")
+	}
+
 	geneblk := &types.Block{
-		StateRoot: stateRoot,
+		StateRoot:       stateRoot,
+		Messages:        emptyMessagesCid,
+		MessageReceipts: emptyReceiptsCid,
+		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}}},
 	}
 
 	c, err := cst.Put(ctx, geneblk)
@@ -288,6 +305,19 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 				return nil, err
 			}
 			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commD, commR, commRStar, sealProof)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if m.NumCommittedSectors > 0 {
+			// Now submit a dummy PoSt right away to trigger power updates.
+			// Don't worry, bootstrap miner actors don't need to verify
+			// that the PoSt is well formed.
+			poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
+			if _, err := pnrg.Read(poStProof[:]); err != nil {
+				return nil, err
+			}
+			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "submitPoSt", []types.PoStProof{poStProof}, types.EmptyFaultSet(), types.EmptyIntSet())
 			if err != nil {
 				return nil, err
 			}

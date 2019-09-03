@@ -20,6 +20,7 @@ type commonDeps struct {
 	repo       repo.Repo
 	wallet     *wallet.Wallet
 	chainStore *chain.Store
+	messages   *chain.MessageStore
 	blockstore bstore.Blockstore
 	cst        *hamt.CborIpldStore
 }
@@ -37,6 +38,7 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisIn
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
+	messageStore := chain.NewMessageStore(cst)
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	require.NoError(t, err)
 	wallet := wallet.New(backend)
@@ -45,6 +47,7 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisIn
 		repo:       r,
 		wallet:     wallet,
 		chainStore: chainStore,
+		messages:   messageStore,
 		blockstore: bs,
 		cst:        cst,
 	}

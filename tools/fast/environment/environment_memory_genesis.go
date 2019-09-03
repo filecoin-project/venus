@@ -43,6 +43,9 @@ type MemoryGenesis struct {
 	processesMu sync.Mutex
 	processes   []*fast.Filecoin
 
+	processCountMu sync.Mutex
+	processCount   int
+
 	proofsMode types.ProofsMode
 }
 
@@ -75,9 +78,6 @@ func NewMemoryGenesis(funds *big.Int, location string, proofsMode types.ProofsMo
 // Filecoin processes default wallet address.
 // GetFunds will cause the genesis node to send 1000 filecoin to process `p`.
 func (e *MemoryGenesis) GetFunds(ctx context.Context, p *fast.Filecoin) error {
-	e.processesMu.Lock()
-	defer e.processesMu.Unlock()
-
 	e.log.Infof("GetFunds for process: %s", p.String())
 	return series.SendFilecoinDefaults(ctx, e.Processes()[0], p, 1000)
 }
@@ -118,11 +118,15 @@ func (e *MemoryGenesis) NewProcess(ctx context.Context, processType string, opti
 	e.processesMu.Lock()
 	defer e.processesMu.Unlock()
 
+	e.processCountMu.Lock()
+	defer e.processCountMu.Unlock()
+
 	ns := iptb.NodeSpec{
 		Type:  processType,
-		Dir:   fmt.Sprintf("%s/%d", e.location, len(e.processes)),
+		Dir:   fmt.Sprintf("%s/%d", e.location, e.processCount),
 		Attrs: options,
 	}
+	e.processCount = e.processCount + 1
 
 	e.log.Infof("New Process type: %s, dir: %s", processType, ns.Dir)
 
@@ -233,7 +237,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 		Miners: []*gengen.CreateStorageMinerConfig{
 			{
 				Owner:               0,
-				NumCommittedSectors: 1,
+				NumCommittedSectors: 128,
 			},
 		},
 		ProofsMode: e.proofsMode,

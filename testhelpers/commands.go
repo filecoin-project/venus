@@ -98,8 +98,6 @@ func RunSuccessLines(td *TestDaemon, args ...string) []string {
 
 // TestDaemon is used to manage a Filecoin daemon instance for testing purposes.
 type TestDaemon struct {
-	cmdAddr          string
-	swarmAddr        string
 	containerDir     string // Path to directory containing repo and sectors
 	genesisFile      string
 	keyFiles         []string
@@ -132,14 +130,26 @@ func (td *TestDaemon) SectorDir() string {
 	return path.Join(td.containerDir, sectorsName)
 }
 
-// CmdAddr returns the command address of the test daemon.
-func (td *TestDaemon) CmdAddr() string {
-	return td.cmdAddr
+// CmdAddr returns the command address of the test daemon (if it is running).
+func (td *TestDaemon) CmdAddr() (ma.Multiaddr, error) {
+	str, err := ioutil.ReadFile(filepath.Join(td.RepoDir(), "api"))
+	if err != nil {
+		return nil, err
+	}
+
+	return ma.NewMultiaddr(strings.TrimSpace(string(str)))
 }
 
-// SwarmAddr returns the swarm address of the test daemon.
-func (td *TestDaemon) SwarmAddr() string {
-	return td.swarmAddr
+// Config is a helper to read out the config of the daemon.
+func (td *TestDaemon) Config() *config.Config {
+	cfg, err := config.ReadFile(filepath.Join(td.RepoDir(), "config.json"))
+	require.NoError(td.test, err)
+	return cfg
+}
+
+// GetMinerAddress returns the miner address for this daemon.
+func (td *TestDaemon) GetMinerAddress() address.Address {
+	return td.Config().Mining.MinerAddress
 }
 
 // Run executes the given command against the test daemon.
@@ -157,14 +167,17 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 	ctx, cancel := context.WithTimeout(context.Background(), td.cmdTimeout)
 	defer cancel()
 
+	addr, err := td.CmdAddr()
+	require.NoError(td.test, err)
+
 	// handle Run("cmd subcmd")
 	if len(args) == 1 {
 		args = strings.Split(args[0], " ")
 	}
 
-	finalArgs := append(args, "--repodir="+td.RepoDir(), "--cmdapiaddr="+td.cmdAddr)
+	finalArgs := append(args, "--repodir="+td.RepoDir(), "--cmdapiaddr="+addr.String())
 
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+	td.logRun(finalArgs...)
 	cmd := exec.CommandContext(ctx, bin, finalArgs...)
 
 	if stdin != nil {
@@ -548,13 +561,6 @@ func (td *TestDaemon) CreateAddress() string {
 	return addr
 }
 
-// Config is a helper to read out the config of the deamon
-func (td *TestDaemon) Config() *config.Config {
-	cfg, err := config.ReadFile(filepath.Join(td.RepoDir(), "config.json"))
-	require.NoError(td.test, err)
-	return cfg
-}
-
 // MineAndPropagate mines a block and ensure the block has propagated to all `peers`
 // by comparing the current head block of `td` with the head block of each peer in `peers`
 func (td *TestDaemon) MineAndPropagate(wait time.Duration, peers ...*TestDaemon) {
@@ -575,21 +581,23 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	var wg sync.WaitGroup
 
 	expHeadBlks := td.GetChainHead()
-	var expHead types.SortedCidSet
+	var expHeadCids []cid.Cid
 	for _, blk := range expHeadBlks {
-		expHead.Add(blk.Cid())
+		expHeadCids = append(expHeadCids, blk.Cid())
 	}
+	expHeadKey := types.NewTipSetKey(expHeadCids...)
 
 	for _, p := range peers {
 		wg.Add(1)
 		go func(p *TestDaemon) {
 			for {
 				actHeadBlks := p.GetChainHead()
-				var actHead types.SortedCidSet
+				var actHeadCids []cid.Cid
 				for _, blk := range actHeadBlks {
-					actHead.Add(blk.Cid())
+					actHeadCids = append(actHeadCids, blk.Cid())
 				}
-				if expHead.Equals(actHead) {
+				actHeadKey := types.NewTipSetKey(actHeadCids...)
+				if expHeadKey.Equals(actHeadKey) {
 					wg.Done()
 					return
 				}
@@ -647,13 +655,8 @@ func (td *TestDaemon) GetDefaultAddress() string {
 	return strings.Split(addrs.ReadStdout(), "\n")[0]
 }
 
-// GetMinerAddress returns the miner address for this daemon.
-func (td *TestDaemon) GetMinerAddress() address.Address {
-	return td.Config().Mining.MinerAddress
-}
-
 func tryAPICheck(td *TestDaemon) error {
-	maddr, err := ma.NewMultiaddr(td.cmdAddr)
+	maddr, err := td.CmdAddr()
 	if err != nil {
 		return err
 	}
@@ -681,13 +684,6 @@ func tryAPICheck(td *TestDaemon) error {
 	}
 
 	return nil
-}
-
-// SwarmAddr allows setting the `swarmAddr` config option on the daemon.
-func SwarmAddr(addr string) func(*TestDaemon) {
-	return func(td *TestDaemon) {
-		td.swarmAddr = addr
-	}
 }
 
 // ContainerDir sets the `containerDir` path for the daemon.
@@ -811,21 +807,14 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 		}
 	}
 
-	//Ask the kernel for a port to avoid conflicts
-	cmdPort, err := GetFreePort()
-	if err != nil {
-		t.Fatal(err)
-	}
-	swarmPort, err := GetFreePort()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// Defer allocation of a command API port until listening. The node will write the
+	// listening address to the "api" file in the repo, from where we can read it when issuing commands.
+	cmdAddr := "/ip4/127.0.0.1/tcp/0"
+	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", cmdAddr)
 
-	td.cmdAddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", cmdPort)
-	td.swarmAddr = fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", swarmPort)
+	swarmAddr := "/ip4/127.0.0.1/tcp/0"
+	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", swarmAddr)
 
-	swarmListenFlag := fmt.Sprintf("--swarmlisten=%s", td.swarmAddr)
-	cmdAPIAddrFlag := fmt.Sprintf("--cmdapiaddr=%s", td.cmdAddr)
 	blockTimeFlag := fmt.Sprintf("--block-time=%s", BlockTimeTest)
 
 	td.daemonArgs = []string{filecoinBin, "daemon", repoDirFlag, cmdAPIAddrFlag, swarmListenFlag, blockTimeFlag}
@@ -842,7 +831,7 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	filecoinBin := MustGetFilecoinBinary()
 
 	finalArgs := append([]string{"init"}, opts...)
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(finalArgs, " "))
+	td.logRun(finalArgs...)
 
 	process := exec.Command(filecoinBin, finalArgs...)
 	return process.CombinedOutput()
@@ -866,7 +855,7 @@ func ProjectRoot(paths ...string) string {
 }
 
 func (td *TestDaemon) createNewProcess() {
-	td.test.Logf("(%s) run: %q\n", td.swarmAddr, strings.Join(td.daemonArgs, " "))
+	td.logRun(td.daemonArgs...)
 
 	td.process = exec.Command(td.daemonArgs[0], td.daemonArgs[1:]...)
 	// disable REUSEPORT, it creates problems in tests
@@ -899,4 +888,10 @@ func (td *TestDaemon) cleanupFilesystem() {
 	} else {
 		td.test.Logf("testdaemon has nil container dir")
 	}
+}
+
+// Logs a message prefixed by a daemon identifier
+func (td *TestDaemon) logRun(args ...string) {
+	name := path.Base(td.containerDir)
+	td.test.Logf("(%s) run: %q\n", name, strings.Join(args, " "))
 }

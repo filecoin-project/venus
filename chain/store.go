@@ -8,15 +8,15 @@ import (
 	"github.com/cskr/pubsub"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -30,19 +30,43 @@ var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
+type ipldSource struct {
+	// cst is a store allowing access
+	// (un)marshalling and interop with go-ipld-hamt.
+	cborStore state.IpldStore
+}
+
+func newSource(cst state.IpldStore) *ipldSource {
+	return &ipldSource{
+		cborStore: cst,
+	}
+}
+
+// GetBlock retrieves a filecoin block by cid from the IPLD store.
+func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
+	var block types.Block
+
+	err := source.cborStore.Get(ctx, c, &block)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
+	}
+	return &block, nil
+}
+
 // Store is a generic implementation of the Store interface.
 // It works(tm) for now.
 type Store struct {
-	// bsPriv is the on disk storage for blocks.  This is private to
-	// the Store to keep code that adds blocks to the Store's
-	// underlying storage isolated to this module.  It is important that only
-	// code with access to a Store can write to this storage to
-	// simplify checking the security guarantee that only tipsets of a
-	// validated chain are stored in the filecoin node's Store.
-	bsPriv bstore.Blockstore
-	// ds is the datastore backing bsPriv.  It is also accessed directly
-	// to set and get chain meta-data, specifically the tipset cidset to
-	// state root mapping, and the heaviest tipset cids.
+	// ipldSource is a wrapper around ipld storage.  It is used
+	// for reading filecoin block and state objects kept by the node.
+	stateAndBlockSource *ipldSource
+
+	// stateTreeeLoader is used for loading the state tree from a
+	// CborIPLDStore
+	stateTreeLoader state.TreeLoader
+
+	// ds is the datastore for the chain's private metadata which consists
+	// of the tipset key to state root cid mapping, and the heaviest tipset
+	// key.
 	ds repo.Datastore
 
 	// genesis is the CID of the genesis block.
@@ -65,14 +89,14 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, genesisCid cid.Cid) *Store {
-	priv := bstore.NewBlockstore(ds)
+func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, genesisCid cid.Cid) *Store {
 	return &Store{
-		bsPriv:     priv,
-		ds:         ds,
-		headEvents: pubsub.New(128),
-		tipIndex:   NewTipIndex(),
-		genesis:    genesisCid,
+		stateAndBlockSource: newSource(cst),
+		stateTreeLoader:     stl,
+		ds:                  ds,
+		headEvents:          pubsub.New(128),
+		tipIndex:            NewTipIndex(),
+		genesis:             genesisCid,
 	}
 }
 
@@ -103,7 +127,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		return err
 	}
 
-	headTs, err := LoadTipSetBlocks(ctx, store, headTsKey)
+	headTs, err := LoadTipSetBlocks(ctx, store.stateAndBlockSource, headTsKey)
 	if err != nil {
 		return errors.Wrap(err, "error loading head tipset")
 	}
@@ -115,7 +139,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	var genesii types.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
-	tipsetProvider := TipSetProviderFromBlocks(ctx, store)
+	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
 	for iterator := IterAncestors(ctx, tipsetProvider, headTs); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
 			return err
@@ -158,14 +182,14 @@ func (store *Store) Load(ctx context.Context) (err error) {
 }
 
 // loadHead loads the latest known head from disk.
-func (store *Store) loadHead() (types.SortedCidSet, error) {
-	var emptyCidSet types.SortedCidSet
+func (store *Store) loadHead() (types.TipSetKey, error) {
+	var emptyCidSet types.TipSetKey
 	bb, err := store.ds.Get(headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
 
-	var cids types.SortedCidSet
+	var cids types.TipSetKey
 	err = cbor.DecodeInto(bb, &cids)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
@@ -193,23 +217,8 @@ func (store *Store) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
 	return stateRoot, nil
 }
 
-// putBlk persists a block to disk.
-func (store *Store) putBlk(ctx context.Context, block *types.Block) error {
-	if err := store.bsPriv.Put(block.ToNode()); err != nil {
-		return errors.Wrap(err, "failed to put block")
-	}
-	return nil
-}
-
 // PutTipSetAndState persists the blocks of a tipset and the tipset index.
 func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error {
-	// Persist blocks.
-	for i := 0; i < tsas.TipSet.Len(); i++ {
-		if err := store.putBlk(ctx, tsas.TipSet.At(i)); err != nil {
-			return err
-		}
-	}
-
 	// Update tipindex.
 	err := store.tipIndex.Put(tsas)
 	if err != nil {
@@ -223,79 +232,41 @@ func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState)
 	return nil
 }
 
-// GetTipSet returns the tipset whose block
-// cids correspond to the input sorted cid set.
-func (store *Store) GetTipSet(tsKey types.SortedCidSet) (types.TipSet, error) {
-	return store.tipIndex.GetTipSet(tsKey.String())
+// GetTipSet returns the tipset identified by `key`.
+func (store *Store) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
+	return store.tipIndex.GetTipSet(key)
 }
 
-// GetTipSetStateRoot returns the state of the tipset whose block
-// cids correspond to the input sorted cid set.
-func (store *Store) GetTipSetStateRoot(tsKey types.SortedCidSet) (cid.Cid, error) {
-	return store.tipIndex.GetTipSetStateRoot(tsKey.String())
+// GetTipSetState returns the aggregate state of the tipset identified by `key`.
+func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (state.Tree, error) {
+	stateCid, err := store.tipIndex.GetTipSetStateRoot(key)
+	if err != nil {
+		return nil, err
+	}
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
+}
+
+// GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
+func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
-// the tipset referenced in the input key.
-func (store *Store) HasTipSetAndState(ctx context.Context, tsKey string) bool {
-	return store.tipIndex.Has(tsKey)
+// the tipset identified by `key`.
+func (store *Store) HasTipSetAndState(ctx context.Context, key types.TipSetKey) bool {
+	return store.tipIndex.Has(key)
 }
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
-// the default store's tipIndex that have the parent set corresponding to the
-// input key.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(pTsKey string, h uint64) ([]*TipSetAndState, error) {
-	return store.tipIndex.GetByParentsAndHeight(pTsKey, h)
+// the default store's tipIndex that have parents identified by `parentKey`.
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey types.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
-// contains any tipset indexed by the provided parent ID.
-func (store *Store) HasTipSetAndStatesWithParentsAndHeight(pTsKey string, h uint64) bool {
-	return store.tipIndex.HasByParentsAndHeight(pTsKey, h)
-}
-
-// GetBlocks retrieves the blocks referenced in the input cid set.
-func (store *Store) GetBlocks(ctx context.Context, cids types.SortedCidSet) (blks []*types.Block, err error) {
-	ctx, span := trace.StartSpan(ctx, "Store.GetBlocks")
-	span.AddAttributes(trace.StringAttribute("tipset", cids.String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	var blocks []*types.Block
-	for it := cids.Iter(); !it.Complete(); it.Next() {
-		id := it.Value()
-		block, err := store.GetBlock(ctx, id)
-		if err != nil {
-			return nil, errors.Wrap(err, "error fetching block")
-		}
-		blocks = append(blocks, block)
-	}
-	return blocks, nil
-}
-
-// GetBlock retrieves a block by cid.
-func (store *Store) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
-	data, err := store.bsPriv.Get(c)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get block %s", c.String())
-	}
-	return types.DecodeBlock(data.RawData())
-}
-
-// HasAllBlocks indicates whether the blocks are in the store.
-func (store *Store) HasAllBlocks(ctx context.Context, cids []cid.Cid) bool {
-	for _, c := range cids {
-		if !store.HasBlock(ctx, c) {
-			return false
-		}
-	}
-	return true
-}
-
-// HasBlock indicates whether the block is in the store.
-func (store *Store) HasBlock(ctx context.Context, c cid.Cid) bool {
-	// Note: this redundantly decodes the block if it is found.
-	blk, err := store.GetBlock(ctx, c)
-	return blk != nil && err == nil
+// contains any tipset identified by `parentKey`.
+func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey types.TipSetKey, h uint64) bool {
+	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
 }
 
 // HeadEvents returns a pubsub interface the pushes events each time the
@@ -329,7 +300,7 @@ func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) erro
 	defer store.mu.Unlock()
 
 	// Ensure consistency by storing this new head on disk.
-	if errInner := store.writeHead(ctx, ts.ToSortedCidSet()); errInner != nil {
+	if errInner := store.writeHead(ctx, ts.Key()); errInner != nil {
 		return errors.Wrap(errInner, "failed to write new Head to datastore")
 	}
 
@@ -339,7 +310,7 @@ func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) erro
 }
 
 // writeHead writes the given cid set as head to disk.
-func (store *Store) writeHead(ctx context.Context, cids types.SortedCidSet) error {
+func (store *Store) writeHead(ctx context.Context, cids types.TipSetKey) error {
 	logStore.Debugf("WriteHead %s", cids.String())
 	val, err := cbor.DumpObject(cids)
 	if err != nil {
@@ -361,7 +332,7 @@ func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
 		return err
 	}
 
-	// datastore keeps tsKey:stateRoot (k,v) pairs.
+	// datastore keeps key:stateRoot (k,v) pairs.
 	h, err := tsas.TipSet.Height()
 	if err != nil {
 		return err
@@ -371,25 +342,15 @@ func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
 }
 
 // GetHead returns the current head tipset cids.
-func (store *Store) GetHead() types.SortedCidSet {
+func (store *Store) GetHead() types.TipSetKey {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
 	if !store.head.Defined() {
-		return types.SortedCidSet{}
+		return types.TipSetKey{}
 	}
 
-	return store.head.ToSortedCidSet()
-}
-
-// BlockHeight returns the chain height of the head tipset.
-// Strictly speaking, the block height is the number of tip sets that appear on chain plus
-// the number of "null blocks" that occur when a mining round fails to produce a block.
-func (store *Store) BlockHeight() (uint64, error) {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
-
-	return store.head.Height()
+	return store.head.Key()
 }
 
 // GenesisCid returns the genesis cid of the chain tracked by the default store.

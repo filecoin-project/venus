@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"github.com/jbenet/goprocess"
-	"github.com/libp2p/go-libp2p-interface-connmgr"
-	"github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-core/connmgr"
+	"github.com/libp2p/go-libp2p-core/event"
+	net "github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
-	"github.com/libp2p/go-libp2p-protocol"
 	multiaddr "github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multistream"
 	errors "github.com/pkg/errors"
 )
 
@@ -29,15 +29,19 @@ func (noopLibP2PHost) Addrs() []multiaddr.Multiaddr {
 	return []multiaddr.Multiaddr{}
 }
 
+func (noopLibP2PHost) EventBus() event.Bus {
+	panic("NYI")
+}
+
 func (noopLibP2PHost) Network() net.Network {
 	return noopLibP2PNetwork{}
 }
 
-func (noopLibP2PHost) Mux() *multistream.MultistreamMuxer {
+func (noopLibP2PHost) Mux() protocol.Switch {
 	panic("implement me")
 }
 
-func (noopLibP2PHost) Connect(ctx context.Context, pi peerstore.PeerInfo) error {
+func (noopLibP2PHost) Connect(ctx context.Context, pi peer.AddrInfo) error {
 	return errors.New("Connect called on noopLibP2PHost")
 }
 
@@ -61,8 +65,8 @@ func (noopLibP2PHost) Close() error {
 	return nil
 }
 
-func (noopLibP2PHost) ConnManager() ifconnmgr.ConnManager {
-	return &ifconnmgr.NullConnMgr{}
+func (noopLibP2PHost) ConnManager() connmgr.ConnManager {
+	return &connmgr.NullConnMgr{}
 }
 
 type noopLibP2PNetwork struct{}

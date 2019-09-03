@@ -2,9 +2,10 @@ package consensus
 
 import (
 	"context"
+
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -175,9 +176,19 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
+		emptyMessagesCid, err := cst.Put(ctx, []types.SignedMessage{})
+		if err != nil {
+			return nil, err
+		}
+		emptyReceiptsCid, err := cst.Put(ctx, []types.MessageReceipt{})
+		if err != nil {
+			return nil, err
+		}
+
 		genesis := &types.Block{
-			StateRoot: c,
-			Nonce:     1337,
+			StateRoot:       c,
+			Messages:        emptyMessagesCid,
+			MessageReceipts: emptyReceiptsCid,
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
