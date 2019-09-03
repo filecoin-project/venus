@@ -394,6 +394,7 @@ func TestLoadAndReboot(t *testing.T) {
 	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
+	assert.Equal(t, link4.Key(), rebootChain.Status().ValidatedHead)
 
 	// Check that chain store has index
 	// Get a tipset and state by key
