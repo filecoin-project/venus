@@ -467,7 +467,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		// assert proof generated in sector builder is sent to submitPoSt
 		require.Equal(t, 3, len(postParams))
-		assert.Equal(t, []types.PoStProof{[]byte("test proof")}, postParams[0])
+		assert.Equal(t, types.PoStProof([]byte("test proof")), postParams[0])
 	})
 
 	t.Run("Does not post if block height is too low", func(t *testing.T) {

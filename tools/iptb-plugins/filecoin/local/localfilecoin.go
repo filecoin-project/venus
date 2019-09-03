@@ -47,6 +47,9 @@ const defaultSectorsPath = "sectors"
 // defaultLogLevel is the value that will be used for GO_FILECOIN_LOG_LEVEL
 const defaultLogLevel = "3"
 
+// defaultRustLogLevel is the value that will be used for RUST_LOG
+const defaultRustLogLevel = ""
+
 // defaultLogJSON is the value that will be used for GO_FILECOIN_LOG_JSON
 const defaultLogJSON = "false"
 
@@ -60,6 +63,9 @@ var (
 	// AttrLogJSON is the key used to set the node to output json logs
 	AttrLogJSON = "logJSON"
 
+	// AttrRustLogLevel is the key used to set the node to output rust logs
+	AttrRustLogLevel = "rustLogLevel"
+
 	// AttrSectorsPath is the key used to set the sectors path
 	AttrSectorsPath = "sectorsPath"
 )
@@ -70,11 +76,12 @@ type Localfilecoin struct {
 	peerid   cid.Cid
 	apiaddr  multiaddr.Multiaddr
 
-	binPath     string // Absolute path to binary
-	repoPath    string // Absolute path to repo
-	sectorsPath string // Absolute path to sectors
-	logLevel    string
-	logJSON     string
+	binPath      string // Absolute path to binary
+	repoPath     string // Absolute path to repo
+	sectorsPath  string // Absolute path to sectors
+	logLevel     string
+	logJSON      string
+	rustLogLevel string
 }
 
 var NewNode testbedi.NewNodeFunc // nolint: golint
@@ -86,11 +93,12 @@ func init() {
 			return nil, err
 		}
 		var (
-			binPath     = ""
-			repoPath    = filepath.Join(dir, defaultRepoPath)
-			sectorsPath = filepath.Join(dir, defaultSectorsPath)
-			logLevel    = defaultLogLevel
-			logJSON     = defaultLogJSON
+			binPath      = ""
+			repoPath     = filepath.Join(dir, defaultRepoPath)
+			sectorsPath  = filepath.Join(dir, defaultSectorsPath)
+			logLevel     = defaultLogLevel
+			logJSON      = defaultLogJSON
+			rustLogLevel = defaultRustLogLevel
 		)
 
 		if v, ok := attrs[AttrFilecoinBinary]; ok {
@@ -103,6 +111,10 @@ func init() {
 
 		if v, ok := attrs[AttrLogJSON]; ok {
 			logJSON = v
+		}
+
+		if v, ok := attrs[AttrRustLogLevel]; ok {
+			rustLogLevel = v
 		}
 
 		if v, ok := attrs[AttrSectorsPath]; ok {
@@ -129,12 +141,13 @@ func init() {
 		}
 
 		return &Localfilecoin{
-			iptbPath:    dir,
-			binPath:     dst,
-			repoPath:    repoPath,
-			sectorsPath: sectorsPath,
-			logLevel:    logLevel,
-			logJSON:     logJSON,
+			iptbPath:     dir,
+			binPath:      dst,
+			repoPath:     repoPath,
+			sectorsPath:  sectorsPath,
+			logLevel:     logLevel,
+			logJSON:      logJSON,
+			rustLogLevel: rustLogLevel,
 		}, nil
 	}
 }
