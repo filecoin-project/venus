@@ -131,11 +131,11 @@ func (p *MinerProfile) Post() error {
 	}
 	defer miner.DumpLastOutput(os.Stdout)
 
-	miningStatus, err := miner.MiningStatus(ctx)
-	if err != nil {
+	var minerAddress address.Address
+	if err := miner.ConfigGet(ctx, "mining.minerAddress", &minerAddress); err != nil {
 		return err
 	}
-	if mining := miningStatus.Active; !mining {
+	if minerAddress == address.Undef {
 		if err := FaucetRequest(ctx, miner, p.config.FaucetURL); err != nil {
 			return err
 		}

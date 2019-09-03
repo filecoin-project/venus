@@ -1,12 +1,13 @@
 # Default values for go-filecoin-devnet.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-Image: "devnet-base:fast-devnet"
+Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy"
+StorageClassName: gp2
 ProofParamsDir: "/home/ognots/filecoin-proof-parameters"
 Bootstrap:
   Replicas: 3
 Miner:
-  Replicas: 2
+  Replicas: 3
 Sprinkler:
   CronJobConcurrencyPolicy: Forbid
   Schedule: "*/5 * * * *"

@@ -59,6 +59,7 @@ spec:
       containers:
         - name: filecoin-miners
           image: "{{ .Values.Image }}"
+          imagePullPolicy: Always
           lifecycle:
             postStart:
               exec:
@@ -96,6 +97,7 @@ spec:
       initContainers:
         - name: filecoin-init
           image: "{{ .Values.Image }}"
+          imagePullPolicy: Always
           command: [
             "deploy",
             "-profile=miner",
@@ -121,11 +123,16 @@ spec:
               mountPath: /opt/filecoin-deploy
         - name: genesis-ready-check
           image: "giantswarm/tiny-tools"
+          imagePullPolicy: Always
           command: [
             "/bin/sh",
             "-c",
             "curl -s http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453/api/mining/status | grep true"
           ]
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
       volumes:
       - name: devnet-secrets
         secret:
@@ -141,7 +148,7 @@ spec:
       name: filecoin-storage-miners
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "microk8s-hostpath"
+      storageClassName: "{{ .Values.StorageClassName }}"
       resources:
         requests:
           storage: 50Gi

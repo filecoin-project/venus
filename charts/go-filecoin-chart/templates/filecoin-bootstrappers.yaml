@@ -59,6 +59,7 @@ spec:
     spec:
       containers:
         - name: filecoin-bootstrappers
+          imagePullPolicy: Always
           image: "{{ .Values.Image }}"
           lifecycle:
             postStart:
@@ -104,6 +105,7 @@ spec:
       initContainers:
         - name: filecoin-init
           image: "{{ .Values.Image }}"
+          imagePullPolicy: Always
           command: [
             "deploy",
             "-profile=bootstrap",
@@ -127,6 +129,10 @@ spec:
               mountPath: /opt/filecoin-proof-parameters
             - name: config-volume
               mountPath: /opt/filecoin-deploy
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
       volumes:
       - name: devnet-secrets
         secret:
@@ -142,7 +148,7 @@ spec:
       name: filecoin-storage-bootstrappers
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "microk8s-hostpath"
+      storageClassName: "{{ .Values.StorageClassName }}"
       resources:
         requests:
           storage: 10Gi

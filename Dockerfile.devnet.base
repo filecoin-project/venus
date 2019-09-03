@@ -3,7 +3,7 @@ MAINTAINER Filecoin Dev Team
 
 RUN apt-get update && apt-get install -y ca-certificates build-essential clang jq
 
-FROM busybox:1-glibc AS filecoin
+FROM ubuntu:18.04 AS filecoin
 MAINTAINER Filecoin Dev Team
 
 # Base resources
@@ -22,7 +22,8 @@ COPY tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
 COPY proofs/bin/paramfetch				 /usr/local/bin/paramfetch
 COPY proofs/bin/paramcache				 /usr/local/bin/paramcache
 
-RUN adduser -D -h /var/filecoin -u 1000 -G users filecoin
+RUN adduser --home /var/filecoin -u 1000 --ingroup users --disabled-password --gecos "" filecoin
+RUN id filecoin
 
 ENV FILECOIN_PARAMETER_CACHE="/var/filecoin-proof-parameters"
 ENV FIL_PATH /var/filecoin/repo

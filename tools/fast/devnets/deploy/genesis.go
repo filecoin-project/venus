@@ -129,11 +129,11 @@ func (p *GenesisProfile) Post() error {
 
 	defer node.DumpLastOutput(os.Stdout)
 
-	miningStatus, err := node.MiningStatus(ctx)
-	if err != nil {
+	var minerAddress address.Address
+	if err := node.ConfigGet(ctx, "mining.minerAddress", &minerAddress); err != nil {
 		return err
 	}
-	if mining := miningStatus.Active; !mining {
+	if minerAddress == address.Undef {
 		walletReader, err := os.Open(p.config.WalletFile)
 		if err != nil {
 			return errors.Wrapf(err, "wallet file %s", p.config.WalletFile)
