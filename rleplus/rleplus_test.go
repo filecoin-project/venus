@@ -2,6 +2,7 @@ package rleplus_test
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"testing"
 
@@ -62,15 +63,11 @@ func TestRleplus(t *testing.T) {
 		}
 	})
 
-	t.Run("Encode limits run lengths to 2^14", func(t *testing.T) {
-		// Create a run larger than 2^14
-		var ints []uint64
-		for i := 0; i <= 1<<14; i++ {
-			ints = append(ints, uint64(i))
-		}
-
+	t.Run("Encode allows all runs sizes possible uint64", func(t *testing.T) {
+		// create a run of math.MaxUint64
+		ints := []uint64{math.MaxUint64}
 		_, _, err := rleplus.Encode(ints)
-		assert.Error(t, err, "run length too large for RLE+ version 0")
+		assert.NilError(t, err)
 	})
 
 	t.Run("Decode", func(t *testing.T) {
@@ -119,7 +116,7 @@ func TestRleplus(t *testing.T) {
 
 	t.Run("Decode returns an error with a bad encoding", func(t *testing.T) {
 		// create an encoding with a buffer with a run which is too long
-		_, err := rleplus.Decode([]byte{0xe0, 0xff, 0xff, 0xff})
+		_, err := rleplus.Decode([]byte{0xe0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff})
 		assert.Error(t, err, "invalid encoding for RLE+ version 0")
 	})
 

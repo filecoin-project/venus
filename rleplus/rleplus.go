@@ -42,7 +42,6 @@ var (
 //
 // Filecoin specific:
 // The encoding is returned as a []byte, each byte packed starting with the low-order bit (LSB0)
-// The max unsigned_varint that can be encoded is 2^14 - 1
 func Encode(ints []uint64) ([]byte, uint, error) {
 	v := bitvector.BitVector{BytePacking: bitvector.LSB0}
 	firstBit, runs := RunLengths(ints)
@@ -60,9 +59,10 @@ func Encode(ints []uint64) ([]byte, uint, error) {
 			v.Push(0)
 			v.Push(1)
 			v.Extend(byte(run), 4, bitvector.LSB0)
-		case run >= 16 && run < (1<<14):
+		case run >= 16:
 			v.Push(0)
 			v.Push(0)
+			// 10 bytes needed to encode MaxUint64
 			buf := make([]byte, 10)
 			numBytes := binary.PutUvarint(buf, run)
 			for i := 0; i < numBytes; i++ {
@@ -127,7 +127,8 @@ func Decode(buf []byte) (ints []uint64, err error) {
 						break
 					}
 
-					if len(buf) > 2 {
+					// 10 bytes is required to store math.MaxUint64 in a uvarint
+					if len(buf) > 10 {
 						return nil, ErrDecode
 					}
 				}
