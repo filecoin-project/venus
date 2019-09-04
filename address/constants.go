@@ -21,12 +21,12 @@ func init() {
 		panic(err)
 	}
 
-	NetworkAddress, err = NewIDAddress(1)
+	InitAddress, err = NewIDAddress(0)
 	if err != nil {
 		panic(err)
 	}
 
-	InitAddress, err = NewIDAddress(4)
+	NetworkAddress, err = NewIDAddress(1)
 	if err != nil {
 		panic(err)
 	}

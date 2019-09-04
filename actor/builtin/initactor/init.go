@@ -40,7 +40,7 @@ func (a *Actor) Exports() exec.Exports {
 	return initExports
 }
 
-// NewActor returns a new storage market actor.
+// NewActor returns a init actor.
 func NewActor() *actor.Actor {
 	return actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
 }
