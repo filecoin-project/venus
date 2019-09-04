@@ -35,6 +35,7 @@ var testConfig = &GenesisCfg{
 			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
+	Network: "GenGenTest",
 }
 
 func TestGenGenLoading(t *testing.T) {
@@ -55,6 +56,7 @@ func TestGenGenLoading(t *testing.T) {
 	stdout := o.ReadStdout()
 	assert.Contains(t, stdout, `"MinerActor"`)
 	assert.Contains(t, stdout, `"StoragemarketActor"`)
+	assert.Contains(t, stdout, `"InitActor"`)
 }
 
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {

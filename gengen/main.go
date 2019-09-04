@@ -52,7 +52,8 @@ $ cat setup.json
 			"owner": 1,
 			"power": 1000
 		}
-	]
+	],
+	Network: "test1",
 }
 $ cat setup.json | gengen > genesis.car
 

@@ -2,9 +2,11 @@ package porcelain
 
 import (
 	"context"
+	"io"
 	"math/big"
 	"time"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -236,13 +237,18 @@ func (a *API) ClientValidateDeal(ctx context.Context, proposalCid cid.Cid, proof
 }
 
 // CalculatePoSt invokes the sector builder to calculate a proof-of-spacetime.
-func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
+func (a *API) CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error) {
 	return CalculatePoSt(ctx, a, sortedCommRs, seed)
 }
 
-// SealNow forces the sectorbuilder to either seal the staged sectors it has or create a new one and seal it immediately
+// SealNow forces the sectorbuilder to seal the staged sectors it has
 func (a *API) SealNow(ctx context.Context) error {
 	return SealNow(ctx, a)
+}
+
+// AddPiece adds a piece to a staged sector
+func (a *API) AddPiece(ctx context.Context, reader io.Reader) (uint64, error) {
+	return AddPiece(ctx, a, reader)
 }
 
 // PingMinerWithTimeout pings a storage or retrieval miner, waiting the given

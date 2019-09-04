@@ -20,6 +20,7 @@ type SectorInfo struct {
 
 // ProtocolParams contains parameters that modify the filecoin nodes protocol
 type ProtocolParams struct {
+	Network          string
 	AutoSealInterval uint
 	BlockTime        time.Duration
 	ProofsMode       types.ProofsMode
@@ -49,6 +50,11 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 		return nil, errors.Wrap(err, "could not retrieve proofs mode")
 	}
 
+	networkName, err := getNetworkName(ctx, plumbing)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve network name")
+	}
+
 	sectorSizes := []*types.BytesAmount{types.OneKiBSectorSize}
 	if proofsMode == types.LiveProofsMode {
 		sectorSizes[0] = types.TwoHundredFiftySixMiBSectorSize
@@ -61,6 +67,7 @@ func ProtocolParameters(ctx context.Context, plumbing protocolParamsPlumbing) (*
 	}
 
 	return &ProtocolParams{
+		Network:          networkName,
 		AutoSealInterval: autoSealInterval,
 		BlockTime:        plumbing.BlockTime(),
 		ProofsMode:       proofsMode,
@@ -92,4 +99,13 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 	}
 
 	return proofsMode, nil
+}
+
+func getNetworkName(ctx context.Context, plumbing protocolParamsPlumbing) (string, error) {
+	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, "getNetwork")
+	if err != nil {
+		return "", errors.Wrap(err, "'getNetwork' query message failed")
+	}
+
+	return string(nameBytes[0]), nil
 }

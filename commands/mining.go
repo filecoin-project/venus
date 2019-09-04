@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -19,13 +20,14 @@ var miningCmd = &cmds.Command{
 		Tagline: "Manage all mining operations for a node",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"address":  miningAddrCmd,
-		"once":     miningOnceCmd,
-		"start":    miningStartCmd,
-		"status":   miningStatusCmd,
-		"stop":     miningStopCmd,
-		"setup":    miningSetupCmd,
-		"seal-now": miningSealCmd,
+		"address":   miningAddrCmd,
+		"once":      miningOnceCmd,
+		"start":     miningStartCmd,
+		"status":    miningStatusCmd,
+		"stop":      miningStopCmd,
+		"setup":     miningSetupCmd,
+		"seal-now":  miningSealCmd,
+		"add-piece": miningAddPieceCmd,
 	},
 }
 
@@ -195,7 +197,7 @@ var miningStopCmd = &cmds.Command{
 
 var miningSealCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline: "Start sealing all staged sectors or create and seal a new sector",
+		Tagline: "Start sealing all staged sectors",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		if err := GetPorcelainAPI(env).SealNow(req.Context); err != nil {
@@ -211,4 +213,47 @@ var stringEncoderMap = cmds.EncoderMap{
 		fmt.Fprintln(w, t) // nolint: errcheck
 		return nil
 	}),
+}
+
+// MiningAddPieceResult is a wrapper around the uint64 sectorID
+type MiningAddPieceResult struct {
+	SectorID uint64
+}
+
+var miningAddPieceCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Add data directly to a staged sector",
+		ShortDescription: `
+Adds a piece (a local file) to a staged sector.  This is used
+to add data outside of a deal.
+`,
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.FileArg("file", true, false, "Path of file to add").EnableStdin(),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		iter := req.Files.Entries()
+		if !iter.Next() {
+			return fmt.Errorf("no file given: %s", iter.Err())
+		}
+
+		fi, ok := iter.Node().(files.File)
+		if !ok {
+			return fmt.Errorf("given file was not a files.File")
+		}
+
+		sectorID, err := GetPorcelainAPI(env).AddPiece(req.Context, fi)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(MiningAddPieceResult{SectorID: sectorID})
+	},
+	Type: MiningAddPieceResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result MiningAddPieceResult) error {
+			fmt.Fprintf(w, "piece staged in sector %d\n", result.SectorID) // nolint: errcheck
+			return nil
+		}),
+	},
 }

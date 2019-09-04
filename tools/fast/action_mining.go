@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	files "github.com/ipfs/go-ipfs-files"
+
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -84,7 +86,16 @@ func (f *Filecoin) MiningStatus(ctx context.Context) (commands.MiningStatusResul
 	return out, nil
 }
 
-// SealNow adds a staged sector if none exists and then triggers sealing on it
+// AddPiece runs the mining add-piece command
+func (f *Filecoin) AddPiece(ctx context.Context, data files.File) (commands.MiningAddPieceResult, error) {
+	var out commands.MiningAddPieceResult
+	if err := f.RunCmdJSONWithStdin(ctx, data, &out, "go-filecoin", "mining", "add-piece"); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// SealNow seals any staged sectors
 func (f *Filecoin) SealNow(ctx context.Context) error {
 	out, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "mining", "seal-now")
 	if err != nil {

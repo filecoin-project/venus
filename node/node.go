@@ -394,7 +394,8 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
+	sysClock := clock.NewSystemClock()
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, sysClock)
 
 	// set up peer tracking
 	peerTracker := net.NewPeerTracker()
@@ -418,8 +419,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	chainStatusReporter := chain.NewStatusReporter()
 	// set up chain and message stores
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
@@ -460,7 +462,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher)
+	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, sysClock)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
 
@@ -495,6 +497,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:       bswap,
 		Chain:         chainState,
+		Sync:          cst.NewChainSyncProvider(chainSyncer),
 		Config:        cfg.NewConfig(nc.Repo),
 		DAG:           dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:         strgdls.New(nc.Repo.DealsDatastore()),
