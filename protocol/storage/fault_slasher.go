@@ -20,7 +20,9 @@ var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
 
 // monitorPlumbing is an interface for the functionality FaultSlasher needs
 type monitorPlumbing interface {
+	ConfigGet(string) (interface{}, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	MinerGetWorkerAddress(context.Context, address.Address) (address.Address, error)
 }
 
 // slashingMsgOutbox is the interface for the functionality of Outbox FaultSlasher needs
@@ -39,24 +41,22 @@ type slashingMsgOutbox interface {
 // Storage faults are distinct from consensus faults.
 // See https://github.com/filecoin-project/specs/blob/master/faults.md
 type FaultSlasher struct {
-	gasPrice  types.AttoFIL  // gas price to use when sending messages
-	gasLimit  types.GasUnits // gas limit to use when sending messages
-	log       logging.EventLogger
-	msgSender address.Address   // what signs the slashing message and receives slashing reward
-	outbox    slashingMsgOutbox // what sends the slashing message
-	plumbing  monitorPlumbing   // what does the message query
+	gasPrice types.AttoFIL  // gas price to use when sending messages
+	gasLimit types.GasUnits // gas limit to use when sending messages
+	log      logging.EventLogger
+	outbox   slashingMsgOutbox // what sends the slashing message
+	plumbing monitorPlumbing   // what does the message query
 }
 
 // NewFaultSlasher creates a new FaultSlasher with the provided plumbing, outbox and message sender.
 // Message sender must be an account actor address.
-func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, msgSender address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) *FaultSlasher {
+func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, gasPrice types.AttoFIL, gasLimit types.GasUnits) *FaultSlasher {
 	return &FaultSlasher{
-		plumbing:  plumbing,
-		log:       logging.Logger("StorFltMon"),
-		outbox:    outbox,
-		msgSender: msgSender,
-		gasPrice:  gasPrice,
-		gasLimit:  gasLimit,
+		plumbing: plumbing,
+		log:      logging.Logger("StorFltMon"),
+		outbox:   outbox,
+		gasPrice: gasPrice,
+		gasLimit: gasLimit,
 	}
 }
 
@@ -74,7 +74,18 @@ func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSe
 // Slashing messages are not broadcast to the network, but included in the next block mined by the slashing
 // node.
 func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHeight) error {
-	res, err := sfm.plumbing.MessageQuery(ctx, sfm.msgSender, address.StorageMarketAddress, "getLateMiners")
+
+	minerAddr, err := sfm.plumbing.ConfigGet("mining.minerAddress")
+	if err != nil {
+		return err
+	}
+
+	workerAddr, err := sfm.plumbing.MinerGetWorkerAddress(ctx, minerAddr.(address.Address))
+	if err != nil {
+		return errors.Wrap(err, "could not get worker address")
+	}
+
+	res, err := sfm.plumbing.MessageQuery(ctx, workerAddr, address.StorageMarketAddress, "getLateMiners")
 	if err != nil {
 		return errors.Wrap(err, "getLateMiners message failed")
 	}
@@ -100,7 +111,7 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 		// add slash message to message pull w/o broadcasting
 		sfm.log.Debugf("Slashing %s with state %d\n", minerStr, state)
 
-		_, err = sfm.outbox.Send(ctx, sfm.msgSender, minerAddr, types.ZeroAttoFIL, sfm.gasPrice,
+		_, err = sfm.outbox.Send(ctx, workerAddr, minerAddr, types.ZeroAttoFIL, sfm.gasPrice,
 			sfm.gasLimit, false, "slashStorageFault")
 		if err != nil {
 			return errors.Wrap(err, "slashStorageFault message failed")

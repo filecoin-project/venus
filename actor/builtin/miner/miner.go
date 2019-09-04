@@ -123,7 +123,7 @@ type Ask struct {
 // State is the miner actors storage.
 type State struct {
 	// Owner is the address of the account that owns this miner. Income and returned
-	// collateral are paid to this address. This address is also allowed to change the
+	// collateral are paid to this address. This address is also allowed todd change the
 	// worker address for the miner.
 	Owner address.Address
 

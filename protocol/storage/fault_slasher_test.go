@@ -23,15 +23,19 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	signer, _ := types.NewMockSignersAndKeyInfo(1)
+	signer, _ := types.NewMockSignersAndKeyInfo(3)
 
 	data, err := cbor.DumpObject(&map[string]uint64{})
 	require.NoError(t, err)
 	queryer := makeQueryer([][]byte{data})
-	minerOwnerAddr := signer.Addresses[0]
 	ob := outbox{}
+	sp := slasherPlumbing{
+		Queryer:    queryer,
+		minerAddr:  signer.Addresses[0],
+		workerAddr: signer.Addresses[1],
+	}
+	fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 
-	fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 	t.Run("with bad tipset", func(t *testing.T) {
 		ts := types.UndefTipSet
 		err := fm.OnNewHeaviestTipSet(ctx, ts)
@@ -40,7 +44,7 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	})
 
 	t.Run("calls slasher if tipset can get height", func(t *testing.T) {
-		store := chain.NewBuilder(t, minerOwnerAddr)
+		store := chain.NewBuilder(t, signer.Addresses[0])
 		baseTs := store.NewGenesis()
 		assert.NoError(t, fm.OnNewHeaviestTipSet(ctx, baseTs))
 	})
@@ -50,7 +54,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	signer, _ := types.NewMockSignersAndKeyInfo(1)
+	signer, _ := types.NewMockSignersAndKeyInfo(3)
 
 	t.Run("When there are no miners, does not error", func(t *testing.T) {
 
@@ -58,10 +62,15 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		data, err := cbor.DumpObject(&map[string]uint64{})
 		require.NoError(t, err)
 		queryer := makeQueryer([][]byte{data})
-		minerOwnerAddr := signer.Addresses[0]
 
 		ob := outbox{}
-		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		sp := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+
 		err = fm.Slash(ctx, height)
 		require.NoError(t, err)
 		assert.Equal(t, 0, ob.msgCount)
@@ -84,8 +93,12 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{}
-		minerOwnerAddr := signer.Addresses[0]
-		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		sp := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, ob.msgCount)
@@ -105,8 +118,13 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		queryer := makeQueryer([][]byte{data})
 		ob := outbox{failSend: true, failErr: "Boom"}
-		minerOwnerAddr := signer.Addresses[0]
-		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+		sp := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+
 		err = fm.Slash(ctx, height)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "Boom")
@@ -121,9 +139,13 @@ func TestFaultSlasher_Slash(t *testing.T) {
 			}
 			return nil, errors.New("test failed")
 		}
-		minerOwnerAddr := signer.Addresses[0]
+		sp := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 
-		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err := fm.Slash(ctx, types.NewBlockHeight(42))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "message query failed")
@@ -141,13 +163,34 @@ func TestFaultSlasher_Slash(t *testing.T) {
 			}
 			return nil, errors.New("test failed")
 		}
-		minerOwnerAddr := signer.Addresses[0]
+		sp := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 
-		fm := NewFaultSlasher(&slasherPlumbing{false, false, queryer}, &ob, minerOwnerAddr, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 		err = fm.Slash(ctx, types.NewBlockHeight(42))
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "deserializing MinerPoStStates failed")
 
+	})
+
+	t.Run("when MinerGetWorkerAddress fails, returns error", func(t *testing.T) {
+		data, err := cbor.DumpObject(&map[string]uint64{})
+		require.NoError(t, err)
+		queryer := makeQueryer([][]byte{data})
+		ob := outbox{}
+		sp := slasherPlumbing{
+			workerAddrFail: true,
+			Queryer:        queryer,
+			minerAddr:      signer.Addresses[0],
+			workerAddr:     signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+
+		err = fm.Slash(ctx, types.NewBlockHeight(99))
+		assert.EqualError(t, err, "could not get worker address: actor not found")
 	})
 }
 
@@ -164,13 +207,24 @@ func makeQueryer(returnData [][]byte) msgQueryer {
 type msgQueryer func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 
 type slasherPlumbing struct {
-	actorFail   bool
-	actorChFail bool
-	Queryer     msgQueryer
+	workerAddrFail        bool
+	Queryer               msgQueryer
+	minerAddr, workerAddr address.Address
+}
+
+func (tmp *slasherPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
+	return tmp.minerAddr, nil
 }
 
 func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	return tmp.Queryer(ctx, optFrom, to, method, params)
+}
+
+func (tmp *slasherPlumbing) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	if tmp.workerAddrFail {
+		return address.Undef, errors.New("actor not found")
+	}
+	return tmp.workerAddr, nil
 }
 
 type outbox struct {
