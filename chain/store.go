@@ -373,8 +373,3 @@ func (store *Store) GenesisCid() cid.Cid {
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
 }
-
-// Status returns the current chain status.
-func (store *Store) Status() Status {
-	return store.reporter.Status()
-}

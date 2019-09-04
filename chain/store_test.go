@@ -280,7 +280,8 @@ func TestHead(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
-	cs := newChainStore(r, genTS.At(0).Cid())
+	sr := chain.NewStatusReporter()
+	cs := chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, sr, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -294,17 +295,17 @@ func TestHead(t *testing.T) {
 	// Set Head
 	assertSetHead(t, cs, genTS)
 	assert.Equal(t, genTS.Key(), cs.GetHead())
-	assert.Equal(t, genTS.Key(), cs.Status().ValidatedHead)
+	assert.Equal(t, genTS.Key(), sr.Status().ValidatedHead)
 
 	// Move head forward
 	assertSetHead(t, cs, link4)
 	assert.Equal(t, link4.Key(), cs.GetHead())
-	assert.Equal(t, link4.Key(), cs.Status().ValidatedHead)
+	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
 
 	// Move head back
 	assertSetHead(t, cs, link1)
 	assert.Equal(t, link1.Key(), cs.GetHead())
-	assert.Equal(t, link1.Key(), cs.Status().ValidatedHead)
+	assert.Equal(t, link1.Key(), sr.Status().ValidatedHead)
 }
 
 func assertEmptyCh(t *testing.T, ch <-chan interface{}) {
@@ -391,10 +392,11 @@ func TestLoadAndReboot(t *testing.T) {
 	chainStore.Stop()
 
 	// rebuild chain with same datastore and cborstore
-	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), genTS.At(0).Cid())
+	sr := chain.NewStatusReporter()
+	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, sr, genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, link4.Key(), rebootChain.Status().ValidatedHead)
+	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
 
 	// Check that chain store has index
 	// Get a tipset and state by key
