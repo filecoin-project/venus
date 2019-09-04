@@ -917,7 +917,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
+	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
 	if err != nil {
 		return errors.Wrap(err, "could not get worker address from miner actor")
 	}
