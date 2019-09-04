@@ -156,6 +156,10 @@ func (p *MinerProfile) Post() error {
 		if err := miner.MiningStart(ctx); err != nil {
 			return err
 		}
+	} else {
+		if err := miner.MiningStart(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

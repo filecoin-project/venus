@@ -174,6 +174,10 @@ func (p *GenesisProfile) Post() error {
 		if err := node.MiningStart(ctx); err != nil {
 			return err
 		}
+	} else {
+		if err := node.MiningStart(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil

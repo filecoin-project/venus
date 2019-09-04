@@ -34,7 +34,7 @@ data:
       "Collateral": 10,
       "AskPrice": "0.000000001",
       "AskExpiry": 100,
-      "SectorSize": 128
+      "SectorSize": "268435456"
     }
 {{ end }}
 

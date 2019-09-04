@@ -35,7 +35,7 @@ data:
       "LogJSON": "1",
       "LogLevel":"5",
       "WalletFile": "/opt/filecoin/0.key",
-      "MinerAddress": "t2g33pkfg2bfqfyksw4ksvvgepzfmgkyu7ugnmvci"
+      "MinerAddress": "{{ .Values.Genesis.MinerAddress }}"
     }
 
 ---
@@ -60,14 +60,14 @@ spec:
         - name: filecoin-genesis
           image: "{{ .Values.Image }}"
           imagePullPolicy: Always
-          #lifecycle:
-          #  postStart:
-          #   exec:
-          #      command: [
-          #        "/bin/sh",
-          #        "-c",
-          #        "deploy -profile=genesis -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
-          #      ]
+          lifecycle:
+            postStart:
+             exec:
+                command: [
+                  "/bin/sh",
+                  "-c",
+                  "deploy -profile=genesis -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
+                ]
           env:
             - name: FILECOIN_PARAMETER_CACHE
               value: /opt/filecoin-proof-parameters
@@ -101,7 +101,7 @@ spec:
           command: [
             "faucet",
             "-fil-api=filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453",
-            "-fil-wallet=t1ijvaivtngec42yjpj3fndxxvvdd2iorwphucgwq",
+            "-fil-wallet={{ .Values.Genesis.WalletAddress }}",
             "-faucet-val=1000",
           ]
           ports:
