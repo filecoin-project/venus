@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
@@ -99,10 +100,15 @@ type Syncer struct {
 	chainStore syncerChainReaderWriter
 	// Provides message collections given cids
 	messageProvider MessageProvider
+
+	clock clock.Clock
+
+	// Reporter is used by the syncer to update the current status of the chain.
+	reporter Reporter
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -111,6 +117,8 @@ func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvide
 		stateEvaluator:  e,
 		chainStore:      s,
 		messageProvider: m,
+		clock:           c,
+		reporter:        sr,
 	}
 }
 
@@ -338,18 +346,30 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		return err
 	}
 
+	syncer.reporter.UpdateStatus(syncingStarted(syncer.clock.Now().Unix()), syncHead(ci.Head), syncHeight(ci.Height), syncTrusted(trusted), syncComplete(false))
+	defer syncer.reporter.UpdateStatus(syncComplete(true))
+
 	// If we do not trust the peer head check finality
 	if !trusted && syncer.exceedsFinalityLimit(curHeight, ci.Height) {
 		return ErrNewChainTooLong
 	}
 
+	syncer.reporter.UpdateStatus(syncFetchComplete(false))
 	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
 		}
+		height, err := t.Height()
+		if err != nil {
+			return false, err
+		}
+
+		// update status with latest fetched head and height
+		syncer.reporter.UpdateStatus(fetchHead(t.Key()), fetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
+	syncer.reporter.UpdateStatus(syncFetchComplete(true))
 	if err != nil {
 		return err
 	}
@@ -398,6 +418,11 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		parent = ts
 	}
 	return nil
+}
+
+// Status returns the current chain status.
+func (syncer *Syncer) Status() Status {
+	return syncer.reporter.Status()
 }
 
 func (syncer *Syncer) exceedsFinalityLimit(curHeight, newHeight uint64) bool {
