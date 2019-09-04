@@ -449,7 +449,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 	upgradeTable := consensus.NewProtocolUpgradeTable(network)
-	ConfigureNetworkProtocols(upgradeTable)
+	consensus.ConfigureNetworkProtocols(upgradeTable)
 
 	// set up processor
 	var processor consensus.Processor

@@ -1,7 +1,6 @@
-package node
+package consensus
 
 import (
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -11,7 +10,7 @@ const LOCALNET = "localnet"
 
 const protocol_0 = 0
 
-func ConfigureNetworkProtocols(put *consensus.ProtocolUpgradeTable) {
+func ConfigureNetworkProtocols(put *ProtocolUpgradeTable) {
 	put.Add(ALPHA1, protocol_0, types.NewBlockHeight(0))
 
 	put.Add(DEVNET, protocol_0, types.NewBlockHeight(0))

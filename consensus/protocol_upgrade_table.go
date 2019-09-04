@@ -34,18 +34,16 @@ func (put *ProtocolUpgradeTable) Add(network string, version uint64, effectiveAt
 		EffectiveAt: effectiveAt,
 	}
 
+	// add after last upgrade effectiveAt is greater than
 	idx := sort.Search(len(put.upgrades), func(i int) bool {
-		return effectiveAt.GreaterEqual(put.upgrades[i].EffectiveAt)
+		return effectiveAt.LessThan(put.upgrades[i].EffectiveAt)
 	})
 
 	// insert upgrade sorted by effective at
-	put.upgrades = append(put.upgrades, ProtocolUpgrade{})
-	copy(put.upgrades[idx+1:], put.upgrades[idx:])
-
 	put.upgrades = append(put.upgrades[:idx], append([]ProtocolUpgrade{upgrade}, put.upgrades[idx:]...)...)
 }
 
-func (put *ProtocolUpgradeTable) VersionAt(height types.BlockHeight) (uint64, error) {
+func (put *ProtocolUpgradeTable) VersionAt(height *types.BlockHeight) (uint64, error) {
 	// find index of first upgrade that is yet active (or len(upgrades) if they are all active.
 	idx := sort.Search(len(put.upgrades), func(i int) bool {
 		return height.LessThan(put.upgrades[i].EffectiveAt)
