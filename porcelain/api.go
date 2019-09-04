@@ -260,3 +260,8 @@ func (a *API) PingMinerWithTimeout(
 ) error {
 	return PingMinerWithTimeout(ctx, minerPID, timeout, a)
 }
+
+// MinerSetWorkerAddress sets the miner worker address to the provided address
+func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
+	return MinerSetWorkerAddress(ctx, a, toAddr, gasPrice, gasLimit)
+}

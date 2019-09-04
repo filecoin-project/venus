@@ -110,3 +110,29 @@ func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address
 
 	return out, nil
 }
+
+// MinerWorker runs the `miner worker` command against the filecoin process
+func (f *Filecoin) MinerWorker(ctx context.Context) (commands.MinerWorkerResult, error) {
+	var out commands.MinerWorkerResult
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "worker"); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// MinerSetWorker runs the `miner set-worker` command against the filecoin process
+func (f *Filecoin) MinerSetWorker(ctx context.Context, newAddr address.Address, options ...ActionOption) (cid.Cid, error) {
+	var out cid.Cid
+
+	args := []string{"go-filecoin", "miner", "set-worker", newAddr.String()}
+
+	for _, option := range options {
+		args = append(args, option()...)
+	}
+
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, args...); err != nil {
+		return out, err
+	}
+	return out, nil
+}
