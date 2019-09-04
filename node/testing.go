@@ -237,6 +237,7 @@ var TestGenCfg = &gengen.GenesisCfg{
 			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
+	Network: "go-filecoin-test",
 	PreAlloc: []string{
 		"10000",
 		"10000",

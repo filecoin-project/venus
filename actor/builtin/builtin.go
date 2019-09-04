@@ -2,14 +2,14 @@
 package builtin
 
 import (
-	cid "github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
+	cid "github.com/ipfs/go-cid"
 )
 
 // Actors is list of all actors that ship with Filecoin.
@@ -23,4 +23,5 @@ func init() {
 	Actors[types.PaymentBrokerActorCodeCid] = &paymentbroker.Actor{}
 	Actors[types.MinerActorCodeCid] = &miner.Actor{}
 	Actors[types.BootstrapMinerActorCodeCid] = &miner.Actor{Bootstrap: true}
+	Actors[types.InitActorCodeCid] = &initactor.Actor{}
 }
