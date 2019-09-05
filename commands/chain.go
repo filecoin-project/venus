@@ -19,12 +19,13 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head": chainHeadCmd,
-		"ls":   chainLsCmd,
+		"head":   storeHeadCmd,
+		"ls":     storeLsCmd,
+		"status": storeStatusCmd,
 	},
 }
 
-var chainHeadCmd = &cmds.Command{
+var storeHeadCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Get heaviest tipset CIDs",
 	},
@@ -49,7 +50,7 @@ var chainHeadCmd = &cmds.Command{
 	},
 }
 
-var chainLsCmd = &cmds.Command{
+var storeLsCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline:          "List blocks in the blockchain",
 		ShortDescription: `Provides a list of blocks in order from head to genesis. By default, only CIDs are returned for each block.`,
@@ -106,5 +107,18 @@ var chainLsCmd = &cmds.Command{
 
 			return nil
 		}),
+	},
+}
+
+var storeStatusCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Show status of chain sync operation.",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		syncStatus := GetPorcelainAPI(env).ChainStatus()
+		if err := re.Emit(syncStatus); err != nil {
+			return err
+		}
+		return nil
 	},
 }

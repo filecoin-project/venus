@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func parseInt(t *testing.T, s string) *big.Int {
@@ -45,7 +46,7 @@ func TestMiningGenBlock(t *testing.T) {
 	assert.Equal(t, sum.Add(beforeBalance, big.NewInt(1000)), afterBalance)
 }
 
-func TestMiningSealNow(t *testing.T) {
+func TestMiningAddPieceAndSealNow(t *testing.T) {
 	tf.FunctionalTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -84,6 +85,10 @@ func TestMiningSealNow(t *testing.T) {
 	defer func() {
 		require.NoError(t, minerNode.MiningStop(ctx))
 	}()
+
+	// add a piece
+	_, err = minerNode.AddPiece(ctx, files.NewBytesFile([]byte("HODL")))
+	require.NoError(t, err)
 
 	// Since the miner does not yet have power, we still need the genesis node to mine
 	// the miner's commitSector and the submitPoSt messages

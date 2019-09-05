@@ -67,6 +67,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
+		Network: "ptvtest",
 	}
 
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)

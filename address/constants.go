@@ -21,6 +21,11 @@ func init() {
 		panic(err)
 	}
 
+	InitAddress, err = NewIDAddress(0)
+	if err != nil {
+		panic(err)
+	}
+
 	NetworkAddress, err = NewIDAddress(1)
 	if err != nil {
 		panic(err)
@@ -48,6 +53,8 @@ var (
 	// TestAddress2 is an account with some initial funds in it.
 	TestAddress2 Address
 
+	// InitAddress is the filecoin network initializer.
+	InitAddress Address
 	// NetworkAddress is the filecoin network treasury.
 	NetworkAddress Address
 	// StorageMarketAddress is the hard-coded address of the filecoin storage market actor.

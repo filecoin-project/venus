@@ -18,5 +18,6 @@ func TestProtocol(t *testing.T) {
 	protocol := d.RunSuccess("protocol")
 
 	protocolContent := protocol.ReadStdout()
+	assert.Contains(t, protocolContent, "Network: alpha1")
 	assert.Contains(t, protocolContent, "Auto-Seal Interval: 120 seconds")
 }

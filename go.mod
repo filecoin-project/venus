@@ -26,7 +26,7 @@ require (
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/golangci/golangci-lint v1.17.0
+	github.com/golangci/golangci-lint v1.17.1
 	github.com/golangci/govet v0.0.0-20180818181408-44ddbe260190 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
@@ -85,7 +85,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/libp2p/go-testutil v0.0.1 // indirect
-	github.com/magiconair/properties v1.8.1 // indirect
+	github.com/magiconair/properties v1.8.1
 	github.com/miekg/dns v1.1.15 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.0

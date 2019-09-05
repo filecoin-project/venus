@@ -125,6 +125,7 @@ ACTOR COMMANDS
 MESSAGE COMMANDS
   go-filecoin message                - Manage messages
   go-filecoin mpool                  - Manage the message pool
+  go-filecoin outbox                 - Manage the outbound message queue
 
 TOOL COMMANDS
   go-filecoin inspect                - Show info about the go-filecoin node
@@ -328,8 +329,8 @@ func isConnectionRefused(err error) bool {
 	return syscallErr.Err == syscall.ECONNREFUSED
 }
 
-var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnits consumed mining this message")
-var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum number of GasUnits this message is allowed to consume")
+var priceOption = cmdkit.StringOption("gas-price", "Price (FIL e.g. 0.00013) to pay for each GasUnit consumed mining this message")
+var limitOption = cmdkit.Uint64Option("gas-limit", "Maximum GasUnits this message is allowed to consume")
 var previewOption = cmdkit.BoolOption("preview", "Preview the Gas cost of this command without actually executing it")
 
 func parseGasOptions(req *cmds.Request) (types.AttoFIL, types.GasUnits, bool, error) {
