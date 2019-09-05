@@ -11,7 +11,6 @@ import (
 	"time"
 
 	ps "github.com/cskr/pubsub"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
@@ -445,7 +444,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table
-	network, err := networkNameFromGenesis(ctx, ipldCborStore, chainStore, bs)
+	network, err := networkNameFromGenesis(ctx, chainStore, bs)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,18 +1033,10 @@ func (node *Node) StartMining(ctx context.Context) error {
 // NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
 // The network name can not change while this node is running. Since the network name determines
 // the protocol version, we must retrieve it at genesis where the protocol is known.
-func networkNameFromGenesis(ctx context.Context, ipldStore hamt.CborIpldStore, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
-	// retrieve genesis block
-	var genesis types.Block
-	err := ipldStore.Get(ctx, chainStore.GenesisCid(), &genesis)
+func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
+	st, err := chainStore.GetGenesisState(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "could not retrieve genesis block")
-	}
-
-	// retrieve network name
-	st, err := (&state.TreeStateLoader{}).LoadStateTree(ctx, &ipldStore, genesis.StateRoot, builtin.Actors)
-	if err != nil {
-		return "", errors.Wrap(err, "could not load state tree")
+		return "", errors.Wrap(err, "could not get genesis state")
 	}
 
 	vms := vm.NewStorageMap(bs)

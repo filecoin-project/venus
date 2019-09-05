@@ -250,6 +250,18 @@ func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (st
 	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
 }
 
+// GetGenesisState returns the state tree at genesis to retrieve initialization parameters.
+func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
+	// retrieve genesis block
+	genesis, err := store.stateAndBlockSource.GetBlock(ctx, store.GenesisCid())
+	if err != nil {
+		return nil, err
+	}
+
+	// create state tree
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot, builtin.Actors)
+}
+
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
 func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)
