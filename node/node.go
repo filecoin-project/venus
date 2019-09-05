@@ -11,6 +11,7 @@ import (
 	"time"
 
 	ps "github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
@@ -444,12 +445,12 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table
-	network, err := networkNameFromGenesis(ctx, chainStore, bs)
+	network, err := networkNameFromGenesis(ctx, ipldCborStore, chainStore, bs)
 	if err != nil {
 		return nil, err
 	}
 	upgradeTable := consensus.NewProtocolUpgradeTable(network)
-	consensus.ConfigureNetworkProtocols(upgradeTable)
+	consensus.ConfigureProtocolVersions(upgradeTable)
 
 	// set up processor
 	var processor consensus.Processor
@@ -1033,19 +1034,24 @@ func (node *Node) StartMining(ctx context.Context) error {
 // NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
 // The network name can not change while this node is running. Since the network name determines
 // the protocol version, we must retrieve it at genesis where the protocol is known.
-func networkNameFromGenesis(ctx context.Context, store *chain.Store, bs bstore.Blockstore) (string, error) {
-	// retrieve state from genesis block
-	genesisTipsetKey := types.NewTipSetKey(store.GenesisCid())
-	st, err := store.GetTipSetState(ctx, genesisTipsetKey)
+func networkNameFromGenesis(ctx context.Context, ipldStore hamt.CborIpldStore, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
+	// retrieve genesis block
+	var genesis types.Block
+	err := ipldStore.Get(ctx, chainStore.GenesisCid(), &genesis)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not retrieve genesis block")
 	}
 
 	// retrieve network name
+	st, err := (&state.TreeStateLoader{}).LoadStateTree(ctx, &ipldStore, genesis.StateRoot, builtin.Actors)
+	if err != nil {
+		return "", errors.Wrap(err, "could not load state tree")
+	}
+
 	vms := vm.NewStorageMap(bs)
 	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error querying for network name")
 	}
 
 	return string(res[0]), nil
