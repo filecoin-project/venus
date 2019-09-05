@@ -1090,7 +1090,11 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
-	workerAddress := ownerAddress
+
+	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
+	if err != nil {
+		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's worker address")
+	}
 
 	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
 	if err != nil {
