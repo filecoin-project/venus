@@ -7,29 +7,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ProtocolUpgrade struct {
+// protocolUpgrade specifies that a particular protocol version goes into effect at a particular block height
+type protocolUpgrade struct {
 	Version     uint64
 	EffectiveAt *types.BlockHeight
 }
 
+// ProtocolUpgradeTable is a data structure capable of specifying which protocol versions are active at which block heights
 type ProtocolUpgradeTable struct {
 	Network  string
-	upgrades []ProtocolUpgrade
+	upgrades []protocolUpgrade
 }
 
+// NewProtocolUpgradeTable creates a new ProtocolUpgradeTable that only tracks upgrades for the given network
 func NewProtocolUpgradeTable(network string) *ProtocolUpgradeTable {
 	return &ProtocolUpgradeTable{
 		Network: network,
 	}
 }
 
+// Add configures an upgrade for a network. If the network doesn't match the PUT's network, this upgrade will be ignored.
 func (put *ProtocolUpgradeTable) Add(network string, version uint64, effectiveAt *types.BlockHeight) {
 	// ignore upgrade if not part of our network
 	if network != put.Network {
 		return
 	}
 
-	upgrade := ProtocolUpgrade{
+	upgrade := protocolUpgrade{
 		Version:     version,
 		EffectiveAt: effectiveAt,
 	}
@@ -40,9 +44,10 @@ func (put *ProtocolUpgradeTable) Add(network string, version uint64, effectiveAt
 	})
 
 	// insert upgrade sorted by effective at
-	put.upgrades = append(put.upgrades[:idx], append([]ProtocolUpgrade{upgrade}, put.upgrades[idx:]...)...)
+	put.upgrades = append(put.upgrades[:idx], append([]protocolUpgrade{upgrade}, put.upgrades[idx:]...)...)
 }
 
+// VersionAt returns the protocol versions at the given block height for this PUT's network.
 func (put *ProtocolUpgradeTable) VersionAt(height *types.BlockHeight) (uint64, error) {
 	// find index of first upgrade that is yet active (or len(upgrades) if they are all active.
 	idx := sort.Search(len(put.upgrades), func(i int) bool {

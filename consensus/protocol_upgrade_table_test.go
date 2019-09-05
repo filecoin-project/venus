@@ -45,7 +45,7 @@ func TestUpgradeTable(t *testing.T) {
 			version, err := put.VersionAt(types.NewBlockHeight(i))
 			require.NoError(t, err)
 
-			assert.Equal(t, uint64(i/10), version)
+			assert.Equal(t, i/10, version)
 		}
 	})
 
