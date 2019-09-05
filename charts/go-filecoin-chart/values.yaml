@@ -4,6 +4,7 @@
 Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-1"
 StorageClassName: gp2
 ProofParamsDir: "/opt/filecoin-proof-parameters"
+ImageTests: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-tests:latest"
 Bootstrap:
   Replicas: 3
 Miner:

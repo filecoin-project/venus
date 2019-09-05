@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
@@ -39,7 +38,7 @@ type DeploymentEnvironment struct {
 // tests using the FAST library. DeploymentEnvironment also supports testing locally using
 // the `local` network which will handle setting up a mining node and updating bootstrap
 // peers. The local network runs at 5 second blocktimes.
-func NewDeploymentEnvironment(ctx context.Context, t *testing.T, network string, fastenvOpts fast.FilecoinOpts) (context.Context, *DeploymentEnvironment) {
+func NewDeploymentEnvironment(ctx context.Context, t *testing.T, network string, fastenvOpts fast.FilecoinOpts, binary string) (context.Context, *DeploymentEnvironment) {
 
 	// Create a directory for the test using the test name (mostly for FAST)
 	// Replace the forward slash as tempdir can't handle them
@@ -47,13 +46,13 @@ func NewDeploymentEnvironment(ctx context.Context, t *testing.T, network string,
 	require.NoError(t, err)
 
 	if network == "local" {
-		return makeLocal(ctx, t, dir, fastenvOpts)
+		return makeLocal(ctx, t, dir, fastenvOpts, binary)
 	}
 
-	return makeDevnet(ctx, t, network, dir, fastenvOpts)
+	return makeDevnet(ctx, t, network, dir, fastenvOpts, binary)
 }
 
-func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.FilecoinOpts) (context.Context, *DeploymentEnvironment) {
+func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.FilecoinOpts, binary string) (context.Context, *DeploymentEnvironment) {
 	// Create an environment to connect to the devnet
 	env, err := environment.NewMemoryGenesis(big.NewInt(1000000), dir, types.TestProofsMode)
 	require.NoError(t, err)
@@ -66,7 +65,7 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 	options := make(map[string]string)
 	options[localplugin.AttrLogJSON] = "0"
 	options[localplugin.AttrLogLevel] = "5"
-	options[localplugin.AttrFilecoinBinary] = testhelpers.MustGetFilecoinBinary()
+	options[localplugin.AttrFilecoinBinary] = binary
 
 	genesisURI := env.GenesisCar()
 	genesisMiner, err := env.GenesisMiner()
@@ -113,7 +112,7 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 	}
 }
 
-func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, fastenvOpts fast.FilecoinOpts) (context.Context, *DeploymentEnvironment) {
+func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, fastenvOpts fast.FilecoinOpts, binary string) (context.Context, *DeploymentEnvironment) {
 	// Create an environment that includes a genesis block with 1MM FIL
 	env, err := environment.NewDevnet(network, dir)
 	require.NoError(t, err)
@@ -124,9 +123,9 @@ func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, f
 
 	// Setup options for nodes.
 	options := make(map[string]string)
-	options[localplugin.AttrLogJSON] = "0"                                        // Enable JSON logs
-	options[localplugin.AttrLogLevel] = "5"                                       // Set log level to Debug
-	options[localplugin.AttrFilecoinBinary] = testhelpers.MustGetFilecoinBinary() // Get the filecoin binary
+	options[localplugin.AttrLogJSON] = "0"
+	options[localplugin.AttrLogLevel] = "5"
+	options[localplugin.AttrFilecoinBinary] = binary
 
 	genesisURI := env.GenesisCar()
 

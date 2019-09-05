@@ -1,17 +1,7 @@
-FROM golang:1.12.1-stretch AS builder
-MAINTAINER Filecoin Dev Team
-
-RUN apt-get update && apt-get install -y ca-certificates build-essential clang jq
-
 FROM ubuntu:18.04 AS filecoin
 MAINTAINER Filecoin Dev Team
 
-# Base resources
-COPY --from=builder /etc/ssl/certs                       /etc/ssl/certs
-COPY --from=builder /lib/x86_64-linux-gnu/libdl-2.24.so  /lib/libdl.so.2
-COPY --from=builder /lib/x86_64-linux-gnu/librt.so.1     /lib/librt.so.1
-COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1  /lib/libgcc_s.so.1
-COPY --from=builder /lib/x86_64-linux-gnu/libutil.so.1   /lib/libutil.so.1
+RUN apt-get update && apt-get install -y ca-certificates build-essential clang jq
 
 # Built resources
 COPY tools/fast/devnets/deploy/deploy-sh  /usr/local/bin/deploy-sh
@@ -19,8 +9,9 @@ COPY go-filecoin                          /usr/local/bin/go-filecoin
 COPY gengen/gengen                        /usr/local/bin/gengen
 COPY tools/faucet/faucet                  /usr/local/bin/faucet
 COPY tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
-COPY proofs/bin/paramfetch				 /usr/local/bin/paramfetch
-COPY proofs/bin/paramcache				 /usr/local/bin/paramcache
+COPY proofs/bin/paramfetch                /usr/local/bin/paramfetch
+COPY proofs/bin/paramcache                /usr/local/bin/paramcache
+COPY network-deployment.test              /usr/local/bin/network-deployment.test
 
 RUN adduser --home /var/filecoin -u 1000 --ingroup users --disabled-password --gecos "" filecoin
 RUN id filecoin
@@ -33,10 +24,6 @@ EXPOSE 6000
 
 # API
 EXPOSE 3453
-
-# Facuet
-EXPOSE 9797
-
 
 # Location of repo / sectors
 VOLUME /var/filecoin

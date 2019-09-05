@@ -256,6 +256,17 @@ func buildFilecoin() {
 	}...))
 }
 
+func buildNetworkDeploymentTest() {
+	log.Println("Building network-deployment.test")
+
+	runCmd(cmd([]string{
+		"go",
+		"test",
+		"github.com/filecoin-project/go-filecoin/functional-tests/network-deployment",
+		"-c",
+	}...))
+}
+
 func buildGengen() {
 	log.Println("Building gengen utils...")
 
@@ -341,6 +352,8 @@ func main() {
 		buildFaucet()
 	case "build-deploy":
 		buildDeploy()
+	case "build-network-deployment-test":
+		buildNetworkDeploymentTest()
 	case "generate-genesis":
 		generateGenesis()
 	case "build-migrations":

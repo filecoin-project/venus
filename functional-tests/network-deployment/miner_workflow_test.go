@@ -26,9 +26,10 @@ import (
 
 func TestMinerWorkflow(t *testing.T) {
 	network := tf.DeploymentTest(t)
+	binary := GetBinary()
 
 	ctx := context.Background()
-	ctx, env := fastesting.NewDeploymentEnvironment(ctx, t, network, fast.FilecoinOpts{})
+	ctx, env := fastesting.NewDeploymentEnvironment(ctx, t, network, fast.FilecoinOpts{}, binary)
 	defer func() {
 		err := env.Teardown(ctx)
 		require.NoError(t, err)
