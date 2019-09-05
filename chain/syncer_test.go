@@ -190,7 +190,7 @@ func TestFarFutureTipsets(t *testing.T) {
 	t.Run("accepts when syncing", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
+		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
 		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), true))
@@ -199,7 +199,7 @@ func TestFarFutureTipsets(t *testing.T) {
 	t.Run("rejects when caught up", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
+		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
 		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		err := syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), false)
