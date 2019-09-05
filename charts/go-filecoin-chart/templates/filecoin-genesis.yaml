@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: filecoin-genesis
+  namespace: {{ .Release.Namespace }}
   labels:
     app: filecoin-genesis
 spec:
@@ -22,7 +23,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: genesis-configs
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 data:
   filecoin-genesis-0.json: |
     {
@@ -43,6 +44,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: filecoin-genesis
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
@@ -100,7 +102,7 @@ spec:
           imagePullPolicy: Always
           command: [
             "faucet",
-            "-fil-api=filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453",
+            "-fil-api=filecoin-genesis-0.filecoin-genesis.{{ .Release.Namespace }}.svc.cluster.local:3453",
             "-fil-wallet={{ .Values.Genesis.WalletAddress }}",
             "-faucet-val=1000",
           ]
@@ -144,7 +146,7 @@ spec:
           command: [
             "/bin/sh",
             "-c",
-            "curl -s http://filecoin-bootstrappers-{{ $lastBootstrapOrd }}.filecoin-bootstrappers.default.svc.cluster.local:3453/api/id"
+            "curl -s http://filecoin-bootstrappers-{{ $lastBootstrapOrd }}.filecoin-bootstrappers.{{ .Release.Namespace }}.svc.cluster.local:3453/api/id"
           ]
       securityContext:
         runAsUser: 1000

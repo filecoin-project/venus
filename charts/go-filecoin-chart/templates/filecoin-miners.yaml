@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: filecoin-miners
+  namespace: {{ .Release.Namespace }}
   labels:
     app: filecoin-miners
 spec:
@@ -18,14 +19,15 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: miner-configs
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 data:
+{{- $relnamespace := .Release.Namespace }}
 {{- range $k, $v := until (atoi (quote .Values.Miner.Replicas) | default 3) }}
   filecoin-miners-{{$v}}.json: |
     {
       "WorkingDir": "/var/filecoin",
       "GenesisCarFile":"/opt/filecoin/genesis.car",
-      "FaucetURL": "http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:9797/tap",
+      "FaucetURL": "http://filecoin-genesis-0.filecoin-genesis.{{ $relnamespace }}.svc.cluster.local:9797/tap",
       "AutoSealInterval": 120,
       "Network": "user",
       "BlockTime": "30s",
@@ -43,6 +45,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: filecoin-miners
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
@@ -127,7 +130,7 @@ spec:
           command: [
             "/bin/sh",
             "-c",
-            "curl -s http://filecoin-genesis-0.filecoin-genesis.default.svc.cluster.local:3453/api/mining/status | grep true"
+            "curl -s http://filecoin-genesis-0.filecoin-genesis.{{ .Release.Namespace }}.svc.cluster.local:3453/api/mining/status | grep true"
           ]
       securityContext:
         runAsUser: 1000
