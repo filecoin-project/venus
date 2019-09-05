@@ -150,3 +150,7 @@ func (f *fakeProverContext) WalletBalance(ctx context.Context, addr address.Addr
 func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error) {
 	return f.proof, nil
 }
+
+func (f *fakeProverContext) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return f.workerAddress, nil
+}
