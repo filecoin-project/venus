@@ -187,7 +187,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
-	//
+	// Read uncached worker address
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr)
 	if err != nil {
 		outCh <- Output{Err: err}

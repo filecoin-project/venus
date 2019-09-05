@@ -67,7 +67,7 @@ type PoStSubmission struct {
 }
 
 // NewProver constructs a new Prover.
-func NewProver(actor address.Address, worker address.Address, sectorSize *types.BytesAmount, reader ProofReader, calculator ProofCalculator) *Prover {
+func NewProver(actor address.Address, sectorSize *types.BytesAmount, reader ProofReader, calculator ProofCalculator) *Prover {
 	return &Prover{
 		actorAddress: actor,
 		sectorSize:   sectorSize,

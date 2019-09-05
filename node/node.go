@@ -917,11 +917,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
-	if err != nil {
-		return errors.Wrap(err, "could not get worker address from miner actor")
-	}
-
 	_, mineDelay := node.MiningTimes()
 
 	if node.MiningScheduler == nil {
@@ -940,10 +935,12 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.miningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
-	// initialize the storage fault slasher if appropriate
-	if err = node.initStorageFaultSlasherForNode(ctx, minerWorkerAddr); err != nil {
-		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
-	}
+	// initialize the storage fault slasher
+	node.StorageFaultSlasher = storage.NewFaultSlasher(
+		node.PorcelainAPI,
+		node.Outbox,
+		storage.DefaultFaultSlasherGasPrice,
+		storage.DefaultFaultSlasherGasLimit)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -1101,7 +1098,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's sector size")
 	}
 
-	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
+	prover := storage.NewProver(minerAddr, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
 
 	miner, err := storage.NewMiner(
 		minerAddr,
@@ -1116,16 +1113,6 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	}
 
 	return miner, workerAddress, nil
-}
-
-// initStorageFaultSlasherForNode sets node.FaultSlasher
-func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, workerAddress address.Address) error {
-	node.StorageFaultSlasher = storage.NewFaultSlasher(
-		node.PorcelainAPI,
-		node.Outbox,
-		storage.DefaultFaultSlasherGasPrice,
-		storage.DefaultFaultSlasherGasLimit)
-	return nil
 }
 
 // StopMining stops mining on new blocks.
