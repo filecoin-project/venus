@@ -54,6 +54,8 @@ metadata:
   namespace: {{ $this.Release.Namespace }}
   labels:
     app: filecoin-bootstrappers-{{$v}}
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: bootstrappers-{{$v}}.{{$this.Release.Namespace}}.kittyhawk.wtf
 spec:
   type: NodePort
   ports:

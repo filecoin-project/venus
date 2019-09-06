@@ -1,7 +1,7 @@
 # Default values for go-filecoin-devnet.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-2"
+Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-3"
 StorageClassName: gp2
 ProofParamsDir: "/opt/filecoin-proof-parameters"
 Bootstrap:
