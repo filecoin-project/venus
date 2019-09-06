@@ -1,16 +1,17 @@
--include .env
+include mk/golang.mk
 
-SHELL := /bin/bash
-
-COMMIT := $(shell git log -n 1 --format=%H)
 TARGET := $(shell echo $${PWD\#\#*/})
 SRC := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 LDFLAGS=-ldflags "-X=github.com/filecoin-project/go-filecoin/flags.Commit=$(COMMIT)"
-GOCMD=GO111MODULE=on go
-GOBUILD=$(GOCMD) build
-GOTEST=$(GOCMD) test
-GOCLEAN=$(GOCMD) clean
+
+$(TARGET): $(SRC)
+	@$(GOBUILD) $(LDFLAGS) -o $(TARGET)
+
+build: $(TARGET)
+	@true
+
+all: deps build-all
 
 deps:
 	pkg-config --version
@@ -21,25 +22,20 @@ deps:
 	./scripts/install-go-sectorbuilder.sh
 	./scripts/install-filecoin-parameters.sh
 
-all: deps build-all install
 
-$(TARGET): $(SRC)
-	$(GOBUILD) $(LDFLAGS) -o $(TARGET)
-
-build: $(TARGET)
-	true
+build-all: build gengen faucet genesis-file-server go-filecoin-migrate prerelease-tool localnet
 
 install: $(TARGET)
-	cp $< $(GOPATH)/bin/go-filecoin
+	@cp $< $(GOPATH)/bin/go-filecoin
 
 lint: $(TARGET)
-	$(GOCMD) run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	@$(GOCMD) run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 clean:
-	$(GOCLEAN)
-	rm -f $(TARGET)
+	@$(GOCLEAN)
+	@rm -f $(TARGET)
 
-test: test-unit
+test: test-unit test-integration
 
 test-unit:
 	$(GOTEST) ./... -unit=true -functional=false -integration=false
@@ -53,38 +49,28 @@ test-functional: $(TARGET)
 test-all: $(TARGET)
 	$(GOTEST) ./... -functional=true -unit=true -integration=true
 
-daemon-init: $(TARGET)
-	./$< init
+gengen:
+	@$(MAKE) -C ./gengen
 
-daemon-start: $(TARGET)
-	./$< daemon
-	
-run-localnet: $(TARGET) build-localnet
-	./tools/fast/bin/localnet/localnet
+faucet:
+	@$(MAKE) -C ./tools/faucet
 
-build-all: $(TARGET) build-gengen build-faucet build-genesis-file-server build-migrations build-prerelease-tool build-localnet generate-genesis-live
+genesis-file-server:
+	@$(MAKE) -C ./tools/genesis-file-server
 
-build-gengen:
-	$(GOBUILD) -o ./gengen/gengen ./gengen
+go-filecoin-migrate:
+	@$(MAKE) -C ./tools/migration
 
-build-faucet:
-	$(GOBUILD) -o ./tools/faucet/faucet ./tools/faucet/
+prerelease-tool:
+	@$(MAKE) -C ./tools/prerelease-tool
 
-build-genesis-file-server:
-	$(GOBUILD) -o ./tools/genesis-file-server/genesis-file-server ./tools/genesis-file-server/
+localnet:
+	@$(MAKE) -C ./tools/fast/bin/localnet
 
-build-migrations:
-	$(GOBUILD) -o ./tools/migration/go-filecoin-migrate ./tools/migration/main.go
-
-build-prerelease-tool:
-	$(GOBUILD) -o ./tools/prerelease-tool/prerelease-tool ./tools/prerelease-tool/
-
-build-localnet: generate-genesis-test
-	$(GOBUILD) -o ./tools/fast/bin/localnet/localnet ./tools/fast/bin/localnet/
-
-generate-genesis-live:
+genesis-live: gengen
 	./gengen/gengen --keypath=./fixtures/live --out-car=./fixtures/live/genesis.car --out-json=./fixtures/live/gen.json --config=./fixtures/setup.json
 
-generate-genesis-test:
+genesis-test: gengen
 	./gengen/gengen --keypath=./fixtures/test --out-car=./fixtures/test/genesis.car --out-json=./fixtures/test/gen.json --config=./fixtures/setup.json --test-proofs-mode
 
+.PHONY: deps build build-all gengen faucet genesis-file-server go-filecoin-migrate prerelease-tool localnet genesis-live genesis-test
