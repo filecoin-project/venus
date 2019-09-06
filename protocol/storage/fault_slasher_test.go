@@ -56,8 +56,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 	ctx := context.Background()
 	signer, _ := types.NewMockSignersAndKeyInfo(3)
 
-	t.Run("When there are no miners, does not error", func(t *testing.T) {
-
+	t.Run("ok with no miners", func(t *testing.T) {
 		height := types.NewBlockHeight(1)
 		data, err := cbor.DumpObject(&map[string]uint64{})
 		require.NoError(t, err)
@@ -76,7 +75,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		assert.Equal(t, 0, ob.msgCount)
 	})
 
-	t.Run("When 3 late miners, sends 3 messages", func(t *testing.T) {
+	t.Run("slashes multiple miners", func(t *testing.T) {
 		getf := address.NewForTestGetter()
 		height := types.NewBlockHeight(100)
 
@@ -104,7 +103,47 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		assert.Equal(t, 3, ob.msgCount)
 	})
 
-	t.Run("When Send fails, return error", func(t *testing.T) {
+	t.Run("slashes miner only once", func(t *testing.T) {
+		getf := address.NewForTestGetter()
+		height := types.NewBlockHeight(100)
+		addr1 := getf().String()
+
+		data1, err := cbor.DumpObject(&map[string]uint64{
+			addr1: miner.PoStStateAfterGenerationAttackThreshold,
+		})
+		require.NoError(t, err)
+
+		queryer := makeQueryer([][]byte{data1})
+		ob := outbox{}
+		plumbing := slasherPlumbing{
+			Queryer:    queryer,
+			minerAddr:  signer.Addresses[0],
+			workerAddr: signer.Addresses[1],
+		}
+		fm := NewFaultSlasher(&plumbing, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
+
+		err = fm.Slash(ctx, height)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, ob.msgCount)
+
+		err = fm.Slash(ctx, height.Add(types.NewBlockHeight(1)))
+		assert.NoError(t, err)
+		assert.Equal(t, 1, ob.msgCount) // No change.
+
+		// A second miner becomes slashable.
+		addr2 := getf().String()
+		data2, err := cbor.DumpObject(&map[string]uint64{
+			addr1: miner.PoStStateAfterGenerationAttackThreshold,
+			addr2: miner.PoStStateAfterGenerationAttackThreshold,
+		})
+		require.NoError(t, err)
+		plumbing.Queryer = makeQueryer([][]byte{data2})
+		err = fm.Slash(ctx, height)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, ob.msgCount) // A new slashing message.
+	})
+
+	t.Run("error when send fails", func(t *testing.T) {
 		getf := address.NewForTestGetter()
 		height := types.NewBlockHeight(100)
 		addr1 := getf().String()
@@ -131,7 +170,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		assert.Equal(t, 0, ob.msgCount)
 	})
 
-	t.Run("when getLateMiners fails, returns error", func(t *testing.T) {
+	t.Run("error when getLateMiners fails", func(t *testing.T) {
 		ob := outbox{}
 		queryer := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			if method == "getLateMiners" {
@@ -151,7 +190,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		assert.Contains(t, err.Error(), "message query failed")
 	})
 
-	t.Run("when message response is malformed, returns error", func(t *testing.T) {
+	t.Run("error when when message response malformed", func(t *testing.T) {
 		ob := outbox{}
 
 		badBytes, err := cbor.DumpObject("junk")
