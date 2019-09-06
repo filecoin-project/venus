@@ -44,7 +44,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.1-filecoin
+	github.com/ipfs/go-graphsync v0.0.2
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
