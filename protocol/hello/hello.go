@@ -84,17 +84,10 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 
 func (h *Handler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-
-	msg, err := h.getOurHelloMessage()
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	if err := cbu.NewMsgWriter(s).WriteMsg(&msg); err != nil {
-		log.Error(err)
+	if err := h.sendHello(s); err != nil {
+		log.Errorf("failed to send hello message:%s", err)
 	}
 	return
-
 }
 
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
@@ -132,8 +125,8 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 	}, nil
 }
 
-// SayHello receives a hello message from peer `p` and returns it.
-func (h *Handler) SayHello(ctx context.Context, p peer.ID) (*Message, error) {
+// ReceiveHello receives a hello message from peer `p` and returns it.
+func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error) {
 	s, err := h.host.NewStream(ctx, p, protocol)
 	if err != nil {
 		return nil, err
@@ -146,6 +139,15 @@ func (h *Handler) SayHello(ctx context.Context, p peer.ID) (*Message, error) {
 		return nil, err
 	}
 	return &hello, nil
+}
+
+// sendHello send a hello message on stream `s`.
+func (h *Handler) sendHello(s net.Stream) error {
+	msg, err := h.getOurHelloMessage()
+	if err != nil {
+		return err
+	}
+	return cbu.NewMsgWriter(s).WriteMsg(&msg)
 }
 
 // New peer connection notifications
@@ -168,10 +170,10 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 
 		// receive the hello message
 		from := c.RemotePeer()
-		hello, err := hn.hello().SayHello(ctx, from)
+		hello, err := hn.hello().ReceiveHello(ctx, from)
 		if err != nil {
 			log.Warningf("failed to receive hello handshake from peer %s: %s", from, err)
-			c.Close() //nolint: errcheck
+			_ = c.Close()
 			return
 		}
 
@@ -184,7 +186,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		case err == ErrWrongVersion:
 			log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, hn.hello().commitSha, from)
 			versionErrCt.Inc(context.TODO(), 1)
-			c.Close() // nolint: errcheck
+			_ = c.Close()
 			return
 		case err == nil:
 			hn.hello().callBack(ci)

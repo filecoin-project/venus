@@ -230,7 +230,7 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc2.AssertExpectations(t)
 }
 
-func TestSayHello(t *testing.T) {
+func TestReceiveHello(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -245,7 +245,6 @@ func TestSayHello(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	genesisTipset := builder.NewGenesis()
-	assert.Equal(t, 1, genesisTipset.Len())
 
 	heavy1 := builder.AppendOn(genesisTipset, 3)
 	heavy1 = builder.AppendOn(heavy1, 3)
@@ -263,10 +262,10 @@ func TestSayHello(t *testing.T) {
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())
 
-	h2Msg, err := h1.SayHello(ctx, b.ID())
+	h2Msg, err := h1.ReceiveHello(ctx, b.ID())
 	assert.NoError(t, err)
 
-	h1Msg, err := h2.SayHello(ctx, a.ID())
+	h1Msg, err := h2.ReceiveHello(ctx, a.ID())
 	assert.NoError(t, err)
 
 	assert.Equal(t, heavy1.Key(), h1Msg.HeaviestTipSetCids)
