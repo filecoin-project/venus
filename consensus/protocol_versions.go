@@ -8,7 +8,7 @@ import (
 const ALPHA1 = "alpha1"
 
 // DEVNET is the network name of devnet
-const DEVNET = "devnet"
+const DEVNET4 = "devnet"
 
 // LOCALNET is the network name of localnet
 const LOCALNET = "localnet"
@@ -20,12 +20,11 @@ const TEST = "go-filecoin-test"
 const Protocol0 = 0
 
 // ConfigureProtocolVersions configures all protocol upgrades for all known networks.
-func ConfigureProtocolVersions(put *ProtocolUpgradeTable) {
-	put.Add(ALPHA1, Protocol0, types.NewBlockHeight(0))
-
-	put.Add(DEVNET, Protocol0, types.NewBlockHeight(0))
-
-	put.Add(LOCALNET, Protocol0, types.NewBlockHeight(0))
-
-	put.Add(TEST, Protocol0, types.NewBlockHeight(0))
+func ConfigureProtocolVersions(network string) *ProtocolUpgradeTable {
+	return NewProtocolUpgradeTableBuilder(network).
+		Add(ALPHA1, Protocol0, types.NewBlockHeight(0)).
+		Add(DEVNET4, Protocol0, types.NewBlockHeight(0)).
+		Add(LOCALNET, Protocol0, types.NewBlockHeight(0)).
+		Add(TEST, Protocol0, types.NewBlockHeight(0)).
+		Build()
 }

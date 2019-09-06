@@ -14,37 +14,9 @@ type protocolUpgrade struct {
 }
 
 // ProtocolUpgradeTable is a data structure capable of specifying which protocol versions are active at which block heights
+// It must be constructed with the ProtocolUpgradeTableBuilder
 type ProtocolUpgradeTable struct {
-	Network  string
 	upgrades []protocolUpgrade
-}
-
-// NewProtocolUpgradeTable creates a new ProtocolUpgradeTable that only tracks upgrades for the given network
-func NewProtocolUpgradeTable(network string) *ProtocolUpgradeTable {
-	return &ProtocolUpgradeTable{
-		Network: network,
-	}
-}
-
-// Add configures an upgrade for a network. If the network doesn't match the PUT's network, this upgrade will be ignored.
-func (put *ProtocolUpgradeTable) Add(network string, version uint64, effectiveAt *types.BlockHeight) {
-	// ignore upgrade if not part of our network
-	if network != put.Network {
-		return
-	}
-
-	upgrade := protocolUpgrade{
-		Version:     version,
-		EffectiveAt: effectiveAt,
-	}
-
-	// add after last upgrade effectiveAt is greater than
-	idx := sort.Search(len(put.upgrades), func(i int) bool {
-		return effectiveAt.LessThan(put.upgrades[i].EffectiveAt)
-	})
-
-	// insert upgrade sorted by effective at
-	put.upgrades = append(put.upgrades[:idx], append([]protocolUpgrade{upgrade}, put.upgrades[idx:]...)...)
 }
 
 // VersionAt returns the protocol versions at the given block height for this PUT's network.
@@ -57,12 +29,65 @@ func (put *ProtocolUpgradeTable) VersionAt(height *types.BlockHeight) (uint64, e
 	// providing a height less than the first upgrade is an error
 	if idx == 0 {
 		if len(put.upgrades) == 0 {
-			return 0, errors.Errorf("no protocol versions for %s network", put.Network)
+			return 0, errors.Errorf("no protocol versions")
 		}
-		return 0, errors.Errorf("chain height %s is less than effective start of first upgrade %s for network %s",
-			height.String(), put.upgrades[0].EffectiveAt.String(), put.Network)
+		return 0, errors.Errorf("chain height %s is less than effective start of first upgrade %s",
+			height.String(), put.upgrades[0].EffectiveAt.String())
 	}
 
 	// return the upgrade just prior to the index to get the last upgrade in effect.
 	return put.upgrades[idx-1].Version, nil
+}
+
+// ProtocolUpgradeTableBuilder constructs a protocol upgrade table
+type ProtocolUpgradeTableBuilder struct {
+	network  string
+	upgrades protocolUpgradesByEffectiveAt
+}
+
+// NewProtocolUpgradeTable creates a new ProtocolUpgradeTable that only tracks upgrades for the given network
+func NewProtocolUpgradeTableBuilder(network string) *ProtocolUpgradeTableBuilder {
+	return &ProtocolUpgradeTableBuilder{
+		network:  network,
+		upgrades: []protocolUpgrade{},
+	}
+}
+
+// Add configures an upgrade for a network. If the network doesn't match the current network, this upgrade will be ignored.
+func (putb *ProtocolUpgradeTableBuilder) Add(network string, version uint64, effectiveAt *types.BlockHeight) *ProtocolUpgradeTableBuilder {
+	// ignore upgrade if not part of our network
+	if network != putb.network {
+		return putb
+	}
+
+	upgrade := protocolUpgrade{
+		Version:     version,
+		EffectiveAt: effectiveAt,
+	}
+
+	// insert upgrade sorted by effective at
+	putb.upgrades = append(putb.upgrades, upgrade)
+
+	return putb
+}
+
+// Build constructs a protocol upgrade table populated with properly sorted upgrades
+func (putb *ProtocolUpgradeTableBuilder) Build() *ProtocolUpgradeTable {
+	// sort upgrades in place
+	sort.Sort(putb.upgrades)
+
+	// copy to insure an Add doesn't alter the table
+	upgrades := make([]protocolUpgrade, len(putb.upgrades))
+	copy(upgrades, putb.upgrades)
+
+	return &ProtocolUpgradeTable{upgrades: upgrades}
+}
+
+// sort methods for protocolUpgrade slice
+type protocolUpgradesByEffectiveAt []protocolUpgrade
+
+func (a protocolUpgradesByEffectiveAt) Len() int      { return len(a) }
+func (a protocolUpgradesByEffectiveAt) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a protocolUpgradesByEffectiveAt) Less(i, j int) bool {
+	return a[i].EffectiveAt.LessThan(a[j].EffectiveAt)
 }

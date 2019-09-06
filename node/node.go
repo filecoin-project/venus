@@ -448,8 +448,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	upgradeTable := consensus.NewProtocolUpgradeTable(network)
-	consensus.ConfigureProtocolVersions(upgradeTable)
+
+	// TODO: inject protocol upgrade table into code that requires it (#3360)
+	_ = consensus.ConfigureProtocolVersions(network)
 
 	// set up processor
 	var processor consensus.Processor
