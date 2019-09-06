@@ -328,26 +328,17 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedPropos
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.SignedResponse{
-		Response: storagedeal.Response{
-			State:       storagedeal.Accepted,
-			ProposalCid: proposalCid,
-		},
-	}
+	resp := storagedeal.Response{State: storagedeal.Accepted, ProposalCid: proposalCid}
+	signed, err := sm.signResponse(ctx, resp)
 
-	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get worker address")
-	}
-
-	if err = resp.Sign(sm.porcelainAPI, workerAddr); err != nil {
-		return nil, errors.Wrap(err, "failed to sign deal")
+		return nil, errors.Wrap(err, "could not sign deal response")
 	}
 
 	storageDeal := &storagedeal.Deal{
 		Miner:    sm.minerAddr,
 		Proposal: p,
-		Response: resp,
+		Response: signed,
 	}
 
 	if err := sm.porcelainAPI.DealPut(storageDeal); err != nil {
@@ -357,7 +348,7 @@ func (sm *Miner) acceptProposal(ctx context.Context, p *storagedeal.SignedPropos
 	// TODO: use some sort of nicer scheduler
 	go sm.proposalProcessor(ctx, sm, proposalCid)
 
-	return resp, nil
+	return signed, nil
 }
 
 func (sm *Miner) rejectProposal(ctx context.Context, p *storagedeal.SignedProposal, reason string) (*storagedeal.SignedResponse, error) {
@@ -366,33 +357,27 @@ func (sm *Miner) rejectProposal(ctx context.Context, p *storagedeal.SignedPropos
 		return nil, errors.Wrap(err, "failed to get cid of proposal")
 	}
 
-	resp := &storagedeal.SignedResponse{
-		Response: storagedeal.Response{
-			State:       storagedeal.Rejected,
-			ProposalCid: proposalCid,
-			Message:     reason,
-		},
+	resp := storagedeal.Response{
+		State:       storagedeal.Rejected,
+		ProposalCid: proposalCid,
+		Message:     reason,
 	}
 
-	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	signed, err := sm.signResponse(ctx, resp)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get worker address")
-	}
-
-	if err = resp.Sign(sm.porcelainAPI, workerAddr); err != nil {
-		return nil, errors.Wrap(err, "failed to sign deal")
+		return nil, errors.Wrap(err, "could not sign deal response")
 	}
 
 	storageDeal := &storagedeal.Deal{
 		Miner:    sm.minerAddr,
 		Proposal: p,
-		Response: resp,
+		Response: signed,
 	}
 	if err := sm.porcelainAPI.DealPut(storageDeal); err != nil {
 		return nil, errors.Wrap(err, "failed to save miner deal")
 	}
 
-	return resp, nil
+	return signed, nil
 }
 
 // updateDealResponse retrieves a deal, operates on its response with a provided callback then signs the deal and stores it.
@@ -403,12 +388,8 @@ func (sm *Miner) updateDealResponse(ctx context.Context, proposalCid cid.Cid, ca
 	}
 
 	callback(&deal.Response.Response)
-	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
-	if err != nil {
-		return errors.Wrap(err, "failed to get worker address")
-	}
 
-	if err = deal.Response.Sign(sm.porcelainAPI, workerAddr); err != nil {
+	if err := sm.addSignature(ctx, deal.Response); err != nil {
 		return errors.Wrap(err, "could not sign deal response")
 	}
 
@@ -860,4 +841,24 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	}
 
 	log.Info("submitted PoSt")
+}
+
+func (sm *Miner) signResponse(ctx context.Context, response storagedeal.Response) (*storagedeal.SignedResponse, error) {
+	signed := storagedeal.SignedResponse{Response: response}
+	err := sm.addSignature(ctx, &signed)
+
+	return &signed, err
+}
+
+func (sm *Miner) addSignature(ctx context.Context, resp *storagedeal.SignedResponse) error {
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	if err != nil {
+		return errors.Wrap(err, "failed to get worker address")
+	}
+
+	if err = resp.Sign(sm.porcelainAPI, workerAddr); err != nil {
+		return errors.Wrap(err, "failed to sign deal")
+	}
+
+	return nil
 }
