@@ -13,8 +13,9 @@ type protocolUpgrade struct {
 	EffectiveAt *types.BlockHeight
 }
 
-// ProtocolUpgradeTable is a data structure capable of specifying which protocol versions are active at which block heights
-// It must be constructed with the ProtocolUpgradeTableBuilder
+// ProtocolUpgradeTable is a data structure capable of specifying which protocol versions are active at which block heights.
+// It must be constructed with the ProtocolUpgradeTableBuilder which enforces that the table has at least one
+// entry at block height zero and that all the upgrades are sorted.
 type ProtocolUpgradeTable struct {
 	upgrades []protocolUpgrade
 }
@@ -45,7 +46,7 @@ type ProtocolUpgradeTableBuilder struct {
 	upgrades protocolUpgradesByEffectiveAt
 }
 
-// NewProtocolUpgradeTable creates a new ProtocolUpgradeTable that only tracks upgrades for the given network
+// NewProtocolUpgradeTableBuilder creates a new ProtocolUpgradeTable that only tracks upgrades for the given network
 func NewProtocolUpgradeTableBuilder(network string) *ProtocolUpgradeTableBuilder {
 	return &ProtocolUpgradeTableBuilder{
 		network:  network,
@@ -71,8 +72,9 @@ func (putb *ProtocolUpgradeTableBuilder) Add(network string, version uint64, eff
 	return putb
 }
 
-// Build constructs a protocol upgrade table populated with properly sorted upgrades
-func (putb *ProtocolUpgradeTableBuilder) Build() *ProtocolUpgradeTable {
+// Build constructs a protocol upgrade table populated with properly sorted upgrades.
+// It is an error to build whose first version is not at block height 0.
+func (putb *ProtocolUpgradeTableBuilder) Build() (*ProtocolUpgradeTable, error) {
 	// sort upgrades in place
 	sort.Sort(putb.upgrades)
 
@@ -80,7 +82,15 @@ func (putb *ProtocolUpgradeTableBuilder) Build() *ProtocolUpgradeTable {
 	upgrades := make([]protocolUpgrade, len(putb.upgrades))
 	copy(upgrades, putb.upgrades)
 
-	return &ProtocolUpgradeTable{upgrades: upgrades}
+	// enforce that the current network has an entry at block height zero
+	if len(upgrades) == 0 {
+		return nil, errors.Errorf("no protocol versions specified for network %s", putb.network)
+	}
+	if !upgrades[0].EffectiveAt.Equal(types.NewBlockHeight(0)) {
+		return nil, errors.Errorf("no protocol version at genesis for network %s", putb.network)
+	}
+
+	return &ProtocolUpgradeTable{upgrades: upgrades}, nil
 }
 
 // sort methods for protocolUpgrade slice
