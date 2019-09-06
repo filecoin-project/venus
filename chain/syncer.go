@@ -24,9 +24,9 @@ func init() {
 	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
 }
 
-// FinalityLimit is the maximum number of blocks ahead of the current consensus
-// chain height to accept once in caught up mode
-var FinalityLimit = 600
+// UntrustedChainHeightLimit is the maximum number of blocks ahead of the current consensus
+// chain height to accept if syncing without trust.
+var UntrustedChainHeightLimit = 600
 var (
 	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
 	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
@@ -350,7 +350,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	defer syncer.reporter.UpdateStatus(syncComplete(true))
 
 	// If we do not trust the peer head check finality
-	if !trusted && syncer.exceedsFinalityLimit(curHeight, ci.Height) {
+	if !trusted && ExceedsUntrustedChainLength(curHeight, ci.Height) {
 		return ErrNewChainTooLong
 	}
 
@@ -425,7 +425,9 @@ func (syncer *Syncer) Status() Status {
 	return syncer.reporter.Status()
 }
 
-func (syncer *Syncer) exceedsFinalityLimit(curHeight, newHeight uint64) bool {
-	finalityHeight := curHeight + uint64(FinalityLimit)
-	return newHeight > finalityHeight
+// ExceedsUntrustedChainLength returns true if the delta between curHeight and newHeight
+// exceeds the maximum number of blocks to accept if syncing without trust, false otherwise.
+func ExceedsUntrustedChainLength(curHeight, newHeight uint64) bool {
+	maxChainLength := curHeight + uint64(UntrustedChainHeightLimit)
+	return newHeight > maxChainLength
 }
