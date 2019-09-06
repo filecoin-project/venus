@@ -60,7 +60,7 @@ spec:
   type: NodePort
   ports:
     - port: 6000
-      nodePort: 3060{{$v}}
+      nodePort: {{$this.Bootstrap.NodePortStart}}{{$v}}
       name: swarm
   selector:
     app: filecoin-bootstrappers-{{$v}}

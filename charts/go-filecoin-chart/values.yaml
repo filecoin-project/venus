@@ -2,10 +2,16 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-3"
+# For MicroK8S
+# StorageClassName: microk8s-hostpath
+# For EKS
 StorageClassName: gp2
 ProofParamsDir: "/opt/filecoin-proof-parameters"
 Bootstrap:
   Replicas: 3
+  # Make sure no other services in eks cluster use this port + N replicas
+  # ie. 30600:30602
+  NodePortStart: 30600
 Miner:
   Replicas: 3
 Sprinkler:
@@ -14,3 +20,10 @@ Sprinkler:
 Genesis:
   WalletAddress: "t1m2lbhq3sgsv6524a5o76vtwitdjosqmounayv3i"
   MinerAddress: "t2xvao7yi3llzsvrdx7mbw4dtbw6wkav7lyzsbpoq"
+Secrets:
+  GenesisFile: ""
+  0Key: ""
+  Peer0Key: ""
+  Peer1Key: ""
+  Peer2Key: ""
+  Peer3Key: ""
