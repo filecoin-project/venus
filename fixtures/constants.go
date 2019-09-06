@@ -136,9 +136,9 @@ const (
 */
 // user devnet addrs
 const (
-	userFilecoinBootstrap0 string = "/dns4/filecoin-bootstrappers-0.filecoin-bootstrappers.default.svc.cluster.local/tcp/6000/ipfs/QmcnXbqvMEwqG4RmWVgRggbLM4aNtu1BZ123qJDRpK6AqA"
-	userFilecoinBootstrap1 string = "/dns4/filecoin-bootstrappers-1.filecoin-bootstrappers.default.svc.cluster.local/tcp/6000/ipfs/QmXeMDTYcUm5qgASyRYU52QNc8rvjMY5eHgTGVmF6C2rn5"
-	userFilecoinBootstrap2 string = "/dns4/filecoin-bootstrappers-2.filecoin-bootstrappers.default.svc.cluster.local/tcp/6000/ipfs/QmbKWFbYgV7QRUNMQsQoUDJDVgaV7nm67LmrxkUTTKJDec"
+	userFilecoinBootstrap0 string = "/dns4/bootstrappers-0.network-test.kittyhawk.wtf/tcp/30600/ipfs/QmcnXbqvMEwqG4RmWVgRggbLM4aNtu1BZ123qJDRpK6AqA"
+	userFilecoinBootstrap1 string = "/dns4/bootstrappers-1.network-test.kittyhawk.wtf/tcp/30601/ipfs/QmXeMDTYcUm5qgASyRYU52QNc8rvjMY5eHgTGVmF6C2rn5"
+	userFilecoinBootstrap2 string = "/dns4/bootstrappers-2.network-test.kittyhawk.wtf/tcp/30602/ipfs/QmbKWFbYgV7QRUNMQsQoUDJDVgaV7nm67LmrxkUTTKJDec"
 	)
 
 // DevnetStagingBootstrapAddrs are the dns multiaddrs for the nodes of the filecoin
