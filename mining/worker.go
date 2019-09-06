@@ -70,6 +70,7 @@ type MessageApplier interface {
 
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }
 
 // DefaultWorker runs a mining job.
@@ -79,7 +80,6 @@ type DefaultWorker struct {
 	createPoSTFunc DoSomeWorkFunc
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
-	minerWorker    address.Address
 	workerSigner   consensus.TicketSigner
 
 	// consensus things
@@ -101,7 +101,6 @@ type WorkerParameters struct {
 
 	MinerAddr      address.Address
 	MinerOwnerAddr address.Address
-	MinerWorker    address.Address
 	WorkerSigner   consensus.TicketSigner
 
 	// consensus things
@@ -122,8 +121,9 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 	w := NewDefaultWorkerWithDeps(parameters,
 		func() {})
 
-	// TODO: create real PoST.
-	// https://github.com/filecoin-project/go-filecoin/issues/1791
+	// TODO:
+	//  What to do about PoST is still under discussion.
+	//  see go-filecoin issue #2223
 	w.createPoSTFunc = w.fakeCreatePoST
 
 	return w
@@ -145,7 +145,6 @@ func NewDefaultWorkerWithDeps(parameters WorkerParameters,
 		createPoSTFunc: createPoST,
 		minerAddr:      parameters.MinerAddr,
 		minerOwnerAddr: parameters.MinerOwnerAddr,
-		minerWorker:    parameters.MinerWorker,
 		workerSigner:   parameters.WorkerSigner,
 	}
 }
@@ -188,6 +187,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	}
 	prCh := createProof(challenge, w.createPoSTFunc)
 
+	// Read uncached worker address
+	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr)
+	if err != nil {
+		outCh <- Output{Err: err}
+		return false
+	}
+
 	var proof types.PoStProof
 	var ticket types.Ticket
 	select {
@@ -200,7 +206,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 			return false
 		}
 		proof := append(types.PoStProof{}, prChRead[:]...)
-		ticket, err = consensus.CreateTicket(proof, w.minerWorker, w.workerSigner)
+		ticket, err = consensus.CreateTicket(proof, workerAddr, w.workerSigner)
 		if err != nil {
 			log.Errorf("failed to create ticket: %s", err)
 			return false
@@ -235,8 +241,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan types.PoStChallengeSeed {
 	c := make(chan types.PoStChallengeSeed)
 	go func() {
-		// TODO send new PoST on channel once we can create it
-		//  https://github.com/filecoin-project/go-filecoin/issues/1791
+		// TODO:
+		//  What to do about PoST is still under discussion.
+		//  see go-filecoin issue #2223
 		createPoST()
 		c <- challengeSeed
 	}()

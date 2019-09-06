@@ -917,11 +917,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
-	if err != nil {
-		return errors.Wrap(err, "could not get worker address from miner actor")
-	}
-
 	_, mineDelay := node.MiningTimes()
 
 	if node.MiningScheduler == nil {
@@ -940,10 +935,12 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.miningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
-	// initialize the storage fault slasher if appropriate
-	if err = node.initStorageFaultSlasherForNode(ctx, minerWorkerAddr); err != nil {
-		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
-	}
+	// initialize the storage fault slasher
+	node.StorageFaultSlasher = storage.NewFaultSlasher(
+		node.PorcelainAPI,
+		node.Outbox,
+		storage.DefaultFaultSlasherGasPrice,
+		storage.DefaultFaultSlasherGasLimit)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -960,11 +957,20 @@ func (node *Node) StartMining(ctx context.Context) error {
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult
+
+					// look up miner worker address. If this fails, something is really wrong
+					// so we bail and don't commit sectors.
+					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr)
+					if err != nil {
+						log.Errorf("failed to get worker address %s", err)
+						continue
+					}
+
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
 					msgCid, err := node.PorcelainAPI.MessageSend(
 						miningCtx,
-						minerOwnerAddr,
+						workerAddr,
 						minerAddr,
 						types.ZeroAttoFIL,
 						gasPrice,
@@ -1069,7 +1075,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-// initStorageMinerForNode initializes the storage miner, returnning the miner, the miner owner address (to be
+// initStorageMinerForNode initializes the storage miner, returning the miner, the miner owner address (to be
 // passed to storage fault slasher) and any error
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, address.Address, error) {
 	minerAddr, err := node.MiningAddress()
@@ -1081,19 +1087,22 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
-	workerAddress := ownerAddress
+
+	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
+	if err != nil {
+		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's worker address")
+	}
 
 	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's sector size")
 	}
 
-	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
+	prover := storage.NewProver(minerAddr, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
 
 	miner, err := storage.NewMiner(
 		minerAddr,
 		ownerAddress,
-		workerAddress,
 		prover,
 		sectorSize,
 		node,
@@ -1104,16 +1113,6 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	}
 
 	return miner, workerAddress, nil
-}
-
-// initStorageFaultSlasherForNode sets node.FaultSlasher
-func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, workerAddress address.Address) error {
-	node.StorageFaultSlasher = storage.NewFaultSlasher(
-		node.PorcelainAPI,
-		node.Outbox,
-		storage.DefaultFaultSlasherGasPrice,
-		storage.DefaultFaultSlasherGasLimit)
-	return nil
 }
 
 // StopMining stops mining on new blocks.
@@ -1198,11 +1197,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerWorker, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get key from miner actor")
-	}
-
 	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		log.Errorf("could not get owner address of miner actor")
@@ -1213,7 +1207,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
-		MinerWorker:    minerWorker,
 		WorkerSigner:   node.Wallet,
 
 		GetStateTree: node.getStateTree,

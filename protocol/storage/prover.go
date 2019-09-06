@@ -31,6 +31,8 @@ type ProofReader interface {
 	MinerCalculateLateFee(ctx context.Context, addr address.Address, height *types.BlockHeight) (types.AttoFIL, error)
 	// WalletBalance returns the balance for an actor.
 	WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error)
+	// MinerGetWorkerAddress returns the current worker address for a miner
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }
 
 // ProofCalculator creates the proof-of-spacetime bytes.
@@ -42,11 +44,10 @@ type ProofCalculator interface {
 
 // Prover orchestrates the calculation and submission of a proof-of-spacetime.
 type Prover struct {
-	actorAddress  address.Address
-	workerAddress address.Address
-	sectorSize    *types.BytesAmount
-	chain         ProofReader
-	calculator    ProofCalculator
+	actorAddress address.Address
+	sectorSize   *types.BytesAmount
+	chain        ProofReader
+	calculator   ProofCalculator
 }
 
 // PoStInputs contains the sector id and related commitments used to generate a proof-of-spacetime.
@@ -66,13 +67,12 @@ type PoStSubmission struct {
 }
 
 // NewProver constructs a new Prover.
-func NewProver(actor address.Address, worker address.Address, sectorSize *types.BytesAmount, reader ProofReader, calculator ProofCalculator) *Prover {
+func NewProver(actor address.Address, sectorSize *types.BytesAmount, reader ProofReader, calculator ProofCalculator) *Prover {
 	return &Prover{
-		actorAddress:  actor,
-		workerAddress: worker,
-		sectorSize:    sectorSize,
-		chain:         reader,
-		calculator:    calculator,
+		actorAddress: actor,
+		sectorSize:   sectorSize,
+		chain:        reader,
+		calculator:   calculator,
 	}
 }
 
@@ -98,9 +98,14 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 	}
 
 	// Compute fees.
-	balance, err := p.chain.WalletBalance(ctx, p.workerAddress)
+	workerAddr, err := p.chain.MinerGetWorkerAddress(ctx, p.actorAddress)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to check wallet balance for %s", p.workerAddress)
+		return nil, errors.Wrapf(err, "failed to read miner worker address for miner %s", p.actorAddress)
+	}
+
+	balance, err := p.chain.WalletBalance(ctx, workerAddr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to check wallet balance for %s", workerAddr)
 	}
 
 	height, err := p.chain.ChainBlockHeight()
@@ -116,7 +121,7 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		return nil, err
 	}
 	if feeDue.GreaterThan(balance) {
-		log.Warningf("PoSt fee of %s exceeds available balance of %s for owner %s", feeDue, balance, p.workerAddress)
+		log.Warningf("PoSt fee of %s exceeds available balance of %s for owner %s", feeDue, balance, workerAddr)
 		// Submit anyway, in case the balance is topped up before the PoSt message is mined.
 	}
 
