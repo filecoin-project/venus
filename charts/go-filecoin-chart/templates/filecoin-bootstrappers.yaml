@@ -1,21 +1,4 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: filecoin-bootstrappers
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: filecoin-bootstrappers
-spec:
-  ports:
-    - port: 6000
-      name: swarm
-    - port: 3453
-      name: api
-  clusterIP: None
-  selector:
-    app: filecoin-bootstrappers
-
----
+{{- $this := . -}}
 
 apiVersion: v1
 kind: ConfigMap
@@ -25,7 +8,7 @@ metadata:
 data:
 {{- range $k, $v := until (atoi (quote .Values.Bootstrap.Replicas) | default 3) }}
   {{- $peerIndex := add $v 1 }}
-  filecoin-bootstrappers-{{$v}}.json: |
+  filecoin-bootstrappers-{{$v}}-0.json: |
     {
       "WorkingDir": "/var/filecoin",
       "GenesisCarFile":"/opt/filecoin/genesis.car",
@@ -40,37 +23,74 @@ data:
     }
 {{ end }}
 
+{{- range $k, $v := until (atoi (quote .Values.Bootstrap.Replicas) | default 3) }}
+  {{- $peerIndex := add $v 1 }}
+
 ---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-bootstrappers-{{$v}}
+  namespace: {{ $this.Release.Namespace }}
+  labels:
+    app: filecoin-bootstrappers-{{$v}}
+spec:
+  ports:
+    - port: 6000
+      name: swarm
+    - port: 3453
+      name: api
+  clusterIP: None
+  selector:
+    app: filecoin-bootstrappers-{{$v}}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-bootstrappers-nodeport-{{$v}}
+  namespace: {{ $this.Release.Namespace }}
+  labels:
+    app: filecoin-bootstrappers-{{$v}}
+spec:
+  type: NodePort
+  ports:
+    - port: 6000
+      nodePort: 3060{{$v}}
+      name: swarm
+  selector:
+    app: filecoin-bootstrappers-{{$v}}
+
+---
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: filecoin-bootstrappers
-  namespace: {{ .Release.Namespace }}
+  name: filecoin-bootstrappers-{{$v}}
+  namespace: {{ $this.Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: filecoin-bootstrappers
-  serviceName: "filecoin-bootstrappers"
-  replicas: {{ .Values.Bootstrap.Replicas }}
+      app: filecoin-bootstrappers-{{$v}}
+  serviceName: "filecoin-bootstrappers-{{$v}}"
+  replicas: 1
   updateStrategy:
     type: RollingUpdate
   template:
     metadata:
       labels:
-        app: filecoin-bootstrappers
+        app: filecoin-bootstrappers-{{$v}}
     spec:
       containers:
         - name: filecoin-bootstrappers
           imagePullPolicy: Always
-          image: "{{ .Values.Image }}"
+          image: "{{ $this.Values.Image }}"
           lifecycle:
             postStart:
               exec:
                 command: [
-                  #"deploy",
-                  #"-profile=bootstrap",
-                  #"-profile-config=/opt/filecoin-deploy/$(CONFIG_NAME).json",
-                  #"-step=post",
                   "/bin/sh",
                   "-c",
                   "deploy -profile=bootstrap -profile-config=/opt/filecoin-deploy/${CONFIG_NAME}.json -step=post",
@@ -98,7 +118,7 @@ spec:
             - name: devnet-secrets
               mountPath: /opt/filecoin
               readOnly: true
-            - name: filecoin-storage-bootstrappers
+            - name: filecoin-storage-bootstrappers-{{$v}}
               mountPath: /var/filecoin
             - name: filecoin-parameter-cache
               mountPath: /opt/filecoin-proof-parameters
@@ -106,7 +126,7 @@ spec:
               mountPath: /opt/filecoin-deploy
       initContainers:
         - name: filecoin-init
-          image: "{{ .Values.Image }}"
+          image: "{{ $this.Values.Image }}"
           imagePullPolicy: Always
           command: [
             "deploy",
@@ -125,7 +145,7 @@ spec:
             - name: devnet-secrets
               mountPath: /opt/filecoin
               readOnly: true
-            - name: filecoin-storage-bootstrappers
+            - name: filecoin-storage-bootstrappers-{{$v}}
               mountPath: /var/filecoin
             - name: filecoin-parameter-cache
               mountPath: /opt/filecoin-proof-parameters
@@ -141,19 +161,18 @@ spec:
           secretName: filecoin
       - name: filecoin-parameter-cache
         hostPath:
-          path: "{{ .Values.ProofParamsDir }}"
+          path: "{{ $this.Values.ProofParamsDir }}"
       - name: config-volume
         configMap:
           name: bootstrap-configs
   volumeClaimTemplates:
   - metadata:
-      name: filecoin-storage-bootstrappers
+      name: filecoin-storage-bootstrappers-{{$v}}
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "{{ .Values.StorageClassName }}"
+      storageClassName: "{{ $this.Values.StorageClassName }}"
       resources:
         requests:
-          storage: 10Gi
+          storage: 20Gi
 
-
-
+{{ end }}

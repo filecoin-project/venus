@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: block-explorer-nginx-configs
+  namespace: {{ .Release.Namespace }}
+data:
+  nginx.conf: |
+    server {
+      listen 8000;
+      location /api {
+        limit_except GET {
+          deny all;
+        }
+        location = /api/chain/head {
+          proxy_pass http://filecoin-bootstrappers-0-0.filecoin-bootstrappers-0.{{ .Release.Namespace }}.svc.cluster.local:3453;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header Referer "";
+          proxy_set_header Origin "";
+        }
+        location = /api/actor/ls {
+          proxy_pass http://filecoin-bootstrappers-0-0.filecoin-bootstrappers-0.{{ .Release.Namespace }}.svc.cluster.local:3453;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header Referer "";
+          proxy_set_header Origin "";
+        }
+        location /api/show/block/ {
+          proxy_pass http://filecoin-bootstrappers-0-0.filecoin-bootstrappers-0.{{ .Release.Namespace }}.svc.cluster.local:3453;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header Referer "";
+          proxy_set_header Origin "";
+        }
+      }
+      location / {
+        proxy_pass http://localhost:80;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Referer "";
+        proxy_set_header Origin "";
+      }
+
+    }
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: blockexplorer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: block-explorer
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8000
+      name: nginx
+  selector:
+    app: block-explorer
+
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: block-explorer
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: block-explorer
+  serviceName: "block-explorer"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: block-explorer
+    spec:
+      containers:
+        - name: block-explorer
+          image: 657871693752.dkr.ecr.us-east-1.amazonaws.com/blockexplorer:latest
+          ports:
+            - containerPort: 80
+        - name: nginx
+          image: nginx:1.17-alpine
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: block-explorer-nginx-configs

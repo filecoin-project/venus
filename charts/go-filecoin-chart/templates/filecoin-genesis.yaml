@@ -20,6 +20,23 @@ spec:
 ---
 
 apiVersion: v1
+kind: Service
+metadata:
+  name: filecoin-genesis-lb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: filecoin-genesis
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9797
+      name: faucet
+  selector:
+    app: filecoin-genesis
+
+---
+
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: genesis-configs
@@ -146,7 +163,7 @@ spec:
           command: [
             "/bin/sh",
             "-c",
-            "curl -s http://filecoin-bootstrappers-{{ $lastBootstrapOrd }}.filecoin-bootstrappers.{{ .Release.Namespace }}.svc.cluster.local:3453/api/id"
+            "curl -s http://filecoin-bootstrappers-{{ $lastBootstrapOrd }}-0.filecoin-bootstrappers-{{ $lastBootstrapOrd }}.{{ .Release.Namespace }}.svc.cluster.local:3453/api/id"
           ]
       securityContext:
         runAsUser: 1000
@@ -170,7 +187,7 @@ spec:
       storageClassName: "{{ .Values.StorageClassName }}"
       resources:
         requests:
-          storage: 10Gi
+          storage: 20Gi
 
 
 
