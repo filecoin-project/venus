@@ -18,6 +18,7 @@ import (
 	"github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -93,6 +94,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		return errors.Wrap(err, "Bad block time passed")
 	}
 	opts = append(opts, node.BlockTime(blockTime))
+	opts = append(opts, node.ClockConfigOption(clock.NewSystemClock()))
 
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {

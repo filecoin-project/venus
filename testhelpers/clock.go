@@ -19,11 +19,16 @@ func NewFakeSystemClock(n time.Time) *FakeSystemClock {
 }
 
 // Now returns the current value of the FakeSystemClock.
-func (mc *FakeSystemClock) Now() time.Time {
-	return mc.now
+func (fc *FakeSystemClock) Now() time.Time {
+	return fc.now
+}
+
+// Sleep returns immediately.
+func (fc *FakeSystemClock) Sleep(d time.Duration) {
+	return
 }
 
 // Set sets the current time value of the FakeSystemClock.
-func (mc *FakeSystemClock) Set(t time.Time) {
-	mc.now = t
+func (fc *FakeSystemClock) Set(t time.Time) {
+	fc.now = t
 }
