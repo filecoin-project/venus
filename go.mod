@@ -68,6 +68,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jessevdk/go-flags v1.4.0 // indirect
+	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
