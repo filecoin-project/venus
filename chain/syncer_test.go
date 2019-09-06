@@ -3,6 +3,7 @@ package chain_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -14,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -188,18 +190,18 @@ func TestFarFutureTipsets(t *testing.T) {
 	t.Run("accepts when syncing", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
+		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder)
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), true))
 	})
 
 	t.Run("rejects when caught up", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.FinalityLimit+1, genesis)
+		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder)
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		err := syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), false)
 		assert.Error(t, err)
 	})
@@ -217,7 +219,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher)
+	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), head.Key(), heightFromTip(t, head)), true))
 }
 
@@ -386,6 +388,68 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), b1.Key(), heightFromTip(t, b1)), true))
 }
 
+func TestSyncerStatus(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder, store, syncer := setup(ctx, t)
+	genesis := builder.RequireTipSet(store.GetHead())
+
+	// verify default status
+	s0 := syncer.Status()
+	assert.Equal(t, genesis.Key(), s0.ValidatedHead)
+	assert.Equal(t, uint64(0), s0.ValidatedHeadHeight)
+	assert.Equal(t, int64(0), s0.SyncingStarted)
+	assert.Equal(t, types.UndefTipSet.Key(), s0.SyncingHead)
+	assert.Equal(t, uint64(0), s0.SyncingHeight)
+	assert.Equal(t, false, s0.SyncingTrusted)
+	assert.Equal(t, true, s0.SyncingComplete)
+	assert.Equal(t, true, s0.SyncingFetchComplete)
+	assert.Equal(t, types.UndefTipSet.Key(), s0.FetchingHead)
+	assert.Equal(t, uint64(0), s0.FetchingHeight)
+
+	// initial sync and status check
+	t1 := builder.AppendOn(genesis, 1)
+	require.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), t1.Key(), heightFromTip(t, t1)), true))
+	s1 := syncer.Status()
+	assert.Equal(t, true, s1.SyncingTrusted)
+	assert.Equal(t, t1.Key(), s1.ValidatedHead)
+	assert.Equal(t, uint64(1), s1.ValidatedHeadHeight)
+
+	assert.Equal(t, t1.Key(), s1.FetchingHead)
+	assert.Equal(t, uint64(1), s1.FetchingHeight)
+
+	assert.Equal(t, true, s1.SyncingFetchComplete)
+	assert.Equal(t, true, s1.SyncingComplete)
+
+	// advance the chain head, ensure status changes
+	t2 := builder.AppendOn(t1, 1)
+	require.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), t2.Key(), heightFromTip(t, t2)), false))
+	s2 := syncer.Status()
+	assert.Equal(t, false, s2.SyncingTrusted)
+	assert.Equal(t, t2.Key(), s2.ValidatedHead)
+	assert.Equal(t, uint64(2), s2.ValidatedHeadHeight)
+
+	assert.Equal(t, t2.Key(), s2.FetchingHead)
+	assert.Equal(t, uint64(2), s2.FetchingHeight)
+
+	assert.Equal(t, true, s2.SyncingFetchComplete)
+	assert.Equal(t, true, s2.SyncingComplete)
+
+	// do not advance the chain head, ensure valid head remains constant but fetching head changes
+	t1 = builder.AppendOn(genesis, 1)
+	require.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), t1.Key(), heightFromTip(t, t1)), false))
+	s2 = syncer.Status()
+	assert.Equal(t, false, s2.SyncingTrusted)
+	assert.Equal(t, t2.Key(), s2.ValidatedHead)
+	assert.Equal(t, uint64(2), s2.ValidatedHeadHeight)
+
+	assert.Equal(t, t1.Key(), s2.FetchingHead)
+	assert.Equal(t, uint64(1), s2.FetchingHeight)
+
+	assert.Equal(t, true, s2.SyncingFetchComplete)
+	assert.Equal(t, true, s2.SyncingComplete)
+}
+
 ///// Set-up /////
 
 // Initializes a chain builder, store and syncer.
@@ -396,7 +460,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
 
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, genesis.At(0).Cid())
+	sr := chain.NewStatusReporter()
+	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, sr, genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{genStateRoot, genesis}))
 	require.NoError(t, store.SetHead(ctx, genesis))
@@ -404,7 +469,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder)
+	syncer := chain.NewSyncer(eval, store, builder, builder, sr, th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }

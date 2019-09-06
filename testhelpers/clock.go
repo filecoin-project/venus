@@ -2,28 +2,18 @@ package testhelpers
 
 import (
 	"time"
+
+	"github.com/jonboulle/clockwork"
 )
 
-// FakeSystemClock returns a mocked clock implementation that may be manually
-// set for testing things related to time.
-type FakeSystemClock struct {
-	now time.Time
+// FakeSystemClock wrapps the jonboulle/clockwork.FakeClock interface.
+// FakeSystemClock provides an interface for a clock which can be
+// manually advanced through time.
+type FakeSystemClock interface {
+	clockwork.FakeClock
 }
 
-// NewFakeSystemClock returns a mocked clock implementation that may be manually
-// set for testing things related to time.
-func NewFakeSystemClock(n time.Time) *FakeSystemClock {
-	return &FakeSystemClock{
-		now: n,
-	}
-}
-
-// Now returns the current value of the FakeSystemClock.
-func (mc *FakeSystemClock) Now() time.Time {
-	return mc.now
-}
-
-// Set sets the current time value of the FakeSystemClock.
-func (mc *FakeSystemClock) Set(t time.Time) {
-	mc.now = t
+// NewFakeSystemClock returns a FakeSystemClock initialised at the given time.Time.
+func NewFakeSystemClock(n time.Time) FakeSystemClock {
+	return clockwork.NewFakeClockAt(n)
 }

@@ -24,19 +24,7 @@ func (rp *RustVerifier) VerifySeal(req VerifySealRequest) (VerifySealResponse, e
 
 // VerifyPoSt verifies that a proof-of-spacetime is valid.
 func (rp *RustVerifier) VerifyPoSt(req VerifyPoStRequest) (VerifyPoStResponse, error) {
-	sortedCommRs := req.SortedCommRs.Values()
-
-	asArrays := make([][32]byte, len(sortedCommRs))
-	for idx, comm := range sortedCommRs {
-		copy(asArrays[idx][:], comm[:])
-	}
-
-	asSlices := make([][]byte, len(req.Proofs))
-	for idx, proof := range req.Proofs {
-		asSlices[idx] = append(proof[:0:0], proof...)
-	}
-
-	isValid, err := go_sectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), asArrays, req.ChallengeSeed, asSlices, req.Faults)
+	isValid, err := go_sectorbuilder.VerifyPoSt(req.SectorSize.Uint64(), req.SortedSectorInfo, req.ChallengeSeed, req.Proof, req.Faults)
 	if err != nil {
 		return VerifyPoStResponse{}, err
 	}

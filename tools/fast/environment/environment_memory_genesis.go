@@ -240,6 +240,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 				NumCommittedSectors: 128,
 			},
 		},
+		Network:    "FASTtest",
 		ProofsMode: e.proofsMode,
 	}
 

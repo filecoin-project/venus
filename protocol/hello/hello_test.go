@@ -229,3 +229,46 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1.AssertExpectations(t)
 	msc2.AssertExpectations(t)
 }
+
+func TestReceiveHello(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mn, err := mocknet.FullMeshConnected(ctx, 2)
+	assert.NoError(t, err)
+
+	a := mn.Hosts()[0]
+	b := mn.Hosts()[1]
+
+	builder := chain.NewBuilder(t, address.Undef)
+
+	genesisTipset := builder.NewGenesis()
+
+	heavy1 := builder.AppendOn(genesisTipset, 3)
+	heavy1 = builder.AppendOn(heavy1, 3)
+	heavy2 := builder.AppendOn(heavy1, 3)
+
+	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
+	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
+
+	h1 := New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
+	h2 := New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+
+	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
+	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
+
+	assert.NoError(t, mn.LinkAll())
+	assert.NoError(t, mn.ConnectAllButSelf())
+
+	h2Msg, err := h1.ReceiveHello(ctx, b.ID())
+	assert.NoError(t, err)
+
+	h1Msg, err := h2.ReceiveHello(ctx, a.ID())
+	assert.NoError(t, err)
+
+	assert.Equal(t, heavy1.Key(), h1Msg.HeaviestTipSetCids)
+	assert.Equal(t, heavy2.Key(), h2Msg.HeaviestTipSetCids)
+
+}
