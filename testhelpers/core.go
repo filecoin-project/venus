@@ -3,7 +3,6 @@ package testhelpers
 import (
 	"context"
 	"errors"
-	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -20,8 +19,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
 )
@@ -187,7 +188,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 
 // DefaultGenesis creates a test network genesis block with default accounts and actors installed.
 func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-	return consensus.MakeGenesisFunc(consensus.Network(consensus.TEST))(cst, bs)
+	return consensus.MakeGenesisFunc(consensus.Network(version.TEST))(cst, bs)
 }
 
 type testStorage struct {

@@ -72,6 +72,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
+	"github.com/filecoin-project/go-filecoin/version"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -114,7 +115,7 @@ type Node struct {
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
-	UpgradeTable consensus.ProtocolUpgradeTable
+	UpgradeTable version.ProtocolVersionTable
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -450,7 +451,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	}
 
 	// TODO: inject protocol upgrade table into code that requires it (#3360)
-	_, err = consensus.ConfigureProtocolVersions(network)
+	_, err = version.ConfigureProtocolVersions(network)
 	if err != nil {
 		return nil, err
 	}

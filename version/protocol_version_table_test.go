@@ -1,4 +1,4 @@
-package consensus
+package version
 
 import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -15,7 +15,7 @@ func TestUpgradeTable(t *testing.T) {
 	t.Run("add single upgrade", func(t *testing.T) {
 		network := "testnetwork"
 		version := uint64(3)
-		put, err := NewProtocolUpgradeTableBuilder(network).
+		put, err := NewProtocolVersionTableBuilder(network).
 			Add(network, version, types.NewBlockHeight(0)).
 			Build()
 		require.NoError(t, err)
@@ -34,7 +34,7 @@ func TestUpgradeTable(t *testing.T) {
 	t.Run("finds correct version", func(t *testing.T) {
 		network := "testnetwork"
 		// add out of order and expect table to sort
-		put, err := NewProtocolUpgradeTableBuilder(network).
+		put, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 2, types.NewBlockHeight(20)).
 			Add(network, 4, types.NewBlockHeight(40)).
 			Add(network, 3, types.NewBlockHeight(30)).
@@ -53,25 +53,25 @@ func TestUpgradeTable(t *testing.T) {
 
 	t.Run("constructing a table with no versions is an error", func(t *testing.T) {
 		network := "testnetwork"
-		_, err := NewProtocolUpgradeTableBuilder(network).Build()
+		_, err := NewProtocolVersionTableBuilder(network).Build()
 		require.Error(t, err)
 		assert.Matches(t, err.Error(), "no protocol versions specified for network testnetwork")
 	})
 
 	t.Run("constructing a table with no version at genesis is an error", func(t *testing.T) {
 		network := "testnetwork"
-		_, err := NewProtocolUpgradeTableBuilder(network).
+		_, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 2, types.NewBlockHeight(20)).
 			Build()
 		require.Error(t, err)
 		assert.Matches(t, err.Error(), "no protocol version at genesis for network testnetwork")
 	})
 
-	t.Run("ignores upgrades from wrong network", func(t *testing.T) {
+	t.Run("ignores versions from wrong network", func(t *testing.T) {
 		network := "testnetwork"
 		otherNetwork := "othernetwork"
 
-		put, err := NewProtocolUpgradeTableBuilder(network).
+		put, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 0, types.NewBlockHeight(0)).
 			Add(otherNetwork, 1, types.NewBlockHeight(10)).
 			Add(otherNetwork, 2, types.NewBlockHeight(20)).

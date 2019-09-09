@@ -1,4 +1,4 @@
-package consensus
+package version
 
 import (
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,8 +20,8 @@ const TEST = "go-filecoin-test"
 const Protocol0 = 0
 
 // ConfigureProtocolVersions configures all protocol upgrades for all known networks.
-func ConfigureProtocolVersions(network string) (*ProtocolUpgradeTable, error) {
-	return NewProtocolUpgradeTableBuilder(network).
+func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
+	return NewProtocolVersionTableBuilder(network).
 		Add(ALPHA1, Protocol0, types.NewBlockHeight(0)).
 		Add(DEVNET4, Protocol0, types.NewBlockHeight(0)).
 		Add(LOCALNET, Protocol0, types.NewBlockHeight(0)).

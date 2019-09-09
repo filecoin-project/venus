@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,7 +31,7 @@ func TestMessagePropagation(t *testing.T) {
 	require.NoError(t, err)
 	genesis := consensus.MakeGenesisFunc(
 		consensus.ActorAccount(senderAddress, types.NewAttoFILFromFIL(100)),
-		consensus.Network(consensus.TEST),
+		consensus.Network(version.TEST),
 	)
 
 	// Initialize the first node to be the message sender.
