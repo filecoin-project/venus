@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -60,7 +60,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(t, node.Init(ctx, r, consensus.DefaultGenesis))
+		require.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{}
 		opts, err := node.OptionsFromRepo(r)
 		require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		r := repo.NewInMemoryRepo()
 		r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
 
-		require.NoError(t, node.Init(ctx, r, consensus.DefaultGenesis))
+		require.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
 		r.Config().Bootstrap.Addresses = []string{peer1, peer2}
 
 		opts, err := node.OptionsFromRepo(r)
@@ -176,7 +176,7 @@ func TestOptionWithError(t *testing.T) {
 
 	ctx := context.Background()
 	r := repo.NewInMemoryRepo()
-	assert.NoError(t, node.Init(ctx, r, consensus.DefaultGenesis))
+	assert.NoError(t, node.Init(ctx, r, th.DefaultGenesis))
 
 	opts, err := node.OptionsFromRepo(r)
 	assert.NoError(t, err)
@@ -217,7 +217,7 @@ func TestNodeConfig(t *testing.T) {
 		ConfigOpts:  configOptions,
 		InitOpts:    initOpts,
 		OfflineMode: true,
-		GenesisFunc: consensus.DefaultGenesis,
+		GenesisFunc: th.DefaultGenesis,
 	}
 
 	n := node.GenNode(t, &tno)

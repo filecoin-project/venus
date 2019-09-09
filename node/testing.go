@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -174,7 +175,7 @@ func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif
 // MakeNodesUnstarted creates some new nodes with an InMemoryRepo, fake proof verifier, and default genesis block.
 // Call StartNodes to start them.
 func MakeNodesUnstarted(t *testing.T, numNodes int, offlineMode bool) []*Node {
-	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, consensus.DefaultGenesis)
+	return MakeNodesUnstartedWithGif(t, numNodes, offlineMode, th.DefaultGenesis)
 }
 
 // MakeOfflineNode returns a single unstarted offline node.
@@ -182,7 +183,7 @@ func MakeOfflineNode(t *testing.T) *Node {
 	return MakeNodesUnstartedWithGif(t,
 		1,    /* 1 node */
 		true, /* offline */
-		consensus.DefaultGenesis)[0]
+		th.DefaultGenesis)[0]
 }
 
 // DefaultTestingConfig returns default configuration for testing

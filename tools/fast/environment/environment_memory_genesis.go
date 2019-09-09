@@ -240,7 +240,7 @@ func (e *MemoryGenesis) buildGenesis(funds *big.Int) error {
 				NumCommittedSectors: 128,
 			},
 		},
-		Network:    "FASTtest",
+		Network:    "go-filecoin-test",
 		ProofsMode: e.proofsMode,
 	}
 

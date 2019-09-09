@@ -35,7 +35,7 @@ var testConfig = &GenesisCfg{
 			SectorSize:          types.OneKiBSectorSize.Uint64(),
 		},
 	},
-	Network: "GenGenTest",
+	Network: "go-filecoin-test",
 }
 
 func TestGenGenLoading(t *testing.T) {
