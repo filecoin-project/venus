@@ -201,6 +201,7 @@ type Node struct {
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
+// This is poorly named and easily confused with config.Config. It's really a node factory pattern.
 type Config struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option

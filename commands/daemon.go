@@ -96,6 +96,7 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	opts = append(opts, node.BlockTime(blockTime))
 	opts = append(opts, node.ClockConfigOption(clock.NewSystemClock()))
 
+	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
 	if err != nil {
 		return err
@@ -114,6 +115,13 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 		writer.WriterGroup.AddWriter(os.Stdout)
 	}
 
+	// Start the node.
+	if err := fcn.Start(req.Context); err != nil {
+		return err
+	}
+	defer fcn.Stop(req.Context)
+
+	// Run API server around the node.
 	ready := make(chan interface{}, 1)
 	go func() {
 		<-ready
@@ -144,11 +152,6 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 // saved to the node's repo.
 // A message sent to or closure of the `terminate` channel signals the server to stop.
 func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
-	if err := nd.Start(ctx); err != nil {
-		return err
-	}
-	defer nd.Stop(ctx)
-
 	servenv := &Env{
 		blockMiningAPI: nd.BlockMiningAPI,
 		ctx:            ctx,

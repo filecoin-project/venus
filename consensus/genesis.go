@@ -91,6 +91,14 @@ func AddActor(addr address.Address, actor *actor.Actor) GenOption {
 	}
 }
 
+// NetworkName returns a config option that sets the network name.
+func NetworkName(name string) GenOption {
+	return func(gc *Config) error {
+		gc.network = name
+		return nil
+	}
+}
+
 // ProofsMode sets the mode of operation for the proofs library.
 func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	return func(gc *Config) error {
