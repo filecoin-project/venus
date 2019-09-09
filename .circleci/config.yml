@@ -373,8 +373,6 @@ jobs:
       - generate_rust_submodules_checksums
       - attach_workspace:
           at: "."
-      - restore_cache:
-          key: v1-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       - run:
           name: build a base image
           command: |
@@ -399,33 +397,33 @@ jobs:
             docker build -f Dockerfile.ci.genesis --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
+            #docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:latest
             if [[ ! -z "$FILECOIN_BINARY_VERSION" ]]; then
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:${FILECOIN_BINARY_VERSION}
-              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:${FILECOIN_BINARY_VERSION}
+              #docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-genesis-file-server:${FILECOIN_BINARY_VERSION}
             fi
       - run:
           name: build & push image - faucet
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             docker build -f Dockerfile.ci.faucet --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA --cache-from filecoin:all .
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
+            #docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
-            docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
+            #docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:latest
             if [[ ! -z "$FILECOIN_BINARY_VERSION" ]]; then
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
-              docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
+              #docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
             fi
+      - restore_cache:
+          key: v2-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       - run:
           name: build & push image - filecoin
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             export ARTIFACT_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
-            export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters"
+            export FILECOIN_PARAMETER_CACHE="./filecoin-proof-parameters"
             tar -xf "bundle/filecoin-$ARTIFACT_TAG-Linux.tar.gz"
-            ./filecoin/paramfetch --all -v || true
             ./filecoin/paramcache
-            mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
@@ -435,9 +433,9 @@ jobs:
               docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
             fi
       - save_cache:
-          key: v1-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          key: v2-proof-params-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
           paths:
-            - "~/filecoin-proof-parameters/"
+            - "./filecoin-proof-parameters"
 
   trigger_nightly_devnet_deploy:
     docker:
@@ -535,6 +533,12 @@ workflows:
       - functional_test_linux:
           requires:
             - build_linux
+      - build_docker_img:
+          requires:
+            - build_linux
+            - unit_test_linux
+            - integration_test_linux
+            - functional_test_linux
 
   build_nightly_osx:
     triggers:
