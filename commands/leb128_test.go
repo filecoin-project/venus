@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLeb128Read(t *testing.T) {
+func TestLeb128Decode(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	readTests := []struct {
+	decodeTests := []struct {
 		Text string
 		Want string
 	}{
@@ -20,28 +20,28 @@ func TestLeb128Read(t *testing.T) {
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 
-	for _, tt := range readTests {
-		output := d.RunSuccess("leb128", "read", tt.Text).ReadStdoutTrimNewlines()
+	for _, tt := range decodeTests {
+		output := d.RunSuccess("leb128", "decode", tt.Text).ReadStdoutTrimNewlines()
 
 		require.Equal(t, tt.Want, string(output))
 	}
 }
 
-func TestLeb128Write(t *testing.T) {
+func TestLeb128Encode(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	writeTests := []struct {
+	encodeTests := []struct {
 		Text string
 		Want string
 	}{
-		{"1000", "232 7"},
+		{"65", "A=="},
 	}
 
 	d := makeTestDaemonWithMinerAndStart(t)
 	defer d.ShutdownSuccess()
 
-	for _, tt := range writeTests {
-		output := d.RunSuccess("leb128", "write", tt.Text).ReadStdoutTrimNewlines()
+	for _, tt := range encodeTests {
+		output := d.RunSuccess("leb128", "encode", tt.Text).ReadStdoutTrimNewlines()
 
 		require.Contains(t, string(output), tt.Want)
 	}

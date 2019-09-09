@@ -12,19 +12,19 @@ import (
 
 var leb128Cmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "Leb128 cli enc/decode",
-		ShortDescription: `Reading and writing leb128.`,
+		Tagline:          "Leb128 cli encode/decode",
+		ShortDescription: `Decode and encode leb128 text/uint64.`,
 	},
 	Subcommands: map[string]*cmds.Command{
-		"read":  readLeb128Cmd,
-		"write": writeLeb128Cmd,
+		"decode": decodeLeb128Cmd,
+		"encode": encodeLeb128Cmd,
 	},
 }
 
-var readLeb128Cmd = &cmds.Command{
+var decodeLeb128Cmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "read leb128",
-		ShortDescription: `Read leb128 to decode`,
+		Tagline:          "decode leb128",
+		ShortDescription: `Decode leb128 text`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("text", true, false, `The leb128 encoded text`),
@@ -43,10 +43,10 @@ var readLeb128Cmd = &cmds.Command{
 	},
 }
 
-var writeLeb128Cmd = &cmds.Command{
+var encodeLeb128Cmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
-		Tagline:          "write leb128",
-		ShortDescription: `Write leb128 to encode`,
+		Tagline:          "encode leb128",
+		ShortDescription: `Encode leb128 uint64`,
 	},
 	Arguments: []cmdkit.Argument{
 		cmdkit.StringArg("number", true, false, `The number to encode`),
@@ -62,7 +62,13 @@ var writeLeb128Cmd = &cmds.Command{
 	Type: []byte{},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, info []byte) error {
-			_, err := fmt.Fprintln(w, info)
+			result := string(info)
+			if len(result)%3 == 1 {
+				result += "=="
+			} else if len(result)%3 == 2 {
+				result += "="
+			}
+			_, err := fmt.Fprintln(w, result)
 			return err
 		}),
 	},
