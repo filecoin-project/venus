@@ -22,7 +22,7 @@ type ProtocolVersionTable struct {
 
 // VersionAt returns the protocol versions at the given block height for this PUT's network.
 func (put *ProtocolVersionTable) VersionAt(height *types.BlockHeight) (uint64, error) {
-	// find index of first version that is yet active (or len(versions) if they are all active.
+	// find index of first version that is not yet active (or len(versions) if they are all active.
 	idx := sort.Search(len(put.versions), func(i int) bool {
 		return height.LessThan(put.versions[i].EffectiveAt)
 	})
@@ -66,7 +66,6 @@ func (putb *ProtocolVersionTableBuilder) Add(network string, version uint64, eff
 		EffectiveAt: effectiveAt,
 	}
 
-	// insert version sorted by effective at
 	putb.versions = append(putb.versions, protocolVersion)
 
 	return putb
@@ -90,6 +89,16 @@ func (putb *ProtocolVersionTableBuilder) Build() (*ProtocolVersionTable, error) 
 		return nil, errors.Errorf("no protocol version at genesis for network %s", putb.network)
 	}
 
+	// enforce that version numbers increase monotonically with effective at
+	lastVersion := versions[0].Version
+	for _, version := range versions[1:] {
+		if version.Version <= lastVersion {
+			return nil, errors.Errorf("protocol version %d effective at %s is not greater than previous version, %d",
+				version.Version, version.EffectiveAt.String(), lastVersion)
+		}
+		lastVersion = version.Version
+	}
+
 	return &ProtocolVersionTable{versions: versions}, nil
 }
 
@@ -99,5 +108,8 @@ type protocolVersionsByEffectiveAt []protocolVersion
 func (a protocolVersionsByEffectiveAt) Len() int      { return len(a) }
 func (a protocolVersionsByEffectiveAt) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a protocolVersionsByEffectiveAt) Less(i, j int) bool {
+	if a[i].EffectiveAt.Equal(a[j].EffectiveAt) {
+		return a[i].Version < a[j].Version
+	}
 	return a[i].EffectiveAt.LessThan(a[j].EffectiveAt)
 }

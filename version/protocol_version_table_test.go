@@ -92,4 +92,31 @@ func TestUpgradeTable(t *testing.T) {
 		}
 	})
 
+	t.Run("does not permit the same version number twice", func(t *testing.T) {
+		network := "testnetwork"
+
+		_, err := NewProtocolVersionTableBuilder(network).
+			Add(network, 0, types.NewBlockHeight(0)).
+			Add(network, 1, types.NewBlockHeight(10)).
+			Add(network, 2, types.NewBlockHeight(20)).
+			Add(network, 2, types.NewBlockHeight(30)). // wrong
+			Add(network, 4, types.NewBlockHeight(40)).
+			Build()
+		require.Error(t, err)
+		assert.Matches(t, err.Error(), "protocol version 2 effective at 30 is not greater than previous version, 2")
+	})
+
+	t.Run("does not permit version numbers to decline", func(t *testing.T) {
+		network := "testnetwork"
+
+		_, err := NewProtocolVersionTableBuilder(network).
+			Add(network, 4, types.NewBlockHeight(0)).
+			Add(network, 3, types.NewBlockHeight(10)).
+			Add(network, 2, types.NewBlockHeight(20)).
+			Add(network, 1, types.NewBlockHeight(30)).
+			Add(network, 0, types.NewBlockHeight(40)).
+			Build()
+		require.Error(t, err)
+		assert.Matches(t, err.Error(), "protocol version 3 effective at 10 is not greater than previous version, 4")
+	})
 }
