@@ -53,12 +53,6 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 		return errors.Wrap(err, "got bad block data")
 	}
 
-	// ignore messages from peers not yet tracked
-	if !node.PeerTracker.Has(from) {
-		log.Debugf("ignoring new block cid: %s from unconnected peer: %s", blk.Cid().String(), from.Pretty())
-		return nil
-	}
-
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 
 	log.Infof("Received new block from network cid: %s", blk.Cid().String())

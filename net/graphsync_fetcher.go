@@ -30,6 +30,15 @@ const (
 	requestTimeout = 60 * time.Second
 )
 
+
+// Fetcher defines an interface that may be used to fetch data from the network.
+type Fetcher interface {
+	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
+	// this includes the provided `ts`. The TipSet that evaluates to true when
+	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
+	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
+}
+
 // interface conformance check
 var _ Fetcher = (*GraphSyncFetcher)(nil)
 
@@ -97,8 +106,11 @@ const recursionMultiplier = 4
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
-func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, initialPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
-	rpf := newRequestPeerFinder(gsf.peerTracker, initialPeer)
+func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	rpf, err := newRequestPeerFinder(gsf.peerTracker)
+	if err != nil {
+		return nil, err
+	}
 
 	// fetch initial tipset
 	startingTipset, err := gsf.fetchFirstTipset(ctx, tsKey, rpf)
@@ -319,10 +331,16 @@ type requestPeerFinder struct {
 	triedPeers  map[peer.ID]struct{}
 }
 
-func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, initialPeer peer.ID) *requestPeerFinder {
-	pri := &requestPeerFinder{peerTracker, initialPeer, make(map[peer.ID]struct{})}
-	pri.triedPeers[initialPeer] = struct{}{}
-	return pri
+func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker) (*requestPeerFinder, error) {
+	pri := &requestPeerFinder{
+		peerTracker: peerTracker,
+		triedPeers:  make(map[peer.ID]struct{}),
+	}
+	err := pri.FindNextPeer()
+	if err != nil {
+		return nil, err
+	}
+	return pri, nil
 }
 
 func (pri *requestPeerFinder) CurrentPeer() peer.ID {
@@ -340,3 +358,21 @@ func (pri *requestPeerFinder) FindNextPeer() error {
 	}
 	return fmt.Errorf("Unable to find any untried peers")
 }
+
+func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {
+	var blocks []*types.Block
+	for _, u := range unsanitized {
+		block, err := types.DecodeBlock(u.RawData())
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetched data (cid %s) was not a block", u.Cid().String())
+		}
+
+		if err := validator.ValidateSyntax(ctx, block); err != nil {
+			return nil, errors.Wrapf(err, "invalid block %s", block.Cid())
+		}
+
+		blocks = append(blocks, block)
+	}
+	return blocks, nil
+}
+

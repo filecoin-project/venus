@@ -355,7 +355,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	}
 
 	syncer.reporter.UpdateStatus(syncFetchComplete(false))
-	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
+	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
