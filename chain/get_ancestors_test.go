@@ -57,22 +57,6 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	assert.Equal(t, chainLen, len(tipsets))
 }
 
-// tipsets at least 1.
-func TestCollectTipSetsOfHeightAtLeastTipsetOne(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-	builder := chain.NewBuilder(t, address.Undef)
-
-	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
-
-	stopHeight := types.NewBlockHeight(uint64(25))
-	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(tipsets))
-}
-
 // The starting epoch is a null block.
 func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	tf.UnitTest(t)
@@ -94,6 +78,97 @@ func TestCollectTipSetsOfHeightAtLeastStartingEpochIsNull(t *testing.T) {
 	stopHeight := types.NewBlockHeight(uint64(35))
 	iterator := chain.IterAncestors(ctx, builder, head)
 	tipsets, err := chain.CollectTipSetsOfHeightAtLeast(ctx, iterator, stopHeight)
+	assert.NoError(t, err)
+	latestHeight, err := tipsets[0].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(60), latestHeight)
+	earliestHeight, err := tipsets[len(tipsets)-1].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(41), earliestHeight)
+	assert.Equal(t, 20, len(tipsets))
+}
+
+// Happy path
+func TestCollectTipSetsPastHeight(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+
+	chainLen := 15
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+
+	stopHeight := types.NewBlockHeight(uint64(4))
+	iterator := chain.IterAncestors(ctx, builder, head)
+	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	assert.NoError(t, err)
+	latestHeight, err := tipsets[0].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(14), latestHeight)
+	earliestHeight, err := tipsets[len(tipsets)-1].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(4), earliestHeight)
+	assert.Equal(t, 11, len(tipsets))
+}
+
+// Height at least 0.
+func TestCollectTipSetsPastHeightZero(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+
+	chainLen := 25
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+
+	stopHeight := types.NewBlockHeight(uint64(0))
+	iterator := chain.IterAncestors(ctx, builder, head)
+	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	assert.NoError(t, err)
+	latestHeight, err := tipsets[0].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(24), latestHeight)
+	earliestHeight, err := tipsets[len(tipsets)-1].Height()
+	require.NoError(t, err)
+	assert.Equal(t, uint64(0), earliestHeight)
+	assert.Equal(t, chainLen, len(tipsets))
+}
+
+// tipsets at least 1.
+func TestCollectTipSetsPastHeightTipsetOne(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+
+	chainLen := 25
+	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+
+	stopHeight := types.NewBlockHeight(uint64(25))
+	iterator := chain.IterAncestors(ctx, builder, head)
+	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(tipsets))
+}
+
+// The starting epoch is a null block.
+func TestCollectTipSetsPastHeightStartingEpochIsNull(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder := chain.NewBuilder(t, address.Undef)
+	head := builder.NewGenesis()
+
+	// Add 30 tipsets to the head of the chainStore.
+	head = builder.AppendManyOn(30, head)
+
+	// Now add 10 null blocks and 1 tipset.
+	head = builder.BuildOneOn(head, func(b *chain.BlockBuilder) {
+		b.IncHeight(10)
+	})
+
+	// Now add 19 more tipsets.
+	head = builder.AppendManyOn(19, head)
+
+	stopHeight := types.NewBlockHeight(uint64(35))
+	iterator := chain.IterAncestors(ctx, builder, head)
+	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
