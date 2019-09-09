@@ -1,20 +1,32 @@
+# "documentation": https://gist.github.com/stevepeak/53bee7b2c326b24a9b4a
 coverage:
   range: 50..100
   round: down
   precision: 0
 
   status:
-    project: off
-    patch: off
-    changes: off
+    project: false
+    patch: false
+    changes: false
 
-comment: off
-#  layout: "diff, flags, files"
-#  behavior: default
-#  require_changes: false  # if true: only post the comment if coverage changes
-#  require_base: yes       # [yes :: must have a base report to post]
-#  require_head: yes       # [yes :: must have a head report to post]
-#  branches: null          # branch names that can post comment
+# https://docs.codecov.io/docs/pull-request-comments
+comment:
+  layout: "diff"           # "diff, flags, files"
+  behavior: default
+  require_changes: false   # if true: only post the comment if coverage changes
+  require_base: true       # [yes :: must have a base report to post]
+  require_head: true       # [yes :: must have a head report to post]
+  branches: []             # branch names that can post comment
 
 ignore:
   - "*/testing.go"
+
+codecov:
+  notify:
+    # yes: will delay sending notifications until all ci is finished
+    # no: will send notifications without checking ci status and wait till "after_n_builds" are uploaded
+    require_ci_to_pass: false
+    # number of expected builds to receive before sending notifications
+    # we can set this to prevent notifications of partial results due to CI parallelism
+    # set this with respect to the unit- and integration-test parallelism in Circle CI configuration
+    after_n_builds: 4
