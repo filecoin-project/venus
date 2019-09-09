@@ -42,7 +42,7 @@ func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 				SectorSize:          types.OneKiBSectorSize.Uint64(),
 			},
 		},
-		Network: "IPTBtest",
+		Network: "go-filecoin-test",
 	}
 
 	genfile, err := ioutil.TempFile(dir, "genesis.*.car")

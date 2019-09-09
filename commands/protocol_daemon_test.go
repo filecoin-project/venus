@@ -28,6 +28,6 @@ func TestProtocol(t *testing.T) {
 	defer stop()
 
 	out := cmd.RunSuccess(ctx, "protocol").ReadStdout()
-	assert.Contains(t, out, "Network: test")
+	assert.Contains(t, out, "Network: go-filecoin-test")
 	assert.Contains(t, out, "Auto-Seal Interval: 120 seconds")
 }

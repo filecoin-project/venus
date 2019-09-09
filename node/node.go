@@ -115,7 +115,7 @@ type Node struct {
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
-	UpgradeTable version.ProtocolVersionTable
+	VersionTable version.ProtocolVersionTable
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
