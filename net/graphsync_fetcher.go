@@ -30,13 +30,12 @@ const (
 	requestTimeout = 60 * time.Second
 )
 
-
 // Fetcher defines an interface that may be used to fetch data from the network.
 type Fetcher interface {
 	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
 	// this includes the provided `ts`. The TipSet that evaluates to true when
 	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
-	FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(ts types.TipSet) (bool, error)) ([]types.TipSet, error)
+	FetchTipSets(context.Context, types.TipSetKey, peer.ID, func(types.TipSet) (bool, error)) ([]types.TipSet, error)
 }
 
 // interface conformance check
@@ -50,6 +49,7 @@ type GraphExchange interface {
 
 type graphsyncFallbackPeerTracker interface {
 	List() []*types.ChainInfo
+	Self() peer.ID
 }
 
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
@@ -106,8 +106,8 @@ const recursionMultiplier = 4
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
-func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
-	rpf, err := newRequestPeerFinder(gsf.peerTracker)
+func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, initialPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	rpf, err := newRequestPeerFinder(gsf.peerTracker, initialPeer)
 	if err != nil {
 		return nil, err
 	}
@@ -331,11 +331,20 @@ type requestPeerFinder struct {
 	triedPeers  map[peer.ID]struct{}
 }
 
-func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker) (*requestPeerFinder, error) {
+func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, initialPeer peer.ID) (*requestPeerFinder, error) {
 	pri := &requestPeerFinder{
 		peerTracker: peerTracker,
 		triedPeers:  make(map[peer.ID]struct{}),
 	}
+
+	// Use the initialPeer's ID if it is our own
+	if peerTracker.Self() == initialPeer {
+		pri.triedPeers[initialPeer] = struct{}{}
+		pri.currentPeer = initialPeer
+		return pri, nil
+	}
+
+	// Get a peer ID from the peer tracker
 	err := pri.FindNextPeer()
 	if err != nil {
 		return nil, err
@@ -375,4 +384,3 @@ func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator c
 	}
 	return blocks, nil
 }
-

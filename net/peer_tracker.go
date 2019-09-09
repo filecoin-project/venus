@@ -20,12 +20,16 @@ type PeerTracker struct {
 	mu sync.RWMutex
 	// peers maps stringified peer.IDs to info about their chains
 	peers map[string]*types.ChainInfo
+
+	// self tracks the ID of the peer tracker's owner
+	self peer.ID
 }
 
 // NewPeerTracker creates a peer tracker.
-func NewPeerTracker() *PeerTracker {
+func NewPeerTracker(self peer.ID) *PeerTracker {
 	return &PeerTracker{
 		peers: make(map[string]*types.ChainInfo),
+		self:  self,
 	}
 }
 
@@ -40,14 +44,9 @@ func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	logPeerTracker.Infof("Tracking %s, new=%t, count=%d", ci, !tracking, len(tracker.peers))
 }
 
-// Has returns true if this peerID is tracked
-func (tracker *PeerTracker) Has(pid peer.ID) bool {
-	tracker.mu.Lock()
-	defer tracker.mu.Unlock()
-
-	pidKey := pid.Pretty()
-	_, ok := tracker.peers[pidKey]
-	return ok
+// Self returns the peer tracker's owner ID
+func (tracker *PeerTracker) Self() peer.ID {
+	return tracker.self
 }
 
 // List returns the chain info of the currently tracked peers.  The info
