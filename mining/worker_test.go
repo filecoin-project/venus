@@ -59,11 +59,10 @@ func Test_Mine(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		outCh := make(chan mining.Output)
 		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(),
+			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
-			MinerWorker:    blockSignerAddr,
 			WorkerSigner:   mockSigner,
 
 			GetStateTree: getStateTree,
@@ -87,11 +86,10 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(),
+			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
-			MinerWorker:    blockSignerAddr,
 			WorkerSigner:   mockSigner,
 
 			GetStateTree: makeExplodingGetStateTree(st),
@@ -118,11 +116,10 @@ func Test_Mine(t *testing.T) {
 		doSomeWorkCalled = false
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(),
+			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
-			MinerWorker:    blockSignerAddr,
 			WorkerSigner:   mockSigner,
 
 			GetStateTree: getStateTree,
@@ -226,6 +223,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
 	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
+	require.NotNil(t, res)
 
 	assert.Len(t, res.PermanentFailures, 2)
 	assert.Contains(t, res.PermanentFailures, smsg3)
@@ -261,11 +259,10 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(),
+		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
-		MinerWorker:    blockSignerAddr,
 		WorkerSigner:   mockSigner,
 
 		GetStateTree: getStateTree,
@@ -317,11 +314,10 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(),
+		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
-		MinerWorker:    blockSignerAddr,
 		WorkerSigner:   mockSigner,
 
 		GetStateTree: getStateTree,
@@ -425,11 +421,10 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(),
+		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
-		MinerWorker:    blockSignerAddr,
 		WorkerSigner:   mockSigner,
 
 		GetStateTree: getStateTree,
@@ -486,11 +481,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(),
+		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
-		MinerWorker:    blockSignerAddr,
 		WorkerSigner:   mockSigner,
 
 		GetStateTree: getStateTree,
@@ -539,11 +533,10 @@ func TestGenerateError(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(),
+		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
-		MinerWorker:    blockSignerAddr,
 		WorkerSigner:   mockSigner,
 
 		GetStateTree: makeExplodingGetStateTree(st),
@@ -596,7 +589,7 @@ func (st *stateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
-func getWeightTest(c context.Context, ts types.TipSet) (uint64, error) {
+func getWeightTest(_ context.Context, ts types.TipSet) (uint64, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
 		return uint64(0), err

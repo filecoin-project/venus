@@ -60,7 +60,6 @@ func TestReceiveStorageProposal(t *testing.T) {
 		miner := Miner{
 			porcelainAPI:      porcelainAPI,
 			ownerAddr:         porcelainAPI.targetAddress,
-			workerAddr:        porcelainAPI.workerAddress,
 			sectorSize:        types.OneKiBSectorSize,
 			proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},
 		}
@@ -638,6 +637,10 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 	return mtp.messageQueryPaymentBrokerLs()
 }
 
+func (mtp *minerTestPorcelain) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return mtp.workerAddress, nil
+}
+
 func messageQueryGetProofsMode() ([][]byte, error) {
 	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }
@@ -702,7 +705,6 @@ func newTestMiner(api *minerTestPorcelain) *Miner {
 	return &Miner{
 		porcelainAPI:      api,
 		ownerAddr:         api.targetAddress,
-		workerAddr:        api.workerAddress,
 		prover:            &FakeProver{},
 		sectorSize:        types.OneKiBSectorSize,
 		proposalProcessor: func(ctx context.Context, m *Miner, cid cid.Cid) {},

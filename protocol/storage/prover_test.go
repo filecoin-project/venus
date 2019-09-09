@@ -46,7 +46,7 @@ func TestProver(t *testing.T) {
 
 	t.Run("produces on-time proof", func(t *testing.T) {
 		pc := makeProofContext()
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.NoError(t, e)
 		assert.Equal(t, pc.proof, submission.Proof)
@@ -66,7 +66,7 @@ func TestProver(t *testing.T) {
 
 		for _, height := range heights {
 			pc.height = height
-			prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+			prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 			submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 			require.NoError(t, e)
 			assert.Equal(t, pc.proof, submission.Proof)
@@ -78,7 +78,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = deadline // proof could only appear in block deadline+1
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -87,7 +87,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = start.Sub(types.NewBlockHeight(1))
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -96,7 +96,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = nil
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -105,7 +105,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.seed = nil
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -149,4 +149,8 @@ func (f *fakeProverContext) WalletBalance(ctx context.Context, addr address.Addr
 
 func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error) {
 	return f.proof, nil
+}
+
+func (f *fakeProverContext) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return f.workerAddress, nil
 }

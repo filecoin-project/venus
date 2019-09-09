@@ -359,16 +359,6 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 	return lastUsedSectorID, nil
 }
 
-// MinerGetWorker queries for the public key of the given miner
-func MinerGetWorker(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewFromBytes(res[0])
-}
-
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)

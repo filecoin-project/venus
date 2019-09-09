@@ -51,7 +51,7 @@ type FaultSlasher struct {
 	slashed map[string]struct{}
 }
 
-// NewFaultSlasher creates a new FaultSlasher with the provided plumbing, outbox and message sender.
+// NewFaultSlasher creates a new FaultSlasher with the provided plumbing and outbox
 // Message sender must be an account actor address.
 func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, gasPrice types.AttoFIL, gasLimit types.GasUnits) *FaultSlasher {
 	return &FaultSlasher{

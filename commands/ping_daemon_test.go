@@ -1,34 +1,40 @@
 package commands_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/node"
+	"github.com/filecoin-project/go-filecoin/node/test"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestPing2Nodes(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	d1 := th.NewDaemon(t).Start()
-	defer d1.ShutdownSuccess()
-	d2 := th.NewDaemon(t).Start()
-	defer d2.ShutdownSuccess()
+	ctx := context.Background()
+	builder := test.NewNodeBuilder(t)
 
-	t.Log("[failure] not connected")
-	d1.RunFail("failed to find any peer in table",
-		"ping", "--count=2", d2.GetID(),
-	)
+	n1 := builder.BuildAndStart(ctx)
+	n2 := builder.BuildAndStart(ctx)
+	defer n1.Stop(ctx)
+	defer n2.Stop(ctx)
 
-	d1.ConnectSuccess(d2)
-	ping1 := d1.RunSuccess("ping", "--count=2", d2.GetID())
-	ping2 := d2.RunSuccess("ping", "--count=2", d1.GetID())
+	// The node are not initially connected, so ping should fail.
+	res0, err := n1.PorcelainAPI.NetworkPing(ctx, n2.PeerHost.ID())
+	assert.NoError(t, err)
+	assert.Error(t, (<-res0).Error) // No peers in table
 
-	t.Log("[success] 1 -> 2")
-	assert.Contains(t, ping1.ReadStdout(), "Pong received")
+	// Connect nodes and check each can ping the other.
+	node.ConnectNodes(t, n1, n2)
 
-	t.Log("[success] 2 -> 1")
-	assert.Contains(t, ping2.ReadStdout(), "Pong received")
+	res1, err := n1.PorcelainAPI.NetworkPing(ctx, n2.PeerHost.ID())
+	assert.NoError(t, err)
+	assert.NoError(t, (<-res1).Error)
+
+	res2, err := n2.PorcelainAPI.NetworkPing(ctx, n1.PeerHost.ID())
+	assert.NoError(t, err)
+	assert.NoError(t, (<-res2).Error)
 }

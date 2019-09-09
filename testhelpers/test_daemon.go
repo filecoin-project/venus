@@ -39,49 +39,6 @@ const (
 	sectorsName             = "sectors"
 )
 
-// Output manages running, inprocess, a filecoin command.
-type Output struct {
-	lk sync.Mutex
-	// Input is the the raw input we got.
-	Input string
-	// Args is the cleaned up version of the input.
-	Args []string
-	// Code is the unix style exit code, set after the command exited.
-	Code int
-	// Error is the error returned from the command, after it exited.
-	Error  error
-	Stdin  io.WriteCloser
-	Stdout io.ReadCloser
-	stdout []byte
-	Stderr io.ReadCloser
-	stderr []byte
-
-	test testing.TB
-}
-
-// ReadStderr returns a string representation of the stderr output.
-func (o *Output) ReadStderr() string {
-	o.lk.Lock()
-	defer o.lk.Unlock()
-
-	return strings.Trim(string(o.stderr), "\n")
-}
-
-// ReadStdout returns a string representation of the stdout output.
-func (o *Output) ReadStdout() string {
-	o.lk.Lock()
-	defer o.lk.Unlock()
-
-	return string(o.stdout)
-}
-
-// ReadStdoutTrimNewlines returns a string representation of stdout,
-// with trailing line breaks removed.
-func (o *Output) ReadStdoutTrimNewlines() string {
-	// TODO: handle non unix line breaks
-	return strings.Trim(o.ReadStdout(), "\n")
-}
-
 // RunSuccessFirstLine executes the given command, asserts success and returns
 // the first line of stdout.
 func RunSuccessFirstLine(td *TestDaemon, args ...string) string {
@@ -153,14 +110,14 @@ func (td *TestDaemon) GetMinerAddress() address.Address {
 }
 
 // Run executes the given command against the test daemon.
-func (td *TestDaemon) Run(args ...string) *Output {
+func (td *TestDaemon) Run(args ...string) *CmdOutput {
 	td.test.Helper()
 	return td.RunWithStdin(nil, args...)
 }
 
 // RunWithStdin executes the given command against the test daemon, allowing to control
 // stdin of the process.
-func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
+func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *CmdOutput {
 	td.test.Helper()
 	bin := MustGetFilecoinBinary()
 
@@ -192,81 +149,41 @@ func (td *TestDaemon) RunWithStdin(stdin io.Reader, args ...string) *Output {
 
 	require.NoError(td.test, cmd.Start())
 
-	stderrBytes, err := ioutil.ReadAll(stderr)
-	require.NoError(td.test, err)
-
-	stdoutBytes, err := ioutil.ReadAll(stdout)
-	require.NoError(td.test, err)
-
-	td.test.Logf("stdout\n%s", string(stdoutBytes))
-	td.test.Logf("stderr\n%s", string(stderrBytes))
-
-	o := &Output{
-		Args:   args,
-		Stdout: stdout,
-		stdout: stdoutBytes,
-		Stderr: stderr,
-		stderr: stderrBytes,
-		test:   td.test,
-	}
+	o := ReadOutput(td.test, args, stdout, stderr)
+	td.test.Logf("stdout\n%s", o.ReadStdout())
+	td.test.Logf("stderr\n%s", o.ReadStderr())
 
 	err = cmd.Wait()
 
 	switch err := err.(type) {
 	case *exec.ExitError:
 		if ctx.Err() == context.DeadlineExceeded {
-			o.Error = errors.Wrapf(err, "context deadline exceeded for command: %q", strings.Join(finalArgs, " "))
+			o.SetInvocationError(errors.Wrapf(err, "context deadline exceeded for command: %q", strings.Join(finalArgs, " ")))
+		} else {
+			// "Successful" invocation, but a non-zero exit code.
+			// It's non-trivial to get the real 'exit code' cross platform, so just use "1".
+			o.SetStatus(1)
 		}
-
-		// TODO: its non-trivial to get the 'exit code' cross platform...
-		o.Code = 1
 	default:
-		o.Error = err
+		o.SetInvocationError(err)
 	case nil:
-		// okay
+		o.SetStatus(0)
 	}
 
 	return o
 }
 
 // RunSuccess is like Run, but asserts that the command exited successfully.
-func (td *TestDaemon) RunSuccess(args ...string) *Output {
+func (td *TestDaemon) RunSuccess(args ...string) *CmdOutput {
 	td.test.Helper()
 	return td.Run(args...).AssertSuccess()
 }
 
-// AssertSuccess asserts that the output represents a successful execution.
-func (o *Output) AssertSuccess() *Output {
-	o.test.Helper()
-	require.NoError(o.test, o.Error)
-	oErr := o.ReadStderr()
-
-	require.Equal(o.test, 0, o.Code, oErr)
-	require.NotContains(o.test, oErr, "CRITICAL")
-	require.NotContains(o.test, oErr, "ERROR")
-	require.NotContains(o.test, oErr, "WARNING")
-	require.NotContains(o.test, oErr, "Error:")
-
-	return o
-
-}
-
 // RunFail is like Run, but asserts that the command exited with an error
 // matching the passed in error.
-func (td *TestDaemon) RunFail(err string, args ...string) *Output {
+func (td *TestDaemon) RunFail(err string, args ...string) *CmdOutput {
 	td.test.Helper()
 	return td.Run(args...).AssertFail(err)
-}
-
-// AssertFail asserts that the output represents a failed execution, with the error
-// matching the passed in error.
-func (o *Output) AssertFail(err string) *Output {
-	o.test.Helper()
-	require.NoError(o.test, o.Error)
-	require.Equal(o.test, 1, o.Code)
-	require.Empty(o.test, o.ReadStdout())
-	require.Contains(o.test, o.ReadStderr(), err)
-	return o
 }
 
 // GetID returns the id of the daemon.
@@ -294,19 +211,22 @@ func (td *TestDaemon) GetAddresses() []string {
 
 // ConnectSuccess connects the daemon to another daemon, asserting that
 // the operation was successful.
-func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *Output {
+func (td *TestDaemon) ConnectSuccess(remote *TestDaemon) *CmdOutput {
 	remoteAddrs := remote.GetAddresses()
 	delay := 100 * time.Millisecond
 
 	// Connect the nodes
 	// This usually works on the first try, but leaving this here, to ensure we
 	// connect and don't fail the test.
-	var out *Output
+	var out *CmdOutput
+	var status int
+	var err error
 Outer:
 	for i := 0; i < 5; i++ {
 		for j, remoteAddr := range remoteAddrs {
 			out = td.Run("swarm", "connect", remoteAddr)
-			if out.Error == nil && out.Code == 0 {
+			status, err = out.Status()
+			if err == nil && status == 0 {
 				if i > 0 || j > 0 {
 					fmt.Printf("WARNING: swarm connect took %d tries", (i+1)*(j+1))
 				}
@@ -315,7 +235,7 @@ Outer:
 			time.Sleep(delay)
 		}
 	}
-	assert.Equal(td.test, out.Code, 0, "failed to execute swarm connect")
+	assert.NoError(td.test, err, "failed to execute swarm connect")
 
 	localID := td.GetID()
 	remoteID := remote.GetID()

@@ -147,11 +147,6 @@ func (a *API) MinerGetLastCommittedSectorID(ctx context.Context, minerAddr addre
 	return MinerGetLastCommittedSectorID(ctx, a, minerAddr)
 }
 
-// MinerGetWorker queries for the public key of the given miner
-func (a *API) MinerGetWorker(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	return MinerGetWorker(ctx, a, minerAddr)
-}
-
 // MinerGetPeerID queries for the peer id of the given miner
 func (a *API) MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error) {
 	return MinerGetPeerID(ctx, a, minerAddr)
