@@ -9,11 +9,12 @@ import (
 	"testing"
 )
 
+const network = "testnetwork"
+
 func TestUpgradeTable(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("add single upgrade", func(t *testing.T) {
-		network := "testnetwork"
 		version := uint64(3)
 		put, err := NewProtocolVersionTableBuilder(network).
 			Add(network, version, types.NewBlockHeight(0)).
@@ -32,7 +33,6 @@ func TestUpgradeTable(t *testing.T) {
 	})
 
 	t.Run("finds correct version", func(t *testing.T) {
-		network := "testnetwork"
 		// add out of order and expect table to sort
 		put, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 2, types.NewBlockHeight(20)).
@@ -52,14 +52,12 @@ func TestUpgradeTable(t *testing.T) {
 	})
 
 	t.Run("constructing a table with no versions is an error", func(t *testing.T) {
-		network := "testnetwork"
 		_, err := NewProtocolVersionTableBuilder(network).Build()
 		require.Error(t, err)
 		assert.Matches(t, err.Error(), "no protocol versions specified for network testnetwork")
 	})
 
 	t.Run("constructing a table with no version at genesis is an error", func(t *testing.T) {
-		network := "testnetwork"
 		_, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 2, types.NewBlockHeight(20)).
 			Build()
@@ -68,7 +66,6 @@ func TestUpgradeTable(t *testing.T) {
 	})
 
 	t.Run("ignores versions from wrong network", func(t *testing.T) {
-		network := "testnetwork"
 		otherNetwork := "othernetwork"
 
 		put, err := NewProtocolVersionTableBuilder(network).
@@ -93,8 +90,6 @@ func TestUpgradeTable(t *testing.T) {
 	})
 
 	t.Run("does not permit the same version number twice", func(t *testing.T) {
-		network := "testnetwork"
-
 		_, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 0, types.NewBlockHeight(0)).
 			Add(network, 1, types.NewBlockHeight(10)).
@@ -107,8 +102,6 @@ func TestUpgradeTable(t *testing.T) {
 	})
 
 	t.Run("does not permit version numbers to decline", func(t *testing.T) {
-		network := "testnetwork"
-
 		_, err := NewProtocolVersionTableBuilder(network).
 			Add(network, 4, types.NewBlockHeight(0)).
 			Add(network, 3, types.NewBlockHeight(10)).
