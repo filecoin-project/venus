@@ -60,7 +60,7 @@ spec:
   type: NodePort
   ports:
     - port: 6000
-      nodePort: {{$this.Bootstrap.NodePortStart}}{{$v}}
+      nodePort: {{add $this.Values.Bootstrap.NodePortStart $v}}
       name: swarm
   selector:
     app: filecoin-bootstrappers-{{$v}}
@@ -127,6 +127,14 @@ spec:
             - name: config-volume
               mountPath: /opt/filecoin-deploy
       initContainers:
+        - name: dns-ready-check
+          image: "giantswarm/tiny-tools"
+          imagePullPolicy: Always
+          command: [
+            "/bin/sh",
+            "-c",
+            "host bootstrappers-{{$v}}.{{$this.Release.Namespace}}.kittyhawk.wtf"
+          ]
         - name: filecoin-init
           image: "{{ $this.Values.Image }}"
           imagePullPolicy: Always

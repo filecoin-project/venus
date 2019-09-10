@@ -1,7 +1,7 @@
 # Default values for go-filecoin-devnet.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-3"
+Image: "657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:fast-deploy-4"
 # For MicroK8S
 # StorageClassName: microk8s-hostpath
 # For EKS
@@ -22,8 +22,11 @@ Genesis:
   MinerAddress: "t2xvao7yi3llzsvrdx7mbw4dtbw6wkav7lyzsbpoq"
 Secrets:
   GenesisFile: ""
-  0Key: ""
+  Wallt0Key: ""
   Peer0Key: ""
   Peer1Key: ""
   Peer2Key: ""
   Peer3Key: ""
+ALB:
+  ACM: "arn:aws:acm:us-east-1:657871693752:certificate/7850e0a8-931b-4d88-8d7d-b84650099fce"
+  Domain: "kittyhawk.wtf"

@@ -44,12 +44,12 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: blockexplorer
+  name: block-explorer
   namespace: {{ .Release.Namespace }}
   labels:
     app: block-explorer
 spec:
-  type: LoadBalancer
+  #type: LoadBalancer
   ports:
     - port: 8000
       name: nginx

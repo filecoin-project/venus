@@ -1,0 +1,29 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: {{.Release.Namespace}}
+  name: filecoin-ingress
+annotations:
+  kubernetes.io/ingress.class: alb
+  alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+  alb.ingress.kubernetes.io/certificate-arn: {{.Values.ALB.ACM}}
+spec:
+  rules:
+    - host: faucet.{{.Release.Namespace}}.{{.Values.ALB.Domain}}
+      http:
+        paths:
+          - backend:
+              serviceName: filecoin-genesis
+              servicePort: 9797
+    - host: genesis.{{.Release.Namespace}}.{{.Values.ALB.Domain}}
+      http:
+        paths:
+          - backend:
+              serviceName: filecoin-genesis
+              servicePort: 8000
+    - host: block-explorer.{{.Release.Namespace}}.{{.Values.ALB.Domain}}
+      http:
+        paths:
+          - backend:
+              serviceName: block-explorer
+              servicePort: 8000

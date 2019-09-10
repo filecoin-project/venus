@@ -13,26 +13,28 @@ spec:
       name: api
     - port: 9797
       name: faucet
+    - port: 8080
+      name: file-server
   clusterIP: None
   selector:
     app: filecoin-genesis
 
----
+#---
 
-apiVersion: v1
-kind: Service
-metadata:
-  name: filecoin-genesis-lb
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: filecoin-genesis
-spec:
-  type: LoadBalancer
-  ports:
-    - port: 9797
-      name: faucet
-  selector:
-    app: filecoin-genesis
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: filecoin-genesis-lb
+#  namespace: {{ .Release.Namespace }}
+#  labels:
+#    app: filecoin-genesis
+#spec:
+#  type: LoadBalancer
+#  ports:
+#    - port: 9797
+#      name: faucet
+#  selector:
+#    app: filecoin-genesis
 
 ---
 
@@ -128,6 +130,18 @@ spec:
           volumeMounts:
             - name: devnet-secrets
               mountPath: /opt/filecoin
+              readOnly: true
+        - name: genesis-file-server
+          image: "{{ .Values.Image }}"
+          imagePullPolicy: Always
+          command: [
+            "genesis-file-server"
+          ]
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: devnet-secrets
+              mountPath: /opt/genesis
               readOnly: true
       initContainers:
         - name: filecoin-init
