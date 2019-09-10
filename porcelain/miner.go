@@ -359,16 +359,6 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 	return lastUsedSectorID, nil
 }
 
-// MinerGetWorker queries for the public key of the given miner
-func MinerGetWorker(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewFromBytes(res[0])
-}
-
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
@@ -508,4 +498,46 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 		return types.AttoFIL{}, err
 	}
 	return types.NewAttoFILFromBytes(rets[0]), nil
+}
+
+// mwapi is the subset of the plumbing.API that MinerSetWorkerAddress use.
+type mwapi interface {
+	ConfigGet(dottedPath string) (interface{}, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+}
+
+// MinerSetWorkerAddress sets the worker address of the miner actor to the provided new address,
+// waits for the message to appear on chain and then sets miner.workerAddr config to the new address.
+func MinerSetWorkerAddress(
+	ctx context.Context,
+	plumbing mwapi,
+	workerAddr address.Address,
+	gasPrice types.AttoFIL,
+	gasLimit types.GasUnits,
+) (cid.Cid, error) {
+
+	retVal, err := plumbing.ConfigGet("mining.minerAddress")
+	if err != nil {
+		return cid.Undef, err
+	}
+	minerAddr, ok := retVal.(address.Address)
+	if !ok {
+		return cid.Undef, errors.New("problem converting miner address")
+	}
+
+	minerOwnerAddr, err := plumbing.MinerGetOwnerAddress(ctx, minerAddr)
+	if err != nil {
+		return cid.Undef, errors.Wrap(err, "could not get miner owner address")
+	}
+
+	return plumbing.MessageSend(
+		ctx,
+		minerOwnerAddr,
+		minerAddr,
+		types.ZeroAttoFIL,
+		gasPrice,
+		gasLimit,
+		"changeWorker",
+		workerAddr)
 }

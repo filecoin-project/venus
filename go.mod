@@ -26,7 +26,7 @@ require (
 	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/golangci/golangci-lint v1.17.0
+	github.com/golangci/golangci-lint v1.17.1
 	github.com/golangci/govet v0.0.0-20180818181408-44ddbe260190 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
@@ -44,7 +44,7 @@ require (
 	github.com/ipfs/go-ds-badger v0.0.5
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
-	github.com/ipfs/go-graphsync v0.0.1-filecoin
+	github.com/ipfs/go-graphsync v0.0.2
 	github.com/ipfs/go-hamt-ipld v0.0.1
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
@@ -68,6 +68,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jessevdk/go-flags v1.4.0 // indirect
+	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
@@ -85,7 +86,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.1.1
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/libp2p/go-testutil v0.0.1 // indirect
-	github.com/magiconair/properties v1.8.1 // indirect
+	github.com/magiconair/properties v1.8.1
 	github.com/miekg/dns v1.1.15 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/minio/sha256-simd v0.1.0

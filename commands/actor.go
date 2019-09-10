@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
@@ -69,6 +70,8 @@ var actorLsCmd = &cmds.Command{
 				output = makeActorView(result.Actor, result.Address, nil)
 			case result.Actor.Code.Equals(types.AccountActorCodeCid):
 				output = makeActorView(result.Actor, result.Address, &account.Actor{})
+			case result.Actor.Code.Equals(types.InitActorCodeCid):
+				output = makeActorView(result.Actor, result.Address, &initactor.Actor{})
 			case result.Actor.Code.Equals(types.StorageMarketActorCodeCid):
 				output = makeActorView(result.Actor, result.Address, &storagemarket.Actor{})
 			case result.Actor.Code.Equals(types.PaymentBrokerActorCodeCid):
@@ -150,6 +153,10 @@ func presentExports(e exec.Exports) readableExports {
 func getActorType(actType exec.ExecutableActor) string {
 	t := reflect.TypeOf(actType).Elem()
 	prefixes := strings.Split(t.PkgPath(), "/")
+	pkg := prefixes[len(prefixes)-1]
 
-	return strings.Title(prefixes[len(prefixes)-1]) + t.Name()
+	// strip actor suffix required if package would otherwise be a reserved word
+	pkg = strings.TrimSuffix(pkg, "actor")
+
+	return strings.Title(pkg) + t.Name()
 }

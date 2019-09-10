@@ -84,32 +84,10 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 
 func (h *Handler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
-
-	from := s.Conn().RemotePeer()
-
-	var hello Message
-	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
-		log.Debugf("bad hello message from peer %s: %s", from, err)
-		helloMsgErrCt.Inc(context.TODO(), 1)
-		s.Conn().Close() // nolint: errcheck
-		return
+	if err := h.sendHello(s); err != nil {
+		log.Errorf("failed to send hello message:%s", err)
 	}
-
-	switch err := h.processHelloMessage(from, &hello); err {
-	case ErrBadGenesis:
-		log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, h.genesis, from)
-		genesisErrCt.Inc(context.TODO(), 1)
-		s.Conn().Close() // nolint: errcheck
-		return
-	case ErrWrongVersion:
-		log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, h.commitSha, from)
-		versionErrCt.Inc(context.TODO(), 1)
-		s.Conn().Close() // nolint: errcheck
-		return
-	case nil: // ok, noop
-	default:
-		log.Error(err)
-	}
+	return
 }
 
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
@@ -118,27 +96,25 @@ var ErrBadGenesis = fmt.Errorf("bad genesis block")
 // ErrWrongVersion is the error returned when a mismatch in the code version happens.
 var ErrWrongVersion = fmt.Errorf("code version mismatch")
 
-func (h *Handler) processHelloMessage(from peer.ID, msg *Message) error {
+func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*types.ChainInfo, error) {
 	if !msg.GenesisHash.Equals(h.genesis) {
-		return ErrBadGenesis
+		return nil, ErrBadGenesis
 	}
 	if (h.net == "devnet-staging" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
-		return ErrWrongVersion
+		return nil, ErrWrongVersion
 	}
 
-	ci := types.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight)
-	h.callBack(ci)
-	return nil
+	return types.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
 }
 
-func (h *Handler) getOurHelloMessage() *Message {
+func (h *Handler) getOurHelloMessage() (*Message, error) {
 	heaviest, err := h.getHeaviestTipSet()
 	if err != nil {
-		panic("cannot fetch chain head")
+		return nil, err
 	}
 	height, err := heaviest.Height()
 	if err != nil {
-		panic("somehow heaviest tipset is empty")
+		return nil, err
 	}
 
 	return &Message{
@@ -146,18 +122,31 @@ func (h *Handler) getOurHelloMessage() *Message {
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 		CommitSha:            h.commitSha,
-	}
+	}, nil
 }
 
-func (h *Handler) sayHello(ctx context.Context, p peer.ID) error {
+// ReceiveHello receives a hello message from peer `p` and returns it.
+func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error) {
 	s, err := h.host.NewStream(ctx, p, protocol)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer s.Close() // nolint: errcheck
 
-	msg := h.getOurHelloMessage()
+	var hello Message
+	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
+		helloMsgErrCt.Inc(ctx, 1)
+		return nil, err
+	}
+	return &hello, nil
+}
 
+// sendHello send a hello message on stream `s`.
+func (h *Handler) sendHello(s net.Stream) error {
+	msg, err := h.getOurHelloMessage()
+	if err != nil {
+		return err
+	}
 	return cbu.NewMsgWriter(s).WriteMsg(&msg)
 }
 
@@ -171,13 +160,38 @@ func (hn *helloNotify) hello() *Handler {
 
 const helloTimeout = time.Second * 10
 
+// Connect is the callback triggered when a connection is made to a libp2p node.
+// Connect will read a hello message from connection `c`, terminate the connection if it fails to
+// validate or pass the message information to its handlers callback function.
 func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 		defer cancel()
-		p := c.RemotePeer()
-		if err := hn.hello().sayHello(ctx, p); err != nil {
-			log.Warningf("failed to send hello handshake to peer %s: %s", p, err)
+
+		// receive the hello message
+		from := c.RemotePeer()
+		hello, err := hn.hello().ReceiveHello(ctx, from)
+		if err != nil {
+			log.Warningf("failed to receive hello handshake from peer %s: %s", from, err)
+			_ = c.Close()
+			return
+		}
+
+		ci, err := hn.hello().processHelloMessage(from, hello)
+		switch {
+		case err == ErrBadGenesis:
+			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.hello().genesis, from)
+			genesisErrCt.Inc(context.TODO(), 1)
+			return
+		case err == ErrWrongVersion:
+			log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, hn.hello().commitSha, from)
+			versionErrCt.Inc(context.TODO(), 1)
+			_ = c.Close()
+			return
+		case err == nil:
+			hn.hello().callBack(ci)
+		default:
+			log.Error(err)
 		}
 	}()
 }

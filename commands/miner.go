@@ -30,6 +30,8 @@ var minerCmd = &cmds.Command{
 		"update-peerid":  minerUpdatePeerIDCmd,
 		"collateral":     minerCollateralCmd,
 		"proving-period": minerProvingPeriodCmd,
+		"set-worker":     minerSetWorkerAddressCmd,
+		"worker":         minerWorkerAddressCmd,
 	},
 }
 
@@ -487,6 +489,82 @@ ProvingSet: %s
 				pSet,
 			)
 			return err
+		}),
+	},
+}
+
+var minerSetWorkerAddressCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Set the address of the miner worker. Returns a message CID",
+		ShortDescription: "Set the address of the miner worker to the provided address. When a miner is created, this address defaults to the miner owner. Use this command to change the default. Returns a message CID to wait for the message to appear on chain.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("new-address", true, false, "The address of the new miner worker."),
+	},
+	Options: []cmdkit.Option{
+		priceOption,
+		limitOption,
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		newWorker, err := address.NewFromString(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		gasPrice, gasLimit, _, err := parseGasOptions(req)
+		if err != nil {
+			return err
+		}
+
+		msgCid, err := GetPorcelainAPI(env).MinerSetWorkerAddress(req.Context, newWorker, gasPrice, gasLimit)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(msgCid)
+	},
+	Type: cid.Cid{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, c cid.Cid) error {
+			fmt.Fprintln(w, c) // nolint: errcheck
+			return nil
+		}),
+	},
+}
+
+// MinerWorkerResult is a struct containing the result of a MinerWorker or MinerSetWorker command.
+type MinerWorkerResult struct {
+	WorkerAddress address.Address `json:"workerAddress"`
+}
+
+var minerWorkerAddressCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline:          "Show the address of the miner worker",
+		ShortDescription: "Show the address of the miner worker",
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		ret, err := GetPorcelainAPI(env).ConfigGet("mining.minerAddress")
+		if err != nil {
+			return errors.Wrap(err, "problem getting miner address")
+		}
+		minerAddr, ok := ret.(address.Address)
+		if !ok {
+			return errors.New("problem converting miner address")
+		}
+		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr)
+		if err != nil {
+			return errors.Wrap(err, "problem getting worker address")
+		}
+
+		res := MinerWorkerResult{WorkerAddress: workerAddr}
+		fmt.Printf("workerAddr: %s", res.WorkerAddress.String())
+		return re.Emit(&res)
+	},
+	Type: &MinerWorkerResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, result *MinerWorkerResult) error {
+			fmt.Fprintln(w, result.WorkerAddress.String()) // nolint: errcheck
+			return nil
 		}),
 	},
 }

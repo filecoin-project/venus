@@ -19,7 +19,9 @@ import (
 
 var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
 
-// InitCfg contains configuration for initializing a node
+// InitCfg contains configuration for initializing a node.
+// Note that the DefaultWalletAddress and AutoSealIntervalSeconds are just modifications to the
+// repo config and don't justify special treatment here (c.f others in commands/init.go).
 type InitCfg struct {
 	PeerKey                 ci.PrivKey
 	DefaultWalletAddress    address.Address

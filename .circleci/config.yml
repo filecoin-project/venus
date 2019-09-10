@@ -47,7 +47,7 @@ jobs:
       - update_submodules
       - generate_rust_submodules_checksums
       - restore_cache:
-          key: v8-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+          key: v9-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -74,7 +74,7 @@ jobs:
             curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output $HOME/.bin/jq
             chmod +x $HOME/.bin/jq
       - run:
-          name: Load submodules 
+          name: Load submodules
           command: git submodule update --init --recursive
       - go_build:
           cmd: "deps"
@@ -86,7 +86,7 @@ jobs:
           paths:
             - "~/filecoin-proof-parameters/"
       - save_cache:
-          key: v8-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+          key: v9-go-deps-{{ arch }}-{{ checksum  "~/go/src/github.com/filecoin-project/go-filecoin/build/main.go" }}-{{ checksum "~/go/src/github.com/filecoin-project/go-filecoin/go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
           paths:
             - "~/go/pkg"
             - "~/go/src/gx"
@@ -139,8 +139,8 @@ jobs:
       - generate_rust_submodules_checksums
       - restore_cache:
           keys:
-            - v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
-            - v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -161,7 +161,7 @@ jobs:
           paths:
             - "/home/circleci/filecoin-proof-parameters/"
       - save_cache:
-          key: v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+          key: v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -170,7 +170,7 @@ jobs:
             - "/home/circleci/.rustup"
             - "/home/circleci/.cargo"
       - save_cache:
-          key: v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+          key: v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
           paths:
             - "/go/pkg"
             - "/go/src/gx"
@@ -197,8 +197,8 @@ jobs:
       - generate_rust_submodules_checksums
       - restore_cache:
           keys:
-            - v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
-            - v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -252,8 +252,8 @@ jobs:
       - generate_rust_submodules_checksums
       - restore_cache:
           keys:
-            - v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
-            - v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -284,8 +284,8 @@ jobs:
       - generate_rust_submodules_checksums
       - restore_cache:
           keys:
-            - v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
-            - v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -320,8 +320,8 @@ jobs:
       - generate_rust_submodules_checksums
       - restore_cache:
           keys:
-            - v8-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
-            - v8-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ .Branch }}-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
+            - v9-go-deps-{{ arch }}-{{ checksum  "build/main.go" }}-{{ checksum "go.mod" }}-{{ checksum "/tmp/rust-submodules-checksums.txt" }}
       # The second checkout ensures we have the most recent code since the
       # restore_cache step above can override the go-filecoin code with cached code
       - git_fetch_all_tags
@@ -440,16 +440,16 @@ jobs:
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
               docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin-faucet:${FILECOIN_BINARY_VERSION}
             fi
+      - restore_cache:
+          key: v1-proof-params-large-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
       - run:
           name: build & push image - filecoin
           command: |
             export SHORT_GIT_SHA=$(echo $CIRCLE_SHA1 | cut -c -6)
             export ARTIFACT_TAG="${CIRCLE_TAG:-$SHORT_GIT_SHA}"
-            export FILECOIN_PARAMETER_CACHE="${HOME}/filecoin-proof-parameters"
+            export FILECOIN_PARAMETER_CACHE="./filecoin-proof-parameters"
             tar -xf "bundle/filecoin-$ARTIFACT_TAG-Linux.tar.gz"
-            ./filecoin/paramfetch --all -v || true
             ./filecoin/paramcache
-            mv $HOME/filecoin-proof-parameters ./filecoin-proof-parameters
             docker build -f Dockerfile.ci.filecoin --label "version=$SHORT_GIT_SHA" -t 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA --cache-from filecoin:all .
             docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA
             docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:latest
@@ -458,6 +458,10 @@ jobs:
               docker tag 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:$SHORT_GIT_SHA 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
               docker push 657871693752.dkr.ecr.us-east-1.amazonaws.com/filecoin:${FILECOIN_BINARY_VERSION}
             fi
+      - save_cache:
+          key: v1-proof-params-large-{{ arch }}-{{ checksum "/tmp/rust-fil-proofs-checksum.txt" }}
+          paths:
+            - "./filecoin-proof-parameters/"
 
   trigger_nightly_devnet_deploy:
     docker:

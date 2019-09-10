@@ -40,6 +40,16 @@ func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	logPeerTracker.Infof("Tracking %s, new=%t, count=%d", ci, !tracking, len(tracker.peers))
 }
 
+// Has returns true if this peerID is tracked
+func (tracker *PeerTracker) Has(pid peer.ID) bool {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+
+	pidKey := pid.Pretty()
+	_, ok := tracker.peers[pidKey]
+	return ok
+}
+
 // List returns the chain info of the currently tracked peers.  The info
 // tracked by the tracker can change arbitrarily after this is called -- there
 // is no guarantee that the peers returned will be tracked when they are used

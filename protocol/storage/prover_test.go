@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/proofs"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -39,17 +39,17 @@ func TestProver(t *testing.T) {
 			workerAddress: workerAddress,
 			lateFee:       types.ZeroAttoFIL,
 			balance:       collateralRequirement,
-			proofs:        []types.PoStProof{{1, 2, 3, 4}},
+			proof:         []byte{1, 2, 3, 4},
 			faults:        []uint64{},
 		}
 	}
 
 	t.Run("produces on-time proof", func(t *testing.T) {
 		pc := makeProofContext()
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.NoError(t, e)
-		assert.Equal(t, pc.proofs, submission.Proofs)
+		assert.Equal(t, pc.proof, submission.Proof)
 		assert.Equal(t, types.ZeroAttoFIL, submission.Fee)
 	})
 
@@ -66,10 +66,10 @@ func TestProver(t *testing.T) {
 
 		for _, height := range heights {
 			pc.height = height
-			prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+			prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 			submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 			require.NoError(t, e)
-			assert.Equal(t, pc.proofs, submission.Proofs)
+			assert.Equal(t, pc.proof, submission.Proof)
 			assert.True(t, submission.Fee.GreaterThan(types.ZeroAttoFIL))
 		}
 	})
@@ -78,7 +78,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = deadline // proof could only appear in block deadline+1
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -87,7 +87,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = start.Sub(types.NewBlockHeight(1))
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -96,7 +96,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.height = nil
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -105,7 +105,7 @@ func TestProver(t *testing.T) {
 		pc := makeProofContext()
 		pc.seed = nil
 
-		prover := storage.NewProver(actorAddress, workerAddress, sectorSize, pc, pc)
+		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
 		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
 		require.Error(t, e)
 	})
@@ -118,7 +118,7 @@ type fakeProverContext struct {
 	workerAddress address.Address
 	lateFee       types.AttoFIL
 	balance       types.AttoFIL
-	proofs        []types.PoStProof
+	proof         types.PoStProof
 	faults        []uint64
 }
 
@@ -147,6 +147,10 @@ func (f *fakeProverContext) WalletBalance(ctx context.Context, addr address.Addr
 	return types.ZeroAttoFIL, errors.New("no balance for worker")
 }
 
-func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs proofs.SortedCommRs, seed types.PoStChallengeSeed) ([]types.PoStProof, []uint64, error) {
-	return f.proofs, f.faults, nil
+func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs go_sectorbuilder.SortedSectorInfo, seed types.PoStChallengeSeed) (types.PoStProof, error) {
+	return f.proof, nil
+}
+
+func (f *fakeProverContext) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+	return f.workerAddress, nil
 }

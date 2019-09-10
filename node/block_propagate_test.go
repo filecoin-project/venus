@@ -160,14 +160,14 @@ func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr a
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodes(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	configOpts := []ConfigOpt{RewarderConfigOption(&ZeroRewarder{})}
+	configOpts := []ConfigOpt{RewarderConfigOption(&ZeroRewarder{}), ClockConfigOption(testhelpers.NewFakeSystemClock(time.Unix(1234567890, 0)))}
 	minerNode := MakeNodeWithChainSeed(t, seed, configOpts,
 		PeerKeyOpt(PeerKeys[0]),
 		AutoSealIntervalSecondsOpt(1),
 	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
-	_, err := storage.NewMiner(mineraddr, ownerAddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
+	_, err := storage.NewMiner(mineraddr, ownerAddr, &storage.FakeProver{}, types.OneKiBSectorSize, minerNode, minerNode.Repo.DealsDatastore(), minerNode.PorcelainAPI)
 	assert.NoError(t, err)
 
 	nodes := []*Node{minerNode}

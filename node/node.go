@@ -190,9 +190,18 @@ type Node struct {
 
 	// Router is a router from IPFS
 	Router routing.Routing
+
+	// ChainSynced is a latch that releases when a nodes chain reaches a caught-up state.
+	// It serves as a barrier to be released when the initial chain sync has completed.
+	// Services which depend on a more-or-less synced chain can wait for this before starting up.
+	ChainSynced *moresync.Latch
+
+	// Clock is a clock used by the node for time.
+	Clock clock.Clock
 }
 
 // Config is a helper to aid in the construction of a filecoin node.
+// This is poorly named and easily confused with config.Config. It's really a node factory pattern.
 type Config struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option
@@ -201,6 +210,7 @@ type Config struct {
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
 	IsRelay     bool
+	Clock       clock.Clock
 }
 
 // ConfigOpt is a configuration option for a filecoin node.
@@ -254,6 +264,14 @@ func VerifierConfigOption(verifier verification.Verifier) ConfigOpt {
 func RewarderConfigOption(rewarder consensus.BlockRewarder) ConfigOpt {
 	return func(c *Config) error {
 		c.Rewarder = rewarder
+		return nil
+	}
+}
+
+// ClockConfigOption returns a function that sets the clock to use in the node.
+func ClockConfigOption(clk clock.Clock) ConfigOpt {
+	return func(c *Config) error {
+		c.Clock = clk
 		return nil
 	}
 }
@@ -347,6 +365,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	if nc.Repo == nil {
 		nc.Repo = repo.NewInMemoryRepo()
 	}
+	if nc.Clock == nil {
+		nc.Clock = clock.NewSystemClock()
+	}
 
 	bs := bstore.NewBlockstore(nc.Repo.Datastore())
 
@@ -389,7 +410,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, clock.NewSystemClock())
+	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, nc.Clock)
 
 	// set up peer tracking
 	peerTracker := net.NewPeerTracker()
@@ -413,8 +434,9 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	chainStatusReporter := chain.NewStatusReporter()
 	// set up chain and message stores
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, genCid)
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
@@ -455,7 +477,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher)
+	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, nc.Clock)
 	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
 
@@ -468,8 +490,10 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 		blockservice: bservice,
 		Blockstore:   bs,
 		cborStore:    &ipldCborStore,
+		Clock:        nc.Clock,
 		Consensus:    nodeConsensus,
 		ChainReader:  chainStore,
+		ChainSynced:  moresync.NewLatch(1),
 		MessageStore: messageStore,
 		Syncer:       chainSyncer,
 		PowerTable:   powerTable,
@@ -489,6 +513,7 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:       bswap,
 		Chain:         chainState,
+		Sync:          cst.NewChainSyncProvider(chainSyncer),
 		Config:        cfg.NewConfig(nc.Repo),
 		DAG:           dag.NewDAG(merkledag.NewDAGService(bservice)),
 		Deals:         strgdls.New(nc.Repo.DealsDatastore()),
@@ -570,10 +595,6 @@ func (node *Node) Start(ctx context.Context) error {
 		// Register peer tracker disconnect function with network.
 		net.TrackerRegisterDisconnect(node.host.Network(), node.PeerTracker)
 
-		// Establish a barrier to be released when the initial chain sync has completed.
-		// Services which depend on a more-or-less synced chain can wait for this before starting up.
-		chainSynced := moresync.NewLatch(1)
-
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
@@ -595,13 +616,13 @@ func (node *Node) Start(ctx context.Context) error {
 			// sync done until it's caught up enough that it will accept blocks from pubsub.
 			// This might require additional rounds of hello.
 			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			chainSynced.Done()
+			node.ChainSynced.Done()
 		}
 		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
-			chainSynced.Wait()
+			node.ChainSynced.Wait()
 
 			// Log some information about the synced chain
 			if ts, err := node.ChainReader.GetTipSet(node.ChainReader.GetHead()); err == nil {
@@ -897,11 +918,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to get mining owner address for miner %s", minerAddr)
 	}
 
-	minerWorkerAddr, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
-	if err != nil {
-		return errors.Wrap(err, "could not get worker address from miner actor")
-	}
-
 	_, mineDelay := node.MiningTimes()
 
 	if node.MiningScheduler == nil {
@@ -920,10 +936,12 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.miningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
 
-	// initialize the storage fault slasher if appropriate
-	if err = node.initStorageFaultSlasherForNode(ctx, minerWorkerAddr); err != nil {
-		return errors.Wrap(err, "failure in initStorageFaultSlasherForNode")
-	}
+	// initialize the storage fault slasher
+	node.StorageFaultSlasher = storage.NewFaultSlasher(
+		node.PorcelainAPI,
+		node.Outbox,
+		storage.DefaultFaultSlasherGasPrice,
+		storage.DefaultFaultSlasherGasLimit)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -940,11 +958,20 @@ func (node *Node) StartMining(ctx context.Context) error {
 					gasUnits := types.NewGasUnits(300)
 
 					val := result.SealingResult
+
+					// look up miner worker address. If this fails, something is really wrong
+					// so we bail and don't commit sectors.
+					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr)
+					if err != nil {
+						log.Errorf("failed to get worker address %s", err)
+						continue
+					}
+
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
 					msgCid, err := node.PorcelainAPI.MessageSend(
 						miningCtx,
-						minerOwnerAddr,
+						workerAddr,
 						minerAddr,
 						types.ZeroAttoFIL,
 						gasPrice,
@@ -1049,7 +1076,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-// initStorageMinerForNode initializes the storage miner, returnning the miner, the miner owner address (to be
+// initStorageMinerForNode initializes the storage miner, returning the miner, the miner owner address (to be
 // passed to storage fault slasher) and any error
 func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, address.Address, error) {
 	minerAddr, err := node.MiningAddress()
@@ -1061,19 +1088,22 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
-	workerAddress := ownerAddress
+
+	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
+	if err != nil {
+		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's worker address")
+	}
 
 	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's sector size")
 	}
 
-	prover := storage.NewProver(minerAddr, workerAddress, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
+	prover := storage.NewProver(minerAddr, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
 
 	miner, err := storage.NewMiner(
 		minerAddr,
 		ownerAddress,
-		workerAddress,
 		prover,
 		sectorSize,
 		node,
@@ -1084,17 +1114,6 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 	}
 
 	return miner, workerAddress, nil
-}
-
-// initStorageFaultSlasherForNode sets node.FaultSlasher
-func (node *Node) initStorageFaultSlasherForNode(ctx context.Context, workerAddress address.Address) error {
-	node.StorageFaultSlasher = storage.NewFaultSlasher(
-		node.PorcelainAPI,
-		node.Outbox,
-		workerAddress,
-		storage.DefaultFaultSlasherGasPrice,
-		storage.DefaultFaultSlasherGasLimit)
-	return nil
 }
 
 // StopMining stops mining on new blocks.
@@ -1179,11 +1198,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		return nil, errors.Wrap(err, "failed to get mining address")
 	}
 
-	minerWorker, err := node.PorcelainAPI.MinerGetWorker(ctx, minerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not get key from miner actor")
-	}
-
 	minerOwnerAddr, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
 		log.Errorf("could not get owner address of miner actor")
@@ -1194,7 +1208,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
-		MinerWorker:    minerWorker,
 		WorkerSigner:   node.Wallet,
 
 		GetStateTree: node.getStateTree,

@@ -1,24 +1,18 @@
 package clock
 
 import (
-	"time"
+	"github.com/jonboulle/clockwork"
 )
 
-// Clock defines an interface for fetching time that may be used instead of the
-// time module.
+// Clock provides an interface that packages can use instead of directly
+// using the time module, so that chronology-related behavior can be tested.
 type Clock interface {
-	Now() time.Time
+	clockwork.Clock
 }
 
-// SystemClock delegates calls to the time package.
-type SystemClock struct{}
-
-// NewSystemClock returns a SystemClock that delegates calls to the time package.
-func NewSystemClock() *SystemClock {
-	return &SystemClock{}
-}
-
-// Now returns the current local time.
-func (bc *SystemClock) Now() time.Time {
-	return time.Now()
+// NewSystemClock returns a SystemClock that delegates calls to the jonboulee/clockwork package.
+// SystemClock is a Clock which simply delegates calls to the actual time
+// package; it should be used by packages in production.
+func NewSystemClock() Clock {
+	return clockwork.NewRealClock()
 }

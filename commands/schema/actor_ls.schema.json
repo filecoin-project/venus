@@ -14,6 +14,13 @@
       "type": "object",
       "additionalProperties": { "$ref": "#/definitions/Export" }
     },
+    "InitMemory": {
+      "type": "object",
+      "properties": {
+        "Network": { "type": "string" }
+      },
+      "required": ["Network"]
+    },
     "MinerMemory": {
       "type": "object",
       "properties": {
@@ -155,6 +162,17 @@
               ]
             },
             "memory": { "$ref": "#/definitions/StorageMarketMemory" }
+          }
+        },
+        {
+          "properties": {
+            "actorType": {
+              "type": "string",
+              "enum": [
+                "InitActor"
+              ]
+            },
+            "memory": { "$ref": "#/definitions/InitMemory" }
           }
         },
         {
