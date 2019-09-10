@@ -16,6 +16,13 @@ type BlockValidator interface {
 	BlockSyntaxValidator
 }
 
+// SyntaxValidator defines and interface used to validate block's syntax and the
+// syntax of constituent messages
+type SyntaxValidator interface {
+	BlockSyntaxValidator
+	MessageSyntaxValidator
+}
+
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
@@ -26,6 +33,13 @@ type BlockSemanticValidator interface {
 // syntax.
 type BlockSyntaxValidator interface {
 	ValidateSyntax(ctx context.Context, blk *types.Block) error
+}
+
+// MessageSyntaxValidator defines an interface used to validate collections
+// of messages and receipts syntax
+type MessageSyntaxValidator interface {
+	ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error
+	ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error
 }
 
 // DefaultBlockValidator implements the BlockValidator interface.
@@ -102,4 +116,18 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 /// blocks against.
 func (dv *DefaultBlockValidator) BlockTime() time.Duration {
 	return dv.blockTime
+}
+
+// ValidateMessagesSyntax validates a set of messages are correctly formed.
+// TODO: Create a real implementation
+// See: https://github.com/filecoin-project/go-filecoin/issues/3312
+func (dv *DefaultBlockValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+	return nil
+}
+
+// ValidateReceiptsSyntax validates a set of receipts are correctly formed.
+// TODO: Create a real implementation
+// See: https://github.com/filecoin-project/go-filecoin/issues/3312
+func (dv *DefaultBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
+	return nil
 }

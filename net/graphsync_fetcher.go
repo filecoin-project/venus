@@ -55,25 +55,23 @@ type graphsyncFallbackPeerTracker interface {
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
-	exchange         GraphExchange
-	messageValidator consensus.MessageSyntaxValidator
-	validator        consensus.BlockSyntaxValidator
-	store            bstore.Blockstore
-	ssb              selectorbuilder.SelectorSpecBuilder
-	peerTracker      graphsyncFallbackPeerTracker
+	exchange    GraphExchange
+	validator   consensus.SyntaxValidator
+	store       bstore.Blockstore
+	ssb         selectorbuilder.SelectorSpecBuilder
+	peerTracker graphsyncFallbackPeerTracker
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.BlockSyntaxValidator, mv consensus.MessageSyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	bv consensus.SyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
-		store:            blockstore,
-		validator:        bv,
-		messageValidator: mv,
-		exchange:         exchange,
-		ssb:              selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
-		peerTracker:      pt,
+		store:       blockstore,
+		validator:   bv,
+		exchange:    exchange,
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		peerTracker: pt,
 	}
 	return gsf
 }
@@ -283,10 +281,37 @@ func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSet
 		return types.UndefTipSet, nil, err
 	}
 
-	err = gsf.loadMessages(ctx, tip, incomplete)
+	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
+		func(blk *types.Block) cid.Cid { return blk.Messages }, func(rawBlock blocks.Block) error {
+			messages, err := types.DecodeMessages(rawBlock.RawData())
+			if err != nil {
+				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
+			}
+			if err := gsf.validator.ValidateMessagesSyntax(ctx, messages); err != nil {
+				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
+			}
+			return nil
+		})
 	if err != nil {
 		return types.UndefTipSet, nil, err
 	}
+
+	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
+		func(blk *types.Block) cid.Cid { return blk.MessageReceipts }, func(rawBlock blocks.Block) error {
+			receipts, err := types.DecodeReceipts(rawBlock.RawData())
+			if err != nil {
+				return errors.Wrapf(err, "fetched data (cid %s) was not a message receipt collection", rawBlock.Cid().String())
+			}
+			if err := gsf.validator.ValidateReceiptsSyntax(ctx, receipts); err != nil {
+				return errors.Wrapf(err, "invalid receipts for for receipt collection (cid %s)", rawBlock.Cid())
+			}
+			return nil
+		})
+
+	if err != nil {
+		return types.UndefTipSet, nil, err
+	}
+
 	if len(incomplete) > 0 {
 		incompleteArr := make([]cid.Cid, 0, len(incomplete))
 		for cid := range incomplete {
@@ -327,52 +352,41 @@ func (gsf *GraphSyncFetcher) loadTipHeaders(ctx context.Context, key types.TipSe
 	return tip, err
 }
 
+type getBlockComponentFn func(*types.Block) cid.Cid
+type verifyComponentFn func(blocks.Block) error
+
 // Loads and validates the block messages for a tipset. Returns the tipset if complete,
 // else the cids of blocks which are not yet stored.
-func (gsf *GraphSyncFetcher) loadMessages(ctx context.Context, tip types.TipSet, incomplete map[cid.Cid]struct{}) error {
-	var collections [2][]blocks.Block
-	for i := range collections {
-		collections[i] = make([]blocks.Block, 0, tip.Len())
-	}
+func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
+	tip types.TipSet,
+	incomplete map[cid.Cid]struct{},
+	getBlockComponent getBlockComponentFn,
+	verifyComponent verifyComponentFn) error {
+	subComponents := make([]blocks.Block, 0, tip.Len())
 
 	// Check that nested structures are also stored, recording any that are missing as incomplete.
 	for i := 0; i < tip.Len(); i++ {
 		blk := tip.At(i)
-		for j, link := range []cid.Cid{blk.Messages, blk.MessageReceipts} {
-			// TODO: validate the structures, don't just check for their presence #3232
-			ok, err := gsf.store.Has(link)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				incomplete[blk.Cid()] = struct{}{}
-				continue
-			}
-			rawBlock, err := gsf.store.Get(link)
-			if err != nil {
-				return err
-			}
-			collections[j] = append(collections[j], rawBlock)
+		link := getBlockComponent(blk)
+		ok, err := gsf.store.Has(link)
+		if err != nil {
+			return err
 		}
+		if !ok {
+			incomplete[blk.Cid()] = struct{}{}
+			continue
+		}
+		rawBlock, err := gsf.store.Get(link)
+		if err != nil {
+			return err
+		}
+		subComponents = append(subComponents, rawBlock)
 	}
 
-	for _, rawBlock := range collections[0] {
-		messages, err := types.DecodeMessages(rawBlock.RawData())
+	for _, rawBlock := range subComponents {
+		err := verifyComponent(rawBlock)
 		if err != nil {
-			return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
-		}
-		if err := gsf.messageValidator.ValidateMessagesSyntax(ctx, messages); err != nil {
-			return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-		}
-	}
-
-	for _, rawBlock := range collections[1] {
-		receipts, err := types.DecodeReceipts(rawBlock.RawData())
-		if err != nil {
-			return errors.Wrapf(err, "fetched data (cid %s) was not a message receipt collection", rawBlock.Cid().String())
-		}
-		if err := gsf.messageValidator.ValidateReceiptsSyntax(ctx, receipts); err != nil {
-			return errors.Wrapf(err, "invalid receipts for for receipt collection (cid %s)", rawBlock.Cid())
+			return err
 		}
 	}
 
