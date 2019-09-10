@@ -45,7 +45,7 @@ type smsgs []*types.SignedMessage
 type smsgsSet [][]*types.SignedMessage
 
 func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
-	d := requiredCommonDeps(t, consensus.DefaultGenesis)
+	d := requiredCommonDeps(t, th.DefaultGenesis)
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 

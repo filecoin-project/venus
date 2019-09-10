@@ -36,7 +36,7 @@ type NodeBuilder struct {
 // NewNodeBuilder creates a new node builder.
 func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 	return &NodeBuilder{
-		gif:      consensus.MakeGenesisFunc(consensus.NetworkName("test")),
+		gif:      consensus.MakeGenesisFunc(consensus.NetworkName("go-filecoin-test")),
 		initOpts: []node.InitOpt{},
 		configMutations: []func(*config.Config){
 			// Default configurations that make sense for integration tests.

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
 	sbtesting "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/testing"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -209,7 +208,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	vms := vm.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
-	blk, err := consensus.DefaultGenesis(cst, bs)
+	blk, err := th.DefaultGenesis(cst, bs)
 	require.NoError(err)
 
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)

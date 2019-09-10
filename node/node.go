@@ -11,6 +11,7 @@ import (
 	"time"
 
 	ps "github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -71,6 +72,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
+	"github.com/filecoin-project/go-filecoin/version"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -113,6 +115,7 @@ type Node struct {
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
+	VersionTable version.ProtocolVersionTable
 
 	BlockMiningAPI *block.MiningAPI
 	PorcelainAPI   *porcelain.API
@@ -440,6 +443,18 @@ func (nc *Config) Build(ctx context.Context) (*Node, error) {
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
+
+	// create protocol upgrade table
+	network, err := networkNameFromGenesis(ctx, chainStore, bs)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: inject protocol upgrade table into code that requires it (#3360)
+	_, err = version.ConfigureProtocolVersions(network)
+	if err != nil {
+		return nil, err
+	}
 
 	// set up processor
 	var processor consensus.Processor
@@ -1018,6 +1033,24 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.setIsMining(true)
 
 	return nil
+}
+
+// NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
+// The network name can not change while this node is running. Since the network name determines
+// the protocol version, we must retrieve it at genesis where the protocol is known.
+func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
+	st, err := chainStore.GetGenesisState(ctx)
+	if err != nil {
+		return "", errors.Wrap(err, "could not get genesis state")
+	}
+
+	vms := vm.NewStorageMap(bs)
+	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
+	if err != nil {
+		return "", errors.Wrap(err, "error querying for network name")
+	}
+
+	return string(res[0]), nil
 }
 
 func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {

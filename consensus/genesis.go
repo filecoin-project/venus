@@ -99,6 +99,14 @@ func NetworkName(name string) GenOption {
 	}
 }
 
+// Network sets the network name for the network created by the genesis node.
+func Network(name string) GenOption {
+	return func(gc *Config) error {
+		gc.network = name
+		return nil
+	}
+}
+
 // ProofsMode sets the mode of operation for the proofs library.
 func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	return func(gc *Config) error {
@@ -213,11 +221,6 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		return genesis, nil
 	}
-}
-
-// DefaultGenesis creates a genesis block with default accounts and actors installed.
-func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-	return MakeGenesisFunc()(cst, bs)
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
