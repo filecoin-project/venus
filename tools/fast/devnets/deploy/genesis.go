@@ -127,12 +127,20 @@ func (p *GenesisProfile) Post() error {
 		return err
 	}
 
+	ctxWaitForAPI, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	if err := WaitForAPI(ctxWaitForAPI, node); err != nil {
+		return err
+	}
+	cancel()
+
 	defer node.DumpLastOutput(os.Stdout)
 
 	var minerAddress address.Address
 	if err := node.ConfigGet(ctx, "mining.minerAddress", &minerAddress); err != nil {
 		return err
 	}
+
+	// If the miner address is set then we are restarting
 	if minerAddress == address.Undef {
 		walletReader, err := os.Open(p.config.WalletFile)
 		if err != nil {

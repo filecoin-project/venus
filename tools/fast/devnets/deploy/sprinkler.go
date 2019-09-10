@@ -78,9 +78,9 @@ func NewSprinklerProfile(configfile string) (Profile, error) {
 	return &SprinklerPro{config, runner}, nil
 }
 
-func (p *SprinklerPro) Pre() error { return nil }
+func (p *SprinklerPro) Pre() error    { return nil }
 func (p *SprinklerPro) Daemon() error { return nil }
-func (p *SprinklerPro) Post() error { return nil }
+func (p *SprinklerPro) Post() error   { return nil }
 func (p *SprinklerPro) Main() error {
 	ctx := context.Background()
 	tmpdir, err := ioutil.TempDir("", "deal-maker")
@@ -170,4 +170,3 @@ func (p *SprinklerPro) Main() error {
 	}
 	return nil
 }
-

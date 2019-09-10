@@ -128,14 +128,6 @@ func (p *BootstrapProfile) Daemon() error {
 }
 
 func (p *BootstrapProfile) Post() error {
-	ctx := context.Background()
-	node, err := GetNode(ctx, lpfc.PluginName, p.runner.WorkingDir, p.runner.PluginOptions, p.runner.ProcessArgs)
-	if err != nil {
-		return err
-	}
-
-	defer node.DumpLastOutput(os.Stdout)
-
 	return nil
 }
 

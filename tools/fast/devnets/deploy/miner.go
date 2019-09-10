@@ -129,12 +129,21 @@ func (p *MinerProfile) Post() error {
 	if err != nil {
 		return err
 	}
+
+	ctxWaitForAPI, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	if err := WaitForAPI(ctxWaitForAPI, miner); err != nil {
+		return err
+	}
+	cancel()
+
 	defer miner.DumpLastOutput(os.Stdout)
 
 	var minerAddress address.Address
 	if err := miner.ConfigGet(ctx, "mining.minerAddress", &minerAddress); err != nil {
 		return err
 	}
+
+	// If the miner address is set then we are restarting
 	if minerAddress == address.Undef {
 		if err := FaucetRequest(ctx, miner, p.config.FaucetURL); err != nil {
 			return err
@@ -162,6 +171,23 @@ func (p *MinerProfile) Post() error {
 		}
 	}
 	return nil
+}
+
+// WaitForAPI will poll the ID command eveyr minutes and wait for it to return without error
+// or until the context is done. An error is only returned if the context returns an error.
+func WaitForAPI(ctx context.Context, p *fast.Filecoin) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Minute):
+			if _, err := p.ID(); err != nil {
+				continue
+			}
+
+			return nil
+		}
+	}
 }
 
 func FaucetRequest(ctx context.Context, p *fast.Filecoin, uri string) error {
