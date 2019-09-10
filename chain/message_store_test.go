@@ -2,7 +2,6 @@ package chain_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-hamt-ipld"
@@ -43,7 +42,7 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 
 func TestMessageStoreReceiptsHappy(t *testing.T) {
 	ctx := context.Background()
-	mr := NewReceiptMaker()
+	mr := types.NewReceiptMaker()
 
 	receipts := []*types.MessageReceipt{
 		mr.NewReceipt(),
@@ -59,20 +58,4 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, receipts, rtReceipts)
-}
-
-type ReceiptMaker struct {
-	seq uint
-}
-
-// NewReceiptMaker creates a new receipt maker
-func NewReceiptMaker() *ReceiptMaker {
-	return &ReceiptMaker{0}
-}
-
-// NewReceipt creates a new distinct receipt.
-func (rm *ReceiptMaker) NewReceipt() *types.MessageReceipt {
-	seq := rm.seq
-	rm.seq++
-	return &types.MessageReceipt{Return: [][]byte{[]byte(fmt.Sprintf("%d", seq))}}
 }

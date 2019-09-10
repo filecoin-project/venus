@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -141,6 +141,16 @@ func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *type
 
 // ValidateSyntax does nothing.
 func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+	return nil
+}
+
+// ValidateMessagesSyntax does nothing
+func (fbv *FakeBlockValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+	return nil
+}
+
+// ValidateReceiptsSyntax does nothing
+func (fbv *FakeBlockValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
 	return nil
 }
 
