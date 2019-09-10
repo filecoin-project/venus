@@ -32,8 +32,13 @@ func TestMessageQueue(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	requireRemoveNext := func(q *core.MessageQueue, sender address.Address, expected uint64) *types.SignedMessage {
-		msg, found, e := q.RemoveNext(ctx, sender, expected)
+	requireRequeue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) {
+		err := q.Requeue(ctx, msg, stamp)
+		require.NoError(t, err)
+	}
+
+	requireRemoveNext := func(q *core.MessageQueue, sender address.Address, expectedNonce uint64) *types.SignedMessage {
+		msg, found, e := q.RemoveNext(ctx, sender, expectedNonce)
 		require.True(t, found)
 		require.NoError(t, e)
 		return msg
@@ -102,6 +107,38 @@ func TestMessageQueue(t *testing.T) {
 		msg = requireRemoveNext(q, alice, 2)
 		assert.Equal(t, msgs[2], msg)
 		assert.Equal(t, int64(0), q.Size())
+	})
+
+	t.Run("requeue", func(t *testing.T) {
+		msgs := []*types.SignedMessage{
+			mm.NewSignedMessage(alice, 0),
+			mm.NewSignedMessage(alice, 1),
+			mm.NewSignedMessage(alice, 2),
+		}
+		q := core.NewMessageQueue()
+		requireEnqueue(q, msgs[0], 0)
+		requireEnqueue(q, msgs[1], 0)
+
+		// Can't re-queue message with larger nonce
+		assert.Error(t, q.Requeue(ctx, msgs[2], 0))
+		requireEnqueue(q, msgs[2], 0)
+
+		assert.Equal(t, msgs[0], requireRemoveNext(q, alice, 0))
+		requireRequeue(q, msgs[0], 0)
+
+		assert.Equal(t, msgs[0], requireRemoveNext(q, alice, 0))
+		assert.Equal(t, msgs[1], requireRemoveNext(q, alice, 1))
+		assert.Error(t, q.Requeue(ctx, msgs[0], 0)) // Can't re-queue with nonce gap
+
+		requireRequeue(q, msgs[1], 0)
+		requireRequeue(q, msgs[0], 0)
+
+		assert.Equal(t, msgs[0], requireRemoveNext(q, alice, 0))
+		assert.Equal(t, msgs[1], requireRemoveNext(q, alice, 1))
+		assert.Equal(t, msgs[2], requireRemoveNext(q, alice, 2))
+
+		// Queue is empty, can re-queue anything
+		requireRequeue(q, mm.NewSignedMessage(alice, 3), 0)
 	})
 
 	t.Run("invalid nonce sequence", func(t *testing.T) {

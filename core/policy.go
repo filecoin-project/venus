@@ -30,6 +30,7 @@ type QueuePolicy interface {
 // PolicyTarget is outbound queue object on which the policy acts.
 type PolicyTarget interface {
 	RemoveNext(ctx context.Context, sender address.Address, expectedNonce uint64) (msg *types.SignedMessage, found bool, err error)
+	Requeue(ctx context.Context, msg *types.SignedMessage, stamp uint64) error
 	ExpireBefore(ctx context.Context, stamp uint64) map[address.Address][]*types.SignedMessage
 }
 
@@ -54,7 +55,22 @@ func NewMessageQueuePolicy(messages MessageProvider, maxAge uint) *DefaultQueueP
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.
 func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error {
-	// Rearrange the tipsets into increasing height order so messages are discovered in nonce order.
+	chainHeight := uint64(0)
+	var err error
+	if len(newTips) > 0 {
+		chainHeight, err = newTips[0].Height()
+		if err != nil {
+			return err
+		}
+	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.
+		chainHeight, err = oldTips[0].Height()
+		if err != nil {
+			return err
+		}
+	} // Else this method won't do anything so height doesn't matter.
+
+	// Remove all messages in the new chain from the queue since they have been mined into blocks.
+	// Rearrange the tipsets into ascending height order so messages are discovered in nonce order.
 	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
@@ -76,17 +92,34 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 		}
 	}
 
-	// Expire messages that have been in the queue for too long; they will probably never be mined.
-	if len(newTips) > 0 {
-		height, err := newTips[0].Height()
-		if err != nil {
-			return err
-		}
-		if height >= p.maxAgeRounds { // avoid uint subtraction overflow
-			expired := target.ExpireBefore(ctx, (height - p.maxAgeRounds))
-			for _, msg := range expired {
-				log.Warningf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
+	// Return messages from the old chain back to the queue. This is necessary so that the next nonce
+	// implied by the queue+state matches that of the message pool (which will also have the un-mined
+	// message re-instated).
+	// Note that this will include messages that were never sent by this node since the queue doesn't
+	// keep track of "allowed" senders. However, messages from other addresses will expire
+	// harmlessly.
+	// See discussion in https://github.com/filecoin-project/go-filecoin/issues/3052
+	// Traverse these in descending height order.
+	for _, tipset := range oldTips {
+		for i := 0; i < tipset.Len(); i++ {
+			msgs, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			if err != nil {
+				return err
 			}
+			for _, restoredMsg := range msgs {
+				err := target.Requeue(ctx, restoredMsg, chainHeight)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Expire messages that have been in the queue for too long; they will probably never be mined.
+	if chainHeight >= p.maxAgeRounds { // avoid uint subtraction overflow
+		expired := target.ExpireBefore(ctx, chainHeight-p.maxAgeRounds)
+		for _, msg := range expired {
+			log.Warningf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
 		}
 	}
 	return nil
