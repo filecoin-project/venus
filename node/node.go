@@ -20,6 +20,7 @@ import (
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/pkg/errors"
 
@@ -270,6 +271,15 @@ func (node *Node) Start(ctx context.Context) error {
 			node.ChainSynced.Done()
 		}
 		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
+
+		// register the update function on the peer tracker now that we have a hello service
+		node.PeerTracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
+			hmsg, err := node.HelloSvc.ReceiveHello(ctx, p)
+			if err != nil {
+				return nil, err
+			}
+			return types.NewChainInfo(p, hmsg.HeaviestTipSetCids, hmsg.HeaviestTipSetHeight), nil
+		})
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
