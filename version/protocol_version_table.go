@@ -20,24 +20,24 @@ type ProtocolVersionTable struct {
 	versions []protocolVersion
 }
 
-// VersionAt returns the protocol versions at the given block height for this PUT's network.
-func (put *ProtocolVersionTable) VersionAt(height *types.BlockHeight) (uint64, error) {
+// VersionAt returns the protocol versions at the given block height for this PVT's network.
+func (pvt *ProtocolVersionTable) VersionAt(height *types.BlockHeight) (uint64, error) {
 	// find index of first version that is not yet active (or len(versions) if they are all active.
-	idx := sort.Search(len(put.versions), func(i int) bool {
-		return height.LessThan(put.versions[i].EffectiveAt)
+	idx := sort.Search(len(pvt.versions), func(i int) bool {
+		return height.LessThan(pvt.versions[i].EffectiveAt)
 	})
 
 	// providing a height less than the first version is an error
 	if idx == 0 {
-		if len(put.versions) == 0 {
+		if len(pvt.versions) == 0 {
 			return 0, errors.Errorf("no protocol versions")
 		}
 		return 0, errors.Errorf("chain height %s is less than effective start of first version %s",
-			height.String(), put.versions[0].EffectiveAt.String())
+			height.String(), pvt.versions[0].EffectiveAt.String())
 	}
 
 	// return the version just prior to the index to get the last version in effect.
-	return put.versions[idx-1].Version, nil
+	return pvt.versions[idx-1].Version, nil
 }
 
 // ProtocolVersionTableBuilder constructs a protocol version table
@@ -55,10 +55,10 @@ func NewProtocolVersionTableBuilder(network string) *ProtocolVersionTableBuilder
 }
 
 // Add configures an version for a network. If the network doesn't match the current network, this version will be ignored.
-func (putb *ProtocolVersionTableBuilder) Add(network string, version uint64, effectiveAt *types.BlockHeight) *ProtocolVersionTableBuilder {
+func (pvtb *ProtocolVersionTableBuilder) Add(network string, version uint64, effectiveAt *types.BlockHeight) *ProtocolVersionTableBuilder {
 	// ignore version if not part of our network
-	if network != putb.network {
-		return putb
+	if network != pvtb.network {
+		return pvtb
 	}
 
 	protocolVersion := protocolVersion{
@@ -66,27 +66,27 @@ func (putb *ProtocolVersionTableBuilder) Add(network string, version uint64, eff
 		EffectiveAt: effectiveAt,
 	}
 
-	putb.versions = append(putb.versions, protocolVersion)
+	pvtb.versions = append(pvtb.versions, protocolVersion)
 
-	return putb
+	return pvtb
 }
 
 // Build constructs a protocol version table populated with properly sorted versions.
 // It is an error to build whose first version is not at block height 0.
-func (putb *ProtocolVersionTableBuilder) Build() (*ProtocolVersionTable, error) {
+func (pvtb *ProtocolVersionTableBuilder) Build() (*ProtocolVersionTable, error) {
 	// sort versions in place
-	sort.Sort(putb.versions)
+	sort.Sort(pvtb.versions)
 
 	// copy to insure an Add doesn't alter the table
-	versions := make([]protocolVersion, len(putb.versions))
-	copy(versions, putb.versions)
+	versions := make([]protocolVersion, len(pvtb.versions))
+	copy(versions, pvtb.versions)
 
 	// enforce that the current network has an entry at block height zero
 	if len(versions) == 0 {
-		return nil, errors.Errorf("no protocol versions specified for network %s", putb.network)
+		return nil, errors.Errorf("no protocol versions specified for network %s", pvtb.network)
 	}
 	if !versions[0].EffectiveAt.Equal(types.NewBlockHeight(0)) {
-		return nil, errors.Errorf("no protocol version at genesis for network %s", putb.network)
+		return nil, errors.Errorf("no protocol version at genesis for network %s", pvtb.network)
 	}
 
 	// enforce that version numbers increase monotonically with effective at
