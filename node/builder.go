@@ -191,7 +191,7 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, nc.Clock)
 
 	// set up peer tracking
-	peerTracker := net.NewPeerTracker()
+	peerTracker := net.NewPeerTracker(peerHost.ID())
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)

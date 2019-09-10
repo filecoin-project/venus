@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ import (
 func TestPeerTrackerTracks(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker()
+	tracker := net.NewPeerTracker(peer.ID(""))
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -44,7 +45,7 @@ func TestPeerTrackerTracks(t *testing.T) {
 func TestPeerTrackerRemove(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker()
+	tracker := net.NewPeerTracker(peer.ID(""))
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -94,7 +95,7 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	// self is the tracking node
 	// self tracks peers a and b
 	// self does not track peer c
-	tracker := net.NewPeerTracker()
+	tracker := net.NewPeerTracker(peer.ID(""))
 	tracker.Track(aCI)
 	tracker.Track(bCI)
 

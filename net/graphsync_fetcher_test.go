@@ -97,11 +97,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 		})
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
 		mgs := newMockableGraphsync(ctx, bs, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, &fakePeerTracker{})
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -122,9 +125,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 		})
 		height, err := final.Height()
 		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
-		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
+		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		mgs := newMockableGraphsync(ctx, bs, t)
 		pid0Loader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
@@ -156,9 +160,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 		})
 		height, err := final.Height()
 		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
-		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
+		pt := newFakePeerTracker(chain0, chain1, chain2)
 		mgs := newMockableGraphsync(ctx, bs, t)
 		errorLoader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorLoader, final.Key().ToSlice()...)
@@ -185,9 +190,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 		})
 		height, err := final.Height()
 		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
-		pt := &fakePeerTracker{[]*types.ChainInfo{chain1, chain2}}
+		pt := newFakePeerTracker(chain0, chain1, chain2)
 
 		blocks := make([]*types.Block, 4) // in fetch order
 		prev := final.At(0)
@@ -291,7 +297,8 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
-	pt := net.NewPeerTracker()
+	pt := net.NewPeerTracker(peer.ID(""))
+	pt.Track(types.NewChainInfo(host2.ID(), types.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
 	localStorer := gsstoreutil.StorerForBlockstore(bs)
@@ -571,6 +578,21 @@ type fakePeerTracker struct {
 	peers []*types.ChainInfo
 }
 
+func newFakePeerTracker(cis ...*types.ChainInfo) *fakePeerTracker {
+	return &fakePeerTracker{
+		peers: cis,
+	}
+}
+
 func (fpt *fakePeerTracker) List() []*types.ChainInfo {
 	return fpt.peers
+}
+
+func (fpt *fakePeerTracker) Self() peer.ID {
+	return peer.ID("")
+}
+
+func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) {
+	err := bs.Put(data)
+	require.NoError(t, err)
 }
