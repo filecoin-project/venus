@@ -106,8 +106,13 @@ const recursionMultiplier = 4
 // go-filecoin migrates to the same IPLD library used by go-graphsync (go-ipld-prime)
 //
 // See: https://github.com/filecoin-project/go-filecoin/issues/3175
-func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, initialPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
-	rpf, err := newRequestPeerFinder(gsf.peerTracker, initialPeer)
+func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, originatingPeer peer.ID, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+	// We can run into issues if we fetch from an originatingPeer that we
+	// are not already connected to so we usually ignore this value.
+	// However if the originator is our own peer ID (i.e. this node mined
+	// the block) then we need to fetch from ourselves to retrieve it
+	fetchFromSelf := originatingPeer == gsf.peerTracker.Self()
+	rpf, err := newRequestPeerFinder(gsf.peerTracker, fetchFromSelf)
 	if err != nil {
 		return nil, err
 	}
@@ -331,16 +336,17 @@ type requestPeerFinder struct {
 	triedPeers  map[peer.ID]struct{}
 }
 
-func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, initialPeer peer.ID) (*requestPeerFinder, error) {
+func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, fetchFromSelf bool) (*requestPeerFinder, error) {
 	pri := &requestPeerFinder{
 		peerTracker: peerTracker,
 		triedPeers:  make(map[peer.ID]struct{}),
 	}
 
-	// Use the initialPeer's ID if it is our own
-	if peerTracker.Self() == initialPeer {
-		pri.triedPeers[initialPeer] = struct{}{}
-		pri.currentPeer = initialPeer
+	// If the new cid triggering this request came from ourselves then
+	// the first peer to request from should be ourselves.
+	if fetchFromSelf {
+		pri.triedPeers[peerTracker.Self()] = struct{}{}
+		pri.currentPeer = peerTracker.Self()
 		return pri, nil
 	}
 
