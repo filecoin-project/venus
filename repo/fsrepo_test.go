@@ -59,7 +59,6 @@ const (
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
 	},
-	"net": "",
 	"observability": {
 		"metrics": {
 			"prometheusEnabled": false,

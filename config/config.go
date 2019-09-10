@@ -23,7 +23,6 @@ type Config struct {
 	Heartbeat     *HeartbeatConfig     `json:"heartbeat"`
 	Mining        *MiningConfig        `json:"mining"`
 	Mpool         *MessagePoolConfig   `json:"mpool"`
-	Net           string               `json:"net"`
 	Observability *ObservabilityConfig `json:"observability"`
 	SectorBase    *SectorBaseConfig    `json:"sectorbase"`
 	Swarm         *SwarmConfig         `json:"swarm"`
@@ -241,7 +240,6 @@ func NewDefaultConfig() *Config {
 		Mining:        newDefaultMiningConfig(),
 		Wallet:        newDefaultWalletConfig(),
 		Heartbeat:     newDefaultHeartbeatConfig(),
-		Net:           "",
 		Mpool:         newDefaultMessagePoolConfig(),
 		SectorBase:    newDefaultSectorbaseConfig(),
 		Observability: newDefaultObservabilityConfig(),

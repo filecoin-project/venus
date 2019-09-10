@@ -30,7 +30,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/core"
-	"github.com/filecoin-project/go-filecoin/flags"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -90,6 +89,7 @@ type Node struct {
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
 	PowerTable   consensus.PowerTableView
+	NetworkName  string
 	VersionTable version.ProtocolVersionTable
 
 	BlockMiningAPI *block.MiningAPI
@@ -270,7 +270,7 @@ func (node *Node) Start(ctx context.Context) error {
 			// See https://github.com/filecoin-project/go-filecoin/issues/1105
 			node.ChainSynced.Done()
 		}
-		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Repo.Config().Net, flags.Commit)
+		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.NetworkName)
 
 		// register the update function on the peer tracker now that we have a hello service
 		node.PeerTracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {

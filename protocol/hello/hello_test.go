@@ -54,8 +54,8 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
@@ -110,76 +110,10 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisB.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisB.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	require.NoError(t, mn.LinkAll())
-	require.NoError(t, mn.ConnectAllButSelf())
-
-	time.Sleep(time.Millisecond * 50)
-
-	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
-	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
-}
-
-func TestHelloWrongVersion(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	mn, err := mocknet.WithNPeers(ctx, 2)
-	assert.NoError(t, err)
-
-	a, b := mn.Hosts()[0], mn.Hosts()[1]
-
-	genesisA := &types.Block{}
-
-	heavy := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-
-	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
-	hg := &mockHeaviestGetter{heavy}
-
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-user", "sha1")
-	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-user", "sha2")
-	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	require.NoError(t, mn.LinkAll())
-	require.NoError(t, mn.ConnectAllButSelf())
-
-	time.Sleep(time.Millisecond * 50)
-
-	msc1.AssertNumberOfCalls(t, "HelloCallback", 0)
-	msc2.AssertNumberOfCalls(t, "HelloCallback", 0)
-}
-
-func TestHelloWrongVersionTestDevnet(t *testing.T) {
-	tf.UnitTest(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	mn, err := mocknet.WithNPeers(ctx, 2)
-	assert.NoError(t, err)
-
-	a, b := mn.Hosts()[0], mn.Hosts()[1]
-
-	genesisA := &types.Block{}
-
-	heavy := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-
-	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
-	hg := &mockHeaviestGetter{heavy}
-
-	New(a, genesisA.Cid(), msc1.HelloCallback, hg.getHeaviestTipSet, "devnet-staging", "sha1")
-	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
-
-	New(b, genesisA.Cid(), msc2.HelloCallback, hg.getHeaviestTipSet, "devnet-staging", "sha2")
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	require.NoError(t, mn.LinkAll())
@@ -215,8 +149,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
-	New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+	New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "")
+	New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
@@ -253,8 +187,8 @@ func TestReceiveHello(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	h1 := New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "", "")
-	h2 := New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "", "")
+	h1 := New(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "")
+	h2 := New(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "")
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()

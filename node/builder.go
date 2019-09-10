@@ -294,6 +294,7 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 		Inbox:        inbox,
 		OfflineMode:  nc.OfflineMode,
 		Outbox:       outbox,
+		NetworkName:  network,
 		PeerHost:     peerHost,
 		Repo:         nc.Repo,
 		Wallet:       fcWallet,

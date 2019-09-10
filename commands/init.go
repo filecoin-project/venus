@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -121,24 +120,6 @@ func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 	if devnetTest || devnetNightly || devnetUser {
 		newConfig.Bootstrap.MinPeerThreshold = 1
 		newConfig.Bootstrap.Period = "10s"
-	}
-
-	// Setup devnet staging specific config options.
-	if devnetTest {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
-		newConfig.Net = "devnet-staging"
-	}
-
-	// Setup devnet nightly specific config options.
-	if devnetNightly {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
-		newConfig.Net = "devnet-nightly"
-	}
-
-	// Setup devnet user specific config options.
-	if devnetUser {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
-		newConfig.Net = "devnet-user"
 	}
 
 	return newConfig, nil

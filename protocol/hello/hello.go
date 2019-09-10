@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var versionErrCt = metrics.NewInt64Counter("hello_version_error", "Number of errors encountered in hello protocol due to incorrect version")
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
 var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
 
@@ -36,7 +35,6 @@ type Message struct {
 	HeaviestTipSetCids   types.TipSetKey
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
-	CommitSha            string
 }
 
 type helloCallback func(ci *types.ChainInfo)
@@ -59,20 +57,18 @@ type Handler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
-	net       string
-	commitSha string
+	net string
 }
 
 // New creates a new instance of the hello protocol and registers it to
 // the given host, with the provided callbacks.
-func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, net string, commitSha string) *Handler {
+func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, net string) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,
 		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
 		net:               net,
-		commitSha:         commitSha,
 	}
 	h.SetStreamHandler(protocol, hello.handleNewStream)
 
@@ -93,15 +89,9 @@ func (h *Handler) handleNewStream(s net.Stream) {
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-// ErrWrongVersion is the error returned when a mismatch in the code version happens.
-var ErrWrongVersion = fmt.Errorf("code version mismatch")
-
 func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*types.ChainInfo, error) {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return nil, ErrBadGenesis
-	}
-	if (h.net == "devnet-staging" || h.net == "devnet-user") && msg.CommitSha != h.commitSha {
-		return nil, ErrWrongVersion
 	}
 
 	return types.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
@@ -121,7 +111,6 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
-		CommitSha:            h.commitSha,
 	}, nil
 }
 
@@ -182,11 +171,6 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		case err == ErrBadGenesis:
 			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.hello().genesis, from)
 			genesisErrCt.Inc(context.TODO(), 1)
-			return
-		case err == ErrWrongVersion:
-			log.Debugf("code not at same version: peer has version %s, daemon has version %s, disconnecting from peer: %s", hello.CommitSha, hn.hello().commitSha, from)
-			versionErrCt.Inc(context.TODO(), 1)
-			_ = c.Close()
 			return
 		case err == nil:
 			hn.hello().callBack(ci)
