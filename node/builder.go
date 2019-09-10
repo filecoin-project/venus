@@ -157,6 +157,25 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	nc.Libp2pOpts = append(nc.Libp2pOpts, libp2p.BandwidthReporter(bandwidthTracker))
 
+	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	genCid, err := readGenesisCid(nc.Repo.Datastore())
+	if err != nil {
+		return nil, err
+	}
+
+	chainStatusReporter := chain.NewStatusReporter()
+	// set up chain and message stores
+	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
+	messageStore := chain.NewMessageStore(&ipldCborStore)
+	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
+	powerTable := &consensus.MarketView{}
+
+	// create protocol upgrade table
+	network, err := networkNameFromGenesis(ctx, chainStore, bs)
+	if err != nil {
+		return nil, err
+	}
+
 	if !nc.OfflineMode {
 		makeDHT := func(h host.Host) (routing.Routing, error) {
 			r, err := dht.New(
@@ -164,7 +183,7 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 				h,
 				dhtopts.Datastore(nc.Repo.Datastore()),
 				dhtopts.NamespacedValidator("v", validator),
-				dhtopts.Protocols(net.FilecoinDHT),
+				dhtopts.Protocols(net.FilecoinDHT(network)),
 			)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to setup routing")
@@ -205,25 +224,6 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 	storer := gsstoreutil.StorerForBlockstore(bs)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
-
-	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	genCid, err := readGenesisCid(nc.Repo.Datastore())
-	if err != nil {
-		return nil, err
-	}
-
-	chainStatusReporter := chain.NewStatusReporter()
-	// set up chain and message stores
-	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
-	messageStore := chain.NewMessageStore(&ipldCborStore)
-	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
-	powerTable := &consensus.MarketView{}
-
-	// create protocol upgrade table
-	network, err := networkNameFromGenesis(ctx, chainStore, bs)
-	if err != nil {
-		return nil, err
-	}
 
 	// TODO: inject protocol upgrade table into code that requires it (#3360)
 	_, err = version.ConfigureProtocolVersions(network)
