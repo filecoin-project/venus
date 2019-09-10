@@ -14,13 +14,14 @@ COPY --from=builder /lib/x86_64-linux-gnu/libgcc_s.so.1  /lib/libgcc_s.so.1
 COPY --from=builder /lib/x86_64-linux-gnu/libutil.so.1   /lib/libutil.so.1
 
 # Built resources
-COPY tools/fast/devnets/deploy/deploy-sh  /usr/local/bin/deploy-sh
-COPY go-filecoin                          /usr/local/bin/go-filecoin
-COPY gengen/gengen                        /usr/local/bin/gengen
-COPY tools/faucet/faucet                  /usr/local/bin/faucet
-COPY tools/fast/devnets/deploy/deploy     /usr/local/bin/deploy
-COPY proofs/bin/paramfetch				 /usr/local/bin/paramfetch
-COPY proofs/bin/paramcache				 /usr/local/bin/paramcache
+COPY tools/fast/devnets/deploy/deploy-sh           /usr/local/bin/deploy-sh
+COPY go-filecoin                                   /usr/local/bin/go-filecoin
+COPY gengen/gengen                                 /usr/local/bin/gengen
+COPY tools/faucet/faucet                           /usr/local/bin/faucet
+COPY tools/genesis-file-server/genesis-file-server /usr/local/bin/genesis-file-server
+COPY tools/fast/devnets/deploy/deploy              /usr/local/bin/deploy
+COPY proofs/bin/paramfetch                         /usr/local/bin/paramfetch
+COPY proofs/bin/paramcache                         /usr/local/bin/paramcache
 
 RUN adduser --home /var/filecoin -u 1000 --ingroup users --disabled-password --gecos "" filecoin
 RUN id filecoin
