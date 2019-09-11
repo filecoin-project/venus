@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -92,7 +92,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 	d1.MineAndPropagate(10*time.Second, d)
 
 	// wait for message to be included in a block
-	d.WaitForMessageRequireSuccess(core.MustDecodeCid(updateMsg))
+	d.WaitForMessageRequireSuccess(mustDecodeCid(updateMsg))
 
 	// use the address lookup command to ensure update happened
 	lookupOutB := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)
@@ -161,4 +161,14 @@ func TestWalletExportPrivateKeyConsistentDisplay(t *testing.T) {
 	exportJSON := d.RunSuccess("wallet", "export", dw, "--enc=json").ReadStdoutTrimNewlines()
 
 	assert.Contains(t, exportJSON, exportTextPrivateKey)
+}
+
+// MustDecodeCid decodes a string to a Cid pointer, panicking on error
+func mustDecodeCid(cidStr string) cid.Cid {
+	decode, err := cid.Decode(cidStr)
+	if err != nil {
+		panic(err)
+	}
+
+	return decode
 }
