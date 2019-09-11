@@ -1,6 +1,3 @@
-[submodule "proofs/rust-fil-proofs"]
-	path = proofs/rust-fil-proofs
-	url = https://github.com/filecoin-project/rust-fil-proofs.git
 [submodule "go-bls-sigs"]
 	path = go-bls-sigs
 	url = https://github.com/filecoin-project/go-bls-sigs.git
