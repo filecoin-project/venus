@@ -9,15 +9,15 @@ import (
 	bserv "github.com/ipfs/go-blockservice"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -35,7 +35,7 @@ type ChainSeed struct {
 // TestNodeOptions is a generalized struct for passing Node options around for testing
 type TestNodeOptions struct {
 	OfflineMode bool
-	ConfigOpts  []ConfigOpt
+	BuilderOpts []BuilderOpt
 	GenesisFunc consensus.GenesisInitFunc
 	InitOpts    []InitOpt
 	Seed        *ChainSeed
@@ -133,9 +133,9 @@ func (cs *ChainSeed) Addr(t *testing.T, key int) address.Address {
 }
 
 // MakeNodeWithChainSeed makes a single node with the given chain seed, and some init options
-func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, configopts []ConfigOpt, initopts ...InitOpt) *Node { // nolint: golint
+func MakeNodeWithChainSeed(t *testing.T, seed *ChainSeed, builderopts []BuilderOpt, initopts ...InitOpt) *Node { // nolint: golint
 	t.Helper()
-	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, ConfigOpts: configopts, InitOpts: initopts}
+	tno := TestNodeOptions{OfflineMode: false, GenesisFunc: seed.GenesisInitFunc, BuilderOpts: builderopts, InitOpts: initopts}
 	return GenNode(t, &tno)
 }
 
@@ -160,7 +160,7 @@ func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif
 	tno := TestNodeOptions{
 		OfflineMode: offlineMode,
 		GenesisFunc: gif,
-		ConfigOpts:  DefaultTestingConfig(),
+		BuilderOpts: DefaultTestingConfig(),
 	}
 
 	var out []*Node
@@ -187,8 +187,8 @@ func MakeOfflineNode(t *testing.T) *Node {
 }
 
 // DefaultTestingConfig returns default configuration for testing
-func DefaultTestingConfig() []ConfigOpt {
-	return []ConfigOpt{
+func DefaultTestingConfig() []BuilderOpt {
+	return []BuilderOpt{
 		VerifierConfigOption(&verification.FakeVerifier{
 			VerifyPoStValid:                true,
 			VerifyPieceInclusionProofValid: true,
@@ -269,10 +269,10 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
 
-	localCfgOpts = append(localCfgOpts, tno.ConfigOpts...)
+	localCfgOpts = append(localCfgOpts, tno.BuilderOpts...)
 
 	// enables or disables libp2p
-	localCfgOpts = append(localCfgOpts, func(c *Config) error {
+	localCfgOpts = append(localCfgOpts, func(c *Builder) error {
 		c.OfflineMode = tno.OfflineMode
 		return nil
 	})

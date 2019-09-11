@@ -37,7 +37,7 @@ func TestMessagePropagation(t *testing.T) {
 	// Initialize the first node to be the message sender.
 	senderNodeOpts := TestNodeOptions{
 		GenesisFunc: genesis,
-		ConfigOpts:  DefaultTestingConfig(),
+		BuilderOpts: DefaultTestingConfig(),
 		InitOpts: []InitOpt{
 			DefaultWalletAddressOpt(senderAddress),
 		},

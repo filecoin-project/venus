@@ -133,9 +133,9 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 
 func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	configOpts := []node.ConfigOpt{}
+	builderOpts := []node.BuilderOpt{}
 
-	nd := node.MakeNodeWithChainSeed(t, seed, configOpts,
+	nd := node.MakeNodeWithChainSeed(t, seed, builderOpts,
 		node.AutoSealIntervalSecondsOpt(1),
 	)
 	bt := nd.PorcelainAPI.BlockTime()

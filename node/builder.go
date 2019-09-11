@@ -50,9 +50,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Config is a helper to aid in the construction of a filecoin node.
-// This is poorly named and easily confused with config.Config. It's really a node factory pattern.
-type Config struct {
+// Builder is a helper to aid in the construction of a filecoin node.
+type Builder struct {
 	BlockTime   time.Duration
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
@@ -63,36 +62,36 @@ type Config struct {
 	Clock       clock.Clock
 }
 
-// ConfigOpt is a configuration option for a filecoin node.
-type ConfigOpt func(*Config) error
+// BuilderOpt is an option for building a filecoin node.
+type BuilderOpt func(*Builder) error
 
 // OfflineMode enables or disables offline mode.
-func OfflineMode(offlineMode bool) ConfigOpt {
-	return func(c *Config) error {
+func OfflineMode(offlineMode bool) BuilderOpt {
+	return func(c *Builder) error {
 		c.OfflineMode = offlineMode
 		return nil
 	}
 }
 
 // IsRelay configures node to act as a libp2p relay.
-func IsRelay() ConfigOpt {
-	return func(c *Config) error {
+func IsRelay() BuilderOpt {
+	return func(c *Builder) error {
 		c.IsRelay = true
 		return nil
 	}
 }
 
 // BlockTime sets the blockTime.
-func BlockTime(blockTime time.Duration) ConfigOpt {
-	return func(c *Config) error {
+func BlockTime(blockTime time.Duration) BuilderOpt {
+	return func(c *Builder) error {
 		c.BlockTime = blockTime
 		return nil
 	}
 }
 
 // Libp2pOptions returns a node config option that sets up the libp2p node
-func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
-	return func(nc *Config) error {
+func Libp2pOptions(opts ...libp2p.Option) BuilderOpt {
+	return func(nc *Builder) error {
 		// Quietly having your options overridden leads to hair loss
 		if len(nc.Libp2pOpts) > 0 {
 			panic("Libp2pOptions can only be called once")
@@ -103,32 +102,32 @@ func Libp2pOptions(opts ...libp2p.Option) ConfigOpt {
 }
 
 // VerifierConfigOption returns a function that sets the verifier to use in the node consensus
-func VerifierConfigOption(verifier verification.Verifier) ConfigOpt {
-	return func(c *Config) error {
+func VerifierConfigOption(verifier verification.Verifier) BuilderOpt {
+	return func(c *Builder) error {
 		c.Verifier = verifier
 		return nil
 	}
 }
 
 // RewarderConfigOption returns a function that sets the rewarder to use in the node consensus
-func RewarderConfigOption(rewarder consensus.BlockRewarder) ConfigOpt {
-	return func(c *Config) error {
+func RewarderConfigOption(rewarder consensus.BlockRewarder) BuilderOpt {
+	return func(c *Builder) error {
 		c.Rewarder = rewarder
 		return nil
 	}
 }
 
 // ClockConfigOption returns a function that sets the clock to use in the node.
-func ClockConfigOption(clk clock.Clock) ConfigOpt {
-	return func(c *Config) error {
+func ClockConfigOption(clk clock.Clock) BuilderOpt {
+	return func(c *Builder) error {
 		c.Clock = clk
 		return nil
 	}
 }
 
 // New creates a new node.
-func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
-	n := &Config{}
+func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
+	n := &Builder{}
 	for _, o := range opts {
 		if err := o(n); err != nil {
 			return nil, err
@@ -139,7 +138,7 @@ func New(ctx context.Context, opts ...ConfigOpt) (*Node, error) {
 }
 
 // Build instantiates a filecoin Node from the settings specified in the config.
-func (nc *Config) build(ctx context.Context) (*Node, error) {
+func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	if nc.Repo == nil {
 		nc.Repo = repo.NewInMemoryRepo()
 	}
@@ -340,7 +339,7 @@ func (nc *Config) build(ctx context.Context) (*Node, error) {
 
 // buildHost determines if we are publically dialable.  If so use public
 // Address, if not configure node to announce relay address.
-func (nc *Config) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
+func (nc *Builder) buildHost(ctx context.Context, makeDHT func(host host.Host) (routing.Routing, error)) (host.Host, error) {
 	// Node must build a host acting as a libp2p relay.  Additionally it
 	// runs the autoNAT service which allows other nodes to check for their
 	// own dialability by having this node attempt to dial them.

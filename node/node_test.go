@@ -136,7 +136,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -182,7 +182,7 @@ func TestOptionWithError(t *testing.T) {
 	assert.NoError(t, err)
 
 	scaryErr := errors.New("i am an error grrrr")
-	errOpt := func(c *node.Config) error {
+	errOpt := func(c *node.Builder) error {
 		return scaryErr
 	}
 
@@ -205,7 +205,7 @@ func TestNodeConfig(t *testing.T) {
 
 	configBlockTime := 99
 
-	configOptions := []node.ConfigOpt{
+	builderOptions := []node.BuilderOpt{
 		repoConfig(),
 		node.VerifierConfigOption(verifier),
 		node.BlockTime(time.Duration(configBlockTime)),
@@ -214,7 +214,7 @@ func TestNodeConfig(t *testing.T) {
 	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}
 
 	tno := node.TestNodeOptions{
-		ConfigOpts:  configOptions,
+		BuilderOpts: builderOptions,
 		InitOpts:    initOpts,
 		OfflineMode: true,
 		GenesisFunc: th.DefaultGenesis,
@@ -234,9 +234,9 @@ func TestNodeConfig(t *testing.T) {
 	}, cfg.Swarm)
 }
 
-func repoConfig() node.ConfigOpt {
+func repoConfig() node.BuilderOpt {
 	defaultCfg := config.NewDefaultConfig()
-	return func(c *node.Config) error {
+	return func(c *node.Builder) error {
 		// overwrite value set with th.GetFreePort()
 		c.Repo.Config().API.Address = defaultCfg.API.Address
 		return nil
