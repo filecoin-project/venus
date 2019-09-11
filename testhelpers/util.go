@@ -50,10 +50,6 @@ func GetFilecoinBinary() (string, error) {
 	return bin, nil
 }
 
-func GetGoPath() (string, error) {
-	return "", fmt.Errorf("Hello")
-}
-
 // WaitForIt waits until the given callback returns true.
 func WaitForIt(count int, delay time.Duration, cb func() (bool, error)) error {
 	var done bool
