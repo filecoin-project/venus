@@ -75,26 +75,28 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 			// No messages.
 		})
 		require.NoError(t, handler.HandleNewHead(ctx, right))
-		assert.Equal(t, 0, len(outbox.Queue().List(sender))) // Message does not return to queue.
+		assert.Equal(t, 1, len(outbox.Queue().List(sender))) // Message returns to queue.
 		_, found = inbox.Pool().Get(mid1)
 		assert.True(t, found) // Message returns to pool to be mined again.
 
 		// Send another message from the same account.
 		// First, send a message and expect to find it in the message queue and pool.
-		_, err = outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, "method2")
+		mid2, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, "method2")
 		// This case causes the nonce to be wrongly calculated, since the first, now-unmined message
 		// is not in the outbox, and actor state has not updated, but the message pool already has
 		// a message with the same nonce.
-		assert.Error(t, err, "#3052 is fixed!")
-		assert.Contains(t, err.Error(), "same actor and nonce")
-		//require.NoError(t, err)
-		//require.Equal(t, 1, len(queue.List(sender))) // The new message is in the queue.
-		//// Both messages are in the pool.
-		//msg2, found := mpool.Get(mid2)
-		//require.True(t, found)
-		//_, found = mpool.Get(mid1)
-		//require.True(t, found)
-		//assert.True(t, msg2.Equals(queue.List(sender)[0].Msg))
+		require.NoError(t, err)
+
+		// Both messages are in the pool.
+		_, found = inbox.Pool().Get(mid1)
+		require.True(t, found)
+		msg2, found := inbox.Pool().Get(mid2)
+		require.True(t, found)
+		// Both messages are in the queue too, in the right order.
+		restoredQueue := outbox.Queue().List(sender)
+		assert.Equal(t, 2, len(restoredQueue))
+		assert.True(t, msg1.Equals(restoredQueue[0].Msg))
+		assert.True(t, msg2.Equals(restoredQueue[1].Msg))
 	})
 
 	t.Run("ignores empty tipset", func(t *testing.T) {

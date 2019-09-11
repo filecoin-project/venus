@@ -59,10 +59,32 @@ func (mq *MessageQueue) Enqueue(ctx context.Context, msg *types.SignedMessage, s
 	if len(q) > 0 {
 		nextNonce := q[len(q)-1].Msg.Nonce + 1
 		if msg.Nonce != nextNonce {
-			return errors.Errorf("Invalid nonce %d, expected %d", msg.Nonce, nextNonce)
+			return errors.Errorf("Invalid nonce in %d in enqueue, expected %d", msg.Nonce, nextNonce)
 		}
 	}
 	mq.queues[msg.From] = append(q, &QueuedMessage{msg, stamp})
+	return nil
+}
+
+// Requeue prepends a message for an address. If the queue already contains any messages from the
+// same address, the message's nonce must be exactly one *less than* the smallest nonce present.
+func (mq *MessageQueue) Requeue(ctx context.Context, msg *types.SignedMessage, stamp uint64) error {
+	defer func() {
+		mqSizeGa.Set(ctx, mq.Size())
+		mqOldestGa.Set(ctx, int64(mq.Oldest()))
+	}()
+
+	mq.lk.Lock()
+	defer mq.lk.Unlock()
+
+	q := mq.queues[msg.From]
+	if len(q) > 0 {
+		prevNonce := q[0].Msg.Nonce - 1
+		if msg.Nonce != prevNonce {
+			return errors.Errorf("Invalid nonce %d in requeue, expected %d", msg.Nonce, prevNonce)
+		}
+	}
+	mq.queues[msg.From] = append([]*QueuedMessage{{msg, stamp}}, q...)
 	return nil
 }
 
