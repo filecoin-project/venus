@@ -190,9 +190,9 @@ format is specified with the --enc flag.
 
 		return re.Emit(resp)
 	},
-	Type: storagedeal.Response{},
+	Type: storagedeal.SignedResponse{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.Response) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, resp *storagedeal.SignedResponse) error {
 			fmt.Fprintf(w, "Status: %s\n", resp.State.String()) // nolint: errcheck
 			fmt.Fprintf(w, "Message: %s\n", resp.Message)       // nolint: errcheck
 			return nil
