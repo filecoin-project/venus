@@ -56,6 +56,7 @@ type API struct {
 	msgWaiter     *msg.Waiter
 	network       *net.Network
 	outbox        *core.Outbox
+	peerTracker   *net.PeerTracker
 	sectorBuilder func() sectorbuilder.SectorBuilder
 	storagedeals  *strgdls.Store
 	wallet        *wallet.Wallet
@@ -76,6 +77,7 @@ type APIDeps struct {
 	MsgWaiter     *msg.Waiter
 	Network       *net.Network
 	Outbox        *core.Outbox
+	PeerTracker   *net.PeerTracker
 	SectorBuilder func() sectorbuilder.SectorBuilder
 	Wallet        *wallet.Wallet
 }
@@ -97,6 +99,7 @@ func New(deps *APIDeps) *API {
 		msgWaiter:     deps.MsgWaiter,
 		network:       deps.Network,
 		outbox:        deps.Outbox,
+		peerTracker:   deps.PeerTracker,
 		sectorBuilder: deps.SectorBuilder,
 		storagedeals:  deps.Deals,
 		wallet:        deps.Wallet,
@@ -317,6 +320,11 @@ func (api *API) NetworkPeers(ctx context.Context, verbose, latency, streams bool
 // SignBytes uses private key information associated with the given address to sign the given bytes.
 func (api *API) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
 	return api.wallet.SignBytes(data, addr)
+}
+
+// TrustPeer adds `p` to the peer trackers trusted node set.
+func (api *API) TrustPeer(p peer.ID) {
+	api.peerTracker.Trust(p)
 }
 
 // WalletAddresses gets addresses from the wallet

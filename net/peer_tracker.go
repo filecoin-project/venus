@@ -69,6 +69,14 @@ func (tracker *PeerTracker) UpdateTrusted(ctx context.Context) error {
 	return tracker.updatePeers(ctx, tracker.trustedPeers()...)
 }
 
+// Trust adds `pid` to the peer trackers trusted node set.
+func (tracker *PeerTracker) Trust(pid peer.ID) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	tracker.trusted[pid] = struct{}{}
+	logPeerTracker.Infof("Trusting peer=%s", pid.Pretty())
+}
+
 // Track adds information about a given peer.ID
 func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	tracker.mu.Lock()

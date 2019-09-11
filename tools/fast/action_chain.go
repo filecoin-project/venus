@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/chain"
 )
@@ -31,4 +32,12 @@ func (f *Filecoin) ChainStatus(ctx context.Context) (*chain.Status, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// TrustPeer runs the peertrackers trust command against the filecoin process.
+func (f *Filecoin) TrustPeer(ctx context.Context, p peer.ID) error {
+	if _, err := f.RunCmdWithStdin(ctx, nil, "go-filecoin", "chain", "trust", p.Pretty()); err != nil {
+		return err
+	}
+	return nil
 }

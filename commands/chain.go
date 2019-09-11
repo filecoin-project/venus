@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -22,6 +23,7 @@ var chainCmd = &cmds.Command{
 		"head":   storeHeadCmd,
 		"ls":     storeLsCmd,
 		"status": storeStatusCmd,
+		"trust":  trustPeerCmd,
 	},
 }
 
@@ -119,6 +121,23 @@ var storeStatusCmd = &cmds.Command{
 		if err := re.Emit(syncStatus); err != nil {
 			return err
 		}
+		return nil
+	},
+}
+
+var trustPeerCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Trusts a peer for chain sync operations.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID that the peer tracker will trust"),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		trustedPeer, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+		GetPorcelainAPI(env).TrustPeer(trustedPeer)
 		return nil
 	},
 }

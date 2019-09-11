@@ -255,3 +255,46 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	tracked := tracker.List()
 	assert.Equal(t, []*types.ChainInfo{bCI}, tracked)
 }
+
+func TestPeerTrackerTrust(t *testing.T) {
+	tf.UnitTest(t)
+
+	tracker := net.NewPeerTracker(peer.ID(""))
+	pid0 := th.RequireIntPeerID(t, 0)
+	pid1 := th.RequireIntPeerID(t, 1)
+	pid2 := th.RequireIntPeerID(t, 2)
+
+	tracker.Trust(pid0)
+	tracker.Trust(pid1)
+
+	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
+	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
+	ci2 := types.NewChainInfo(pid2, types.NewTipSetKey(types.CidFromString(t, "someothercid")), 90)
+
+	tracker.Track(ci0)
+	tracker.Track(ci1)
+	tracker.Track(ci2)
+
+	// we should get back the best trusted head
+	ci, err := tracker.SelectHead()
+	assert.NoError(t, err)
+	assert.Equal(t, ci, ci0)
+
+	// remove them from tracking but not from trusting
+	tracker.Remove(pid0)
+	tracker.Remove(pid1)
+
+	ci, err = tracker.SelectHead()
+	assert.Error(t, err)
+	assert.Nil(t, ci)
+
+	// retrack a trusted peer and ensure we still select its head
+	// this verifies that we still have the peer in out trusted set.
+	tracker.Track(ci0)
+
+	ci, err = tracker.SelectHead()
+	assert.NoError(t, err)
+	assert.Equal(t, ci, ci0)
+	tracker.Track(ci0)
+
+}
