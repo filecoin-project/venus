@@ -150,15 +150,11 @@ func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, e
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
-	data, err := t.root.Find(ctx, a.String())
+	var act actor.Actor
+	err := t.root.Find(ctx, a.String(), &act)
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
 	} else if err != nil {
-		return nil, err
-	}
-
-	var act actor.Actor
-	if err := hackTransferObject(data, &act); err != nil {
 		return nil, err
 	}
 
@@ -210,7 +206,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 	for _, p := range nd.Pointers {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				return err
 			}
 
@@ -288,7 +284,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				panic(err) // uhm, ignoring errors is bad
 			}
 

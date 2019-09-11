@@ -179,7 +179,7 @@ func (sma *Actor) UpdateStorage(vmctx exec.VMContext, delta *types.BytesAmount) 
 			return nil, errors.FaultErrorWrapf(err, "could not load lookup for miner with CID: %s", state.Miners)
 		}
 
-		_, err = miners.Find(ctx, miner.String())
+		err = miners.Find(ctx, miner.String(), nil)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return nil, Errors[ErrUnknownMiner]
@@ -212,28 +212,24 @@ func (sma *Actor) GetLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8
 			return &miners, err
 		}
 
-		vals, err := lu.Values(ctx)
-		if err != nil {
-			return &miners, err
-		}
-
-		for _, el := range vals {
-			addr, err := address.NewFromString(el.Key)
+		err = lu.ForEachValue(ctx, nil, func(key string, _ interface{}) error {
+			addr, err := address.NewFromString(key)
 			if err != nil {
-				return &miners, err
+				return err
 			}
 
 			var poStState uint64
 			poStState, err = sma.getMinerPoStState(vmctx, addr)
 			if err != nil {
-				return &miners, err
+				return err
 			}
 
 			if poStState == miner.PoStStateUnrecoverable {
 				miners[addr.String()] = poStState
 			}
-		}
-		return &miners, nil
+			return nil
+		})
+		return &miners, err
 	})
 
 	if err != nil {

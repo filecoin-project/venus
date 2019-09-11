@@ -8,7 +8,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -106,7 +106,8 @@ func TestLoadLookup(t *testing.T) {
 		lookup, err = LoadLookup(ctx, storage, c)
 		require.NoError(t, err)
 
-		value, err := lookup.Find(ctx, "foo")
+		var value string
+		err := lookup.Find(ctx, "foo", &value)
 		require.NoError(t, err)
 
 		assert.Equal(t, "someData", value)
@@ -120,7 +121,7 @@ func TestLoadLookup(t *testing.T) {
 		lookup, err = LoadLookup(ctx, storage, c)
 		require.NoError(t, err)
 
-		_, err := lookup.Find(ctx, "bar")
+		err := lookup.Find(ctx, "bar", nil)
 		require.Error(t, err)
 		assert.Equal(t, hamt.ErrNotFound, err)
 	})
@@ -158,7 +159,8 @@ func TestSetKeyValue(t *testing.T) {
 	lookup, err := LoadLookup(ctx, storage, c)
 	require.NoError(t, err)
 
-	val, err := lookup.Find(ctx, "foo")
+	var val string
+	err = lookup.Find(ctx, "foo", &val)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
 }
