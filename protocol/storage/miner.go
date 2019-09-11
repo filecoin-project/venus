@@ -796,7 +796,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, inputs)
 		} else {
 			// we are too late
-			// TODO: figure out faults and payments here
+			// TODO: figure out faults and payments here #3406
 			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
 		}
 	}

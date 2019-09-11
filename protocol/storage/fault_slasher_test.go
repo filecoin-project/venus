@@ -84,9 +84,9 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr3 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
-			addr3: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
+			addr3: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 
@@ -109,7 +109,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr1 := getf().String()
 
 		data1, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 
@@ -133,8 +133,8 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		// A second miner becomes slashable.
 		addr2 := getf().String()
 		data2, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 		plumbing.Queryer = makeQueryer([][]byte{data2})
@@ -150,8 +150,8 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr2 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 

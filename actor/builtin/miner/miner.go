@@ -91,7 +91,7 @@ const (
 	PoStStateNoStorage = iota
 	PoStStateWithinProvingPeriod
 	PoStStateAfterProvingPeriod
-	PoStStateAfterGenerationAttackThreshold
+	PoStStateUnrecoverable
 )
 
 // Actor is the miner actor.
@@ -1169,7 +1169,7 @@ func ProvingPeriodDuration(sectorSize *types.BytesAmount) uint64 {
 func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) types.AttoFIL {
 	lateState, roundsLate := lateState(provingPeriodEnd, chainHeight, maxRoundsLate)
 
-	if lateState == PoStStateAfterGenerationAttackThreshold {
+	if lateState == PoStStateUnrecoverable {
 		return pledgeCollateral
 	} else if lateState == PoStStateAfterProvingPeriod {
 		// fee = collateral * (roundsLate / maxRoundsLate)
@@ -1191,7 +1191,7 @@ func provingPeriodStart(state State) *types.BlockHeight {
 	if state.ProvingPeriodEnd == nil {
 		return types.NewBlockHeight(0)
 	}
-	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(PoStChallengeTimeBlocks))
 }
 
 // lateState determines whether given a proving period and chain height, what is the
@@ -1199,7 +1199,7 @@ func provingPeriodStart(state State) *types.BlockHeight {
 func lateState(provingPeriodEnd *types.BlockHeight, chainHeight *types.BlockHeight, maxRoundsLate *types.BlockHeight) (int64, *types.BlockHeight) {
 	roundsLate := chainHeight.Sub(provingPeriodEnd)
 	if roundsLate.GreaterEqual(maxRoundsLate) {
-		return PoStStateAfterGenerationAttackThreshold, roundsLate
+		return PoStStateUnrecoverable, roundsLate
 	} else if roundsLate.GreaterThan(types.NewBlockHeight(0)) {
 		return PoStStateAfterProvingPeriod, roundsLate
 	}

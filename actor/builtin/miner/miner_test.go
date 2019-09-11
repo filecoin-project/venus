@@ -397,16 +397,21 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
+		// end of proving period is now plus proving period size
+		expectedEnd := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)))
+		// start of proving period is end minus the PoSt challenge time
+		expectedStart := expectedEnd.Sub(types.NewBlockHeight(PoStChallengeTimeBlocks))
+
 		start, ok := startVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(42), start)
+		assert.Equal(t, expectedStart, start)
 
 		endVal, err := abi.Deserialize(result[1], abi.BlockHeight)
 		require.NoError(t, err)
 
 		end, ok := endVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)+blockHeight), end)
+		assert.Equal(t, expectedEnd, end)
 	})
 }
 
@@ -1454,11 +1459,11 @@ func TestMinerGetPoStState(t *testing.T) {
 
 		mal.assertPoStStateAtHeight(PoStStateAfterProvingPeriod, lastHeightOfFirstPeriod+1)
 	})
-	t.Run("is reported as PoStStateAfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
+	t.Run("is reported as PoStStateUnrecoverable after the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(PoStStateAfterGenerationAttackThreshold, lastHeightOfSecondPeriod)
+		mal.assertPoStStateAtHeight(PoStStateUnrecoverable, lastHeightOfSecondPeriod)
 	})
 
 	t.Run("is reported as PoStStateNoStorage when actor has empty proving set", func(t *testing.T) {
