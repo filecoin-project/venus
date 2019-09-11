@@ -269,7 +269,6 @@ type RuntimeInfo struct {
 type EnvironmentInfo struct {
 	FilAPI  string `json:"FIL_API"`
 	FilPath string `json:"FIL_PATH"`
-	GoPath  string `json:"GOPATH"`
 }
 
 // DiskInfo contains information about disk usage and type.
@@ -304,7 +303,6 @@ func (g *Inspector) Environment() *EnvironmentInfo {
 	return &EnvironmentInfo{
 		FilAPI:  os.Getenv("FIL_API"),
 		FilPath: os.Getenv("FIL_PATH"),
-		GoPath:  os.Getenv("GOPATH"),
 	}
 }
 
