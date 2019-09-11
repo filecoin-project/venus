@@ -34,15 +34,10 @@ func init() {
 // https://github.com/filecoin-project/specs/pull/318
 const LargestSectorSizeProvingPeriodBlocks = 1000
 
-// LargestSectorGenerationAttackThresholdBlocks defines the number of blocks
-// after a proving period ends after which a miner using the largest sector size
-// supported by the network is subject to storage fault slashing.
-//
-// TODO: If the following PR is merged - and the network doesn't define a
-// largest sector size - this constant and consensus.AncestorRoundsNeeded will
-// need to be reconsidered.
-// https://github.com/filecoin-project/specs/pull/318
-const LargestSectorGenerationAttackThresholdBlocks = 100
+// PoStChallengeTimeBlocks defines the blocks time prior to the proving
+// period end at which the PoSt challenge seed is chosen. This dictates the
+// earliest point at which a PoSt may be submitted.
+const PoStChallengeTimeBlocks = 500
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
@@ -863,18 +858,20 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			return nil, Errors[ErrCallerUnauthorized]
 		}
 
-		// Calcuate any penalties for late submission
-		generationAttackGracePeriod := GenerationAttackTime(state.SectorSize)
-		if chainHeight.GreaterThan(state.ProvingPeriodEnd.Add(generationAttackGracePeriod)) {
-			// The PoSt has been submitted after the generation attack time.
+		provingPeriodDuration := types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize))
+		nextProvingPeriodEnd := state.ProvingPeriodEnd.Add(provingPeriodDuration)
+
+		// ensure PoSt is not too late entirely
+		if chainHeight.GreaterEqual(state.ProvingPeriodEnd.Add(nextProvingPeriodEnd)) {
+			// The PoSt has been submitted a full proving period after the proving period end.
 			// The miner can expect to be slashed, and so for now the PoSt is rejected.
 			// An alternative would be to apply the penalties here, duplicating the behaviour
 			// of SlashStorageFault.
-			return nil, errors.NewRevertErrorf("PoSt submitted later than grace period of %s rounds after proving period end",
-				generationAttackGracePeriod)
+			return nil, errors.NewRevertErrorf("PoSt submitted later than grace period of %d rounds after proving period end",
+				ProvingPeriodDuration(state.SectorSize))
 		}
 
-		feeRequired := latePoStFee(ma.getPledgeCollateralRequirement(state, chainHeight), state.ProvingPeriodEnd, chainHeight, generationAttackGracePeriod)
+		feeRequired := latePoStFee(ma.getPledgeCollateralRequirement(state, chainHeight), state.ProvingPeriodEnd, chainHeight, provingPeriodDuration)
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
@@ -905,9 +902,22 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 		//
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
-			seed, err := getPoStChallengeSeed(ctx, state)
-			if err != nil {
-				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
+			// calculate challenge seed now. If PoSt is too early, this will fail.
+			poStChallengeTime := types.NewBlockHeight(PoStChallengeTimeBlocks)
+
+			var seed types.PoStChallengeSeed
+			if chainHeight.LessThan(state.ProvingPeriodEnd) {
+				// proof is in time, sample at start of post challenge time
+				seed, err = getPoStChallengeSeed(ctx, state, state.ProvingPeriodEnd.Sub(poStChallengeTime))
+				if err != nil {
+					return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed, PoSt is probably early")
+				}
+			} else {
+				// proof is late, sample at start of next post challenge time
+				seed, err = getPoStChallengeSeed(ctx, state, nextProvingPeriodEnd.Sub(poStChallengeTime))
+				if err != nil {
+					return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed, PoSt is probably early")
+				}
 			}
 
 			var sectorInfos []go_sectorbuilder.SectorInfo
@@ -943,7 +953,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 		}
 
 		// transition to the next proving period
-		state.ProvingPeriodEnd = state.ProvingPeriodEnd.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
+		state.ProvingPeriodEnd = nextProvingPeriodEnd
 
 		// Update miner power to the amount of data actually proved
 		// during the last proving period.
@@ -1095,8 +1105,8 @@ func (ma *Actor) getPledgeCollateralRequirement(state State, height *types.Block
 }
 
 // getPoStChallengeSeed returns some chain randomness
-func getPoStChallengeSeed(ctx exec.VMContext, state State) (types.PoStChallengeSeed, error) {
-	randomness, err := ctx.SampleChainRandomness(provingPeriodStart(state))
+func getPoStChallengeSeed(ctx exec.VMContext, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	randomness, err := ctx.SampleChainRandomness(sampleAt)
 	if err != nil {
 		return types.PoStChallengeSeed{}, err
 	}
@@ -1138,7 +1148,7 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 // TODO: How do we compute a non-bogus return value here?
 // https://github.com/filecoin-project/specs/issues/322
 func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
-	return types.NewBlockHeight(LargestSectorGenerationAttackThresholdBlocks)
+	return types.NewBlockHeight(PoStChallengeTimeBlocks)
 }
 
 // ProvingPeriodDuration returns the number of blocks in a proving period for a

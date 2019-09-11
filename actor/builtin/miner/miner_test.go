@@ -1031,7 +1031,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	secondProvingPeriodEnd := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
-	lastPossibleSubmission := secondProvingPeriodStart + LargestSectorSizeProvingPeriodBlocks + LargestSectorGenerationAttackThresholdBlocks
+	lastPossibleSubmission := secondProvingPeriodStart + 2*LargestSectorSizeProvingPeriodBlocks
 
 	// add a sector
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
@@ -1101,7 +1101,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	secondProvingPeriodStart := firstCommitBlockHeight + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodStart := secondProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodEnd := thirdProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
-	lastPossibleSubmission := thirdProvingPeriodEnd + LargestSectorGenerationAttackThresholdBlocks
+	lastPossibleSubmission := thirdProvingPeriodEnd + PoStChallengeTimeBlocks
 
 	// CreateTestMiner creates a new test miner with the given peerID and miner
 	// owner address and a given number of committed sectors
@@ -1431,7 +1431,7 @@ func TestMinerGetPoStState(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 
 	lastHeightOfFirstPeriod := firstCommitBlockHeight + LargestSectorSizeProvingPeriodBlocks
-	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + LargestSectorGenerationAttackThresholdBlocks
+	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + PoStChallengeTimeBlocks
 
 	faults := types.EmptyFaultSet()
 
