@@ -287,6 +287,11 @@ func main() {
 			return
 		}
 
+		if err := miner.MiningStart(ctx); err != nil {
+			exitcode = handleError(err, "failed miner.MiningStart;")
+			return
+		}
+
 		var data bytes.Buffer
 		dataReader := io.LimitReader(rand.Reader, int64(sinfo.MaxPieceSize.Uint64()))
 		dataReader = io.TeeReader(dataReader, &data)
