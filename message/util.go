@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"github.com/filecoin-project/go-filecoin/chain"

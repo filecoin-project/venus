@@ -10,9 +10,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/node/abi"
-	"github.com/filecoin-project/go-sectorbuilder"
-
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -23,6 +21,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/require"
 )

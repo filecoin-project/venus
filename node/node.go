@@ -11,7 +11,6 @@ import (
 	"time"
 
 	ps "github.com/cskr/pubsub"
-	"github.com/filecoin-project/go-filecoin/vm"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -29,7 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/net"
@@ -47,6 +46,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
 	"github.com/filecoin-project/go-filecoin/version"
+	"github.com/filecoin-project/go-filecoin/vm"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
@@ -104,9 +104,9 @@ type Node struct {
 	cancelChainSync context.CancelFunc
 
 	// Incoming messages for block mining.
-	Inbox *core.Inbox
+	Inbox *message.Inbox
 	// Messages sent and not yet mined.
-	Outbox *core.Outbox
+	Outbox *message.Outbox
 
 	Wallet *wallet.Wallet
 
@@ -410,7 +410,7 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 
 func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet) {
 	node.HeaviestTipSetCh = node.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
-	handler := core.NewHandler(node.Inbox, node.Outbox, node.ChainReader, prevHead)
+	handler := message.NewHeadHandler(node.Inbox, node.Outbox, node.ChainReader, prevHead)
 
 	for {
 		select {

@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type Outbox struct {
 	// Validates messages before sending them.
 	validator consensus.SignedMessageValidator
 	// Holds messages sent from this node but not yet mined.
-	queue *MessageQueue
+	queue *Queue
 	// Publishes a signed message to the network.
 	publisher publisher
 	// Maintains message queue in response to new tipsets.
@@ -52,7 +52,7 @@ type publisher interface {
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *MessageQueue,
+func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *Queue,
 	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
 	return &Outbox{
 		signer:    signer,
@@ -66,7 +66,7 @@ func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, 
 }
 
 // Queue returns the outbox's outbound message queue.
-func (ob *Outbox) Queue() *MessageQueue {
+func (ob *Outbox) Queue() *Queue {
 	return ob.queue
 }
 
@@ -137,7 +137,7 @@ func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []types.Ti
 
 // nextNonce returns the next expected nonce value for an account actor. This is the larger
 // of the actor's nonce value, or one greater than the largest nonce from the actor found in the message queue.
-func nextNonce(act *actor.Actor, queue *MessageQueue, address address.Address) (uint64, error) {
+func nextNonce(act *actor.Actor, queue *Queue, address address.Address) (uint64, error) {
 	actorNonce, err := actor.NextNonce(act)
 	if err != nil {
 		return 0, err

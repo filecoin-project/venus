@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -50,12 +50,12 @@ type API struct {
 	config        *cfg.Config
 	dag           *dag.DAG
 	expected      consensus.Protocol
-	msgPool       *core.MessagePool
+	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
 	msgQueryer    *msg.Queryer
 	msgWaiter     *msg.Waiter
 	network       *net.Network
-	outbox        *core.Outbox
+	outbox        *message.Outbox
 	sectorBuilder func() sectorbuilder.SectorBuilder
 	storagedeals  *strgdls.Store
 	wallet        *wallet.Wallet
@@ -70,12 +70,12 @@ type APIDeps struct {
 	DAG           *dag.DAG
 	Deals         *strgdls.Store
 	Expected      consensus.Protocol
-	MsgPool       *core.MessagePool
+	MsgPool       *message.Pool
 	MsgPreviewer  *msg.Previewer
 	MsgQueryer    *msg.Queryer
 	MsgWaiter     *msg.Waiter
 	Network       *net.Network
-	Outbox        *core.Outbox
+	Outbox        *message.Outbox
 	SectorBuilder func() sectorbuilder.SectorBuilder
 	Wallet        *wallet.Wallet
 }
@@ -205,7 +205,7 @@ func (api *API) OutboxQueues() []address.Address {
 }
 
 // OutboxQueueLs lists messages in the queue for an address.
-func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
+func (api *API) OutboxQueueLs(sender address.Address) []*message.Queued {
 	return api.outbox.Queue().List(sender)
 }
 

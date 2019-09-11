@@ -15,8 +15,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -239,7 +239,7 @@ type MessageStatusResult struct {
 	InPool    bool // Whether the message is found in the mpool
 	PoolMsg   *types.SignedMessage
 	InOutbox  bool // Whether the message is found in the outbox
-	OutboxMsg *core.QueuedMessage
+	OutboxMsg *message.Queued
 	OnChain   bool // Whether the message is found on chain
 	ChainMsg  *msg.ChainMessage
 }
