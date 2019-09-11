@@ -806,6 +806,9 @@ commands:
   generate_rust_submodules_checksums:
     steps:
       - run:
+          name: create checksum-file
+          command: touch /tmp/rust-submodules-checksums.txt
+      - run:
           name: append go-sectorbuilder checksum
           command: git --git-dir=./go-sectorbuilder/.git rev-parse @:rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
       - run:
