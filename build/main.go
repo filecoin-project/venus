@@ -122,7 +122,6 @@ func deps() {
 		//     offline development.
 		cmd("go mod download"),
 		// Download and build proofs.
-		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-go-bls-sigs.sh"),
 		cmd("./scripts/install-go-sectorbuilder.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
