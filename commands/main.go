@@ -129,6 +129,7 @@ MESSAGE COMMANDS
 
 TOOL COMMANDS
   go-filecoin inspect                - Show info about the go-filecoin node
+  go-filecoin leb128                 - Leb128 cli encode/decode
   go-filecoin log                    - Interact with the daemon event log output
   go-filecoin protocol               - Show protocol parameter details
   go-filecoin version                - Show go-filecoin version information
@@ -154,6 +155,7 @@ var rootSubcmdsLocal = map[string]*cmds.Command{
 	"daemon":  daemonCmd,
 	"init":    initCmd,
 	"version": versionCmd,
+	"leb128":  leb128Cmd,
 }
 
 // all top level commands, available on daemon. set during init() to avoid configuration loops.
@@ -170,6 +172,7 @@ var rootSubcmdsDaemon = map[string]*cmds.Command{
 	"dht":              dhtCmd,
 	"id":               idCmd,
 	"inspect":          inspectCmd,
+	"leb128":           leb128Cmd,
 	"log":              logCmd,
 	"message":          msgCmd,
 	"miner":            minerCmd,
