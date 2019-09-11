@@ -52,6 +52,12 @@
         },
         "timestamp": {
           "type": "string"
+        },
+        "blocksig": {
+	  "type": [
+	     "null",
+	     "string"
+	  ]
         }
       },
       "required": [

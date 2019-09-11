@@ -53,7 +53,7 @@ type Block struct {
 	Timestamp Uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
-	BlockSig Signature
+	BlockSig Signature `json:"blocksig"`
 
 	cachedCid cid.Cid
 
