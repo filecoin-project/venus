@@ -122,7 +122,7 @@ func NewEmptyConfig() *Config {
 		nonces:     make(map[address.Address]uint64),
 		actors:     make(map[address.Address]*actor.Actor),
 		miners:     make(map[address.Address]*minerActorConfig),
-		network:    "",
+		network:    "localnet",
 		proofsMode: types.TestProofsMode,
 	}
 }
