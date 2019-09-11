@@ -70,7 +70,7 @@ func TestTriangleEncoding(t *testing.T) {
 			ElectionProof:   NewTestPoSt(),
 			StateRoot:       CidFromString(t, "somecid"),
 			Timestamp:       Uint64(1),
-			BlockSig:        []byte{0x3},  
+			BlockSig:        []byte{0x3},
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
