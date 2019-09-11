@@ -18,7 +18,7 @@ import (
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet types.TipSet,
 	ticket types.Ticket,
-	proof types.PoStProof,
+	electionProof types.VRFPi,
 	nullBlockCount uint64) (*types.Block, error) {
 
 	generateTimer := time.Now()
@@ -100,11 +100,10 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		MessageReceipts: rcptsCid,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
-		ElectionProof:   proof,
+		ElectionProof:   electionProof,
 		StateRoot:       newStateTreeCid,
 		Tickets:         []types.Ticket{ticket},
-		// TODO when #2961 is resolved do the needful here.
-		Timestamp: types.Uint64(time.Now().Unix()),
+		Timestamp:       types.Uint64(w.clock.Now().Unix()),
 	}
 
 	for i, msg := range res.PermanentFailures {

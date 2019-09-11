@@ -239,12 +239,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up consensus
-	var nodeConsensus consensus.Protocol
-	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, &verification.RustVerifier{}, nc.BlockTime)
-	} else {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
-	}
+	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
