@@ -86,7 +86,7 @@ func TestDealGetNotFound(t *testing.T) {
 type testRedeemPlumbing struct {
 	t *testing.T
 
-	blockHeight *types.BlockHeight
+	blockHeight uint64
 	dealCid     cid.Cid
 	gasPrice    types.GasUnits
 	messageCid  cid.Cid
@@ -101,8 +101,12 @@ type testRedeemPlumbing struct {
 	ResultingVoucherValidAt *types.BlockHeight
 }
 
-func (trp *testRedeemPlumbing) ChainBlockHeight() (*types.BlockHeight, error) {
-	return trp.blockHeight, nil
+func (trp *testRedeemPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (trp *testRedeemPlumbing) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+	return types.NewTipSet(&types.Block{Height: types.Uint64(trp.blockHeight)})
 }
 
 func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagedeal.Deal, error) {
@@ -178,7 +182,7 @@ func TestDealRedeem(t *testing.T) {
 	}
 	plumbing := &testRedeemPlumbing{
 		t:           t,
-		blockHeight: types.NewBlockHeight(25),
+		blockHeight: 25,
 		dealCid:     dealCid,
 		messageCid:  messageCid,
 		vouchers:    vouchers,
@@ -232,7 +236,7 @@ func TestDealRedeemPreview(t *testing.T) {
 	}
 	plumbing := &testRedeemPlumbing{
 		t:           t,
-		blockHeight: types.NewBlockHeight(25),
+		blockHeight: 25,
 		dealCid:     dealCid,
 		gasPrice:    types.NewGasUnits(42),
 		vouchers:    vouchers,

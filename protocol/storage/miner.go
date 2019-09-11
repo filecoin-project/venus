@@ -76,7 +76,8 @@ type Miner struct {
 type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
-	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainHeadKey() types.TipSetKey
+	ChainTipSet(types.TipSetKey) (types.TipSet, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
@@ -85,9 +86,9 @@ type minerPorcelain interface {
 	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
 	SectorBuilder() sectorbuilder.SectorBuilder
 	types.Signer
 }
@@ -214,10 +215,15 @@ func (sm *Miner) validateDealPayment(ctx context.Context, p *storagedeal.SignedP
 	}
 
 	// start with current block height
-	blockHeight, err := sm.porcelainAPI.ChainBlockHeight()
+	head, err := sm.porcelainAPI.ChainTipSet(sm.porcelainAPI.ChainHeadKey())
+	if err != nil {
+		return fmt.Errorf("could not access head tipset")
+	}
+	h, err := head.Height()
 	if err != nil {
 		return fmt.Errorf("could not get current block height")
 	}
+	blockHeight := types.NewBlockHeight(h)
 
 	// require at least one payment
 	if len(p.Payment.Vouchers) < 1 {
@@ -302,7 +308,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedPro
 
 	payer := p.Payment.Payer
 
-	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", payer)
+	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", sm.porcelainAPI.ChainHeadKey(), payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}
@@ -637,6 +643,7 @@ func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 		address.Address{},
 		sm.minerAddr,
 		"isBootstrapMiner",
+		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
@@ -667,6 +674,7 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 		address.Undef,
 		sm.minerAddr,
 		"getProvingSetCommitments",
+		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
@@ -792,7 +800,6 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 		if h.LessEqual(provingWindowEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingWindowEnd
-
 			go sm.submitPoSt(ctx, provingWindowStart, provingWindowEnd, inputs)
 		} else {
 			// we are too late
@@ -810,6 +817,7 @@ func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, err
 		address.Undef,
 		sm.minerAddr,
 		"getProvingWindow",
+		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
 		return nil, nil, err
@@ -829,7 +837,7 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	done := types.EmptyIntSet()
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
-	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr, sm.porcelainAPI.ChainHeadKey())
 	if err != nil {
 		log.Errorf("failed to get worker address: %s", err)
 		return
@@ -851,7 +859,7 @@ func (sm *Miner) signResponse(ctx context.Context, response storagedeal.Response
 }
 
 func (sm *Miner) addSignature(ctx context.Context, resp *storagedeal.SignedResponse) error {
-	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr)
+	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr, sm.porcelainAPI.ChainHeadKey())
 	if err != nil {
 		return errors.Wrap(err, "failed to get worker address")
 	}

@@ -255,11 +255,15 @@ func (tmp *slasherPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
 	return tmp.minerAddr, nil
 }
 
-func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (tmp *slasherPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return tmp.Queryer(ctx, optFrom, to, method, params)
 }
 
-func (tmp *slasherPlumbing) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (tmp *slasherPlumbing) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	if tmp.workerAddrFail {
 		return address.Undef, errors.New("actor not found")
 	}

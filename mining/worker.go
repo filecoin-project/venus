@@ -71,7 +71,7 @@ type MessageApplier interface {
 
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
 }
 
 type electionUtil interface {
@@ -173,7 +173,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	}
 
 	// Read uncached worker address
-	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr)
+	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, base.Key())
 	if err != nil {
 		outCh <- Output{Err: err}
 		return false
