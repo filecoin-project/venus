@@ -127,6 +127,8 @@ func TestRetrievalDevnet(t *testing.T) {
 	t.SkipNow()
 
 	blocktime := time.Second * 30
+	networkConfig, err := environment.FindDevnetConfigByName("nightly")
+	require.NoError(t, err)
 
 	// This test should run in and hour and no longer
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(blocktime*120))
@@ -137,7 +139,7 @@ func TestRetrievalDevnet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := environment.NewDevnet("nightly", dir)
+	env, err := environment.NewDevnet(networkConfig, dir)
 	require.NoError(t, err)
 
 	// Teardown will shutdown all running processes the environment knows about
@@ -158,7 +160,7 @@ func TestRetrievalDevnet(t *testing.T) {
 	genesisURI := env.GenesisCar()
 
 	fastenvOpts := fast.FilecoinOpts{
-		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI), fast.PODevnetNightly()},
+		InitOpts:   []fast.ProcessInitOption{fast.POGenesisFile(genesisURI), fast.PODevnet(networkConfig.Name)},
 		DaemonOpts: []fast.ProcessDaemonOption{},
 	}
 

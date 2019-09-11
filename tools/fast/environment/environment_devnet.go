@@ -24,7 +24,7 @@ import (
 // Devnet is a FAST lib environment that is meant to be used
 // when working with kittyhawk devnets run by the Filecoin development team.
 type Devnet struct {
-	network  string
+	network  DevnetConfig
 	location string
 
 	log logging.EventLogger
@@ -36,9 +36,30 @@ type Devnet struct {
 	processCount   int
 }
 
+// DevnetConfig describes the dynamic resources of a network
+type DevnetConfig struct {
+	// Name is the string value which can be used to configure bootstrap peers during init
+	Name string
+
+	// GenesisLocation provides where the genesis.car for the network can be fetched from
+	GenesisLocation string
+
+	// FaucetTap is the URL which can be used to request funds to a wallet
+	FaucetTap string
+}
+
+// FindDevnetConfigByName returns a devnet configuration by looking it up by name
+func FindDevnetConfigByName(name string) (DevnetConfig, error) {
+	if config, ok := devnetConfigs[name]; ok {
+		return config, nil
+	}
+
+	return DevnetConfig{}, fmt.Errorf("failed to look up config for network %s", name)
+}
+
 // NewDevnet builds an environment that uses deployed infrastructure to
 // the kittyhawk devnets.
-func NewDevnet(network, location string) (Environment, error) {
+func NewDevnet(network DevnetConfig, location string) (Environment, error) {
 	env := &Devnet{
 		network:  network,
 		location: location,
@@ -54,13 +75,7 @@ func NewDevnet(network, location string) (Environment, error) {
 
 // GenesisCar provides a url where the genesis file can be fetched from
 func (e *Devnet) GenesisCar() string {
-	uri := url.URL{
-		Host:   fmt.Sprintf("genesis.%s.kittyhawk.wtf", e.network),
-		Path:   "genesis.car",
-		Scheme: "https",
-	}
-
-	return uri.String()
+	return e.network.GenesisLocation
 }
 
 // GenesisMiner returns a ErrNoGenesisMiner for this environment
@@ -172,13 +187,7 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 	data := url.Values{}
 	data.Set("target", toAddr.String())
 
-	uri := url.URL{
-		Host:   fmt.Sprintf("faucet.%s.kittyhawk.wtf", e.network),
-		Path:   "tap",
-		Scheme: "https",
-	}
-
-	resp, err := http.PostForm(uri.String(), data)
+	resp, err := http.PostForm(e.network.FaucetTap, data)
 	if err != nil {
 		return err
 	}
@@ -187,6 +196,7 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 	if err != nil {
 		return err
 	}
+
 	switch resp.StatusCode {
 	case 200:
 		msgcid := resp.Header.Get("Message-Cid")

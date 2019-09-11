@@ -115,7 +115,10 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 
 func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, fastenvOpts fast.FilecoinOpts) (context.Context, *DeploymentEnvironment) {
 	// Create an environment that includes a genesis block with 1MM FIL
-	env, err := environment.NewDevnet(network, dir)
+	networkConfig, err := environment.FindDevnetConfigByName(network)
+	require.NoError(t, err)
+
+	env, err := environment.NewDevnet(networkConfig, dir)
 	require.NoError(t, err)
 
 	defer func() {
@@ -130,7 +133,7 @@ func makeDevnet(ctx context.Context, t *testing.T, network string, dir string, f
 
 	genesisURI := env.GenesisCar()
 
-	fastenvOpts.InitOpts = append(fastenvOpts.InitOpts, fast.POGenesisFile(genesisURI), fast.PODevnet(network))
+	fastenvOpts.InitOpts = append(fastenvOpts.InitOpts, fast.POGenesisFile(genesisURI), fast.PODevnet(networkConfig.Name))
 
 	ctx = series.SetCtxSleepDelay(ctx, time.Second*30)
 
