@@ -3,8 +3,9 @@ package commands_test
 import (
 	"testing"
 
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/require"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestLeb128Decode(t *testing.T) {
@@ -23,7 +24,7 @@ func TestLeb128Decode(t *testing.T) {
 	for _, tt := range decodeTests {
 		output := d.RunSuccess("leb128", "decode", tt.Text).ReadStdoutTrimNewlines()
 
-		require.Equal(t, tt.Want, string(output))
+		require.Equal(t, tt.Want, output)
 	}
 }
 
@@ -43,6 +44,6 @@ func TestLeb128Encode(t *testing.T) {
 	for _, tt := range encodeTests {
 		output := d.RunSuccess("leb128", "encode", tt.Text).ReadStdoutTrimNewlines()
 
-		require.Contains(t, string(output), tt.Want)
+		require.Contains(t, output, tt.Want)
 	}
 }
