@@ -95,7 +95,7 @@ func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
 	// Initialize the node.
 	repoConfigOpts, err := node.OptionsFromRepo(repo)
 	b.requireNoError(err)
-	builderConfigOpts := []node.ConfigOpt{
+	builderConfigOpts := []node.BuilderOpt{
 		node.OfflineMode(b.offline),
 	}
 

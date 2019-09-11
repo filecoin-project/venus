@@ -59,8 +59,8 @@ func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *no
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the minerNode (and gets the miner peer key)
-	minerNode = node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(0))
-	clientNode = node.MakeNodeWithChainSeed(t, seed, []node.ConfigOpt{})
+	minerNode = node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(0))
+	clientNode = node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{})
 
 	// give the minerNode node a key and the miner associated with that key
 	seed.GiveKey(t, minerNode, 0)

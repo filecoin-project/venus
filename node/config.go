@@ -10,14 +10,14 @@ import (
 
 // OptionsFromRepo takes a repo and returns options that configure a node
 // to use the given repo.
-func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
+func OptionsFromRepo(r repo.Repo) ([]BuilderOpt, error) {
 	sk, err := privKeyFromKeystore(r)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := r.Config()
-	cfgopts := []ConfigOpt{
+	cfgopts := []BuilderOpt{
 		// Libp2pOptions can only be called once, so add all options here.
 		Libp2pOptions(
 			libp2p.ListenAddrStrings(cfg.Swarm.Address),
@@ -25,7 +25,7 @@ func OptionsFromRepo(r repo.Repo) ([]ConfigOpt, error) {
 		),
 	}
 
-	dsopt := func(c *Config) error {
+	dsopt := func(c *Builder) error {
 		c.Repo = r
 		return nil
 	}
