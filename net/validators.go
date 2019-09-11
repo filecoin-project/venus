@@ -45,8 +45,8 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 }
 
 // Topic returns the topic string BlockTopic
-func (btv *BlockTopicValidator) Topic() string {
-	return BlockTopic
+func (btv *BlockTopicValidator) Topic(network string) string {
+	return BlockTopic(network)
 }
 
 // Validator returns a validation method matching the Validator pubsub function signature.
