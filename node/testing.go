@@ -248,16 +248,8 @@ var TestGenCfg = &gengen.GenesisCfg{
 // GenNode allows you to completely configure a node for testing.
 func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 	r := repo.NewInMemoryRepo()
-
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
 	require.NoError(t, err)
-
-	r.Config().SectorBase.RootDir = sectorDir
-
-	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
-	if !tno.OfflineMode {
-		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
-	}
 
 	if tno.GenesisFunc != nil {
 		err = Init(context.Background(), r, tno.GenesisFunc, tno.InitOpts...)
@@ -265,6 +257,12 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 		err = Init(context.Background(), r, tno.Seed.GenesisInitFunc, tno.InitOpts...)
 	}
 	require.NoError(t, err)
+
+	r.Config().SectorBase.RootDir = sectorDir
+	r.Config().Swarm.Address = "/ip4/0.0.0.0/tcp/0"
+	if !tno.OfflineMode {
+		r.Config().Swarm.Address = "/ip4/127.0.0.1/tcp/0"
+	}
 
 	localCfgOpts, err := OptionsFromRepo(r)
 	require.NoError(t, err)
