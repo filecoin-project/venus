@@ -12,6 +12,18 @@ var unitTest = flag.Bool("unit", true, "Run the unit go tests")
 var functionalTest = flag.Bool("functional", false, "Run the functional go tests")
 var sectorBuilderTest = flag.Bool("sectorbuilder", false, "Run the sector builder tests")
 var deploymentTest = flag.String("deployment", "", "Run the deployment tests against a network")
+var binaryPath = flag.String("binary-path", "", "Run forked processes tests using provided binary")
+
+// BinaryPath will return the path to the user provided binary. The call is expected to check if
+// the return path points to an actual file. If the user did not provide a value an empty string
+// will be returned along with a false for the second return value.
+func BinaryPath() (string, bool) {
+	if len(*binaryPath) == 0 {
+		return "", false
+	}
+
+	return *binaryPath, true
+}
 
 // DeploymentTest will run the test its called from iff the `-deployment` flag
 // is passed when calling `go test`. Otherwise the test will be skipped. DeploymentTest

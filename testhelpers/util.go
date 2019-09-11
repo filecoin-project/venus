@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 // GetFreePort gets a free port from the kernel
@@ -36,7 +38,10 @@ func MustGetFilecoinBinary() string {
 
 // GetFilecoinBinary returns the path where the filecoin binary will be if it has been built
 func GetFilecoinBinary() (string, error) {
-	bin := ProjectRoot("go-filecoin")
+	bin, provided := testflags.BinaryPath()
+	if !provided {
+		bin = ProjectRoot("go-filecoin")
+	}
 
 	_, err := os.Stat(bin)
 	if err != nil {
