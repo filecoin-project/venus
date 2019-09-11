@@ -42,6 +42,5 @@ func TestInspectConfig(t *testing.T) {
 	assert.Equal(t, rcfg.Mining, icfg.Mining)
 	assert.Equal(t, rcfg.Wallet, icfg.Wallet)
 	assert.Equal(t, rcfg.Heartbeat, icfg.Heartbeat)
-	assert.Equal(t, rcfg.Net, icfg.Net)
 	assert.Equal(t, rcfg.Mpool, icfg.Mpool)
 }

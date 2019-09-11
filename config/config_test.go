@@ -81,7 +81,6 @@ func TestWriteFile(t *testing.T) {
 		"maxPoolSize": 10000,
 		"maxNonceGap": "100"
 	},
-	"net": "",
 	"observability": {
 		"metrics": {
 			"prometheusEnabled": false,
