@@ -51,33 +51,62 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, provider TipSetP
 		earliestAncestorHeight = types.NewBlockHeight(uint64(0))
 	}
 
-	// Step 1 -- gather all tipsets with a height greater than the earliest
-	// possible proving period start still in scope for the given head.
 	iterator := IterAncestors(ctx, provider, base)
-	provingPeriodAncestors, err := CollectTipSetsOfHeightAtLeast(ctx, iterator, earliestAncestorHeight)
+	// Step 1 -- gather all tipsets up to the first tipset with a height less than
+	// or equal to the earliest possible proving period start
+	provingPeriodAncestors, err := CollectTipSetsPastHeight(ctx, iterator, earliestAncestorHeight)
+
 	if err != nil {
 		return nil, err
-	}
-	firstExtraRandomnessAncestorsCids, err := provingPeriodAncestors[len(provingPeriodAncestors)-1].Parents()
-	if err != nil {
-		return nil, err
-	}
-	// no parents means hit genesis so return the whole chain
-	if firstExtraRandomnessAncestorsCids.Len() == 0 {
-		return provingPeriodAncestors, nil
 	}
 
 	// Step 2 -- gather the lookback tipsets directly preceding provingPeriodAncestors.
-	lookBackTS, err := provider.GetTipSet(firstExtraRandomnessAncestorsCids)
-	if err != nil {
-		return nil, err
-	}
-	iterator = IterAncestors(ctx, provider, lookBackTS)
 	extraRandomnessAncestors, err := CollectAtMostNTipSets(ctx, iterator, lookback)
 	if err != nil {
 		return nil, err
 	}
 	return append(provingPeriodAncestors, extraRandomnessAncestors...), nil
+}
+
+// CollectTipSetsPastHeight collects all tipsets up to the first tipset with a height less than
+// or equal to the earliest possible proving period start
+func CollectTipSetsPastHeight(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
+	var ret []types.TipSet
+	var err error
+	var h uint64
+	for ; !iterator.Complete(); err = iterator.Next() {
+		if err != nil {
+			return nil, err
+		}
+		h, err = iterator.Value().Height()
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, iterator.Value())
+		if types.NewBlockHeight(h).LessEqual(minHeight) {
+			err = iterator.Next()
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+
+	return ret, nil
+}
+
+// CollectAtMostNTipSets collect N tipsets from the input channel.  If there
+// are fewer than n tipsets in the channel it returns all of them.
+func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]types.TipSet, error) {
+	var ret []types.TipSet
+	var err error
+	for i := uint(0); i < n && !iterator.Complete(); i++ {
+		ret = append(ret, iterator.Value())
+		if err = iterator.Next(); err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
@@ -98,20 +127,6 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 			return ret, nil
 		}
 		ret = append(ret, iterator.Value())
-	}
-	return ret, nil
-}
-
-// CollectAtMostNTipSets collect N tipsets from the input channel.  If there
-// are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]types.TipSet, error) {
-	var ret []types.TipSet
-	var err error
-	for i := uint(0); i < n && !iterator.Complete(); i++ {
-		ret = append(ret, iterator.Value())
-		if err = iterator.Next(); err != nil {
-			return nil, err
-		}
 	}
 	return ret, nil
 }
