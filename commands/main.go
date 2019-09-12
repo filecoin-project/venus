@@ -81,6 +81,10 @@ const (
 	// IsRelay when set causes the the daemon to provide libp2p relay
 	// services allowing other filecoin nodes behind NATs to talk directly.
 	IsRelay = "is-relay"
+
+	// CatchupSyncTestMode places the daemon in a spcial catchup mode for testing
+	// TODO remove this when we stop using test daemon.
+	CatchupSyncTestMode = "catchup-sync-test-mode"
 )
 
 // command object for the local cli

@@ -40,6 +40,7 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetStaging, "when set, populates config bootstrap addrs with the dns multiaddrs of the staging devnet and other staging devnet specific bootstrap parameters."),
 		cmdkit.BoolOption(DevnetNightly, "when set, populates config bootstrap addrs with the dns multiaddrs of the nightly devnet and other nightly devnet specific bootstrap parameters"),
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
+		cmdkit.BoolOption(CatchupSyncTestMode, "when set, the daemon is places in a special mode for chain catchup operations").WithDefault(false),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		repoDir, _ := req.Options[OptionRepoDir].(string)
@@ -141,6 +142,12 @@ func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
 	// Setup devnet user specific config options.
 	if devnetUser {
 		cfg.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+	}
+
+	catchupTestMode, _ := options[CatchupSyncTestMode].(bool)
+	if catchupTestMode {
+		cfg.Sync.CatchupSyncerPeriod = "500ms"
+		cfg.Sync.TrustAllPeers = true
 	}
 
 	return nil
