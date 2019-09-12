@@ -2,13 +2,11 @@
 
 set -Eeo pipefail
 
-fetch_params() {
-  ./proofs/bin/paramfetch -z 1024 --verbose --json=./proofs/misc/parameters.json || true
-}
-
 generate_params() {
-  RUST_LOG=info ./proofs/bin/paramcache --test-only
+  # The `--test-only` flag will cause paramcache to generate Groth parameters
+  # and verifying keys for 1KiB sectors. If Groth parameters or verifying keys
+  # for other sector sizes are needed, remove the `--test-only` flag.
+  RUST_LOG=info ./go-sectorbuilder/paramcache --test-only
 }
 
-fetch_params
 generate_params
