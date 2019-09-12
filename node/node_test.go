@@ -136,7 +136,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -211,8 +211,7 @@ func TestNodeConfig(t *testing.T) {
 		node.BlockTime(time.Duration(configBlockTime)),
 	}
 
-	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}
-
+	initOpts := []node.InitOpt{}
 	tno := node.TestNodeOptions{
 		BuilderOpts: builderOptions,
 		InitOpts:    initOpts,

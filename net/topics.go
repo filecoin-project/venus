@@ -1,7 +1,13 @@
 package net
 
-// BlockTopic is the network pubsub topic identifier on which new blocks are announced.
-const BlockTopic = "/fil/blocks/devnet-4"
+import "fmt"
 
-// MessageTopic is the network pubsub topic identifier on which new messages are announced.
-const MessageTopic = "/fil/msgs/devnet-4"
+// BlockTopic returns the network pubsub topic identifier on which new blocks are announced.
+func BlockTopic(networkName string) string {
+	return fmt.Sprintf("/fil/blocks/%s", networkName)
+}
+
+// MessageTopic returns the network pubsub topic identifier on which new messages are announced.
+func MessageTopic(networkName string) string {
+	return fmt.Sprintf("/fil/msgs/%s", networkName)
+}
