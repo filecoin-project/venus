@@ -551,7 +551,7 @@ var minerWorkerAddressCmd = &cmds.Command{
 		if !ok {
 			return errors.New("problem converting miner address")
 		}
-		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr)
+		workerAddr, err := GetPorcelainAPI(env).MinerGetWorkerAddress(req.Context, minerAddr, GetPorcelainAPI(env).ChainHeadKey())
 		if err != nil {
 			return errors.Wrap(err, "problem getting worker address")
 		}

@@ -64,7 +64,6 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	// Connect the clientNode and the minerNode
 	require.NoError(t, series.Connect(ctx, genesisNode, minerNode))
 
-	// Calls MiningOnce on genesis (client). This also starts the Miner.
 	pparams, err := minerNode.Protocol(ctx)
 	require.NoError(t, err)
 

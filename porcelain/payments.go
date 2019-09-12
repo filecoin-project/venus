@@ -18,8 +18,9 @@ const verifyPieceInclusionMethod = "verifyPieceInclusion"
 
 // cpPlumbing is the subset of the plumbing.API that CreatePayments uses.
 type cpPlumbing interface {
-	ChainBlockHeight() (*types.BlockHeight, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
@@ -102,11 +103,17 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		return nil, errors.New("PaymentInterval must be at least 1")
 	}
 
-	// get current block height
-	currentHeight, err := plumbing.ChainBlockHeight()
+	// get current head info
+	head, err := plumbing.ChainTipSet(plumbing.ChainHeadKey())
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := head.Height()
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not retrieve block height for making payments")
 	}
+	currentHeight := types.NewBlockHeight(h)
 
 	// validate that channel expiry gives us enough time
 	lastPayment := currentHeight.Add(types.NewBlockHeight(config.Duration))
@@ -160,6 +167,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	}
 
 	// generate payments
+	headKey := plumbing.ChainHeadKey()
 	response.Vouchers = []*types.PaymentVoucher{}
 	voucherAmount := types.ZeroAttoFIL
 	for i := 0; uint64(i+1)*config.PaymentInterval < config.Duration; i++ {
@@ -169,7 +177,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		}
 
 		validAt := currentHeight.Add(types.NewBlockHeight(uint64(i+1) * config.PaymentInterval))
-		err = createPayment(ctx, plumbing, response, voucherAmount, validAt, condition)
+		err = createPayment(ctx, plumbing, headKey, response, voucherAmount, validAt, condition)
 		if err != nil {
 			return response, err
 		}
@@ -177,7 +185,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 
 	// create last payment
 	validAt := currentHeight.Add(types.NewBlockHeight(config.Duration))
-	err = createPayment(ctx, plumbing, response, config.Value, validAt, nil)
+	err = createPayment(ctx, plumbing, headKey, response, config.Value, validAt, nil)
 	if err != nil {
 		return response, err
 	}
@@ -231,11 +239,13 @@ func ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predi
 	return nil
 }
 
-func createPayment(ctx context.Context, plumbing cpPlumbing, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
+func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey types.TipSetKey, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
+
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
 		address.PaymentBrokerAddress,
 		"voucher",
+		baseKey,
 		response.Channel,
 		amount,
 		validAt,

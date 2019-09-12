@@ -29,7 +29,8 @@ type ProtocolParams struct {
 
 type protocolParamsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 	BlockTime() time.Duration
 }
 
@@ -89,7 +90,7 @@ func (pp *ProtocolParams) IsSupportedSectorSize(sectorSize *types.BytesAmount) b
 
 func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	values, err := plumbing.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode")
+	values, err := plumbing.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode", plumbing.ChainHeadKey())
 	if err != nil {
 		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
 	}
@@ -102,7 +103,7 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 }
 
 func getNetworkName(ctx context.Context, plumbing protocolParamsPlumbing) (string, error) {
-	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, "getNetwork")
+	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, "getNetwork", plumbing.ChainHeadKey())
 	if err != nil {
 		return "", errors.Wrap(err, "'getNetwork' query message failed")
 	}

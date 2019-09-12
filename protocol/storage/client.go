@@ -54,18 +54,18 @@ const (
 
 type clientPorcelainAPI interface {
 	BlockTime() time.Duration
-	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainHeadKey() types.TipSetKey
+	ChainTipSet(types.TipSetKey) (types.TipSet, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
 	DAGCat(context.Context, cid.Cid) (io.Reader, error)
 	DealPut(*storagedeal.Deal) error
 	DealsLs(context.Context) (<-chan *porcelain.StorageDealLsResult, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error
@@ -141,10 +141,17 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	}
 	price := ask.Price
 
-	chainHeight, err := smc.api.ChainBlockHeight()
+	headKey := smc.api.ChainHeadKey()
+	head, err := smc.api.ChainTipSet(headKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get head tipset: %s", headKey.String())
 	}
+
+	h, err := head.Height()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get height of tipset: %s", headKey.String())
+	}
+	chainHeight := types.NewBlockHeight(h)
 
 	fromAddress, err := smc.api.WalletDefaultAddress()
 	if err != nil {
@@ -156,7 +163,7 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 		return nil, err
 	}
 
-	minerWorker, err := smc.api.MinerGetWorkerAddress(ctx, miner)
+	minerWorker, err := smc.api.MinerGetWorkerAddress(ctx, miner, headKey)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +308,7 @@ func (smc *Client) QueryDeal(ctx context.Context, proposalCid cid.Cid) (*storage
 		return nil, err
 	}
 
-	workerAddr, err := smc.api.MinerGetWorkerAddress(ctx, mineraddr)
+	workerAddr, err := smc.api.MinerGetWorkerAddress(ctx, mineraddr, smc.api.ChainHeadKey())
 	if err != nil {
 		return nil, err
 	}
