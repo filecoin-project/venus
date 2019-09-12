@@ -1082,7 +1082,7 @@ func (ma *Actor) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight)
 	}
 
 	collateral := ma.getPledgeCollateralRequirement(state, ctx.BlockHeight())
-	gracePeriod := GenerationAttackTime(state.SectorSize)
+	gracePeriod := types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize))
 	fee := latePoStFee(collateral, state.ProvingPeriodEnd, height, gracePeriod)
 	return fee, 0, nil
 }

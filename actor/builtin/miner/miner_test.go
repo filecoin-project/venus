@@ -1036,7 +1036,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	secondProvingPeriodEnd := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
-	lastPossibleSubmission := secondProvingPeriodStart + 2*LargestSectorSizeProvingPeriodBlocks
+	lastPossibleSubmission := secondProvingPeriodStart + 2*LargestSectorSizeProvingPeriodBlocks - 1
 
 	// add a sector
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
