@@ -508,7 +508,7 @@ func (ma *Actor) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 		if state.ProvingSet.Size() == 0 {
 			return int64(PoStStateNoStorage), nil
 		}
-		lateState, _ := lateState(state.ProvingPeriodEnd, ctx.BlockHeight(), GenerationAttackTime(state.SectorSize))
+		lateState, _ := lateState(state.ProvingPeriodEnd, ctx.BlockHeight(), LatePoStGracePeriod(state.SectorSize))
 		return lateState, nil
 	})
 
@@ -684,7 +684,7 @@ func (ma *Actor) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSiz
 		}
 
 		// Ensure the miner is active
-		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		deadline := state.ProvingPeriodEnd.Add(LatePoStGracePeriod(state.SectorSize))
 		if chainHeight.GreaterThan(deadline) {
 			return nil, errors.NewRevertError("miner is tardy")
 		}
@@ -1026,7 +1026,7 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 		}
 
 		// Only if the miner is actually late, they can be slashed.
-		deadline := state.ProvingPeriodEnd.Add(GenerationAttackTime(state.SectorSize))
+		deadline := state.ProvingPeriodEnd.Add(LatePoStGracePeriod(state.SectorSize))
 		if chainHeight.LessEqual(deadline) {
 			return nil, errors.NewCodedRevertError(ErrMinerNotSlashable, "miner not yet tardy")
 		}
@@ -1149,13 +1149,10 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 	return MinimumCollateralPerSector
 }
 
-// GenerationAttackTime is the number of blocks after a proving period ends
+// LatePoStGracePeriod is the number of blocks after a proving period ends
 // after which a storage miner will be subject to storage fault slashing.
-//
-// TODO: How do we compute a non-bogus return value here?
-// https://github.com/filecoin-project/specs/issues/322
-func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
-	return types.NewBlockHeight(PoStChallengeWindowBlocks)
+func LatePoStGracePeriod(sectorSize *types.BytesAmount) *types.BlockHeight {
+	return types.NewBlockHeight(ProvingPeriodDuration(sectorSize))
 }
 
 // ProvingPeriodDuration returns the number of blocks in a proving period for a

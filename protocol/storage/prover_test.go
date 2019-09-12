@@ -28,7 +28,7 @@ func TestProver(t *testing.T) {
 	var fakeInputs []storage.PoStInputs
 	start := types.NewBlockHeight(100)
 	end := types.NewBlockHeight(200)
-	deadline := end.Add(miner.GenerationAttackTime(sectorSize))
+	deadline := end.Add(miner.LatePoStGracePeriod(sectorSize))
 	collateralRequirement := types.NewAttoFILFromFIL(1)
 
 	makeProofContext := func() *fakeProverContext {

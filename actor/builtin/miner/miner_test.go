@@ -1197,7 +1197,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	secondProvingPeriodStart := firstCommitBlockHeight + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodStart := secondProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodEnd := thirdProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
-	lastPossibleSubmission := thirdProvingPeriodEnd + PoStChallengeWindowBlocks
+	lastPossibleSubmission := thirdProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks
 
 	// CreateTestMiner creates a new test miner with the given peerID and miner
 	// owner address and a given number of committed sectors
@@ -1398,7 +1398,7 @@ func TestVerifyPIP(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
-		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(GenerationAttackTime(minerState.SectorSize)).Add(types.NewBlockHeight(1))
+		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(LatePoStGracePeriod(minerState.SectorSize)).Add(types.NewBlockHeight(1))
 		miner := Actor{}
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
@@ -1527,7 +1527,7 @@ func TestMinerGetPoStState(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 
 	lastHeightOfFirstPeriod := firstCommitBlockHeight + LargestSectorSizeProvingPeriodBlocks
-	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + PoStChallengeWindowBlocks
+	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + LargestSectorSizeProvingPeriodBlocks
 
 	faults := types.EmptyFaultSet()
 
