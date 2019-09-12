@@ -162,9 +162,9 @@ func (a *API) MinerGetPower(ctx context.Context, minerAddr address.Address) (Min
 	return MinerGetPower(ctx, a, minerAddr)
 }
 
-// MinerGetProvingPeriod queries for the proving period of the given miner
-func (a *API) MinerGetProvingPeriod(ctx context.Context, minerAddr address.Address) (MinerProvingPeriod, error) {
-	return MinerGetProvingPeriod(ctx, a, minerAddr)
+// MinerGetProvingWindow queries for the proving period of the given miner
+func (a *API) MinerGetProvingPeriod(ctx context.Context, minerAddr address.Address) (MinerProvingWindow, error) {
+	return MinerGetProvingWindow(ctx, a, minerAddr)
 }
 
 // MinerGetCollateral queries for the proving period of the given miner

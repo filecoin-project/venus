@@ -308,7 +308,7 @@ var minerExports = exec.Exports{
 		Params: nil,
 		Return: []abi.Type{abi.Integer},
 	},
-	"getProvingPeriod": &exec.FunctionSignature{
+	"getProvingWindow": &exec.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
@@ -1068,15 +1068,15 @@ func (ma *Actor) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 	return 0, nil
 }
 
-// GetProvingPeriod returns the proving period start and proving period end
-func (ma *Actor) GetProvingPeriod(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+// GetProvingWindow returns the proving period start and proving period end
+func (ma *Actor) GetProvingWindow(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return nil, nil, errors.CodeError(err), err
 	}
 
-	return provingPeriodStart(state), state.ProvingPeriodEnd, 0, nil
+	return provingWindowStart(state), state.ProvingPeriodEnd, 0, nil
 }
 
 // CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current
@@ -1191,7 +1191,7 @@ func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 //
 
 // calculates proving period start from the proving period end and the proving period duration
-func provingPeriodStart(state State) *types.BlockHeight {
+func provingWindowStart(state State) *types.BlockHeight {
 	if state.ProvingPeriodEnd == nil {
 		return types.NewBlockHeight(0)
 	}

@@ -416,7 +416,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingPeriod"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return nil, errors.New("test error")
 		}
 		api.messageHandlers = handlers
@@ -532,7 +532,7 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 		commitments["42"] = types.Commitments{}
 		return mustEncodeResults(t, commitments), nil
 	}
-	handlers["getProvingPeriod"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return mustEncodeResults(t, types.NewBlockHeight(20003), types.NewBlockHeight(40003)), nil
 	}
 	handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {

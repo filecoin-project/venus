@@ -349,7 +349,7 @@ func TestMinerGetPower(t *testing.T) {
 func TestMinerGetProvingPeriod(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("GetProvingPeriod returns unitialized values when proving period is unset", func(t *testing.T) {
+	t.Run("GetProvingWindow returns unitialized values when proving period is unset", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -358,7 +358,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
@@ -374,7 +374,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		assert.Equal(t, types.NewBlockHeight(0), end)
 	})
 
-	t.Run("GetProvingPeriod returns the start and end of the proving period", func(t *testing.T) {
+	t.Run("GetProvingWindow returns the start and end of the proving period", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -394,7 +394,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
@@ -496,7 +496,7 @@ func TestMinerCommitSector(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period matches
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriod", nil)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingWindow", nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 
@@ -1063,7 +1063,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period is now the next one
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriod", ancestors)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingWindow", ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))

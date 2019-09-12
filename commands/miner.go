@@ -472,9 +472,9 @@ var minerProvingPeriodCmd = &cmds.Command{
 		}
 		return re.Emit(mpp)
 	},
-	Type: porcelain.MinerProvingPeriod{},
+	Type: porcelain.MinerProvingWindow{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingWindow) error {
 			var pSet []string
 			for p := range res.ProvingSet {
 				pSet = append(pSet, p)

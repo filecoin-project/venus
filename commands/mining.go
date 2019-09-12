@@ -105,7 +105,7 @@ type MiningStatusResult struct {
 	Miner         address.Address              `json:"minerAddress"`
 	Owner         address.Address              `json:"owner"`
 	Collateral    types.AttoFIL                `json:"collateral"`
-	ProvingPeriod porcelain.MinerProvingPeriod `json:"provingPeriod,omitempty"`
+	ProvingPeriod porcelain.MinerProvingWindow `json:"provingPeriod,omitempty"`
 	Power         porcelain.MinerPower         `json:"minerPower"`
 }
 
