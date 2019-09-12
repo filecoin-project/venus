@@ -862,7 +862,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 		nextProvingPeriodEnd := state.ProvingPeriodEnd.Add(provingPeriodDuration)
 
 		// ensure PoSt is not too late entirely
-		if chainHeight.GreaterEqual(state.ProvingPeriodEnd.Add(nextProvingPeriodEnd)) {
+		if chainHeight.GreaterEqual(nextProvingPeriodEnd) {
 			// The PoSt has been submitted a full proving period after the proving period end.
 			// The miner can expect to be slashed, and so for now the PoSt is rejected.
 			// An alternative would be to apply the penalties here, duplicating the behaviour
