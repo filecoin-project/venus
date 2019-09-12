@@ -70,7 +70,8 @@ func TestTipSetIncremental(t *testing.T) {
 	verifyHead(t, store, t1)
 
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), t2.Key(), heightFromTip(t, t2)), true))
-	verifyTip(t, store, t2, builder.StateForKey(t2.Key()))
+	_, err := store.GetTipSet(t2.Key())
+	require.Error(t, err)
 
 	merged := types.RequireNewTipSet(t, t1.At(0), t2.At(0))
 	verifyTip(t, store, merged, builder.StateForKey(merged.Key()))
@@ -148,7 +149,8 @@ func TestIgnoreLightFork(t *testing.T) {
 
 	// Lighter fork is processed but not change head.
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), forkHead.Key(), heightFromTip(t, forkHead)), true))
-	verifyTip(t, store, forkHead, builder.StateForKey(forkHead.Key()))
+	_, err := store.GetTipSet(forkHead.Key())
+	require.Error(t, err)
 	verifyHead(t, store, t4)
 }
 
