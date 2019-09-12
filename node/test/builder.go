@@ -20,9 +20,9 @@ import (
 // file to the config.Config structure, and node.Config which is really just some dependency
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
-	// Initialisation function for the genesis block (should be an InitOpt).
+	// Initialisation function for the genesis block and state.
 	gif consensus.GenesisInitFunc
-	// Options to the repo/config initialisation.
+	// Options to the repo initialisation.
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
 	configMutations []func(*config.Config)
@@ -79,12 +79,11 @@ func (b *NodeBuilder) WithOffline(offline bool) *NodeBuilder {
 // Build creates a node as specified by this builder.
 // This many be invoked multiple times to create many nodes.
 func (b *NodeBuilder) Build(ctx context.Context) *node.Node {
-	repo := repo.NewInMemoryRepo()
-
 	// Initialise repo.
+	repo := repo.NewInMemoryRepo()
 	b.requireNoError(node.Init(ctx, repo, b.gif, b.initOpts...))
 
-	// Apply configuration changes, which must happen before node.OptionsFromRepo().
+	// Apply configuration changes (must happen before node.OptionsFromRepo()).
 	sectorDir, err := ioutil.TempDir("", "go-fil-test-sectors")
 	b.requireNoError(err)
 	repo.Config().SectorBase.RootDir = sectorDir

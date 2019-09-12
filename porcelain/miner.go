@@ -398,24 +398,24 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 	return pid, nil
 }
 
-// MinerProvingPeriod contains a miners proving period start and end as well
+// MinerProvingWindow contains a miners proving period start and end as well
 // as a set of their proving set.
-type MinerProvingPeriod struct {
+type MinerProvingWindow struct {
 	Start      types.BlockHeight
 	End        types.BlockHeight
 	ProvingSet map[string]types.Commitments
 }
 
-// MinerGetProvingPeriod gets the proving period and commitments for miner `minerAddr`.
-func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingPeriod, error) {
+// MinerGetProvingWindow gets the proving period and commitments for miner `minerAddr`.
+func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingWindow, error) {
 	res, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
 		minerAddr,
-		"getProvingPeriod",
+		"getProvingWindow",
 	)
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query ProvingPeriod method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query ProvingPeriod method failed")
 	}
 	start, end := types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1])
 
@@ -426,24 +426,24 @@ func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserializ
 		"getProvingSetCommitments",
 	)
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query SetCommitments method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query SetCommitments method failed")
 	}
 
 	sig, err := plumbing.ActorGetSignature(ctx, minerAddr, "getProvingSetCommitments")
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query method failed")
 	}
 
 	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "deserialization failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "deserialization failed")
 	}
 	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
 	if !ok {
-		return MinerProvingPeriod{}, errors.New("type assertion failed")
+		return MinerProvingWindow{}, errors.New("type assertion failed")
 	}
 
-	return MinerProvingPeriod{
+	return MinerProvingWindow{
 		Start:      *start,
 		End:        *end,
 		ProvingSet: commitments,

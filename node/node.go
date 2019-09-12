@@ -294,7 +294,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 			if syncCtx.Err() == nil {
 				// Subscribe to block pubsub topic to learn about new chain heads.
-				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic, node.processBlock)
+				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.NetworkName), node.processBlock)
 				if err != nil {
 					log.Error(err)
 				}
@@ -306,7 +306,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// https://github.com/filecoin-project/go-filecoin/issues/2145.
 		// This is blocked by https://github.com/filecoin-project/go-filecoin/issues/2959, which
 		// is necessary for message_propagate_test to start mining before testing this behaviour.
-		node.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic, node.processMessage)
+		node.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic(node.NetworkName), node.processMessage)
 		if err != nil {
 			return err
 		}

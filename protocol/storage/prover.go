@@ -147,7 +147,7 @@ func (p *Prover) challengeSeed(ctx context.Context, periodStart *types.BlockHeig
 
 // calculateFee calculates any fees due with a proof submission due to faults or lateness.
 func (p *Prover) calculateFee(ctx context.Context, height *types.BlockHeight, end *types.BlockHeight) (types.AttoFIL, error) {
-	gracePeriod := miner.GenerationAttackTime(p.sectorSize)
+	gracePeriod := miner.LatePoStGracePeriod(p.sectorSize)
 	deadline := end.Add(gracePeriod)
 	if height.GreaterEqual(deadline) {
 		// The generation attack time has expired and the proof will be rejected.

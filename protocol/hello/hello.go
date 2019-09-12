@@ -11,6 +11,7 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -25,8 +26,10 @@ func init() {
 	cbor.RegisterCborType(Message{})
 }
 
-// Protocol is the libp2p protocol identifier for the hello protocol.
-const protocol = "/fil/hello/1.0.0"
+// protocol is the libp2p protocol identifier for the hello protocol.
+func helloProtocol(networkName string) protocol.ID {
+	return protocol.ID(fmt.Sprintf("/fil/hello/%s", networkName))
+}
 
 var log = logging.Logger("/fil/hello")
 
@@ -57,7 +60,7 @@ type Handler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
-	net string
+	networkName string
 }
 
 // New creates a new instance of the hello protocol and registers it to
@@ -68,9 +71,9 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 		genesis:           gen,
 		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
-		net:               net,
+		networkName:       net,
 	}
-	h.SetStreamHandler(protocol, hello.handleNewStream)
+	h.SetStreamHandler(helloProtocol(net), hello.handleNewStream)
 
 	// register for connection notifications
 	h.Network().Notify((*helloNotify)(hello))
@@ -116,7 +119,7 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 
 // ReceiveHello receives a hello message from peer `p` and returns it.
 func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error) {
-	s, err := h.host.NewStream(ctx, p, protocol)
+	s, err := h.host.NewStream(ctx, p, helloProtocol(h.networkName))
 	if err != nil {
 		return nil, err
 	}
