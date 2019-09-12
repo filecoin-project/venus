@@ -4,6 +4,13 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
+// Ticker provides an interface which can be used instead of directly
+// using the ticker within the time module. The real-time ticker t
+// provides ticks through t.C which becomes now t.Chan() to make
+// this channel requirement definable in this interface.
+// Ticker is an alias for clockwork.Ticker
+type Ticker = clockwork.Ticker
+
 // Clock provides an interface that packages can use instead of directly
 // using the time module, so that chronology-related behavior can be tested.
 type Clock interface {
