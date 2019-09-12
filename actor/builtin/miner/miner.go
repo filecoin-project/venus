@@ -34,10 +34,10 @@ func init() {
 // https://github.com/filecoin-project/specs/pull/318
 const LargestSectorSizeProvingPeriodBlocks = 1000
 
-// PoStChallengeTimeBlocks defines the blocks time prior to the proving
+// PoStChallengeWindowBlocks defines the block time prior to the proving
 // period end at which the PoSt challenge seed is chosen. This dictates the
 // earliest point at which a PoSt may be submitted.
-const PoStChallengeTimeBlocks = 500
+const PoStChallengeWindowBlocks = 500
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
@@ -903,20 +903,26 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 		// This switching will be removed when issue #2270 is completed.
 		if !ma.Bootstrap {
 			// calculate challenge seed now. If PoSt is too early, this will fail.
-			poStChallengeTime := types.NewBlockHeight(PoStChallengeTimeBlocks)
+			poStChallengeTime := types.NewBlockHeight(PoStChallengeWindowBlocks)
 
 			var seed types.PoStChallengeSeed
 			if chainHeight.LessThan(state.ProvingPeriodEnd) {
 				// proof is in time, sample at start of post challenge time
-				seed, err = getPoStChallengeSeed(ctx, state, state.ProvingPeriodEnd.Sub(poStChallengeTime))
+				provingWindowStart := state.ProvingPeriodEnd.Sub(poStChallengeTime)
+				seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
 				if err != nil {
-					return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed, PoSt is probably early")
+					return nil, errors.RevertErrorWrapf(err,
+						"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window start, %s",
+						chainHeight.String(), provingWindowStart.String())
 				}
 			} else {
 				// proof is late, sample at start of next post challenge time
-				seed, err = getPoStChallengeSeed(ctx, state, nextProvingPeriodEnd.Sub(poStChallengeTime))
+				provingWindowStart := nextProvingPeriodEnd.Sub(poStChallengeTime)
+				seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
 				if err != nil {
-					return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed, PoSt is probably early")
+					return nil, errors.RevertErrorWrapf(err,
+						"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window start, %s",
+						chainHeight.String(), provingWindowStart.String())
 				}
 			}
 
@@ -1148,7 +1154,7 @@ func CollateralForSector(sectorSize *types.BytesAmount) types.AttoFIL {
 // TODO: How do we compute a non-bogus return value here?
 // https://github.com/filecoin-project/specs/issues/322
 func GenerationAttackTime(sectorSize *types.BytesAmount) *types.BlockHeight {
-	return types.NewBlockHeight(PoStChallengeTimeBlocks)
+	return types.NewBlockHeight(PoStChallengeWindowBlocks)
 }
 
 // ProvingPeriodDuration returns the number of blocks in a proving period for a
@@ -1191,7 +1197,7 @@ func provingPeriodStart(state State) *types.BlockHeight {
 	if state.ProvingPeriodEnd == nil {
 		return types.NewBlockHeight(0)
 	}
-	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(PoStChallengeTimeBlocks))
+	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(PoStChallengeWindowBlocks))
 }
 
 // lateState determines whether given a proving period and chain height, what is the

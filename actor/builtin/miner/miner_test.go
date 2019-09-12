@@ -400,7 +400,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		// end of proving period is now plus proving period size
 		expectedEnd := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)))
 		// start of proving period is end minus the PoSt challenge time
-		expectedStart := expectedEnd.Sub(types.NewBlockHeight(PoStChallengeTimeBlocks))
+		expectedStart := expectedEnd.Sub(types.NewBlockHeight(PoStChallengeWindowBlocks))
 
 		start, ok := startVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
@@ -1106,7 +1106,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	secondProvingPeriodStart := firstCommitBlockHeight + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodStart := secondProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodEnd := thirdProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
-	lastPossibleSubmission := thirdProvingPeriodEnd + PoStChallengeTimeBlocks
+	lastPossibleSubmission := thirdProvingPeriodEnd + PoStChallengeWindowBlocks
 
 	// CreateTestMiner creates a new test miner with the given peerID and miner
 	// owner address and a given number of committed sectors
@@ -1436,7 +1436,7 @@ func TestMinerGetPoStState(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 
 	lastHeightOfFirstPeriod := firstCommitBlockHeight + LargestSectorSizeProvingPeriodBlocks
-	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + PoStChallengeTimeBlocks
+	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + PoStChallengeWindowBlocks
 
 	faults := types.EmptyFaultSet()
 
