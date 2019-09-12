@@ -122,7 +122,7 @@ var miningStatusCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingWindow(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
