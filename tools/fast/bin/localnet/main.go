@@ -54,6 +54,20 @@ var (
 	flag = flg.NewFlagSet(os.Args[0], flg.ExitOnError)
 )
 
+// passed to InitAndStart decreases catchup period and sets all nodes to trust eachother.
+var trustCatchupCfg = func(ctx context.Context, node *fast.Filecoin) error {
+	cfg, err := node.Config()
+	if err != nil {
+		return err
+	}
+	cfg.Sync.TrustAllPeers = true
+	cfg.Sync.CatchupSyncerPeriod = "3s"
+	if err := node.WriteConfig(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 
 	logging.SetDebugLogging()
@@ -255,7 +269,7 @@ func main() {
 	var deals []*storagedeal.Response
 
 	for _, miner := range miners {
-		err = series.InitAndStart(ctx, miner)
+		err = series.InitAndStart(ctx, miner, trustCatchupCfg)
 		if err != nil {
 			exitcode = handleError(err, "failed series.InitAndStart;")
 			return

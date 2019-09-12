@@ -60,6 +60,7 @@ type TestDaemon struct {
 	keyFiles         []string
 	withMiner        string
 	autoSealInterval string
+	catchupTestMode  bool
 	isRelay          bool
 
 	firstRun bool
@@ -649,6 +650,13 @@ func AutoSealInterval(autoSealInterval string) func(*TestDaemon) {
 	}
 }
 
+// CatchupTestMode places the daemon is a trustless catchup mode for testing.
+func CatchupTestMode(enabled bool) func(*TestDaemon) {
+	return func(td *TestDaemon) {
+		td.catchupTestMode = enabled
+	}
+}
+
 // GenesisFile allows setting the `genesisFile` config option on the daemon.
 func GenesisFile(a string) func(*TestDaemon) {
 	return func(td *TestDaemon) {
@@ -717,6 +725,10 @@ func NewDaemon(t *testing.T, options ...func(*TestDaemon)) *TestDaemon {
 	if td.autoSealInterval != "" {
 		initopts = append(initopts, fmt.Sprintf("--auto-seal-interval-seconds=%s", td.autoSealInterval))
 	}
+
+	// this causes the daemon to catchup sync from all peers its connected to,
+	// unless you want to specifically test chain catchup logic leave this alone.
+	initopts = append(initopts, fmt.Sprint("--catchup-sync-test-mode"))
 
 	if td.init {
 		t.Logf("run: go-filecoin init %s", initopts)

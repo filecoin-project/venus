@@ -19,6 +19,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// passed to InitAndStart decreases catchup period and sets all nodes to trust eachother.
+var trustCatchupCfg = func(ctx context.Context, node *fast.Filecoin) error {
+	cfg, err := node.Config()
+	if err != nil {
+		return err
+	}
+	cfg.Sync.TrustAllPeers = true
+	cfg.Sync.CatchupSyncerPeriod = "3s"
+	if err := node.WriteConfig(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
 // TestEnvironment provides common setup for writing tests using FAST
 type TestEnvironment struct {
 	environment.Environment
@@ -71,7 +85,7 @@ func NewTestEnvironment(ctx context.Context, t *testing.T, fastenvOpts fast.File
 	genesis, err := env.NewProcess(ctx, localplugin.PluginName, options, fastenvOpts)
 	require.NoError(t, err)
 
-	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
+	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner), trustCatchupCfg)
 	require.NoError(t, err)
 
 	// Define a MiningOnce function which will bet set on the context to provide
@@ -116,7 +130,7 @@ func (env *TestEnvironment) RequireNewNode() *fast.Filecoin {
 func (env *TestEnvironment) RequireNewNodeStarted() *fast.Filecoin {
 	p := env.RequireNewNode()
 
-	err := series.InitAndStart(env.ctx, p)
+	err := series.InitAndStart(env.ctx, p, trustCatchupCfg)
 	require.NoError(env.t, err)
 
 	return p

@@ -110,6 +110,8 @@ func NewTestNodes(t *testing.T, count int, attrs map[string]string) ([]*TestNode
 // MustInit inits TestNode, passing `args` to the init command. testing.Fatal is called if initing fails, or exits with
 // and exitcode > 0.
 func (tn *TestNode) MustInit(ctx context.Context, args ...string) *TestNode {
+	// TODO replace all this crap with FAST
+	args = append(args, "--catchup-sync-test-mode")
 	tn.T.Logf("TestNode[%s] Init with args: %s", tn.String(), args)
 	out, err := tn.Init(ctx, args...)
 	// Did IPTB fail to function correctly?

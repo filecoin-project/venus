@@ -25,6 +25,20 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// modify config to decrease catchup period and sets all nodes to trust eachother.
+var trustCatchupCfg = func(ctx context.Context, node *fast.Filecoin) error {
+	cfg, err := node.Config()
+	if err != nil {
+		return err
+	}
+	cfg.Sync.TrustAllPeers = true
+	cfg.Sync.CatchupSyncerPeriod = "3s"
+	if err := node.WriteConfig(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
 func init() {
 	// Enabling debug logging provides a lot of insight into what commands are
 	// being executed
@@ -86,18 +100,18 @@ func TestRetrievalLocalNetwork(t *testing.T) {
 
 	// Start setting up the nodes
 	// Setup Genesis
-	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner))
+	err = series.SetupGenesisNode(ctx, genesis, genesisMiner.Address, files.NewReaderFile(genesisMiner.Owner), trustCatchupCfg)
 	require.NoError(t, err)
 
 	err = genesis.MiningStart(ctx)
 	require.NoError(t, err)
 
 	// Start Miner
-	err = series.InitAndStart(ctx, miner)
+	err = series.InitAndStart(ctx, miner, trustCatchupCfg)
 	require.NoError(t, err)
 
 	// Start Client
-	err = series.InitAndStart(ctx, client)
+	err = series.InitAndStart(ctx, client, trustCatchupCfg)
 	require.NoError(t, err)
 
 	// Connect everything to the genesis node so it can issue filecoin when needed
