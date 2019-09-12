@@ -14,9 +14,15 @@ import (
 // "start mining" command to the filecoin process `node`. Process `node` will
 // be configured with miner `minerAddress`, and import the address of the miner
 // `minerOwner`. Lastly the process `node` will start mining.
-func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress address.Address, minerOwner files.File) error {
+func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress address.Address, minerOwner files.File, fns ...func(context.Context, *fast.Filecoin) error) error {
 	if _, err := node.InitDaemon(ctx); err != nil {
 		return err
+	}
+
+	for _, fn := range fns {
+		if err := fn(ctx, node); err != nil {
+			return err
+		}
 	}
 
 	if _, err := node.StartDaemon(ctx, true); err != nil {
