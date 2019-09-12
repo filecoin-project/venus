@@ -148,45 +148,56 @@ func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowD
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	tf.IntegrationTest(t)
 
-	miner1Addr := fixtures.TestMiners[0]
-	minerOwner1 := fixtures.TestAddresses[0]
-	miner1 := th.NewDaemon(t,
-		th.WithMiner(miner1Addr),
-		th.KeyFile(fixtures.KeyFilePaths()[0]),
-		th.DefaultAddress(minerOwner1),
-	).Start()
-	defer miner1.ShutdownSuccess()
+	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
+		InitOpts:   []fast.ProcessInitOption{fast.POAutoSealIntervalSeconds(1)},
+		DaemonOpts: []fast.ProcessDaemonOption{fast.POBlockTime(50 * time.Millisecond)},
+	})
+	defer func() {
+		require.NoError(t, env.Teardown(ctx))
+	}()
+	clientDaemon := env.GenesisMiner
 
-	minerOwner2 := fixtures.TestAddresses[1]
-	miner2 := th.NewDaemon(t,
-		th.KeyFile(fixtures.KeyFilePaths()[1]),
-		th.DefaultAddress(minerOwner2),
-	).Start()
-	defer miner2.ShutdownSuccess()
+	collateral := big.NewInt(int64(1))
+	price := big.NewFloat(float64(0.001))
+	expiry := big.NewInt(int64(500))
 
-	client := th.NewDaemon(t, th.KeyFile(fixtures.KeyFilePaths()[2]), th.DefaultAddress(fixtures.TestAddresses[2])).Start()
-	defer client.ShutdownSuccess()
+	// create first miner
+	miner1Daemon := env.RequireNewNodeWithFunds(1111)
+	series.Connect(ctx, miner1Daemon, clientDaemon)
+	pparams, err := miner1Daemon.Protocol(ctx)
+	require.NoError(t, err)
+	sinfo := pparams.SupportedSectors[0]
 
-	miner1.RunSuccess("mining start")
-	miner1.UpdatePeerID()
+	// mine the create miner message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+	ask1, err := series.CreateStorageMinerWithAsk(ctx, miner1Daemon, collateral, price, expiry, sinfo.Size)
+	miner1Daemon.MiningSetup(ctx)
+	require.NoError(t, err)
 
-	miner1.ConnectSuccess(client)
-	miner2.ConnectSuccess(client)
+	// create second miner
+	miner2Daemon := env.RequireNewNodeWithFunds(1111)
+	series.Connect(ctx, miner2Daemon, clientDaemon)
 
-	miner2Addr := miner2.CreateStorageMinerAddr(miner1, minerOwner2)
-	miner2.UpdatePeerID()
+	// mine the create miner message, then mine the set ask message
+	series.CtxMiningNext(ctx, 2)
+	ask2, err := series.CreateStorageMinerWithAsk(ctx, miner2Daemon, collateral, price, expiry, sinfo.Size)
+	miner2Daemon.MiningSetup(ctx)
+	require.NoError(t, err)
 
-	miner2.RunSuccess("mining start")
+	// define data
+	data := []byte("HODLHODLHODL")
 
-	miner1.MinerSetPrice(miner1Addr, minerOwner1, "20", "10")
-	miner2.MinerSetPrice(miner2Addr.String(), minerOwner2, "20", "10")
+	// Make storage deal with first miner (mining the payment channel creation)
+	series.CtxMiningNext(ctx, 1)
+	_, deal, err := series.ImportAndStore(ctx, clientDaemon, ask1, files.NewBytesFile(data))
+	require.NoError(t, err)
+	require.Equal(t, storagedeal.Accepted, deal.State)
 
-	dataCid := client.RunWithStdin(strings.NewReader("HODLHODLHODL"), "client", "import").ReadStdoutTrimNewlines()
-
-	firstDeal := client.RunSuccess("client", "propose-storage-deal", miner1Addr, dataCid, "0", "5").ReadStdoutTrimNewlines()
-	assert.Contains(t, firstDeal, "accepted")
-	secondDeal := client.RunSuccess("client", "propose-storage-deal", miner2Addr.String(), dataCid, "0", "5").ReadStdoutTrimNewlines()
-	assert.Contains(t, secondDeal, "accepted")
+	// Make storage deal with second miner using same data and assert no error (mining the payment channel creation)
+	series.CtxMiningNext(ctx, 1)
+	_, deal, err = series.ImportAndStore(ctx, clientDaemon, ask2, files.NewBytesFile(data))
+	assert.NoError(t, err)
+	assert.Equal(t, storagedeal.Accepted, deal.State)
 }
 
 func TestVoucherPersistenceAndPayments(t *testing.T) {
