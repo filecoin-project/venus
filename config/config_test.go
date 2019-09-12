@@ -99,6 +99,11 @@ func TestWriteFile(t *testing.T) {
 	"swarm": {
 		"address": "/ip4/0.0.0.0/tcp/6000"
 	},
+	"sync": {
+		"catchupSyncerPeriod": "10s",
+		"trustedPeers": [],
+		"trustAllPeers": false
+	},
 	"wallet": {
 		"defaultAddress": "empty"
 	}

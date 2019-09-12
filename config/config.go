@@ -26,6 +26,7 @@ type Config struct {
 	Observability *ObservabilityConfig `json:"observability"`
 	SectorBase    *SectorBaseConfig    `json:"sectorbase"`
 	Swarm         *SwarmConfig         `json:"swarm"`
+	Sync          *SyncConfig          `json:"sync"`
 	Wallet        *WalletConfig        `json:"wallet"`
 }
 
@@ -229,6 +230,26 @@ func newDefaultSectorbaseConfig() *SectorBaseConfig {
 	}
 }
 
+// SyncConfig holds all values that control how and when a filecoin node syncs its chain.
+type SyncConfig struct {
+	// CatchupSyncerPeriod represents how frequently a node will attempt to catch up when performing
+	// catchup sync.
+	CatchupSyncerPeriod string `json:"catchupSyncerPeriod"`
+	// TrustedAddress represents trusted peers to sync from.
+	TrustedAddresses []string `json:"trustedPeers"`
+	// TrustAllPeers when set to true causes the syncer to catchup to any peers its connected to.
+	// Should only be used in testing.
+	TrustAllPeers bool `json:"trustAllPeers"`
+}
+
+func newDefaultSyncConfig() *SyncConfig {
+	return &SyncConfig{
+		CatchupSyncerPeriod: "10s",
+		TrustedAddresses:    []string{},
+		TrustAllPeers:       false,
+	}
+}
+
 // NewDefaultConfig returns a config object with all the fields filled out to
 // their default values
 func NewDefaultConfig() *Config {
@@ -243,6 +264,7 @@ func NewDefaultConfig() *Config {
 		Mpool:         newDefaultMessagePoolConfig(),
 		SectorBase:    newDefaultSectorbaseConfig(),
 		Observability: newDefaultObservabilityConfig(),
+		Sync:          newDefaultSyncConfig(),
 	}
 }
 
