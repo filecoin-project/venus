@@ -767,7 +767,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 		return nil
 	}
 
-	provingPeriodStart, provingPeriodEnd, err := sm.getProvingPeriod()
+	provingWindowStart, provingWindowEnd, err := sm.getProvingWindow()
 	if err != nil {
 		return errors.Errorf("failed to get proving period: %s", err)
 	}
@@ -775,7 +775,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	sm.postInProcessLk.Lock()
 	defer sm.postInProcessLk.Unlock()
 
-	if sm.postInProcess != nil && sm.postInProcess.Equal(provingPeriodEnd) {
+	if sm.postInProcess != nil && sm.postInProcess.Equal(provingWindowEnd) {
 		// post is already being generated for this period, nothing to do
 		return nil
 	}
@@ -788,28 +788,28 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
-	if h.GreaterEqual(provingPeriodStart) {
-		if h.LessEqual(provingPeriodEnd) {
+	if h.GreaterEqual(provingWindowStart) {
+		if h.LessEqual(provingWindowEnd) {
 			// we are in a new proving period, lets get this post going
-			sm.postInProcess = provingPeriodEnd
+			sm.postInProcess = provingWindowEnd
 
-			go sm.submitPoSt(ctx, provingPeriodStart, provingPeriodEnd, inputs)
+			go sm.submitPoSt(ctx, provingWindowStart, provingWindowEnd, inputs)
 		} else {
 			// we are too late
-			// TODO: figure out faults and payments here
-			return errors.Errorf("too late start=%s  end=%s current=%s", provingPeriodStart, provingPeriodEnd, h)
+			// TODO: figure out faults and payments here #3406
+			return errors.Errorf("too late start=%s  end=%s current=%s", provingWindowStart, provingWindowEnd, h)
 		}
 	}
 
 	return nil
 }
 
-func (sm *Miner) getProvingPeriod() (*types.BlockHeight, *types.BlockHeight, error) {
+func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, error) {
 	res, err := sm.porcelainAPI.MessageQuery(
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
-		"getProvingPeriod",
+		"getProvingWindow",
 	)
 	if err != nil {
 		return nil, nil, err

@@ -468,7 +468,7 @@ func TestMinerGetPower(t *testing.T) {
 type minerGetProvingPeriodPlumbing struct{}
 
 func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	if method == "getProvingPeriod" {
+	if method == "getProvingWindow" {
 		return [][]byte{types.NewBlockHeight(10).Bytes(), types.NewBlockHeight(20).Bytes()}, nil
 	}
 	if method == "getProvingSetCommitments" {
@@ -498,7 +498,7 @@ func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context,
 func TestMinerProvingPeriod(t *testing.T) {
 	tf.UnitTest(t)
 
-	pp, err := MinerGetProvingPeriod(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
+	pp, err := MinerGetProvingWindow(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, "10", pp.Start.String())
 	assert.Equal(t, "20", pp.End.String())

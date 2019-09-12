@@ -29,7 +29,7 @@ var minerCmd = &cmds.Command{
 		"set-price":      minerSetPriceCmd,
 		"update-peerid":  minerUpdatePeerIDCmd,
 		"collateral":     minerCollateralCmd,
-		"proving-period": minerProvingPeriodCmd,
+		"proving-window": minerProvingWindowCmd,
 		"set-worker":     minerSetWorkerAddressCmd,
 		"worker":         minerWorkerAddressCmd,
 	},
@@ -455,9 +455,9 @@ var minerCollateralCmd = &cmds.Command{
 	},
 }
 
-var minerProvingPeriodCmd = &cmds.Command{
+var minerProvingWindowCmd = &cmds.Command{
 	Arguments: []cmdkit.Argument{
-		cmdkit.StringArg("miner", true, false, "Miner address to get proving period for"),
+		cmdkit.StringArg("miner", true, false, "Miner address to get proving window for"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		// Get the Miner Address
@@ -466,20 +466,20 @@ var minerProvingPeriodCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingWindow(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}
 		return re.Emit(mpp)
 	},
-	Type: porcelain.MinerProvingPeriod{},
+	Type: porcelain.MinerProvingWindow{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingPeriod) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *porcelain.MinerProvingWindow) error {
 			var pSet []string
 			for p := range res.ProvingSet {
 				pSet = append(pSet, p)
 			}
-			_, err := fmt.Fprintf(w, `Proving Period
+			_, err := fmt.Fprintf(w, `Proving Window
 Start:      %s
 End:        %s
 ProvingSet: %s

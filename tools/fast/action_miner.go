@@ -100,12 +100,12 @@ func (f *Filecoin) MinerSetPrice(ctx context.Context, fil *big.Float, expiry *bi
 	return &out.MinerSetPriceResponse, nil
 }
 
-// MinerProvingPeriod runs the `miner proving-period` command against the filecoin process
-func (f *Filecoin) MinerProvingPeriod(ctx context.Context, miner address.Address) (porcelain.MinerProvingPeriod, error) {
-	var out porcelain.MinerProvingPeriod
+// MinerProvingWindow runs the `miner proving-window` command against the filecoin process
+func (f *Filecoin) MinerProvingWindow(ctx context.Context, miner address.Address) (porcelain.MinerProvingWindow, error) {
+	var out porcelain.MinerProvingWindow
 
-	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-period", miner.String()); err != nil {
-		return porcelain.MinerProvingPeriod{}, err
+	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "miner", "proving-window", miner.String()); err != nil {
+		return porcelain.MinerProvingWindow{}, err
 	}
 
 	return out, nil
