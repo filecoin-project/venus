@@ -340,8 +340,8 @@ func (api *API) WalletNewAddress() (address.Address, error) {
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos []*types.KeyInfo) ([]address.Address, error) {
-	return api.wallet.Import(kinfos)
+func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses
