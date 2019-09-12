@@ -42,13 +42,8 @@ var initCmd = &cmds.Command{
 		cmdkit.BoolOption(DevnetUser, "when set, populates config bootstrap addrs with the dns multiaddrs of the user devnet and other user devnet specific bootstrap parameters"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		newConfig, err := getConfigFromOptions(req.Options)
-		if err != nil {
-			return err
-		}
-
 		repoDir, _ := req.Options[OptionRepoDir].(string)
-		repoDir, err = paths.GetRepoPath(repoDir)
+		repoDir, err := paths.GetRepoPath(repoDir)
 		if err != nil {
 			return err
 		}
@@ -56,57 +51,67 @@ var initCmd = &cmds.Command{
 		if err := re.Emit(fmt.Sprintf("initializing filecoin node at %s\n", repoDir)); err != nil {
 			return err
 		}
-		if err := repo.InitFSRepo(repoDir, repo.Version, newConfig); err != nil {
+		if err := repo.InitFSRepo(repoDir, repo.Version, config.NewDefaultConfig()); err != nil {
 			return err
 		}
 		rep, err := repo.OpenFSRepo(repoDir, repo.Version)
 		if err != nil {
 			return err
 		}
-
-		// The only error Close can return is that the repo has already been closed
-		defer rep.Close() // nolint: errcheck
+		// The only error Close can return is that the repo has already been closed.
+		defer func() { _ = rep.Close() }()
 
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
+		// Writing to the repo here is messed up; this should create a genesis init function that
+		// writes to the repo when invoked.
 		genesisFile, err := loadGenesis(req.Context, rep, genesisFileSource)
 		if err != nil {
 			return err
 		}
 
-		autoSealIntervalSeconds, _ := req.Options[AutoSealIntervalSeconds].(uint)
 		peerKeyFile, _ := req.Options[PeerKeyFile].(string)
-		initopts, err := getNodeInitOpts(autoSealIntervalSeconds, peerKeyFile)
+		initopts, err := getNodeInitOpts(peerKeyFile)
 		if err != nil {
 			return err
 		}
 
-		return node.Init(req.Context, rep, genesisFile, initopts...)
+		if err := node.Init(req.Context, rep, genesisFile, initopts...); err != nil {
+			return err
+		}
+
+		cfg := rep.Config()
+		if err := setConfigFromOptions(cfg, req.Options); err != nil {
+			return err
+		}
+		if err := rep.ReplaceConfig(cfg); err != nil {
+			return err
+		}
+		return nil
 	},
 	Encoders: cmds.EncoderMap{
 		cmds.Text: cmds.MakeEncoder(initTextEncoder),
 	},
 }
 
-func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
-	newConfig := config.NewDefaultConfig()
-
+func setConfigFromOptions(cfg *config.Config, options cmdkit.OptMap) error {
+	var err error
 	if dir, ok := options[OptionSectorDir].(string); ok {
-		newConfig.SectorBase.RootDir = dir
+		cfg.SectorBase.RootDir = dir
 	}
 
 	if m, ok := options[WithMiner].(string); ok {
-		var err error
-		newConfig.Mining.MinerAddress, err = address.NewFromString(m)
-		if err != nil {
-			return nil, err
+		if cfg.Mining.MinerAddress, err = address.NewFromString(m); err != nil {
+			return err
 		}
 	}
 
+	if autoSealIntervalSeconds, ok := options[AutoSealIntervalSeconds]; ok {
+		cfg.Mining.AutoSealIntervalSeconds = autoSealIntervalSeconds.(uint)
+	}
+
 	if m, ok := options[DefaultAddress].(string); ok {
-		var err error
-		newConfig.Wallet.DefaultAddress, err = address.NewFromString(m)
-		if err != nil {
-			return nil, err
+		if cfg.Wallet.DefaultAddress, err = address.NewFromString(m); err != nil {
+			return err
 		}
 	}
 
@@ -114,34 +119,34 @@ func getConfigFromOptions(options cmdkit.OptMap) (*config.Config, error) {
 	devnetNightly, _ := options[DevnetNightly].(bool)
 	devnetUser, _ := options[DevnetUser].(bool)
 	if (devnetTest && devnetNightly) || (devnetTest && devnetUser) || (devnetNightly && devnetUser) {
-		return nil, fmt.Errorf(`cannot specify more than one "devnet-" option`)
+		return fmt.Errorf(`cannot specify more than one "devnet-" option`)
 	}
 
 	// Setup devnet specific config options.
 	if devnetTest || devnetNightly || devnetUser {
-		newConfig.Bootstrap.MinPeerThreshold = 1
-		newConfig.Bootstrap.Period = "10s"
+		cfg.Bootstrap.MinPeerThreshold = 1
+		cfg.Bootstrap.Period = "10s"
 	}
 
 	// Setup devnet staging specific config options.
 	if devnetTest {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
+		cfg.Bootstrap.Addresses = fixtures.DevnetStagingBootstrapAddrs
 	}
 
 	// Setup devnet nightly specific config options.
 	if devnetNightly {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
+		cfg.Bootstrap.Addresses = fixtures.DevnetNightlyBootstrapAddrs
 	}
 
 	// Setup devnet user specific config options.
 	if devnetUser {
-		newConfig.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
+		cfg.Bootstrap.Addresses = fixtures.DevnetUserBootstrapAddrs
 	}
 
-	return newConfig, nil
+	return nil
 }
 
-func initTextEncoder(req *cmds.Request, w io.Writer, val interface{}) error {
+func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
 	_, err := fmt.Fprintf(w, val.(string))
 	return err
 }
@@ -174,7 +179,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		}
 		source = file
 	}
-	defer source.Close() // nolint: errcheck
+	defer func() { _ = source.Close() }()
 
 	bs := blockstore.NewBlockstore(rep.Datastore())
 	ch, err := car.LoadCar(bs, source)
@@ -199,7 +204,7 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 	return gif, nil
 }
 
-func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.InitOpt, error) {
+func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
 	var initOpts []node.InitOpt
 	if peerKeyFile != "" {
 		data, err := ioutil.ReadFile(peerKeyFile)
@@ -212,8 +217,6 @@ func getNodeInitOpts(autoSealIntervalSeconds uint, peerKeyFile string) ([]node.I
 		}
 		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
 	}
-
-	initOpts = append(initOpts, node.AutoSealIntervalSecondsOpt(autoSealIntervalSeconds))
 
 	return initOpts, nil
 }

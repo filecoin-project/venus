@@ -163,7 +163,6 @@ func makeNodes(t *testing.T, numNodes int) (address.Address, []*Node) {
 	builderOpts := []BuilderOpt{RewarderConfigOption(&ZeroRewarder{}), ClockConfigOption(testhelpers.NewFakeSystemClock(time.Unix(1234567890, 0)))}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
-		AutoSealIntervalSecondsOpt(1),
 	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
