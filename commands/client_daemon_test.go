@@ -163,7 +163,7 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 
 	// create first miner
 	miner1Daemon := env.RequireNewNodeWithFunds(1111)
-	series.Connect(ctx, miner1Daemon, clientDaemon)
+	require.NoError(t, series.Connect(ctx, miner1Daemon, clientDaemon))
 	pparams, err := miner1Daemon.Protocol(ctx)
 	require.NoError(t, err)
 	sinfo := pparams.SupportedSectors[0]
@@ -171,17 +171,17 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 	// mine the create miner message, then mine the set ask message
 	series.CtxMiningNext(ctx, 2)
 	ask1, err := series.CreateStorageMinerWithAsk(ctx, miner1Daemon, collateral, price, expiry, sinfo.Size)
-	miner1Daemon.MiningSetup(ctx)
+	require.NoError(t, miner1Daemon.MiningSetup(ctx))
 	require.NoError(t, err)
 
 	// create second miner
 	miner2Daemon := env.RequireNewNodeWithFunds(1111)
-	series.Connect(ctx, miner2Daemon, clientDaemon)
+	require.NoError(t, series.Connect(ctx, miner2Daemon, clientDaemon))
 
 	// mine the create miner message, then mine the set ask message
 	series.CtxMiningNext(ctx, 2)
 	ask2, err := series.CreateStorageMinerWithAsk(ctx, miner2Daemon, collateral, price, expiry, sinfo.Size)
-	miner2Daemon.MiningSetup(ctx)
+	require.NoError(t, miner2Daemon.MiningSetup(ctx))
 	require.NoError(t, err)
 
 	// define data
