@@ -892,12 +892,16 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		GetStateTree: node.getStateTree,
 		GetWeight:    node.getWeight,
 		GetAncestors: node.getAncestors,
+		Election:     consensus.ElectionMachine{},
+		TicketGen:    consensus.TicketMachine{},
 
 		MessageSource: node.Inbox.Pool(),
 		MessageStore:  node.MessageStore,
 		Processor:     processor,
 		PowerTable:    node.PowerTable,
-		Blockstore:    node.Blockstore}), nil
+		Blockstore:    node.Blockstore,
+		Clock:         node.Clock,
+	}), nil
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.

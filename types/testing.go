@@ -92,7 +92,7 @@ func MustGenerateKeyInfo(n int, seed byte) []KeyInfo {
 func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, error) {
 	ki, ok := ms.AddrKeyInfo[addr]
 	if !ok {
-		panic("unknown address")
+		return nil, errors.New("Unknown address -- can't sign")
 	}
 
 	hash := blake2b.Sum256(data)

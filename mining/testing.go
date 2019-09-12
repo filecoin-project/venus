@@ -137,6 +137,11 @@ func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore b
 	return types.NewBytesAmount(uint64(1)), nil
 }
 
+// WorkerAddr returns the miner address.
+func (tv *TestPowerTableView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+	return mAddr, nil
+}
+
 // HasPower always returns true.
 func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
