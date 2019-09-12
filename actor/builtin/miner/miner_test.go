@@ -3,6 +3,7 @@ package miner_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -1064,7 +1065,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))
 	})
 
-	t.Run("after generation attack grace period rejected", func(t *testing.T) {
+	t.Run("after proving period grace period PoSt is rejected", func(t *testing.T) {
 		// Rejected one block late
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
@@ -1097,6 +1098,90 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ownerBalance.Sub(fee).String(), owner.Balance.String())
 	})
+
+	t.Run("computes seed randomness at correct chain height when post is on time", func(t *testing.T) {
+		var actualSampleHeight *types.BlockHeight
+
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			actualSampleHeight = sampleHeight
+			return []byte{42}, nil
+		}
+
+		// block time that isn't late
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd - PoStChallengeWindowBlocks + 30)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		// expect to sample randomness at beginning of proving period window before proving period end
+		expectedSampleHeight := types.NewBlockHeight(secondProvingPeriodEnd - PoStChallengeWindowBlocks)
+		assert.Equal(t, expectedSampleHeight, actualSampleHeight)
+	})
+
+	t.Run("computes seed randomness at correct chain height when post is late", func(t *testing.T) {
+		var actualSampleHeight *types.BlockHeight
+
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			actualSampleHeight = sampleHeight
+			return []byte{42}, nil
+		}
+
+		// block time that is late
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks + 30)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		// expect to sample randomness at beginning of proving period window after proving period end
+		expectedSampleHeight := types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks)
+		assert.Equal(t, expectedSampleHeight, actualSampleHeight)
+	})
+
+	t.Run("provides informative error when PoSt attempts to sample chain height before it is ready", func(t *testing.T) {
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			return []byte{}, errors.New("chain randomness unavailable")
+		}
+
+		// block time before proving window
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks - 200)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.Error(t, err)
+		require.NotEqual(t, uint8(0), code)
+
+		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt time, %s, is probably early for proving window start, %d", vmctx.BlockHeightValue.String(),
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks))
+	})
+
 }
 
 func TestActorSlashStorageFault(t *testing.T) {
