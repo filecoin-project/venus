@@ -916,11 +916,15 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 				provingWindowStart = nextProvingPeriodEnd.Sub(poStChallengeTime)
 				provingWindowEnd = nextProvingPeriodEnd
 			}
+
+			if chainHeight.LessThan(provingWindowStart) {
+				return nil, errors.NewCodedRevertErrorf(ErrInvalidPoSt, "PoSt arrived at %s, which is before proving window (%s-%s)",
+					chainHeight.String(), provingWindowStart.String(), provingWindowEnd.String())
+			}
+
 			seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
 			if err != nil {
-				return nil, errors.RevertErrorWrapf(err,
-					"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window, %s-%s",
-					chainHeight.String(), provingWindowStart.String(), provingWindowEnd.String())
+				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
 
 			var sectorInfos []go_sectorbuilder.SectorInfo

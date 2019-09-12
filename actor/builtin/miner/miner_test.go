@@ -761,6 +761,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 			VerifyPoStValid: true,
 		}
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -794,6 +795,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 
 		minerState.ProvingSet = types.NewIntSet(4)
 		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -817,6 +819,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -840,6 +843,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -1178,8 +1182,10 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		require.Error(t, err)
 		require.NotEqual(t, uint8(0), code)
 
-		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt time, %s, is probably early for proving window, %d-%d", vmctx.BlockHeightValue.String(),
-			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks, secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks))
+		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt arrived at %s, which is before proving window (%d-%d)",
+			vmctx.BlockHeightValue.String(),
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks,
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks))
 	})
 
 }
