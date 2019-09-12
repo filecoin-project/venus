@@ -277,29 +277,47 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	msgPublisher := core.NewDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic(network), msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
+	catchUpDoneFn := func(netHead *types.ChainInfo, curHead types.TipSet) (bool, error) {
+		curHeight, err := curHead.Height()
+		if err != nil {
+			return false, err
+		}
+		// if we are ahead
+		if curHeight >= netHead.Height {
+			return true, nil
+		}
+		// if we are "close enough", TODO consider making `2` a tunable parameter.
+		if (netHead.Height - curHeight) < uint64(chain.UntrustedChainHeightLimit/2) {
+			return true, nil
+		}
+		return false, nil
+	}
+	catchUpSyncer := chain.NewCatchupSyncer(peerTracker, chainSyncer, chainStore, catchUpDoneFn)
+
 	nd := &Node{
-		blockservice: bservice,
-		Blockstore:   bs,
-		cborStore:    &ipldCborStore,
-		Clock:        nc.Clock,
-		Consensus:    nodeConsensus,
-		ChainReader:  chainStore,
-		ChainSynced:  moresync.NewLatch(1),
-		MessageStore: messageStore,
-		Syncer:       chainSyncer,
-		PowerTable:   powerTable,
-		PeerTracker:  peerTracker,
-		Fetcher:      fetcher,
-		Exchange:     bswap,
-		host:         peerHost,
-		Inbox:        inbox,
-		OfflineMode:  nc.OfflineMode,
-		Outbox:       outbox,
-		NetworkName:  network,
-		PeerHost:     peerHost,
-		Repo:         nc.Repo,
-		Wallet:       fcWallet,
-		Router:       router,
+		blockservice:  bservice,
+		Blockstore:    bs,
+		cborStore:     &ipldCborStore,
+		Clock:         nc.Clock,
+		Consensus:     nodeConsensus,
+		ChainReader:   chainStore,
+		ChainSynced:   moresync.NewLatch(1),
+		CatchupSyncer: catchUpSyncer,
+		MessageStore:  messageStore,
+		Syncer:        chainSyncer,
+		PowerTable:    powerTable,
+		PeerTracker:   peerTracker,
+		Fetcher:       fetcher,
+		Exchange:      bswap,
+		host:          peerHost,
+		Inbox:         inbox,
+		OfflineMode:   nc.OfflineMode,
+		Outbox:        outbox,
+		NetworkName:   network,
+		PeerHost:      peerHost,
+		Repo:          nc.Repo,
+		Wallet:        fcWallet,
+		Router:        router,
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{

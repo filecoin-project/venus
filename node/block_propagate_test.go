@@ -11,9 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -64,13 +65,18 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	fclk := testhelpers.NewFakeSystemClock(time.Unix(123456789, 0))
 	numNodes := 4
-	_, nodes := makeNodesBlockPropTests(t, numNodes)
+	_, nodes := makeNodesBlockPropTests(t, numNodes, fclk)
 
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
 	minerNode := nodes[0]
+
+	for _, n := range nodes {
+		n.CatchupSyncer.Stop()
+	}
 
 	connect(t, minerNode, nodes[1])
 	connect(t, nodes[1], nodes[2])
@@ -102,20 +108,28 @@ func TestChainSync(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	_, nodes := makeNodesBlockPropTests(t, 2)
+	fclk := testhelpers.NewFakeSystemClock(time.Unix(123456789, 0))
+	_, nodes := makeNodesBlockPropTests(t, 2, fclk)
 
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
+
+	for _, n := range nodes {
+		n.CatchupSyncer.Stop()
+		// disable the catchup syner and move the clock forward to trigger its run loop.
+		fclk.Advance(time.Second * 60)
+	}
 
 	firstBlock := requireMineOnce(ctx, t, nodes[0])
 	secondBlock := requireMineOnce(ctx, t, nodes[0])
 	thirdBlock := requireMineOnce(ctx, t, nodes[0])
 
+	connect(t, nodes[0], nodes[1])
+
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, firstBlock))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
 
-	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].ChainReader.GetHead()
@@ -131,9 +145,9 @@ func TestChainSync(t *testing.T) {
 }
 
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
+func makeNodesBlockPropTests(t *testing.T, numNodes int, clk clock.Clock) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	builderOpts := []BuilderOpt{ClockConfigOption(th.NewFakeSystemClock(time.Unix(1234567890, 0)))}
+	builderOpts := []BuilderOpt{ClockConfigOption(clk)}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
 	)

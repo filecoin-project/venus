@@ -72,6 +72,7 @@ type nodeChainReader interface {
 
 type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
+	Status() chain.Status
 }
 
 // storageFaultSlasher is the interface for needed FaultSlasher functionality
@@ -174,6 +175,8 @@ type Node struct {
 	// Services which depend on a more-or-less synced chain can wait for this before starting up.
 	ChainSynced *moresync.Latch
 
+	CatchupSyncer *chain.CatchupSyncer
+
 	// Clock is a clock used by the node for time.
 	Clock clock.Clock
 }
@@ -250,25 +253,6 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *types.ChainInfo) {
 			node.PeerTracker.Track(ci)
-			// TODO Implement principled trusting of ChainInfo's
-			// to address in #2674
-			trusted := true
-			err := node.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
-			if err != nil {
-				log.Infof("error handling tipset from hello %s: %s", ci, err)
-				return
-			}
-			// For now, consider the initial bootstrap done after the syncer has (synchronously)
-			// processed the chain up to the head reported by the first peer to respond to hello.
-			// This is an interim sequence until a secure network bootstrap is implemented:
-			// https://github.com/filecoin-project/go-filecoin/issues/2674.
-			// For now, we trust that the first node to respond will be a configured bootstrap node
-			// and that we trust that node to inform us of the chain head.
-			// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
-			// sync done until it's caught up enough that it will accept blocks from pubsub.
-			// This might require additional rounds of hello.
-			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			node.ChainSynced.Done()
 		}
 		node.HelloSvc = hello.New(node.Host(), node.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.NetworkName)
 
@@ -280,6 +264,24 @@ func (node *Node) Start(ctx context.Context) error {
 			}
 			return types.NewChainInfo(p, hmsg.HeaviestTipSetCids, hmsg.HeaviestTipSetHeight), nil
 		})
+
+		// TODO(frrist) should this use the sync ctx or something else?
+		raw := node.Repo.Config().Sync.CatchupSyncerPeriod
+		cup, err := time.ParseDuration(raw)
+		if err != nil {
+			return errors.Wrapf(err, "failed to parse catchup period config: %s", raw)
+		}
+		catchUpDone, catchUpErrs := node.CatchupSyncer.Start(syncCtx, node.Clock.NewTicker(cup))
+		go func() {
+			select {
+			case <-catchUpDone:
+				node.ChainSynced.Done()
+			case err := <-catchUpErrs:
+				// This is really bad and will require a node reboot to fix.
+				log.Errorf("Chain Catchup failed node cannot catchup to peers: %s", err)
+				return
+			}
+		}()
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
