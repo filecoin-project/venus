@@ -98,7 +98,7 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	require.NoError(t, err)
 
 	// We know the miner has sealed and committed a sector if their power increases on chain.
-	// Wait up to 5 minutes for that to happen.
+	// Wait up to 300 seconds for that to happen.
 	for i := 0; i < 300; i++ {
 		power, err := minerNode.MinerPower(ctx, miningAddress)
 		require.NoError(t, err)
