@@ -71,7 +71,7 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	sinfo := pparams.SupportedSectors[0]
 
 	// start mining so we get to a block height that
-	genesisNode.MiningStart(ctx)
+	require.NoError(t, genesisNode.MiningStart(ctx))
 	defer func() {
 		require.NoError(t, genesisNode.MiningStop(ctx))
 	}()
