@@ -208,8 +208,13 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, nc.Clock)
 
-	// set up peer tracking
-	peerTracker := net.NewPeerTracker(peerHost.ID())
+	// set up peer tracking, get trusted addesses
+	ta := nc.Repo.Config().Sync.TrustedAddresses
+	tpi, err := net.PeerAddrsToAddrInfo(ta)
+	if err != nil {
+		return nil, errors.Wrapf(err, "couldn't parse trusted addresses [%s]", ta)
+	}
+	peerTracker := net.NewPeerTracker(peerHost.ID(), nc.Repo.Config().Sync.TrustAllPeers, net.AddrInfoToPeerIDs(tpi)...)
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)

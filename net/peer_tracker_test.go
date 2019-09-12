@@ -20,7 +20,7 @@ import (
 func TestPeerTrackerTracks(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := net.NewPeerTracker(peer.ID(""), false)
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -44,6 +44,50 @@ func TestPeerTrackerTracks(t *testing.T) {
 
 }
 
+func TestPeerTrackerTrustAll(t *testing.T) {
+	tf.UnitTest(t)
+
+	pid0 := th.RequireIntPeerID(t, 0)
+	pid1 := th.RequireIntPeerID(t, 1)
+	pid2 := th.RequireIntPeerID(t, 2)
+	pid3 := th.RequireIntPeerID(t, 3)
+
+	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 6)
+	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
+	ci2 := types.NewChainInfo(pid2, types.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
+	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
+
+	// trusting all peers
+	tracker := net.NewPeerTracker(peer.ID(""), true)
+	tracker.Track(ci0)
+	tracker.Track(ci1)
+	tracker.Track(ci2)
+	tracker.Track(ci3)
+
+	// select the highest head
+	head, err := tracker.SelectHead()
+	assert.NoError(t, err)
+	assert.Equal(t, head.Head, ci1.Head)
+
+	updatedHead := types.NewTipSetKey(types.CidFromString(t, "UPDATE"))
+	updatedHeight := uint64(100)
+	// update function that changes the tipset and sets height to 100
+	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
+		return &types.ChainInfo{
+			Head:   updatedHead,
+			Height: updatedHeight,
+			Peer:   p,
+		}, nil
+	})
+
+	assert.NoError(t, tracker.UpdateTrusted(context.Background()))
+
+	// select the highest head
+	head, err = tracker.SelectHead()
+	assert.NoError(t, err)
+	assert.Equal(t, head.Head, updatedHead)
+}
+
 func TestPeerTrackerSelectHead(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -58,7 +102,7 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
 
 	// trusting pid2 and pid3
-	tracker := net.NewPeerTracker(pid2, pid3)
+	tracker := net.NewPeerTracker(peer.ID(""), false, pid2, pid3)
 	tracker.Track(ci0)
 	tracker.Track(ci1)
 	tracker.Track(ci2)
@@ -79,7 +123,7 @@ func TestPeerTrackerUpdateTrusted(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 
 	// trust pid2 and pid3
-	tracker := net.NewPeerTracker(pid3, pid2)
+	tracker := net.NewPeerTracker(peer.ID(""), false, pid3, pid2)
 
 	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
@@ -135,7 +179,7 @@ func TestUpdateWithErrors(t *testing.T) {
 	trusted := []peer.ID{pid0, pid1, pid2, failPeer}
 
 	// trust them all
-	tracker := net.NewPeerTracker(self, trusted...)
+	tracker := net.NewPeerTracker(self, false, trusted...)
 
 	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
@@ -191,7 +235,7 @@ func TestUpdateWithErrors(t *testing.T) {
 func TestPeerTrackerRemove(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := net.NewPeerTracker(peer.ID(""), false)
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -241,7 +285,7 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	// self is the tracking node
 	// self tracks peers a and b
 	// self does not track peer c
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := net.NewPeerTracker(peer.ID(""), false)
 	tracker.Track(aCI)
 	tracker.Track(bCI)
 

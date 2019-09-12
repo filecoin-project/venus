@@ -26,6 +26,9 @@ type PeerTracker struct {
 	// self tracks the ID of the peer tracker's owner
 	self peer.ID
 
+	// when true calls to SelectHead will consider all tracker peers.
+	trustAllPeers bool
+
 	// peers maps peer.IDs to info about their chains
 	peers    map[peer.ID]*types.ChainInfo
 	trusted  map[peer.ID]struct{}
@@ -35,15 +38,16 @@ type PeerTracker struct {
 type updatePeerFn func(ctx context.Context, p peer.ID) (*types.ChainInfo, error)
 
 // NewPeerTracker creates a peer tracker.
-func NewPeerTracker(self peer.ID, trust ...peer.ID) *PeerTracker {
+func NewPeerTracker(self peer.ID, trustAll bool, trust ...peer.ID) *PeerTracker {
 	trustedSet := make(map[peer.ID]struct{}, len(trust))
 	for _, t := range trust {
 		trustedSet[t] = struct{}{}
 	}
 	return &PeerTracker{
-		peers:   make(map[peer.ID]*types.ChainInfo),
-		trusted: trustedSet,
-		self:    self,
+		peers:         make(map[peer.ID]*types.ChainInfo),
+		trusted:       trustedSet,
+		self:          self,
+		trustAllPeers: trustAll,
 	}
 }
 
@@ -56,7 +60,12 @@ func (tracker *PeerTracker) SetUpdateFn(f updatePeerFn) {
 // SelectHead returns the chain info from trusted peers with the greatest height.
 // An error is returned if no peers are in the tracker.
 func (tracker *PeerTracker) SelectHead() (*types.ChainInfo, error) {
-	heads := tracker.listTrusted()
+	var heads []*types.ChainInfo
+	if tracker.trustAllPeers {
+		heads = tracker.List()
+	} else {
+		heads = tracker.listTrusted()
+	}
 	if len(heads) == 0 {
 		return nil, errors.New("no peers tracked")
 	}
@@ -66,6 +75,9 @@ func (tracker *PeerTracker) SelectHead() (*types.ChainInfo, error) {
 
 // UpdateTrusted updates ChainInfo for all trusted peers.
 func (tracker *PeerTracker) UpdateTrusted(ctx context.Context) error {
+	if tracker.trustAllPeers {
+		return tracker.updatePeers(ctx, tracker.allPeers()...)
+	}
 	return tracker.updatePeers(ctx, tracker.trustedPeers()...)
 }
 
@@ -118,6 +130,14 @@ func (tracker *PeerTracker) Remove(pid peer.ID) {
 	}
 }
 
+// Trust adds `pid` to the peer trackers trusted node set.
+func (tracker *PeerTracker) Trust(pid peer.ID) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	tracker.trusted[pid] = struct{}{}
+	logPeerTracker.Infof("Trusting peer=%s", pid.Pretty())
+}
+
 // TrackerRegisterDisconnect registers a tracker remove operation as a libp2p
 // "Disconnected" network event callback.
 func TrackerRegisterDisconnect(ntwk network.Network, tracker *PeerTracker) {
@@ -134,6 +154,18 @@ func TrackerRegisterDisconnect(ntwk network.Network, tracker *PeerTracker) {
 func (tracker *PeerTracker) trustedPeers() []peer.ID {
 	var peers []peer.ID
 	for p := range tracker.trusted {
+		peers = append(peers, p)
+	}
+	return peers
+}
+
+// allPeers returns a slice of peers tracked by the PeerTracker. peers remain constant after
+// the PeerTracker has been initialized. The info tracked by the tracker can
+// change arbitrarily after this is called -- there is no guarantee that the peers returned will be
+// tracked when they are used by the caller.
+func (tracker *PeerTracker) allPeers() []peer.ID {
+	var peers []peer.ID
+	for p := range tracker.peers {
 		peers = append(peers, p)
 	}
 	return peers

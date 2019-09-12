@@ -580,7 +580,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
-	pt := net.NewPeerTracker(peer.ID(""))
+	pt := net.NewPeerTracker(peer.ID(""), false)
 	pt.Track(types.NewChainInfo(host2.ID(), types.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
