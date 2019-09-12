@@ -169,6 +169,9 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			if err = s.Commit(scid, a.Head); err != nil {
 				return nil, err
 			}
+			if err := st.SetActor(ctx, addr, a); err != nil {
+				return nil, err
+			}
 		}
 		for addr, nonce := range genCfg.nonces {
 			a, err := st.GetActor(ctx, addr)

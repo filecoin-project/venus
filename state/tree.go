@@ -8,8 +8,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj"
-	"github.com/polydawn/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -159,23 +157,6 @@ func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, e
 	}
 
 	return &act, nil
-}
-
-func hackTransferObject(from, to interface{}) error {
-	m := obj.NewMarshaller(cbor.CborAtlas)
-	if err := m.Bind(from); err != nil {
-		return err
-	}
-
-	u := obj.NewUnmarshaller(cbor.CborAtlas)
-	if err := u.Bind(to); err != nil {
-		return err
-	}
-
-	return shared.TokenPump{
-		TokenSource: m,
-		TokenSink:   u,
-	}.Run()
 }
 
 // GetOrCreateActor retrieves an actor by their address
