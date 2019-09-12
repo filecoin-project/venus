@@ -906,24 +906,21 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			poStChallengeTime := types.NewBlockHeight(PoStChallengeWindowBlocks)
 
 			var seed types.PoStChallengeSeed
+			var provingWindowStart, provingWindowEnd *types.BlockHeight
 			if chainHeight.LessThan(state.ProvingPeriodEnd) {
 				// proof is in time, sample at start of post challenge time
-				provingWindowStart := state.ProvingPeriodEnd.Sub(poStChallengeTime)
-				seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
-				if err != nil {
-					return nil, errors.RevertErrorWrapf(err,
-						"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window start, %s",
-						chainHeight.String(), provingWindowStart.String())
-				}
+				provingWindowStart = state.ProvingPeriodEnd.Sub(poStChallengeTime)
+				provingWindowEnd = state.ProvingPeriodEnd
 			} else {
 				// proof is late, sample at start of next post challenge time
-				provingWindowStart := nextProvingPeriodEnd.Sub(poStChallengeTime)
-				seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
-				if err != nil {
-					return nil, errors.RevertErrorWrapf(err,
-						"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window start, %s",
-						chainHeight.String(), provingWindowStart.String())
-				}
+				provingWindowStart = nextProvingPeriodEnd.Sub(poStChallengeTime)
+				provingWindowEnd = nextProvingPeriodEnd
+			}
+			seed, err = getPoStChallengeSeed(ctx, state, provingWindowStart)
+			if err != nil {
+				return nil, errors.RevertErrorWrapf(err,
+					"failed to sample chain for challenge seed, PoSt time, %s, is probably early for proving window, %s-%s",
+					chainHeight.String(), provingWindowStart.String(), provingWindowEnd.String())
 			}
 
 			var sectorInfos []go_sectorbuilder.SectorInfo

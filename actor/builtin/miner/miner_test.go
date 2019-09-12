@@ -1178,8 +1178,8 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		require.Error(t, err)
 		require.NotEqual(t, uint8(0), code)
 
-		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt time, %s, is probably early for proving window start, %d", vmctx.BlockHeightValue.String(),
-			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks))
+		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt time, %s, is probably early for proving window, %d-%d", vmctx.BlockHeightValue.String(),
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks, secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks))
 	})
 
 }
