@@ -46,9 +46,9 @@ func New(plumbing *plumbing.API) *API {
 	return &API{plumbing}
 }
 
-// ChainBlockHeight determines the current block height
-func (a *API) ChainBlockHeight() (*types.BlockHeight, error) {
-	return ChainBlockHeight(a)
+// ChainHead returns the current head tipset
+func (a *API) ChainHead() (types.TipSet, error) {
+	return ChainHead(a)
 }
 
 // ChainGetFullBlock returns the full block given the header cid
@@ -128,8 +128,8 @@ func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Addres
 }
 
 // MinerGetWorkerAddress queries for the worker address of the given miner
-func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
-	return MinerGetWorkerAddress(ctx, a, minerAddr)
+func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error) {
+	return MinerGetWorkerAddress(ctx, a, minerAddr, baseKey)
 }
 
 // MinerGetSectorSize queries for the sector size of the given miner.

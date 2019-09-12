@@ -453,7 +453,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api.messageHandlers = handlers
 
 		height := uint64(20500)
-		api.blockHeight = types.NewBlockHeight(height)
+		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api.messageHandlers = handlers
 
 		height := uint64(10500)
-		api.blockHeight = types.NewBlockHeight(height)
+		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
@@ -507,7 +507,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api.messageHandlers = handlers
 
 		height := uint64(50500)
-		api.blockHeight = types.NewBlockHeight(height)
+		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
@@ -563,7 +563,7 @@ type minerTestPorcelain struct {
 	messageCid      *cid.Cid
 	signer          types.MockSigner
 	noChannels      bool
-	blockHeight     *types.BlockHeight
+	blockHeight     uint64
 	channelEol      *types.BlockHeight
 	paymentStart    *types.BlockHeight
 	deals           map[cid.Cid]*storagedeal.Deal
@@ -603,7 +603,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 		signer:          mockSigner,
 		noChannels:      false,
 		channelEol:      types.NewBlockHeight(13773),
-		blockHeight:     blockHeight,
+		blockHeight:     773,
 		paymentStart:    blockHeight,
 		deals:           make(map[cid.Cid]*storagedeal.Deal),
 		walletBalance:   types.NewAttoFILFromFIL(100),
@@ -626,7 +626,7 @@ func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address
 	return cid.Cid{}, nil
 }
 
-func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	handler, ok := mtp.messageHandlers[method]
 	if ok {
 		return handler(to, types.ZeroAttoFIL, params...)
@@ -637,7 +637,7 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 	return mtp.messageQueryPaymentBrokerLs()
 }
 
-func (mtp *minerTestPorcelain) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (mtp *minerTestPorcelain) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	return mtp.workerAddress, nil
 }
 
@@ -668,8 +668,12 @@ func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error)
 	return mtp.config.Get(dottedPath)
 }
 
-func (mtp *minerTestPorcelain) ChainBlockHeight() (*types.BlockHeight, error) {
-	return mtp.blockHeight, nil
+func (mtp *minerTestPorcelain) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (mtp *minerTestPorcelain) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+	return types.NewTipSet(&types.Block{Height: types.Uint64(mtp.blockHeight)})
 }
 
 func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {

@@ -29,7 +29,7 @@ func (t *TestWorkerPorcelainAPI) BlockTime() time.Duration {
 }
 
 // MinerGetWorkerAddress returns the worker address set in TestWorkerPorcelainAPI
-func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	return t.workerAddr, nil
 }
 

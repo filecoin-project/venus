@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-// TestView is an implementation of stateView used for testing the chain
+// TestView is an implementation of powertableview used for testing the chain
 // manager.  It provides a consistent view that the storage market
 // stores 1 byte and all miners store 0 bytes regardless of inputs.
 type TestView struct{}
@@ -36,6 +36,11 @@ func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.
 // HasPower always returns true.
 func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
 	return true
+}
+
+// WorkerAddr just returns the miner address.
+func (tv *TestView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+	return mAddr, nil
 }
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
@@ -70,11 +75,16 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 	return true
 }
 
+// WorkerAddr returns the miner address.
+func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+	return mAddr, nil
+}
+
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer consensus.TicketSigner) *types.Block {
-	poStProof := MakeRandomPoStProofForTest()
-	ticket, _ := consensus.CreateTicket(poStProof, minerWorker, signer)
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *types.Block {
+	electionProof := consensus.MakeFakeElectionProofForTest()
+	ticket := consensus.MakeFakeTicketForTest()
 
 	return &types.Block{
 		Miner:         minerAddr,
@@ -83,7 +93,7 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		ParentWeight:  types.Uint64(10000 * height),
 		Height:        types.Uint64(height),
 		StateRoot:     stateRootCid,
-		ElectionProof: poStProof,
+		ElectionProof: electionProof,
 	}
 }
 

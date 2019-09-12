@@ -208,6 +208,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			StateRoot:       c,
 			Messages:        emptyMessagesCid,
 			MessageReceipts: emptyReceiptsCid,
+			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

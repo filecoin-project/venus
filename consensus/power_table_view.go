@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -26,6 +27,9 @@ type PowerTableView interface {
 	// HasPower returns true if the input address is associated with a
 	// miner that has storage power in the network.
 	HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool
+
+	// WorkerAddr returns the address of the miner worker given the miner addr
+	WorkerAddr(context.Context, state.Tree, blockstore.Blockstore, address.Address) (address.Address, error)
 }
 
 // MarketView is the power table view used for running expected consensus in
@@ -63,6 +67,32 @@ func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 	}
 
 	return types.NewBytesAmountFromBytes(rets[0]), nil
+}
+
+// WorkerAddr returns the address of the miner worker given the miner address.
+func (v *MarketView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+	vms := vm.NewStorageMap(bstore)
+	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getWorker", []byte{}, address.Undef, nil)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	if ec != 0 {
+		return address.Undef, errors.Errorf("non-zero return code from query message: %d", ec)
+	}
+	if len(rets) == 0 {
+		return address.Undef, errors.Errorf("invalid nil return value from getWorker")
+	}
+
+	addrValue, err := abi.Deserialize(rets[0], abi.Address)
+	if err != nil {
+		return address.Undef, err
+	}
+	a, ok := addrValue.Val.(address.Address)
+	if !ok {
+		return address.Undef, errors.Errorf("invalid address bytes returned from getWorker")
+	}
+	return a, nil
 }
 
 // HasPower returns true if the provided address belongs to a miner with power

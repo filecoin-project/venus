@@ -20,9 +20,10 @@ var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
 
 // monitorPlumbing is an interface for the functionality FaultSlasher needs
 type monitorPlumbing interface {
+	ChainHeadKey() types.TipSetKey
 	ConfigGet(string) (interface{}, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
-	MinerGetWorkerAddress(context.Context, address.Address) (address.Address, error)
+	MessageQuery(context.Context, address.Address, address.Address, string, types.TipSetKey, ...interface{}) ([][]byte, error)
+	MinerGetWorkerAddress(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 // slashingMsgOutbox is the interface for the functionality of Outbox FaultSlasher needs
@@ -85,12 +86,12 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 		return err
 	}
 
-	workerAddr, err := sfm.plumbing.MinerGetWorkerAddress(ctx, minerAddr.(address.Address))
+	workerAddr, err := sfm.plumbing.MinerGetWorkerAddress(ctx, minerAddr.(address.Address), sfm.plumbing.ChainHeadKey())
 	if err != nil {
 		return errors.Wrap(err, "could not get worker address")
 	}
 
-	res, err := sfm.plumbing.MessageQuery(ctx, workerAddr, address.StorageMarketAddress, "getLateMiners")
+	res, err := sfm.plumbing.MessageQuery(ctx, workerAddr, address.StorageMarketAddress, "getLateMiners", sfm.plumbing.ChainHeadKey())
 	if err != nil {
 		return errors.Wrap(err, "getLateMiners message failed")
 	}
