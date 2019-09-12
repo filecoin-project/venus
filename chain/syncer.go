@@ -404,7 +404,12 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 				}
 			}
 		}
-		// If first tipset is widened, only `syncOne` it when length of `chain` is greater than 1.
+		// If the chain has length greater than 1, then we need to sync each tipset
+		// in the chain in order to process the chain fully, including the non-widened
+		// first tipset.
+		// If the chan has length == 1, we can avoid processing the non-widened tipset
+		// as a performance optimization, because this tipset cannot be heavier
+		// than the widened first tipset.
 		if !wts.Defined() || len(chain) > 1 {
 			err = syncer.syncOne(ctx, parent, ts)
 			if err != nil {
