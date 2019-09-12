@@ -69,8 +69,9 @@ func TestIsElectionWinner(t *testing.T) {
 	var st state.Tree
 
 	t.Run("IsElectionWinner performs as expected on cases", func(t *testing.T) {
+		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
-			ptv := th.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
+			ptv := th.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
 			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv, st, types.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)

@@ -125,12 +125,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	ctx := context.Background()
 
-	mockSigner, ki := types.NewMockSignersAndKeyInfo(3)
-	minerWorker1, err := ki[0].Address()
-	require.NoError(t, err)
-	minerWorker2, err := ki[1].Address()
-	require.NoError(t, err)
-
 	// set up dstP.genesis block with power
 	genCfg := &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,
@@ -159,6 +153,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
 	require.NoError(t, err)
 
+	minerWorker1, err := info.Keys[0].Address()
+	require.NoError(t, err)
+	minerWorker2 := minerWorker1
+	// Include gengen miner worker key so that we can correctly sign blocks
+	mockSigner := types.NewMockSigner([]types.KeyInfo{*info.Keys[0]})
+
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
@@ -168,8 +168,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(t, err)
 	emptyReceiptsCid, err := messageStore.StoreReceipts(ctx, []*types.MessageReceipt{})
 	require.NoError(t, err)
-
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, &calcGenBlk)
@@ -187,7 +185,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	blockSource := th.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
-	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
@@ -233,6 +231,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1.Tickets = []types.Ticket{f1b1Ticket}
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
+	f1b1.BlockSig, err = mockSigner.SignBytes(f1b1.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
@@ -241,6 +241,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f2b1.Tickets = []types.Ticket{f2b1Ticket}
 	f2b1.Messages = emptyMessagesCid
 	f2b1.MessageReceipts = emptyReceiptsCid
+	f2b1.BlockSig, err = mockSigner.SignBytes(f2b1.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
 
@@ -270,6 +272,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2a.Tickets = []types.Ticket{f1b2aTicket}
 	f1b2a.Messages = emptyMessagesCid
 	f1b2a.MessageReceipts = emptyReceiptsCid
+	f1b2a.BlockSig, err = mockSigner.SignBytes(f1b2a.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	fakeChildParams.MinerWorker = minerWorker2
@@ -280,6 +284,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b2b.Tickets = []types.Ticket{f1b2bTicket}
 	f1b2b.Messages = emptyMessagesCid
 	f1b2b.MessageReceipts = emptyReceiptsCid
+	f1b2b.BlockSig, err = mockSigner.SignBytes(f1b2b.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
@@ -312,6 +318,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f2b2.Tickets = []types.Ticket{f2b2Ticket}
 	f2b2.Messages = emptyMessagesCid
 	f2b2.MessageReceipts = emptyReceiptsCid
+	f2b2.BlockSig, err = mockSigner.SignBytes(f2b2.SignatureData(), minerWorker2)
+	require.NoError(t, err)
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)
