@@ -25,20 +25,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// modify config to decrease catchup period and sets all nodes to trust eachother.
-var trustCatchupCfg = func(ctx context.Context, node *fast.Filecoin) error {
-	cfg, err := node.Config()
-	if err != nil {
-		return err
-	}
-	cfg.Sync.TrustAllPeers = true
-	cfg.Sync.CatchupSyncerPeriod = "3s"
-	if err := node.WriteConfig(cfg); err != nil {
-		return err
-	}
-	return nil
-}
-
 func init() {
 	// Enabling debug logging provides a lot of insight into what commands are
 	// being executed
