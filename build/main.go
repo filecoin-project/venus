@@ -354,9 +354,5 @@ func main() {
 }
 
 func getCommitSha() string {
-	commit := runCapture("git log -n 1 --format=%H")
-	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
-		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
-	}
-	return commit
+	return runCapture("git log -n 1 --format=%H")
 }
