@@ -1,16 +1,19 @@
-package cst
+package chain
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -26,9 +29,10 @@ type chainReader interface {
 // ChainStateProvider composes a chain and a state store to provide access to
 // the state (including actors) derived from a chain.
 type ChainStateProvider struct {
-	reader          chainReader         // Provides chain tipsets and state roots.
-	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
-	messageProvider chain.MessageProvider
+	reader          chainReader           // Provides chain tipsets and state roots.
+	cst             *hamt.CborIpldStore   // Provides chain blocks and state trees.
+	bs              blockstore.Blockstore // For vm storage.
+	messageProvider MessageProvider
 }
 
 var (
@@ -42,11 +46,12 @@ var (
 )
 
 // NewChainStateProvider returns a new ChainStateProvider.
-func NewChainStateProvider(chainReader chainReader, messages chain.MessageProvider, cst *hamt.CborIpldStore) *ChainStateProvider {
+func NewChainStateProvider(chainReader chainReader, messages MessageProvider, cst *hamt.CborIpldStore, bs blockstore.Blockstore) *ChainStateProvider {
 	return &ChainStateProvider{
 		reader:          chainReader,
 		cst:             cst,
 		messageProvider: messages,
+		bs:              bs,
 	}
 }
 
@@ -61,12 +66,12 @@ func (chn *ChainStateProvider) GetTipSet(key types.TipSetKey) (types.TipSet, err
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
-func (chn *ChainStateProvider) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
+func (chn *ChainStateProvider) Ls(ctx context.Context) (*TipsetIterator, error) {
 	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return chain.IterAncestors(ctx, chn.reader, ts), nil
+	return IterAncestors(ctx, chn.reader, ts), nil
 }
 
 // GetBlock gets a block by CID
@@ -160,4 +165,49 @@ func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr 
 	}
 
 	return export, nil
+}
+
+// ChainStateQueryer queries the chain at a particular tipset
+type ChainStateQueryer struct {
+	st     state.Tree
+	vms    vm.StorageMap
+	height *types.BlockHeight
+}
+
+// Queryer returns a query interface to query the chain at a particular tipset
+func (cs *ChainStateProvider) Queryer(ctx context.Context, baseKey types.TipSetKey) (ChainStateQueryer, error) {
+	st, err := cs.reader.GetTipSetState(ctx, baseKey)
+	if err != nil {
+		return ChainStateQueryer{}, errors.Wrapf(err, "failed to load tree for the state root of tipset: %s", baseKey.String())
+	}
+	base, err := cs.reader.GetTipSet(baseKey)
+	if err != nil {
+		return ChainStateQueryer{}, errors.Wrapf(err, "failed to get tipset: %s", baseKey.String())
+	}
+	h, err := base.Height()
+	if err != nil {
+		return ChainStateQueryer{}, errors.Wrap(err, "failed to get the head tipset height")
+	}
+
+	return ChainStateQueryer{
+		st:     st,
+		vms:    vm.NewStorageMap(cs.bs),
+		height: types.NewBlockHeight(h),
+	}, nil
+}
+
+// Query sends a read-only message against the state of the provided base tipset.
+func (q *ChainStateQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	encodedParams, err := abi.ToEncodedValues(params...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode message params")
+	}
+
+	r, ec, err := consensus.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
+	if err != nil {
+		return nil, errors.Wrap(err, "querymethod returned an error")
+	} else if ec != 0 {
+		return nil, errors.Errorf("querymethod returned a non-zero error code %d", ec)
+	}
+	return r, nil
 }

@@ -45,14 +45,13 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap       exchange.Interface
-	chain         *cst.ChainStateProvider
+	chain         *chain.ChainStateProvider
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
 	expected      consensus.Protocol
 	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
-	chainState    *consensus.ChainState
 	msgWaiter     *msg.Waiter
 	network       *net.Network
 	outbox        *message.Outbox
@@ -64,8 +63,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap       exchange.Interface
-	Chain         *cst.ChainStateProvider
-	ChnState      *consensus.ChainState
+	Chain         *chain.ChainStateProvider
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
@@ -87,7 +85,6 @@ func New(deps *APIDeps) *API {
 
 		bitswap:       deps.Bitswap,
 		chain:         deps.Chain,
-		chainState:    deps.ChnState,
 		syncer:        deps.Sync,
 		config:        deps.Config,
 		dag:           deps.DAG,
@@ -240,7 +237,7 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
-	queryer, err := api.chainState.Queryer(ctx, baseKey)
+	queryer, err := api.chain.Queryer(ctx, baseKey)
 	if err != nil {
 		return [][]byte{}, err
 	}

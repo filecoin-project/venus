@@ -1,10 +1,9 @@
-package consensus_test
+package chain
 
 import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/chain"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -53,9 +52,9 @@ func TestQuery(t *testing.T) {
 			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
+		chainStore, err := Init(context.Background(), r, bs, cst, testGen)
 
-		chainState := NewChainState(chainStore, cst, bs)
+		chainState := NewChainStateProvider(chainStore, nil, cst, bs)
 		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
@@ -94,9 +93,9 @@ func TestQuery(t *testing.T) {
 			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
+		chainStore, err := Init(context.Background(), r, bs, cst, testGen)
 
-		chainState := NewChainState(chainStore, cst, bs)
+		chainState := NewChainStateProvider(chainStore, nil, cst, bs)
 		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 

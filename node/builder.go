@@ -167,7 +167,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
-	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
+	chainState := chain.NewChainStateProvider(chainStore, messageStore, &ipldCborStore, bs)
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table
@@ -306,7 +306,6 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		Expected:      nodeConsensus,
 		MsgPool:       msgPool,
 		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
-		ChnState:      consensus.NewChainState(chainStore, &ipldCborStore, bs),
 		MsgWaiter:     msg.NewWaiter(chainStore, messageStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,
