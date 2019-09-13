@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,10 +21,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -166,7 +167,7 @@ func TestMinerCreate(t *testing.T) {
 		tf(testAddr, peer.ID(""))
 
 		// Will accept a peer ID if one is provided
-		tf(testAddr, th.RequireRandomPeerID(t))
+		tf(testAddr, nth.RequireRandomPeerID(t))
 	})
 
 	t.Run("unsupported sector size", func(t *testing.T) {
@@ -286,7 +287,7 @@ func TestMinerCreateChargesGas(t *testing.T) {
 	d1.MineAndPropagate(time.Second, d)
 	wg.Wait()
 
-	expectedBlockReward := consensus.NewDefaultBlockRewarder().BlockRewardAmount()
+	expectedBlockReward := processor.NewDefaultBlockRewarder().BlockRewardAmount()
 	expectedPrice := types.NewAttoFILFromFIL(333)
 	expectedGasCost := big.NewInt(100)
 	expectedBalance := expectedBlockReward.Add(expectedPrice.MulBigInt(expectedGasCost))

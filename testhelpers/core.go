@@ -87,13 +87,6 @@ func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address
 	return act
 }
 
-// RequireRandomPeerID returns a new libp2p peer ID or panics.
-func RequireRandomPeerID(t *testing.T) peer.ID {
-	pid, err := RandPeerID()
-	require.NoError(t, err)
-	return pid
-}
-
 // MockMessagePoolValidator is a mock validator
 type MockMessagePoolValidator struct {
 	Valid bool

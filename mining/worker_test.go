@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -24,6 +25,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -192,7 +194,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
 	fakeNetAct := th.RequireNewFakeActorWithTokens(t, vms, addr3, fakeActorCodeCid, types.NewAttoFILFromFIL(1000000))
-	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, 10, th.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
+	minerAct := th.RequireNewMinerActor(t, vms, addr4, addr5, 10, nth.RequireRandomPeerID(t), types.NewAttoFILFromFIL(10000))
 	minerOwner := th.RequireNewFakeActor(t, vms, addr5, fakeActorCodeCid)
 	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
 		// Ensure core.NetworkAddress exists to prevent mining reward failures.
@@ -249,7 +251,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 
 	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
 
-	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
+	res, err := processor.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
 	require.NotNil(t, res)
 
 	assert.Len(t, res.PermanentFailures, 2)
@@ -355,7 +357,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     processor.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
@@ -463,7 +465,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     processor.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
@@ -526,7 +528,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     processor.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
@@ -579,7 +581,7 @@ func TestGenerateError(t *testing.T) {
 		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     consensus.NewDefaultProcessor(),
+		Processor:     processor.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,

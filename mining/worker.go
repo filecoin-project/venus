@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
@@ -66,7 +67,7 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (processor.ApplyMessagesResponse, error)
 }
 
 type workerPorcelainAPI interface {

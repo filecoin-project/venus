@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/repo"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 

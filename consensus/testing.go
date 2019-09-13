@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/ipfs/go-blockservice"
@@ -12,7 +11,6 @@ import (
 	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -53,48 +51,9 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 	return true
 }
 
-// WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	wAddr, ok := tv.minerToWorker[mAddr]
-	if !ok {
-		return address.Undef, errors.New("no such miner address in power table")
-	}
-	return wAddr, nil
-}
-
-// TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type TestSignedMessageValidator struct{}
-
-var _ SignedMessageValidator = (*TestSignedMessageValidator)(nil)
-
-// Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	return nil
-}
-
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
-
-var _ BlockRewarder = (*TestBlockRewarder)(nil)
-
-// BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
-// GasReward is a noop
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
-// NewTestProcessor creates a processor with a test validator and test rewarder
-func NewTestProcessor() *DefaultProcessor {
-	return &DefaultProcessor{
-		signedMessageValidator: &TestSignedMessageValidator{},
-		blockRewarder:          &TestBlockRewarder{},
-	}
+// WorkerAddr returns the address of the miner worker given the miner addr
+func (tv *TestPowerTableView) WorkerAddr(ctx context.Context, st state.Tree, blk blockstore.Blockstore, minerAddr address.Address) (address.Address, error) {
+	return tv.minerToWorker[minerAddr], nil
 }
 
 // FakeElectionMachine generates fake election proofs and verifies all proofs

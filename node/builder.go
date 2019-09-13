@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -57,7 +58,7 @@ type Builder struct {
 	Libp2pOpts  []libp2p.Option
 	OfflineMode bool
 	Verifier    verification.Verifier
-	Rewarder    consensus.BlockRewarder
+	Rewarder    processor.BlockRewarder
 	Repo        repo.Repo
 	IsRelay     bool
 	Clock       clock.Clock
@@ -111,7 +112,7 @@ func VerifierConfigOption(verifier verification.Verifier) BuilderOpt {
 }
 
 // RewarderConfigOption returns a function that sets the rewarder to use in the node consensus
-func RewarderConfigOption(rewarder consensus.BlockRewarder) BuilderOpt {
+func RewarderConfigOption(rewarder processor.BlockRewarder) BuilderOpt {
 	return func(c *Builder) error {
 		c.Rewarder = rewarder
 		return nil
@@ -207,7 +208,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(nc.BlockTime, nc.Clock)
+	blkValid := processor.NewDefaultBlockValidator(nc.BlockTime, nc.Clock)
 
 	// set up peer tracking
 	peerTracker := net.NewPeerTracker(peerHost.ID())
@@ -231,16 +232,16 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	// set up processor
-	var processor consensus.Processor
+	// set up messageProcessor
+	var messageProcessor consensus.Processor
 	if nc.Rewarder == nil {
-		processor = consensus.NewDefaultProcessor()
+		messageProcessor = processor.NewDefaultProcessor()
 	} else {
-		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), nc.Rewarder)
+		messageProcessor = processor.NewConfiguredProcessor(processor.NewDefaultMessageValidator(), nc.Rewarder)
 	}
 
 	// set up consensus
-	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
+	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, messageProcessor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
@@ -263,13 +264,13 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, nc.Clock)
-	msgPool := message.NewPool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
+	msgPool := message.NewPool(nc.Repo.Config().Mpool, processor.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chainStore, messageStore)
 
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(messageStore, message.OutboxMaxAgeRounds)
 	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(fsub), net.MessageTopic(network), msgPool)
-	outbox := message.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
+	outbox := message.NewOutbox(fcWallet, processor.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	nd := &Node{
 		blockservice: bservice,

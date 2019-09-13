@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -151,7 +152,7 @@ func initTextEncoder(_ *cmds.Request, w io.Writer, val interface{}) error {
 	return err
 }
 
-func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consensus.GenesisInitFunc, error) {
+func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (chain.GenesisInitFunc, error) {
 	if sourceName == "" {
 		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
 	}

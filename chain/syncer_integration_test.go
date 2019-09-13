@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -78,7 +79,7 @@ func TestLoadFork(t *testing.T) {
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
-	fakeFetcher := th.NewTestFetcher()
+	fakeFetcher := nth.NewTestFetcher()
 	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
@@ -182,7 +183,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	requireTsAdded(t, chainStore, calcGenTS)
 
 	// Setup a fetcher for feeding blocks into the syncer.
-	blockSource := th.NewTestFetcher()
+	blockSource := nth.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
@@ -366,7 +367,7 @@ func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	assert.Equal(t, head, headTipSet)
 }
 
-func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
+func requirePutBlocks(_ *testing.T, f *nth.TestFetcher, blocks ...*types.Block) types.TipSetKey {
 	var cids []cid.Cid
 	for _, block := range blocks {
 		c := block.Cid()

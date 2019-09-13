@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -219,7 +219,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(chain.AncestorRoundsNeeded))
 	parentTs, err := w.chainReader.GetTipSet(ids)
 	if err != nil {
 		return nil, err
@@ -239,7 +239,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 		tsMessages = append(tsMessages, msgs)
 	}
 
-	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
+	res, err := processor.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
 	if err != nil {
 		return nil, err
 	}

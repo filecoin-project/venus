@@ -9,13 +9,21 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/clock"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+// AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
+// to process all state transitions.
+//
+// TODO: If the following PR is merged - and the network doesn't define a
+// largest sector size - this constant will need to be reconsidered.
+// https://github.com/filecoin-project/specs/pull/318
+const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.PoStChallengeWindowBlocks
 
 var reorgCnt *metrics.Int64Counter
 
@@ -151,7 +159,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	if err != nil {
 		return err
 	}
-	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(AncestorRoundsNeeded))
 	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err

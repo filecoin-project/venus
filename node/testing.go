@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/chain"
 	gengen "github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -36,7 +36,7 @@ type ChainSeed struct {
 type TestNodeOptions struct {
 	OfflineMode bool
 	BuilderOpts []BuilderOpt
-	GenesisFunc consensus.GenesisInitFunc
+	GenesisFunc chain.GenesisInitFunc
 	InitOpts    []InitOpt
 	Seed        *ChainSeed
 }
@@ -156,7 +156,7 @@ func ConnectNodes(t *testing.T, a, b *Node) {
 // MakeNodesUnstartedWithGif creates some new nodes with an InMemoryRepo and fake proof verifier.
 // The repo is initialized with a supplied genesis init function.
 // Call StartNodes to start them.
-func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif consensus.GenesisInitFunc) []*Node {
+func MakeNodesUnstartedWithGif(t *testing.T, numNodes int, offlineMode bool, gif chain.GenesisInitFunc) []*Node {
 	tno := TestNodeOptions{
 		OfflineMode: offlineMode,
 		GenesisFunc: gif,

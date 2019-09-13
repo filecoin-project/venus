@@ -7,8 +7,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -24,7 +24,7 @@ type BlockTopicValidator struct {
 }
 
 // NewBlockTopicValidator retruns a BlockTopicValidator using `bv` for message validation
-func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
+func NewBlockTopicValidator(bv processor.BlockSyntaxValidator, opts ...pubsub.ValidatorOpt) *BlockTopicValidator {
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {

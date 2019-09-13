@@ -1,4 +1,4 @@
-package consensus_test
+package processor_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -35,7 +35,7 @@ func TestMessageValidator(t *testing.T) {
 	bob := addresses[1]
 	actor := newActor(t, 1000, 100)
 
-	validator := consensus.NewDefaultMessageValidator()
+	validator := processor.NewDefaultMessageValidator()
 	ctx := context.Background()
 
 	t.Run("valid", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestOutboundMessageValidator(t *testing.T) {
 	bob := addresses[1]
 	actor := newActor(t, 1000, 100)
 
-	validator := consensus.NewOutboundMessageValidator()
+	validator := processor.NewOutboundMessageValidator()
 	ctx := context.Background()
 
 	t.Run("allows high nonce", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestIngestionValidator(t *testing.T) {
 	api.Actor = act
 
 	mpoolCfg := config.NewDefaultConfig().Mpool
-	validator := consensus.NewIngestionValidator(api, mpoolCfg)
+	validator := processor.NewIngestionValidator(api, mpoolCfg)
 	ctx := context.Background()
 
 	t.Run("Validates extreme nonce gaps", func(t *testing.T) {

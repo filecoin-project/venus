@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -49,7 +50,7 @@ func setupTest(t *testing.T) (*hamt.CborIpldStore, *chain.Store, *chain.MessageS
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
 
-func setupTestWithGif(t *testing.T, gif consensus.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
+func setupTestWithGif(t *testing.T, gif chain.GenesisInitFunc) (*hamt.CborIpldStore, *chain.Store, *chain.MessageStore, *Waiter) {
 	d := requiredCommonDeps(t, gif)
 	return d.cst, d.chainStore, d.messages, NewWaiter(d.chainStore, d.messages, d.blockstore, d.cst)
 }
@@ -144,7 +145,7 @@ func TestWaitConflicting(t *testing.T) {
 		consensus.ActorAccount(addr1, types.NewAttoFILFromFIL(10000)),
 		consensus.ActorAccount(addr2, types.NewAttoFILFromFIL(0)),
 		consensus.ActorAccount(addr3, types.NewAttoFILFromFIL(0)),
-		consensus.MinerActor(minerAddr, addr3, th.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
+		consensus.MinerActor(minerAddr, addr3, nth.RequireRandomPeerID(t), types.ZeroAttoFIL, types.OneKiBSectorSize),
 	)
 	cst, chainStore, msgStore, waiter := setupTestWithGif(t, testGen)
 

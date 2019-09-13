@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -58,7 +58,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	vms := vm.NewStorageMap(p.bs)
-	usedGas, err := consensus.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	usedGas, err := processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "query method returned an error")
 	}

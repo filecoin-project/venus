@@ -16,7 +16,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
+	"github.com/ipfs/go-ipfs-exchange-interface"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
@@ -691,7 +692,7 @@ func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, bs bst
 	}
 
 	vms := vm.NewStorageMap(bs)
-	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
+	res, _, err := processor.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
 	if err != nil {
 		return "", errors.Wrap(err, "error querying for network name")
 	}
@@ -870,7 +871,7 @@ func (node *Node) GetMiningWorker(ctx context.Context) (mining.Worker, error) {
 // CreateMiningWorker creates a mining.Worker for the node using the configured
 // getStateTree, getWeight, and getAncestors functions for the node
 func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error) {
-	processor := consensus.NewDefaultProcessor()
+	messageProcessor := processor.NewDefaultProcessor()
 
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
@@ -897,7 +898,7 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 
 		MessageSource: node.Inbox.Pool(),
 		MessageStore:  node.MessageStore,
-		Processor:     processor,
+		Processor:     messageProcessor,
 		PowerTable:    node.PowerTable,
 		Blockstore:    node.Blockstore,
 		Clock:         node.Clock,
@@ -928,7 +929,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 
 // getAncestors is the default GetAncestors function for the mining worker.
 func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(chain.AncestorRoundsNeeded))
 	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, ancestorHeight)
 }
 

@@ -1,4 +1,4 @@
-package testhelpers
+package net
 
 import (
 	"context"
@@ -123,6 +123,13 @@ func RandPeerID() (peer.ID, error) {
 	}
 	h, _ := mh.Sum(buf, mh.SHA2_256, -1)
 	return peer.ID(h), nil
+}
+
+// RequireRandomPeerID returns a new libp2p peer ID or panics.
+func RequireRandomPeerID(t *testing.T) peer.ID {
+	id, err := RandPeerID()
+	require.NoError(t, err)
+	return id
 }
 
 // RequireIntPeerID takes in an integer and creates a unique peer id for it.

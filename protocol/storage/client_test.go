@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	. "github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
@@ -57,7 +57,7 @@ func TestProposeDeal(t *testing.T) {
 		return resp, nil
 	})
 
-	client := NewClient(th.NewFakeHost(), testAPI)
+	client := NewClient(nth.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.CidFromString(t, "somecid")
@@ -135,7 +135,7 @@ func TestProposeZeroPriceDeal(t *testing.T) {
 	testAPI := newTestClientAPI(t, pieceReader, pieceSize)
 	testAPI.askPrice = types.ZeroAttoFIL
 
-	client := NewClient(th.NewFakeHost(), testAPI)
+	client := NewClient(nth.NewFakeHost(), testAPI)
 	testNode := newTestClientNode(func(request interface{}) (interface{}, error) {
 		p := request.(*storagedeal.SignedProposal)
 
@@ -195,7 +195,7 @@ func TestProposeDealFailsWhenADealAlreadyExists(t *testing.T) {
 		return resp, nil
 	})
 
-	client := NewClient(th.NewFakeHost(), testAPI)
+	client := NewClient(nth.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.CidFromString(t, "somecid")
@@ -239,7 +239,7 @@ func TestProposeDealFailsWhenSignatureIsInvalid(t *testing.T) {
 		return resp, nil
 	})
 
-	client := NewClient(th.NewFakeHost(), testAPI)
+	client := NewClient(nth.NewFakeHost(), testAPI)
 	client.ProtocolRequestFunc = testNode.MakeTestProtocolRequest
 
 	dataCid := types.CidFromString(t, "somecid")

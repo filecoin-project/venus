@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -19,9 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
-
-// GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error)
 
 var (
 	defaultAccounts map[address.Address]types.AttoFIL
@@ -128,7 +126,7 @@ func NewEmptyConfig() *Config {
 }
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
-func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
+func MakeGenesisFunc(opts ...GenOption) chain.GenesisInitFunc {
 	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 		ctx := context.Background()
 		st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)

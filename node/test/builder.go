@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/node"
@@ -21,7 +22,7 @@ import (
 // injection. This builder avoids exposing the latter directly.
 type NodeBuilder struct {
 	// Initialisation function for the genesis block and state.
-	gif consensus.GenesisInitFunc
+	gif chain.GenesisInitFunc
 	// Options to the repo initialisation.
 	initOpts []node.InitOpt
 	// Mutations to be applied to node config after initialisation.
@@ -53,7 +54,7 @@ func NewNodeBuilder(tb testing.TB) *NodeBuilder {
 }
 
 // WithGenesisInit sets the built nodes' genesis function.
-func (b *NodeBuilder) WithGenesisInit(gif consensus.GenesisInitFunc) *NodeBuilder {
+func (b *NodeBuilder) WithGenesisInit(gif chain.GenesisInitFunc) *NodeBuilder {
 	b.gif = gif
 	return b
 }

@@ -1,10 +1,11 @@
-package consensus
+package processor
 
 import (
 	"context"
 	"math/big"
 
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 
@@ -26,6 +27,8 @@ var (
 	// Timers
 	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds", msgMethodKey)
 	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
+
+	log = logging.Logger("processor")
 )
 
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
@@ -60,8 +63,6 @@ type DefaultProcessor struct {
 	signedMessageValidator SignedMessageValidator
 	blockRewarder          BlockRewarder
 }
-
-var _ Processor = (*DefaultProcessor)(nil)
 
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
 func NewDefaultProcessor() *DefaultProcessor {

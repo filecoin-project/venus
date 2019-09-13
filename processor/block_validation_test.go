@@ -1,4 +1,4 @@
-package consensus_test
+package processor_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,7 +25,7 @@ func TestBlockValidSemantic(t *testing.T) {
 	mclock := th.NewFakeSystemClock(ts)
 	ctx := context.Background()
 
-	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
+	validator := processor.NewDefaultBlockValidator(blockTime, mclock)
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
@@ -90,7 +91,7 @@ func TestBlockValidSyntax(t *testing.T) {
 
 	ctx := context.Background()
 
-	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
+	validator := processor.NewDefaultBlockValidator(blockTime, mclock)
 
 	validTs := types.Uint64(ts.Unix())
 	validSt := types.NewCidForTestGetter()()

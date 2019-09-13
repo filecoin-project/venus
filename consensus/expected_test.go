@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -20,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -31,7 +33,7 @@ func TestNewExpected(t *testing.T) {
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore := setupCborBlockstore()
 		ptv := consensus.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
-		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cst, bstore, processor.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 		assert.NotNil(t, exp)
 	})
 }
@@ -69,7 +71,7 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 		minerToWorker[minerAddrs[i]] = minerWorkers[i]
 
 		minerActor := th.RequireNewMinerActor(t, vms, minerAddrs[i], addr,
-			10000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
+			10000, nth.RequireRandomPeerID(t), types.ZeroAttoFIL)
 		require.NoError(t, tree.SetActor(ctx, minerAddrs[i], minerActor))
 	}
 	stateRoot, err := tree.Flush(ctx)
@@ -134,7 +136,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
 		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, processor.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
@@ -161,7 +163,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
 		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
+		exp := consensus.NewExpected(cistore, bstore, processor.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 

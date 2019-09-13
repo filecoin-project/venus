@@ -17,7 +17,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -56,7 +56,7 @@ type graphsyncFallbackPeerTracker interface {
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
 	exchange    GraphExchange
-	validator   consensus.SyntaxValidator
+	validator   processor.SyntaxValidator
 	store       bstore.Blockstore
 	ssb         selectorbuilder.SelectorSpecBuilder
 	peerTracker graphsyncFallbackPeerTracker
@@ -65,7 +65,7 @@ type GraphSyncFetcher struct {
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	bv processor.SyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		store:       blockstore,
 		validator:   bv,
@@ -439,7 +439,7 @@ func (pri *requestPeerFinder) FindNextPeer() error {
 	return fmt.Errorf("Unable to find any untried peers")
 }
 
-func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {
+func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator processor.BlockSyntaxValidator) ([]*types.Block, error) {
 	var blocks []*types.Block
 	for _, u := range unsanitized {
 		block, err := types.DecodeBlock(u.RawData())

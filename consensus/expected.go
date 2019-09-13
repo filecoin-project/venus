@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -18,7 +19,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -63,22 +63,13 @@ const ECV uint64 = 10
 // ECPrM is the power ratio magnitude defined in the EC spec.
 const ECPrM uint64 = 100
 
-// AncestorRoundsNeeded is the number of rounds of the ancestor chain needed
-// to process all state transitions.
-//
-// TODO: If the following PR is merged - and the network doesn't define a
-// largest sector size - this constant will need to be reconsidered.
-// https://github.com/filecoin-project/specs/pull/318
-// NOTE(anorth): This height is excessive, but safe, with the Rational PoSt construction.
-const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.PoStChallengeWindowBlocks
-
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessBlock processes all messages in a block.
-	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *types.Block, []*types.SignedMessage, []types.TipSet) ([]*ApplicationResult, error)
+	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *types.Block, []*types.SignedMessage, []types.TipSet) ([]*processor.ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*processor.ProcessTipSetResponse, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -98,7 +89,7 @@ type Expected struct {
 	PwrTableView PowerTableView
 
 	// validator provides a set of methods used to validate a block.
-	BlockValidator
+	processor.BlockValidator
 
 	// ElectionValidator validates election proofs.
 	ElectionValidator
@@ -126,7 +117,7 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v processor.BlockValidator, pt PowerTableView, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,

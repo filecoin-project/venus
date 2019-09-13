@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-filecoin/abi"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -98,7 +98,7 @@ func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeigh
 	if err != nil {
 		return nil, err
 	}
-	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight)
+	tipSetBuffer, err := GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
@@ -203,7 +203,7 @@ func (q *ChainStateQueryer) Query(ctx context.Context, optFrom, to address.Addre
 		return nil, errors.Wrap(err, "failed to encode message params")
 	}
 
-	r, ec, err := consensus.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
+	r, ec, err := processor.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
 	if err != nil {
 		return nil, errors.Wrap(err, "querymethod returned an error")
 	} else if ec != 0 {

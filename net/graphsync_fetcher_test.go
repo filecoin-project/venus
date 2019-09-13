@@ -32,9 +32,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/processor"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -43,8 +44,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeSystemClock(time.Now()))
-	pid0 := th.RequireIntPeerID(t, 0)
+	bv := processor.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeSystemClock(time.Now()))
+	pid0 := nth.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
@@ -80,8 +81,8 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		return s
 	}
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid2 := th.RequireIntPeerID(t, 2)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid2 := nth.RequireIntPeerID(t, 2)
 
 	doneAt := func(tsKey types.TipSetKey) func(types.TipSet) (bool, error) {
 		return func(ts types.TipSet) (bool, error) {

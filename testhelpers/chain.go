@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -50,8 +51,8 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	powerTableView := &TestView{}
 	con := consensus.NewExpected(cst,
 		bs,
-		NewTestProcessor(),
-		NewFakeBlockValidator(),
+		processor.NewTestProcessor(),
+		processor.NewFakeBlockValidator(),
 		powerTableView,
 		params.GenesisCid,
 		BlockTimeTest,

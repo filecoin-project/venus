@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
@@ -70,7 +71,7 @@ func TestAddrLookupAndUpdate(t *testing.T) {
 
 	addr := fixtures.TestAddresses[0]
 	minerAddr := fixtures.TestMiners[0]
-	minerPidForUpdate := th.RequireRandomPeerID(t)
+	minerPidForUpdate := nth.RequireRandomPeerID(t)
 
 	// capture original, pre-update miner pid
 	lookupOutA := th.RunSuccessFirstLine(d, "address", "lookup", minerAddr)

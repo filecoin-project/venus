@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -934,7 +934,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := processor.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -972,7 +972,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := processor.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -1198,28 +1198,28 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 
 	args := abi.MustConvertParams(params...)
 
-	return consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
+	return processor.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
-func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*processor.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0, nil)
 }
 
-func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*processor.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height, nil)
 }
 
-func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*processor.ApplicationResult, error) {
 	sys.t.Helper()
 
 	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0, nil)
 }
 
-func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*processor.ApplicationResult, error) {
 	sys.t.Helper()
 
 	if method != "redeem" && method != "close" {
@@ -1234,7 +1234,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(sys.t, err)
 
-	returnValue, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := processor.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(sys.t, err)
 	assert.Equal(sys.t, uint8(0), exitCode)
 
@@ -1249,7 +1249,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 
 // applySignatureMessage signs voucher parameters and then creates a redeem or close message with all
 // the voucher parameters and the signature, sends it to the payment broker, and returns the result
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*processor.ApplicationResult, error) {
 	sys.t.Helper()
 
 	amt := types.NewAttoFILFromFIL(amtInt)
@@ -1262,7 +1262,7 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	return sys.ApplyMessage(msg, height)
 }
 
-func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*processor.ApplicationResult, error) {
 	return th.ApplyTestMessage(sys.st, sys.vms, msg, types.NewBlockHeight(height))
 }
 
@@ -1270,7 +1270,7 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := abi.MustConvertParams(payer)
-	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := processor.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
 	require.Zero(t, ec)
 	require.NoError(t, err)
 

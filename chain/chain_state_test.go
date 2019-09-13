@@ -1,4 +1,4 @@
-package chain
+package chain_test
 
 import (
 	"context"
@@ -13,7 +13,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	. "github.com/filecoin-project/go-filecoin/consensus"
+	. "github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -45,11 +46,11 @@ func TestQuery(t *testing.T) {
 		defer func() {
 			delete(builtin.Actors, fakeActorCodeCid)
 		}()
-		testGen := MakeGenesisFunc(
+		testGen := consensus.MakeGenesisFunc(
 			// Actor we will send the query to.
-			AddActor(fakeActorAddr, fakeActor),
+			consensus.AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
-			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 		chainStore, err := Init(context.Background(), r, bs, cst, testGen)
@@ -86,11 +87,11 @@ func TestQuery(t *testing.T) {
 		defer func() {
 			delete(builtin.Actors, fakeActorCodeCid)
 		}()
-		testGen := MakeGenesisFunc(
+		testGen := consensus.MakeGenesisFunc(
 			// Actor we will send the query to.
-			AddActor(fakeActorAddr, fakeActor),
+			consensus.AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
-			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 		chainStore, err := Init(context.Background(), r, bs, cst, testGen)

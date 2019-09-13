@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"

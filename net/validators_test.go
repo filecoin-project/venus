@@ -14,9 +14,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/processor"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -28,7 +29,7 @@ func TestBlockTopicValidator(t *testing.T) {
 	mbv := th.NewStubBlockValidator()
 	tv := net.NewBlockTopicValidator(mbv, nil)
 	builder := chain.NewBuilder(t, address.Undef)
-	pid1 := th.RequireIntPeerID(t, 1)
+	pid1 := nth.RequireIntPeerID(t, 1)
 
 	goodBlk := builder.BuildOnBlock(nil, func(b *chain.BlockBuilder) {})
 	badBlk := builder.BuildOnBlock(nil, func(b *chain.BlockBuilder) {
@@ -62,7 +63,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	blocktime := time.Second * 1
 
 	// setup a block validator and a topic validator
-	bv := consensus.NewDefaultBlockValidator(blocktime, mclock)
+	bv := processor.NewDefaultBlockValidator(blocktime, mclock)
 	btv := net.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator

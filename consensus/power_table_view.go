@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
@@ -42,7 +43,7 @@ var _ PowerTableView = &MarketView{}
 // Total returns the total storage as a BytesAmount.
 func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Undef, nil)
+	rets, ec, err := processor.CallQueryMethod(ctx, st, vms, address.StorageMarketAddress, "getTotalStorage", []byte{}, address.Undef, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,7 @@ func (v *MarketView) Total(ctx context.Context, st state.Tree, bstore blockstore
 // Miner returns the storage that this miner has committed to the network.
 func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Undef, nil)
+	rets, ec, err := processor.CallQueryMethod(ctx, st, vms, mAddr, "getPower", []byte{}, address.Undef, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (v *MarketView) Miner(ctx context.Context, st state.Tree, bstore blockstore
 // WorkerAddr returns the address of the miner worker given the miner address.
 func (v *MarketView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
 	vms := vm.NewStorageMap(bstore)
-	rets, ec, err := CallQueryMethod(ctx, st, vms, mAddr, "getWorker", []byte{}, address.Undef, nil)
+	rets, ec, err := processor.CallQueryMethod(ctx, st, vms, mAddr, "getWorker", []byte{}, address.Undef, nil)
 	if err != nil {
 		return address.Undef, err
 	}

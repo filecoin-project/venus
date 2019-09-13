@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/net"
 	. "github.com/filecoin-project/go-filecoin/porcelain"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 )
 
@@ -43,16 +43,16 @@ func newNtwkPingPlumbing(rtt time.Duration, self peer.ID) *ntwkPingPlumbing {
 }
 
 func TestPingSuccess(t *testing.T) {
-	self := th.RequireRandomPeerID(t)
+	self := nth.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(100*time.Millisecond, self)
-	pid := th.RequireRandomPeerID(t)
+	pid := nth.RequireRandomPeerID(t)
 	ctx := context.Background()
 
 	assert.NoError(t, PingMinerWithTimeout(ctx, pid, time.Second, plumbing))
 }
 
 func TestPingSelfFails(t *testing.T) {
-	self := th.RequireRandomPeerID(t)
+	self := nth.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(100*time.Millisecond, self)
 	ctx := context.Background()
 
@@ -60,9 +60,9 @@ func TestPingSelfFails(t *testing.T) {
 }
 
 func TestPingTimeout(t *testing.T) {
-	self := th.RequireRandomPeerID(t)
+	self := nth.RequireRandomPeerID(t)
 	plumbing := newNtwkPingPlumbing(300*time.Millisecond, self)
-	pid := th.RequireRandomPeerID(t)
+	pid := nth.RequireRandomPeerID(t)
 	ctx := context.Background()
 
 	assert.Error(t, PingMinerWithTimeout(ctx, pid, 100*time.Millisecond, plumbing))

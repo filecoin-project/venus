@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -367,7 +368,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	}
 
 	// create new processor that doesn't reward and doesn't validate
-	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
+	applier := processor.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
 
 	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Undef, types.NewBlockHeight(0), nil)
 	if err != nil {
@@ -388,7 +389,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 // GenGenMessageValidator is a validator that doesn't validate to simplify message creation in tests.
 type messageValidator struct{}
 
-var _ consensus.SignedMessageValidator = (*messageValidator)(nil)
+var _ processor.SignedMessageValidator = (*messageValidator)(nil)
 
 // Validate always returns nil
 func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
@@ -398,7 +399,7 @@ func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMes
 // blockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
 type blockRewarder struct{}
 
-var _ consensus.BlockRewarder = (*blockRewarder)(nil)
+var _ processor.BlockRewarder = (*blockRewarder)(nil)
 
 // BlockReward is a noop
 func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {

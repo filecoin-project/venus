@@ -4,13 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/processor"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -25,7 +25,7 @@ type Outbox struct {
 	// Signs messages
 	signer types.Signer
 	// Validates messages before sending them.
-	validator consensus.SignedMessageValidator
+	validator processor.SignedMessageValidator
 	// Holds messages sent from this node but not yet mined.
 	queue *Queue
 	// Publishes a signed message to the network.
@@ -52,7 +52,7 @@ type publisher interface {
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *Queue,
+func NewOutbox(signer types.Signer, validator processor.SignedMessageValidator, queue *Queue,
 	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
 	return &Outbox{
 		signer:    signer,

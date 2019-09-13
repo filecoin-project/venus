@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/net"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -21,10 +21,10 @@ func TestPeerTrackerTracks(t *testing.T) {
 	tf.UnitTest(t)
 
 	tracker := net.NewPeerTracker(peer.ID(""))
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid3 := th.RequireIntPeerID(t, 3)
-	pid7 := th.RequireIntPeerID(t, 7)
+	pid0 := nth.RequireIntPeerID(t, 0)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid3 := nth.RequireIntPeerID(t, 3)
+	pid7 := nth.RequireIntPeerID(t, 7)
 
 	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
@@ -47,10 +47,10 @@ func TestPeerTrackerTracks(t *testing.T) {
 func TestPeerTrackerSelectHead(t *testing.T) {
 	tf.UnitTest(t)
 
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid2 := th.RequireIntPeerID(t, 2)
-	pid3 := th.RequireIntPeerID(t, 3)
+	pid0 := nth.RequireIntPeerID(t, 0)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid2 := nth.RequireIntPeerID(t, 2)
+	pid3 := nth.RequireIntPeerID(t, 3)
 
 	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 6)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
@@ -73,10 +73,10 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 func TestPeerTrackerUpdateTrusted(t *testing.T) {
 	tf.UnitTest(t)
 
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid2 := th.RequireIntPeerID(t, 2)
-	pid3 := th.RequireIntPeerID(t, 3)
+	pid0 := nth.RequireIntPeerID(t, 0)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid2 := nth.RequireIntPeerID(t, 2)
+	pid3 := nth.RequireIntPeerID(t, 3)
 
 	// trust pid2 and pid3
 	tracker := net.NewPeerTracker(pid3, pid2)
@@ -126,10 +126,10 @@ func TestPeerTrackerUpdateTrusted(t *testing.T) {
 func TestUpdateWithErrors(t *testing.T) {
 	tf.UnitTest(t)
 
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid2 := th.RequireIntPeerID(t, 2)
-	failPeer := th.RequireIntPeerID(t, 3)
+	pid0 := nth.RequireIntPeerID(t, 0)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid2 := nth.RequireIntPeerID(t, 2)
+	failPeer := nth.RequireIntPeerID(t, 3)
 
 	self := peer.ID("")
 	trusted := []peer.ID{pid0, pid1, pid2, failPeer}
@@ -192,10 +192,10 @@ func TestPeerTrackerRemove(t *testing.T) {
 	tf.UnitTest(t)
 
 	tracker := net.NewPeerTracker(peer.ID(""))
-	pid0 := th.RequireIntPeerID(t, 0)
-	pid1 := th.RequireIntPeerID(t, 1)
-	pid3 := th.RequireIntPeerID(t, 3)
-	pid7 := th.RequireIntPeerID(t, 7)
+	pid0 := nth.RequireIntPeerID(t, 0)
+	pid1 := nth.RequireIntPeerID(t, 1)
+	pid3 := nth.RequireIntPeerID(t, 3)
+	pid7 := nth.RequireIntPeerID(t, 7)
 
 	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
 	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)

@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	nth "github.com/filecoin-project/go-filecoin/testhelpers/net"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -30,7 +31,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	pid := th.RequireRandomPeerID(t)
+	pid := nth.RequireRandomPeerID(t)
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -73,7 +74,7 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
-	pdata := actor.MustConvertParams(types.OneKiBSectorSize, th.RequireRandomPeerID(t))
+	pdata := actor.MustConvertParams(types.OneKiBSectorSize, nth.RequireRandomPeerID(t))
 	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -143,9 +144,9 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		// create miners without commitments
 		_ = []address.Address{
-			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0),
-			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 1),
-			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 2),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t), 0),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t), 1),
+			th.CreateTestMinerWith(coll, t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t), 2),
 		}
 
 		tc := []testCase{
@@ -165,9 +166,9 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 
 		// create 3 bootstrap miners by passing in 0 block height, so that VerifyProof is skipped
 		// Otherwise this test will fail
-		addr1 := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
-		addr2 := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
-		_ = th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
+		addr1 := th.CreateTestMiner(t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t))
+		addr2 := th.CreateTestMiner(t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t))
+		_ = th.CreateTestMiner(t, st, vms, address.TestAddress, nth.RequireRandomPeerID(t))
 
 		// 2 of the 3 miners make a commitment
 		blockHeight := 3
@@ -223,7 +224,7 @@ func TestUpdateStorage(t *testing.T) {
 	t.Run("add storage power", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		// Create miner so that update can pass checks
-		pid := th.RequireRandomPeerID(t)
+		pid := nth.RequireRandomPeerID(t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, pid)
 
 		// Add update to total storage
@@ -266,7 +267,7 @@ func TestUpdateStorage(t *testing.T) {
 	t.Run("remove storage power", func(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		// Create miner so that update can pass checks
-		pid := th.RequireRandomPeerID(t)
+		pid := nth.RequireRandomPeerID(t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, pid)
 
 		// Add plus (positive number) and minus (negative number) to total storage
