@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
@@ -84,7 +84,7 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 func (h *Handler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 	if err := h.sendHello(s); err != nil {
-		log.Errorf("failed to send hello message:%s", err)
+		log.Debugf("failed to send hello message:%s", err)
 	}
 	return
 }
@@ -123,7 +123,7 @@ func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error)
 	if err != nil {
 		return nil, err
 	}
-	defer s.Close() // nolint: errcheck
+	defer func() { _ = s.Close() }()
 
 	var hello Message
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
@@ -164,7 +164,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		from := c.RemotePeer()
 		hello, err := hn.hello().ReceiveHello(ctx, from)
 		if err != nil {
-			log.Warningf("failed to receive hello handshake from peer %s: %s", from, err)
+			log.Debugf("failed to receive hello handshake from peer %s: %s", from, err)
 			_ = c.Close()
 			return
 		}
