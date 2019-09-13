@@ -1,16 +1,20 @@
-package msg
+package consensus_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/chain"
+	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -42,16 +46,20 @@ func TestQuery(t *testing.T) {
 		defer func() {
 			delete(builtin.Actors, fakeActorCodeCid)
 		}()
-		testGen := consensus.MakeGenesisFunc(
+		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
-			consensus.AddActor(fakeActorAddr, fakeActor),
+			AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
-			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
-		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
+		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 
-		queryer := NewQueryer(deps.chainStore, deps.cst, deps.blockstore)
-		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue", deps.chainStore.GetHead())
+		chainState := NewChainState(chainStore, cst, bs)
+		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
+		require.NoError(t, err)
+
+		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)
 		v, err := abi.Deserialize(returnValue[0], abi.Address)
@@ -79,16 +87,20 @@ func TestQuery(t *testing.T) {
 		defer func() {
 			delete(builtin.Actors, fakeActorCodeCid)
 		}()
-		testGen := consensus.MakeGenesisFunc(
+		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
-			consensus.AddActor(fakeActorAddr, fakeActor),
+			AddActor(fakeActorAddr, fakeActor),
 			// Actor we will send the query from. The method we will call returns an Address.
-			consensus.ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
+			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
-		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
+		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 
-		queryer := NewQueryer(deps.chainStore, deps.cst, deps.blockstore)
-		_, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode", deps.chainStore.GetHead())
+		chainState := NewChainState(chainStore, cst, bs)
+		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
+		require.NoError(t, err)
+
+		_, err = queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "42")
 	})
