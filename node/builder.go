@@ -306,7 +306,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		Expected:      nodeConsensus,
 		MsgPool:       msgPool,
 		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
-		MsgQueryer:    msg.NewQueryer(chainStore, &ipldCborStore, bs),
+		ChnState:      consensus.NewChainState(chainStore, &ipldCborStore, bs),
 		MsgWaiter:     msg.NewWaiter(chainStore, messageStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,
