@@ -37,22 +37,22 @@ func NewQueryer(chainReader queryerChainReader, cst *hamt.CborIpldStore, bs bsto
 	return &Queryer{chainReader, cst, bs}
 }
 
-// Query sends a read-only message to an actor.
-func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+// Query sends a read-only message against the state of the provided base tipset.
+func (q *Queryer) Query(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode message params")
 	}
 
-	st, err := q.chainReader.GetTipSetState(ctx, q.chainReader.GetHead())
+	st, err := q.chainReader.GetTipSetState(ctx, baseKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load tree for latest state root")
+		return nil, errors.Wrapf(err, "failed to load tree for the state root of tipset: %s", baseKey.String())
 	}
-	head, err := q.chainReader.GetTipSet(q.chainReader.GetHead())
+	base, err := q.chainReader.GetTipSet(baseKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get the head tipset")
+		return nil, errors.Wrapf(err, "failed to get tipset: %s", baseKey.String())
 	}
-	h, err := head.Height()
+	h, err := base.Height()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get the head tipset height")
 	}

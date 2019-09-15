@@ -2,36 +2,15 @@ package consensus
 
 import (
 	"context"
+
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-ipfs-blockstore"
-
-	"github.com/stretchr/testify/require"
 )
-
-// TestView is an implementation of stateView used for testing the chain
-// manager.  It provides a consistent view that the storage market
-// that returns 1 for storage total and 1 for any miner storage.
-type TestView struct{}
-
-var _ PowerTableView = &TestView{}
-
-// Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(1), nil
-}
-
-// Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(1), nil
-}
-
-// HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
-}
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
@@ -98,4 +77,68 @@ func NewTestProcessor() *DefaultProcessor {
 		signedMessageValidator: &TestSignedMessageValidator{},
 		blockRewarder:          &TestBlockRewarder{},
 	}
+}
+
+// FakeElectionMachine generates fake election proofs and verifies all proofs
+type FakeElectionMachine struct{}
+
+// RunElection returns a fake election proof.
+func (fem *FakeElectionMachine) RunElection(ticket types.Ticket, candidateAddr address.Address, signer types.Signer) (types.VRFPi, error) {
+	return MakeFakeElectionProofForTest(), nil
+}
+
+// IsElectionWinner always returns true
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+	return true, nil
+}
+
+// FakeTicketMachine generates fake tickets and verifies all tickets
+type FakeTicketMachine struct{}
+
+// NextTicket returns a fake ticket
+func (ftm *FakeTicketMachine) NextTicket(parent types.Ticket, signerAddr address.Address, signer types.Signer, nullBlkCount uint64) (types.Ticket, error) {
+	return MakeFakeTicketForTest(), nil
+}
+
+// NotarizeTime does nothing
+func (ftm *FakeTicketMachine) NotarizeTime(ticket *types.Ticket) error {
+	return nil
+}
+
+// ValidateTicket always returns true
+func (ftm *FakeTicketMachine) ValidateTicket(parent, ticket types.Ticket, signerAddr address.Address, nullBlkCount uint64) (bool, error) {
+	return true, nil
+}
+
+// FailingTicketValidator marks all tickets as invalid
+type FailingTicketValidator struct{}
+
+// ValidateTicket always returns false
+func (ftv *FailingTicketValidator) ValidateTicket(parent, ticket types.Ticket, signerAddr address.Address, nullBlkCount uint64) (bool, error) {
+	return false, nil
+}
+
+// FailingElectionValidator marks all elections as invalid
+type FailingElectionValidator struct{}
+
+// IsElectionWinner always returns false
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+	return false, nil
+}
+
+// MakeFakeTicketForTest creates a fake ticket
+func MakeFakeTicketForTest() types.Ticket {
+	val := make([]byte, 65)
+	val[0] = 200
+	return types.Ticket{
+		VRFProof:  types.VRFPi(val[:]),
+		VDFResult: types.VDFY(val[:]),
+	}
+}
+
+// MakeFakeElectionProofForTest creates a fake election proof
+func MakeFakeElectionProofForTest() []byte {
+	proof := make([]byte, 65)
+	proof[0] = 42
+	return proof
 }

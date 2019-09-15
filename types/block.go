@@ -47,10 +47,13 @@ type Block struct {
 
 	// ElectionProof is the "scratched ticket" proving that this block won
 	// an election.
-	ElectionProof PoStProof `json:"proof"`
+	ElectionProof VRFPi `json:"proof"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
 	Timestamp Uint64 `json:"timestamp"`
+
+	// The signature of the miner's worker key over the block
+	BlockSig Signature `json:"blocksig"`
 
 	cachedCid cid.Cid
 

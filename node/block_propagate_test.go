@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,10 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
-	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/testhelpers"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -30,6 +30,34 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 	}
 }
 
+func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *types.Block {
+	head := minerNode.ChainReader.GetHead()
+	headTipSet, err := minerNode.ChainReader.GetTipSet(head)
+	require.NoError(t, err)
+	baseTS := headTipSet
+	require.NotNil(t, baseTS)
+
+	worker, err := minerNode.CreateMiningWorker(ctx)
+	require.NoError(t, err)
+
+	// Miner should win first election as it has all the power so only
+	// mine once with 0 null blocks
+	out := make(chan mining.Output)
+	var wonElection bool
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		wonElection = worker.Mine(ctx, headTipSet, 0, out)
+		wg.Done()
+	}()
+	next := <-out
+	wg.Wait() // wait for wonElection to be set
+	assert.True(t, wonElection)
+	assert.NoError(t, next.Err)
+
+	return next.NewBlock
+}
+
 func TestBlockPropsManyNodes(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -37,11 +65,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	defer cancel()
 
 	numNodes := 4
-	minerAddr, nodes := makeNodes(t, numNodes)
-
-	// Now add 10 null blocks and 1 tipset.
-	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	mockSignerPubKey := ki[0].PublicKey()
+	_, nodes := makeNodesBlockPropTests(t, numNodes)
 
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
@@ -52,30 +76,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	connect(t, nodes[1], nodes[2])
 	connect(t, nodes[2], nodes[3])
 
-	head := minerNode.ChainReader.GetHead()
-	headTipSet, err := minerNode.ChainReader.GetTipSet(head)
-	require.NoError(t, err)
-	baseTS := headTipSet
-	require.NotNil(t, baseTS)
-	proof := testhelpers.MakeRandomPoStProofForTest()
-
-	signerAddr, err := signer.GetAddressForPubKey(mockSignerPubKey)
-	require.NoError(t, err)
-	ticket, err := consensus.CreateTicket(proof, signerAddr, signer)
-	require.NoError(t, err)
-
-	nextBlk := &types.Block{
-		Miner:           minerAddr,
-		Parents:         baseTS.Key(),
-		Height:          types.Uint64(1),
-		ParentWeight:    types.Uint64(10000),
-		StateRoot:       baseTS.ToSlice()[0].StateRoot,
-		ElectionProof:   proof,
-		Tickets:         []types.Ticket{ticket},
-		Messages:        types.EmptyMessagesCID,
-		MessageReceipts: types.EmptyReceiptsCID,
-	}
-
+	nextBlk := requireMineOnce(ctx, t, minerNode)
 	// Wait for network connection notifications to propagate
 	time.Sleep(time.Millisecond * 300)
 
@@ -101,43 +102,25 @@ func TestChainSync(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
+	_, nodes := makeNodesBlockPropTests(t, 2)
 
-	minerAddr, nodes := makeNodes(t, 2)
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
-	head := nodes[0].ChainReader.GetHead()
-	headTipSet, err := nodes[0].ChainReader.GetTipSet(head)
-	require.NoError(t, err)
-	baseTS := headTipSet
+	firstBlock := requireMineOnce(ctx, t, nodes[0])
+	secondBlock := requireMineOnce(ctx, t, nodes[0])
+	thirdBlock := requireMineOnce(ctx, t, nodes[0])
 
-	signer, ki := types.NewMockSignersAndKeyInfo(1)
-	minerWorker, err := ki[0].Address()
-	require.NoError(t, err)
-	stateRoot := baseTS.ToSlice()[0].StateRoot
-	msgsCid := types.EmptyMessagesCID
-	rcptsCid := types.EmptyReceiptsCID
-
-	nextBlk1 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 1, minerAddr, minerWorker, signer)
-	nextBlk1.Messages = msgsCid
-	nextBlk1.MessageReceipts = rcptsCid
-	nextBlk2 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 2, minerAddr, minerWorker, signer)
-	nextBlk2.Messages = msgsCid
-	nextBlk2.MessageReceipts = rcptsCid
-	nextBlk3 := testhelpers.NewValidTestBlockFromTipSet(baseTS, stateRoot, 3, minerAddr, minerWorker, signer)
-	nextBlk3.Messages = msgsCid
-	nextBlk3.MessageReceipts = rcptsCid
-
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk1))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk2))
-	assert.NoError(t, nodes[0].AddNewBlock(ctx, nextBlk3))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, firstBlock))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
+	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
 
 	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].ChainReader.GetHead()
 		assert.NotNil(t, otherHead)
-		equal = otherHead.ToSlice()[0].Equals(nextBlk3.Cid())
+		equal = otherHead.ToSlice()[0].Equals(thirdBlock.Cid())
 		if equal {
 			break
 		}
@@ -147,23 +130,12 @@ func TestChainSync(t *testing.T) {
 	assert.True(t, equal, "failed to sync chains")
 }
 
-type ZeroRewarder struct{}
-
-func (r *ZeroRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
-	return nil
-}
-
-func (r *ZeroRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
-	return nil
-}
-
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
-func makeNodes(t *testing.T, numNodes int) (address.Address, []*Node) {
+func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	builderOpts := []BuilderOpt{RewarderConfigOption(&ZeroRewarder{}), ClockConfigOption(testhelpers.NewFakeSystemClock(time.Unix(1234567890, 0)))}
+	builderOpts := []BuilderOpt{ClockConfigOption(th.NewFakeSystemClock(time.Unix(1234567890, 0)))}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
-		AutoSealIntervalSecondsOpt(1),
 	)
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)

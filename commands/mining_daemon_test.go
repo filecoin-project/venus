@@ -64,14 +64,16 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	// Connect the clientNode and the minerNode
 	require.NoError(t, series.Connect(ctx, genesisNode, minerNode))
 
-	// Calls MiningOnce on genesis (client). This also starts the Miner.
 	pparams, err := minerNode.Protocol(ctx)
 	require.NoError(t, err)
 
 	sinfo := pparams.SupportedSectors[0]
 
-	// mine the create storage message, then mine the set ask message
-	series.CtxMiningNext(ctx, 2)
+	// start mining so we get to a block height that
+	require.NoError(t, genesisNode.MiningStart(ctx))
+	defer func() {
+		require.NoError(t, genesisNode.MiningStop(ctx))
+	}()
 
 	_, err = series.CreateStorageMinerWithAsk(ctx, minerNode, big.NewInt(500), big.NewFloat(0.0001), big.NewInt(3000), sinfo.Size)
 	require.NoError(t, err)
@@ -90,17 +92,13 @@ func TestMiningAddPieceAndSealNow(t *testing.T) {
 	_, err = minerNode.AddPiece(ctx, files.NewBytesFile([]byte("HODL")))
 	require.NoError(t, err)
 
-	// Since the miner does not yet have power, we still need the genesis node to mine
-	// the miner's commitSector and the submitPoSt messages
-	series.CtxMiningNext(ctx, 2)
-
 	// start sealing
 	err = minerNode.SealNow(ctx)
 	require.NoError(t, err)
 
 	// We know the miner has sealed and committed a sector if their power increases on chain.
-	// Wait up to 3 minutes for that to happen.
-	for i := 0; i < 180; i++ {
+	// Wait up to 300 seconds for that to happen.
+	for i := 0; i < 300; i++ {
 		power, err := minerNode.MinerPower(ctx, miningAddress)
 		require.NoError(t, err)
 

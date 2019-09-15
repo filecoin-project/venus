@@ -35,7 +35,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 		return err
 	}
 
-	return node.PorcelainAPI.PubSubPublish(net.BlockTopic, b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.NetworkName), b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {

@@ -156,9 +156,14 @@ func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.Mess
 	return api.chain.GetReceipts(ctx, id)
 }
 
-// ChainHead returns the head tipset
-func (api *API) ChainHead() (types.TipSet, error) {
+// ChainHeadKey returns the head tipset key
+func (api *API) ChainHeadKey() types.TipSetKey {
 	return api.chain.Head()
+}
+
+// ChainTipSet returns the tipset at the given key
+func (api *API) ChainTipSet(key types.TipSetKey) (types.TipSet, error) {
+	return api.chain.GetTipSet(key)
 }
 
 // ChainLs returns an iterator of tipsets from head to genesis
@@ -233,8 +238,8 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
+	return api.msgQueryer.Query(ctx, optFrom, to, method, baseKey, params...)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
@@ -340,8 +345,8 @@ func (api *API) WalletNewAddress() (address.Address, error) {
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos []*types.KeyInfo) ([]address.Address, error) {
-	return api.wallet.Import(kinfos)
+func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses

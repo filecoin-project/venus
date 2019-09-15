@@ -39,7 +39,8 @@ func TestBlockTopicValidator(t *testing.T) {
 
 	validator := tv.Validator()
 
-	assert.Equal(t, net.BlockTopic, tv.Topic())
+	network := "go-filecoin-test"
+	assert.Equal(t, net.BlockTopic(network), tv.Topic(network))
 	assert.True(t, validator(ctx, pid1, blkToPubSub(goodBlk)))
 	assert.False(t, validator(ctx, pid1, blkToPubSub(badBlk)))
 	assert.False(t, validator(ctx, pid1, nonBlkPubSubMsg()))
@@ -65,13 +66,14 @@ func TestBlockPubSubValidation(t *testing.T) {
 	btv := net.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator
+	network := "go-filecoin-test"
 	fsub1, err := pubsub.NewFloodSub(ctx, host1, pubsub.WithMessageSigning(false))
 	require.NoError(t, err)
-	err = fsub1.RegisterTopicValidator(btv.Topic(), btv.Validator(), btv.Opts()...)
+	err = fsub1.RegisterTopicValidator(btv.Topic(network), btv.Validator(), btv.Opts()...)
 	require.NoError(t, err)
 
 	// subscribe to the block validator topic
-	sub1, err := fsub1.Subscribe(btv.Topic())
+	sub1, err := fsub1.Subscribe(btv.Topic(network))
 	require.NoError(t, err)
 
 	// generate a miner address for blocks
@@ -86,7 +88,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Tickets:   []types.Ticket{{VRFProof: []byte{0}}},
 	}
 	// publish the invalid block
-	err = fsub1.Publish(btv.Topic(), invalidBlk.ToNode().RawData())
+	err = fsub1.Publish(btv.Topic(network), invalidBlk.ToNode().RawData())
 	assert.NoError(t, err)
 
 	// see FIXME below (#3285)
@@ -101,7 +103,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Tickets:   []types.Ticket{{VRFProof: []byte{0}}},
 	}
 	// publish the invalid block
-	err = fsub1.Publish(btv.Topic(), validBlk.ToNode().RawData())
+	err = fsub1.Publish(btv.Topic(network), validBlk.ToNode().RawData())
 	assert.NoError(t, err)
 
 	// FIXME: #3285

@@ -239,12 +239,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up consensus
-	var nodeConsensus consensus.Protocol
-	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, &verification.RustVerifier{}, nc.BlockTime)
-	} else {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
-	}
+	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
@@ -255,7 +250,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
-	if err := fsub.RegisterTopicValidator(btv.Topic(), btv.Validator(), btv.Opts()...); err != nil {
+	if err := fsub.RegisterTopicValidator(btv.Topic(network), btv.Validator(), btv.Opts()...); err != nil {
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
@@ -272,7 +267,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 
 	msgQueue := core.NewMessageQueue()
 	outboxPolicy := core.NewMessageQueuePolicy(messageStore, core.OutboxMaxAgeRounds)
-	msgPublisher := core.NewDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
+	msgPublisher := core.NewDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic(network), msgPool)
 	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	nd := &Node{

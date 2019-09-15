@@ -28,7 +28,7 @@ func TestProver(t *testing.T) {
 	var fakeInputs []storage.PoStInputs
 	start := types.NewBlockHeight(100)
 	end := types.NewBlockHeight(200)
-	deadline := end.Add(miner.GenerationAttackTime(sectorSize))
+	deadline := end.Add(miner.LatePoStGracePeriod(sectorSize))
 	collateralRequirement := types.NewAttoFILFromFIL(1)
 
 	makeProofContext := func() *fakeProverContext {
@@ -122,11 +122,15 @@ type fakeProverContext struct {
 	faults        []uint64
 }
 
-func (f *fakeProverContext) ChainBlockHeight() (*types.BlockHeight, error) {
-	if f.height != nil {
-		return f.height, nil
+func (f *fakeProverContext) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (f *fakeProverContext) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+	if f.height == nil {
+		return types.TipSet{}, errors.New("could not get the tipset at this height")
 	}
-	return nil, errors.New("no height")
+	return types.NewTipSet(&types.Block{Height: types.Uint64(f.height.AsBigInt().Uint64())})
 }
 
 func (f *fakeProverContext) ChainSampleRandomness(ctx context.Context, periodStart *types.BlockHeight) ([]byte, error) {
@@ -151,6 +155,6 @@ func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs go_s
 	return f.proof, nil
 }
 
-func (f *fakeProverContext) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (f *fakeProverContext) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	return f.workerAddress, nil
 }

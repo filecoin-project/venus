@@ -294,7 +294,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 			if syncCtx.Err() == nil {
 				// Subscribe to block pubsub topic to learn about new chain heads.
-				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic, node.processBlock)
+				node.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.NetworkName), node.processBlock)
 				if err != nil {
 					log.Error(err)
 				}
@@ -306,7 +306,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// https://github.com/filecoin-project/go-filecoin/issues/2145.
 		// This is blocked by https://github.com/filecoin-project/go-filecoin/issues/2959, which
 		// is necessary for message_propagate_test to start mining before testing this behaviour.
-		node.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic, node.processMessage)
+		node.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic(node.NetworkName), node.processMessage)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// look up miner worker address. If this fails, something is really wrong
 					// so we bail and don't commit sectors.
-					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr)
+					workerAddr, err := node.PorcelainAPI.MinerGetWorkerAddress(miningCtx, minerAddr, node.ChainReader.GetHead())
 					if err != nil {
 						log.Errorf("failed to get worker address %s", err)
 						continue
@@ -644,6 +644,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						val.CommRStar[:],
 						val.Proof[:],
 					)
+
 					if err != nil {
 						log.Errorf("failed to send commitSector message from %s to %s for sector with id %d: %s", minerOwnerAddr, minerAddr, val.SectorID, err)
 						continue
@@ -768,7 +769,7 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
-	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr)
+	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr, node.ChainReader.GetHead())
 	if err != nil {
 		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's worker address")
 	}
@@ -892,12 +893,16 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		GetStateTree: node.getStateTree,
 		GetWeight:    node.getWeight,
 		GetAncestors: node.getAncestors,
+		Election:     consensus.ElectionMachine{},
+		TicketGen:    consensus.TicketMachine{},
 
 		MessageSource: node.Inbox.Pool(),
 		MessageStore:  node.MessageStore,
 		Processor:     processor,
 		PowerTable:    node.PowerTable,
-		Blockstore:    node.Blockstore}), nil
+		Blockstore:    node.Blockstore,
+		Clock:         node.Clock,
+	}), nil
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.

@@ -7,131 +7,110 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	ci "github.com/libp2p/go-libp2p-core/crypto"
+	keystore "github.com/ipfs/go-ipfs-keystore"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
-var ErrLittleBits = errors.New("Bitsize less than 1024 is considered unsafe") // nolint: golint
+const defaultPeerKeyBits = 2048
 
-// InitCfg contains configuration for initializing a node.
-// Note that the DefaultWalletAddress and AutoSealIntervalSeconds are just modifications to the
-// repo config and don't justify special treatment here (c.f others in commands/init.go).
-type InitCfg struct {
-	PeerKey                 ci.PrivKey
-	DefaultWalletAddress    address.Address
-	AutoSealIntervalSeconds uint
+// initCfg contains configuration for initializing a node's repo.
+type initCfg struct {
+	peerKey    crypto.PrivKey
+	defaultKey *types.KeyInfo
 }
 
-// InitOpt is an init option function
-type InitOpt func(*InitCfg)
+// InitOpt is an option for initialization of a node's repo.
+type InitOpt func(*initCfg)
 
-// PeerKeyOpt sets the private key for the nodes 'self' key
-// this is the key that is used for libp2p identity
-func PeerKeyOpt(k ci.PrivKey) InitOpt {
-	return func(c *InitCfg) {
-		c.PeerKey = k
+// PeerKeyOpt sets the private key for a node's 'self' libp2p identity.
+// If unspecified, initialization will create a new one.
+func PeerKeyOpt(k crypto.PrivKey) InitOpt {
+	return func(opts *initCfg) {
+		opts.peerKey = k
 	}
 }
 
-// DefaultWalletAddressOpt returns a config option that sets the default wallet address to the given address.
-func DefaultWalletAddressOpt(addr address.Address) InitOpt {
-	return func(c *InitCfg) {
-		c.DefaultWalletAddress = addr
+// DefaultKeyOpt sets the private key for the wallet's default account.
+// If unspecified, initialization will create a new one.
+func DefaultKeyOpt(ki *types.KeyInfo) InitOpt {
+	return func(opts *initCfg) {
+		opts.defaultKey = ki
 	}
 }
 
-// AutoSealIntervalSecondsOpt configures the daemon to check for and seal any staged sectors on an interval.
-func AutoSealIntervalSecondsOpt(autoSealIntervalSeconds uint) InitOpt {
-	return func(c *InitCfg) {
-		c.AutoSealIntervalSeconds = autoSealIntervalSeconds
-	}
-}
-
-// Init initializes a filecoin node in the given repo.
+// Init initializes a Filecoin repo with genesis state and keys.
+// This will always set the configuration for wallet default address (to the specified default
+// key or a newly generated one), but otherwise leave the repo's config object intact.
+// Make further configuration changes after initialization.
 func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts ...InitOpt) error {
-	cfg := new(InitCfg)
+	cfg := new(initCfg)
 	for _, o := range opts {
 		o(cfg)
 	}
 
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-
 	if _, err := chain.Init(ctx, r, bs, cst, gen); err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}
 
-	if cfg.PeerKey == nil {
-		// TODO: make size configurable
-		peerKey, err := makePrivateKey(2048)
-		if err != nil {
-			return errors.Wrap(err, "failed to create nodes private key")
-		}
-
-		cfg.PeerKey = peerKey
+	if err := initPeerKey(r.Keystore(), cfg.peerKey); err != nil {
+		return err
 	}
 
-	if err := r.Keystore().Put("self", cfg.PeerKey); err != nil {
-		return errors.Wrap(err, "failed to store private key")
+	defaultKey, err := initDefaultKey(r.WalletDatastore(), cfg.defaultKey)
+	if err != nil {
+		return err
 	}
 
-	newConfig := r.Config()
-
-	newConfig.Mining.AutoSealIntervalSeconds = cfg.AutoSealIntervalSeconds
-
-	if cfg.DefaultWalletAddress != (address.Undef) {
-		newConfig.Wallet.DefaultAddress = cfg.DefaultWalletAddress
-	} else if r.Config().Wallet.DefaultAddress == (address.Undef) {
-		// TODO: but behind a config option if this should be generated
-		addr, err := newAddress(r)
-		if err != nil {
-			return errors.Wrap(err, "failed to generate default address")
-		}
-
-		newConfig.Wallet.DefaultAddress = addr
+	defaultAddress, err := defaultKey.Address()
+	if err != nil {
+		return errors.Wrap(err, "failed to extract address from default key")
 	}
-
-	if err := r.ReplaceConfig(newConfig); err != nil {
-		return errors.Wrap(err, "failed to update config with new values")
+	r.Config().Wallet.DefaultAddress = defaultAddress
+	if err = r.ReplaceConfig(r.Config()); err != nil {
+		return errors.Wrap(err, "failed to write config")
 	}
 
 	return nil
 }
 
-// makePrivateKey generates a new private key, which is the basis for a libp2p identity.
-// borrowed from go-ipfs: `repo/config/init.go`
-func makePrivateKey(nbits int) (ci.PrivKey, error) {
-	if nbits < 1024 {
-		return nil, ErrLittleBits
+func initPeerKey(store keystore.Keystore, key crypto.PrivKey) error {
+	var err error
+	if key == nil {
+		key, _, err = crypto.GenerateKeyPair(crypto.RSA, defaultPeerKeyBits)
+		if err != nil {
+			return errors.Wrap(err, "failed to create peer key")
+		}
 	}
-
-	// create a public private key pair
-	sk, _, err := ci.GenerateKeyPair(ci.RSA, nbits)
-	if err != nil {
-		return nil, err
+	if err := store.Put("self", key); err != nil {
+		return errors.Wrap(err, "failed to store private key")
 	}
-
-	return sk, nil
+	return nil
 }
 
-// newAddress creates a new private-public keypair in the default wallet
-// and returns the address for it.
-func newAddress(r repo.Repo) (address.Address, error) {
-	backend, err := wallet.NewDSBackend(r.WalletDatastore())
+func initDefaultKey(store repo.Datastore, key *types.KeyInfo) (*types.KeyInfo, error) {
+	backend, err := wallet.NewDSBackend(store)
 	if err != nil {
-		return address.Undef, errors.Wrap(err, "failed to set up wallet backend")
+		return nil, errors.Wrap(err, "failed to open wallet datastore")
 	}
-
-	addr, err := backend.NewAddress()
-	if err != nil {
-		return address.Undef, errors.Wrap(err, "failed to create address")
+	w := wallet.New(backend)
+	if key == nil {
+		key, err = w.NewKeyInfo()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create default key")
+		}
+	} else {
+		if _, err := w.Import(key); err != nil {
+			return nil, errors.Wrap(err, "failed to import default key")
+		}
 	}
-
-	return addr, err
+	return key, nil
 }

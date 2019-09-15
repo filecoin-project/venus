@@ -87,7 +87,8 @@ func DealsLs(ctx context.Context, plumbing dealLsPlumbing) (<-chan *StorageDealL
 }
 
 type dealRedeemPlumbing interface {
-	ChainBlockHeight() (*types.BlockHeight, error)
+	ChainHeadKey() types.TipSetKey
+	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	MessagePreview(context.Context, address.Address, address.Address, string, ...interface{}) (types.GasUnits, error)
 	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)
@@ -136,10 +137,15 @@ func buildDealRedeemParams(ctx context.Context, plumbing dealRedeemPlumbing, dea
 		return []interface{}{}, err
 	}
 
-	currentBlockHeight, err := plumbing.ChainBlockHeight()
+	head, err := plumbing.ChainTipSet(plumbing.ChainHeadKey())
 	if err != nil {
 		return []interface{}{}, err
 	}
+	h, err := head.Height()
+	if err != nil {
+		return []interface{}{}, err
+	}
+	currentBlockHeight := types.NewBlockHeight(h)
 
 	var voucher *types.PaymentVoucher
 	for _, v := range deal.Proposal.Payment.Vouchers {

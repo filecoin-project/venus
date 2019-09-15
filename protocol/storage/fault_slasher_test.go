@@ -84,9 +84,9 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr3 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
-			addr3: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
+			addr3: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 
@@ -109,7 +109,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr1 := getf().String()
 
 		data1, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 
@@ -133,8 +133,8 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		// A second miner becomes slashable.
 		addr2 := getf().String()
 		data2, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 		plumbing.Queryer = makeQueryer([][]byte{data2})
@@ -150,8 +150,8 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		addr2 := getf().String()
 
 		data, err := cbor.DumpObject(&map[string]uint64{
-			addr1: miner.PoStStateAfterGenerationAttackThreshold,
-			addr2: miner.PoStStateAfterGenerationAttackThreshold,
+			addr1: miner.PoStStateUnrecoverable,
+			addr2: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
 
@@ -255,11 +255,15 @@ func (tmp *slasherPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
 	return tmp.minerAddr, nil
 }
 
-func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (tmp *slasherPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return tmp.Queryer(ctx, optFrom, to, method, params)
 }
 
-func (tmp *slasherPlumbing) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (tmp *slasherPlumbing) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	if tmp.workerAddrFail {
 		return address.Undef, errors.New("actor not found")
 	}

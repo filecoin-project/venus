@@ -255,7 +255,7 @@ func TestProposeDealFailsWhenSignatureIsInvalid(t *testing.T) {
 type clientTestAPI struct {
 	askPrice       types.AttoFIL
 	createdPayment bool
-	blockHeight    *types.BlockHeight
+	blockHeight    uint64
 	channelID      *types.ChannelID
 	msgCid         cid.Cid
 	payer          address.Address
@@ -279,7 +279,7 @@ func newTestClientAPI(t *testing.T, pieceReader io.Reader, pieceSize uint64) *cl
 	return &clientTestAPI{
 		askPrice:       types.NewAttoFILFromFIL(32),
 		createdPayment: false,
-		blockHeight:    types.NewBlockHeight(773),
+		blockHeight:    773,
 		msgCid:         cidGetter(),
 		channelID:      types.NewChannelID(23),
 		payer:          addressGetter(),
@@ -298,8 +298,12 @@ func (ctp *clientTestAPI) BlockTime() time.Duration {
 	return 100 * time.Millisecond
 }
 
-func (ctp *clientTestAPI) ChainBlockHeight() (*types.BlockHeight, error) {
-	return ctp.blockHeight, nil
+func (ctp *clientTestAPI) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (ctp *clientTestAPI) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+	return types.NewTipSet(&types.Block{Height: types.Uint64(ctp.blockHeight)})
 }
 
 func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error) {
@@ -318,7 +322,7 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 			Payer:   ctp.payer,
 			Target:  ctp.target,
 			Amount:  ctp.perPayment.MulBigInt(big.NewInt(int64(i + 1))),
-			ValidAt: *ctp.blockHeight.Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
+			ValidAt: *types.NewBlockHeight(ctp.blockHeight).Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
 			Condition: &types.Predicate{
 				To:     config.MinerAddress,
 				Method: "conditionMethod",
@@ -349,7 +353,7 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 	return address.TestAddress, nil
 }
 
-func (ctp *clientTestAPI) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error) {
+func (ctp *clientTestAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	return ctp.worker, nil
 }
 
@@ -426,6 +430,6 @@ func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	return nil
 }
 
-func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }

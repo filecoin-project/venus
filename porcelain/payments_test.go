@@ -25,7 +25,7 @@ const (
 )
 
 type paymentsTestPlumbing struct {
-	height *types.BlockHeight
+	height uint64
 	msgCid cid.Cid
 
 	messageSend  func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
@@ -41,7 +41,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	msgCid := cidGetter()
 	return &paymentsTestPlumbing{
 		msgCid: msgCid,
-		height: types.NewBlockHeight(startingBlock),
+		height: startingBlock,
 		messageSend: func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
@@ -80,12 +80,16 @@ func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid
 	return ptp.messageWait(ctx, msgCid, cb)
 }
 
-func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
-func (ptp *paymentsTestPlumbing) ChainBlockHeight() (*types.BlockHeight, error) {
-	return ptp.height, nil
+func (ptp *paymentsTestPlumbing) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+	return types.NewTipSet(&types.Block{Height: types.Uint64(ptp.height)})
+}
+
+func (ptp *paymentsTestPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
 }
 
 func (ptp *paymentsTestPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {

@@ -70,11 +70,12 @@ func TestTriangleEncoding(t *testing.T) {
 			ElectionProof:   NewTestPoSt(),
 			StateRoot:       CidFromString(t, "somecid"),
 			Timestamp:       Uint64(1),
+			BlockSig:        []byte{0x3},
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
-		require.Equal(t, 12, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 13, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }

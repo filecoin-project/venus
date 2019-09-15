@@ -52,12 +52,13 @@ func NewChainStateProvider(chainReader chainReader, messages chain.MessageProvid
 }
 
 // Head returns the head tipset
-func (chn *ChainStateProvider) Head() (types.TipSet, error) {
-	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
-	if err != nil {
-		return types.UndefTipSet, err
-	}
-	return ts, nil
+func (chn *ChainStateProvider) Head() types.TipSetKey {
+	return chn.reader.GetHead()
+}
+
+// GetTipSet returns the tipset at the given key
+func (chn *ChainStateProvider) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
+	return chn.reader.GetTipSet(key)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
