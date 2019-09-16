@@ -2,12 +2,12 @@ package miner_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func TestAskFunctions(t *testing.T) {
@@ -939,6 +940,48 @@ func TestMinerSubmitPoStProvingSet(t *testing.T) {
 		assert.Equal(t, types.NewIntSet(1, 2).Values(), mSt.ProvingSet.Values())
 	})
 
+	t.Run("reproduce verfication failures from staging-0.5.0", func(t *testing.T) {
+		verifier := verification.RustVerifier{}
+		var req verification.VerifyPoStRequest
+
+		// These proofs successfully verified on staging-0.5.0
+		ok := []string{
+			`{"ChallengeSeed":[13,83,137,39,106,244,244,17,38,170,44,125,171,84,251,186,134,252,45,156,3,253,108,169,76,122,96,58,100,22,73,218],"SortedSectorInfo":[{"SectorID":1,"CommR":[155,190,161,136,61,209,56,195,92,246,126,122,229,74,135,9,121,118,231,156,19,193,220,245,233,96,244,231,33,143,20,1]}],"Faults":null,"Proof":"rffM+wIeB2lI9Nj40VNit0DHBONlVPhbmLZ3b0/s3Sdr2IyxHeTNrrMm0zRbvNo9pxoy45JT+FsOyzk8djiJnRjZtITFKNEtUl8i9qZqQ3Y6lzdy+RZ6e9A5CE8zWerfBKnjCRV8qnTpQ5KRrr2zxfpDIsps2tU0P495/TSFw/pyZWefVrlYdJthMORiTvpHp7YqCIJSflKckrqQNzwPYSDk7s4noeb6RFqC4OuENRPEEw/g7TkpKfFdLgJYGOXD","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[4,170,228,105,109,186,70,208,250,235,106,32,140,195,183,20,10,3,239,122,188,5,242,182,145,187,83,60,112,46,3,221],"SortedSectorInfo":[{"SectorID":1,"CommR":[53,75,233,35,185,179,3,64,86,9,199,209,21,194,242,135,49,166,122,235,105,92,178,215,168,167,194,56,157,72,171,95]}],"Faults":null,"Proof":"oSaUoQaF09M096GuRLbLJ4elmVNEnKqqapzGkgURX3hPBjeVYlHzbB2feZNpekBJrZt6QbtjXPLZPaeLlvtt0VeZSx2cP8meBP1G9ZVfdVdnVWGJO5n2mmGcrzgS7oX0B8T5RTzhhTeviKTaBQakuzR1hJxt9+FDrpHapuaM0wOPOzYAVfFvWKdKL72e9Og/uY8R64kT+Qwtklj+yHwXGZ4cBqY8JIj8Eum7iJHXPnW0bBFdH787xzUjxis3azoc","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[193,136,98,42,20,52,153,102,99,249,3,161,78,169,169,101,105,184,192,73,145,183,27,185,144,50,108,212,102,102,20,121],"SortedSectorInfo":[{"SectorID":1,"CommR":[246,21,253,88,36,24,65,238,18,31,46,160,1,124,139,110,163,248,153,51,212,9,215,37,240,150,101,197,93,78,212,54]}],"Faults":null,"Proof":"oAauytkXl2X17hb6tzinvbJCUKXm3/QLalKV/0vusOi7mOmHcliu6Ah1qJZyOweik3oSJDecLvLk6ZahYq35PKt+RKI+5se+hAv3xPHG+yEaPT1awJ8u5+0iBOAbxEgTEHO92HpfoIVnkYHxnauaL+3ZC1cMmPrD5nHvLE3J6pZOllD4pQHZSw7K1so9+tLel2udkhzlo6ZHGdArfubutNxJWZjdwy380ASLmulkxatMwidLGBeOCU+K2pDKDAXS","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[11,192,17,221,201,128,100,152,60,52,128,110,232,156,157,193,240,195,151,207,49,110,190,79,172,75,97,198,86,171,154,136],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"jGs5+UZz/8vIYZb2LC8pK5NdZ7i3WfdidjXD0TNFYIEBdCfs1YANMsIH3bBMAaRDuUlhP3LjFUE+qWpL9uNE7kzWNlyaVFqS21GlX9uVWeleIF4P5aNs9qdHNMC2TfD0EHu/RtlPmwhj/U5tIvIm3uDry70i01gYSyfGrB650iTe4zs7jogSTyjYoRVEOXXslG4rsKo4jrnfhJoCFr05WVzjUWRiaOw4vojYKB7FHpzGZMq+hg9LU/u/I0e+tGSN","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[197,44,78,164,92,40,40,42,68,34,166,242,191,91,201,222,237,131,180,28,40,2,11,161,85,104,61,94,113,205,65,178],"SortedSectorInfo":[{"SectorID":1,"CommR":[155,190,161,136,61,209,56,195,92,246,126,122,229,74,135,9,121,118,231,156,19,193,220,245,233,96,244,231,33,143,20,1]}],"Faults":null,"Proof":"pyA+aD0V6Jwdy+QskoGJcpIlViP0v+ZTkhARRTioy0UZWpvFo8aA7Fy+gP/VRUytkADXTfVu+qTY89GLWHKu9wGlS78EPlCh8X4JFO6OGhNeM3HCoGQgn8+fsYLgS/7tC+KFTrL93utHcXa6P2IZ6ZVSQIZQMQLvKdS4Qk9vz7F4JtXQyt874LEd1xa89lfrpyZlrhD2evpSU1joAjP4LI7KKqGLb4HdBcRi46qahjTaaVkPgJyn4Ih2GE0BEJjt","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[140,112,134,112,199,149,114,112,197,205,141,58,125,213,210,201,35,75,100,118,189,238,50,174,133,40,245,155,128,216,216,163],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"mGTZhqLvOW7KEW3M2QesG/cTYGM3jNGh41zVbDTyErxyefkMAioiWy2dm4QcquZrk1ZL33lJXJeKdynLr4ObroIkUGoAyXkNVupm6rhenGY2mJYuEPmIUYZ7kSQDIU5pB1F4ZBKYuNYGLBB5Xa1PHM0njh5QLPPg/FSgurnPQnhQzpySB1Zc+ZIjjVl5G+tWtDVejogA+gaph0KQScapFw2u7SKrcl/wkS6GwEXTRiBzON2b7kJdf7Ieuv4asGKp","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[250,119,160,168,37,199,214,51,255,252,182,145,116,206,189,101,140,8,37,18,107,190,201,90,161,3,199,197,177,108,214,231],"SortedSectorInfo":[{"SectorID":1,"CommR":[155,190,161,136,61,209,56,195,92,246,126,122,229,74,135,9,121,118,231,156,19,193,220,245,233,96,244,231,33,143,20,1]}],"Faults":null,"Proof":"ilZN+KgSWSZq/hAuB/WJKYIV2qAuc6wsDyAQd9HoLkl7fUQLiwXnIEzqML0WB/TGhvJkCq991P5fFxP58oeiuviol+dN0DrSmtzHGsm/27yqJ2i4DwIucYYmTcOADe56DvaCFKfrXZsH3q/tCP8qnWKg08yHm1ju6FrRH71cxx71HKn8iUrXinmOATwSoPBsgGlWXt2qXtLlXSmJpuM2WY4vGBoiQTmzzYUiR2mYcFvcUs8NAMgT+M+vFTN/ZGlo","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[22,121,184,139,65,133,227,136,97,114,24,10,218,147,15,31,164,77,4,46,51,221,233,0,238,94,208,223,184,34,136,87],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"jJNYSfy6pj27GwJD4CpJLFJwjehUtquuk9q41bwaeql7ruJ+p7L9xPdixaGMZSv5pcaUcJRLXGo4arlGZesGPXvaNlpziBUns96GZQ7wpGNT1g8+ajvKUa+3CIJje+M4BWdPXnzqw11jKpXOWo00EvZjH4G0sKzrlIz3ALsxLYfWHeoKoMYGMjZLBFDU0dyyihkiTjikGg0fm6bLhyc6sUr693v5mO+am2gQWTWSrJHWeVGAJ1pOPCO/tSK7tbv6","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[89,222,62,166,172,119,92,241,37,199,171,138,154,248,98,86,233,205,99,121,226,120,28,131,177,99,247,55,200,207,177,137],"SortedSectorInfo":[{"SectorID":1,"CommR":[155,190,161,136,61,209,56,195,92,246,126,122,229,74,135,9,121,118,231,156,19,193,220,245,233,96,244,231,33,143,20,1]}],"Faults":null,"Proof":"uZcmwbH+ceIKKAoZ7NvLbr2V2+txvZqRVHs73hozk2zThedisdVMX+4JNdCgtbG+rcekZ4Ra+Gzv4X2JbqhBsjyVrtv/ocqV4V8SboYwEos+z7Lx6E101VeUB5BwIqMCBmkzuV4oXXKqUrq/Wf2O+AnbByxArP1amaF4fAdZok4AqZ2FncBTJu/TXREM327cgNmNYgImIW5oLT62ygCTtK5Niv5lTYP22xxGxSAkKeiwT6wkWkSxbS1WI5Ik0MRM","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[235,166,231,219,77,19,242,30,38,138,221,151,229,183,116,166,119,202,75,213,175,139,131,173,15,55,250,77,153,146,109,21],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"sh4jyjbrvqenXg3gQXBRo2PqFkDTC2Qs4o230lfqSweJy/7ZjxAQH4Y4tnkrceyLtBAIIvwaQsHR7AbXw5RCw1x5GY493svMowe4YUMQ6YplbF2vBcxwOV1PyMG1HpxmExSMAyAh0FYT3eXYRAw3QEeSwFSOPSzJmkm3kc2FONFeEyqMGFnSVtDfhMcq6ox5qathgFjtZo85pH54980piwn/Le/1NT6CkbgR0pWZe4gAuusRDAkOu2lhRd91oE7i","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[204,69,238,62,41,89,246,190,184,69,4,228,7,120,246,181,187,250,216,237,174,7,72,54,212,100,21,70,247,70,230,166],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"lSIp39hB9JA+r8re394goFdsp60iq6c8PA6LgwnRnWfc8kd1jhC/KliKdMVvFz1/sukjhn2ImVUibkjmeci+VLFPa7NbYpiJ1VAmxMCeDRnd9LI0Jq6Yqj3nCn2COOxvCPugWAX5/pESXTCUMAWLlAWcnd6qpFN5Cn8JHhGlkjElkZ1JG5wT7eKHWFLkKBVYqSDZDIQo/LUGBdj4aOEVrt9HdQv+zrCfmUucI5XtnUiI+EoZTPFe/SbPjioTTz5l","SectorSize":"268435456"}`,
+		}
+		// These proofs failed verification on staging-0.5.0
+		nok := []string{
+			`{"ChallengeSeed":[13,234,76,23,21,29,32,78,207,136,249,116,9,23,177,251,163,96,148,255,207,180,44,168,0,113,108,51,210,150,132,150],"SortedSectorInfo":[{"SectorID":1,"CommR":[53,75,233,35,185,179,3,64,86,9,199,209,21,194,242,135,49,166,122,235,105,92,178,215,168,167,194,56,157,72,171,95]}],"Faults":null,"Proof":"jN62EN35S6LXBZyj3qfUYGdIAjgUdqPOWsAXG76CnBK+BAxcLDjevSsIp534uOpOsg6hSSlcGH8OjdDl86kpdiT385vSW5fAG0AeeqeL+XRN+v2uW9FiiyWTVskyjTEtAk9Cyo4azESvPXT5QOjNTZpWdGwASMzqwDXHSZsN828zYXAhZ9yYCpLYdWFJL4/7iUqVp2mgLLJ0+ZUR29JrMspxPxqm7YGGxjBKbkS8QmVGnw10Cdy4ogcq4TPagIqj","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[88,227,168,165,80,210,246,38,154,238,204,155,40,68,92,51,120,2,201,70,117,168,223,111,131,114,12,170,248,217,130,68],"SortedSectorInfo":[{"SectorID":1,"CommR":[246,21,253,88,36,24,65,238,18,31,46,160,1,124,139,110,163,248,153,51,212,9,215,37,240,150,101,197,93,78,212,54]}],"Faults":null,"Proof":"qSkPXLmI8+PVoyqRMpyMLJYtHf7/7+oJiAGhhBJzqcOoySZOxkqOttwv+13/52VetrnQbkugDbLWzf6S/Ak+xgJLSsWyBBzXM5irnK+P95vrFYLkgsPb7JParDQePUHSDAnm/Iq0PMen6nzZsEqAydFd5fZktOdHUrPtcpmKZgpPBHHkUianFrbh8qfHOM7lsNoJQsSk12HidvFwIiDgY9T4gDt3Sskv35YJkNQtD+6h34+dFhkRrkt8Cn1dHLAV","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[138,189,169,199,149,147,134,103,248,164,136,154,231,244,16,75,92,241,252,248,36,180,221,130,22,214,142,206,170,152,32,252],"SortedSectorInfo":[{"SectorID":1,"CommR":[155,190,161,136,61,209,56,195,92,246,126,122,229,74,135,9,121,118,231,156,19,193,220,245,233,96,244,231,33,143,20,1]}],"Faults":null,"Proof":"t604ZcsuIVFMSga89VLt+rPzyEy73jmBjndUpXrDlw7wSMQxZHsVHvbpTc5eFwBTpDehyn89pYwfbRyCOo6Qw53keXMbTQU7+LKtuh2irVbvnFn3fnznPiWkidbevugBBIZ9gwvvMjSPM0JZ/1xRG6C+g+Mq9DSStt5CxY6gOT9lZBPIm5WFuu9HTHc/wuveh9TVGPBoAJXqC29wejwEyalk4qQC2q3hnCMvbqLdCkP/FzZZJ/M91CcMInrRWHGN","SectorSize":"268435456"}`,
+			`{"ChallengeSeed":[214,33,78,95,216,36,250,183,14,243,18,57,140,5,97,191,63,39,110,92,123,205,145,90,188,90,220,175,234,180,132,53],"SortedSectorInfo":[{"SectorID":1,"CommR":[180,20,133,220,234,54,132,163,110,112,172,242,127,2,68,33,190,244,215,214,53,66,135,191,106,203,37,104,194,236,3,24]}],"Faults":null,"Proof":"r0T+4ZeyVZYdoAExPt6rL7pJBstCRRnTueUe0FkDDufFq9mfvLhhJnXxAnjDijoiqA1KkT9mMsWU22PHZ+iUp9nC1HRGPyOwN6NsLPY350FWSspM7C4jZSSu8G5iajKOBedasqG7I7AJPXUhNPwTZvJq4fGZrWCJIHq5OrYsv2ybDYo6fBgcz/yjUxD56Z+hoKARJu/xvYCr+/0s90aXTJExG9jn7Dxx4/zCV025Mka9IIDS+RpuPcMPKcJkIjeu","SectorSize":"268435456"}`,
+		}
+
+		for i, s := range ok {
+			err := json.Unmarshal([]byte(s), &req)
+			require.NoError(t, err)
+			response, err := verifier.VerifyPoSt(req)
+			assert.NoError(t, err)
+			assert.True(t, response.IsValid, "Failed verification of ok proof %s", i)
+		}
+
+		for i, s := range nok {
+			err := json.Unmarshal([]byte(s), &req)
+			require.NoError(t, err)
+			response, err := verifier.VerifyPoSt(req)
+			assert.NoError(t, err)
+			assert.False(t, response.IsValid, "Unexpected verification of nok proof %s", i)
+		}
+	})
 }
 
 func TestMinerSubmitPoStNextDoneSet(t *testing.T) {

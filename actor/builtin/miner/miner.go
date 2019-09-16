@@ -1,7 +1,10 @@
 package miner
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
@@ -949,8 +952,19 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 				Proof:            poStProof,
 				SectorSize:       state.SectorSize,
 			}
+			// DONOTMERGE: dump request/response structures for reproduction.
+			//fmt.Println(req)
+			bytes, err := json.Marshal(req)
+			_, _ = os.Stdout.Write(bytes)
+			fmt.Println()
 
 			res, err := ctx.Verifier().VerifyPoSt(req)
+
+			//fmt.Println(res)
+			bytes, err = json.Marshal(res)
+			_, _ = os.Stdout.Write(bytes)
+			fmt.Println()
+
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to verify PoSt")
 			}
