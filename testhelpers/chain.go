@@ -101,7 +101,10 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.Key()
 
-	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
+	newBlock, err := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
+	if err != nil {
+		return nil, err
+	}
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs

@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
@@ -53,11 +54,14 @@ func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 
 // TestPowerTableView is an implementation of the powertable view used for testing mining
 // wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
+type TestPowerTableView struct {
+	minerPower, totalPower *types.BytesAmount
+	minerToWorker          map[address.Address]address.Address
+}
 
 // NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount) *TestPowerTableView {
-	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower}
+func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestPowerTableView {
+	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower, minerToWorker: minerToWorker}
 }
 
 // Total always returns value that was supplied to NewTestPowerTableView.
@@ -77,16 +81,20 @@ func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstor
 
 // WorkerAddr returns the miner address.
 func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
+	wAddr, ok := tv.minerToWorker[mAddr]
+	if !ok {
+		return address.Undef, errors.New("no such miner address in power table")
+	}
+	return wAddr, nil
 }
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *types.Block {
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*types.Block, error) {
 	electionProof := consensus.MakeFakeElectionProofForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 
-	return &types.Block{
+	b := &types.Block{
 		Miner:         minerAddr,
 		Tickets:       []types.Ticket{ticket},
 		Parents:       baseTipSet.Key(),
@@ -95,6 +103,13 @@ func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, 
 		StateRoot:     stateRootCid,
 		ElectionProof: electionProof,
 	}
+	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
+	if err != nil {
+		return nil, err
+	}
+	b.BlockSig = sig
+
+	return b, nil
 }
 
 // MakeRandomPoStProofForTest creates a random proof.

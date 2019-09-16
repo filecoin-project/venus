@@ -108,7 +108,6 @@ func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.
 			return fmt.Errorf("block %s has nil ticket", blk.Cid().String())
 		}
 	}
-	// TODO validate block signature #1054
 	return nil
 }
 
