@@ -97,6 +97,9 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		sectorInfos[i] = info
 	}
 	logProver.Infof("Prover calculating post for addr %s -- start: %s -- end: %s -- seed: %x \n", p.actorAddress.String(), start.String(), end.String(), seed)
+	for i, ssi := range sectorInfos {
+		logProver.Infof("ssi %d: sector id %d -- commR %x\n", i, ssi.SectorID, ssi.CommR)
+	}
 
 	proof, err := p.calculator.CalculatePoSt(ctx, go_sectorbuilder.NewSortedSectorInfo(sectorInfos...), seed)
 	if err != nil {

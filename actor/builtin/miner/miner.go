@@ -929,7 +929,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
-			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x \n", ctx.Message().To.String(), state.ProvingPeriodEnd.String(), seed)
 
 			var sectorInfos []go_sectorbuilder.SectorInfo
 			for _, id := range state.ProvingSet.Values() {
@@ -945,6 +944,11 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			}
 
 			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(sectorInfos...)
+			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x \n", ctx.Message().To.String(), state.ProvingPeriodEnd.String(), seed)
+			for i, ssi := range sortedSectorInfo.Values() {
+				log.Infof("ssi %d: sector id %d -- commR %x\n", i, ssi.SectorID, ssi.CommR)
+			}
+			
 
 			req := verification.VerifyPoStRequest{
 				ChallengeSeed:    seed,
