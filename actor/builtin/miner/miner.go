@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	xerrors "github.com/pkg/errors"
 
@@ -18,6 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
+
+var log = logging.Logger("miner-actor")
 
 func init() {
 	cbor.RegisterCborType(State{})
@@ -926,6 +929,7 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			if err != nil {
 				return nil, errors.RevertErrorWrap(err, "failed to sample chain for challenge seed")
 			}
+			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x \n", ctx.Message().To.String(), state.ProvingPeriodEnd.String(), seed)
 
 			var sectorInfos []go_sectorbuilder.SectorInfo
 			for _, id := range state.ProvingSet.Values() {
