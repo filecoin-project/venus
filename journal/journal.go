@@ -34,18 +34,19 @@ func InitJournal(repoDir string, generic bool) error {
 		return err
 	}
 	logger := make(map[string]*zap.SugaredLogger)
-	if generic {
-		generalLogger, err := newLogger(genericTopic)
-		if err != nil {
-			return err
-		}
-		logger[genericTopic] = generalLogger
-	}
 
 	journal = &Journal{
 		path:    journalDir,
 		generic: generic,
 		logger:  logger,
+	}
+
+	if generic {
+		generalLogger, err := newLogger(genericTopic)
+		if err != nil {
+			return err
+		}
+		journal.logger[genericTopic] = generalLogger
 	}
 	return nil
 }
