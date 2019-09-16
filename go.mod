@@ -45,7 +45,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.0.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.1
 	github.com/ipfs/go-graphsync v0.0.2
-	github.com/ipfs/go-hamt-ipld v0.0.12-0.20190911203311-c51764d42439
+	github.com/ipfs/go-hamt-ipld v0.0.13
 	github.com/ipfs/go-ipfs-blockstore v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.1
 	github.com/ipfs/go-ipfs-cmdkit v0.0.1
