@@ -177,7 +177,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
 		// check to see if payment channel is duplicate
-		err := byChannelID.Find(ctx, channelID.KeyString(), &PaymentChannel{})
+		err := byChannelID.Find(ctx, channelID.KeyString(), nil)
 		if err != hamt.ErrNotFound { // we expect to not find the payment channel
 			if err == nil {
 				return Errors[ErrDuplicateChannel]

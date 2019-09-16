@@ -113,7 +113,12 @@ func (s Storage) Put(v interface{}) (cid.Cid, error) {
 		nd, err = cbor.DecodeBlock(blk)
 	} else if raw, ok := v.([]byte); ok {
 		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
+
 	} else if cm, ok := v.(cbg.CBORMarshaler); ok {
+		// TODO: Remote this clause once
+		// https://github.com/ipfs/go-ipld-cbor/pull/64
+		// is merged and cbor.WrapObject can be called directly on objects that
+		// support fastpath marshalling / unmarshalling
 		buf := new(bytes.Buffer)
 		err = cm.MarshalCBOR(buf)
 		if err == nil {
