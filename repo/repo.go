@@ -22,9 +22,6 @@ type Datastore interface {
 type Repo interface {
 	Config() *config.Config
 
-	// Record persistent journal for event recording
-	Record(topic string, msg string, keysAndValues ...interface{})
-
 	// ReplaceConfig replaces the current config, with the newly passed in one.
 	ReplaceConfig(cfg *config.Config) error
 

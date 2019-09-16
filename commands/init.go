@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/fixtures"
+	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -60,6 +61,10 @@ var initCmd = &cmds.Command{
 		}
 		// The only error Close can return is that the repo has already been closed.
 		defer func() { _ = rep.Close() }()
+
+		if err = journal.InitJournal(repoDir, true); err != nil {
+			return err
+		}
 
 		genesisFileSource, _ := req.Options[GenesisFile].(string)
 		// Writing to the repo here is messed up; this should create a genesis init function that

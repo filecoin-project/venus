@@ -5,15 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	badgerds "github.com/ipfs/go-ds-badger"
 	lockfile "github.com/ipfs/go-fs-lock"
@@ -37,7 +33,6 @@ const (
 	dealsDatastorePrefix   = "deals"
 	snapshotStorePrefix    = "snapshots"
 	snapshotFilenamePrefix = "snapshot"
-	journalPrefix          = "journal"
 )
 
 var log = logging.Logger("repo")
@@ -57,8 +52,6 @@ type FSRepo struct {
 	walletDs Datastore
 	chainDs  Datastore
 	dealsDs  Datastore
-
-	Journals map[string]*zap.SugaredLogger
 
 	// lockfile is the file system lock to prevent others from opening the same repo.
 	lockfile io.Closer
@@ -177,10 +170,6 @@ func OpenFSRepo(repoPath string, version uint) (*FSRepo, error) {
 		return nil, err
 	}
 
-	if r.Journals == nil {
-		r.Journals = make(map[string]*zap.SugaredLogger)
-	}
-
 	return r, nil
 }
 
@@ -282,38 +271,6 @@ func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
 		return fmt.Errorf("file already exists: %s", snapshotFile)
 	}
 	return cfg.WriteFile(snapshotFile)
-}
-
-// newJournal new journal logger
-func (r *FSRepo) newJournal(topic string) (*zap.SugaredLogger, error) {
-	zapCfg := zap.NewProductionConfig()
-	zapCfg.Encoding = "json"
-	zapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	zapCfg.EncoderConfig.LevelKey = ""
-	zapCfg.EncoderConfig.CallerKey = ""
-	zapCfg.EncoderConfig.MessageKey = "message"
-	journalFileName := filepath.Join(r.path, journalPrefix, genJournalFileName(topic))
-	zapCfg.OutputPaths = []string{journalFileName}
-
-	journal, err := zapCfg.Build()
-	if err != nil {
-		return nil, err
-	}
-	return journal.Sugar(), nil
-}
-
-// Record persistent journal for event recording
-func (r *FSRepo) Record(topic string, msg string, keysAndValues ...interface{}) {
-	var err error
-	journal, found := r.Journals[topic]
-	if !found {
-		journal, err = r.newJournal(topic)
-		if err != nil {
-			return
-		}
-		r.Journals[topic] = journal
-	}
-	journal.Infow(msg, keysAndValues...)
 }
 
 // Datastore returns the datastore.
@@ -517,25 +474,11 @@ func initConfig(p string, cfg *config.Config) error {
 
 	// make the snapshot dir
 	snapshotDir := filepath.Join(p, snapshotStorePrefix)
-	err = ensureWritableDirectory(snapshotDir)
-	if err != nil {
-		return err
-	}
-
-	// make the journal dir
-	journalDir := filepath.Join(p, journalPrefix)
-	return ensureWritableDirectory(journalDir)
+	return ensureWritableDirectory(snapshotDir)
 }
 
 func genSnapshotFileName() string {
 	return fmt.Sprintf("%s-%d.json", snapshotFilenamePrefix, time.Now().UTC().UnixNano())
-}
-
-func genJournalFileName(topic string) string {
-	if path.Ext(topic) == ".json" {
-		return topic
-	}
-	return fmt.Sprintf("%s.json", topic)
 }
 
 // Ensures that path points to a read/writable directory, creating it if necessary.
