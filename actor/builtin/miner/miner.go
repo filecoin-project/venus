@@ -20,6 +20,7 @@ import (
 )
 
 func init() {
+	cbor.RegisterCborType(cbor.BigIntAtlasEntry)
 	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(Ask{})
 }
