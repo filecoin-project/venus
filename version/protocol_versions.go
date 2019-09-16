@@ -7,6 +7,9 @@ import (
 // ALPHA1 is the first alpha network
 const ALPHA1 = "alpha1"
 
+// ALPHAALPHA is the staging 0.5.1 network
+const ALPHAALPHA = "alphaalpha"
+
 // DEVNET4 is the network name of devnet
 const DEVNET4 = "devnet4"
 
@@ -26,5 +29,6 @@ func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 		Add(DEVNET4, Protocol0, types.NewBlockHeight(0)).
 		Add(LOCALNET, Protocol0, types.NewBlockHeight(0)).
 		Add(TEST, Protocol0, types.NewBlockHeight(0)).
+		Add(ALPHAALPHA, Protocol0, types.NewBlockHeight(0)).
 		Build()
 }
