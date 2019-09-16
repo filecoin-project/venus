@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/state"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
@@ -52,10 +55,35 @@ var actorCmd = &cmds.Command{
 }
 
 var actorLsCmd = &cmds.Command{
+	Options: []cmdkit.Option{
+		cmdkit.StringOption("address", "a", "get a actor by address."),
+	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		results, err := GetPorcelainAPI(env).ActorLs(req.Context)
-		if err != nil {
-			return err
+		addrString, _ := req.Options["address"].(string)
+		var results <-chan state.GetAllActorsResult
+		if len(addrString) > 0 {
+			addr, err := address.NewFromString(addrString)
+			if err != nil {
+				return err
+			}
+			act, err := GetPorcelainAPI(env).ActorGet(req.Context, addr)
+			if err != nil {
+				return err
+			}
+			result := make(chan state.GetAllActorsResult, 1)
+			result <- state.GetAllActorsResult{
+				Address: addrString,
+				Actor:   act,
+				Error:   err,
+			}
+			close(result)
+			results = result
+		} else {
+			var err error
+			results, err = GetPorcelainAPI(env).ActorLs(req.Context)
+			if err != nil {
+				return err
+			}
 		}
 
 		for result := range results {

@@ -23,17 +23,20 @@ func TestActorDaemon(t *testing.T) {
 		op1 := d.RunSuccess("actor", "ls", "--enc", "json")
 		result1 := op1.ReadStdoutTrimNewlines()
 
-		var avs []commands.ActorView
-		for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {
-			requireSchemaConformance(t, line, "actor_ls")
+		parseOutput := func(result1 string) (avs []commands.ActorView) {
+			for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {
+				requireSchemaConformance(t, line, "actor_ls")
 
-			// unmarshall JSON to actor view an add to slice
-			var av commands.ActorView
-			err := json.Unmarshal(line, &av)
-			require.NoError(t, err)
-			avs = append(avs, av)
+				// unmarshall JSON to actor view an add to slice
+				var av commands.ActorView
+				err := json.Unmarshal(line, &av)
+				require.NoError(t, err)
+				avs = append(avs, av)
+			}
+			return
 		}
 
+		avs := parseOutput(result1)
 		assert.NotZero(t, len(avs))
 
 		// The order of actors is consistent, but only within builds of genesis.car.
@@ -45,6 +48,16 @@ func TestActorDaemon(t *testing.T) {
 			} else {
 				assert.NotZero(t, len(av.Exports))
 			}
+		}
+
+		// actor ls --address <address>
+		for _, av := range avs {
+			op1 := d.RunSuccess("actor", "ls", "--address", av.Address, "--enc", "json")
+			result1 := op1.ReadStdoutTrimNewlines()
+
+			avs2 := parseOutput(result1)
+			assert.Len(t, avs2, 1)
+			assert.Equal(t, av, avs2[0])
 		}
 	})
 }
