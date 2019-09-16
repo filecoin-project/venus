@@ -53,6 +53,64 @@ func (it *TipsetIterator) Next() error {
 	}
 }
 
+// IterTickets returns an iterator over the ancestral ticketchain yielding
+// first the tickets of the start tipset and then its parent tipset's tickets
+// until and including the genesis ticket.
+func IterTickets(ctx context.Context, store TipSetProvider, start types.TipSet) *TicketIterator {
+	startIdx := len(start.At(0).Tickets) - 1
+	return &TicketIterator{
+		tips:  &TipsetIterator{ctx, store, start},
+		idx:   startIdx,
+		value: start.At(0).Tickets[startIdx],
+	}
+}
+
+// TicketIterator is an iterator over tickets.
+type TicketIterator struct {
+	tips  *TipsetIterator
+	idx   int
+	value types.Ticket
+}
+
+// Value returns the iterator's current value, if not Complete().
+func (it *TicketIterator) Value() types.Ticket {
+	return it.value
+}
+
+// Complete tests whether the iterator is exhausted.
+func (it *TicketIterator) Complete() bool {
+	return it.tips.Complete()
+}
+
+// Next advances the iterator to the next ticket. Tickets are taken from the
+// block with the minimum final ticket in its ticket array
+// https://github.com/filecoin-project/specs/blob/master/definitions.md#ticket-chain
+func (it *TicketIterator) Next() error {
+	if it.tips.Complete() {
+		return errors.NewError("calling next on complete ticket iterator")
+	}
+
+	// Advance internal tipset iterator
+	if it.idx == 0 {
+		if err := it.tips.Next(); err != nil {
+			return err
+		}
+		if it.tips.Complete() {
+			it.value = types.UndefTicket
+			return nil
+		}
+		it.idx = len(it.tips.Value().At(0).Tickets) - 1
+		it.value = it.tips.Value().At(0).Tickets[it.idx]
+		}
+		return nil 
+	}
+
+	// Advance internally along min-ticket block's ticket array
+	it.idx = it.idx - 1
+	it.value = it.tips.Value().At(0).Tickets[it.idx]
+	return nil
+}
+
 // BlockProvider provides blocks.
 type BlockProvider interface {
 	GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error)
