@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -186,14 +187,11 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 	copy(commD32[:], commD)
 	sectorIDstr := strconv.FormatUint(sectorID, 10)
 	commitments[sectorIDstr] = types.Commitments{CommD: commD32, CommR: [32]byte{}, CommRStar: [32]byte{}}
-	minerState := &miner.State{
-		SectorCommitments: commitments,
-		NextDoneSet:       types.EmptyIntSet(),
-		ProvingSet:        types.EmptyIntSet(),
-		SlashedSet:        types.EmptyIntSet(),
-		ProvingPeriodEnd:  provingPeriodEnd,
-		SectorSize:        types.OneKiBSectorSize,
-	}
+
+	minerState := miner.NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+	minerState.SectorCommitments = commitments
+	minerState.ProvingPeriodEnd = provingPeriodEnd
+
 	executableActor := miner.Actor{}
 	if err := executableActor.InitializeState(storage, minerState); err != nil {
 		return err

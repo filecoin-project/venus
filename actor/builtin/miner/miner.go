@@ -149,6 +149,12 @@ type State struct {
 	// See also: https://github.com/polydawn/refmt/issues/35
 	SectorCommitments SectorSet
 
+	// Faults reported since last PoSt
+	CurrentFaultSet types.IntSet
+
+	// Faults reported since last PoSt, but too late to be included in the current PoSt
+	NextFaultSet types.IntSet
+
 	// NextDoneSet is a set of sector ids reported during the last PoSt
 	// submission as being 'done'.  The collateral for them is still being
 	// held until the next PoSt submission in case early sector removal
@@ -197,6 +203,8 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		PeerID:            pid,
 		SectorCommitments: NewSectorSet(),
 		NextDoneSet:       types.EmptyIntSet(),
+		CurrentFaultSet:   types.EmptyIntSet(),
+		NextFaultSet:      types.EmptyIntSet(),
 		ProvingSet:        types.EmptyIntSet(),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
