@@ -142,3 +142,23 @@ func (b *Block) Score() uint64 {
 func (b *Block) Equals(other *Block) bool {
 	return b.Cid().Equals(other.Cid())
 }
+
+// SignatureData returns the block's bytes without the blocksig for signature
+// creating and verification
+func (b *Block) SignatureData() []byte {
+	tmp := &Block{
+		Miner:           b.Miner,
+		Tickets:         b.Tickets, // deep copy needed??
+		Parents:         b.Parents, // deep copy needed??
+		ParentWeight:    b.ParentWeight,
+		Height:          b.Height,
+		Messages:        b.Messages,
+		StateRoot:       b.StateRoot,
+		MessageReceipts: b.MessageReceipts,
+		ElectionProof:   b.ElectionProof,
+		Timestamp:       b.Timestamp,
+		// BlockSig omitted
+	}
+
+	return tmp.ToNode().RawData()
+}

@@ -177,7 +177,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
 		// check to see if payment channel is duplicate
-		_, err := byChannelID.Find(ctx, channelID.KeyString())
+		err := byChannelID.Find(ctx, channelID.KeyString(), nil)
 		if err != hamt.ErrNotFound { // we expect to not find the payment channel
 			if err == nil {
 				return Errors[ErrDuplicateChannel]
@@ -242,7 +242,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 	storage := vmctx.Storage()
 
 	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
@@ -250,13 +251,8 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
 		}
 
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
-		}
-
 		// validate the amount can be sent to the target and send payment to that address.
-		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, &channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -304,7 +300,8 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 	storage := vmctx.Storage()
 
 	err := withPayerChannels(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
@@ -312,13 +309,8 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
 		}
 
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
-		}
-
 		// validate the amount can be sent to the target and send payment to that address.
-		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, channel, amt, validAt, condition, redeemerConditionParams)
+		err = validateAndUpdateChannel(vmctx, vmctx.Message().From, &channel, amt, validAt, condition, redeemerConditionParams)
 		if err != nil {
 			return err
 		}
@@ -329,7 +321,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 		}
 
 		// return funds to payer
-		return reclaim(ctx, vmctx, byChannelID, payer, chid, channel)
+		return reclaim(ctx, vmctx, byChannelID, payer, chid, &channel)
 	})
 
 	if err != nil {
@@ -355,17 +347,13 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 	payerAddress := vmctx.Message().From
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
 			}
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
-		}
-
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// eol can only be increased
@@ -411,17 +399,13 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 	payerAddress := vmctx.Message().From
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
 			}
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
-		}
-
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// Check if channel has already been redeemed and re-run condition if necessary
@@ -431,7 +415,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
 			}
 			// Otherwise, check the condition on the payment channel
-			err := checkCondition(vmctx, channel)
+			err := checkCondition(vmctx, &channel)
 			// If we receive no error, the condition is valid, so we fail
 			if err == nil {
 				return errors.NewCodedRevertError(ErrInvalidCancel, "channel cannot be cancelled due to successful redeem")
@@ -476,17 +460,13 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 	payerAddress := vmctx.Message().From
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
 			}
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
-		}
-
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// reclaim may only be called at or after Eol
@@ -495,7 +475,7 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 		}
 
 		// return funds to payer
-		return reclaim(ctx, vmctx, byChannelID, payerAddress, chid, channel)
+		return reclaim(ctx, vmctx, byChannelID, payerAddress, chid, &channel)
 	})
 
 	if err != nil {
@@ -528,19 +508,13 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount typ
 	var voucher types.PaymentVoucher
 
 	err := withPayerChannelsForReading(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
-		var channel *PaymentChannel
-
-		chInt, err := byChannelID.Find(ctx, chid.KeyString())
+		var channel PaymentChannel
+		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
 			if err == hamt.ErrNotFound {
 				return Errors[ErrUnknownChannel]
 			}
 			return errors.FaultErrorWrapf(err, "Could not retrieve payment channel with ID: %s", chid)
-		}
-
-		channel, ok := chInt.(*PaymentChannel)
-		if !ok {
-			return errors.NewFaultError("Expected PaymentChannel from channels lookup")
 		}
 
 		// voucher must be for less than total amount in channel
@@ -589,20 +563,14 @@ func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8,
 	channels := map[string]*PaymentChannel{}
 
 	err := withPayerChannelsForReading(ctx, storage, payer, func(byChannelID exec.Lookup) error {
-		kvs, err := byChannelID.Values(ctx)
-		if err != nil {
-			return err
-		}
-
-		for _, kv := range kvs {
-			pc, ok := kv.Value.(*PaymentChannel)
+		return byChannelID.ForEachValue(ctx, &PaymentChannel{}, func(k string, value interface{}) error {
+			pc, ok := value.(*PaymentChannel)
 			if !ok {
 				return errors.NewFaultError("Expected PaymentChannel from channel lookup")
 			}
-			channels[kv.Key] = pc
-		}
-
-		return nil
+			channels[k] = pc
+			return nil
+		})
 	})
 
 	if err != nil {
@@ -770,19 +738,16 @@ func withPayerChannelsForReading(ctx context.Context, storage exec.Storage, paye
 }
 
 func findByChannelLookup(ctx context.Context, storage exec.Storage, byPayer exec.Lookup, payer address.Address) (exec.Lookup, error) {
-	byChannelID, err := byPayer.Find(ctx, payer.String())
+	var byChannelCID cid.Cid
+	err := byPayer.Find(ctx, payer.String(), &byChannelCID)
 	if err != nil {
 		if err == hamt.ErrNotFound {
 			return actor.LoadLookup(ctx, storage, cid.Undef)
 		}
 		return nil, err
 	}
-	byChannelCID, ok := byChannelID.(cid.Cid)
-	if !ok {
-		return nil, errors.NewFaultError("Paymentbroker payer is not a Cid")
-	}
 
-	return actor.LoadTypedLookup(ctx, storage, byChannelCID, &PaymentChannel{})
+	return actor.LoadLookup(ctx, storage, byChannelCID)
 }
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message

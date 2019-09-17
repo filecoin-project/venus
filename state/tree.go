@@ -8,8 +8,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj"
-	"github.com/polydawn/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -150,36 +148,15 @@ func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, e
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
-	data, err := t.root.Find(ctx, a.String())
+	var act actor.Actor
+	err := t.root.Find(ctx, a.String(), &act)
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
 	} else if err != nil {
 		return nil, err
 	}
 
-	var act actor.Actor
-	if err := hackTransferObject(data, &act); err != nil {
-		return nil, err
-	}
-
 	return &act, nil
-}
-
-func hackTransferObject(from, to interface{}) error {
-	m := obj.NewMarshaller(cbor.CborAtlas)
-	if err := m.Bind(from); err != nil {
-		return err
-	}
-
-	u := obj.NewUnmarshaller(cbor.CborAtlas)
-	if err := u.Bind(to); err != nil {
-		return err
-	}
-
-	return shared.TokenPump{
-		TokenSource: m,
-		TokenSink:   u,
-	}.Run()
 }
 
 // GetOrCreateActor retrieves an actor by their address
@@ -210,7 +187,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 	for _, p := range nd.Pointers {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				return err
 			}
 
@@ -288,7 +265,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				panic(err) // uhm, ignoring errors is bad
 			}
 

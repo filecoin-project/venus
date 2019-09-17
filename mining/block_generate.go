@@ -105,6 +105,14 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		Tickets:         []types.Ticket{ticket},
 		Timestamp:       types.Uint64(w.clock.Now().Unix()),
 	}
+	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
+	}
+	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign block")
+	}
 
 	for i, msg := range res.PermanentFailures {
 		// We will not be able to apply this message in the future because the error was permanent.

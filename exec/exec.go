@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -91,12 +90,23 @@ type Storage interface {
 	Head() cid.Cid
 }
 
+// KV is a Key/Value pair correctly unmarshaled from a hamt based on the lookups
+// type
+type KV struct {
+	Key      string
+	RawValue []byte
+}
+
+// ValueCallbackFunc is called when iterating nodes with a HAMT lookup in order
+// with a key and a decoded value
+type ValueCallbackFunc func(k string, v interface{}) error
+
 // Lookup defines an internal interface for actor storage.
 type Lookup interface {
-	Find(ctx context.Context, k string) (interface{}, error)
+	Find(ctx context.Context, k string, out interface{}) error
 	Set(ctx context.Context, k string, v interface{}) error
 	Commit(ctx context.Context) (cid.Cid, error)
 	Delete(ctx context.Context, k string) error
 	IsEmpty() bool
-	Values(ctx context.Context) ([]*hamt.KV, error)
+	ForEachValue(ctx context.Context, valueType interface{}, callback ValueCallbackFunc) error
 }

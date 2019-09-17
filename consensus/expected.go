@@ -286,15 +286,17 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMe
 	return st.Flush(ctx)
 }
 
-// validateMining checks validity of the block ticket, proof, and miner address.
-//    Returns an error if:
-//    	* any tipset's block was mined by an invalid miner address.
-//      * the block proof is invalid for the challenge
-//      * the block ticket fails the power check, i.e. is not a winning ticket
+// validateMining checks validity of the ticket, proof, signature and miner
+// address of every block in the tipset.
+//    Returns an error if any block:
+//    	* is mined by a miner not in the power table
+//      * is not validly signed by the miner's worker key
+//      * has an invalid election proof
+//      * has an invalid ticket
+//      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
 func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
-
 	prevTicket, err := parentTs.MinTicket()
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent min ticket")
@@ -310,6 +312,11 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		if err != nil {
 			return errors.Wrap(err, "failed to read worker address of block miner")
 		}
+		// Validate block signature
+		if valid := types.IsValidSignature(blk.SignatureData(), workerAddr, blk.BlockSig); !valid {
+			return errors.New("block signature invalid")
+		}
+
 		// Validate ElectionProof
 		result, err := c.IsElectionWinner(ctx, c.bstore, c.PwrTableView, st, blk.Tickets[0], blk.ElectionProof, workerAddr, blk.Miner)
 		if err != nil {

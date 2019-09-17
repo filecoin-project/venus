@@ -26,6 +26,5 @@ func IsValidSignature(data []byte, addr address.Address, sig Signature) bool {
 		log.Infof("error in recovered address: %s", err)
 		return false
 	}
-
 	return maybeAddr == addr
 }
