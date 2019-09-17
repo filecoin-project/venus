@@ -134,6 +134,8 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.Tip
 		logGraphsyncFetcher.Infof("fetching initial tipset %s from peer %s", key, peer)
 		err := gsf.fetchBlocks(ctx, blocksToFetch, peer)
 		if err != nil {
+			// A likely case is the peer doesn't have the tipset. When graphsync provides
+			// this status we should quiet this log.
 			logGraphsyncFetcher.Infof("request failed: %s", err)
 		}
 
@@ -146,7 +148,7 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.Tip
 			return verifiedTip, nil
 		}
 
-		logGraphsyncFetcher.Warningf("incomplete fetch for first tipset %s, trying new peer", key)
+		logGraphsyncFetcher.Infof("incomplete fetch for initial tipset %s, trying new peer", key)
 		// Some of the blocks may have been fetched, but avoid tricksy optimization here and just
 		// request the whole bunch again. Graphsync internally will avoid redundant network requests.
 		err = rpf.FindNextPeer()
@@ -199,7 +201,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 				}
 				anchor = verifiedTip
 			} else {
-				logGraphsyncFetcher.Warningf("incomplete fetch for tipset %s, trying new peer", tsKey)
+				logGraphsyncFetcher.Infof("incomplete fetch for tipset %s, trying new peer", tsKey)
 				err := rpf.FindNextPeer()
 				if err != nil {
 					return nil, errors.Wrapf(err, "fetching tipset: %s", tsKey)
