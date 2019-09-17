@@ -9,7 +9,7 @@ import (
 // LookbackParameter defines how many non-empty tiptsets (not rounds) earlier than any sample
 // height (in rounds) from which to sample the chain for randomness.
 // This constant is a protocol (actor) parameter and should be defined in actor code.
-const LookbackParameter = 3
+const LookbackParameter = 15
 
 // SampleChainRandomness produces a slice of bytes (a ticket) sampled from the tipset `LookbackParameter`
 // tipsets (not rounds) prior to the highest tipset with height less than or equal to `sampleHeight`.
