@@ -269,6 +269,10 @@ var minerExports = exec.Exports{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
+	"addFaults": &exec.FunctionSignature{
+		Params: []abi.Type{abi.FaultSet},
+		Return: []abi.Type{},
+	},
 	"submitPoSt": &exec.FunctionSignature{
 		Params: []abi.Type{abi.PoStProof, abi.FaultSet, abi.IntSet},
 		Return: []abi.Type{},
@@ -854,6 +858,33 @@ func (ma *Actor) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, 
 	return collateral, 0, nil
 }
 
+func (ma *Actor) AddFaults(ctx exec.VMContext, faults types.FaultSet) (uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
+		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
+		challengeBlockHeight := provingWindowStart(state)
+
+		if ctx.BlockHeight().LessThan(challengeBlockHeight) {
+			// Up to the challenge time new faults can be added.
+			state.CurrentFaultSet = state.CurrentFaultSet.Union(faults.SectorIds)
+		} else {
+			// After that they are only accounted for in the next proving period
+			state.NextFaultSet = state.NextFaultSet.Union(faults.SectorIds)
+		}
+
+		return nil, nil
+	})
+
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+
+	return 0, nil
+}
+
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
 func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
@@ -957,7 +988,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			for i, ssi := range sortedSectorInfo.Values() {
 				log.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
 			}
-			
 
 			req := verification.VerifyPoStRequest{
 				ChallengeSeed:    seed,
