@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/rand"
 	"reflect"
@@ -75,6 +76,9 @@ func TestTriangleEncoding(t *testing.T) {
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
 		// to the above (and update the field count below).
+		// Also please add non zero fields to "b" and "diff" in TestSignatureData
+		// and add a new check that different values of the new field result in
+		// different output data.
 		require.Equal(t, 13, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
@@ -228,4 +232,163 @@ func TestBlockJsonMarshal(t *testing.T) {
 	assert.Equal(t, child, unmarshalled)
 	AssertHaveSameCid(t, &child, &unmarshalled)
 	assert.True(t, child.Equals(&unmarshalled))
+}
+
+func TestSignatureData(t *testing.T) {
+	tf.UnitTest(t)
+	newAddress := address.NewForTestGetter()
+
+	b := &Block{
+		Miner:           newAddress(),
+		Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
+		Height:          Uint64(2),
+		Messages:        CidFromString(t, "somecid"),
+		MessageReceipts: CidFromString(t, "somecid"),
+		Parents:         NewTipSetKey(CidFromString(t, "somecid")),
+		ParentWeight:    Uint64(1000),
+		ElectionProof:   []byte{0x1},
+		StateRoot:       CidFromString(t, "somecid"),
+		Timestamp:       Uint64(1),
+		BlockSig:        []byte{0x3},
+	}
+
+	diff := &Block{
+		Miner:           newAddress(),
+		Tickets:         []Ticket{{VRFProof: []byte{0x03, 0x01, 0x02}}},
+		Height:          Uint64(3),
+		Messages:        CidFromString(t, "someothercid"),
+		MessageReceipts: CidFromString(t, "someothercid"),
+		Parents:         NewTipSetKey(CidFromString(t, "someothercid")),
+		ParentWeight:    Uint64(1001),
+		ElectionProof:   []byte{0x2},
+		StateRoot:       CidFromString(t, "someothercid"),
+		Timestamp:       Uint64(4),
+		BlockSig:        []byte{0x4},
+	}
+
+	// Changing BlockSig does not affect output
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.BlockSig
+		defer func() { b.BlockSig = cpy }()
+
+		b.BlockSig = diff.BlockSig
+		after := b.SignatureData()
+		assert.True(t, bytes.Equal(before, after))
+	}()
+
+	// Changing all other fields does affect output
+	// Note: using reflectors doesn't seem to make this much less tedious
+	// because it appears that there is no generic field setting function.
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Miner
+		defer func() { b.Miner = cpy }()
+
+		b.Miner = diff.Miner
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Tickets
+		defer func() { b.Tickets = cpy }()
+
+		b.Tickets = diff.Tickets
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Height
+		defer func() { b.Height = cpy }()
+
+		b.Height = diff.Height
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Messages
+		defer func() { b.Messages = cpy }()
+
+		b.Messages = diff.Messages
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.MessageReceipts
+		defer func() { b.MessageReceipts = cpy }()
+
+		b.MessageReceipts = diff.MessageReceipts
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Parents
+		defer func() { b.Parents = cpy }()
+
+		b.Parents = diff.Parents
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.ParentWeight
+		defer func() { b.ParentWeight = cpy }()
+
+		b.ParentWeight = diff.ParentWeight
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.ElectionProof
+		defer func() { b.ElectionProof = cpy }()
+
+		b.ElectionProof = diff.ElectionProof
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.StateRoot
+		defer func() { b.StateRoot = cpy }()
+
+		b.StateRoot = diff.StateRoot
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
+	func() {
+		before := b.SignatureData()
+
+		cpy := b.Timestamp
+		defer func() { b.Timestamp = cpy }()
+
+		b.Timestamp = diff.Timestamp
+		after := b.SignatureData()
+		assert.False(t, bytes.Equal(before, after))
+	}()
+
 }
