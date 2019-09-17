@@ -45,7 +45,7 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap       exchange.Interface
-	chain         *cst.ChainStateProvider
+	chain         *cst.ChainStateReadWriter
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
@@ -64,7 +64,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap       exchange.Interface
-	Chain         *cst.ChainStateProvider
+	Chain         *cst.ChainStateReadWriter
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
@@ -159,6 +159,11 @@ func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.Mess
 // ChainHeadKey returns the head tipset key
 func (api *API) ChainHeadKey() types.TipSetKey {
 	return api.chain.Head()
+}
+
+// ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
+func (api *API) ChainSetHead(ctx context.Context, key types.TipSetKey) error {
+	return api.chain.SetHead(ctx, key)
 }
 
 // ChainTipSet returns the tipset at the given key
