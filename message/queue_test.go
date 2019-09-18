@@ -1,4 +1,4 @@
-package core_test
+package message_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -27,36 +27,36 @@ func TestMessageQueue(t *testing.T) {
 
 	ctx := context.Background()
 
-	requireEnqueue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) {
+	requireEnqueue := func(q *message.Queue, msg *types.SignedMessage, stamp uint64) {
 		err := q.Enqueue(ctx, msg, stamp)
 		require.NoError(t, err)
 	}
 
-	requireRequeue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) {
+	requireRequeue := func(q *message.Queue, msg *types.SignedMessage, stamp uint64) {
 		err := q.Requeue(ctx, msg, stamp)
 		require.NoError(t, err)
 	}
 
-	requireRemoveNext := func(q *core.MessageQueue, sender address.Address, expectedNonce uint64) *types.SignedMessage {
+	requireRemoveNext := func(q *message.Queue, sender address.Address, expectedNonce uint64) *types.SignedMessage {
 		msg, found, e := q.RemoveNext(ctx, sender, expectedNonce)
 		require.True(t, found)
 		require.NoError(t, e)
 		return msg
 	}
 
-	assertLargestNonce := func(q *core.MessageQueue, sender address.Address, expected uint64) {
+	assertLargestNonce := func(q *message.Queue, sender address.Address, expected uint64) {
 		largest, found := q.LargestNonce(sender)
 		assert.True(t, found, "no messages")
 		assert.Equal(t, expected, largest)
 	}
 
-	assertNoNonce := func(q *core.MessageQueue, sender address.Address) {
+	assertNoNonce := func(q *message.Queue, sender address.Address) {
 		_, found := q.LargestNonce(sender)
 		assert.False(t, found, "unexpected messages")
 	}
 
 	t.Run("empty queue", func(t *testing.T) {
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		msg, found, err := q.RemoveNext(ctx, alice, 0)
 		assert.Nil(t, msg)
 		assert.False(t, found)
@@ -79,7 +79,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 2),
 		}
 
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		assert.Equal(t, int64(0), q.Size())
 		requireEnqueue(q, msgs[0], 0)
 		requireEnqueue(q, msgs[1], 0)
@@ -115,7 +115,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 1),
 			mm.NewSignedMessage(alice, 2),
 		}
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		requireEnqueue(q, msgs[0], 0)
 		requireEnqueue(q, msgs[1], 0)
 
@@ -149,7 +149,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 3),
 		}
 
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		requireEnqueue(q, msgs[1], 0)
 
 		err := q.Enqueue(ctx, msgs[0], 0) // Prior to existing
@@ -168,7 +168,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 11),
 		}
 
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		requireEnqueue(q, msgs[0], 0)
 		requireEnqueue(q, msgs[1], 0)
 
@@ -190,7 +190,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 2),
 			mm.NewSignedMessage(alice, 3),
 		}
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		requireEnqueue(q, msgs[0], 0)
 		assertLargestNonce(q, alice, 0)
 		requireEnqueue(q, msgs[1], 0)
@@ -219,7 +219,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(alice, 2),
 		}
 
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		requireEnqueue(q, msgs[1], 0)
 		requireEnqueue(q, msgs[2], 0)
 		assert.Equal(t, int64(2), q.Size())
@@ -244,7 +244,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(bob, 11),
 			mm.NewSignedMessage(bob, 12),
 		}
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 		assert.Equal(t, int64(0), q.Size())
 
 		requireEnqueue(q, fromAlice[0], 0)
@@ -289,15 +289,15 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(bob, 10),
 			mm.NewSignedMessage(bob, 11),
 		}
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 
 		requireEnqueue(q, fromAlice[0], 100)
 		requireEnqueue(q, fromAlice[1], 101)
 		requireEnqueue(q, fromBob[0], 200)
 		requireEnqueue(q, fromBob[1], 201)
 
-		assert.Equal(t, &core.QueuedMessage{Msg: fromAlice[0], Stamp: 100}, q.List(alice)[0])
-		assert.Equal(t, &core.QueuedMessage{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
+		assert.Equal(t, &message.Queued{Msg: fromAlice[0], Stamp: 100}, q.List(alice)[0])
+		assert.Equal(t, &message.Queued{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
 
 		expired := q.ExpireBefore(ctx, 0)
 		assert.Empty(t, expired)
@@ -313,7 +313,7 @@ func TestMessageQueue(t *testing.T) {
 
 		assert.Empty(t, q.List(alice))
 		assertNoNonce(q, alice)
-		assert.Equal(t, &core.QueuedMessage{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
+		assert.Equal(t, &message.Queued{Msg: fromBob[0], Stamp: 200}, q.List(bob)[0])
 		assertLargestNonce(q, bob, 11)
 
 		expired = q.ExpireBefore(ctx, 300)
@@ -334,7 +334,7 @@ func TestMessageQueue(t *testing.T) {
 			mm.NewSignedMessage(bob, 10),
 			mm.NewSignedMessage(bob, 11),
 		}
-		q := core.NewMessageQueue()
+		q := message.NewQueue()
 
 		assert.Equal(t, uint64(0), q.Oldest())
 

@@ -21,7 +21,6 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -57,7 +56,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	target := address.NewForTestGetter()()
 	_, st, vms := requireGenesis(ctx, t, target)
 
-	pdata := core.MustConvertParams(target, big.NewInt(10))
+	pdata := abi.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
@@ -395,7 +394,7 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 	sys := setup(t)
 
 	// Cancel the payment channel
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
 	result, err := sys.ApplyMessage(msg, 100)
 	require.NoError(t, result.ExecutionError)
@@ -606,7 +605,7 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 	signature[1] = 1
 
 	var condition *types.Predicate
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
+	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -690,7 +689,7 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 	signature[1] = 1
 
 	var condition *types.Predicate
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
+	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
 	msg := types.NewMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
@@ -705,7 +704,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	payer := state.MustGetActor(sys.st, sys.payer)
 	payerBalancePriorToClose := payer.Balance
 
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is after Eol
 	res, err := sys.ApplyMessage(msg, 20001)
@@ -727,7 +726,7 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 
 	sys := setup(t)
 
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
 	// block height is before Eol
 	result, err := sys.ApplyMessage(msg, 0)
@@ -745,7 +744,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
+	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
@@ -780,7 +779,7 @@ func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 	sys := setup(t)
 
 	// extend channel
-	pdata := core.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
+	pdata := abi.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
@@ -795,7 +794,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 	sys := setup(t)
 
 	// extend channel setting block height to 5 (<10)
-	pdata := core.MustConvertParams(sys.channelID, types.NewBlockHeight(5))
+	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(5))
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
@@ -810,7 +809,7 @@ func TestPaymentBrokerCancel(t *testing.T) {
 
 	sys := setup(t)
 
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
 
 	result, err := sys.ApplyMessage(msg, 100)
@@ -847,7 +846,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 	require.NoError(t, result.ExecutionError)
 
 	// Attempts to Cancel and expects failure
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
@@ -870,7 +869,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing
 	require.NoError(t, result.ExecutionError)
 
 	// Attempts to Cancel and expects failure
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
@@ -908,7 +907,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 	channel.Condition.Params = []interface{}{}
 
 	// Attempt to Cancel and expects success
-	pdata := core.MustConvertParams(sys.channelID)
+	pdata := abi.MustConvertParams(sys.channelID)
 	msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
 	_, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
@@ -995,7 +994,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
@@ -1030,7 +1029,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(2000)
-		args := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		args := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", args)
 		res, err := sys.ApplyMessage(msg, 9)
@@ -1050,7 +1049,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		pdata := core.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
+		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
 		msg := types.NewMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
@@ -1104,7 +1103,7 @@ func TestSignVoucher(t *testing.T) {
 }
 
 func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
-	pdata := core.MustConvertParams(target, eol)
+	pdata := abi.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
@@ -1197,7 +1196,7 @@ func (sys *system) Signature(amt types.AttoFIL, validAt *types.BlockHeight, cond
 func (sys *system) CallQueryMethod(method string, height uint64, params ...interface{}) ([][]byte, uint8, error) {
 	sys.t.Helper()
 
-	args := core.MustConvertParams(params...)
+	args := abi.MustConvertParams(params...)
 
 	return consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
@@ -1257,7 +1256,7 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 	signature, err := sys.Signature(amt, validAt, condition)
 	require.NoError(sys.t, err)
 
-	pdata := core.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, suppliedParams)
+	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, validAt, condition, signature, suppliedParams)
 	msg := types.NewMessage(target, address.PaymentBrokerAddress, nonce, types.NewAttoFILFromFIL(0), method, pdata)
 
 	return sys.ApplyMessage(msg, height)
@@ -1270,7 +1269,7 @@ func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.A
 func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
 	var paymentMap map[string]*PaymentChannel
 
-	pdata := core.MustConvertParams(payer)
+	pdata := abi.MustConvertParams(payer)
 	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
 	require.Zero(t, ec)
 	require.NoError(t, err)

@@ -20,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -168,16 +168,16 @@ func Test_Mine(t *testing.T) {
 	})
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *message.Pool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid
 }
 
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
-	state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+	state.Tree, *message.Pool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()

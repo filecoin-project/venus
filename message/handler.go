@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-// NewHeadHandler wires up new head tipset handling to the message inbox and outbox.
-type NewHeadHandler struct {
+// HeadHandler wires up new head tipset handling to the message inbox and outbox.
+type HeadHandler struct {
 	// Inbox and outbox exported for testing.
 	Inbox  *Inbox
 	Outbox *Outbox
@@ -19,13 +19,13 @@ type NewHeadHandler struct {
 	prevHead types.TipSet
 }
 
-// NewHandler build a new new-head handler.
-func NewHandler(inbox *Inbox, outbox *Outbox, chain chainProvider, head types.TipSet) *NewHeadHandler {
-	return &NewHeadHandler{inbox, outbox, chain, head}
+// NewHeadHandler build a new new-head handler.
+func NewHeadHandler(inbox *Inbox, outbox *Outbox, chain chainProvider, head types.TipSet) *HeadHandler {
+	return &HeadHandler{inbox, outbox, chain, head}
 }
 
 // HandleNewHead computes the chain delta implied by a new head and updates the inbox and outbox.
-func (h *NewHeadHandler) HandleNewHead(ctx context.Context, newHead types.TipSet) error {
+func (h *HeadHandler) HandleNewHead(ctx context.Context, newHead types.TipSet) error {
 	if !newHead.Defined() {
 		log.Warning("received empty tipset, ignoring")
 		return nil
