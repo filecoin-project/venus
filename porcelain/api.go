@@ -264,9 +264,5 @@ func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address,
 
 // ActorPower returns a table with miner power from the latest state on the chain
 func (a *API) ActorPower(ctx context.Context) (<-chan state.PowerTable, error) {
-	results, err := a.ActorLs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return MinerPowerTable(ctx, a, results)
+	return MinerPowerTable(ctx, a)
 }

@@ -551,13 +551,24 @@ func MinerSetWorkerAddress(
 		workerAddr)
 }
 
+type mptPlubming interface {
+	ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+}
+
 // MinerPowerTable get miner power table
-func MinerPowerTable(ctx context.Context, plumbing mgaAPI, results <-chan state.GetAllActorsResult) (<-chan state.PowerTable, error) {
+func MinerPowerTable(ctx context.Context, plumbing mptPlubming) (<-chan state.PowerTable, error) {
+	results, err := plumbing.ActorLs(ctx)
+	if err != nil {
+		return nil, err
+	}
 	bytes, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
 		address.StorageMarketAddress,
 		"getTotalStorage",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
 		return nil, err
@@ -585,6 +596,7 @@ func MinerPowerTable(ctx context.Context, plumbing mgaAPI, results <-chan state.
 					address.Undef,
 					addr,
 					"getPower",
+					plumbing.ChainHeadKey(),
 				)
 				if err != nil {
 					continue
