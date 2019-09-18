@@ -3,11 +3,9 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"math/big"
 
 	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/minio/sha256-simd"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -71,16 +69,8 @@ type TicketMachine struct{}
 // NextTicket creates a new ticket from a parent ticket by running a verifiable
 // randomness function on the VDF output of the parent.  The output ticket is
 // not finalized until it has been run through NotarizeTime.
-func (tm TicketMachine) NextTicket(parent types.Ticket, signerAddr address.Address, signer types.Signer, nullBlkCount uint64) (types.Ticket, error) {
-	// TODO #2223 this type of nullblock reseeding will be replaced with
-	// generation of multiple tickets per block
-	seedBuf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(seedBuf, nullBlkCount)
-	seedBuf = append(parent.VDFResult, seedBuf[:n]...)
-
-	h := sha256.Sum256(seedBuf)
-	buf := append(h[:], signerAddr.Bytes()...)
-	vrfPi, err := signer.SignBytes(buf[:], signerAddr)
+func (tm TicketMachine) NextTicket(parent types.Ticket, signerAddr address.Address, signer types.Signer) (types.Ticket, error) {
+	vrfPi, err := signer.SignBytes(parent.VDFResult[:], signerAddr)
 	if err != nil {
 		return types.Ticket{}, err
 	}
@@ -101,25 +91,16 @@ func (tm TicketMachine) NotarizeTime(ticket *types.Ticket) error {
 	return nil
 }
 
-// ValidateTicket verifies that the ticket's proof of randomness and delay are
+// IsValidTicket verifies that the ticket's proof of randomness and delay are
 // valid with respect to its parent.
-func (tm TicketMachine) ValidateTicket(parent, ticket types.Ticket, signerAddr address.Address, nullBlkCount uint64) (bool, error) {
-	// TODO #2223 this type of nullblock reseeding will be replaced with
-	// validation of the multiple tickets per block
-	seedBuf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(seedBuf, nullBlkCount)
-	seedBuf = append(parent.VDFResult, seedBuf[:n]...)
-
-	h := sha256.Sum256(seedBuf)
-	buf := append(h[:], signerAddr.Bytes()...)
-
+func (tm TicketMachine) IsValidTicket(parent, ticket types.Ticket, signerAddr address.Address) bool {
 	vrfPi := types.Signature(ticket.VRFProof)
-	if valid := types.IsValidSignature(buf[:], signerAddr, vrfPi); !valid {
-		return false, nil
+	if valid := types.IsValidSignature(parent.VDFResult[:], signerAddr, vrfPi); !valid {
+		return false
 	}
 
 	// TODO #2119, decide if we are going to keep the VDF.  If so fill
 	// in the implementation, removing this equality check and actually
 	// validating the VDFProof.
-	return bytes.Equal(ticket.VDFResult, ticket.VRFProof), nil
+	return bytes.Equal(ticket.VDFResult, ticket.VRFProof)
 }
