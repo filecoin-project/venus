@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 const (
@@ -253,13 +252,6 @@ type GetAllActorsResult struct {
 	Address string
 	Actor   *actor.Actor
 	Error   error
-}
-
-// PowerTable represents entry of miner power table
-type PowerTable struct {
-	Address string
-	Power   types.BytesAmount
-	Total   types.BytesAmount
 }
 
 // GetAllActors returns a channel which provides all actors in the StateTree, t.

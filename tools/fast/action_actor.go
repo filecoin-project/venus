@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 )
 
 // ActorLs runs the `actor ls` command against the filecoin process.
@@ -36,7 +36,7 @@ func (f *Filecoin) ActorLs(ctx context.Context) ([]commands.ActorView, error) {
 }
 
 // ActorPower runs the `actor power-table` command against the filecoin process.
-func (f *Filecoin) ActorPower(ctx context.Context) ([]state.PowerTable, error) {
+func (f *Filecoin) ActorPower(ctx context.Context) ([]porcelain.PowerTable, error) {
 	args := []string{"go-filecoin", "actor", "power-table"}
 
 	dec, err := f.RunCmdLDJSONWithStdin(ctx, nil, args...)
@@ -44,9 +44,9 @@ func (f *Filecoin) ActorPower(ctx context.Context) ([]state.PowerTable, error) {
 		return nil, err
 	}
 
-	tables := []state.PowerTable{}
+	tables := []porcelain.PowerTable{}
 	for dec.More() {
-		var table state.PowerTable
+		var table porcelain.PowerTable
 		err := dec.Decode(&table)
 		if err != nil {
 			if err == io.EOF {

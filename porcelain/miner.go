@@ -557,8 +557,15 @@ type mptPlubming interface {
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
+// PowerTable represents entry of miner power table
+type PowerTable struct {
+	Address string
+	Power   types.BytesAmount
+	Total   types.BytesAmount
+}
+
 // MinerPowerTable get miner power table
-func MinerPowerTable(ctx context.Context, plumbing mptPlubming) (<-chan state.PowerTable, error) {
+func MinerPowerTable(ctx context.Context, plumbing mptPlubming) (<-chan PowerTable, error) {
 	results, err := plumbing.ActorLs(ctx)
 	if err != nil {
 		return nil, err
@@ -575,7 +582,7 @@ func MinerPowerTable(ctx context.Context, plumbing mptPlubming) (<-chan state.Po
 	}
 	total := types.NewBytesAmountFromBytes(bytes[0])
 
-	out := make(chan state.PowerTable)
+	out := make(chan PowerTable)
 	go func() {
 		defer close(out)
 		for result := range results {
@@ -602,7 +609,7 @@ func MinerPowerTable(ctx context.Context, plumbing mptPlubming) (<-chan state.Po
 					continue
 				}
 				power := types.NewBytesAmountFromBytes(bytes[0])
-				out <- state.PowerTable{
+				out <- PowerTable{
 					Address: result.Address,
 					Power:   *power,
 					Total:   *total,

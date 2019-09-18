@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
@@ -263,6 +262,6 @@ func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address,
 }
 
 // ActorPower returns a table with miner power from the latest state on the chain
-func (a *API) ActorPower(ctx context.Context) (<-chan state.PowerTable, error) {
+func (a *API) ActorPower(ctx context.Context) (<-chan PowerTable, error) {
 	return MinerPowerTable(ctx, a)
 }

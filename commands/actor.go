@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/exec"
-	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/ipfs/go-cid"
@@ -123,9 +123,9 @@ var actorPowerCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: &state.PowerTable{},
+	Type: &porcelain.PowerTable{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *state.PowerTable) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *porcelain.PowerTable) error {
 			_, err := fmt.Fprintln(w, a.Address, ":", a.Power.String(), "/", a.Total.String())
 			return err
 		}),
