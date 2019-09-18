@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/node/test"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -75,7 +75,9 @@ func TestActorPower(t *testing.T) {
 	// Create node (it's not necessary to start it).
 	b := test.NewNodeBuilder(t)
 	node := b.WithGenesisInit(testGen).
-		WithInitOpt(node.AutoSealIntervalSecondsOpt(120)).
+		WithConfig(func(c *config.Config) {
+			c.Mining.AutoSealIntervalSeconds = 120
+		}).
 		Build(ctx)
 	require.NoError(t, node.ChainReader.Load(ctx))
 
