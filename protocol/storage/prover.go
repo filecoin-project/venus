@@ -30,8 +30,6 @@ type ProofReader interface {
 	ChainHeadKey() types.TipSetKey
 	// ChainTipSet returns the tipset with the given key
 	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
-	// ChainSampleRandomness returns bytes derived from the blockchain before `sampleHeight`.
-	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	// MinerCalculateLateFee calculates the fee due for a proof submitted at some height.
 	MinerCalculateLateFee(ctx context.Context, addr address.Address, height *types.BlockHeight) (types.AttoFIL, error)
 	// WalletBalance returns the balance for an actor.
@@ -82,12 +80,7 @@ func NewProver(actor address.Address, sectorSize *types.BytesAmount, reader Proo
 }
 
 // CalculatePoSt computes and returns a proof-of-spacetime ready for posting on chain.
-func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error) {
-	// Gather PoSt request inputs.
-	seed, err := p.challengeSeed(ctx, start)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch PoSt challenge seed")
-	}
+func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []PoStInputs) (*PoStSubmission, error) {
 	// Compute the actual proof.
 	sectorInfos := make([]go_sectorbuilder.SectorInfo, len(inputs))
 	for i, input := range inputs {
@@ -146,18 +139,6 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		GasLimit: types.NewGasUnits(submitPostGasLimit),
 		Faults:   types.EmptyFaultSet(),
 	}, nil
-}
-
-// challengeSeed returns the PoSt challenge seed for a proving period.
-func (p *Prover) challengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	bytes, err := p.chain.ChainSampleRandomness(ctx, periodStart)
-	if err != nil {
-		return types.PoStChallengeSeed{}, err
-	}
-
-	seed := types.PoStChallengeSeed{}
-	copy(seed[:], bytes)
-	return seed, nil
 }
 
 // calculateFee calculates any fees due with a proof submission due to faults or lateness.

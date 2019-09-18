@@ -84,6 +84,8 @@ type minerPorcelain interface {
 
 	ChainHeadKey() types.TipSetKey
 	ChainTipSet(types.TipSetKey) (types.TipSet, error)
+	// ChainSampleRandomness returns bytes derived from the blockchain at or before `sampleHeight`.
+	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
@@ -101,7 +103,7 @@ type minerPorcelain interface {
 
 // prover computes PoSts for submission by a miner.
 type prover interface {
-	CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error)
+	CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []PoStInputs) (*PoStSubmission, error)
 }
 
 // node is subset of node on which this protocol depends. These deps
@@ -807,6 +809,11 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 
 	if h.GreaterEqual(provingWindowStart.Add(types.NewBlockHeight(challengeDelayRounds))) {
 		if h.LessThan(provingWindowEnd) {
+			seed, err := sm.challengeSeed(ctx, provingWindowStart)
+			if err != nil {
+				return errors.Errorf("failed to sample challenge seed from chain for window %s", provingWindowStart)
+			}
+
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingWindowEnd
 			postLatch := moresync.NewLatch(1)
@@ -839,8 +846,21 @@ func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, err
 	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
 }
 
-func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {
-	submission, err := sm.prover.CalculatePoSt(ctx, start, end, inputs)
+// challengeSeed returns the PoSt challenge seed for a proving period.
+func (sm *Miner) challengeSeed(ctx context.Context, periodStart *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	bytes, err := sm.porcelainAPI.ChainSampleRandomness(ctx, periodStart)
+	if err != nil {
+		return types.PoStChallengeSeed{}, err
+	}
+
+	seed := types.PoStChallengeSeed{}
+	copy(seed[:], bytes)
+	return seed, nil
+}
+
+
+func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []PoStInputs) {
+	submission, err := sm.prover.CalculatePoSt(ctx, start, end, seed, inputs)
 	if err != nil {
 		log.Errorf("failed to calculate PoSt: %s", err)
 		return

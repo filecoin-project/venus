@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-sectorbuilder"
 )
 
 func TestProver(t *testing.T) {
@@ -24,7 +24,7 @@ func TestProver(t *testing.T) {
 	workerAddress := makeAddress()
 	sectorSize := types.OneKiBSectorSize
 
-	fakeSeed := []byte{1, 2, 3, 4}
+	fakeSeed := types.PoStChallengeSeed{1, 2, 3, 4}
 	var fakeInputs []storage.PoStInputs
 	start := types.NewBlockHeight(100)
 	end := types.NewBlockHeight(200)
@@ -34,7 +34,6 @@ func TestProver(t *testing.T) {
 	makeProofContext := func() *fakeProverContext {
 		return &fakeProverContext{
 			height:        end.Sub(types.NewBlockHeight(50)), // well inside the window
-			seed:          fakeSeed,
 			actorAddress:  actorAddress,
 			workerAddress: workerAddress,
 			lateFee:       types.ZeroAttoFIL,
@@ -47,7 +46,7 @@ func TestProver(t *testing.T) {
 	t.Run("produces on-time proof", func(t *testing.T) {
 		pc := makeProofContext()
 		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-		submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+		submission, e := prover.CalculatePoSt(ctx, start, end, fakeSeed, fakeInputs)
 		require.NoError(t, e)
 		assert.Equal(t, pc.proof, submission.Proof)
 		assert.Equal(t, types.ZeroAttoFIL, submission.Fee)
@@ -67,7 +66,7 @@ func TestProver(t *testing.T) {
 		for _, height := range heights {
 			pc.height = height
 			prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-			submission, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+			submission, e := prover.CalculatePoSt(ctx, start, end, fakeSeed, fakeInputs)
 			require.NoError(t, e)
 			assert.Equal(t, pc.proof, submission.Proof)
 			assert.True(t, submission.Fee.GreaterThan(types.ZeroAttoFIL))
@@ -79,7 +78,7 @@ func TestProver(t *testing.T) {
 		pc.height = deadline // proof could only appear in block deadline+1
 
 		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+		_, e := prover.CalculatePoSt(ctx, start, end, fakeSeed, fakeInputs)
 		require.Error(t, e)
 	})
 
@@ -88,7 +87,7 @@ func TestProver(t *testing.T) {
 		pc.height = start.Sub(types.NewBlockHeight(1))
 
 		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+		_, e := prover.CalculatePoSt(ctx, start, end, fakeSeed, fakeInputs)
 		require.Error(t, e)
 	})
 
@@ -97,23 +96,13 @@ func TestProver(t *testing.T) {
 		pc.height = nil
 
 		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
-		require.Error(t, e)
-	})
-
-	t.Run("fails without challenge seed", func(t *testing.T) {
-		pc := makeProofContext()
-		pc.seed = nil
-
-		prover := storage.NewProver(actorAddress, sectorSize, pc, pc)
-		_, e := prover.CalculatePoSt(ctx, start, end, fakeInputs)
+		_, e := prover.CalculatePoSt(ctx, start, end, fakeSeed, fakeInputs)
 		require.Error(t, e)
 	})
 }
 
 type fakeProverContext struct {
 	height        *types.BlockHeight
-	seed          []byte
 	actorAddress  address.Address
 	workerAddress address.Address
 	lateFee       types.AttoFIL
@@ -131,13 +120,6 @@ func (f *fakeProverContext) ChainTipSet(_ types.TipSetKey) (types.TipSet, error)
 		return types.TipSet{}, errors.New("could not get the tipset at this height")
 	}
 	return types.NewTipSet(&types.Block{Height: types.Uint64(f.height.AsBigInt().Uint64())})
-}
-
-func (f *fakeProverContext) ChainSampleRandomness(ctx context.Context, periodStart *types.BlockHeight) ([]byte, error) {
-	if f.seed != nil {
-		return f.seed, nil
-	}
-	return nil, errors.New("no seed")
 }
 
 func (f *fakeProverContext) MinerCalculateLateFee(ctx context.Context, addr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {

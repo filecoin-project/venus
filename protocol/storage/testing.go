@@ -10,7 +10,7 @@ import (
 type FakeProver struct{}
 
 // CalculatePoSt returns a fixed fake proof.
-func (p *FakeProver) CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) (*PoStSubmission, error) {
+func (p *FakeProver) CalculatePoSt(ctx context.Context, start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []PoStInputs) (*PoStSubmission, error) {
 	return &PoStSubmission{
 		Proof: []byte("test proof"),
 	}, nil
