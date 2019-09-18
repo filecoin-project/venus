@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -65,7 +66,7 @@ type Miner struct {
 	dealsAwaitingSealDs repo.Datastore
 
 	postInProcessLk sync.Mutex
-	postInProcess   *types.BlockHeight
+	postInProcess   *postInProcess
 
 	dealsAwaitingSeal *dealsAwaitingSeal
 
@@ -76,6 +77,16 @@ type Miner struct {
 	node         node
 
 	proposalProcessor func(context.Context, *Miner, cid.Cid)
+}
+
+type postInProcess struct {
+	periodEnd     *types.BlockHeight
+	challengeSeed types.PoStChallengeSeed
+	cancel        context.CancelFunc
+}
+
+func (pip *postInProcess) matches(windowEnd *types.BlockHeight, seed types.PoStChallengeSeed) bool {
+	return pip.periodEnd.Equal(windowEnd) && bytes.Equal(pip.challengeSeed[:], seed[:])
 }
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
@@ -791,14 +802,6 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 		return doneLatch, errors.Errorf("failed to get proving period: %s", err)
 	}
 
-	sm.postInProcessLk.Lock()
-	defer sm.postInProcessLk.Unlock()
-
-	if sm.postInProcess != nil && sm.postInProcess.Equal(provingWindowEnd) {
-		// post is already being generated for this period, nothing to do
-		return doneLatch, nil
-	}
-
 	height, err := ts.Height()
 	if err != nil {
 		return doneLatch, errors.Errorf("failed to get block height: %s", err)
@@ -807,23 +810,51 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
+	sm.postInProcessLk.Lock()
+	defer sm.postInProcessLk.Unlock()
+
 	if h.GreaterEqual(provingWindowStart.Add(types.NewBlockHeight(challengeDelayRounds))) {
 		if h.LessThan(provingWindowEnd) {
 			seed, err := sm.challengeSeed(ctx, provingWindowStart)
 			if err != nil {
-				return errors.Errorf("failed to sample challenge seed from chain for window %s", provingWindowStart)
+				return doneLatch, errors.Errorf("failed to sample challenge seed from chain for window %s..%s", provingWindowStart, provingWindowEnd)
 			}
 
-			// we are in a new proving period, lets get this post going
-			sm.postInProcess = provingWindowEnd
+			if sm.postInProcess != nil {
+				if sm.postInProcess.matches(provingWindowEnd, seed) {
+					// Correct PoSt is already in progress
+					return doneLatch, nil
+				} else {
+					// The in-progress PoSt is for a different proving period or has taken
+					// a different challenge seed.
+
+					// Cancelling the in-progress PoSt is probably right, but does open up
+					// a vulnerability to a transient re-org causing an unnecessary abandonment.
+					// We might want something more sophisticated, like maintaining a fixed number
+					// of them until the challenge seed reaches a certain effectively-final age.
+					sm.postInProcess.cancel()
+					sm.postInProcess = nil
+				}
+			}
+
+			// Let's get this PoSt going.
+			postCtx, postCancel := context.WithCancel(ctx)
+			sm.postInProcess = &postInProcess{provingWindowEnd, seed, postCancel}
 			postLatch := moresync.NewLatch(1)
 			go func() {
-				sm.submitPoSt(ctx, provingWindowStart, provingWindowEnd, inputs)
-				postLatch.Done()
+				defer postLatch.Done()
+				sm.submitPoSt(postCtx, provingWindowStart, provingWindowEnd, seed, inputs)
+
+				sm.postInProcessLk.Lock()
+				defer sm.postInProcessLk.Unlock()
+				if sm.postInProcess != nil && sm.postInProcess.matches(provingWindowEnd, seed) {
+					sm.postInProcess.cancel() // Release context resources.
+					sm.postInProcess = nil
+				}
 			}()
 			return postLatch, nil
 		}
-		// we are too late
+		// Too late to submit a PoSt.
 		// TODO: figure out faults and payments here #3406
 		return doneLatch, errors.Errorf("too late start=%s  end=%s current=%s", provingWindowStart, provingWindowEnd, h)
 	}
@@ -858,7 +889,6 @@ func (sm *Miner) challengeSeed(ctx context.Context, periodStart *types.BlockHeig
 	return seed, nil
 }
 
-
 func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, seed types.PoStChallengeSeed, inputs []PoStInputs) {
 	submission, err := sm.prover.CalculatePoSt(ctx, start, end, seed, inputs)
 	if err != nil {
@@ -868,6 +898,11 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 	// TODO #2998. The done set should be updated by CLI users.
 	// Using the 0 value is just a placeholder until that work lands.
 	done := types.EmptyIntSet()
+
+	if ctx.Err() != nil {
+		log.Infof("skipping submission of canceled PoSt for window end %s, seed %s", end, seed)
+		return
+	}
 
 	gasPrice := types.NewGasPrice(submitPostGasPrice)
 	workerAddr, err := sm.porcelainAPI.MinerGetWorkerAddress(ctx, sm.minerAddr, sm.porcelainAPI.ChainHeadKey())
