@@ -33,12 +33,12 @@ func init() {
 // largest sector size - this constant and consensus.AncestorRoundsNeeded will
 // need to be reconsidered.
 // https://github.com/filecoin-project/specs/pull/318
-const LargestSectorSizeProvingPeriodBlocks = 1000
+const LargestSectorSizeProvingPeriodBlocks = 300
 
 // PoStChallengeWindowBlocks defines the block time prior to the proving
 // period end at which the PoSt challenge seed is chosen. This dictates the
 // earliest point at which a PoSt may be submitted.
-const PoStChallengeWindowBlocks = 500
+const PoStChallengeWindowBlocks = 150
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
