@@ -184,6 +184,14 @@ func TestTipSet(t *testing.T) {
 		assert.False(t, ts.Defined())
 	})
 
+	t.Run("mismatched ticket arrays fails new tipset", func(t *testing.T) {
+		b1, b2, b3 = makeTestBlocks(t)
+		b1.Tickets = append(b1.Tickets, b2.Tickets[0])
+		ts, err := NewTipSet(b1, b2, b3)
+		assert.Error(t, err)
+		assert.False(t, ts.Defined())
+	})
+
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.ParentWeight = Uint64(3000)
@@ -191,6 +199,34 @@ func TestTipSet(t *testing.T) {
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
+}
+
+// TestTipSetMinTicket checks that MinTicket is the minimum of the last of the
+// tickets of the tipset, even when other tickets are smaller.
+func TestTipSetMinTicket(t *testing.T) {
+	tickets1 := []Ticket{{VRFProof: []byte{0x0}}, {VRFProof: []byte{0x3}}}
+	tickets2 := []Ticket{{VRFProof: []byte{0x2}}, {VRFProof: []byte{0x4}}}
+	tickets3 := []Ticket{{VRFProof: []byte{0x1}}, {VRFProof: []byte{0x5}}}
+	expMinTicket := Ticket{VRFProof: []byte{0x3}}
+
+	b1, b2, b3 := makeTestBlocks(t)
+	b1.Tickets = tickets1
+	b2.Tickets = tickets2
+	b3.Tickets = tickets3
+
+	ts := RequireNewTipSet(t, b1, b2, b3)
+	minTicket, err := ts.MinTicket()
+	assert.NoError(t, err)
+	assert.Equal(t, expMinTicket, minTicket)
+	assert.Equal(t, ts.At(0), b1)
+	assert.Equal(t, ts.At(1), b2)
+	assert.Equal(t, ts.At(2), b3)
+}
+
+func TestUndefKey(t *testing.T) {
+	ts := UndefTipSet
+	udKey := ts.Key()
+	assert.True(t, udKey.Empty())
 }
 
 // Test methods: String, Key, ToSlice, MinTicket, Height, NewTipSet, Equals

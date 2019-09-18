@@ -94,7 +94,8 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	s.isStarted = true
 	go func() {
 		defer doneWg.Done()
-		nullBlkCount := 0
+		ticketArray := []types.Ticket{}
+		var newTicket types.Ticket
 		var prevBase types.TipSet
 		var prevWon bool
 		for {
@@ -119,10 +120,11 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 			}
 
 			// Determine how many null blocks we should mine with.
-			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, base)
+			ticketArray = nextTicketArray(ticketArray, prevBase.Key(), base.Key())
 
 			// Mine synchronously! Ignore all new tipsets.
-			prevWon = s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
+			prevWon, newTicket = s.worker.Mine(miningCtx, base, ticketArray, outCh)
+			ticketArray = append(ticketArray, newTicket)
 			prevBase = base
 		}
 	}()
@@ -145,19 +147,25 @@ func (s *timingScheduler) IsStarted() bool {
 	return s.isStarted
 }
 
-// nextNullBlkCount determines how many null blocks should be mined on top of
-// the current base tipset, currBase, given the previous base, prevBase and the
-// previous number of null blocks mined on the previous base, prevNullBlkCount.
-func nextNullBlkCount(prevNullBlkCount int, prevBase, currBase types.TipSet) int {
-	// We haven't mined on this base before, start with 0 null blocks.
-	if !prevBase.Defined() {
-		return 0
+// nextTicketArray outputs the next ticket array for use in mining on top of
+// the current base tipset, curBase, given the previous base, prevBase and the
+// exisiting ticket array.
+func nextTicketArray(prevTicketArray []types.Ticket, prevBase, curBase types.TipSetKey) []types.Ticket {
+	// We haven't mined before, start with empty ticket array.
+	if prevBase.Empty() {
+		return []types.Ticket{}
 	}
-	if prevBase.String() != currBase.String() {
-		return 0
+	// We mined on a different base last time.  We need to throw away all
+	// tickets from mining on the previous base and start fresh.
+	if !prevBase.Equals(curBase) {
+		return []types.Ticket{}
 	}
-	// We just mined this with prevNullBlkCount, increment.
-	return prevNullBlkCount + 1
+
+	// prevBase.Equals(curBase)
+	// We mined a null block last round and the ticket was added to
+	// prevTicketArray.  We are mining on the same base this round, so keep
+	// adding to the previous ticket array.
+	return prevTicketArray
 }
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
