@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -94,8 +93,7 @@ func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeigh
 	if err != nil {
 		return nil, err
 	}
-	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight, ancestorHeight, sampling.LookbackParameter)
+	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
