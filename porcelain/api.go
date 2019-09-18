@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -15,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the
@@ -259,4 +260,13 @@ func (a *API) PingMinerWithTimeout(
 // MinerSetWorkerAddress sets the miner worker address to the provided address
 func (a *API) MinerSetWorkerAddress(ctx context.Context, toAddr address.Address, gasPrice types.AttoFIL, gasLimit types.GasUnits) (cid.Cid, error) {
 	return MinerSetWorkerAddress(ctx, a, toAddr, gasPrice, gasLimit)
+}
+
+// ActorPower returns a table with miner power from the latest state on the chain
+func (a *API) ActorPower(ctx context.Context) (<-chan state.PowerTable, error) {
+	results, err := a.ActorLs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return MinerPowerTable(ctx, a, results)
 }

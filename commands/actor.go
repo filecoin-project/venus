@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/ipfs/go-cid"
@@ -31,13 +31,6 @@ type ActorView struct {
 	Balance   types.AttoFIL   `json:"balance"`
 	Exports   readableExports `json:"exports"`
 	Head      cid.Cid         `json:"head,omitempty"`
-}
-
-// PowerTable represents entry of miner power table
-type PowerTable struct {
-	Address string
-	Power   types.BytesAmount
-	Total   types.BytesAmount
 }
 
 // readableFunctionSignature is a representation of an actors function signature,
@@ -119,64 +112,20 @@ var actorLsCmd = &cmds.Command{
 
 var actorPowerCmd = &cmds.Command{
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		results, err := GetPorcelainAPI(env).ActorLs(req.Context)
+		results, err := GetPorcelainAPI(env).ActorPower(req.Context)
 		if err != nil {
 			return err
 		}
-		bytes, err := GetPorcelainAPI(env).MessageQuery(
-			req.Context,
-			address.Undef,
-			address.StorageMarketAddress,
-			"getTotalStorage",
-		)
-		if err != nil {
-			return err
-		}
-		total := types.NewBytesAmountFromBytes(bytes[0])
-
 		for result := range results {
-			if result.Error != nil {
-				return result.Error
-			}
-
-			var output *PowerTable
-
-			switch {
-			case result.Actor.Code.Equals(types.MinerActorCodeCid):
-				fallthrough
-			case result.Actor.Code.Equals(types.BootstrapMinerActorCodeCid):
-				addr, err := address.NewFromString(result.Address)
-				if err != nil {
-					return err
-				}
-				bytes, err = GetPorcelainAPI(env).MessageQuery(
-					req.Context,
-					address.Undef,
-					addr,
-					"getPower",
-				)
-				if err != nil {
-					return err
-				}
-				power := types.NewBytesAmountFromBytes(bytes[0])
-				output = &PowerTable{
-					Address: result.Address,
-					Power:   *power,
-					Total:   *total,
-				}
-			default:
-				continue
-			}
-
-			if err := re.Emit(output); err != nil {
+			if err := re.Emit(&result); err != nil {
 				return err
 			}
 		}
 		return nil
 	},
-	Type: &PowerTable{},
+	Type: &state.PowerTable{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *PowerTable) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, a *state.PowerTable) error {
 			_, err := fmt.Fprintln(w, a.Address, ":", a.Power.String(), "/", a.Total.String())
 			return err
 		}),

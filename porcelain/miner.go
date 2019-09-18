@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -548,4 +549,56 @@ func MinerSetWorkerAddress(
 		gasLimit,
 		"changeWorker",
 		workerAddr)
+}
+
+// MinerPowerTable get miner power table
+func MinerPowerTable(ctx context.Context, plumbing mgaAPI, results <-chan state.GetAllActorsResult) (<-chan state.PowerTable, error) {
+	bytes, err := plumbing.MessageQuery(
+		ctx,
+		address.Undef,
+		address.StorageMarketAddress,
+		"getTotalStorage",
+	)
+	if err != nil {
+		return nil, err
+	}
+	total := types.NewBytesAmountFromBytes(bytes[0])
+
+	out := make(chan state.PowerTable)
+	go func() {
+		defer close(out)
+		for result := range results {
+			if result.Error != nil {
+				continue
+			}
+
+			switch {
+			case result.Actor.Code.Equals(types.MinerActorCodeCid):
+				fallthrough
+			case result.Actor.Code.Equals(types.BootstrapMinerActorCodeCid):
+				addr, err := address.NewFromString(result.Address)
+				if err != nil {
+					continue
+				}
+				bytes, err = plumbing.MessageQuery(
+					ctx,
+					address.Undef,
+					addr,
+					"getPower",
+				)
+				if err != nil {
+					continue
+				}
+				power := types.NewBytesAmountFromBytes(bytes[0])
+				out <- state.PowerTable{
+					Address: result.Address,
+					Power:   *power,
+					Total:   *total,
+				}
+			default:
+				continue
+			}
+		}
+	}()
+	return out, nil
 }
