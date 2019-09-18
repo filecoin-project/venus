@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -38,6 +39,8 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+const visitsPerBlock = 4
 
 func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
@@ -533,6 +536,180 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Error(t, err, "invalid receipts for for receipt collection (cid %s)", final.At(0).MessageReceipts.String())
 	})
 
+	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, loader, final.At(1).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+		done := doneAt(gen.Key())
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(7)
+		mgs.verifyExpectations()
+		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
+		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
+		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
+	})
+
+	t.Run("initial request hangs up and no other peers succeed", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid2, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+		done := doneAt(gen.Key())
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		mgs.verifyReceivedRequestCount(7)
+		mgs.verifyExpectations()
+		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.Nil(t, ts)
+	})
+
+	t.Run("partial response hangs up during recursive fetch recovers at hang up point", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		gen := builder.NewGenesis()
+		final := builder.BuildManyOn(5, gen, withMessageBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+
+		blocks := make([]*types.Block, 4) // in fetch order
+		prev := final.At(0)
+		for i := 0; i < 4; i++ {
+			parent := prev.Parents.Iter().Value()
+			prev, err = builder.GetBlock(ctx, parent)
+			require.NoError(t, err)
+			blocks[i] = prev
+		}
+
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, blocks[0].Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+
+		done := func(ts types.TipSet) (bool, error) {
+			if ts.Key().Equals(gen.Key()) {
+				return true, nil
+			}
+			return false, nil
+		}
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(4)
+		mgs.verifyExpectations()
+		require.Equal(t, 6, len(ts), "the right number of tipsets is returned")
+		expectedTs := final
+		for _, resultTs := range ts {
+			require.True(t, expectedTs.Key().Equals(resultTs.Key()), "the initial tipset is correct")
+			key, err := expectedTs.Parents()
+			require.NoError(t, err)
+			if !key.Empty() {
+				expectedTs, err = builder.GetTipSet(key)
+				require.NoError(t, err)
+			}
+		}
+	})
+
+	t.Run("hangs up on single block in multi block tip during recursive fetch", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		gen := builder.NewGenesis()
+		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
+		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 4, penultimate.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0), net.UseUnresponsiveTimeout(100*time.Millisecond))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		mgs.verifyReceivedRequestCount(3)
+		mgs.verifyExpectations()
+		require.Errorf(t, err, "Failed fetching tipset: %s", multi.Key().String())
+		require.Nil(t, ts)
+	})
+
+	t.Run("hangs up on single block in multi block tip during recursive fetch, recover through fallback", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		gen := builder.NewGenesis()
+		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
+		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
+		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+
+		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2), net.UseUnresponsiveTimeout(100*time.Second))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(4)
+		mgs.verifyExpectations()
+		require.Equal(t, 6, len(ts), "the right number of tipsets is returned")
+		expectedTs := final
+		for _, resultTs := range ts {
+			require.True(t, expectedTs.Key().Equals(resultTs.Key()), "the initial tipset is correct")
+			key, err := expectedTs.Parents()
+			require.NoError(t, err)
+			if !key.Empty() {
+				expectedTs, err = builder.GetTipSet(key)
+				require.NoError(t, err)
+			}
+		}
+	})
 }
 
 func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
@@ -707,10 +884,13 @@ type fakeRequest struct {
 //   -- the error array is converted to a channel
 //   -- a blks array is written to mock graphsync block store
 type fakeResponse struct {
-	responses []graphsync.ResponseProgress
-	errs      []error
-	blks      []format.Node
+	responses   []graphsync.ResponseProgress
+	errs        []error
+	blks        []format.Node
+	hangupAfter int
 }
+
+const noHangup = -1
 
 // request response just records a request and the respond to send when its
 // made for a stub
@@ -770,14 +950,29 @@ func (mgs *mockableGraphsync) verifyExpectations() {
 // by executing the specified root and selector using the given cid loader
 func (mgs *mockableGraphsync) stubResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, cids ...cid.Cid) {
 	for _, c := range cids {
-		mgs.stubSingleResponseWithLoader(pid, s, loader, c)
+		mgs.stubSingleResponseWithLoader(pid, s, loader, noHangup, c)
 	}
 }
+
+// stubResponseWithHangupAfter stubs a response when the mocked graphsync
+// instance is called with the given peer, selector, one of the cids
+// by executing the specified root and selector using the given cid loader
+// however the response will hangup at stop sending on the channel after N
+// responses
+func (mgs *mockableGraphsync) stubResponseWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
+	for _, c := range cids {
+		mgs.stubSingleResponseWithLoader(pid, s, loader, hangup, c)
+	}
+}
+
+var (
+	errHangup = errors.New("Hangup")
+)
 
 // stubResponseWithLoader stubs a response when the mocked graphsync
 // instance is called with the given peer, selector, and cid
 // by executing the specified root and selector using the given cid loader
-func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, c cid.Cid) {
+func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, c cid.Cid) {
 	var blks []format.Node
 	var responses []graphsync.ResponseProgress
 
@@ -795,11 +990,16 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 	if err != nil {
 		mgs.stubs = append(mgs.stubs, requestResponse{
 			fakeRequest{pid, root, s},
-			fakeResponse{errs: []error{err}},
+			fakeResponse{errs: []error{err}, hangupAfter: hangup},
 		})
 		return
 	}
+	visited := 0
 	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
+		if hangup != noHangup && visited >= hangup {
+			return errHangup
+		}
+		visited++
 		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
 		return nil
 	}
@@ -809,9 +1009,12 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 			LinkLoader: linkLoader,
 		},
 	}.TraverseInformatively(node, s, visitor)
+	if err == errHangup {
+		err = nil
+	}
 	mgs.stubs = append(mgs.stubs, requestResponse{
 		fakeRequest{pid, root, s},
-		fakeResponse{responses, []error{err}, blks},
+		fakeResponse{responses, []error{err}, blks, hangup},
 	})
 }
 
@@ -822,7 +1025,15 @@ func (mgs *mockableGraphsync) expectRequestToRespondWithLoader(pid peer.ID, s se
 	mgs.stubResponseWithLoader(pid, s, loader, cids...)
 }
 
-func (mgs *mockableGraphsync) processResponse(mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
+// expectRequestToRespondWithHangupAfter is just a combination of an expectation and a stub --
+// it expects the request to come in and responds with the given loader, but hangup after
+// the given number of responses
+func (mgs *mockableGraphsync) expectRequestToRespondWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
+	mgs.expectRequest(pid, s, cids...)
+	mgs.stubResponseWithHangupAfter(pid, s, loader, hangup, cids...)
+}
+
+func (mgs *mockableGraphsync) processResponse(ctx context.Context, mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
 	for _, block := range mr.blks {
 		requireBlockStorePut(mgs.t, mgs.store, block)
 	}
@@ -831,30 +1042,43 @@ func (mgs *mockableGraphsync) processResponse(mr fakeResponse) (<-chan graphsync
 	for _, err := range mr.errs {
 		errChan <- err
 	}
-	close(errChan)
+	if mr.hangupAfter == noHangup || mr.hangupAfter >= len(mr.errs) {
+		close(errChan)
+	} else {
+		go func() {
+			<-ctx.Done()
+			close(errChan)
+		}()
+	}
 
 	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
 	for _, response := range mr.responses {
 		responseChan <- response
 	}
-	close(responseChan)
-
+	if mr.hangupAfter == noHangup || mr.hangupAfter >= len(mr.responses) {
+		close(responseChan)
+	} else {
+		go func() {
+			<-ctx.Done()
+			close(responseChan)
+		}()
+	}
 	return responseChan, errChan
 }
 
 func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
 	parsed, err := selector.ParseSelector(selectorSpec)
 	if err != nil {
-		return mgs.processResponse(fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil})
+		return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil, noHangup})
 	}
 	request := fakeRequest{p, root, parsed}
 	mgs.receivedRequests = append(mgs.receivedRequests, request)
 	for _, stub := range mgs.stubs {
 		if reflect.DeepEqual(stub.request, request) {
-			return mgs.processResponse(stub.response)
+			return mgs.processResponse(ctx, stub.response)
 		}
 	}
-	return mgs.processResponse(fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil})
+	return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil, noHangup})
 }
 
 type fakePeerTracker struct {
