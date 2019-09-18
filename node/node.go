@@ -429,7 +429,7 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 			}
 
 			if node.StorageMiner != nil {
-				if err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
+				if _, err := node.StorageMiner.OnNewHeaviestTipSet(newHead); err != nil {
 					log.Error(err)
 				}
 			}

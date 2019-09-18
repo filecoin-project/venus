@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
+	"github.com/filecoin-project/go-filecoin/util/moresync"
 	"github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -47,6 +48,11 @@ const (
 	submitPostGasPrice = 1
 
 	waitForPaymentChannelDuration = 2 * time.Minute
+
+	// Number of rounds to wait after the challenge window opens before sampling the chain for
+	// challenge seed and beginning PoSt computation.
+	// Larger values are reduce fragility to re-orgs changing the challenge seed.
+	challengeDelayRounds = 15
 )
 
 const dealsAwatingSealDatastorePrefix = "dealsAwaitingSeal"
@@ -733,23 +739,26 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 // OnNewHeaviestTipSet is a callback called by node, every time the the latest
 // head is updated. It is used to check if we are in a new proving period and
 // need to trigger PoSt submission.
-func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
+// If a PoSt computation is started as a result of this new tipset, the returned latch is held until
+// the computation completes.
+func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 	ctx := context.Background()
+	doneLatch := moresync.NewLatch(0)
 
 	isBootstrapMinerActor, err := sm.isBootstrapMinerActor(ctx)
 	if err != nil {
-		return errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
+		return doneLatch, errors.Errorf("could not determine if actor created for bootstrapping: %s", err)
 	}
 
 	if isBootstrapMinerActor {
 		// this is not an error condition, so log quietly
 		log.Info("bootstrap miner actor skips PoSt-generation flow")
-		return nil
+		return doneLatch, nil
 	}
 
 	commitments, err := sm.getActorSectorCommitments(ctx)
 	if err != nil {
-		return errors.Errorf("failed to get miner actor commitments: %s", err)
+		return doneLatch, errors.Errorf("failed to get miner actor commitments: %s", err)
 	}
 
 	// get ProvingSet
@@ -759,7 +768,7 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 	for k, v := range commitments {
 		n, err := strconv.ParseUint(k, 10, 64)
 		if err != nil {
-			return errors.Errorf("failed to parse commitment sector id to uint64: %s", err)
+			return doneLatch, errors.Errorf("failed to parse commitment sector id to uint64: %s", err)
 		}
 
 		inputs = append(inputs, PoStInputs{
@@ -772,12 +781,12 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 
 	if len(inputs) == 0 {
 		// no sector sealed, nothing to do
-		return nil
+		return doneLatch, nil
 	}
 
 	provingWindowStart, provingWindowEnd, err := sm.getProvingWindow()
 	if err != nil {
-		return errors.Errorf("failed to get proving period: %s", err)
+		return doneLatch, errors.Errorf("failed to get proving period: %s", err)
 	}
 
 	sm.postInProcessLk.Lock()
@@ -785,30 +794,34 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) error {
 
 	if sm.postInProcess != nil && sm.postInProcess.Equal(provingWindowEnd) {
 		// post is already being generated for this period, nothing to do
-		return nil
+		return doneLatch, nil
 	}
 
 	height, err := ts.Height()
 	if err != nil {
-		return errors.Errorf("failed to get block height: %s", err)
+		return doneLatch, errors.Errorf("failed to get block height: %s", err)
 	}
 
 	// the block height of the new heaviest tipset
 	h := types.NewBlockHeight(height)
 
-	if h.GreaterEqual(provingWindowStart) {
-		if h.LessEqual(provingWindowEnd) {
+	if h.GreaterEqual(provingWindowStart.Add(types.NewBlockHeight(challengeDelayRounds))) {
+		if h.LessThan(provingWindowEnd) {
 			// we are in a new proving period, lets get this post going
 			sm.postInProcess = provingWindowEnd
-			go sm.submitPoSt(ctx, provingWindowStart, provingWindowEnd, inputs)
-		} else {
-			// we are too late
-			// TODO: figure out faults and payments here #3406
-			return errors.Errorf("too late start=%s  end=%s current=%s", provingWindowStart, provingWindowEnd, h)
+			postLatch := moresync.NewLatch(1)
+			go func() {
+				sm.submitPoSt(ctx, provingWindowStart, provingWindowEnd, inputs)
+				postLatch.Done()
+			}()
+			return postLatch, nil
 		}
+		// we are too late
+		// TODO: figure out faults and payments here #3406
+		return doneLatch, errors.Errorf("too late start=%s  end=%s current=%s", provingWindowStart, provingWindowEnd, h)
 	}
 
-	return nil
+	return doneLatch, nil
 }
 
 func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, error) {
