@@ -99,7 +99,7 @@ func TestCollectTipSetsPastHeight(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	tipsets, err := chain.CollectTipSetsPastHeight(iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestCollectTipSetsPastHeightZero(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	tipsets, err := chain.CollectTipSetsPastHeight(iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestCollectTipSetsPastHeightTipsetOne(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(25))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	tipsets, err := chain.CollectTipSetsPastHeight(iterator, stopHeight)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(tipsets))
 }
@@ -168,7 +168,7 @@ func TestCollectTipSetsPastHeightStartingEpochIsNull(t *testing.T) {
 
 	stopHeight := types.NewBlockHeight(uint64(35))
 	iterator := chain.IterAncestors(ctx, builder, head)
-	tipsets, err := chain.CollectTipSetsPastHeight(ctx, iterator, stopHeight)
+	tipsets, err := chain.CollectTipSetsPastHeight(iterator, stopHeight)
 	assert.NoError(t, err)
 	latestHeight, err := tipsets[0].Height()
 	require.NoError(t, err)
@@ -213,7 +213,6 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 // Test the happy path.
 // Make a chain of 200 tipsets
 // DependentAncestor epochs = 100
-// Lookback = 20
 func TestGetRecentAncestors(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -224,12 +223,11 @@ func TestGetRecentAncestors(t *testing.T) {
 	head := types.RequireNewTipSet(t, headBlock)
 
 	epochs := uint64(100)
-	lookback := uint(20)
-	ancestors, err := chain.GetRecentAncestors(ctx, head, builder,
-		types.NewBlockHeight(uint64(headBlock.Height+1)), types.NewBlockHeight(epochs), lookback)
+	sampleHeight := types.NewBlockHeight(uint64(headBlock.Height + 1)).Sub(types.NewBlockHeight(epochs))
+	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, sampleHeight)
 	require.NoError(t, err)
 	assert.Equal(t, ancestors[0], head)
-	assert.Equal(t, int(epochs)+int(lookback), len(ancestors))
+	assert.Equal(t, int(epochs), len(ancestors))
 	for i := 0; i < len(ancestors); i++ {
 		h, err := ancestors[i].Height()
 		assert.NoError(t, err)
@@ -248,18 +246,11 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	h, err := head.Height()
 	require.NoError(t, err)
 	epochs := uint64(200)
-	lookback := uint(20)
 
 	t.Run("more epochs than chainStore", func(t *testing.T) {
-		ancestors, err := chain.GetRecentAncestors(ctx, head, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), lookback)
-		require.NoError(t, err)
-		assert.Equal(t, chainLen, len(ancestors))
-	})
-
-	t.Run("more epochs + lookback than chainStore", func(t *testing.T) {
-		epochs = uint64(60)
-		lookback = uint(50)
-		ancestors, err := chain.GetRecentAncestors(ctx, head, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), lookback)
+		sampleHeight := types.NewBlockHeight(h + uint64(1)).Sub(types.NewBlockHeight(epochs))
+		assert.True(t, sampleHeight.LessThan(types.NewBlockHeight(0)))
+		ancestors, err := chain.GetRecentAncestors(ctx, head, builder, sampleHeight)
 		require.NoError(t, err)
 		assert.Equal(t, chainLen, len(ancestors))
 	})
@@ -278,22 +269,22 @@ func TestGetRecentAncestorsStartingEpochIsNull(t *testing.T) {
 	head = builder.BuildOneOn(head, func(b *chain.BlockBuilder) {
 		b.IncHeight(10)
 	})
-	// Add 19 more tipsets.
+	// Add 19 more tipsets, so there are 20 after the nulls.
 	len2 := 19
 	head = builder.AppendManyOn(len2, head)
 
-	epochs := uint64(28)
-	lookback := 6
+	epochs := uint64(22)
 	h, err := head.Height()
 	require.NoError(t, err)
-	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, types.NewBlockHeight(h+uint64(1)), types.NewBlockHeight(epochs), uint(lookback))
+	sampleHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(epochs))
+	ancestors, err := chain.GetRecentAncestors(ctx, head, builder, sampleHeight)
 	require.NoError(t, err)
 
-	// We expect to see 20+1 blocks include less than earliest block in the first 28 epochs and an additional 6 for the lookback parameter
-	assert.Equal(t, len2+lookback+2, len(ancestors))
+	// We expect to see 20+1 tips: the head of the chain plus one after the nulls.
+	assert.Equal(t, len2+2, len(ancestors))
 	lastBlockHeight, err := ancestors[len(ancestors)-1].Height()
 	require.NoError(t, err)
-	assert.Equal(t, uint64(24), lastBlockHeight)
+	assert.Equal(t, uint64(30), lastBlockHeight)
 }
 
 func TestFindCommonAncestorSameChain(t *testing.T) {

@@ -69,6 +69,7 @@ const ECPrM uint64 = 100
 // TODO: If the following PR is merged - and the network doesn't define a
 // largest sector size - this constant will need to be reconsidered.
 // https://github.com/filecoin-project/specs/pull/318
+// NOTE(anorth): This height is excessive, but safe, with the Rational PoSt construction.
 const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.PoStChallengeWindowBlocks
 
 // A Processor processes all the messages in a block or tip set.

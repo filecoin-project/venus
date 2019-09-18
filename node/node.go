@@ -41,7 +41,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
@@ -929,8 +928,8 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 
 // getAncestors is the default GetAncestors function for the mining worker.
 func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, newBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, ancestorHeight)
 }
 
 // -- Accessors

@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/net"
-	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -152,9 +151,8 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	if err != nil {
 		return err
 	}
-	newBlockHeight := types.NewBlockHeight(h)
-	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, newBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err
 	}
