@@ -232,7 +232,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 			b.SetTickets([][]byte{{2}})
-			b.SetTimestamp(5) // Tweak if necessary to force CID ordering opposite ticket ordering.
+			b.SetTimestamp(3) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
 
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)

@@ -43,7 +43,7 @@ func TestSamplingChainRandomness(t *testing.T) {
 		// i.e.: 25 20 19 18 ... 0
 		headAfterNulls := builder.BuildOneOn(ch[0], func(b *chain.BlockBuilder) {
 			b.IncHeight(4)
-			b.SetTicket(types.Signature(strconv.Itoa(25)))
+			b.SetTickets([][]byte{types.Signature(strconv.Itoa(25))})
 		})
 		ch = append([]types.TipSet{headAfterNulls}, ch...)
 
@@ -90,7 +90,7 @@ func makeChain(t *testing.T, length int) (*chain.Builder, []types.TipSet) {
 	b := chain.NewBuilder(t, address.Undef)
 	height := 0
 	head := b.BuildManyOn(length, types.UndefTipSet, func(b *chain.BlockBuilder) {
-		b.SetTicket(types.Signature(strconv.Itoa(height)))
+		b.SetTickets([][]byte{types.Signature(strconv.Itoa(height))})
 		height++
 	})
 	return b, b.RequireTipSets(head.Key(), length)
