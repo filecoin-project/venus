@@ -14,6 +14,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/exec"
 )
 
+const (
+	// TreeBitWidth is the bit width of the HAMT used to store a state tree
+	TreeBitWidth = 5
+)
+
 // tree is a state tree that maps addresses to actors.
 type tree struct {
 	// root is the root of the state merklehamt
@@ -68,7 +73,7 @@ func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, 
 // LoadStateTree loads the state tree referenced by the given cid.
 func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
 	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
-	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c)
+	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}
@@ -94,7 +99,7 @@ func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[ci
 
 func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
-		root:          hamt.NewNode(store),
+		root:          hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
 		store:         store,
 		builtinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
@@ -201,7 +206,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 			}
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), cst, p.Link)
+			n, err := hamt.LoadNode(context.Background(), cst, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				return err
 			}
@@ -230,7 +235,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				fmt.Printf("unable to print link: %s: %s\n", p.Link.String(), err)
 				continue
@@ -283,7 +288,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 			}
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			// Even if we hit an error and can't follow this link, we should
 			// keep traversing its siblings.
 			if err != nil {

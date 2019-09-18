@@ -40,7 +40,7 @@ func NewOutput(b *types.Block, e error) Output {
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool
+	Mine(runCtx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -81,7 +81,7 @@ type electionUtil interface {
 
 // ticketGenerator creates and finalizes tickets.
 type ticketGenerator interface {
-	NextTicket(types.Ticket, address.Address, types.Signer, uint64) (types.Ticket, error)
+	NextTicket(types.Ticket, address.Address, types.Signer) (types.Ticket, error)
 	NotarizeTime(*types.Ticket) error
 }
 
@@ -156,42 +156,49 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (won bool, nextTicket types.Ticket) {
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 	if !base.Defined() {
 		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
-		return false
+		return
 	}
 
-	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), nullBlkCount)
+	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), len(ticketArray))
 	if ctx.Err() != nil {
 		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
-		return false
+		return
 	}
 
 	// Read uncached worker address
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, base.Key())
 	if err != nil {
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 
 	// Create the next ticket.
-	// Derive from mining base's min ticket
-	prevTicket, err := base.MinTicket()
-	if err != nil {
-		log.Warningf("Worker.Mine couldn't read parent ticket %s", err)
-		outCh <- Output{Err: err}
-		return false
+	// With 0 null blocks derive from mining base's min ticket
+	// With > 0 null blocks use the last mined ticket
+	var prevTicket types.Ticket
+	if len(ticketArray) == 0 {
+		prevTicket, err = base.MinTicket()
+		if err != nil {
+			log.Warningf("Worker.Mine couldn't read parent ticket %s", err)
+			outCh <- Output{Err: err}
+			return
+		}
+	} else {
+		prevTicket = ticketArray[len(ticketArray)-1]
 	}
-	nextTicket, err := w.ticketGen.NextTicket(prevTicket, workerAddr, w.workerSigner, uint64(nullBlkCount))
+
+	nextTicket, err = w.ticketGen.NextTicket(prevTicket, workerAddr, w.workerSigner)
 	if err != nil {
 		log.Warningf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 
 	// Provably delay for the blocktime
@@ -211,13 +218,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 
 	select {
 	case <-ctx.Done():
-		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
-		return false
+		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), len(ticketArray))
+		return
 	case <-done:
 	case err := <-errCh:
 		log.Infof("Error notarizing time on ticket")
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 
 	// Run an election to check if this miner has won the right to mine
@@ -225,31 +232,32 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCoun
 	if err != nil {
 		log.Errorf("failed to run local election: %s", err)
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 	st, err := w.getStateTree(ctx, base)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get state tree for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 	weHaveAWinner, err := w.election.IsElectionWinner(ctx, w.blockstore, w.powerTable, st, nextTicket, electionProof, workerAddr, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
 
 	// This address has mining rights, so mine a block
 	if weHaveAWinner {
-		next, err := w.Generate(ctx, base, nextTicket, electionProof, uint64(nullBlkCount))
+		next, err := w.Generate(ctx, base, append(ticketArray, nextTicket), electionProof, uint64(len(ticketArray)))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
 			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
 		outCh <- NewOutput(next, err)
-		return true
+		won = true
+		return
 	}
 
-	return false
+	return
 }
