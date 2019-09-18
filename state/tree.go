@@ -16,7 +16,7 @@ import (
 
 const (
 	// TreeBitWidth is the bit width of the HAMT used to store a state tree
-	TreeBitWidth = 4
+	TreeBitWidth = 5
 )
 
 // tree is a state tree that maps addresses to actors.

@@ -17,7 +17,7 @@ import (
 const (
 	// TreeBitWidth is the bit width of the HAMT used to by an actor to
 	// store its state
-	TreeBitWidth = 4
+	TreeBitWidth = 5
 )
 
 // MarshalStorage encodes the passed in data into bytes.
