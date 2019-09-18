@@ -14,6 +14,12 @@ import (
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+const (
+	// TreeBitWidth is the bit width of the HAMT used to by an actor to
+	// store its state
+	TreeBitWidth = 5
+)
+
 // MarshalStorage encodes the passed in data into bytes.
 func MarshalStorage(in interface{}) ([]byte, error) {
 	return cbor.DumpObject(in)
@@ -130,9 +136,9 @@ func LoadLookup(ctx context.Context, storage exec.Storage, cid cid.Cid) (exec.Lo
 	var err error
 
 	if !cid.Defined() {
-		root = hamt.NewNode(cborStore)
+		root = hamt.NewNode(cborStore, hamt.UseTreeBitWidth(TreeBitWidth))
 	} else {
-		root, err = hamt.LoadNode(ctx, cborStore, cid)
+		root, err = hamt.LoadNode(ctx, cborStore, cid, hamt.UseTreeBitWidth(TreeBitWidth))
 		if err != nil {
 			return nil, err
 		}

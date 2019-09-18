@@ -81,17 +81,17 @@ func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSe
 // node.
 func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHeight) error {
 
-	minerAddr, err := sfm.plumbing.ConfigGet("mining.minerAddress")
+	myMinerActorAddr, err := sfm.plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
 		return err
 	}
 
-	workerAddr, err := sfm.plumbing.MinerGetWorkerAddress(ctx, minerAddr.(address.Address), sfm.plumbing.ChainHeadKey())
+	myWorkerAddr, err := sfm.plumbing.MinerGetWorkerAddress(ctx, myMinerActorAddr.(address.Address), sfm.plumbing.ChainHeadKey())
 	if err != nil {
 		return errors.Wrap(err, "could not get worker address")
 	}
 
-	res, err := sfm.plumbing.MessageQuery(ctx, workerAddr, address.StorageMarketAddress, "getLateMiners", sfm.plumbing.ChainHeadKey())
+	res, err := sfm.plumbing.MessageQuery(ctx, myWorkerAddr, address.StorageMarketAddress, "getLateMiners", sfm.plumbing.ChainHeadKey())
 	if err != nil {
 		return errors.Wrap(err, "getLateMiners message failed")
 	}
@@ -105,11 +105,11 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 	if !ok {
 		return errors.Wrapf(err, "expected *map[string]uint64 but got %T", lms)
 	}
-	sfm.log.Debugf("there are %d late miners\n", len(*lms))
+	sfm.log.Debugf("there are %d late miners", len(*lms))
 
 	// Slash late miners.
-	for minerStr, state := range *lms {
-		if _, ok := sfm.slashed[minerStr]; ok {
+	for lateMinerActor, state := range *lms {
+		if _, ok := sfm.slashed[lateMinerActor]; ok {
 			// Skip slashed miner.
 			// This logic is not perfect. A miner that appears to be late could redeem itself
 			// (e.g. due to a chain re-org) such that a submitted slashing message fails, but
@@ -122,20 +122,26 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 			// Alternatives are discussed in #3358
 			continue
 		}
-		minerAddr, err := address.NewFromString(minerStr)
+
+		lateMinerActorAddr, err := address.NewFromString(lateMinerActor)
 		if err != nil {
 			return errors.Wrap(err, "could not create minerAddr string")
 		}
 
-		// add slash message to message pull w/o broadcasting
-		sfm.log.Debugf("Slashing %s with state %d\n", minerStr, state)
+		if lateMinerActorAddr == myMinerActorAddr {
+			sfm.log.Warningf("skip slashing self %s", lateMinerActorAddr)
+			continue
+		}
 
-		_, err = sfm.outbox.Send(ctx, workerAddr, minerAddr, types.ZeroAttoFIL, sfm.gasPrice,
+		// add slash message to message pull w/o broadcasting
+		sfm.log.Debugf("Slashing %s with state %d", lateMinerActorAddr, state)
+
+		_, err = sfm.outbox.Send(ctx, myWorkerAddr, lateMinerActorAddr, types.ZeroAttoFIL, sfm.gasPrice,
 			sfm.gasLimit, false, "slashStorageFault")
 		if err != nil {
 			return errors.Wrap(err, "slashStorageFault message failed")
 		}
-		sfm.slashed[minerStr] = struct{}{}
+		sfm.slashed[lateMinerActor] = struct{}{}
 	}
 	return nil
 }
