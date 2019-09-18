@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ipfs/go-cid"
 
@@ -87,7 +88,7 @@ func (it *TicketIterator) Complete() bool {
 // https://github.com/filecoin-project/specs/blob/master/definitions.md#ticket-chain
 func (it *TicketIterator) Next() error {
 	if it.tips.Complete() {
-		return errors.NewError("calling next on complete ticket iterator")
+		return errors.New("calling next on complete ticket iterator")
 	}
 
 	// Advance internal tipset iterator
@@ -99,14 +100,13 @@ func (it *TicketIterator) Next() error {
 			it.value = types.UndefTicket
 			return nil
 		}
+		// Start with the last ticket in the new min-ticket block's array
 		it.idx = len(it.tips.Value().At(0).Tickets) - 1
-		it.value = it.tips.Value().At(0).Tickets[it.idx]
-		}
-		return nil 
+	} else {
+		// Advance internally along min-ticket block's ticket array
+		it.idx = it.idx - 1
 	}
-
-	// Advance internally along min-ticket block's ticket array
-	it.idx = it.idx - 1
+	
 	it.value = it.tips.Value().At(0).Tickets[it.idx]
 	return nil
 }

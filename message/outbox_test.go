@@ -45,7 +45,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 
 		head := provider.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(1000)
+			b.PrependNull(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
@@ -86,7 +86,7 @@ func TestOutbox(t *testing.T) {
 		bcast := true
 
 		head := provider.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(1000)
+			b.PrependNull(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42

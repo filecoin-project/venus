@@ -164,9 +164,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 	require.NoError(f.t, err)
 
 	for i := 0; i < width; i++ {
-		ticket := types.Ticket{}
-		ticket.VRFProof = types.VRFPi(make([]byte, binary.Size(f.seq)))
-		binary.BigEndian.PutUint64(ticket.VRFProof, f.seq)
+		ticket := ticketOfUint64(f.seq)
 		f.seq++
 
 		b := &types.Block{
@@ -182,7 +180,6 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 			//Proof            PoStProof
 			//Timestamp        Uint64
 		}
-		// Nonce intentionally omitted as it will go away.
 
 		if build != nil {
 			build(&BlockBuilder{b, f.t, f.messages, f.receipts}, i)
@@ -259,9 +256,15 @@ type BlockBuilder struct {
 	receipts map[cid.Cid][]*types.MessageReceipt
 }
 
-// SetTicket sets the block's ticket.
-func (bb *BlockBuilder) SetTicket(raw []byte) {
-	bb.block.Tickets = []types.Ticket{{VRFProof: types.VRFPi(raw)}}
+// SetTickets sets the block's tickets.
+func (bb *BlockBuilder) SetTickets(rawVals [][]byte) {
+	for _, raw := range rawVals {
+		ticket := types.Ticket{
+			VRFProof:  types.VRFPi(raw),
+			VDFResult: types.VDFY(raw),
+		}
+		bb.block.Tickets = append(bb.block.Tickets, ticket)
+	}
 }
 
 // SetTimestamp sets the block's timestamp.
@@ -273,6 +276,21 @@ func (bb *BlockBuilder) SetTimestamp(timestamp types.Uint64) {
 // is mined.
 func (bb *BlockBuilder) IncHeight(nullBlocks types.Uint64) {
 	bb.block.Height += nullBlocks
+}
+
+// PrependNull both increments the block's height and adds tickets to the
+// tickets array, implying a number of null blocks before this one is mined
+func (bb *BlockBuilder) PrependNull(nullBlocks types.Uint64) {
+	bb.IncHeight(nullBlocks)
+
+	// Set tickets to [blockTicket, blockTicket+1, ... blockTicket + nullBlocks -1].
+	// While other blocks will have the intermediate tickets in general
+	// no block will have the same ticket array because the builder ensures
+	// that all blocks have a unique first ticket
+	startSeq := binary.BigEndian.Uint64(bb.block.Tickets[0].VDFResult)
+	for i := uint64(1); i <= uint64(nullBlocks); i++ {
+		bb.block.Tickets = append(bb.block.Tickets, ticketOfUint64(startSeq+i))
+	}
 }
 
 // AddMessages adds a message & receipt collection to the block.
@@ -490,4 +508,13 @@ func makeCid(i interface{}) (cid.Cid, error) {
 		MhType:   types.DefaultHashFunction,
 		MhLength: -1,
 	}.Sum(bytes)
+}
+
+func ticketOfUint64(seq uint64) types.Ticket {
+	ticket := types.Ticket{}
+	ticket.VRFProof = types.VRFPi(make([]byte, binary.Size(seq)))
+	ticket.VDFResult = types.VDFY(make([]byte, binary.Size(seq)))
+	binary.BigEndian.PutUint64(ticket.VRFProof, seq)
+	binary.BigEndian.PutUint64(ticket.VDFResult, seq)
+	return ticket
 }

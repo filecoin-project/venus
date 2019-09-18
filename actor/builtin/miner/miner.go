@@ -957,7 +957,6 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			for i, ssi := range sortedSectorInfo.Values() {
 				log.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
 			}
-			
 
 			req := verification.VerifyPoStRequest{
 				ChallengeSeed:    seed,

@@ -99,7 +99,7 @@ func TestGetByKey(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
@@ -192,7 +192,7 @@ func TestGetByParent(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
@@ -229,7 +229,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
@@ -287,7 +287,7 @@ func TestHead(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 
 	// Head starts as an empty cid set
 	assert.Equal(t, types.TipSetKey{}, cs.GetHead())
@@ -329,7 +329,7 @@ func TestHeadEvents(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 	ps := chainStore.HeadEvents()
 	chA := ps.Sub(chain.NewHeadTopic)
 	chB := ps.Sub(chain.NewHeadTopic)
@@ -375,7 +375,7 @@ func TestLoadAndReboot(t *testing.T) {
 	link1 := builder.AppendOn(genTS, 2)
 	link2 := builder.AppendOn(link1, 3)
 	link3 := builder.AppendOn(link2, 1)
-	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
+	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.PrependNull(2) })
 
 	// Add blocks to blockstore
 	requirePutBlocksToCborStore(t, cst, genTS.ToSlice()...)

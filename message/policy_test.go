@@ -89,7 +89,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
 		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(103)
+			b.PrependNull(103)
 		})
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(
@@ -151,12 +151,12 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
 		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(100)
+			b.PrependNull(100)
 		})
 
 		// Skip 9 rounds since alice's first message enqueued, so b1 has height 110
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
-			b.IncHeight(9)
+			b.PrependNull(9)
 		})
 
 		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{b1})
@@ -185,7 +185,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		}
 
 		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
-			b.IncHeight(100)
+			b.PrependNull(100)
 		})
 
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
@@ -211,7 +211,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		}
 
 		root := blocks.BuildOnBlock(nil, func(b *chain.BlockBuilder) {
-			b.IncHeight(100)
+			b.PrependNull(100)
 		})
 
 		// Construct two blocks at the same height, each with one message. The canonical
@@ -223,7 +223,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.SignedMessage{msgs[0]},
 				types.EmptyReceipts(1),
 			)
-			b.SetTicket([]byte{1})
+			b.SetTickets([][]byte{{1}})
 			b.SetTimestamp(1)
 		})
 		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
@@ -231,8 +231,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 				[]*types.SignedMessage{msgs[1]},
 				types.EmptyReceipts(1),
 			)
-			b.SetTicket([]byte{2})
-			b.SetTimestamp(2) // Tweak if necessary to force CID ordering opposite ticket ordering.
+			b.SetTickets([][]byte{{2}})
+			b.SetTimestamp(5) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
 
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)

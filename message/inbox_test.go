@@ -341,7 +341,7 @@ func TestUpdateMessagePool(t *testing.T) {
 			// update pool with tipset that has no messages and four
 			// null blocks
 			next := chainProvider.BuildOneOn(head, func(bb *chain.BlockBuilder) {
-				bb.IncHeight(types.Uint64(4)) // 4 null blocks
+				bb.PrependNull(types.Uint64(4)) // 4 null blocks
 			})
 
 			assert.NoError(t, ib.HandleNewHead(ctx, nil, []types.TipSet{next}))
