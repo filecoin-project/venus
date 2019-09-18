@@ -258,6 +258,7 @@ type BlockBuilder struct {
 
 // SetTickets sets the block's tickets.
 func (bb *BlockBuilder) SetTickets(rawVals [][]byte) {
+	bb.block.Tickets = []types.Ticket{}
 	for _, raw := range rawVals {
 		ticket := types.Ticket{
 			VRFProof:  types.VRFPi(raw),

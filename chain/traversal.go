@@ -106,7 +106,7 @@ func (it *TicketIterator) Next() error {
 		// Advance internally along min-ticket block's ticket array
 		it.idx = it.idx - 1
 	}
-	
+
 	it.value = it.tips.Value().At(0).Tickets[it.idx]
 	return nil
 }
