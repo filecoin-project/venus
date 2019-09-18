@@ -4,12 +4,14 @@ package commands
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +22,9 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
+		"export":   storeExportCmd,
 		"head":     storeHeadCmd,
+		"import":   storeImportCmd,
 		"ls":       storeLsCmd,
 		"status":   storeStatusCmd,
 		"set-head": storeSetHeadCmd,
@@ -170,5 +174,60 @@ var storeSyncCmd = &cmds.Command{
 			Head:   syncKey,
 		}
 		return GetPorcelainAPI(env).ChainSyncHandleNewTipSet(req.Context, ci, true)
+	},
+}
+
+var storeExportCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Export the chain store to a car file.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("file", true, false, "File to export chain data to."),
+		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to export from."),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		f, err := os.Create(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+		defer func() { _ = f.Close() }()
+
+		expCids, err := cidsFromSlice(req.Arguments[1:])
+		if err != nil {
+			return err
+		}
+		expKey := types.NewTipSetKey(expCids...)
+
+		headKey, err := GetPorcelainAPI(env).ChainExport(req.Context, expKey, f)
+		if err != nil {
+			return err
+		}
+		return re.Emit(headKey)
+	},
+}
+
+var storeImportCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Import the chain from a car file.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.FileArg("file", true, false, "File to import chain data from.").EnableStdin(),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		iter := req.Files.Entries()
+		if !iter.Next() {
+			return fmt.Errorf("no file given: %s", iter.Err())
+		}
+
+		fi, ok := iter.Node().(files.File)
+		if !ok {
+			return fmt.Errorf("given file was not a files.File")
+		}
+		defer func() { _ = fi.Close() }()
+		headKey, err := GetPorcelainAPI(env).ChainImport(req.Context, fi)
+		if err != nil {
+			return err
+		}
+		return re.Emit(headKey)
 	},
 }

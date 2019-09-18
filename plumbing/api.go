@@ -194,6 +194,16 @@ func (api *API) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.ChainInf
 	return api.syncer.HandleNewTipSet(ctx, ci, trusted)
 }
 
+// ChainExport exports the chain store to `out`.
+func (api *API) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) (types.TipSetKey, error) {
+	return api.chain.ChainExport(ctx, head, out)
+}
+
+// ChainImport imports the chain with the same genesis block from `in`.
+func (api *API) ChainImport(ctx context.Context, in io.Reader) (types.TipSetKey, error) {
+	return api.chain.ChainImport(ctx, in)
+}
+
 // DealsIterator returns an iterator to access all deals
 func (api *API) DealsIterator() (*query.Results, error) {
 	return api.storagedeals.Iterator()
