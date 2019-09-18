@@ -30,7 +30,7 @@ func TestNewExpected(t *testing.T) {
 
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore := setupCborBlockstore()
-		ptv := th.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
+		ptv := consensus.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
 		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 		assert.NotNil(t, exp)
 	})
@@ -108,7 +108,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the test power table view
-		ptv := th.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
@@ -133,7 +133,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		ptv := th.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
@@ -160,7 +160,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		ptv := th.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
@@ -173,7 +173,33 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		}
 
 		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
-		assert.EqualError(t, err, "invalid ticket extension")
+		require.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid ticket")
+		assert.Contains(t, err.Error(), "position 0")
+	})
+
+	t.Run("fails when ticket array length inconsistent with block height", func(t *testing.T) {
+		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		require.NoError(t, err)
+		vms := vm.NewStorageMap(bstore)
+
+		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
+		// change ticket array length but not height
+		blocks[0].Tickets = append(blocks[0].Tickets, consensus.MakeFakeTicketForTest())
+		tipSet := types.RequireNewTipSet(t, blocks[0])
+
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+
+		var emptyMessages [][]*types.SignedMessage
+		var emptyReceipts [][]*types.MessageReceipt
+		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
+		assert.Error(t, err)
 	})
 
 	t.Run("returns nil + mining error when signature is invalid", func(t *testing.T) {
@@ -188,7 +214,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the test power table view
-		ptv := th.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 

@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
@@ -50,42 +49,6 @@ func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 	ts, err := types.NewTipSet(blks...)
 	require.NoError(t, err)
 	return ts
-}
-
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct {
-	minerPower, totalPower *types.BytesAmount
-	minerToWorker          map[address.Address]address.Address
-}
-
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestPowerTableView {
-	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower, minerToWorker: minerToWorker}
-}
-
-// Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-// Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
-}
-
-// WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	wAddr, ok := tv.minerToWorker[mAddr]
-	if !ok {
-		return address.Undef, errors.New("no such miner address in power table")
-	}
-	return wAddr, nil
 }
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
