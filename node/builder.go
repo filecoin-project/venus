@@ -168,7 +168,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
-	chainState := chain.NewChainStateProvider(chainStore, messageStore, &ipldCborStore, bs)
+	chainState := chain.NewStateProvider(chainStore, messageStore, &ipldCborStore, bs)
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table

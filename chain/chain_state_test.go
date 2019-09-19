@@ -54,8 +54,9 @@ func TestQuery(t *testing.T) {
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 		chainStore, err := Init(context.Background(), r, bs, cst, testGen)
+		require.NoError(t, err)
 
-		chainState := NewChainStateProvider(chainStore, nil, cst, bs)
+		chainState := NewStateProvider(chainStore, nil, cst, bs)
 		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
@@ -95,8 +96,9 @@ func TestQuery(t *testing.T) {
 		)
 		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 		chainStore, err := Init(context.Background(), r, bs, cst, testGen)
+		require.NoError(t, err)
 
-		chainState := NewChainStateProvider(chainStore, nil, cst, bs)
+		chainState := NewStateProvider(chainStore, nil, cst, bs)
 		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 

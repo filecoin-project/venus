@@ -45,7 +45,7 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap       exchange.Interface
-	chain         *chain.ChainStateProvider
+	chain         *chain.StateProvider
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
@@ -63,7 +63,7 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap       exchange.Interface
-	Chain         *chain.ChainStateProvider
+	Chain         *chain.StateProvider
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
@@ -232,7 +232,6 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
-// TODO: This should simply expose the queryer method and callers should then call Query
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
