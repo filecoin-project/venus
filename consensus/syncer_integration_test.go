@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
+	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -52,7 +52,7 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
@@ -80,7 +80,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := nth.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	offlineSyncer := NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -186,8 +186,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	blockSource := nth.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	con := NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &FakeElectionMachine{}, &FakeTicketMachine{})
+	syncer := NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
@@ -228,7 +228,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b1Ticket types.Ticket
-	f1b1.ElectionProof, f1b1Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
+	f1b1.ElectionProof, f1b1Ticket = MakeFakeElectionProofForTest(), MakeFakeTicketForTest()
 	f1b1.Tickets = []types.Ticket{f1b1Ticket}
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
@@ -238,7 +238,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f2b1Ticket types.Ticket
-	f2b1.ElectionProof, f2b1Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
+	f2b1.ElectionProof, f2b1Ticket = MakeFakeElectionProofForTest(), MakeFakeTicketForTest()
 	f2b1.Tickets = []types.Ticket{f2b1Ticket}
 	f2b1.Messages = emptyMessagesCid
 	f2b1.MessageReceipts = emptyReceiptsCid
@@ -269,7 +269,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b2aTicket types.Ticket
-	f1b2a.ElectionProof, f1b2aTicket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
+	f1b2a.ElectionProof, f1b2aTicket = MakeFakeElectionProofForTest(), MakeFakeTicketForTest()
 	f1b2a.Tickets = []types.Ticket{f1b2aTicket}
 	f1b2a.Messages = emptyMessagesCid
 	f1b2a.MessageReceipts = emptyReceiptsCid
@@ -280,7 +280,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	fakeChildParams.MinerWorker = minerWorker2
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b2bTicket types.Ticket
-	f1b2b.ElectionProof, f1b2bTicket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
+	f1b2b.ElectionProof, f1b2bTicket = MakeFakeElectionProofForTest(), MakeFakeTicketForTest()
 	require.NoError(t, err)
 	f1b2b.Tickets = []types.Ticket{f1b2bTicket}
 	f1b2b.Messages = emptyMessagesCid
@@ -315,7 +315,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f2b2Ticket types.Ticket
-	f2b2.ElectionProof, f2b2Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
+	f2b2.ElectionProof, f2b2Ticket = MakeFakeElectionProofForTest(), MakeFakeTicketForTest()
 	f2b2.Tickets = []types.Ticket{f2b2Ticket}
 	f2b2.Messages = emptyMessagesCid
 	f2b2.MessageReceipts = emptyReceiptsCid
@@ -357,6 +357,11 @@ func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSe
 	require.True(t, containsTipSet(childTsasSlice, ts))
 }
 
+type HeadAndTipsetGetter interface {
+	GetHead() types.TipSetKey
+	GetTipSet(types.TipSetKey) (types.TipSet, error)
+}
+
 func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
 	require.Equal(t, head, requireHeadTipset(t, chain))
 }
@@ -375,4 +380,10 @@ func requirePutBlocks(_ *testing.T, f *nth.TestFetcher, blocks ...*types.Block) 
 	}
 	f.AddSourceBlocks(blocks...)
 	return types.NewTipSetKey(cids...)
+}
+
+func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
+	headTipSet, err := chain.GetTipSet(chain.GetHead())
+	require.NoError(t, err)
+	return headTipSet
 }

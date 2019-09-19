@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -219,7 +220,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(chain.AncestorRoundsNeeded))
+	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
 	parentTs, err := w.chainReader.GetTipSet(ids)
 	if err != nil {
 		return nil, err

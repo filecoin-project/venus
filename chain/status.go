@@ -11,40 +11,6 @@ import (
 
 var logChainStatus = logging.Logger("chain/status")
 
-// Reporter defines an interface to updating and reporting the status of the blockchain.
-type Reporter interface {
-	UpdateStatus(...StatusUpdates)
-	Status() Status
-}
-
-// StatusReporter implements the Reporter interface.
-type StatusReporter struct {
-	statusMu sync.Mutex
-	status   *Status
-}
-
-// UpdateStatus updates the status heald by StatusReporter.
-func (sr *StatusReporter) UpdateStatus(update ...StatusUpdates) {
-	sr.statusMu.Lock()
-	defer sr.statusMu.Unlock()
-	for _, u := range update {
-		u(sr.status)
-	}
-	logChainStatus.Debugf("syncing status: %s", sr.status.String())
-}
-
-// Status returns a copy of the current status.
-func (sr *StatusReporter) Status() Status {
-	return *sr.status
-}
-
-// NewStatusReporter initializes a new StatusReporter.
-func NewStatusReporter() *StatusReporter {
-	return &StatusReporter{
-		status: newDefaultChainStatus(),
-	}
-}
-
 // Status defines a structure used to represent the state of a chain store and syncer.
 type Status struct {
 	// The heaviest TipSet that has been fully validated.
@@ -98,72 +64,36 @@ func (s Status) String() string {
 // StatusUpdates defines a type for ipdating syncer status.
 type StatusUpdates func(*Status)
 
-//
-// Validation Updates
-//
-func validateHead(u types.TipSetKey) StatusUpdates {
-	return func(s *Status) {
-		s.ValidatedHead = u
-	}
+// Reporter defines an interface to updating and reporting the status of the blockchain.
+type Reporter interface {
+	UpdateStatus(...StatusUpdates)
+	Status() Status
 }
 
-func validateHeight(u uint64) StatusUpdates {
-	return func(s *Status) {
-		s.ValidatedHeadHeight = u
-	}
+// StatusReporter implements the Reporter interface.
+type StatusReporter struct {
+	statusMu sync.Mutex
+	status   *Status
 }
 
-//
-// Syncing Updates
-//
-
-func syncHead(u types.TipSetKey) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingHead = u
+// UpdateStatus updates the status heald by StatusReporter.
+func (sr *StatusReporter) UpdateStatus(update ...StatusUpdates) {
+	sr.statusMu.Lock()
+	defer sr.statusMu.Unlock()
+	for _, u := range update {
+		u(sr.status)
 	}
+	logChainStatus.Debugf("syncing status: %s", sr.status.String())
 }
 
-func syncHeight(u uint64) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingHeight = u
-	}
+// Status returns a copy of the current status.
+func (sr *StatusReporter) Status() Status {
+	return *sr.status
 }
 
-func syncTrusted(u bool) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingTrusted = u
-	}
-}
-
-func syncingStarted(u int64) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingStarted = u
-	}
-}
-
-func syncComplete(u bool) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingComplete = u
-	}
-}
-
-func syncFetchComplete(u bool) StatusUpdates {
-	return func(s *Status) {
-		s.SyncingFetchComplete = u
-	}
-}
-
-//
-// Fetching Updates
-//
-
-func fetchHead(u types.TipSetKey) StatusUpdates {
-	return func(s *Status) {
-		s.FetchingHead = u
-	}
-}
-func fetchHeight(u uint64) StatusUpdates {
-	return func(s *Status) {
-		s.FetchingHeight = u
+// NewStatusReporter initializes a new StatusReporter.
+func NewStatusReporter() *StatusReporter {
+	return &StatusReporter{
+		status: newDefaultChainStatus(),
 	}
 }

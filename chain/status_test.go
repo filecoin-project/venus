@@ -39,8 +39,18 @@ func TestStatus(t *testing.T) {
 		FetchingHead:         t3,
 		FetchingHeight:       789,
 	}
-	sr.UpdateStatus(validateHead(t1), validateHeight(1), syncingStarted(123), syncHead(t2),
-		syncHeight(456), syncTrusted(true), syncComplete(false), syncFetchComplete(true),
-		fetchHead(t3), fetchHeight(789))
+	sr.UpdateStatus(
+		validateHead(t1),
+		validateHeight(1),
+		func(s *Status) { s.SyncingStarted = 123 },
+		func(s *Status) { s.SyncingHead = t2 },
+		func(s *Status) { s.SyncingHeight = 456 },
+		func(s *Status) { s.SyncingTrusted = true },
+		func(s *Status) { s.SyncingComplete = false },
+		func(s *Status) { s.SyncingFetchComplete = true },
+		func(s *Status) { s.FetchingHead = t3 },
+		func(s *Status) { s.FetchingHeight = 789 },
+	)
+
 	assert.Equal(t, expStatus, sr.Status())
 }

@@ -1,9 +1,10 @@
-package chain
+package consensus
 
 import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -56,10 +57,10 @@ type syncerChainReaderWriter interface {
 	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
 	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HasTipSetAndState(ctx context.Context, tsKey types.TipSetKey) bool
-	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
+	PutTipSetAndState(ctx context.Context, tsas *chain.TipSetAndState) error
 	SetHead(ctx context.Context, s types.TipSet) error
 	HasTipSetAndStatesWithParentsAndHeight(pTsKey types.TipSetKey, h uint64) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey types.TipSetKey, h uint64) ([]*TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(pTsKey types.TipSetKey, h uint64) ([]*chain.TipSetAndState, error)
 }
 
 type syncStateEvaluator interface {
@@ -106,16 +107,16 @@ type Syncer struct {
 	// Provides and stores validated tipsets and their state roots.
 	chainStore syncerChainReaderWriter
 	// Provides message collections given cids
-	messageProvider MessageProvider
+	messageProvider chain.MessageProvider
 
 	clock clock.Clock
 
 	// Reporter is used by the syncer to update the current status of the chain.
-	reporter Reporter
+	reporter chain.Reporter
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
+func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m chain.MessageProvider, f net.Fetcher, sr chain.Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
@@ -160,7 +161,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 		return err
 	}
 	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(AncestorRoundsNeeded))
-	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
+	ancestors, err := chain.GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err
 	}
@@ -187,7 +188,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 	if err != nil {
 		return err
 	}
-	err = syncer.chainStore.PutTipSetAndState(ctx, &TipSetAndState{
+	err = syncer.chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          next,
 		TipSetStateRoot: root,
 	})
@@ -237,9 +238,9 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 }
 
 func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead types.TipSet) {
-	curHeadIter := IterAncestors(ctx, syncer.chainStore, curHead)
-	newHeadIter := IterAncestors(ctx, syncer.chainStore, newHead)
-	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
+	curHeadIter := chain.IterAncestors(ctx, syncer.chainStore, curHead)
+	newHeadIter := chain.IterAncestors(ctx, syncer.chainStore, newHead)
+	commonAncestor, err := chain.FindCommonAncestor(curHeadIter, newHeadIter)
 	if err != nil {
 		// Should never get here because reorgs should always have a
 		// common ancestor..
@@ -361,7 +362,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	}
 
 	syncer.reporter.UpdateStatus(syncFetchComplete(false))
-	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
+	tipSets, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Peer, func(t types.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
@@ -380,9 +381,9 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		return err
 	}
 	// Fetcher returns chain in Traversal order, reverse it to height order
-	Reverse(chain)
+	chain.Reverse(tipSets)
 
-	parentCids, err := chain[0].Parents()
+	parentCids, err := tipSets[0].Parents()
 	if err != nil {
 		return err
 	}
@@ -393,7 +394,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
-	for i, ts := range chain {
+	for i, ts := range tipSets {
 		// TODO: this "i==0" leaks EC specifics into syncer abstraction
 		// for the sake of efficiency, consider plugging up this leak.
 		var wts types.TipSet
@@ -416,7 +417,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 		// If the chan has length == 1, we can avoid processing the non-widened tipset
 		// as a performance optimization, because this tipset cannot be heavier
 		// than the widened first tipset.
-		if !wts.Defined() || len(chain) > 1 {
+		if !wts.Defined() || len(tipSets) > 1 {
 			err = syncer.syncOne(ctx, parent, ts)
 			if err != nil {
 				// While `syncOne` can indeed fail for reasons other than consensus,
@@ -424,12 +425,12 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 				// have access to the chain. If syncOne fails for non-consensus reasons,
 				// there is no assumption that the running node's data is valid at all,
 				// so we don't really lose anything with this simplification.
-				syncer.badTipSets.AddChain(chain[i:])
+				syncer.badTipSets.AddChain(tipSets[i:])
 				return err
 			}
 		}
 		if i%500 == 0 {
-			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(tipSets), ci.Head.String())
 		}
 		parent = ts
 	}
@@ -437,7 +438,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 }
 
 // Status returns the current chain status.
-func (syncer *Syncer) Status() Status {
+func (syncer *Syncer) Status() chain.Status {
 	return syncer.reporter.Status()
 }
 
@@ -446,4 +447,59 @@ func (syncer *Syncer) Status() Status {
 func ExceedsUntrustedChainLength(curHeight, newHeight uint64) bool {
 	maxChainLength := curHeight + uint64(UntrustedChainHeightLimit)
 	return newHeight > maxChainLength
+}
+
+//
+// Fetching Updates
+//
+
+func fetchHead(u types.TipSetKey) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.FetchingHead = u
+	}
+}
+func fetchHeight(u uint64) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.FetchingHeight = u
+	}
+}
+
+//
+// Syncing Updates
+//
+
+func syncHead(u types.TipSetKey) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingHead = u
+	}
+}
+
+func syncHeight(u uint64) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingHeight = u
+	}
+}
+
+func syncTrusted(u bool) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingTrusted = u
+	}
+}
+
+func syncingStarted(u int64) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingStarted = u
+	}
+}
+
+func syncComplete(u bool) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingComplete = u
+	}
+}
+
+func syncFetchComplete(u bool) chain.StatusUpdates {
+	return func(s *chain.Status) {
+		s.SyncingFetchComplete = u
+	}
 }

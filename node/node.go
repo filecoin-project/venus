@@ -929,7 +929,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 
 // getAncestors is the default GetAncestors function for the mining worker.
 func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
-	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(chain.AncestorRoundsNeeded))
+	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
 	return chain.GetRecentAncestors(ctx, ts, node.ChainReader, ancestorHeight)
 }
 

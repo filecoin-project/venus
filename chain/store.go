@@ -385,3 +385,18 @@ func (store *Store) GenesisCid() cid.Cid {
 func (store *Store) Stop() {
 	store.headEvents.Shutdown()
 }
+
+//
+// Validation Updates
+//
+func validateHead(u types.TipSetKey) StatusUpdates {
+	return func(s *Status) {
+		s.ValidatedHead = u
+	}
+}
+
+func validateHeight(u uint64) StatusUpdates {
+	return func(s *Status) {
+		s.ValidatedHeadHeight = u
+	}
+}

@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	. "github.com/filecoin-project/go-filecoin/consensus"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -19,7 +20,7 @@ func TestIsReorgFork(t *testing.T) {
 
 	// main chain has 3 blocks past CA, fork has 1
 	old, new, common := getForkOldNewCommon(ctx, t, builder, 2, 3, 1)
-	assert.True(t, chain.IsReorg(old, new, common))
+	assert.True(t, IsReorg(old, new, common))
 }
 func TestIsReorgPrefix(t *testing.T) {
 	tf.UnitTest(t)
@@ -27,7 +28,7 @@ func TestIsReorgPrefix(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	// Old head is a direct ancestor of new head
 	old, new, common := getForkOldNewCommon(ctx, t, builder, 2, 3, 0)
-	assert.False(t, chain.IsReorg(old, new, common))
+	assert.False(t, IsReorg(old, new, common))
 }
 
 func TestIsReorgSubset(t *testing.T) {
@@ -35,7 +36,7 @@ func TestIsReorgSubset(t *testing.T) {
 	ctx := context.Background()
 	builder := chain.NewBuilder(t, address.Undef)
 	old, new, common := getSubsetOldNewCommon(ctx, t, builder, 2)
-	assert.False(t, chain.IsReorg(old, new, common))
+	assert.False(t, IsReorg(old, new, common))
 }
 
 func TestReorgDiffFork(t *testing.T) {
@@ -45,7 +46,7 @@ func TestReorgDiffFork(t *testing.T) {
 	// main chain has 11 blocks past CA, fork has 10
 	old, new, common := getForkOldNewCommon(ctx, t, builder, 10, 11, 10)
 
-	dropped, added, err := chain.ReorgDiff(old, new, common)
+	dropped, added, err := ReorgDiff(old, new, common)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(10), dropped)
 	assert.Equal(t, uint64(11), added)
@@ -57,7 +58,7 @@ func TestReorgDiffSubset(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	old, new, common := getSubsetOldNewCommon(ctx, t, builder, 10)
 
-	dropped, added, err := chain.ReorgDiff(old, new, common)
+	dropped, added, err := ReorgDiff(old, new, common)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), dropped)
 	assert.Equal(t, uint64(1), added)

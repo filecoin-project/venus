@@ -47,17 +47,6 @@ func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey type
 	return tsasSlice
 }
 
-type HeadAndTipsetGetter interface {
-	GetHead() types.TipSetKey
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-}
-
-func requireHeadTipset(t *testing.T, chain HeadAndTipsetGetter) types.TipSet {
-	headTipSet, err := chain.GetTipSet(chain.GetHead())
-	require.NoError(t, err)
-	return headTipSet
-}
-
 func requirePutBlocksToCborStore(t *testing.T, cst *hamt.CborIpldStore, blocks ...*types.Block) {
 	for _, block := range blocks {
 		_, err := cst.Put(context.Background(), block)

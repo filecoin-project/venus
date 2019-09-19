@@ -1,4 +1,4 @@
-package chain
+package consensus
 
 import (
 	"github.com/pkg/errors"

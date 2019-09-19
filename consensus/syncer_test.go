@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	. "github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -192,18 +193,18 @@ func TestFarFutureTipsets(t *testing.T) {
 	t.Run("accepts when syncing", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
+		farHead := builder.AppendManyOn(UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+		syncer := NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), true))
 	})
 
 	t.Run("rejects when caught up", func(t *testing.T) {
 		builder, store, _ := setup(ctx, t)
 		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
+		farHead := builder.AppendManyOn(UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+		syncer := NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 		err := syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), false)
 		assert.Error(t, err)
 	})
@@ -221,7 +222,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	newSyncer := NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), head.Key(), heightFromTip(t, head)), true))
 }
 
@@ -456,7 +457,7 @@ func TestSyncerStatus(t *testing.T) {
 
 // Initializes a chain builder, store and syncer.
 // The chain builder has a single genesis block, which is set as the head of the store.
-func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *chain.Syncer) {
+func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
@@ -471,7 +472,7 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, sr, th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := NewSyncer(eval, store, builder, builder, sr, th.NewFakeSystemClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }
