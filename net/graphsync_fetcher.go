@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -49,11 +48,6 @@ type GraphExchange interface {
 	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
 }
 
-type graphsyncFallbackPeerTracker interface {
-	List() []*types.ChainInfo
-	Self() peer.ID
-}
-
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
@@ -61,20 +55,20 @@ type GraphSyncFetcher struct {
 	validator   consensus.SyntaxValidator
 	store       bstore.Blockstore
 	ssb         selectorbuilder.SelectorSpecBuilder
-	peerTracker graphsyncFallbackPeerTracker
+	requestPeerFinderFactory RequestPeerFinderFactory
 	systemClock clock.Clock
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	bv consensus.SyntaxValidator, systemClock clock.Clock, rpff RequestPeerFinderFactory) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		store:       blockstore,
 		validator:   bv,
 		exchange:    exchange,
 		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
-		peerTracker: pt,
+		requestPeerFinderFactory: rpff,
 		systemClock: systemClock,
 	}
 	return gsf
@@ -115,8 +109,8 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	// are not already connected to so we usually ignore this value.
 	// However if the originator is our own peer ID (i.e. this node mined
 	// the block) then we need to fetch from ourselves to retrieve it
-	fetchFromSelf := originatingPeer == gsf.peerTracker.Self()
-	rpf, err := newRequestPeerFinder(gsf.peerTracker, fetchFromSelf)
+
+	rpf, err := gsf.requestPeerFinderFactory(originatingPeer)
 	if err != nil {
 		return nil, err
 	}
@@ -131,19 +125,18 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	return gsf.fetchRemainingTipsets(ctx, startingTipset, rpf, done)
 }
 
-func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.TipSetKey, rpf *requestPeerFinder) (types.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.TipSetKey, rpf RequestPeerFinder) (types.TipSet, error) {
 	blocksToFetch := key.ToSlice()
 	for {
-		peer := rpf.CurrentPeer()
-		logGraphsyncFetcher.Infof("fetching initial tipset %s from peer %s", key, peer)
-		err := gsf.fetchBlocks(ctx, blocksToFetch, peer)
-		if err != nil {
-			// A likely case is the peer doesn't have the tipset. When graphsync provides
-			// this status we should quiet this log.
-			logGraphsyncFetcher.Infof("request failed: %s", err)
+		peers := rpf.CurrentPeers()
+		logGraphsyncFetcher.Infof("fetching initial tipset %s from peers %s", key, peers)
+		fetchOp := func(ctx context.Context, p peer.ID) error {
+			return gsf.fetchBlocks(ctx, blocksToFetch, p)
 		}
+		gsf.fetchInParallel(ctx, fetchOp, peers)
 
 		var verifiedTip types.TipSet
+		var err error
 		verifiedTip, blocksToFetch, err = gsf.loadAndVerify(ctx, key)
 		if err != nil {
 			return types.UndefTipSet, err
@@ -155,14 +148,14 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.Tip
 		logGraphsyncFetcher.Infof("incomplete fetch for initial tipset %s, trying new peer", key)
 		// Some of the blocks may have been fetched, but avoid tricksy optimization here and just
 		// request the whole bunch again. Graphsync internally will avoid redundant network requests.
-		err = rpf.FindNextPeer()
+		err = rpf.FindNextPeers()
 		if err != nil {
 			return types.UndefTipSet, errors.Wrapf(err, "fetching tipset: %s", key)
 		}
 	}
 }
 
-func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf *requestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf RequestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	out := []types.TipSet{startingTipset}
 	isDone, err := done(startingTipset)
 	if err != nil {
@@ -177,14 +170,12 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 		// we fetch tipsets anchored from any block in the last (i.e. highest) tipset and
 		// recursively fetching sets of parents.
 		childBlock := anchor.At(0)
-		peer := rpf.CurrentPeer()
-		logGraphsyncFetcher.Infof("fetching chain from height %d, block %s, peer %s, %d levels", childBlock.Height, childBlock.Cid(), peer, recursionDepth)
-		err := gsf.fetchBlocksRecursively(ctx, childBlock.Cid(), peer, recursionDepth)
-		if err != nil {
-			// something went wrong in a graphsync request, but we want to keep trying other peers, so
-			// just log error
-			logGraphsyncFetcher.Infof("request failed, trying another peer: %s", err)
+		peers := rpf.CurrentPeers()
+		logGraphsyncFetcher.Infof("fetching chain from height %d, block %s, peers %s, %d levels", childBlock.Height, childBlock.Cid(), peers, recursionDepth)
+		fetchOp := func(ctx context.Context, p peer.ID) error {
+			return gsf.fetchBlocksRecursively(ctx, childBlock.Cid(), p, recursionDepth)
 		}
+		gsf.fetchInParallel(ctx, fetchOp, peers)
 		var incomplete []cid.Cid
 		for i := 0; !isDone && i < recursionDepth; i++ {
 			tsKey, err := anchor.Parents()
@@ -206,7 +197,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 				anchor = verifiedTip
 			} else {
 				logGraphsyncFetcher.Infof("incomplete fetch for tipset %s, trying new peer", tsKey)
-				err := rpf.FindNextPeer()
+				err := rpf.FindNextPeers()
 				if err != nil {
 					return nil, errors.Wrapf(err, "fetching tipset: %s", tsKey)
 				}
@@ -218,6 +209,31 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 		}
 	}
 	return out, nil
+}
+
+type fetchOpFunc func(ctx context.Context, p peer.ID) error
+
+// fetchInParallel performs the given fetch operation specified by fetchOp to
+// multiple peers at once
+func (gsf *GraphSyncFetcher) fetchInParallel(ctx context.Context, fetchOp fetchOpFunc, targetPeers []peer.ID) {
+	var wg sync.WaitGroup
+	parallelCtx, parallelCancel := context.WithCancel(ctx)
+	defer parallelCancel()
+	for _, p := range targetPeers {
+		wg.Add(1)
+		go func(p peer.ID) {
+			defer wg.Done()
+			err := fetchOp(parallelCtx, p)
+			if err == nil {
+				parallelCancel()
+			} else {
+				// A likely case is the peer doesn't have the tipset. When graphsync provides
+				// this status we should quiet this log.
+				logGraphsyncFetcher.Infof("request failed: %s", err)
+			}
+		}(p)
+	}
+	wg.Wait()
 }
 
 // fetchBlocks requests a single set of cids as individual blocks, fetching
@@ -423,50 +439,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 	}
 
 	return nil
-}
-
-type requestPeerFinder struct {
-	peerTracker graphsyncFallbackPeerTracker
-	currentPeer peer.ID
-	triedPeers  map[peer.ID]struct{}
-}
-
-func newRequestPeerFinder(peerTracker graphsyncFallbackPeerTracker, fetchFromSelf bool) (*requestPeerFinder, error) {
-	pri := &requestPeerFinder{
-		peerTracker: peerTracker,
-		triedPeers:  make(map[peer.ID]struct{}),
-	}
-
-	// If the new cid triggering this request came from ourselves then
-	// the first peer to request from should be ourselves.
-	if fetchFromSelf {
-		pri.triedPeers[peerTracker.Self()] = struct{}{}
-		pri.currentPeer = peerTracker.Self()
-		return pri, nil
-	}
-
-	// Get a peer ID from the peer tracker
-	err := pri.FindNextPeer()
-	if err != nil {
-		return nil, err
-	}
-	return pri, nil
-}
-
-func (pri *requestPeerFinder) CurrentPeer() peer.ID {
-	return pri.currentPeer
-}
-
-func (pri *requestPeerFinder) FindNextPeer() error {
-	chains := pri.peerTracker.List()
-	for _, chain := range chains {
-		if _, tried := pri.triedPeers[chain.Peer]; !tried {
-			pri.triedPeers[chain.Peer] = struct{}{}
-			pri.currentPeer = chain.Peer
-			return nil
-		}
-	}
-	return fmt.Errorf("Unable to find any untried peers")
 }
 
 func sanitizeBlocks(ctx context.Context, unsanitized []blocks.Block, validator consensus.BlockSyntaxValidator) ([]*types.Block, error) {
