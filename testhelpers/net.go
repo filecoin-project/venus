@@ -203,3 +203,31 @@ func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.B
 	}
 	return ret, nil
 }
+
+// FakePeerTracker implements the RequestPeerTracker interface with
+// stubbed values
+type FakePeerTracker struct {
+	peers []*types.ChainInfo
+	self  peer.ID
+}
+
+// NewFakePeerTracker returns a new fake peer tracker with the given self and chain infos
+func NewFakePeerTracker(self peer.ID, cis ...*types.ChainInfo) *FakePeerTracker {
+	return &FakePeerTracker{cis, self}
+}
+
+// List returns a list of ChainInfos about tracked peers
+func (fpt *FakePeerTracker) List() []*types.ChainInfo {
+	return fpt.peers
+}
+
+// SetList overwrites the existing ChainInfos so that List returns
+// a different value
+func (fpt *FakePeerTracker) SetList(cis ...*types.ChainInfo) {
+	fpt.peers = cis
+}
+
+// Self returns the peer tracker's owner ID
+func (fpt *FakePeerTracker) Self() peer.ID {
+	return fpt.self
+}
