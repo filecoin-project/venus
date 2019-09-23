@@ -12,7 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/state"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -65,13 +64,12 @@ func TestIsElectionWinner(t *testing.T) {
 	ctx := context.Background()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
-	var st state.Tree
 
 	t.Run("IsElectionWinner performs as expected on cases", func(t *testing.T) {
 		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
 			ptv := consensus.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
-			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv, st, types.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
+			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv, types.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
@@ -79,7 +77,7 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
 		ptv1 := NewFailingTestPowerTableView(types.NewBytesAmount(cases[0].myPower), types.NewBytesAmount(cases[0].totalPower))
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv1, st, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv1, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
 
@@ -87,7 +85,7 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
 		ptv2 := NewFailingMinerTestPowerTableView(types.NewBytesAmount(cases[0].myPower), types.NewBytesAmount(cases[0].totalPower))
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv2, st, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv2, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 	})

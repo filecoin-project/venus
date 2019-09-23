@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -24,22 +23,22 @@ type TestView struct{}
 var _ consensus.PowerTableView = &TestView{}
 
 // Total always returns 1.
-func (tv *TestView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+func (tv *TestView) Total(ctx context.Context) (*types.BytesAmount, error) {
 	return types.NewBytesAmount(1), nil
 }
 
 // Miner always returns 1.
-func (tv *TestView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+func (tv *TestView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
 	return types.NewBytesAmount(1), nil
 }
 
 // HasPower always returns true.
-func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+func (tv *TestView) HasPower(ctx context.Context, mAddr address.Address) bool {
 	return true
 }
 
 // WorkerAddr just returns the miner address.
-func (tv *TestView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+func (tv *TestView) WorkerAddr(_ context.Context, mAddr address.Address) (address.Address, error) {
 	return mAddr, nil
 }
 

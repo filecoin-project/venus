@@ -52,7 +52,7 @@ type API struct {
 	expected      consensus.Protocol
 	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
-	chainState    *consensus.ChainState
+	chainState    *consensus.ActorState
 	msgWaiter     *msg.Waiter
 	network       *net.Network
 	outbox        *message.Outbox
@@ -65,7 +65,7 @@ type API struct {
 type APIDeps struct {
 	Bitswap       exchange.Interface
 	Chain         *cst.ChainStateReadWriter
-	ChnState      *consensus.ChainState
+	ChnState      *consensus.ActorState
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
@@ -240,7 +240,6 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
-// TODO: This should simply expose the queryer method and callers should then call Query
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
@@ -250,6 +249,11 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 		return [][]byte{}, err
 	}
 	return queryer.Query(ctx, optFrom, to, method, params...)
+}
+
+// Queryer returns a interface to the chain state a a particular tipset
+func (api *API) Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateQueryer, error) {
+	return api.chainState.Queryer(ctx, baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the

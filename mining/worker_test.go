@@ -87,7 +87,6 @@ func Test_Mine(t *testing.T) {
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
-			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -118,7 +117,6 @@ func Test_Mine(t *testing.T) {
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
-			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -152,7 +150,6 @@ func Test_Mine(t *testing.T) {
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
-			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -299,7 +296,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     th.NewTestProcessor(),
-		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -356,7 +352,6 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
-		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -464,7 +459,6 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
-		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -527,7 +521,6 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
-		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -580,7 +573,6 @@ func TestGenerateError(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
-		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),

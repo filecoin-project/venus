@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/vm"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,9 @@ func TestTotal(t *testing.T) {
 	numCommittedSectors := uint64(19)
 	bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
+	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
+
+	actual, err := consensus.NewMarketView(queryer).Total(ctx)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
@@ -44,7 +47,9 @@ func TestMiner(t *testing.T) {
 	numCommittedSectors := uint64(12)
 	bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
+	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
+
+	actual, err := consensus.NewMarketView(queryer).Miner(ctx, addr)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)

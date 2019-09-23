@@ -3,13 +3,11 @@ package consensus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -33,28 +31,73 @@ type TestPowerTableView struct {
 	minerToWorker          map[address.Address]address.Address
 }
 
+// NewTestActorState provides a queryer that responds to power table view queries wih the given parameters
+type TestActorState struct {
+	minerPower    *types.BytesAmount
+	totalPower    *types.BytesAmount
+	minerToWorker map[address.Address]address.Address
+}
+
+func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestActorState {
+	return &TestActorState{
+		minerPower:    minerPower,
+		totalPower:    totalPower,
+		minerToWorker: minerToWorker,
+	}
+}
+
+func (t *TestActorState) stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
+	return &TestQuerier{
+		minerPower:    t.minerPower,
+		totalPower:    t.totalPower,
+		minerToWorker: t.minerToWorker,
+	}
+}
+
+type TestQuerier struct {
+	minerPower    *types.BytesAmount
+	totalPower    *types.BytesAmount
+	minerToWorker map[address.Address]address.Address
+}
+
+func (tq *TestQuerier) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getTotalStorage" {
+		return [][]byte{tq.totalPower.Bytes()}, nil
+	} else if method == "getPower" {
+		// always return 1
+		return [][]byte{tq.minerPower.Bytes()}, nil
+	} else if method == "getWorker" {
+		if tq.minerToWorker != nil {
+			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
+		}
+		// just return the miner address
+		return [][]byte{to.Bytes()}, nil
+	}
+	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
+}
+
 // NewTestPowerTableView creates a test power view with the given total power
 func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestPowerTableView {
 	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower, minerToWorker: minerToWorker}
 }
 
 // Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
+func (tv *TestPowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
 	return tv.totalPower, nil
 }
 
 // Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
+func (tv *TestPowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
 	return tv.minerPower, nil
 }
 
 // HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
+func (tv *TestPowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
 	return true
 }
 
 // WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+func (tv *TestPowerTableView) WorkerAddr(_ context.Context, mAddr address.Address) (address.Address, error) {
 	wAddr, ok := tv.minerToWorker[mAddr]
 	if !ok {
 		return address.Undef, errors.New("no such miner address in power table")
@@ -106,7 +149,7 @@ func (fem *FakeElectionMachine) RunElection(ticket types.Ticket, candidateAddr a
 }
 
 // IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -140,7 +183,7 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket types.Ticket, si
 type FailingElectionValidator struct{}
 
 // IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
@@ -180,10 +223,6 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 	// TODO #3078 should help with this
 	mds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(mds)
-	offl := offline.Exchange(bs)
-	blkserv := blockservice.New(bs, offl)
-	cst := &hamt.CborIpldStore{Blocks: blkserv}
-	st := state.NewEmptyStateTree(cst)
 
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
@@ -202,7 +241,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 		proof, err := em.RunElection(curr, wAddr, signer)
 		require.NoError(t, err)
 
-		wins, err := em.IsElectionWinner(ctx, bs, ptv, st, curr, proof, wAddr, wAddr)
+		wins, err := em.IsElectionWinner(ctx, bs, ptv, curr, proof, wAddr, wAddr)
 		require.NoError(t, err)
 		if wins {
 			// We have enough tickets, we're done

@@ -88,15 +88,16 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	IsElectionWinner(context.Context, blockstore.Blockstore, PowerTableView, state.Tree, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+	IsElectionWinner(context.Context, blockstore.Blockstore, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+}
+
+// ActorState produces queryers to examine actor state
+type QueryGenerator interface {
+	stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer
 }
 
 // Expected implements expected consensus.
 type Expected struct {
-	// PwrTableView provides miner and total power for the EC chain weight
-	// computation.
-	PwrTableView PowerTableView
-
 	// validator provides a set of methods used to validate a block.
 	BlockValidator
 
@@ -119,6 +120,9 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
+	// actorState provides produces queryers
+	actorState QueryGenerator
+
 	blockTime time.Duration
 }
 
@@ -126,13 +130,13 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, pt PowerTableView, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, actorState QueryGenerator, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
 		bstore:            bs,
 		processor:         processor,
-		PwrTableView:      pt,
+		actorState:        actorState,
 		genesisCid:        gCid,
 		BlockValidator:    v,
 		ElectionValidator: ev,
@@ -163,8 +167,11 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 	if err != nil {
 		return uint64(0), err
 	}
+
+	powerTableView := c.createPowerTableView(pSt)
+
 	// Each block in the tipset adds ECV + ECPrm * miner_power to parent weight.
-	totalBytes, err := c.PwrTableView.Total(ctx, pSt, c.bstore)
+	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return uint64(0), err
 	}
@@ -172,7 +179,7 @@ func (c *Expected) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) 
 	floatECV := new(big.Float).SetInt64(int64(ECV))
 	floatECPrM := new(big.Float).SetInt64(int64(ECPrM))
 	for _, blk := range ts.ToSlice() {
-		minerBytes, err := c.PwrTableView.Miner(ctx, pSt, c.bstore, blk.Miner)
+		minerBytes, err := powerTableView.Miner(ctx, blk.Miner)
 		if err != nil {
 			return uint64(0), err
 		}
@@ -305,10 +312,13 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent height")
 	}
+
+	pwrTableView := c.createPowerTableView(st)
+
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 
-		workerAddr, err := c.PwrTableView.WorkerAddr(ctx, st, c.bstore, blk.Miner)
+		workerAddr, err := pwrTableView.WorkerAddr(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read worker address of block miner")
 		}
@@ -319,7 +329,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 
 		// Validate ElectionProof
 		numTickets := len(blk.Tickets)
-		result, err := c.IsElectionWinner(ctx, c.bstore, c.PwrTableView, st, blk.Tickets[numTickets-1], blk.ElectionProof, workerAddr, blk.Miner)
+		result, err := c.IsElectionWinner(ctx, c.bstore, pwrTableView, blk.Tickets[numTickets-1], blk.ElectionProof, workerAddr, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed checking election proof")
 		}
@@ -398,6 +408,11 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		return nil, errors.Wrap(err, "error validating tipset")
 	}
 	return st, nil
+}
+
+func (c *Expected) createPowerTableView(st state.Tree) *MarketView {
+	queryer := c.actorState.stateTreeQueryer(st, nil)
+	return NewMarketView(queryer)
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {

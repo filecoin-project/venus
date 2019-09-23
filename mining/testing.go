@@ -6,11 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/mock"
@@ -112,39 +107,6 @@ func ReceiveOutCh(ch <-chan Output) int {
 	default:
 		return ChannelEmpty
 	}
-}
-
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has 1/n power.
-type TestPowerTableView struct {
-	n uint64
-}
-
-var _ consensus.PowerTableView = &TestPowerTableView{}
-
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(n uint64) *TestPowerTableView {
-	return &TestPowerTableView{n: n}
-}
-
-// Total always returns n.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(tv.n), nil
-}
-
-// Miner always returns 1.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(uint64(1)), nil
-}
-
-// WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
 }
 
 // NthTicket returns a ticket with a vdf result equal to a byte slice wrapping

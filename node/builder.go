@@ -168,7 +168,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, &ipldCborStore)
-	powerTable := &consensus.MarketView{}
+	actorState := consensus.NewActorState(chainStore, &ipldCborStore, bs)
 
 	// create protocol upgrade table
 	network, err := networkNameFromGenesis(ctx, chainStore, bs)
@@ -240,7 +240,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up consensus
-	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
+	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, actorState, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
@@ -304,7 +304,6 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 			ChainSynced:  moresync.NewLatch(1),
 			MessageStore: messageStore,
 			Syncer:       chainSyncer,
-			PowerTable:   powerTable,
 		},
 	}
 
@@ -318,7 +317,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		Expected:      nodeConsensus,
 		MsgPool:       msgPool,
 		MsgPreviewer:  msg.NewPreviewer(chainStore, &ipldCborStore, bs),
-		ChnState:      consensus.NewChainState(chainStore, &ipldCborStore, bs),
+		ChnState:      actorState,
 		MsgWaiter:     msg.NewWaiter(chainStore, messageStore, bs, &ipldCborStore),
 		Network:       net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService)),
 		Outbox:        outbox,

@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -41,7 +40,7 @@ func (em ElectionMachine) RunElection(ticket types.Ticket, candidateAddr address
 
 // IsElectionWinner verifies that an election proof was validly generated and
 // is a winner.  TODO #3418 improve state management to clean up interface.
-func (em ElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signingAddr, minerAddr address.Address) (bool, error) {
+func (em ElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signingAddr, minerAddr address.Address) (bool, error) {
 	// Verify election proof is valid
 	vrfPi := types.Signature(electionProof)
 	if valid := types.IsValidSignature(ticket.VDFResult, signingAddr, vrfPi); !valid {
@@ -49,12 +48,12 @@ func (em ElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Bl
 	}
 
 	// Verify election proof is a winner
-	totalPower, err := ptv.Total(ctx, st, bs)
+	totalPower, err := ptv.Total(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "Couldn't get totalPower")
 	}
 
-	minerPower, err := ptv.Miner(ctx, st, bs, minerAddr)
+	minerPower, err := ptv.Miner(ctx, minerAddr)
 	if err != nil {
 		return false, errors.Wrap(err, "Couldn't get minerPower")
 	}

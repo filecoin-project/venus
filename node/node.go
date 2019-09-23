@@ -790,7 +790,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		MessageSource: node.Messaging.Inbox.Pool(),
 		MessageStore:  node.Chain.MessageStore,
 		Processor:     processor,
-		PowerTable:    node.Chain.PowerTable,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.Clock,
 	}), nil

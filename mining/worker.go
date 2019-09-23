@@ -72,11 +72,12 @@ type MessageApplier interface {
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
+	Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateQueryer, error)
 }
 
 type electionUtil interface {
 	RunElection(types.Ticket, address.Address, types.Signer) (types.VRFPi, error)
-	IsElectionWinner(context.Context, blockstore.Blockstore, consensus.PowerTableView, state.Tree, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+	IsElectionWinner(context.Context, blockstore.Blockstore, consensus.PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
 // ticketGenerator creates and finalizes tickets.
@@ -104,7 +105,6 @@ type DefaultWorker struct {
 	messageSource MessageSource
 	processor     MessageApplier
 	messageStore  chain.MessageWriter // nolint: structcheck
-	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
 	clock         clock.Clock
 }
@@ -127,7 +127,6 @@ type WorkerParameters struct {
 	// core filecoin things
 	MessageSource MessageSource
 	Processor     MessageApplier
-	PowerTable    consensus.PowerTableView
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
 	Clock         clock.Clock
@@ -143,7 +142,6 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		messageSource:  parameters.MessageSource,
 		messageStore:   parameters.MessageStore,
 		processor:      parameters.Processor,
-		powerTable:     parameters.PowerTable,
 		blockstore:     parameters.Blockstore,
 		minerAddr:      parameters.MinerAddr,
 		minerOwnerAddr: parameters.MinerOwnerAddr,
@@ -234,13 +232,13 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 		outCh <- Output{Err: err}
 		return
 	}
-	st, err := w.getStateTree(ctx, base)
+	powerTable, err := w.getPowerTable(ctx, base.Key())
 	if err != nil {
-		log.Errorf("Worker.Mine couldn't get state tree for tipset: %s", err.Error())
+		log.Errorf("Worker.Mine couldn't get queryer for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
 		return
 	}
-	weHaveAWinner, err := w.election.IsElectionWinner(ctx, w.blockstore, w.powerTable, st, nextTicket, electionProof, workerAddr, w.minerAddr)
+	weHaveAWinner, err := w.election.IsElectionWinner(ctx, w.blockstore, powerTable, nextTicket, electionProof, workerAddr, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}
@@ -260,4 +258,12 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	}
 
 	return
+}
+
+func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey types.TipSetKey) (*consensus.MarketView, error) {
+	queryer, err := w.api.Queryer(ctx, baseKey)
+	if err != nil {
+		return nil, err
+	}
+	return consensus.NewMarketView(queryer), nil
 }

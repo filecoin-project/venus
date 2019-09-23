@@ -47,12 +47,12 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	powerTableView := &TestView{}
+	actorState := consensus.NewActorState(nil, cst, bs)
 	con := consensus.NewExpected(cst,
 		bs,
 		NewTestProcessor(),
 		NewFakeBlockValidator(),
-		powerTableView,
+		actorState,
 		params.GenesisCid,
 		BlockTimeTest,
 		consensus.ElectionMachine{},

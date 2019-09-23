@@ -3,9 +3,11 @@ package testhelpers
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -14,13 +16,28 @@ const BlockTimeTest = time.Second
 
 // TestWorkerPorcelainAPI implements the WorkerPorcelainAPI>
 type TestWorkerPorcelainAPI struct {
-	blockTime  time.Duration
-	workerAddr address.Address
+	blockTime     time.Duration
+	workerAddr    address.Address
+	totalPower    uint64
+	minerToWorker map[address.Address]address.Address
 }
 
 // NewDefaultTestWorkerPorcelainAPI returns a TestWorkerPorcelainAPI.
 func NewDefaultTestWorkerPorcelainAPI(signer address.Address) *TestWorkerPorcelainAPI {
-	return &TestWorkerPorcelainAPI{blockTime: BlockTimeTest, workerAddr: signer}
+	return &TestWorkerPorcelainAPI{
+		blockTime:  BlockTimeTest,
+		workerAddr: signer,
+		totalPower: 1,
+	}
+}
+
+func NewTestWorkerPorcelainAPI(signer address.Address, totalPower uint64, minerToWorker map[address.Address]address.Address) *TestWorkerPorcelainAPI {
+	return &TestWorkerPorcelainAPI{
+		blockTime:     BlockTimeTest,
+		workerAddr:    signer,
+		totalPower:    totalPower,
+		minerToWorker: minerToWorker,
+	}
 }
 
 // BlockTime returns the blocktime TestWorkerPorcelainAPI is configured with.
@@ -31,6 +48,35 @@ func (t *TestWorkerPorcelainAPI) BlockTime() time.Duration {
 // MinerGetWorkerAddress returns the worker address set in TestWorkerPorcelainAPI
 func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
 	return t.workerAddr, nil
+}
+
+// Queryer returns a queryer object for the given tipset
+func (t *TestWorkerPorcelainAPI) Queryer(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateQueryer, error) {
+	return &TestQuerier{
+		totalPower:    t.totalPower,
+		minerToWorker: t.minerToWorker,
+	}, nil
+}
+
+type TestQuerier struct {
+	totalPower    uint64
+	minerToWorker map[address.Address]address.Address
+}
+
+func (tq *TestQuerier) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getTotalStorage" {
+		return [][]byte{types.NewBytesAmount(tq.totalPower).Bytes()}, nil
+	} else if method == "getPower" {
+		// always return 1
+		return [][]byte{types.NewBytesAmount(1).Bytes()}, nil
+	} else if method == "getWorker" {
+		if tq.minerToWorker != nil {
+			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
+		}
+		// just return the miner address
+		return [][]byte{to.Bytes()}, nil
+	}
+	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
 }
 
 // MakeCommitment creates a random commitment.

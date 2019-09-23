@@ -71,8 +71,10 @@ func TestMineOnce10Null(t *testing.T) {
 	}
 	messages := chain.NewMessageStore(cst)
 
+	api := th.NewTestWorkerPorcelainAPI(addr, 10, minerToWorker)
+
 	worker := NewDefaultWorker(WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(addr),
+		API: api,
 
 		MinerAddr:      addr,
 		MinerOwnerAddr: addr,
@@ -86,7 +88,6 @@ func TestMineOnce10Null(t *testing.T) {
 
 		MessageSource: pool,
 		Processor:     th.NewTestProcessor(),
-		PowerTable:    consensus.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(10), minerToWorker),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         clock.NewSystemClock(),
