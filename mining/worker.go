@@ -77,7 +77,7 @@ type workerPorcelainAPI interface {
 
 type electionUtil interface {
 	RunElection(types.Ticket, address.Address, types.Signer) (types.VRFPi, error)
-	IsElectionWinner(context.Context, blockstore.Blockstore, consensus.PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+	IsElectionWinner(context.Context, consensus.PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
 // ticketGenerator creates and finalizes tickets.
@@ -238,7 +238,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 		outCh <- Output{Err: err}
 		return
 	}
-	weHaveAWinner, err := w.election.IsElectionWinner(ctx, w.blockstore, powerTable, nextTicket, electionProof, workerAddr, w.minerAddr)
+	weHaveAWinner, err := w.election.IsElectionWinner(ctx, powerTable, nextTicket, electionProof, workerAddr, w.minerAddr)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}

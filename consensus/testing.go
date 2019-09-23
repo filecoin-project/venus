@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -126,7 +124,7 @@ func (fem *FakeElectionMachine) RunElection(ticket types.Ticket, candidateAddr a
 }
 
 // IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -160,7 +158,7 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket types.Ticket, si
 type FailingElectionValidator struct{}
 
 // IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
@@ -195,12 +193,6 @@ func MakeFakeElectionProofForTest() []byte {
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
 func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) types.Ticket {
-
-	// Lots of setup just to get an empty tree object :(
-	// TODO #3078 should help with this
-	mds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(mds)
-
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
@@ -218,7 +210,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 		proof, err := em.RunElection(curr, wAddr, signer)
 		require.NoError(t, err)
 
-		wins, err := em.IsElectionWinner(ctx, bs, ptv, curr, proof, wAddr, wAddr)
+		wins, err := em.IsElectionWinner(ctx, ptv, curr, proof, wAddr, wAddr)
 		require.NoError(t, err)
 		if wins {
 			// We have enough tickets, we're done

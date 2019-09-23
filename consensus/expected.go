@@ -88,7 +88,7 @@ type TicketValidator interface {
 
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
-	IsElectionWinner(context.Context, blockstore.Blockstore, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+	IsElectionWinner(context.Context, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
 // QueryGenerator produces queryers to examine actor state
@@ -329,7 +329,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 
 		// Validate ElectionProof
 		numTickets := len(blk.Tickets)
-		result, err := c.IsElectionWinner(ctx, c.bstore, pwrTableView, blk.Tickets[numTickets-1], blk.ElectionProof, workerAddr, blk.Miner)
+		result, err := c.IsElectionWinner(ctx, pwrTableView, blk.Tickets[numTickets-1], blk.ElectionProof, workerAddr, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed checking election proof")
 		}
