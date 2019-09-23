@@ -165,7 +165,6 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		hello, err := hn.hello().ReceiveHello(ctx, from)
 		if err != nil {
 			log.Debugf("failed to receive hello handshake from peer %s: %s", from, err)
-			_ = c.Close()
 			return
 		}
 
