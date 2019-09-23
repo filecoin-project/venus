@@ -9,7 +9,7 @@ import (
 
 func main() {
 	port := flag.Int("port", 0, "port over which to serve genesis file via HTTP")
-	genesisFilePath := flag.String("genesis-file-path", "", "port over which to serve genesis file via HTTP\n")
+	genesisFilePath := flag.String("genesis-file-path", "", "full path to the genesis file to be served")
 	flag.Parse()
 
 	if len(*genesisFilePath) == 0 {
