@@ -56,11 +56,11 @@ func (cs ActorState) Queryer(ctx context.Context, baseKey types.TipSetKey) (Acto
 		return nil, errors.Wrap(err, "failed to get the head tipset height")
 	}
 
-	return cs.stateTreeQueryer(st, types.NewBlockHeight(h)), nil
+	return cs.StateTreeQueryer(st, types.NewBlockHeight(h)), nil
 }
 
-// stateTreeQueryer returns a query interface to query the chain for a particular state tree and optional block height
-func (cs ActorState) stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
+// StateTreeQueryer returns a query interface to query the chain for a particular state tree and optional block height
+func (cs ActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
 	return NewProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
 }
 

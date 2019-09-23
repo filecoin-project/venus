@@ -171,7 +171,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	actorState := consensus.NewActorState(chainStore, &ipldCborStore, bs)
 
 	// create protocol upgrade table
-	network, err := networkNameFromGenesis(ctx, chainStore, bs)
+	network, err := networkNameFromGenesis(ctx, chainStore, actorState)
 	if err != nil {
 		return nil, err
 	}

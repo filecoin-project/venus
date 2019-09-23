@@ -10,7 +10,6 @@ import (
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -37,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/version"
-	"github.com/filecoin-project/go-filecoin/vm"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -576,14 +574,15 @@ func (node *Node) StartMining(ctx context.Context) error {
 // NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
 // The network name can not change while this node is running. Since the network name determines
 // the protocol version, we must retrieve it at genesis where the protocol is known.
-func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
+func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, as *consensus.ActorState) (string, error) {
 	st, err := chainStore.GetGenesisState(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "could not get genesis state")
 	}
 
-	vms := vm.NewStorageMap(bs)
-	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
+	queryer := as.StateTreeQueryer(st, types.NewBlockHeight(0))
+
+	res, err := queryer.Query(ctx, address.Undef, address.InitAddress, "getNetwork")
 	if err != nil {
 		return "", errors.Wrap(err, "error querying for network name")
 	}

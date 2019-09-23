@@ -39,7 +39,8 @@ func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker 
 	}
 }
 
-func (t *TestActorState) stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
+// StateTreeQueryer returns a Queryer suitable for PowerTableView queries
+func (t *TestActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
 	return &TestPowerTableViewQueryer{
 		minerPower:    t.minerPower,
 		totalPower:    t.totalPower,

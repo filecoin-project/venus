@@ -93,7 +93,7 @@ type ElectionValidator interface {
 
 // QueryGenerator produces queryers to examine actor state
 type QueryGenerator interface {
-	stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer
+	StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer
 }
 
 // Expected implements expected consensus.
@@ -411,7 +411,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 }
 
 func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
-	queryer := c.actorState.stateTreeQueryer(st, nil)
+	queryer := c.actorState.StateTreeQueryer(st, nil)
 	return NewPowerTableView(queryer)
 }
 
