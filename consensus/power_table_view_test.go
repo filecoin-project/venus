@@ -31,7 +31,7 @@ func TestTotal(t *testing.T) {
 
 	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
 
-	actual, err := consensus.NewMarketView(queryer).Total(ctx)
+	actual, err := consensus.NewPowerTableView(queryer).Total(ctx)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
@@ -49,7 +49,7 @@ func TestMiner(t *testing.T) {
 
 	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
 
-	actual, err := consensus.NewMarketView(queryer).Miner(ctx, addr)
+	actual, err := consensus.NewPowerTableView(queryer).Miner(ctx, addr)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)

@@ -91,7 +91,7 @@ type ElectionValidator interface {
 	IsElectionWinner(context.Context, blockstore.Blockstore, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
-// ActorState produces queryers to examine actor state
+// QueryGenerator produces queryers to examine actor state
 type QueryGenerator interface {
 	stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer
 }
@@ -410,9 +410,9 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	return st, nil
 }
 
-func (c *Expected) createPowerTableView(st state.Tree) *MarketView {
+func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
 	queryer := c.actorState.stateTreeQueryer(st, nil)
-	return NewMarketView(queryer)
+	return NewPowerTableView(queryer)
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {

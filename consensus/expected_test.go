@@ -239,46 +239,30 @@ func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
 	return cis, bs
 }
 
-type FailingTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
-
-func NewFailingTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingTestPowerTableView {
-	return &FailingTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
+func NewFailingTestPowerTableView(minerPower, totalPower *types.BytesAmount) consensus.PowerTableView {
+	return consensus.NewPowerTableView(&FailingTestPowerTableViewQueryer{minerPower: minerPower, totalPower: nil})
 }
 
-func (tv *FailingTestPowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	return tv.totalPower, errors.New("something went wrong with the total power")
+func NewFailingMinerTestPowerTableView(minerPower, totalPower *types.BytesAmount) consensus.PowerTableView {
+	return consensus.NewPowerTableView(&FailingTestPowerTableViewQueryer{minerPower: nil, totalPower: totalPower})
 }
 
-func (tv *FailingTestPowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
+type FailingTestPowerTableViewQueryer struct{ minerPower, totalPower *types.BytesAmount }
 
-func (tv *FailingTestPowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
-}
-
-func (tv *FailingTestPowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
-	return true
-}
-
-type FailingMinerTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
-
-func NewFailingMinerTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingMinerTestPowerTableView {
-	return &FailingMinerTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
-}
-
-func (tv *FailingMinerTestPowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-func (tv *FailingMinerTestPowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, errors.New("something went wrong with the miner power")
-}
-
-func (tv *FailingMinerTestPowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
-}
-
-func (tv *FailingMinerTestPowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
-	return true
+func (fq *FailingTestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getTotalStorage" {
+		if fq.totalPower != nil {
+			return [][]byte{fq.totalPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the total power")
+	} else if method == "getPower" {
+		if fq.minerPower != nil {
+			return [][]byte{fq.minerPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the miner power")
+	} else if method == "getWorker" {
+		// just return the miner address
+		return [][]byte{to.Bytes()}, nil
+	}
+	return [][]byte{}, fmt.Errorf("unknown method for NewFailingTestPowerTableView '%s'", method)
 }

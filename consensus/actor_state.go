@@ -36,6 +36,7 @@ func NewActorState(chainReader chainStateChainReader, cst *hamt.CborIpldStore, b
 	return &ActorState{chainReader, cst, bs}
 }
 
+// ActorStateQueryer permits queries to chain state at a particular tip set.
 type ActorStateQueryer interface {
 	Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }

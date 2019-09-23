@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -24,20 +23,14 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.T
 	return ts
 }
 
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct {
-	minerPower, totalPower *types.BytesAmount
-	minerToWorker          map[address.Address]address.Address
-}
-
-// NewTestActorState provides a queryer that responds to power table view queries wih the given parameters
+// TestActorState provides a queryer that responds to power table view queries with the given parameters
 type TestActorState struct {
 	minerPower    *types.BytesAmount
 	totalPower    *types.BytesAmount
 	minerToWorker map[address.Address]address.Address
 }
 
+// NewTestActorState creates an actor state that returns a test queryer such that PowerTableView queries return predefined results
 func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestActorState {
 	return &TestActorState{
 		minerPower:    minerPower,
@@ -47,20 +40,22 @@ func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker 
 }
 
 func (t *TestActorState) stateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
-	return &TestQuerier{
+	return &TestPowerTableViewQueryer{
 		minerPower:    t.minerPower,
 		totalPower:    t.totalPower,
 		minerToWorker: t.minerToWorker,
 	}
 }
 
-type TestQuerier struct {
+// TestPowerTableViewQueryer returns a queryer that can be fed into a PowerTableView to produce specific values
+type TestPowerTableViewQueryer struct {
 	minerPower    *types.BytesAmount
 	totalPower    *types.BytesAmount
 	minerToWorker map[address.Address]address.Address
 }
 
-func (tq *TestQuerier) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+// Query produces test logic in response to PowerTableView queries.
+func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if method == "getTotalStorage" {
 		return [][]byte{tq.totalPower.Bytes()}, nil
 	} else if method == "getPower" {
@@ -77,32 +72,13 @@ func (tq *TestQuerier) Query(ctx context.Context, optFrom, to address.Address, m
 }
 
 // NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestPowerTableView {
-	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower, minerToWorker: minerToWorker}
-}
-
-// Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-// Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, mAddr address.Address) bool {
-	return true
-}
-
-// WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(_ context.Context, mAddr address.Address) (address.Address, error) {
-	wAddr, ok := tv.minerToWorker[mAddr]
-	if !ok {
-		return address.Undef, errors.New("no such miner address in power table")
+func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
+	tq := &TestPowerTableViewQueryer{
+		minerPower:    minerPower,
+		totalPower:    totalPower,
+		minerToWorker: minerToWorker,
 	}
-	return wAddr, nil
+	return NewPowerTableView(tq)
 }
 
 // TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.

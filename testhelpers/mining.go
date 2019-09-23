@@ -31,6 +31,7 @@ func NewDefaultTestWorkerPorcelainAPI(signer address.Address) *TestWorkerPorcela
 	}
 }
 
+// NewTestWorkerPorcelainAPI produces an api suitable to use as the worker's porcelain api.
 func NewTestWorkerPorcelainAPI(signer address.Address, totalPower uint64, minerToWorker map[address.Address]address.Address) *TestWorkerPorcelainAPI {
 	return &TestWorkerPorcelainAPI{
 		blockTime:     BlockTimeTest,
@@ -52,18 +53,20 @@ func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ addr
 
 // Queryer returns a queryer object for the given tipset
 func (t *TestWorkerPorcelainAPI) Queryer(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateQueryer, error) {
-	return &TestQuerier{
+	return &TestQueryer{
 		totalPower:    t.totalPower,
 		minerToWorker: t.minerToWorker,
 	}, nil
 }
 
-type TestQuerier struct {
+// TestQueryer is used when testing with a PowerTableView
+type TestQueryer struct {
 	totalPower    uint64
 	minerToWorker map[address.Address]address.Address
 }
 
-func (tq *TestQuerier) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+// Query produces preconfigured results for PowerTableView queries
+func (tq *TestQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if method == "getTotalStorage" {
 		return [][]byte{types.NewBytesAmount(tq.totalPower).Bytes()}, nil
 	} else if method == "getPower" {

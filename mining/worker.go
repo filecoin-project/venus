@@ -260,10 +260,10 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	return
 }
 
-func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey types.TipSetKey) (*consensus.MarketView, error) {
+func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey types.TipSetKey) (consensus.PowerTableView, error) {
 	queryer, err := w.api.Queryer(ctx, baseKey)
 	if err != nil {
-		return nil, err
+		return consensus.PowerTableView{}, err
 	}
-	return consensus.NewMarketView(queryer), nil
+	return consensus.NewPowerTableView(queryer), nil
 }
