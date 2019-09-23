@@ -121,9 +121,6 @@ Have patience; future runs will be faster.
 # First, build the binary
 go run ./build build
 
-# Install go-filecoin to ${GOPATH}/bin (necessary for tests)
-go run ./build install
-
 # Then, run the unit tests.
 go run ./build test
 
