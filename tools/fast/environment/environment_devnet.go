@@ -24,7 +24,7 @@ import (
 // Devnet is a FAST lib environment that is meant to be used
 // when working with kittyhawk devnets run by the Filecoin development team.
 type Devnet struct {
-	network  DevnetConfig
+	config   DevnetConfig
 	location string
 
 	log logging.EventLogger
@@ -59,9 +59,9 @@ func FindDevnetConfigByName(name string) (DevnetConfig, error) {
 
 // NewDevnet builds an environment that uses deployed infrastructure to
 // the kittyhawk devnets.
-func NewDevnet(network DevnetConfig, location string) (Environment, error) {
+func NewDevnet(config DevnetConfig, location string) (Environment, error) {
 	env := &Devnet{
-		network:  network,
+		config:   config,
 		location: location,
 		log:      logging.Logger("environment"),
 	}
@@ -75,7 +75,7 @@ func NewDevnet(network DevnetConfig, location string) (Environment, error) {
 
 // GenesisCar provides a url where the genesis file can be fetched from
 func (e *Devnet) GenesisCar() string {
-	return e.network.GenesisLocation
+	return e.config.GenesisLocation
 }
 
 // GenesisMiner returns a ErrNoGenesisMiner for this environment
@@ -187,7 +187,7 @@ func (e *Devnet) GetFunds(ctx context.Context, p *fast.Filecoin) error {
 	data := url.Values{}
 	data.Set("target", toAddr.String())
 
-	resp, err := http.PostForm(e.network.FaucetTap, data)
+	resp, err := http.PostForm(e.config.FaucetTap, data)
 	if err != nil {
 		return err
 	}
