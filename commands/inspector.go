@@ -89,6 +89,7 @@ Prints out information about filecoin process and its environment.
 			sw.Printf("\nEnvironment\n")
 			sw.Printf("FilAPI: \t%s\n", info.Environment.FilAPI)
 			sw.Printf("FilPath:\t%s\n", info.Environment.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.Environment.GoPath)
 
 			// Print Config Info
 			sw.Printf("\nConfig\n")
@@ -224,6 +225,7 @@ Prints out information about your filecoin nodes environment.
 			sw := NewSilentWriter(w)
 			sw.Printf("FilAPI: \t%s\n", info.FilAPI)
 			sw.Printf("FilPath:\t%s\n", info.FilPath)
+			sw.Printf("GoPath: \t%s\n", info.GoPath)
 			return sw.Error()
 		}),
 	},
@@ -267,6 +269,7 @@ type RuntimeInfo struct {
 type EnvironmentInfo struct {
 	FilAPI  string `json:"FIL_API"`
 	FilPath string `json:"FIL_PATH"`
+	GoPath  string `json:"GOPATH"`
 }
 
 // DiskInfo contains information about disk usage and type.
@@ -301,6 +304,7 @@ func (g *Inspector) Environment() *EnvironmentInfo {
 	return &EnvironmentInfo{
 		FilAPI:  os.Getenv("FIL_API"),
 		FilPath: os.Getenv("FIL_PATH"),
+		GoPath:  os.Getenv("GOPATH"),
 	}
 }
 
