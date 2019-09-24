@@ -7,10 +7,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 )
 
-// FakeSystemClock provides an interface for a clock which can be
+// FakeClock provides an interface for a clock which can be
 // manually advanced through time
 // Adapted from: https://github.com/jonboulle/clockwork
-type FakeSystemClock interface {
+type FakeClock interface {
 	clock.Clock
 	// Advance advances the FakeClock to a new point in time, ensuring any existing
 	// sleepers are notified appropriately before returning
@@ -20,23 +20,23 @@ type FakeSystemClock interface {
 	BlockUntil(n int)
 }
 
-// NewFakeSystemClock returns a FakeSystemClock initialised at the given time.Time.
-func NewFakeSystemClock(n time.Time) FakeSystemClock {
+// NewFakeClock returns a FakeClock initialised at the given time.Time.
+func NewFakeClock(n time.Time) FakeClock {
 	return &fakeClock{
 		time: n,
 	}
 }
 
 type fakeClock struct {
-	timers   []*timer
+	timers   []*fakeTimer
 	blockers []*blocker
 	time     time.Time
 
 	l sync.RWMutex
 }
 
-// timer represents a waiting timer from NewTimer, Sleep, After, etc.
-type timer struct {
+// fakeTimer represents a waiting fakeTimer from NewTimer, Sleep, After, etc.
+type fakeTimer struct {
 	callback func(interface{}, time.Time)
 	arg      interface{}
 
@@ -54,7 +54,7 @@ type blocker struct {
 	ch    chan struct{}
 }
 
-func (s *timer) awaken(now time.Time) {
+func (s *fakeTimer) awaken(now time.Time) {
 	s.lk.Lock()
 	if s.done {
 		s.lk.Unlock()
@@ -65,9 +65,9 @@ func (s *timer) awaken(now time.Time) {
 	s.callback(s.arg, now)
 }
 
-func (s *timer) Chan() <-chan time.Time { return s.c }
+func (s *fakeTimer) Chan() <-chan time.Time { return s.c }
 
-func (s *timer) Reset(d time.Duration) bool {
+func (s *fakeTimer) Reset(d time.Duration) bool {
 	wasActive := s.Stop()
 	until := s.clock.Now().Add(d)
 	s.lk.Lock()
@@ -78,7 +78,7 @@ func (s *timer) Reset(d time.Duration) bool {
 	return wasActive
 }
 
-func (s *timer) Stop() bool {
+func (s *fakeTimer) Stop() bool {
 	now := s.clock.Now()
 	s.lk.Lock()
 	if s.done {
@@ -93,13 +93,13 @@ func (s *timer) Stop() bool {
 	return true
 }
 
-func (s *timer) whenToTrigger() time.Time {
+func (s *fakeTimer) whenToTrigger() time.Time {
 	s.lk.RLock()
 	defer s.lk.RUnlock()
 	return s.until
 }
 
-func (fc *fakeClock) addTimer(s *timer) {
+func (fc *fakeClock) addTimer(s *fakeTimer) {
 	fc.l.Lock()
 	defer fc.l.Unlock()
 
@@ -175,7 +175,7 @@ func (fc *fakeClock) NewTimer(d time.Duration) clock.Timer {
 		}
 	}
 
-	s := &timer{
+	s := &fakeTimer{
 		clock:    fc,
 		until:    fc.Now().Add(d),
 		callback: sendTime,
@@ -194,7 +194,7 @@ func (fc *fakeClock) AfterFunc(d time.Duration, f func()) clock.Timer {
 		go fn.(func())()
 	}
 
-	s := &timer{
+	s := &fakeTimer{
 		clock:    fc,
 		until:    fc.Now().Add(d),
 		callback: goFunc,
@@ -212,7 +212,7 @@ func (fc *fakeClock) Advance(d time.Duration) {
 	defer fc.l.Unlock()
 
 	end := fc.time.Add(d)
-	var newSleepers []*timer
+	var newSleepers []*fakeTimer
 	for _, s := range fc.timers {
 		if end.Sub(s.whenToTrigger()) >= 0 {
 			s.awaken(end)
@@ -247,7 +247,7 @@ func (fc *fakeClock) BlockUntil(n int) {
 type fakeTicker struct {
 	c      chan time.Time
 	stop   chan bool
-	clock  FakeSystemClock
+	clock  FakeClock
 	period time.Duration
 }
 

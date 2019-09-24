@@ -14,7 +14,7 @@ var startTime = time.Unix(123456789, 0)
 
 func TestFakeClockAfter(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 
 	zero := fc.After(0)
 	select {
@@ -84,14 +84,14 @@ func TestFakeClockAfter(t *testing.T) {
 func TestNewFakeClockAt(t *testing.T) {
 	tf.UnitTest(t)
 	t1 := time.Date(1999, time.February, 3, 4, 5, 6, 7, time.UTC)
-	fc := th.NewFakeSystemClock(t1)
+	fc := th.NewFakeClock(t1)
 	now := fc.Now()
 	assert.Equalf(t, now, t1, "fakeClock.Now() returned unexpected non-initialised value: want=%#v, got %#v", t1, now)
 }
 
 func TestFakeClockSince(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 	now := fc.Now()
 	elapsedTime := time.Second
 	fc.Advance(elapsedTime)
@@ -100,7 +100,7 @@ func TestFakeClockSince(t *testing.T) {
 
 func TestFakeClockTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 
 	zero := fc.NewTimer(0)
 
@@ -200,7 +200,7 @@ func inSync(t *testing.T, func1 syncFunc, func2 syncFunc) {
 
 func TestBlockingOnTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 
 	inSync(t, func(didAdvance func(), shouldAdvance func(string), _ func(string)) {
 		fc.BlockUntil(0)
@@ -253,7 +253,7 @@ func TestBlockingOnTimers(t *testing.T) {
 func TestAdvancePastAfter(t *testing.T) {
 	tf.UnitTest(t)
 
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 
 	start := fc.Now()
 	one := fc.After(1)
@@ -270,7 +270,7 @@ func TestAdvancePastAfter(t *testing.T) {
 
 func TestFakeTickerStop(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 
 	ft := fc.NewTicker(1)
 	ft.Stop()
@@ -284,7 +284,7 @@ func TestFakeTickerStop(t *testing.T) {
 
 func TestFakeTickerTick(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(startTime)
+	fc := th.NewFakeClock(startTime)
 	now := fc.Now()
 
 	// The tick at now.Add(2) should not get through since we advance time by

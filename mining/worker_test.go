@@ -302,7 +302,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-		Clock:         th.NewFakeSystemClock(time.Unix(1234567890, 0)),
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	builder := chain.NewBuilder(t, address.Undef)
@@ -359,7 +359,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-		Clock:         th.NewFakeSystemClock(time.Unix(1234567890, 0)),
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
@@ -467,7 +467,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-		Clock:         th.NewFakeSystemClock(time.Unix(1234567890, 0)),
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	h := types.Uint64(100)
@@ -530,7 +530,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-		Clock:         th.NewFakeSystemClock(time.Unix(1234567890, 0)),
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	assert.Len(t, pool.Pending(), 0)
@@ -583,7 +583,7 @@ func TestGenerateError(t *testing.T) {
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-		Clock:         th.NewFakeSystemClock(time.Unix(1234567890, 0)),
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
 	})
 
 	// This is actually okay and should result in a receipt
