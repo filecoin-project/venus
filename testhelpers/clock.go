@@ -37,14 +37,15 @@ type fakeClock struct {
 
 // timer represents a waiting timer from NewTimer, Sleep, After, etc.
 type timer struct {
-	until    time.Time
 	callback func(interface{}, time.Time)
 	arg      interface{}
 
-	c      chan time.Time
-	doneLk sync.RWMutex
-	done   bool
-	clock  *fakeClock // needed for Reset()
+	c     chan time.Time
+	lk    sync.RWMutex
+	done  bool
+	until time.Time
+
+	clock *fakeClock // needed for Reset()
 }
 
 // blocker represents a caller of BlockUntil
@@ -54,38 +55,48 @@ type blocker struct {
 }
 
 func (s *timer) awaken(now time.Time) {
-	s.doneLk.Lock()
-	defer s.doneLk.Unlock()
-	if !s.done {
-		s.done = true
-		s.callback(s.arg, now)
+	s.lk.Lock()
+	if s.done {
+		s.lk.Unlock()
+		return
 	}
+	s.done = true
+	s.lk.Unlock()
+	s.callback(s.arg, now)
 }
 
 func (s *timer) Chan() <-chan time.Time { return s.c }
 
 func (s *timer) Reset(d time.Duration) bool {
 	wasActive := s.Stop()
-	s.until = s.clock.Now().Add(d)
-	s.doneLk.Lock()
+	until := s.clock.Now().Add(d)
+	s.lk.Lock()
+	s.until = until
 	s.done = false
-	s.doneLk.Unlock()
+	s.lk.Unlock()
 	s.clock.addTimer(s)
 	return wasActive
 }
 
 func (s *timer) Stop() bool {
-	s.doneLk.Lock()
+	now := s.clock.Now()
+	s.lk.Lock()
 	if s.done {
-		s.doneLk.Unlock()
+		s.lk.Unlock()
 		return false
 	}
 	s.done = true
-	s.doneLk.Unlock()
 	// Expire the timer and notify blockers
-	s.until = s.clock.Now()
+	s.until = now
+	s.lk.Unlock()
 	s.clock.Advance(0)
 	return true
+}
+
+func (s *timer) whenToTrigger() time.Time {
+	s.lk.RLock()
+	defer s.lk.RUnlock()
+	return s.until
 }
 
 func (fc *fakeClock) addTimer(s *timer) {
@@ -93,7 +104,7 @@ func (fc *fakeClock) addTimer(s *timer) {
 	defer fc.l.Unlock()
 
 	now := fc.time
-	if now.Sub(s.until) >= 0 {
+	if now.Sub(s.whenToTrigger()) >= 0 {
 		// special case - trigger immediately
 		s.awaken(now)
 	} else {
@@ -158,12 +169,15 @@ func (fc *fakeClock) NewTicker(d time.Duration) clock.Ticker {
 func (fc *fakeClock) NewTimer(d time.Duration) clock.Timer {
 	done := make(chan time.Time, 1)
 	sendTime := func(c interface{}, now time.Time) {
-		c.(chan time.Time) <- now
+		select {
+		case c.(chan time.Time) <- now:
+		default:
+		}
 	}
 
 	s := &timer{
 		clock:    fc,
-		until:    fc.time.Add(d),
+		until:    fc.Now().Add(d),
 		callback: sendTime,
 		arg:      done,
 		c:        done,
@@ -182,7 +196,7 @@ func (fc *fakeClock) AfterFunc(d time.Duration, f func()) clock.Timer {
 
 	s := &timer{
 		clock:    fc,
-		until:    fc.time.Add(d),
+		until:    fc.Now().Add(d),
 		callback: goFunc,
 		arg:      f,
 		// zero-valued c, the same as it is in the `time` pkg
@@ -200,7 +214,7 @@ func (fc *fakeClock) Advance(d time.Duration) {
 	end := fc.time.Add(d)
 	var newSleepers []*timer
 	for _, s := range fc.timers {
-		if end.Sub(s.until) >= 0 {
+		if end.Sub(s.whenToTrigger()) >= 0 {
 			s.awaken(end)
 		} else {
 			newSleepers = append(newSleepers, s)
