@@ -10,9 +10,11 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
+var startTime = time.Unix(123456789, 0)
+
 func TestFakeClockAfter(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 
 	zero := fc.After(0)
 	select {
@@ -89,7 +91,7 @@ func TestNewFakeClockAt(t *testing.T) {
 
 func TestFakeClockSince(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 	now := fc.Now()
 	elapsedTime := time.Second
 	fc.Advance(elapsedTime)
@@ -98,7 +100,7 @@ func TestFakeClockSince(t *testing.T) {
 
 func TestFakeClockTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 
 	zero := fc.NewTimer(0)
 
@@ -198,7 +200,7 @@ func inSync(t *testing.T, func1 syncFunc, func2 syncFunc) {
 
 func TestBlockingOnTimers(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 
 	inSync(t, func(didAdvance func(), shouldAdvance func(string), _ func(string)) {
 		fc.BlockUntil(0)
@@ -251,7 +253,7 @@ func TestBlockingOnTimers(t *testing.T) {
 func TestAdvancePastAfter(t *testing.T) {
 	tf.UnitTest(t)
 
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 
 	start := fc.Now()
 	one := fc.After(1)
@@ -268,7 +270,7 @@ func TestAdvancePastAfter(t *testing.T) {
 
 func TestFakeTickerStop(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 
 	ft := fc.NewTicker(1)
 	ft.Stop()
@@ -282,7 +284,7 @@ func TestFakeTickerStop(t *testing.T) {
 
 func TestFakeTickerTick(t *testing.T) {
 	tf.UnitTest(t)
-	fc := th.NewFakeSystemClock(time.Now())
+	fc := th.NewFakeSystemClock(startTime)
 	now := fc.Now()
 
 	// The tick at now.Add(2) should not get through since we advance time by
