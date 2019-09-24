@@ -557,6 +557,11 @@ func (r *FSRepo) Path() (string, error) {
 	return r.path, nil
 }
 
+// JournalPath returns the path the journal is at.
+func (r *FSRepo) JournalPath() string {
+	return fmt.Sprintf("%s/journal.json", r.path)
+}
+
 // APIAddrFromRepoPath returns the api addr from the filecoin repo
 func APIAddrFromRepoPath(repoPath string) (string, error) {
 	repoPath, err := homedir.Expand(repoPath)

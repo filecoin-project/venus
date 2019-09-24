@@ -109,3 +109,8 @@ func (mr *MemRepo) APIAddr() (string, error) {
 func (mr *MemRepo) Path() (string, error) {
 	return paths.GetRepoPath("")
 }
+
+// JournalPath returns a string to satisfy the repo interface.
+func (mr *MemRepo) JournalPath() string {
+	return "in_memory_filecoin_journal_path"
+}
