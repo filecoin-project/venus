@@ -42,21 +42,26 @@ import (
 
 const visitsPerBlock = 4
 
+type notDecodable struct {
+	num    int
+	mesage string
+}
+
+func init() {
+	cbor.RegisterCborType(notDecodable{})
+}
+
 func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeClock(time.Now()))
+	clock := th.NewFakeClock(time.Now())
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
 	rm := types.NewReceiptMaker()
-	type notDecodable struct {
-		num    int
-		mesage string
-	}
-	cbor.RegisterCborType(notDecodable{})
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -131,11 +136,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -156,7 +161,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		pid0Loader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		pid1Loader := errorOnCidsLoader(loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.Key().ToSlice()...)
@@ -164,7 +169,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -185,13 +190,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorLoader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorLoader, final.Key().ToSlice()...)
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := doneAt(gen.Key())
 
@@ -208,11 +213,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -228,11 +233,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesReceiptsLoader, final.Key().ToSlice()...)
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -251,7 +256,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(1).Messages, final.At(2).Messages)
 		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts, final.At(2).MessageReceipts)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
@@ -259,7 +264,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -290,14 +295,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blocks[i] = prev
 		}
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		pid0Loader := errorOnCidsLoader(loader, blocks[3].Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), pid0Loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), pid0Loader, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := func(ts types.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -331,13 +336,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -359,14 +364,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -401,7 +406,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		for i := 1; i <= 22; i++ {
 			tipset, err := builder.GetTipSet(nextKey)
 			require.NoError(t, err)
-			mgs := newMockableGraphsync(ctx, bs, t)
+			mgs := newMockableGraphsync(ctx, bs, clock, t)
 			mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 			receivedRequestCount := 1
 			if i > 1 {
@@ -417,7 +422,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 				receivedRequestCount++
 			}
 
-			fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+			fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 			done := doneAt(tipset.Key())
 
 			ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -435,13 +440,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("value returned with non block format", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 
 		key := types.NewTipSetKey(notDecodableBlock.Cid())
 		chain0 := types.NewChainInfo(pid0, key, 0)
 		notDecodableLoader := simpleLoader([]format.Node{notDecodableBlock})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, notDecodableBlock.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
@@ -450,14 +455,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("block returned with invalid syntax", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := simpleBlock()
 		block.Height = 1
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		invalidSyntaxLoader := simpleLoader([]format.Node{block.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, invalidSyntaxLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
 		require.Errorf(t, err, "block %s has nil StateRoot", block.Cid().String())
@@ -465,14 +470,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := requireSimpleValidBlock(t, 3, address.Undef)
 		block.Messages = notDecodableBlock.Cid()
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
@@ -481,14 +486,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("blocks present but receipts don't decode", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := requireSimpleValidBlock(t, 3, address.Undef)
 		block.MessageReceipts = notDecodableBlock.Cid()
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.MessageCollection{}.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
@@ -502,13 +507,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 
 		errorMv := mockSyntaxValidator{
 			validateMessagesError: fmt.Errorf("Everything Failed"),
 		}
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -522,13 +527,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 
 		errorMv := mockSyntaxValidator{
 			validateReceiptsError: fmt.Errorf("Everything Failed"),
 		}
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -537,8 +542,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		gen := builder.NewGenesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
@@ -548,7 +551,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, loader, final.At(1).Cid())
@@ -556,8 +559,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 		done := doneAt(gen.Key())
+
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.NoError(t, err, "the request completes successfully")
 		mgs.verifyReceivedRequestCount(7)
@@ -568,8 +572,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("initial request hangs up and no other peers succeed", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		gen := builder.NewGenesis()
 		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		height, err := final.Height()
@@ -578,15 +580,16 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid2, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
 		mgs.verifyReceivedRequestCount(7)
 		mgs.verifyExpectations()
 		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
@@ -594,8 +597,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("partial response hangs up during recursive fetch recovers at hang up point", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		gen := builder.NewGenesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
 		height, err := final.Height()
@@ -614,13 +615,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blocks[i] = prev
 		}
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt, net.UseUnresponsiveTimeout(100*time.Millisecond))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := func(ts types.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -630,6 +631,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		}
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
 		require.NoError(t, err, "the request completes successfully")
 		mgs.verifyReceivedRequestCount(4)
 		mgs.verifyExpectations()
@@ -647,8 +649,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangs up on single block in multi block tip during recursive fetch", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		gen := builder.NewGenesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
@@ -656,15 +656,16 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 4, penultimate.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0), net.UseUnresponsiveTimeout(100*time.Millisecond))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
 		require.Errorf(t, err, "Failed fetching tipset: %s", multi.Key().String())
@@ -672,8 +673,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("hangs up on single block in multi block tip during recursive fetch, recover through fallback", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
 		gen := builder.NewGenesis()
 		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
 		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
@@ -685,16 +684,17 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2), net.UseUnresponsiveTimeout(100*time.Second))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
 		require.NoError(t, err, "the request completes successfully")
 		mgs.verifyReceivedRequestCount(4)
 		mgs.verifyExpectations()
@@ -757,6 +757,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
+	clock := th.NewFakeClock(time.Now())
 	pt := net.NewPeerTracker(peer.ID(""))
 	pt.Track(types.NewChainInfo(host2.ID(), types.TipSetKey{}, 0))
 
@@ -765,7 +766,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
 
-	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, pt)
+	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, clock, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -899,22 +900,75 @@ type requestResponse struct {
 	response fakeResponse
 }
 
+// hungRequest represents a request that has hung, pending a timeout
+// causing a cancellation, which will in turn close the channels
+type hungRequest struct {
+	ctx          context.Context
+	responseChan chan graphsync.ResponseProgress
+	errChan      chan error
+}
+
 // mockableGraphsync conforms to the graphsync exchange interface needed by
 // the graphsync fetcher but will only send stubbed responses
 type mockableGraphsync struct {
-	ctx              context.Context
-	stubs            []requestResponse
-	expectedRequests []fakeRequest
-	receivedRequests []fakeRequest
-	store            bstore.Blockstore
-	t                *testing.T
+	clock               th.FakeClock
+	hungRequests        []*hungRequest
+	incomingHungRequest chan *hungRequest
+	requestsToProcess   chan struct{}
+	ctx                 context.Context
+	stubs               []requestResponse
+	expectedRequests    []fakeRequest
+	receivedRequests    []fakeRequest
+	store               bstore.Blockstore
+	t                   *testing.T
 }
 
-func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, t *testing.T) *mockableGraphsync {
-	return &mockableGraphsync{
-		ctx:   ctx,
-		store: store,
-		t:     t,
+func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
+	mgs := &mockableGraphsync{
+		ctx:                 ctx,
+		incomingHungRequest: make(chan *hungRequest),
+		requestsToProcess:   make(chan struct{}, 1),
+		store:               store,
+		clock:               clock,
+		t:                   t,
+	}
+	go mgs.processHungRequests()
+	return mgs
+}
+
+// processHungRequests handles requests that hangup, by advancing the clock until
+// the fetcher cancels those requests, which then causes the channels to close
+func (mgs *mockableGraphsync) processHungRequests() {
+	for {
+		select {
+		case hungRequest := <-mgs.incomingHungRequest:
+			mgs.hungRequests = append(mgs.hungRequests, hungRequest)
+			select {
+			case mgs.requestsToProcess <- struct{}{}:
+			default:
+			}
+		case <-mgs.requestsToProcess:
+			var newHungRequests []*hungRequest
+			for _, hungRequest := range mgs.hungRequests {
+				select {
+				case <-hungRequest.ctx.Done():
+					close(hungRequest.errChan)
+					close(hungRequest.responseChan)
+				default:
+					newHungRequests = append(newHungRequests, hungRequest)
+				}
+			}
+			mgs.hungRequests = newHungRequests
+			if len(mgs.hungRequests) > 0 {
+				mgs.clock.Advance(15 * time.Second)
+				select {
+				case mgs.requestsToProcess <- struct{}{}:
+				default:
+				}
+			}
+		case <-mgs.ctx.Done():
+			return
+		}
 	}
 }
 
@@ -1042,27 +1096,18 @@ func (mgs *mockableGraphsync) processResponse(ctx context.Context, mr fakeRespon
 	for _, err := range mr.errs {
 		errChan <- err
 	}
-	if mr.hangupAfter == noHangup || mr.hangupAfter >= len(mr.errs) {
-		close(errChan)
-	} else {
-		go func() {
-			<-ctx.Done()
-			close(errChan)
-		}()
-	}
-
 	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
 	for _, response := range mr.responses {
 		responseChan <- response
 	}
-	if mr.hangupAfter == noHangup || mr.hangupAfter >= len(mr.responses) {
+
+	if mr.hangupAfter == noHangup {
+		close(errChan)
 		close(responseChan)
 	} else {
-		go func() {
-			<-ctx.Done()
-			close(responseChan)
-		}()
+		mgs.incomingHungRequest <- &hungRequest{ctx, responseChan, errChan}
 	}
+
 	return responseChan, errChan
 }
 

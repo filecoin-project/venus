@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -17,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -27,7 +29,7 @@ const (
 	// Timeout for a single graphsync request getting "stuck"
 	// -- if no more responses are received for a period greater than this,
 	// we will assume the request has hung-up and cancel it
-	unresponsiveTimeout = 10 * time.Second
+	progressTimeout = 10 * time.Second
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -55,41 +57,25 @@ type graphsyncFallbackPeerTracker interface {
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
-	exchange            GraphExchange
-	validator           consensus.SyntaxValidator
-	store               bstore.Blockstore
-	ssb                 selectorbuilder.SelectorSpecBuilder
-	peerTracker         graphsyncFallbackPeerTracker
-	unresponsiveTimeout time.Duration
-}
-
-// GraphsyncFetcherOption is function that configures graphsync. It should not
-// be created directly but should instead generated through an option function like
-// UseFetcherTimeout
-type GraphsyncFetcherOption func(*GraphSyncFetcher)
-
-// UseUnresponsiveTimeout sets up the GraphsyncFetcher with a different
-// unresponsiveness timeout than the default
-func UseUnresponsiveTimeout(timeout time.Duration) GraphsyncFetcherOption {
-	return func(gsf *GraphSyncFetcher) {
-		gsf.unresponsiveTimeout = timeout
-	}
+	exchange    GraphExchange
+	validator   consensus.SyntaxValidator
+	store       bstore.Blockstore
+	ssb         selectorbuilder.SelectorSpecBuilder
+	peerTracker graphsyncFallbackPeerTracker
+	systemClock clock.Clock
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, pt graphsyncFallbackPeerTracker, options ...GraphsyncFetcherOption) *GraphSyncFetcher {
+	bv consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
-		store:               blockstore,
-		validator:           bv,
-		exchange:            exchange,
-		ssb:                 selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
-		peerTracker:         pt,
-		unresponsiveTimeout: unresponsiveTimeout,
-	}
-	for _, option := range options {
-		option(gsf)
+		store:       blockstore,
+		validator:   bv,
+		exchange:    exchange,
+		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
+		peerTracker: pt,
+		systemClock: systemClock,
 	}
 	return gsf
 }
@@ -241,33 +227,32 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, ta
 		efsb.Insert("messages", gsf.ssb.Matcher())
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
-	errChans := make([]<-chan error, 0, len(cids))
-	requestChans := make([]<-chan graphsync.ResponseProgress, 0, len(cids))
-	cancelFuncs := make([]func(), 0, len(cids))
+	var wg sync.WaitGroup
+	// Any of the multiple parallel requests might fail. Wait for all of them to complete, then
+	// return any error (in this case, the first one to be received).
+	var setAnyError sync.Once
+	var anyError error
 	for _, c := range cids {
 		requestCtx, requestCancel := context.WithCancel(ctx)
 		defer requestCancel()
 		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
-		errChans = append(errChans, errChan)
-		requestChans = append(requestChans, requestChan)
-		cancelFuncs = append(cancelFuncs, requestCancel)
+		wg.Add(1)
+		go func(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) {
+			defer wg.Done()
+			err := gsf.consumeResponse(requestChan, errChan, cancelFunc)
+			if err != nil {
+				setAnyError.Do(func() {
+					anyError = err
+				})
+			}
+		}(requestChan, errChan, requestCancel)
 	}
-	// Any of the multiple parallel requests might fail. Wait for all of them to complete, then
-	// return any error (in this case, the last one to be received).
-	var anyError error
-	for i, errChan := range errChans {
-		requestChan := requestChans[i]
-		cancelFunc := cancelFuncs[i]
-		err := gsf.consumeResponse(requestChan, errChan, cancelFunc)
-		if err != nil {
-			anyError = err
-		}
-	}
+	wg.Wait()
 	return anyError
 }
 
 func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) error {
-	timer := time.NewTimer(gsf.unresponsiveTimeout)
+	timer := gsf.systemClock.NewTimer(progressTimeout)
 	var anyError error
 	for errChan != nil || requestChan != nil {
 		select {
@@ -276,13 +261,13 @@ func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.Respon
 				errChan = nil
 			}
 			anyError = err
-			timer.Reset(gsf.unresponsiveTimeout)
+			timer.Reset(progressTimeout)
 		case _, ok := <-requestChan:
 			if !ok {
 				requestChan = nil
 			}
-			timer.Reset(gsf.unresponsiveTimeout)
-		case <-timer.C:
+			timer.Reset(progressTimeout)
+		case <-timer.Chan():
 			cancelFunc()
 		}
 	}
