@@ -57,7 +57,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 
 	// create a fake clock to trigger block validation failures
 	now := time.Unix(1234567890, 0)
-	mclock := th.NewFakeSystemClock(now)
+	mclock := th.NewFakeClock(now)
 	// block time will be 1 second
 	blocktime := time.Second * 1
 

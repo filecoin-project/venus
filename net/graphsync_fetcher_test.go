@@ -43,7 +43,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeSystemClock(time.Now()))
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeClock(time.Now()))
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
