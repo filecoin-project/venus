@@ -223,7 +223,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	loader := gsstoreutil.LoaderForBlockstore(bs)
 	storer := gsstoreutil.StorerForBlockstore(bs)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, nc.Clock, peerTracker)
 
 	// TODO: inject protocol upgrade table into code that requires it (#3360)
 	_, err = version.ConfigureProtocolVersions(network)
