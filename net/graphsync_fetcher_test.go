@@ -43,8 +43,8 @@ import (
 const visitsPerBlock = 4
 
 type notDecodable struct {
-	num    int
-	mesage string
+	Num    int    `json:"num"`
+	Mesage string `json:"mesage"`
 }
 
 func init() {
@@ -203,7 +203,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(7)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -223,7 +223,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -243,7 +243,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -348,7 +348,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", multi.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", multi.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -450,7 +450,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a block", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a block: unmarshal error: stream contains key \"num\", but there's no such field in structs of type types.Block", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -465,7 +465,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "block %s has nil StateRoot", block.Cid().String())
+		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil StateRoot", block.Cid().String(), block.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -481,7 +481,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a message collection", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -497,7 +497,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a message receipt collection", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message receipt collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -592,7 +592,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		mgs.verifyReceivedRequestCount(7)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -659,7 +659,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
-		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 4, penultimate.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
 
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
@@ -668,7 +668,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", multi.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", multi.Key().String()))
 		require.Nil(t, ts)
 	})
 
