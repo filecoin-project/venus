@@ -824,17 +824,17 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 				if sm.postInProcess.matches(provingWindowEnd, seed) {
 					// Correct PoSt is already in progress
 					return doneLatch, nil
-				} else {
-					// The in-progress PoSt is for a different proving period or has taken
-					// a different challenge seed.
-
-					// Cancelling the in-progress PoSt is probably right, but does open up
-					// a vulnerability to a transient re-org causing an unnecessary abandonment.
-					// We might want something more sophisticated, like maintaining a fixed number
-					// of them until the challenge seed reaches a certain effectively-final age.
-					sm.postInProcess.cancel()
-					sm.postInProcess = nil
 				}
+
+				// The in-progress PoSt is for a different proving period or has taken
+				// a different challenge seed.
+
+				// Cancelling the in-progress PoSt is probably right, but does open up
+				// a vulnerability to a transient re-org causing an unnecessary abandonment.
+				// We might want something more sophisticated, like maintaining a fixed number
+				// of them until the challenge seed reaches a certain effectively-final age.
+				sm.postInProcess.cancel()
+				sm.postInProcess = nil
 			}
 
 			// Let's get this PoSt going.
