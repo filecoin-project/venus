@@ -173,6 +173,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		case err == ErrBadGenesis:
 			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.hello().genesis, from)
 			genesisErrCt.Inc(context.TODO(), 1)
+			_ = c.Close()
 			return
 		case err == nil:
 			hn.hello().callBack(ci)
