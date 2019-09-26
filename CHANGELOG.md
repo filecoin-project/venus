@@ -1,8 +1,8 @@
 # go-filecoin changelog
 
-## go-filecoin 0.5.4
+## go-filecoin 0.5.6
 
-We're happy to announce go-filecoin 0.5.4. Highlights include an updated Proof-of-Spacetime implementation and an upgrade-capable network.
+We're happy to announce go-filecoin 0.5.6. Highlights include an updated Proof-of-Spacetime implementation and an upgrade-capable network.
 
 ### Features
 
@@ -12,11 +12,11 @@ Two changes have been made to enable software releases without restarting the ne
 
 #### 🚀 Updated Proof-of-Spacetime (PoSt)
 
-A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors.
+A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors. 
 
 #### 🎟️ Block and consensus changes
 
-Block headers are now signed by miners, and election tickets form an array in each header.
+Block headers are now signed by miners, and election tickets form an array in each header. The election process is now split into two phases, ticket generation / validation and election winner generation / validation. Election tickets form an array in each header and mining a null block appends a ticket to this array. Block headers are now signed by miners.
 
 #### 🔗 Chain status command
 
@@ -24,9 +24,11 @@ Block headers are now signed by miners, and election tickets form an array in ea
 
 ### Performance and Reliability
 
-#### ⚡Chain validation performance
+#### ⚡ Chain syncing performance
 
-Previously in go-filecoin 0.4, we aimed to speed up chain syncing by focusing on the first phase: chain fetching. go-filecoin 0.5 continues that work with improvements to the second phase: chain validation. By switching from HAMT bitwidth 8 to HAMT bitwidth 5, we see a general average improvement in benchmarks of about 4-to-1, across memory usage, speed of operations, and bytes written to disk. Users are encouraged to measure and share their own benchmarks.
+Previously in go-filecoin 0.4, we aimed to speed up chain syncing by focusing on the first phase: chain fetching. We have identified the worst of the fetching contention issues that caused forking and unreliable message processing in 0.4. Some of those fixes are now complete, while others such as [#3460](https://github.com/filecoin-project/go-filecoin/pull/3460) are in progress. There may still be some issues that could cause forking that we will continue to work on and update the coming weeks. Please let us know your feedback. 
+
+go-filecoin 0.5 also continues with improvements to the second phase: chain validation. By switching from HAMT bitwidth 8 to HAMT bitwidth 5, we see a general average improvement in benchmarks of about 4-to-1, across memory usage, speed of operations, and bytes written to disk. Users are encouraged to measure and share their own benchmarks. In addition, optimizations to encoding and decoding of HAMT data structures may result in additional performance improvements. 
 
 ### Looking Ahead
 
@@ -37,15 +39,19 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 ### User Notes
 
 - The proving period is now configured to 300 rounds (2.5 hrs), down from 1000 rounds (10 hours). We’ve made this temporary change for more frequent node interaction and faster experimentation, and we expect to increase the proving period again in the future.
-- Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network).
+- Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
 - [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
-- The default storage miner waits 15 rounds before beginning a PoSt computation, but is not robust to a subsequent re-org that changes its challenge seed.
+- The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed
 
 ### CLI diff
 
 | go-filecoin command | change |
 | ------------------- | ------ |
 | chain status        | added  |
+| mining add-piece    | added  |
+| mining seal-now     | behavior changed[1] |
+
+[1] `mining seal-now` no longer stages a piece into a sector. It now has the same behavior as `--auto-seal-interval-seconds`.
 
 ### Changelog
 
