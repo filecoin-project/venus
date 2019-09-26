@@ -78,7 +78,7 @@ type Processor interface {
 	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *types.Block, []*types.SignedMessage, []types.TipSet) ([]*ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, *TipSetMessages, []types.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -89,6 +89,46 @@ type TicketValidator interface {
 // ElectionValidator validates that an election fairly produced a winner.
 type ElectionValidator interface {
 	IsElectionWinner(context.Context, blockstore.Blockstore, PowerTableView, state.Tree, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+}
+
+// The messages from a tipset, with metadata necessary for processing them.
+type TipSetMessages struct {
+	Key    types.TipSetKey
+	Height uint64
+	// The miner owner addresses of the blocks from which Messages are drawn.
+	Miners []address.Address
+	// Messages from each block in the tipset.
+	Messages [][]*types.SignedMessage
+}
+
+type messageProvider interface {
+	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+}
+
+
+// MessagesFromTipset extracts the messages and processing metadata from a tipset.
+func MessagesFromTipset(ctx context.Context, tip types.TipSet, mstore messageProvider) (*TipSetMessages, error) {
+	height, err := tip.Height()
+	if err != nil {
+		return nil, err
+	}
+	miners := make([]address.Address, tip.Len())
+	messages := make([][]*types.SignedMessage, tip.Len())
+	for i := 0; i < tip.Len(); i++ {
+		block := tip.At(i)
+		miners[i] = block.Miner
+		msgs, err := mstore.LoadMessages(ctx, block.Messages)
+		if err != nil {
+			return nil, err
+		}
+		messages[i] = msgs
+	}
+	return &TipSetMessages{
+		Key:      tip.Key(),
+		Height:   height,
+		Miners:   miners,
+		Messages: messages,
+	}, nil
 }
 
 // Expected implements expected consensus.

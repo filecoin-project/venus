@@ -72,19 +72,19 @@ func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types
 	return nil
 }
 
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
+// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+type FakeBlockRewarder struct{}
 
-var _ BlockRewarder = (*TestBlockRewarder)(nil)
+var _ BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward is a noop
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
@@ -93,7 +93,7 @@ func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 func NewTestProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
 		signedMessageValidator: &TestSignedMessageValidator{},
-		blockRewarder:          &TestBlockRewarder{},
+		blockRewarder:          &FakeBlockRewarder{},
 	}
 }
 

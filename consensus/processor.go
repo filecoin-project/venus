@@ -145,16 +145,13 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap,
+	tipMessages TipSetMessages, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
-	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
+	span.AddAttributes(trace.StringAttribute("tipset", tipMessages.Key.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	h, err := ts.Height()
-	if err != nil {
-		return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "processing empty tipset")
-	}
-	bh := types.NewBlockHeight(h)
+	bh := types.NewBlockHeight(tipMessages.Height)
 	msgFilter := make(map[string]struct{})
 
 	var res ProcessTipSetResponse
@@ -164,17 +161,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	// TODO: this can be made slightly more efficient by reusing the validation
 	// transition of the first validated block (change would reach here and
 	// consensus functions).
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		// find miner's owner address
-		minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
-		if err != nil {
-			return &ProcessTipSetResponse{}, err
-		}
-
+	for i := 0; i < len(tipMessages.Messages); i++ {
 		// filter out duplicates within TipSet
-		var msgs []*types.SignedMessage
-		for _, msg := range tsMessages[i] {
+		msgs := tipMessages.Messages[i]
+		for _, msg := range msgs {
 			mCid, err := msg.Cid()
 			if err != nil {
 				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
@@ -187,7 +177,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 			// TODO is there ever a reason to try a duplicate failed message again within the same tipset?
 			msgFilter[mCid.String()] = struct{}{}
 		}
-		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, minerOwnerAddr, bh, ancestors)
+		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, tipMessages.Miners[i], bh, ancestors)
 		if err != nil {
 			return &ProcessTipSetResponse{}, err
 		}

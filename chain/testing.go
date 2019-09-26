@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -179,8 +180,9 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 			MessageReceipts: types.EmptyReceiptsCID,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
-			//Proof            PoStProof
+			//ElectionProof    VRFPi
 			//Timestamp        Uint64
+			//BlockSig         Signature
 		}
 		// Nonce intentionally omitted as it will go away.
 
@@ -297,7 +299,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
-	ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error)
+	ComputeState(prev cid.Cid, blocksMessages *consensus.TipSetMessages, ancestors []types.TipSet) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
 
@@ -310,10 +312,11 @@ type FakeStateBuilder struct {
 // is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error) {
+func (FakeStateBuilder) ComputeState(prev cid.Cid, blocksMessages *consensus.TipSetMessages,
+	ancestors []types.TipSet) (cid.Cid, error) {
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
-	for _, blockMessages := range blocksMessages {
+	for _, blockMessages := range blocksMessages.Messages {
 		for _, msg := range blockMessages {
 			mCId, err := msg.Cid()
 			if err != nil {
@@ -352,7 +355,17 @@ type FakeStateEvaluator struct {
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
 func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
-	return e.ComputeState(stateID, messages)
+	height, err := tip.Height()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	miners := make([]address.Address, tip.Len())
+	for i := 0; i < tip.Len(); i++ {
+		miners[i] = tip.At(i).Miner
+	}
+	msgs := &consensus.TipSetMessages{tip.Key(), height, miners, messages}
+	return e.ComputeState(stateID, msgs, ancestors)
 }
 
 // IsHeavier compares chains weighed with StateBuilder.Weigh.

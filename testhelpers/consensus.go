@@ -96,24 +96,6 @@ var _ consensus.SignedMessageValidator = (*TestSignedMessageValidator)(nil)
 func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
-
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
-
-var _ consensus.BlockRewarder = (*TestBlockRewarder)(nil)
-
-// BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
-// GasReward does nothing
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
-	// do nothing to keep state root the same
-	return nil
-}
-
 // FakeBlockValidator passes everything as valid
 type FakeBlockValidator struct{}
 
@@ -181,7 +163,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block
 
 // NewTestProcessor creates a processor with a test validator and test rewarder
 func NewTestProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &consensus.FakeBlockRewarder{})
 }
 
 type testSigner struct{}
@@ -196,7 +178,7 @@ func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh
 	return applyTestMessageWithAncestors(st, store, msg, bh, nil)
 }
 
-// ApplyTestMessageWithGas uses the TestBlockRewarder but the default SignedMessageValidator
+// ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 
@@ -245,5 +227,5 @@ func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *type
 }
 
 func newTestApplier() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &consensus.FakeBlockRewarder{})
 }

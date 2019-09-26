@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -367,7 +368,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	}
 
 	// create new processor that doesn't reward and doesn't validate
-	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
+	applier := consensus.NewConfiguredProcessor(&message.FakeValidator{}, &consensus.FakeBlockRewarder{})
 
 	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Undef, types.NewBlockHeight(0), nil)
 	if err != nil {
@@ -383,31 +384,6 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	}
 
 	return res.Results[0].Receipt.Return, nil
-}
-
-// GenGenMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type messageValidator struct{}
-
-var _ consensus.SignedMessageValidator = (*messageValidator)(nil)
-
-// Validate always returns nil
-func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	return nil
-}
-
-// blockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type blockRewarder struct{}
-
-var _ consensus.BlockRewarder = (*blockRewarder)(nil)
-
-// BlockReward is a noop
-func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
-	return nil
-}
-
-// GasReward is a noop
-func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
-	return nil
 }
 
 // signer doesn't actually sign because it's not actually validated
