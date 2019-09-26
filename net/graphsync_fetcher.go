@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -17,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -24,10 +26,10 @@ import (
 var logGraphsyncFetcher = logging.Logger("net.graphsync_fetcher")
 
 const (
-	// Timeout for a single graphsync request (which may be for many blocks).
-	// We might prefer this timeout to scale with the number of blocks expected in the fetch,
-	// when that number is large.
-	requestTimeout = 60 * time.Second
+	// Timeout for a single graphsync request getting "stuck"
+	// -- if no more responses are received for a period greater than this,
+	// we will assume the request has hung-up and cancel it
+	progressTimeout = 10 * time.Second
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -60,18 +62,20 @@ type GraphSyncFetcher struct {
 	store       bstore.Blockstore
 	ssb         selectorbuilder.SelectorSpecBuilder
 	peerTracker graphsyncFallbackPeerTracker
+	systemClock clock.Clock
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
 func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
+	bv consensus.SyntaxValidator, systemClock clock.Clock, pt graphsyncFallbackPeerTracker) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
 		store:       blockstore,
 		validator:   bv,
 		exchange:    exchange,
 		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
 		peerTracker: pt,
+		systemClock: systemClock,
 	}
 	return gsf
 }
@@ -223,19 +227,48 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, ta
 		efsb.Insert("messages", gsf.ssb.Matcher())
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
-	errChans := make([]<-chan error, 0, len(cids))
-	requestCtx, requestCancel := context.WithTimeout(ctx, requestTimeout)
-	defer requestCancel()
-	for _, c := range cids {
-		_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
-		errChans = append(errChans, errChan)
-	}
+	var wg sync.WaitGroup
 	// Any of the multiple parallel requests might fail. Wait for all of them to complete, then
-	// return any error (in this case, the last one to be received).
+	// return any error (in this case, the first one to be received).
+	var setAnyError sync.Once
 	var anyError error
-	for _, errChan := range errChans {
-		for err := range errChan {
+	for _, c := range cids {
+		requestCtx, requestCancel := context.WithCancel(ctx)
+		defer requestCancel()
+		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
+		wg.Add(1)
+		go func(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) {
+			defer wg.Done()
+			err := gsf.consumeResponse(requestChan, errChan, cancelFunc)
+			if err != nil {
+				setAnyError.Do(func() {
+					anyError = err
+				})
+			}
+		}(requestChan, errChan, requestCancel)
+	}
+	wg.Wait()
+	return anyError
+}
+
+func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) error {
+	timer := gsf.systemClock.NewTimer(progressTimeout)
+	var anyError error
+	for errChan != nil || requestChan != nil {
+		select {
+		case err, ok := <-errChan:
+			if !ok {
+				errChan = nil
+			}
 			anyError = err
+			timer.Reset(progressTimeout)
+		case _, ok := <-requestChan:
+			if !ok {
+				requestChan = nil
+			}
+			timer.Reset(progressTimeout)
+		case <-timer.Chan():
+			cancelFunc()
 		}
 	}
 	return anyError
@@ -244,7 +277,7 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, ta
 // fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
 // starting from baseCid.
 func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) error {
-	requestCtx, requestCancel := context.WithTimeout(ctx, requestTimeout)
+	requestCtx, requestCancel := context.WithCancel(ctx)
 	defer requestCancel()
 
 	// recursive selector to fetch n sets of parent blocks
@@ -264,11 +297,8 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 		))
 	})).Node()
 
-	_, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
-	for err := range errChan {
-		return err
-	}
-	return nil
+	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
+	return gsf.consumeResponse(requestChan, errChan, requestCancel)
 }
 
 // Loads the IPLD blocks for all blocks in a tipset, and checks for the presence of the

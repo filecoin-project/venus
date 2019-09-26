@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
@@ -134,4 +135,16 @@ func fromAddrOrDefault(req *cmds.Request, env cmds.Environment) (address.Address
 		return GetPorcelainAPI(env).WalletDefaultAddress()
 	}
 	return addr, nil
+}
+
+func cidsFromSlice(args []string) ([]cid.Cid, error) {
+	out := make([]cid.Cid, len(args))
+	for i, arg := range args {
+		c, err := cid.Decode(arg)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = c
+	}
+	return out, nil
 }

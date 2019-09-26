@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -19,9 +20,11 @@ var chainCmd = &cmds.Command{
 		Tagline: "Inspect the filecoin blockchain",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"head":   storeHeadCmd,
-		"ls":     storeLsCmd,
-		"status": storeStatusCmd,
+		"head":     storeHeadCmd,
+		"ls":       storeLsCmd,
+		"status":   storeStatusCmd,
+		"set-head": storeSetHeadCmd,
+		"sync":     storeSyncCmd,
 	},
 }
 
@@ -120,5 +123,52 @@ var storeStatusCmd = &cmds.Command{
 			return err
 		}
 		return nil
+	},
+}
+
+var storeSetHeadCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Set the chain head to a specific tipset key.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to set the chain head to."),
+	},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		headCids, err := cidsFromSlice(req.Arguments)
+		if err != nil {
+			return err
+		}
+		maybeNewHead := types.NewTipSetKey(headCids...)
+		return GetPorcelainAPI(env).ChainSetHead(req.Context, maybeNewHead)
+	},
+}
+
+var storeSyncCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Instruct the chain syncer to sync a specific chain head, going to network if required.",
+	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("peerid", true, false, "Base58-encoded libp2p peer ID to sync from"),
+		cmdkit.StringArg("cids", true, true, "CID's of the blocks of the tipset to sync."),
+	},
+	Options: []cmdkit.Option{},
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		syncPid, err := peer.IDB58Decode(req.Arguments[0])
+		if err != nil {
+			return err
+		}
+
+		syncCids, err := cidsFromSlice(req.Arguments[1:])
+		if err != nil {
+			return err
+		}
+
+		syncKey := types.NewTipSetKey(syncCids...)
+		ci := &types.ChainInfo{
+			Peer:   syncPid,
+			Height: 0, // only checked when trusted is false.
+			Head:   syncKey,
+		}
+		return GetPorcelainAPI(env).ChainSyncHandleNewTipSet(req.Context, ci, true)
 	},
 }

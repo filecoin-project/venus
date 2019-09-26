@@ -368,6 +368,8 @@ github.com/ipfs/go-graphsync v0.0.1-filecoin h1:Z8TyQw9mhlRFeMiN+/2xgBMkPp0EU1Sn
 github.com/ipfs/go-graphsync v0.0.1-filecoin/go.mod h1:ICL/OYl1sg5VTjM+jVwuNGyScs/wzs+cpeyl1HdOXyc=
 github.com/ipfs/go-graphsync v0.0.2 h1:ek+dlPgQZCLnzAn8fUf5ioi+6n/91pOqHlJPimYOel0=
 github.com/ipfs/go-graphsync v0.0.2/go.mod h1:ICL/OYl1sg5VTjM+jVwuNGyScs/wzs+cpeyl1HdOXyc=
+github.com/ipfs/go-graphsync v0.0.3 h1:sTYXu1epNgFVtsHwaQE+E0R9atH0lciYeX5D4NCvbJ8=
+github.com/ipfs/go-graphsync v0.0.3/go.mod h1:ICL/OYl1sg5VTjM+jVwuNGyScs/wzs+cpeyl1HdOXyc=
 github.com/ipfs/go-hamt-ipld v0.0.1 h1:dOS1Bp9hyZUozI4Y7rC+FJqitur00tWlIFmLLgNev38=
 github.com/ipfs/go-hamt-ipld v0.0.1/go.mod h1:WrX60HHX2SeMb602Z1s9Ztnf/4fzNHzwH9gxNTVpEmk=
 github.com/ipfs/go-hamt-ipld v0.0.12-0.20190910031437-25acf8ec1e1b h1:tnZYzZem4fCWQJ6FYbPCnKII+O5Y8M47uavgvfN+ETw=
