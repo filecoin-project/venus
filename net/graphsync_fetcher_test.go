@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -39,21 +40,28 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+const visitsPerBlock = 4
+
+type notDecodable struct {
+	Num    int    `json:"num"`
+	Mesage string `json:"mesage"`
+}
+
+func init() {
+	cbor.RegisterCborType(notDecodable{})
+}
+
 func TestGraphsyncFetcher(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, th.NewFakeClock(time.Now()))
+	clock := th.NewFakeClock(time.Now())
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
 	rm := types.NewReceiptMaker()
-	type notDecodable struct {
-		num    int
-		mesage string
-	}
-	cbor.RegisterCborType(notDecodable{})
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -128,11 +136,11 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -153,7 +161,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		pid0Loader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		pid1Loader := errorOnCidsLoader(loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.Key().ToSlice()...)
@@ -161,7 +169,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -182,20 +190,20 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 		pt := newFakePeerTracker(chain0, chain1, chain2)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorLoader := errorOnCidsLoader(loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorLoader, final.Key().ToSlice()...)
 		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, errorLoader, final.At(1).Cid(), final.At(2).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(7)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -205,17 +213,17 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(2).Messages)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -225,17 +233,17 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesReceiptsLoader, final.Key().ToSlice()...)
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(gen.Key())
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", final.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -248,7 +256,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(1).Messages, final.At(2).Messages)
 		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts, final.At(2).MessageReceipts)
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
@@ -256,7 +264,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(1).Cid(), final.At(2).Cid())
 		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -287,14 +295,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blocks[i] = prev
 		}
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		pid0Loader := errorOnCidsLoader(loader, blocks[3].Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, pid0Loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), pid0Loader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), pid0Loader, blocks[0].Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, pt)
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
 
 		done := func(ts types.TipSet) (bool, error) {
 			if ts.Key().Equals(gen.Key()) {
@@ -328,19 +336,19 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		mgs.verifyReceivedRequestCount(3)
 		mgs.verifyExpectations()
-		require.Errorf(t, err, "Failed fetching tipset: %s", multi.Key().String())
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", multi.Key().String()))
 		require.Nil(t, ts)
 	})
 
@@ -356,14 +364,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 		chain1 := types.NewChainInfo(pid1, final.Key(), height)
 		chain2 := types.NewChainInfo(pid2, final.Key(), height)
 
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		errorInMultiBlockLoader := errorOnCidsLoader(loader, multi.At(1).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), errorInMultiBlockLoader, final.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(4), errorInMultiBlockLoader, penultimate.At(0).Cid())
 		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
 
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0, chain1, chain2))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -398,7 +406,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		for i := 1; i <= 22; i++ {
 			tipset, err := builder.GetTipSet(nextKey)
 			require.NoError(t, err)
-			mgs := newMockableGraphsync(ctx, bs, t)
+			mgs := newMockableGraphsync(ctx, bs, clock, t)
 			mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
 			receivedRequestCount := 1
 			if i > 1 {
@@ -414,7 +422,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 				receivedRequestCount++
 			}
 
-			fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+			fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 			done := doneAt(tipset.Key())
 
 			ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -432,64 +440,64 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 
 	t.Run("value returned with non block format", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 
 		key := types.NewTipSetKey(notDecodableBlock.Cid())
 		chain0 := types.NewChainInfo(pid0, key, 0)
 		notDecodableLoader := simpleLoader([]format.Node{notDecodableBlock})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, notDecodableBlock.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a block", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a block: unmarshal error: stream contains key \"num\", but there's no such field in structs of type types.Block", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
 	t.Run("block returned with invalid syntax", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := simpleBlock()
 		block.Height = 1
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		invalidSyntaxLoader := simpleLoader([]format.Node{block.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, invalidSyntaxLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "block %s has nil StateRoot", block.Cid().String())
+		require.EqualError(t, err, fmt.Sprintf("invalid block %s: block %s has nil StateRoot", block.Cid().String(), block.Cid().String()))
 		require.Nil(t, ts)
 	})
 
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := requireSimpleValidBlock(t, 3, address.Undef)
 		block.Messages = notDecodableBlock.Cid()
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a message collection", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
 	t.Run("blocks present but receipts don't decode", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := requireSimpleValidBlock(t, 3, address.Undef)
 		block.MessageReceipts = notDecodableBlock.Cid()
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.MessageCollection{}.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.Errorf(t, err, "fetched data (cid %s) was not a message receipt collection", notDecodableBlock.Cid())
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message receipt collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -499,13 +507,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 
 		errorMv := mockSyntaxValidator{
 			validateMessagesError: fmt.Errorf("Everything Failed"),
 		}
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -519,13 +527,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		height, err := final.Height()
 		require.NoError(t, err)
 		chain0 := types.NewChainInfo(pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, t)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
 
 		errorMv := mockSyntaxValidator{
 			validateReceiptsError: fmt.Errorf("Everything Failed"),
 		}
-		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, newFakePeerTracker(chain0))
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, clock, newFakePeerTracker(chain0))
 		done := doneAt(gen.Key())
 
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
@@ -533,6 +541,175 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.Error(t, err, "invalid receipts for for receipt collection (cid %s)", final.At(0).MessageReceipts.String())
 	})
 
+	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, loader, final.At(1).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(2).Cid())
+		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(7)
+		mgs.verifyExpectations()
+		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
+		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
+		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
+	})
+
+	t.Run("initial request hangs up and no other peers succeed", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid1, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid2, layer1Selector, loader, 0, final.At(1).Cid(), final.At(2).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
+		done := doneAt(gen.Key())
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
+		mgs.verifyReceivedRequestCount(7)
+		mgs.verifyExpectations()
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
+		require.Nil(t, ts)
+	})
+
+	t.Run("partial response hangs up during recursive fetch recovers at hang up point", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildManyOn(5, gen, withMessageBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+		pt := newFakePeerTracker(chain0, chain1, chain2)
+
+		blocks := make([]*types.Block, 4) // in fetch order
+		prev := final.At(0)
+		for i := 0; i < 4; i++ {
+			parent := prev.Parents.Iter().Value()
+			prev, err = builder.GetBlock(ctx, parent)
+			require.NoError(t, err)
+			blocks[i] = prev
+		}
+
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, blocks[0].Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, blocks[2].Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, pt)
+
+		done := func(ts types.TipSet) (bool, error) {
+			if ts.Key().Equals(gen.Key()) {
+				return true, nil
+			}
+			return false, nil
+		}
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(4)
+		mgs.verifyExpectations()
+		require.Equal(t, 6, len(ts), "the right number of tipsets is returned")
+		expectedTs := final
+		for _, resultTs := range ts {
+			require.True(t, expectedTs.Key().Equals(resultTs.Key()), "the initial tipset is correct")
+			key, err := expectedTs.Parents()
+			require.NoError(t, err)
+			if !key.Empty() {
+				expectedTs, err = builder.GetTipSet(key)
+				require.NoError(t, err)
+			}
+		}
+	})
+
+	t.Run("hangs up on single block in multi block tip during recursive fetch", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		penultimate := builder.BuildManyOn(3, multi, withMessageBuilder)
+		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
+		mgs.verifyReceivedRequestCount(3)
+		mgs.verifyExpectations()
+		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", multi.Key().String()))
+		require.Nil(t, ts)
+	})
+
+	t.Run("hangs up on single block in multi block tip during recursive fetch, recover through fallback", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		multi := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		withMultiParent := builder.BuildOn(multi, 1, withMessageEachBuilder)
+		penultimate := builder.BuildManyOn(2, withMultiParent, withMessageBuilder)
+		final := builder.BuildOn(penultimate, 1, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := types.NewChainInfo(pid0, final.Key(), height)
+		chain1 := types.NewChainInfo(pid1, final.Key(), height)
+		chain2 := types.NewChainInfo(pid2, final.Key(), height)
+
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+		mgs.expectRequestToRespondWithHangupAfter(pid0, recursiveSelector(4), loader, 2*visitsPerBlock, penultimate.At(0).Cid())
+		mgs.expectRequestToRespondWithLoader(pid1, recursiveSelector(4), loader, withMultiParent.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
+
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(4)
+		mgs.verifyExpectations()
+		require.Equal(t, 6, len(ts), "the right number of tipsets is returned")
+		expectedTs := final
+		for _, resultTs := range ts {
+			require.True(t, expectedTs.Key().Equals(resultTs.Key()), "the initial tipset is correct")
+			key, err := expectedTs.Parents()
+			require.NoError(t, err)
+			if !key.Empty() {
+				expectedTs, err = builder.GetTipSet(key)
+				require.NoError(t, err)
+			}
+		}
+	})
 }
 
 func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
@@ -580,6 +757,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bridge2 := ipldbridge.NewIPLDBridge()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
+	clock := th.NewFakeClock(time.Now())
 	pt := net.NewPeerTracker(peer.ID(""))
 	pt.Track(types.NewChainInfo(host2.ID(), types.TipSetKey{}, 0))
 
@@ -588,7 +766,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
 
-	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, pt)
+	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, clock, pt)
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
@@ -707,10 +885,13 @@ type fakeRequest struct {
 //   -- the error array is converted to a channel
 //   -- a blks array is written to mock graphsync block store
 type fakeResponse struct {
-	responses []graphsync.ResponseProgress
-	errs      []error
-	blks      []format.Node
+	responses   []graphsync.ResponseProgress
+	errs        []error
+	blks        []format.Node
+	hangupAfter int
 }
+
+const noHangup = -1
 
 // request response just records a request and the respond to send when its
 // made for a stub
@@ -719,22 +900,75 @@ type requestResponse struct {
 	response fakeResponse
 }
 
+// hungRequest represents a request that has hung, pending a timeout
+// causing a cancellation, which will in turn close the channels
+type hungRequest struct {
+	ctx          context.Context
+	responseChan chan graphsync.ResponseProgress
+	errChan      chan error
+}
+
 // mockableGraphsync conforms to the graphsync exchange interface needed by
 // the graphsync fetcher but will only send stubbed responses
 type mockableGraphsync struct {
-	ctx              context.Context
-	stubs            []requestResponse
-	expectedRequests []fakeRequest
-	receivedRequests []fakeRequest
-	store            bstore.Blockstore
-	t                *testing.T
+	clock               th.FakeClock
+	hungRequests        []*hungRequest
+	incomingHungRequest chan *hungRequest
+	requestsToProcess   chan struct{}
+	ctx                 context.Context
+	stubs               []requestResponse
+	expectedRequests    []fakeRequest
+	receivedRequests    []fakeRequest
+	store               bstore.Blockstore
+	t                   *testing.T
 }
 
-func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, t *testing.T) *mockableGraphsync {
-	return &mockableGraphsync{
-		ctx:   ctx,
-		store: store,
-		t:     t,
+func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
+	mgs := &mockableGraphsync{
+		ctx:                 ctx,
+		incomingHungRequest: make(chan *hungRequest),
+		requestsToProcess:   make(chan struct{}, 1),
+		store:               store,
+		clock:               clock,
+		t:                   t,
+	}
+	go mgs.processHungRequests()
+	return mgs
+}
+
+// processHungRequests handles requests that hangup, by advancing the clock until
+// the fetcher cancels those requests, which then causes the channels to close
+func (mgs *mockableGraphsync) processHungRequests() {
+	for {
+		select {
+		case hungRequest := <-mgs.incomingHungRequest:
+			mgs.hungRequests = append(mgs.hungRequests, hungRequest)
+			select {
+			case mgs.requestsToProcess <- struct{}{}:
+			default:
+			}
+		case <-mgs.requestsToProcess:
+			var newHungRequests []*hungRequest
+			for _, hungRequest := range mgs.hungRequests {
+				select {
+				case <-hungRequest.ctx.Done():
+					close(hungRequest.errChan)
+					close(hungRequest.responseChan)
+				default:
+					newHungRequests = append(newHungRequests, hungRequest)
+				}
+			}
+			mgs.hungRequests = newHungRequests
+			if len(mgs.hungRequests) > 0 {
+				mgs.clock.Advance(15 * time.Second)
+				select {
+				case mgs.requestsToProcess <- struct{}{}:
+				default:
+				}
+			}
+		case <-mgs.ctx.Done():
+			return
+		}
 	}
 }
 
@@ -770,14 +1004,29 @@ func (mgs *mockableGraphsync) verifyExpectations() {
 // by executing the specified root and selector using the given cid loader
 func (mgs *mockableGraphsync) stubResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, cids ...cid.Cid) {
 	for _, c := range cids {
-		mgs.stubSingleResponseWithLoader(pid, s, loader, c)
+		mgs.stubSingleResponseWithLoader(pid, s, loader, noHangup, c)
 	}
 }
+
+// stubResponseWithHangupAfter stubs a response when the mocked graphsync
+// instance is called with the given peer, selector, one of the cids
+// by executing the specified root and selector using the given cid loader
+// however the response will hangup at stop sending on the channel after N
+// responses
+func (mgs *mockableGraphsync) stubResponseWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
+	for _, c := range cids {
+		mgs.stubSingleResponseWithLoader(pid, s, loader, hangup, c)
+	}
+}
+
+var (
+	errHangup = errors.New("Hangup")
+)
 
 // stubResponseWithLoader stubs a response when the mocked graphsync
 // instance is called with the given peer, selector, and cid
 // by executing the specified root and selector using the given cid loader
-func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, c cid.Cid) {
+func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, c cid.Cid) {
 	var blks []format.Node
 	var responses []graphsync.ResponseProgress
 
@@ -795,11 +1044,16 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 	if err != nil {
 		mgs.stubs = append(mgs.stubs, requestResponse{
 			fakeRequest{pid, root, s},
-			fakeResponse{errs: []error{err}},
+			fakeResponse{errs: []error{err}, hangupAfter: hangup},
 		})
 		return
 	}
+	visited := 0
 	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
+		if hangup != noHangup && visited >= hangup {
+			return errHangup
+		}
+		visited++
 		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
 		return nil
 	}
@@ -809,9 +1063,12 @@ func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s select
 			LinkLoader: linkLoader,
 		},
 	}.TraverseInformatively(node, s, visitor)
+	if err == errHangup {
+		err = nil
+	}
 	mgs.stubs = append(mgs.stubs, requestResponse{
 		fakeRequest{pid, root, s},
-		fakeResponse{responses, []error{err}, blks},
+		fakeResponse{responses, []error{err}, blks, hangup},
 	})
 }
 
@@ -822,7 +1079,15 @@ func (mgs *mockableGraphsync) expectRequestToRespondWithLoader(pid peer.ID, s se
 	mgs.stubResponseWithLoader(pid, s, loader, cids...)
 }
 
-func (mgs *mockableGraphsync) processResponse(mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
+// expectRequestToRespondWithHangupAfter is just a combination of an expectation and a stub --
+// it expects the request to come in and responds with the given loader, but hangup after
+// the given number of responses
+func (mgs *mockableGraphsync) expectRequestToRespondWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
+	mgs.expectRequest(pid, s, cids...)
+	mgs.stubResponseWithHangupAfter(pid, s, loader, hangup, cids...)
+}
+
+func (mgs *mockableGraphsync) processResponse(ctx context.Context, mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
 	for _, block := range mr.blks {
 		requireBlockStorePut(mgs.t, mgs.store, block)
 	}
@@ -831,13 +1096,17 @@ func (mgs *mockableGraphsync) processResponse(mr fakeResponse) (<-chan graphsync
 	for _, err := range mr.errs {
 		errChan <- err
 	}
-	close(errChan)
-
 	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
 	for _, response := range mr.responses {
 		responseChan <- response
 	}
-	close(responseChan)
+
+	if mr.hangupAfter == noHangup {
+		close(errChan)
+		close(responseChan)
+	} else {
+		mgs.incomingHungRequest <- &hungRequest{ctx, responseChan, errChan}
+	}
 
 	return responseChan, errChan
 }
@@ -845,16 +1114,16 @@ func (mgs *mockableGraphsync) processResponse(mr fakeResponse) (<-chan graphsync
 func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
 	parsed, err := selector.ParseSelector(selectorSpec)
 	if err != nil {
-		return mgs.processResponse(fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil})
+		return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil, noHangup})
 	}
 	request := fakeRequest{p, root, parsed}
 	mgs.receivedRequests = append(mgs.receivedRequests, request)
 	for _, stub := range mgs.stubs {
 		if reflect.DeepEqual(stub.request, request) {
-			return mgs.processResponse(stub.response)
+			return mgs.processResponse(ctx, stub.response)
 		}
 	}
-	return mgs.processResponse(fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil})
+	return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil, noHangup})
 }
 
 type fakePeerTracker struct {
