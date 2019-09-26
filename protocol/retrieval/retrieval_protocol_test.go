@@ -35,7 +35,7 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
 	require.NoError(t, err)
 
-	_, err = retrievePieceBytes(ctx, minerNode.RetrievalAPI, someRandomCid, minerPID, minerAddr)
+	_, err = retrievePieceBytes(ctx, minerNode.RetrievalProtocol.RetrievalAPI, someRandomCid, minerPID, minerAddr)
 	require.Error(t, err)
 }
 

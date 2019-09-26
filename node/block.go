@@ -21,7 +21,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	// Put block in storage wired to an exchange so this node and other
 	// nodes can fetch it.
 	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
-	blkCid, err := node.cborStore.Put(ctx, b)
+	blkCid, err := node.Blockstore.cborStore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
@@ -29,11 +29,11 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
 	trusted := true // This block was mined by us, so we trust it.
-	if err := node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
+	if err := node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
 		return err
 	}
 
-	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.NetworkName), b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.Network.NetworkName), b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
@@ -63,7 +63,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
 	trusted := true
-	err = node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
+	err = node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
 	if err != nil {
 		return errors.Wrapf(err, "processing block %s from peer %s", blk.Cid(), from)
 	}
