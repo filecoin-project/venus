@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -45,17 +45,17 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap       exchange.Interface
-	chain         *cst.ChainStateProvider
+	chain         *cst.ChainStateReadWriter
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
 	expected      consensus.Protocol
-	msgPool       *core.MessagePool
+	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
 	msgQueryer    *msg.Queryer
 	msgWaiter     *msg.Waiter
 	network       *net.Network
-	outbox        *core.Outbox
+	outbox        *message.Outbox
 	sectorBuilder func() sectorbuilder.SectorBuilder
 	storagedeals  *strgdls.Store
 	wallet        *wallet.Wallet
@@ -64,18 +64,18 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap       exchange.Interface
-	Chain         *cst.ChainStateProvider
+	Chain         *cst.ChainStateReadWriter
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
 	Deals         *strgdls.Store
 	Expected      consensus.Protocol
-	MsgPool       *core.MessagePool
+	MsgPool       *message.Pool
 	MsgPreviewer  *msg.Previewer
 	MsgQueryer    *msg.Queryer
 	MsgWaiter     *msg.Waiter
 	Network       *net.Network
-	Outbox        *core.Outbox
+	Outbox        *message.Outbox
 	SectorBuilder func() sectorbuilder.SectorBuilder
 	Wallet        *wallet.Wallet
 }
@@ -161,6 +161,11 @@ func (api *API) ChainHeadKey() types.TipSetKey {
 	return api.chain.Head()
 }
 
+// ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
+func (api *API) ChainSetHead(ctx context.Context, key types.TipSetKey) error {
+	return api.chain.SetHead(ctx, key)
+}
+
 // ChainTipSet returns the tipset at the given key
 func (api *API) ChainTipSet(key types.TipSetKey) (types.TipSet, error) {
 	return api.chain.GetTipSet(key)
@@ -205,7 +210,7 @@ func (api *API) OutboxQueues() []address.Address {
 }
 
 // OutboxQueueLs lists messages in the queue for an address.
-func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
+func (api *API) OutboxQueueLs(sender address.Address) []*message.Queued {
 	return api.outbox.Queue().List(sender)
 }
 

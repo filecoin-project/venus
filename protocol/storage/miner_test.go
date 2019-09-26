@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -357,7 +356,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 			return [][]byte{}, errors.New("test error")
 		}
 
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "bootstrapping")
@@ -373,7 +372,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 
 		// empty TipSet causes error if bootstrap miner is not set (see "Errors if tipset has no blocks")
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 		require.NoError(t, err)
 	})
 
@@ -387,7 +386,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
@@ -405,7 +404,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
@@ -421,7 +420,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get proving period")
@@ -433,7 +432,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		api.messageHandlers = successMessageHandlers(t)
 
-		err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get block height")
@@ -446,23 +445,37 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		postParams := []interface{}{}
 
 		handlers := successMessageHandlers(t)
+		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+		}
 		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			postParams = p
 			return [][]byte{}, nil
 		}
 		api.messageHandlers = handlers
 
-		height := uint64(20500)
+		height := uint64(200) // Right on the proving window start
 		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
 
-		err = miner.OnNewHeaviestTipSet(ts)
+		done, err := miner.OnNewHeaviestTipSet(ts)
+		require.NoError(t, err)
+		done.Wait()
+
+		// No PoSt yet, the miner is waiting for a challenge delay to combat re-orgs
+		require.Equal(t, 0, len(postParams))
+
+		height = uint64(215) // Right after the challenge delay
+		api.blockHeight = height
+		block = &types.Block{Height: types.Uint64(height)}
+		ts, err = types.NewTipSet(block)
 		require.NoError(t, err)
 
-		// OnNewHeaviestTipSet spawns a goroutine that should exit immediately dependencies are faked out
-		time.Sleep(1 * time.Second)
+		done, err = miner.OnNewHeaviestTipSet(ts)
+		require.NoError(t, err)
+		done.Wait()
 
 		// assert proof generated in sector builder is sent to submitPoSt
 		require.Equal(t, 3, len(postParams))
@@ -474,25 +487,28 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
+		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+		}
 		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
 			return [][]byte{}, nil
 		}
 		api.messageHandlers = handlers
 
-		height := uint64(10500)
+		height := uint64(190)
 		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
 
-		err = miner.OnNewHeaviestTipSet(ts)
+		done, err := miner.OnNewHeaviestTipSet(ts)
 
 		// too early is not an error
 		require.NoError(t, err)
 
 		// Wait to make sure submitPoSt is not called
-		time.Sleep(1 * time.Second)
+		done.Wait()
 	})
 
 	t.Run("Errors if past proving period", func(t *testing.T) {
@@ -500,24 +516,27 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
+		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+		}
 		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
 			return [][]byte{}, nil
 		}
 		api.messageHandlers = handlers
 
-		height := uint64(50500)
+		height := uint64(400)
 		api.blockHeight = height
 		block := &types.Block{Height: types.Uint64(height)}
 		ts, err := types.NewTipSet(block)
 		require.NoError(t, err)
 
-		err = miner.OnNewHeaviestTipSet(ts)
+		done, err := miner.OnNewHeaviestTipSet(ts)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "too late start")
 
-		// Sleep to ensure submit post is not called
-		time.Sleep(1 * time.Second)
+		// Wait to ensure submit post is not called
+		done.Wait()
 	})
 }
 
@@ -592,7 +611,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 	config := cfg.NewConfig(repo.NewInMemoryRepo())
 	require.NoError(t, config.Set("mining.storagePrice", fmt.Sprintf("%q", minerPriceString)))
 
-	blockHeight := types.NewBlockHeight(773)
+	blockHeight := uint64(773)
 	return &minerTestPorcelain{
 		config:          config,
 		payerAddress:    payerAddr,
@@ -603,8 +622,8 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 		signer:          mockSigner,
 		noChannels:      false,
 		channelEol:      types.NewBlockHeight(13773),
-		blockHeight:     773,
-		paymentStart:    blockHeight,
+		blockHeight:     blockHeight,
+		paymentStart:    types.NewBlockHeight(blockHeight),
 		deals:           make(map[cid.Cid]*storagedeal.Deal),
 		walletBalance:   types.NewAttoFILFromFIL(100),
 		messageHandlers: messageHandlerMap{},

@@ -4,12 +4,15 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-sectorbuilder"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var logProver = logging.Logger("/fil/storage/prover")
 
 const (
 	// Maximum number of rounds delay to allow for when submitting a PoSt for computing any
@@ -93,6 +96,11 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		}
 		sectorInfos[i] = info
 	}
+	logProver.Infof("Prover calculating post for addr %s -- start: %s -- end: %s -- seed: %x", p.actorAddress, start, end, seed)
+	for i, ssi := range sectorInfos {
+		logProver.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
+	}
+
 	proof, err := p.calculator.CalculatePoSt(ctx, go_sectorbuilder.NewSortedSectorInfo(sectorInfos...), seed)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to calculate PoSt")

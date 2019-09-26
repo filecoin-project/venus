@@ -17,7 +17,7 @@ import (
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet types.TipSet,
-	ticket types.Ticket,
+	tickets []types.Ticket,
 	electionProof types.VRFPi,
 	nullBlockCount uint64) (*types.Block, error) {
 
@@ -102,8 +102,16 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		ParentWeight:    types.Uint64(weight),
 		ElectionProof:   electionProof,
 		StateRoot:       newStateTreeCid,
-		Tickets:         []types.Ticket{ticket},
+		Tickets:         tickets,
 		Timestamp:       types.Uint64(w.clock.Now().Unix()),
+	}
+	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read workerAddr during block generation")
+	}
+	next.BlockSig, err = w.workerSigner.SignBytes(next.SignatureData(), workerAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to sign block")
 	}
 
 	for i, msg := range res.PermanentFailures {

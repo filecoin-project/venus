@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -69,8 +68,9 @@ func TestIsElectionWinner(t *testing.T) {
 	var st state.Tree
 
 	t.Run("IsElectionWinner performs as expected on cases", func(t *testing.T) {
+		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
-			ptv := th.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower))
+			ptv := consensus.NewTestPowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
 			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, bs, ptv, st, types.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
@@ -143,30 +143,27 @@ func TestGenValidTicketChain(t *testing.T) {
 	addr3 := requireAddress(t, &kis[2])
 
 	schedule := struct {
-		Addrs     []address.Address
-		NullCount []uint64
+		Addrs []address.Address
 	}{
-		Addrs:     []address.Address{addr1, addr1, addr1, addr2, addr3, addr3, addr1, addr2},
-		NullCount: []uint64{0, 0, 1, 33, 2, 0, 0, 0},
+		Addrs: []address.Address{addr1, addr1, addr1, addr2, addr3, addr3, addr1, addr2},
 	}
 
 	// Grow the specified ticket chain without error
 	for i := 0; i < len(schedule.Addrs); i++ {
-		base = requireValidTicket(t, base, signer, schedule.Addrs[i], schedule.NullCount[i])
+		base = requireValidTicket(t, base, signer, schedule.Addrs[i])
 	}
 }
 
-func requireValidTicket(t *testing.T, parent types.Ticket, signer types.Signer, signerAddr address.Address, nullBlkCount uint64) types.Ticket {
+func requireValidTicket(t *testing.T, parent types.Ticket, signer types.Signer, signerAddr address.Address) types.Ticket {
 	tm := consensus.TicketMachine{}
 
-	ticket, err := tm.NextTicket(parent, signerAddr, signer, nullBlkCount)
+	ticket, err := tm.NextTicket(parent, signerAddr, signer)
 	require.NoError(t, err)
 
 	err = tm.NotarizeTime(&ticket)
 	assert.NoError(t, err)
 
-	valid, err := tm.ValidateTicket(parent, ticket, signerAddr, nullBlkCount)
-	require.NoError(t, err)
+	valid := tm.IsValidTicket(parent, ticket, signerAddr)
 	require.True(t, valid)
 	return ticket
 }
@@ -176,7 +173,7 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddr := address.TestAddress
 	tm := consensus.TicketMachine{}
-	badTicket, err := tm.NextTicket(parent, badAddr, signer, 0)
+	badTicket, err := tm.NextTicket(parent, badAddr, signer)
 	assert.Error(t, err)
 	assert.Nil(t, badTicket.VRFProof)
 }

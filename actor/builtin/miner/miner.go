@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	xerrors "github.com/pkg/errors"
 
@@ -19,7 +20,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+var log = logging.Logger("miner-actor")
+
 func init() {
+	cbor.RegisterCborType(cbor.BigIntAtlasEntry)
 	cbor.RegisterCborType(State{})
 	cbor.RegisterCborType(Ask{})
 }
@@ -32,12 +36,12 @@ func init() {
 // largest sector size - this constant and consensus.AncestorRoundsNeeded will
 // need to be reconsidered.
 // https://github.com/filecoin-project/specs/pull/318
-const LargestSectorSizeProvingPeriodBlocks = 1000
+const LargestSectorSizeProvingPeriodBlocks = 300
 
 // PoStChallengeWindowBlocks defines the block time prior to the proving
 // period end at which the PoSt challenge seed is chosen. This dictates the
 // earliest point at which a PoSt may be submitted.
-const PoStChallengeWindowBlocks = 500
+const PoStChallengeWindowBlocks = 150
 
 // MinimumCollateralPerSector is the minimum amount of collateral required per sector
 var MinimumCollateralPerSector, _ = types.NewAttoFILFromFILString("0.001")
@@ -148,6 +152,12 @@ type State struct {
 	// See also: https://github.com/polydawn/refmt/issues/35
 	SectorCommitments SectorSet
 
+	// Faults reported since last PoSt
+	CurrentFaultSet types.IntSet
+
+	// Faults reported since last PoSt, but too late to be included in the current PoSt
+	NextFaultSet types.IntSet
+
 	// NextDoneSet is a set of sector ids reported during the last PoSt
 	// submission as being 'done'.  The collateral for them is still being
 	// held until the next PoSt submission in case early sector removal
@@ -196,6 +206,8 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 		PeerID:            pid,
 		SectorCommitments: NewSectorSet(),
 		NextDoneSet:       types.EmptyIntSet(),
+		CurrentFaultSet:   types.EmptyIntSet(),
+		NextFaultSet:      types.EmptyIntSet(),
 		ProvingSet:        types.EmptyIntSet(),
 		Power:             types.NewBytesAmount(0),
 		NextAskID:         big.NewInt(0),
@@ -941,6 +953,11 @@ func (ma *Actor) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, fault
 			}
 
 			sortedSectorInfo := go_sectorbuilder.NewSortedSectorInfo(sectorInfos...)
+			log.Infof("Verifying post for addr %s -- end: %s -- seed: %x", ctx.Message().To, state.ProvingPeriodEnd, seed)
+			for i, ssi := range sortedSectorInfo.Values() {
+				log.Infof("ssi %d: sector id %d -- commR %x", i, ssi.SectorID, ssi.CommR)
+			}
+			
 
 			req := verification.VerifyPoStRequest{
 				ChallengeSeed:    seed,
