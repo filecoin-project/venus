@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -40,26 +41,31 @@ func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker 
 // StateTreeQueryer returns a Queryer suitable for PowerTableView queries
 func (t *TestActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
 	return &TestPowerTableViewQueryer{
-		minerPower:    t.minerPower,
-		totalPower:    t.totalPower,
+		MinerPower:    t.minerPower,
+		TotalPower:    t.totalPower,
 		minerToWorker: t.minerToWorker,
 	}
 }
 
 // TestPowerTableViewQueryer returns a queryer that can be fed into a PowerTableView to produce specific values
 type TestPowerTableViewQueryer struct {
-	minerPower    *types.BytesAmount
-	totalPower    *types.BytesAmount
+	MinerPower    *types.BytesAmount
+	TotalPower    *types.BytesAmount
 	minerToWorker map[address.Address]address.Address
 }
 
 // Query produces test logic in response to PowerTableView queries.
 func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if method == "getTotalStorage" {
-		return [][]byte{tq.totalPower.Bytes()}, nil
+		if tq.TotalPower != nil {
+			return [][]byte{tq.TotalPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the total power")
 	} else if method == "getPower" {
-		// always return 1
-		return [][]byte{tq.minerPower.Bytes()}, nil
+		if tq.MinerPower != nil {
+			return [][]byte{tq.MinerPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the miner power")
 	} else if method == "getWorker" {
 		if tq.minerToWorker != nil {
 			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
@@ -73,8 +79,8 @@ func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to addr
 // NewTestPowerTableView creates a test power view with the given total power
 func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
 	tq := &TestPowerTableViewQueryer{
-		minerPower:    minerPower,
-		totalPower:    totalPower,
+		MinerPower:    minerPower,
+		TotalPower:    totalPower,
 		minerToWorker: minerToWorker,
 	}
 	return NewPowerTableView(tq)

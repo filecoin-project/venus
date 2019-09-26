@@ -72,7 +72,7 @@ func TestIsElectionWinner(t *testing.T) {
 	})
 
 	t.Run("IsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
-		ptv1 := NewFailingTestPowerTableView(types.NewBytesAmount(cases[0].myPower), types.NewBytesAmount(cases[0].totalPower))
+		ptv1 := consensus.NewPowerTableView(&consensus.TestPowerTableViewQueryer{MinerPower: types.NewBytesAmount(cases[0].myPower)})
 		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
@@ -80,7 +80,7 @@ func TestIsElectionWinner(t *testing.T) {
 	})
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
-		ptv2 := NewFailingMinerTestPowerTableView(types.NewBytesAmount(cases[0].myPower), types.NewBytesAmount(cases[0].totalPower))
+		ptv2 := consensus.NewPowerTableView(&consensus.TestPowerTableViewQueryer{TotalPower: types.NewBytesAmount(cases[0].totalPower)})
 		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")

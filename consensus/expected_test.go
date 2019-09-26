@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -237,32 +236,4 @@ func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
 
 	return cis, bs
-}
-
-func NewFailingTestPowerTableView(minerPower, totalPower *types.BytesAmount) consensus.PowerTableView {
-	return consensus.NewPowerTableView(&FailingTestPowerTableViewQueryer{minerPower: minerPower, totalPower: nil})
-}
-
-func NewFailingMinerTestPowerTableView(minerPower, totalPower *types.BytesAmount) consensus.PowerTableView {
-	return consensus.NewPowerTableView(&FailingTestPowerTableViewQueryer{minerPower: nil, totalPower: totalPower})
-}
-
-type FailingTestPowerTableViewQueryer struct{ minerPower, totalPower *types.BytesAmount }
-
-func (fq *FailingTestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	if method == "getTotalStorage" {
-		if fq.totalPower != nil {
-			return [][]byte{fq.totalPower.Bytes()}, nil
-		}
-		return [][]byte{}, errors.New("something went wrong with the total power")
-	} else if method == "getPower" {
-		if fq.minerPower != nil {
-			return [][]byte{fq.minerPower.Bytes()}, nil
-		}
-		return [][]byte{}, errors.New("something went wrong with the miner power")
-	} else if method == "getWorker" {
-		// just return the miner address
-		return [][]byte{to.Bytes()}, nil
-	}
-	return [][]byte{}, fmt.Errorf("unknown method for NewFailingTestPowerTableView '%s'", method)
 }
