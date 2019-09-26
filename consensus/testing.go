@@ -43,7 +43,7 @@ func (t *TestActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) 
 	return &TestPowerTableViewQueryer{
 		MinerPower:    t.minerPower,
 		TotalPower:    t.totalPower,
-		minerToWorker: t.minerToWorker,
+		MinerToWorker: t.minerToWorker,
 	}
 }
 
@@ -51,7 +51,7 @@ func (t *TestActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) 
 type TestPowerTableViewQueryer struct {
 	MinerPower    *types.BytesAmount
 	TotalPower    *types.BytesAmount
-	minerToWorker map[address.Address]address.Address
+	MinerToWorker map[address.Address]address.Address
 }
 
 // Query produces test logic in response to PowerTableView queries.
@@ -67,8 +67,8 @@ func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to addr
 		}
 		return [][]byte{}, errors.New("something went wrong with the miner power")
 	} else if method == "getWorker" {
-		if tq.minerToWorker != nil {
-			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
+		if tq.MinerToWorker != nil {
+			return [][]byte{tq.MinerToWorker[to].Bytes()}, nil
 		}
 	}
 	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
@@ -79,7 +79,7 @@ func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.Byte
 	tq := &TestPowerTableViewQueryer{
 		MinerPower:    minerPower,
 		TotalPower:    totalPower,
-		minerToWorker: minerToWorker,
+		MinerToWorker: minerToWorker,
 	}
 	return NewPowerTableView(tq)
 }

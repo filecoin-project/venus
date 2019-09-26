@@ -3,7 +3,6 @@ package testhelpers
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -53,33 +52,11 @@ func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ addr
 
 // Queryer returns a queryer object for the given tipset
 func (t *TestWorkerPorcelainAPI) Queryer(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateQueryer, error) {
-	return &TestQueryer{
-		totalPower:    t.totalPower,
-		minerToWorker: t.minerToWorker,
+	return &consensus.TestPowerTableViewQueryer{
+		MinerPower:    types.NewBytesAmount(1),
+		TotalPower:    types.NewBytesAmount(t.totalPower),
+		MinerToWorker: t.minerToWorker,
 	}, nil
-}
-
-// TestQueryer is used when testing with a PowerTableView
-type TestQueryer struct {
-	totalPower    uint64
-	minerToWorker map[address.Address]address.Address
-}
-
-// Query produces preconfigured results for PowerTableView queries
-func (tq *TestQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	if method == "getTotalStorage" {
-		return [][]byte{types.NewBytesAmount(tq.totalPower).Bytes()}, nil
-	} else if method == "getPower" {
-		// always return 1
-		return [][]byte{types.NewBytesAmount(1).Bytes()}, nil
-	} else if method == "getWorker" {
-		if tq.minerToWorker != nil {
-			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
-		}
-		// just return the miner address
-		return [][]byte{to.Bytes()}, nil
-	}
-	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
 }
 
 // MakeCommitment creates a random commitment.
