@@ -33,7 +33,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 
 	powerTable, err := w.getPowerTable(ctx, baseTipSet.Key())
 	if err != nil {
-		return nil, errors.Wrap(err, "get state tree")
+		return nil, errors.Wrap(err, "get power table")
 	}
 
 	if !powerTable.HasPower(ctx, w.minerAddr) {
