@@ -70,8 +70,6 @@ func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to addr
 		if tq.minerToWorker != nil {
 			return [][]byte{tq.minerToWorker[to].Bytes()}, nil
 		}
-		// just return the miner address
-		return [][]byte{to.Bytes()}, nil
 	}
 	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
 }
