@@ -41,7 +41,8 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 - The proving period is now configured to 300 rounds (2.5 hrs), down from 1000 rounds (10 hours). We’ve made this temporary change for more frequent node interaction and faster experimentation, and we expect to increase the proving period again in the future.
 - Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
 - [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
-- The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed
+- The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed.
+- If you are seeing panics or write failures during sealing, it may be related to disk space requirements. Currently the sector builder uses ~11GiB of free disk space, and assumes it is available on the `/tmp` partition. An proposal to make that directory configurable is in [#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
 
 ### CLI diff
 
