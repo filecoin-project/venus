@@ -2,22 +2,18 @@ package net
 
 import (
 	"context"
-	"sync"
+	"fmt"
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-graphsync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
-	"github.com/ipld/go-ipld-prime"
 	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -42,34 +38,24 @@ type Fetcher interface {
 // interface conformance check
 var _ Fetcher = (*GraphSyncFetcher)(nil)
 
-// GraphExchange is an interface wrapper to Graphsync so it can be stubbed in
-// unit testing
-type GraphExchange interface {
-	Request(ctx context.Context, p peer.ID, root ipld.Link, selector ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error)
-}
-
 // GraphSyncFetcher is used to fetch data over the network.  It is implemented
 // using a Graphsync exchange to fetch tipsets recursively
 type GraphSyncFetcher struct {
-	exchange    GraphExchange
-	validator   consensus.SyntaxValidator
-	store       bstore.Blockstore
-	ssb         selectorbuilder.SelectorSpecBuilder
-	requestPeerFinderFactory RequestPeerFinderFactory
-	systemClock clock.Clock
+	exchange  GraphsyncSessionExchange
+	validator consensus.SyntaxValidator
+	store     bstore.Blockstore
+	ssb       selectorbuilder.SelectorSpecBuilder
 }
 
 // NewGraphSyncFetcher returns a GraphsyncFetcher wired up to the input Graphsync exchange and
 // attached local blockservice for reloading blocks in memory once they are returned
-func NewGraphSyncFetcher(ctx context.Context, exchange GraphExchange, blockstore bstore.Blockstore,
-	bv consensus.SyntaxValidator, systemClock clock.Clock, rpff RequestPeerFinderFactory) *GraphSyncFetcher {
+func NewGraphSyncFetcher(ctx context.Context, exchange GraphsyncSessionExchange, blockstore bstore.Blockstore,
+	bv consensus.SyntaxValidator) *GraphSyncFetcher {
 	gsf := &GraphSyncFetcher{
-		store:       blockstore,
-		validator:   bv,
-		exchange:    exchange,
-		ssb:         selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
-		requestPeerFinderFactory: rpff,
-		systemClock: systemClock,
+		exchange:  exchange,
+		store:     blockstore,
+		validator: bv,
+		ssb:       selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder()),
 	}
 	return gsf
 }
@@ -110,52 +96,47 @@ func (gsf *GraphSyncFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSe
 	// However if the originator is our own peer ID (i.e. this node mined
 	// the block) then we need to fetch from ourselves to retrieve it
 
-	rpf, err := gsf.requestPeerFinderFactory(originatingPeer)
+	gss, err := gsf.exchange.NewSession(ctx, originatingPeer)
 	if err != nil {
 		return nil, err
 	}
 
 	// fetch initial tipset
-	startingTipset, err := gsf.fetchFirstTipset(ctx, tsKey, rpf)
+	startingTipset, err := gsf.fetchFirstTipset(ctx, tsKey, gss)
 	if err != nil {
 		return nil, err
 	}
 
 	// fetch remaining tipsets recursively
-	return gsf.fetchRemainingTipsets(ctx, startingTipset, rpf, done)
+	return gsf.fetchRemainingTipsets(ctx, startingTipset, gss, done)
 }
 
-func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.TipSetKey, rpf RequestPeerFinder) (types.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.TipSetKey, gss GraphsyncSession) (types.TipSet, error) {
 	blocksToFetch := key.ToSlice()
-	for {
-		peers := rpf.CurrentPeers()
-		logGraphsyncFetcher.Infof("fetching initial tipset %s from peers %s", key, peers)
-		fetchOp := func(ctx context.Context, p peer.ID) error {
-			return gsf.fetchBlocks(ctx, blocksToFetch, p)
-		}
-		gsf.fetchInParallel(ctx, fetchOp, peers)
+	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+		efsb.Insert("messages", gsf.ssb.Matcher())
+		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+	}).Node()
 
-		var verifiedTip types.TipSet
-		var err error
-		verifiedTip, blocksToFetch, err = gsf.loadAndVerify(ctx, key)
-		if err != nil {
-			return types.UndefTipSet, err
-		}
-		if len(blocksToFetch) == 0 {
-			return verifiedTip, nil
-		}
-
-		logGraphsyncFetcher.Infof("incomplete fetch for initial tipset %s, trying new peer", key)
-		// Some of the blocks may have been fetched, but avoid tricksy optimization here and just
-		// request the whole bunch again. Graphsync internally will avoid redundant network requests.
-		err = rpf.FindNextPeers()
-		if err != nil {
-			return types.UndefTipSet, errors.Wrapf(err, "fetching tipset: %s", key)
-		}
+	logGraphsyncFetcher.Infof("fetching initial tipset %s", key)
+	err := gss.Request(ctx, blocksToFetch, selector, true)
+	if err != nil {
+		return types.UndefTipSet, err
 	}
+	var verifiedTip types.TipSet
+	verifiedTip, blocksToFetch, err = gsf.loadAndVerify(ctx, key)
+	if err != nil {
+		return types.UndefTipSet, err
+	}
+	if len(blocksToFetch) > 0 {
+		// Graphsync session returns w/o error but blocks are still missing?
+		// this honestly should never happen given the gaurantees of graphsync
+		return types.UndefTipSet, errors.Wrapf(fmt.Errorf("Query returned wrong blocks"), "fetching tipset: %s", key)
+	}
+	return verifiedTip, nil
 }
 
-func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, rpf RequestPeerFinder, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
+func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, startingTipset types.TipSet, gss GraphsyncSession, done func(types.TipSet) (bool, error)) ([]types.TipSet, error) {
 	out := []types.TipSet{startingTipset}
 	isDone, err := done(startingTipset)
 	if err != nil {
@@ -170,12 +151,11 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 		// we fetch tipsets anchored from any block in the last (i.e. highest) tipset and
 		// recursively fetching sets of parents.
 		childBlock := anchor.At(0)
-		peers := rpf.CurrentPeers()
-		logGraphsyncFetcher.Infof("fetching chain from height %d, block %s, peers %s, %d levels", childBlock.Height, childBlock.Cid(), peers, recursionDepth)
-		fetchOp := func(ctx context.Context, p peer.ID) error {
-			return gsf.fetchBlocksRecursively(ctx, childBlock.Cid(), p, recursionDepth)
+		logGraphsyncFetcher.Infof("fetching chain from height %d, block %s, %d levels", childBlock.Height, childBlock.Cid(), recursionDepth)
+		err := gsf.fetchBlocksRecursively(ctx, childBlock.Cid(), recursionDepth, gss)
+		if err != nil {
+			return nil, err
 		}
-		gsf.fetchInParallel(ctx, fetchOp, peers)
 		var incomplete []cid.Cid
 		for i := 0; !isDone && i < recursionDepth; i++ {
 			tsKey, err := anchor.Parents()
@@ -197,10 +177,6 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 				anchor = verifiedTip
 			} else {
 				logGraphsyncFetcher.Infof("incomplete fetch for tipset %s, trying new peer", tsKey)
-				err := rpf.FindNextPeers()
-				if err != nil {
-					return nil, errors.Wrapf(err, "fetching tipset: %s", tsKey)
-				}
 				break // Stop verifying, make another fetch
 			}
 		}
@@ -211,91 +187,9 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 	return out, nil
 }
 
-type fetchOpFunc func(ctx context.Context, p peer.ID) error
-
-// fetchInParallel performs the given fetch operation specified by fetchOp to
-// multiple peers at once
-func (gsf *GraphSyncFetcher) fetchInParallel(ctx context.Context, fetchOp fetchOpFunc, targetPeers []peer.ID) {
-	var wg sync.WaitGroup
-	parallelCtx, parallelCancel := context.WithCancel(ctx)
-	defer parallelCancel()
-	for _, p := range targetPeers {
-		wg.Add(1)
-		go func(p peer.ID) {
-			defer wg.Done()
-			err := fetchOp(parallelCtx, p)
-			if err == nil {
-				parallelCancel()
-			} else {
-				// A likely case is the peer doesn't have the tipset. When graphsync provides
-				// this status we should quiet this log.
-				logGraphsyncFetcher.Infof("request failed: %s", err)
-			}
-		}(p)
-	}
-	wg.Wait()
-}
-
-// fetchBlocks requests a single set of cids as individual blocks, fetching
-// non-recursively
-func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
-	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.Matcher())
-		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
-	}).Node()
-	var wg sync.WaitGroup
-	// Any of the multiple parallel requests might fail. Wait for all of them to complete, then
-	// return any error (in this case, the first one to be received).
-	var setAnyError sync.Once
-	var anyError error
-	for _, c := range cids {
-		requestCtx, requestCancel := context.WithCancel(ctx)
-		defer requestCancel()
-		requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: c}, selector)
-		wg.Add(1)
-		go func(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) {
-			defer wg.Done()
-			err := gsf.consumeResponse(requestChan, errChan, cancelFunc)
-			if err != nil {
-				setAnyError.Do(func() {
-					anyError = err
-				})
-			}
-		}(requestChan, errChan, requestCancel)
-	}
-	wg.Wait()
-	return anyError
-}
-
-func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) error {
-	timer := gsf.systemClock.NewTimer(progressTimeout)
-	var anyError error
-	for errChan != nil || requestChan != nil {
-		select {
-		case err, ok := <-errChan:
-			if !ok {
-				errChan = nil
-			}
-			anyError = err
-			timer.Reset(progressTimeout)
-		case _, ok := <-requestChan:
-			if !ok {
-				requestChan = nil
-			}
-			timer.Reset(progressTimeout)
-		case <-timer.Chan():
-			cancelFunc()
-		}
-	}
-	return anyError
-}
-
 // fetchBlocksRecursively gets the blocks from recursionDepth ancestor tipsets
 // starting from baseCid.
-func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, targetPeer peer.ID, recursionDepth int) error {
-	requestCtx, requestCancel := context.WithCancel(ctx)
-	defer requestCancel()
-
+func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid cid.Cid, recursionDepth int, gss GraphsyncSession) error {
 	// recursive selector to fetch n sets of parent blocks
 	// starting from block matching base cid:
 	//   - fetch all parent blocks, with messages/receipts
@@ -313,8 +207,7 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 		))
 	})).Node()
 
-	requestChan, errChan := gsf.exchange.Request(requestCtx, targetPeer, cidlink.Link{Cid: baseCid}, selector)
-	return gsf.consumeResponse(requestChan, errChan, requestCancel)
+	return gss.Request(ctx, []cid.Cid{baseCid}, selector, false)
 }
 
 // Loads the IPLD blocks for all blocks in a tipset, and checks for the presence of the
