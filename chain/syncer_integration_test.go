@@ -51,7 +51,7 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
@@ -79,7 +79,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -186,7 +186,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	// Now sync the chainStore with consensus using a MarketView.
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
