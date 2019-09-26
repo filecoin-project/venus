@@ -2,6 +2,7 @@ package version
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	"github.com/pkg/errors"
@@ -48,8 +49,10 @@ type ProtocolVersionTableBuilder struct {
 
 // NewProtocolVersionTableBuilder creates a new ProtocolVersionTable that only tracks versions for the given network
 func NewProtocolVersionTableBuilder(network string) *ProtocolVersionTableBuilder {
+	networkPrefix := strings.Split(network, ".")[0]
+
 	return &ProtocolVersionTableBuilder{
-		network:  network,
+		network:  networkPrefix,
 		versions: []protocolVersion{},
 	}
 }
