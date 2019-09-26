@@ -55,19 +55,10 @@ func NewMessageQueuePolicy(messages messageProvider, maxAge uint) *DefaultQueueP
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.
 func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error {
-	chainHeight := uint64(0)
-	var err error
-	if len(newTips) > 0 {
-		chainHeight, err = newTips[0].Height()
-		if err != nil {
-			return err
-		}
-	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.
-		chainHeight, err = oldTips[0].Height()
-		if err != nil {
-			return err
-		}
-	} // Else this method won't do anything so height doesn't matter.
+	chainHeight, err := reorgHeight(oldTips, newTips)
+	if err != nil {
+		return err
+	}
 
 	// Remove all messages in the new chain from the queue since they have been mined into blocks.
 	// Rearrange the tipsets into ascending height order so messages are discovered in nonce order.
@@ -123,4 +114,15 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 		}
 	}
 	return nil
+}
+
+// reorgHeight returns height of the new chain given only the tipset diff which may be empty
+func reorgHeight(oldTips, newTips []types.TipSet) (uint64, error) {
+	if len(newTips) > 0 {
+		return newTips[0].Height()
+	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.
+		return oldTips[0].Height()
+	}
+	// this is a noop reorg. Chain height shouldn't matter.
+	return 0, nil
 }

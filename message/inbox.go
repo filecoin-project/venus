@@ -67,6 +67,11 @@ func (ib *Inbox) Pool() *Pool {
 // those from the removed chain (if any) that do not appear in the new chain.
 // The `oldChain` and `newChain` lists are expected in descending height order, and each may be empty.
 func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.TipSet) error {
+	chainHeight, err := reorgHeight(oldChain, newChain)
+	if err != nil {
+		return err
+	}
+
 	// Add all message from the old tipsets to the message pool, so they can be mined again.
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
@@ -76,7 +81,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.T
 				return err
 			}
 			for _, msg := range msgs {
-				_, err = ib.pool.Add(ctx, msg, uint64(block.Height))
+				_, err = ib.pool.Add(ctx, msg, chainHeight)
 				if err != nil {
 					// Messages from the removed chain are frequently invalidated, e.g. because that
 					// same message is already mined on the new chain.
