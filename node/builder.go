@@ -4,10 +4,36 @@ import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-bitswap"
+	bsnet "github.com/ipfs/go-bitswap/network"
+	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-graphsync"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
+	"github.com/ipfs/go-hamt-ipld"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	offroute "github.com/ipfs/go-ipfs-routing/offline"
+	"github.com/ipfs/go-merkledag"
+	"github.com/libp2p/go-libp2p"
+	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
+	circuit "github.com/libp2p/go-libp2p-circuit"
+	"github.com/libp2p/go-libp2p-core/host"
+	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/routing"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	libp2pps "github.com/libp2p/go-libp2p-pubsub"
+	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/pkg/errors"
+
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing"
@@ -23,31 +49,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/util/moresync"
 	"github.com/filecoin-project/go-filecoin/version"
 	"github.com/filecoin-project/go-filecoin/wallet"
-	"github.com/ipfs/go-bitswap"
-	bsnet "github.com/ipfs/go-bitswap/network"
-	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-graphsync"
-	"github.com/ipfs/go-graphsync/ipldbridge"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
-	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	"github.com/ipfs/go-merkledag"
-	libp2p "github.com/libp2p/go-libp2p"
-	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
-	circuit "github.com/libp2p/go-libp2p-circuit"
-	"github.com/libp2p/go-libp2p-core/host"
-	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
-	libp2pps "github.com/libp2p/go-libp2p-pubsub"
-	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
-	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
 )
 
 // Builder is a helper to aid in the construction of a filecoin node.
@@ -166,7 +167,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
-	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table
@@ -222,7 +223,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	loader := gsstoreutil.LoaderForBlockstore(bs)
 	storer := gsstoreutil.StorerForBlockstore(bs)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, nc.Clock, peerTracker)
 
 	// TODO: inject protocol upgrade table into code that requires it (#3360)
 	_, err = version.ConfigureProtocolVersions(network)
@@ -239,12 +240,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	// set up consensus
-	var nodeConsensus consensus.Protocol
-	if nc.Verifier == nil {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, &verification.RustVerifier{}, nc.BlockTime)
-	} else {
-		nodeConsensus = consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.Verifier, nc.BlockTime)
-	}
+	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, powerTable, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
@@ -255,7 +251,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	}
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
-	if err := fsub.RegisterTopicValidator(btv.Topic(), btv.Validator(), btv.Opts()...); err != nil {
+	if err := fsub.RegisterTopicValidator(btv.Topic(network), btv.Validator(), btv.Opts()...); err != nil {
 		return nil, errors.Wrap(err, "failed to register block validator")
 	}
 
@@ -267,37 +263,49 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, nc.Clock)
-	msgPool := core.NewMessagePool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
-	inbox := core.NewInbox(msgPool, core.InboxMaxAgeTipsets, chainStore, messageStore)
+	msgPool := message.NewPool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
+	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chainStore, messageStore)
 
-	msgQueue := core.NewMessageQueue()
-	outboxPolicy := core.NewMessageQueuePolicy(messageStore, core.OutboxMaxAgeRounds)
-	msgPublisher := core.NewDefaultMessagePublisher(pubsub.NewPublisher(fsub), net.MessageTopic, msgPool)
-	outbox := core.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
+	msgQueue := message.NewQueue()
+	outboxPolicy := message.NewMessageQueuePolicy(messageStore, message.OutboxMaxAgeRounds)
+	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(fsub), net.MessageTopic(network), msgPool)
+	outbox := message.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	nd := &Node{
-		blockservice: bservice,
-		Blockstore:   bs,
-		cborStore:    &ipldCborStore,
-		Clock:        nc.Clock,
-		Consensus:    nodeConsensus,
-		ChainReader:  chainStore,
-		ChainSynced:  moresync.NewLatch(1),
-		MessageStore: messageStore,
-		Syncer:       chainSyncer,
-		PowerTable:   powerTable,
-		PeerTracker:  peerTracker,
-		Fetcher:      fetcher,
-		Exchange:     bswap,
-		host:         peerHost,
-		Inbox:        inbox,
-		OfflineMode:  nc.OfflineMode,
-		Outbox:       outbox,
-		NetworkName:  network,
-		PeerHost:     peerHost,
-		Repo:         nc.Repo,
-		Wallet:       fcWallet,
-		Router:       router,
+		Clock:       nc.Clock,
+		OfflineMode: nc.OfflineMode,
+		Repo:        nc.Repo,
+		Network: NetworkSubmodule{
+			host:        peerHost,
+			PeerHost:    peerHost,
+			NetworkName: network,
+			PeerTracker: peerTracker,
+			Router:      router,
+		},
+		Wallet: WalletSubmodule{
+			Wallet: fcWallet,
+		},
+		Messaging: MessagingSubmodule{
+			Inbox:  inbox,
+			Outbox: outbox,
+		},
+		Blockstore: BlockstoreSubmodule{
+			blockservice: bservice,
+			Blockstore:   bs,
+			cborStore:    &ipldCborStore,
+		},
+		StorageNetworking: StorageNetworkingSubmodule{
+			Exchange: bswap,
+		},
+		Chain: ChainSubmodule{
+			Fetcher:      fetcher,
+			Consensus:    nodeConsensus,
+			ChainReader:  chainStore,
+			ChainSynced:  moresync.NewLatch(1),
+			MessageStore: messageStore,
+			Syncer:       chainSyncer,
+			PowerTable:   powerTable,
+		},
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
@@ -332,7 +340,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
-	nd.Bootstrapper = net.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Router, minPeerThreshold, period)
+	nd.Network.Bootstrapper = net.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Network.Router, minPeerThreshold, period)
 
 	return nd, nil
 }

@@ -8,11 +8,16 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/polydawn/refmt/obj"
-	"github.com/polydawn/refmt/shared"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/exec"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
+)
+
+const (
+	// TreeBitWidth is the bit width of the HAMT used to by an actor to
+	// store its state
+	TreeBitWidth = 5
 )
 
 // MarshalStorage encodes the passed in data into bytes.
@@ -123,12 +128,6 @@ func WithLookupForReading(ctx context.Context, storage exec.Storage, id cid.Cid,
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
 func LoadLookup(ctx context.Context, storage exec.Storage, cid cid.Cid) (exec.Lookup, error) {
-	return LoadTypedLookup(ctx, storage, cid, nil)
-}
-
-// LoadTypedLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
-// The provided type allows the lookup to correctly unmarshal values
-func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid cid.Cid, valueType interface{}) (exec.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
@@ -137,20 +136,15 @@ func LoadTypedLookup(ctx context.Context, storage exec.Storage, cid cid.Cid, val
 	var err error
 
 	if !cid.Defined() {
-		root = hamt.NewNode(cborStore)
+		root = hamt.NewNode(cborStore, hamt.UseTreeBitWidth(TreeBitWidth))
 	} else {
-		root, err = hamt.LoadNode(ctx, cborStore, cid)
+		root, err = hamt.LoadNode(ctx, cborStore, cid, hamt.UseTreeBitWidth(TreeBitWidth))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	var vt reflect.Type
-	if valueType != nil {
-		vt = reflect.TypeOf(valueType)
-	}
-
-	return &lookup{n: root, s: storage, t: vt}, nil
+	return &lookup{n: root, s: storage}, nil
 }
 
 // storageAsBlocks allows us to use an exec.Storage as a Blockstore
@@ -178,7 +172,6 @@ func (sab *storageAsBlocks) AddBlock(b block.Block) error {
 type lookup struct {
 	n *hamt.Node
 	s exec.Storage
-	t reflect.Type
 }
 
 var _ exec.Lookup = (*lookup)(nil)
@@ -186,21 +179,8 @@ var _ exec.Lookup = (*lookup)(nil)
 // Find retrieves a value by key
 // If the return value is not primitive, you will need to load the lookup using the LoadTypedLookup
 // to ensure the return value is correctly unmarshaled.
-func (l *lookup) Find(ctx context.Context, k string) (interface{}, error) {
-	value, err := l.n.Find(ctx, k)
-	if err != nil {
-		return nil, err
-	}
-
-	// correct type of response
-	if l.t != nil {
-		value, err = newCorrectlyUnmarshaled(value, l.t)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return value, nil
+func (l *lookup) Find(ctx context.Context, k string, out interface{}) error {
+	return l.n.Find(ctx, k, out)
 }
 
 // Set adds a value under the given key
@@ -227,77 +207,27 @@ func (l *lookup) IsEmpty() bool {
 	return len(l.n.Pointers) == 0
 }
 
-// Values returns a slice of all key-values stored in the lookup
-func (l *lookup) Values(ctx context.Context) ([]*hamt.KV, error) {
-	kvs, err := l.values(ctx, []*hamt.KV{})
-	if err != nil {
-		return nil, err
+// ForEachValue iterates all the values in a lookup
+func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callback exec.ValueCallbackFunc) error {
+	var vt reflect.Type
+	if valueType != nil {
+		vt = reflect.TypeOf(valueType)
 	}
 
 	// The values coming out of the hamt are not correctly unmarshaled. Correct that now.
-	if l.t != nil {
-		for _, kv := range kvs {
-			kv.Value, err = newCorrectlyUnmarshaled(kv.Value, l.t)
-			if err != nil {
-				return nil, err
+	return l.n.ForEach(ctx, func(k string, v interface{}) error {
+		valueAsDeferred := v.(*cbg.Deferred)
+		var decodedValue interface{}
+		if vt != nil {
+			to := reflect.New(vt).Interface()
+			if err := cbor.DecodeInto(valueAsDeferred.Raw, to); err != nil {
+				return err
 			}
+			decodedValue = reflect.ValueOf(to).Elem().Interface()
 		}
-	}
-
-	return kvs, nil
-}
-
-// values recursively traverses the hamt and retreives all the key value pairs.
-func (l *lookup) values(ctx context.Context, vs []*hamt.KV) ([]*hamt.KV, error) {
-	for _, p := range l.n.Pointers {
-		vs = append(vs, p.KVs...)
-
-		if !p.Link.Defined() {
-			continue
+		if err := callback(k, decodedValue); err != nil {
+			return err
 		}
-
-		subtree, err := LoadLookup(ctx, l.s, p.Link)
-		if err != nil {
-			return nil, err
-		}
-
-		sublookup, ok := subtree.(*lookup)
-		if !ok {
-			return nil, vmerrors.NewFaultError("Non-actor.lookup found in hamt tree")
-		}
-
-		vs, err = sublookup.values(ctx, vs)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return vs, nil
-}
-
-// newCorrectlyUnmarshaled creates a interface of the correct type, unmarshals into it, and returns the value
-func newCorrectlyUnmarshaled(from interface{}, valueType reflect.Type) (interface{}, error) {
-	to := reflect.New(valueType).Interface()
-	err := correctUnmarshaling(from, to)
-	if err != nil {
-		return nil, err
-	}
-	return reflect.ValueOf(to).Elem().Interface(), nil
-}
-
-// correctUnmarshaling uses refmt to translate between a map and the given struct interface
-func correctUnmarshaling(from, to interface{}) error {
-	m := obj.NewMarshaller(cbor.CborAtlas)
-	if err := m.Bind(from); err != nil {
-		return err
-	}
-
-	u := obj.NewUnmarshaller(cbor.CborAtlas)
-	if err := u.Bind(to); err != nil {
-		return err
-	}
-
-	return shared.TokenPump{
-		TokenSource: m,
-		TokenSink:   u,
-	}.Run()
+		return nil
+	})
 }

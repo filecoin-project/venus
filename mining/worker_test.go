@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -16,9 +17,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/mining"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -26,11 +28,23 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type mockTicketGen struct {
+	ticketGen     bool
+	timeNotarized bool
+}
+
+func (mtg *mockTicketGen) NextTicket(ticket types.Ticket, genAddr address.Address, signer types.Signer) (types.Ticket, error) {
+	mtg.ticketGen = true
+	return consensus.MakeFakeTicketForTest(), nil
+}
+
+func (mtg *mockTicketGen) NotarizeTime(ticket *types.Ticket) error {
+	mtg.timeNotarized = true
+	return nil
+}
+
 func Test_Mine(t *testing.T) {
 	tf.UnitTest(t)
-
-	var doSomeWorkCalled bool
-	CreatePoSTFunc := func() { doSomeWorkCalled = true }
 
 	mockSignerVal, blockSignerAddr := setupSigner()
 	mockSigner := &mockSignerVal
@@ -53,12 +67,12 @@ func Test_Mine(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 
-	// TODO: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
+	// TODO #3311: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
 	t.Run("Trivial success case", func(t *testing.T) {
-		doSomeWorkCalled = false
+		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
 		outCh := make(chan mining.Output)
-		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
@@ -68,24 +82,28 @@ func Test_Mine(t *testing.T) {
 			GetStateTree: getStateTree,
 			GetWeight:    getWeightTest,
 			GetAncestors: getAncestors,
+			Election:     &consensus.FakeElectionMachine{},
+			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
-		}, CreatePoSTFunc)
+			Clock:         clock.NewSystemClock(),
+		})
 
-		go worker.Mine(ctx, tipSet, 0, outCh)
+		go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
-		assert.True(t, doSomeWorkCalled)
+		assert.True(t, testTicketGen.ticketGen)
+		assert.True(t, testTicketGen.timeNotarized)
 		cancel()
 	})
 	t.Run("Block generation fails", func(t *testing.T) {
-		doSomeWorkCalled = false
+		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
-		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
@@ -95,27 +113,31 @@ func Test_Mine(t *testing.T) {
 			GetStateTree: makeExplodingGetStateTree(st),
 			GetWeight:    getWeightTest,
 			GetAncestors: getAncestors,
+			Election:     &consensus.FakeElectionMachine{},
+			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
-		}, CreatePoSTFunc)
+			Clock:         clock.NewSystemClock(),
+		})
 		outCh := make(chan mining.Output)
-		doSomeWorkCalled = false
-		go worker.Mine(ctx, tipSet, 0, outCh)
+
+		go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
-		assert.True(t, doSomeWorkCalled)
+		assert.True(t, testTicketGen.ticketGen)
+		assert.True(t, testTicketGen.timeNotarized)
 		cancel()
 
 	})
 
 	t.Run("Sent empty tipset", func(t *testing.T) {
-		doSomeWorkCalled = false
+		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
-		worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
@@ -125,33 +147,37 @@ func Test_Mine(t *testing.T) {
 			GetStateTree: getStateTree,
 			GetWeight:    getWeightTest,
 			GetAncestors: getAncestors,
+			Election:     &consensus.FakeElectionMachine{},
+			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewTestProcessor(),
 			PowerTable:    mining.NewTestPowerTableView(1),
 			Blockstore:    bs,
 			MessageStore:  messages,
-		}, CreatePoSTFunc)
+			Clock:         clock.NewSystemClock(),
+		})
 		input := types.TipSet{}
 		outCh := make(chan mining.Output)
-		go worker.Mine(ctx, input, 0, outCh)
+		go worker.Mine(ctx, input, []types.Ticket{}, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "bad input tipset with no blocks sent to Mine()")
-		assert.False(t, doSomeWorkCalled)
+		assert.False(t, testTicketGen.ticketGen)
+		assert.False(t, testTicketGen.timeNotarized)
 		cancel()
 	})
 }
 
-func sharedSetupInitial() (*hamt.CborIpldStore, *core.MessagePool, cid.Cid) {
+func sharedSetupInitial() (*hamt.CborIpldStore, *message.Pool, cid.Cid) {
 	cst := hamt.NewCborStore()
-	pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.AccountActorCodeCid
 	return cst, pool, fakeActorCodeCid
 }
 
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
-	state.Tree, *core.MessagePool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+	state.Tree, *message.Pool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()
@@ -161,6 +187,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	// TODO: We don't need fake actors here, so these could be made real.
 	//       And the NetworkAddress actor can/should be the real one.
 	// Stick two fake actors in the state tree so they can talk.
+	// Now tracking in #3311
 	addr1, addr2, addr3, addr4, addr5 := mockSigner.Addresses[0], mockSigner.Addresses[1], mockSigner.Addresses[2], mockSigner.Addresses[3], mockSigner.Addresses[4]
 	act1 := th.RequireNewFakeActor(t, vms, addr1, fakeActorCodeCid)
 	act2 := th.RequireNewFakeActor(t, vms, addr2, fakeActorCodeCid)
@@ -179,7 +206,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
 }
 
-// TODO this test belongs in core, it calls ApplyMessages
+// TODO this test belongs in core, it calls ApplyMessages #3311
 func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -242,7 +269,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx := context.Background()
-	CreatePoSTFunc := func() {}
 
 	mockSigner, blockSignerAddr := setupSigner()
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
@@ -258,7 +284,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 
-	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
@@ -268,13 +294,16 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		GetStateTree: getStateTree,
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     th.NewTestProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-	}, CreatePoSTFunc)
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
+	})
 
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
@@ -283,7 +312,8 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	blk, err := worker.Generate(ctx, baseTipset, types.Ticket{VRFProof: []byte{2}}, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipset, []types.Ticket{{VRFProof: []byte{2}}}, consensus.MakeFakeElectionProofForTest(), 0)
+
 	assert.NoError(t, err)
 
 	assert.Equal(t, types.EmptyMessagesCID, blk.Messages)
@@ -296,8 +326,6 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
 func TestGeneratePoolBlockResults(t *testing.T) {
 	tf.UnitTest(t)
-
-	CreatePoSTFunc := func() {}
 
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
@@ -313,7 +341,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 
-	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
@@ -323,13 +351,16 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		GetStateTree: getStateTree,
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-	}, CreatePoSTFunc)
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
+	})
 
 	// addr3 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
 	msg1 := types.NewMessage(addrs[2], addrs[0], 0, types.ZeroAttoFIL, "", nil)
@@ -377,9 +408,9 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		Parents:       types.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     stateRoot,
-		ElectionProof: types.PoStProof{},
+		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -401,8 +432,6 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 func TestGenerateSetsBasicFields(t *testing.T) {
 	tf.UnitTest(t)
 
-	CreatePoSTFunc := func() {}
-
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
@@ -420,7 +449,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 
-	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
@@ -430,13 +459,16 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		GetStateTree: getStateTree,
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-	}, CreatePoSTFunc)
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
+	})
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
@@ -444,16 +476,18 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		Height:        h,
 		ParentWeight:  w,
 		StateRoot:     newCid(),
-		ElectionProof: types.PoStProof{},
+		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
+	tArr := []types.Ticket{mining.NthTicket(1), mining.NthTicket(3), mining.NthTicket(3), mining.NthTicket(7)}
+	blk, err := worker.Generate(ctx, baseTipSet, tArr, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+1, blk.Height)
 	assert.Equal(t, minerAddr, blk.Miner)
+	assert.Equal(t, tArr, blk.Tickets)
 
-	blk, err = worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 1)
+	blk, err = worker.Generate(ctx, baseTipSet, []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
@@ -463,8 +497,6 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 func TestGenerateWithoutMessages(t *testing.T) {
 	tf.UnitTest(t)
-
-	CreatePoSTFunc := func() {}
 
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
@@ -480,7 +512,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 
-	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
@@ -490,22 +522,25 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		GetStateTree: getStateTree,
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-	}, CreatePoSTFunc)
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
+	})
 
 	assert.Len(t, pool.Pending(), 0)
 	baseBlock := types.Block{
 		Parents:       types.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     newCid(),
-		ElectionProof: types.PoStProof{},
+		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -519,8 +554,6 @@ func TestGenerateWithoutMessages(t *testing.T) {
 func TestGenerateError(t *testing.T) {
 	tf.UnitTest(t)
 
-	CreatePoSTFunc := func() {}
-
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
@@ -532,7 +565,7 @@ func TestGenerateError(t *testing.T) {
 	}
 
 	messages := chain.NewMessageStore(cst)
-	worker := mining.NewDefaultWorkerWithDeps(mining.WorkerParameters{
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
@@ -542,13 +575,16 @@ func TestGenerateError(t *testing.T) {
 		GetStateTree: makeExplodingGetStateTree(st),
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
 		PowerTable:    &th.TestView{},
 		Blockstore:    bs,
 		MessageStore:  messages,
-	}, CreatePoSTFunc)
+		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
+	})
 
 	// This is actually okay and should result in a receipt
 	msg := types.NewMessage(addrs[0], addrs[1], 0, types.ZeroAttoFIL, "", nil)
@@ -562,10 +598,10 @@ func TestGenerateError(t *testing.T) {
 		Parents:       types.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     newCid(),
-		ElectionProof: types.PoStProof{},
+		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, types.Ticket{VRFProof: []byte{0}}, types.PoStProof{}, 0)
+	blk, err := worker.Generate(ctx, baseTipSet, []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.Error(t, err, "boom")
 	assert.Nil(t, blk)
 

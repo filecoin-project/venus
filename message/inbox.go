@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"context"
@@ -17,22 +17,22 @@ const InboxMaxAgeTipsets = 6
 // Inbox maintains a pool of received messages.
 type Inbox struct {
 	// The pool storing received messages.
-	pool *MessagePool
+	pool *Pool
 	// Maximum age of a pool message.
 	maxAgeTipsets uint
 
 	// Provides tipsets for chain traversal.
 	chain           chainProvider
-	messageProvider MessageProvider
+	messageProvider messageProvider
 }
 
-// MessageProvider provides message collections given their cid.
-type MessageProvider interface {
+// messageProvider provides message collections given their cid.
+type messageProvider interface {
 	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
 }
 
 // NewInbox constructs a new inbox.
-func NewInbox(pool *MessagePool, maxAgeRounds uint, chain chainProvider, messages MessageProvider) *Inbox {
+func NewInbox(pool *Pool, maxAgeRounds uint, chain chainProvider, messages messageProvider) *Inbox {
 	return &Inbox{
 		pool:            pool,
 		maxAgeTipsets:   maxAgeRounds,
@@ -58,7 +58,7 @@ func (ib *Inbox) Add(ctx context.Context, msg *types.SignedMessage) (cid.Cid, er
 }
 
 // Pool returns the inbox's message pool.
-func (ib *Inbox) Pool() *MessagePool {
+func (ib *Inbox) Pool() *Pool {
 	return ib.pool
 }
 
@@ -120,7 +120,7 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.T
 // height. This prevents us from prematurely timing messages that arrive during long chains of null blocks.
 // Also when blocks fill, the rate of message processing will correspond more closely to rate of tip
 // sets than to the expected block time over short timescales.
-func timeoutMessages(ctx context.Context, pool *MessagePool, chains chain.TipSetProvider, head types.TipSet, maxAgeTipsets uint) error {
+func timeoutMessages(ctx context.Context, pool *Pool, chains chain.TipSetProvider, head types.TipSet, maxAgeTipsets uint) error {
 	var err error
 
 	var minimumHeight uint64

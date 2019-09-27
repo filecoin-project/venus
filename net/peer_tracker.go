@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -167,16 +168,16 @@ func (tracker *PeerTracker) updatePeers(ctx context.Context, ps ...peer.ID) erro
 		logPeerTracker.Info("update peers aborting: no peers to update")
 		return nil
 	}
-	var updateErr []error
+
+	var updateErrs uint64
 	grp, ctx := errgroup.WithContext(ctx)
 	for _, p := range ps {
 		peer := p
 		grp.Go(func() error {
 			ci, err := tracker.updateFn(ctx, peer)
 			if err != nil {
-				err = errors.Wrapf(err, "failed to update peer=%s", peer.Pretty())
-				updateErr = append(updateErr, err)
-				return err
+				atomic.AddUint64(&updateErrs, 1)
+				return errors.Wrapf(err, "failed to update peer=%s", peer.Pretty())
 			}
 			tracker.Track(ci)
 			return nil
@@ -185,12 +186,12 @@ func (tracker *PeerTracker) updatePeers(ctx context.Context, ps ...peer.ID) erro
 	// check if anyone failed to update
 	if err := grp.Wait(); err != nil {
 		// full failure return an error
-		if len(updateErr) == len(ps) {
-			logPeerTracker.Errorf("failed to update all %d peers:%v", len(ps), updateErr)
+		if updateErrs == uint64(len(ps)) {
+			logPeerTracker.Errorf("failed to update all %d peers: %s", len(ps), err)
 			return errors.New("all peers failed to update")
 		}
 		// partial failure
-		logPeerTracker.Infof("failed to update %d of %d peers:%v", len(updateErr), len(ps), updateErr)
+		logPeerTracker.Infof("failed to update %d of %d peers: %s", updateErrs, len(ps), err)
 	}
 	return nil
 }

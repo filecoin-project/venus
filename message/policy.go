@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 // pools a little before the sending node gives up on them.
 const OutboxMaxAgeRounds = 10
 
-var log = logging.Logger("core")
+var log = logging.Logger("message")
 
 // QueuePolicy manages a message queue state in response to changes on the blockchain.
 type QueuePolicy interface {
@@ -42,14 +42,14 @@ type PolicyTarget interface {
 // ends up childless (in contrast to the message pool).
 type DefaultQueuePolicy struct {
 	// Provides messages collections from cids.
-	messageProvider MessageProvider
+	messageProvider messageProvider
 	// Maximum difference in message stamp from current block height before expiring an address's queue
 	maxAgeRounds uint64
 }
 
 // NewMessageQueuePolicy returns a new policy which removes mined messages from the queue and expires
 // messages older than `maxAgeTipsets` rounds.
-func NewMessageQueuePolicy(messages MessageProvider, maxAge uint) *DefaultQueuePolicy {
+func NewMessageQueuePolicy(messages messageProvider, maxAge uint) *DefaultQueuePolicy {
 	return &DefaultQueuePolicy{messages, uint64(maxAge)}
 }
 

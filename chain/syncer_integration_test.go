@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -52,7 +51,7 @@ func TestLoadFork(t *testing.T) {
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(eval, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
@@ -80,7 +79,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	offlineSyncer := chain.NewSyncer(eval, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -126,12 +125,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	ctx := context.Background()
 
-	mockSigner, ki := types.NewMockSignersAndKeyInfo(3)
-	minerWorker1, err := ki[0].Address()
-	require.NoError(t, err)
-	minerWorker2, err := ki[1].Address()
-	require.NoError(t, err)
-
 	// set up dstP.genesis block with power
 	genCfg := &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,
@@ -157,10 +150,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 		Network: "syncerIntegrationTest",
 	}
 
-	totalPower := types.NewBytesAmount(1000).Mul(types.OneKiBSectorSize)
-
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
 	require.NoError(t, err)
+
+	minerWorker1, err := info.Keys[0].Address()
+	require.NoError(t, err)
+	minerWorker2 := minerWorker1
+	// Include gengen miner worker key so that we can correctly sign blocks
+	mockSigner := types.NewMockSigner([]types.KeyInfo{*info.Keys[0]})
 
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
@@ -171,11 +168,6 @@ func TestTipSetWeightDeep(t *testing.T) {
 	require.NoError(t, err)
 	emptyReceiptsCid, err := messageStore.StoreReceipts(ctx, []*types.MessageReceipt{})
 	require.NoError(t, err)
-
-	verifier := &verification.FakeVerifier{
-		VerifyPoStValid: true,
-	}
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &th.TestView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
 
 	// Initialize stores to contain dstP.genesis block and state
 	calcGenTS := th.RequireNewTipSet(t, &calcGenBlk)
@@ -193,11 +185,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	blockSource := th.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a MarketView.
-	verifier = &verification.FakeVerifier{
-		VerifyPoStValid: true,
-	}
-	con = consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), verifier, th.BlockTimeTest)
-	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeSystemClock(time.Unix(1234567890, 0)))
+	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
@@ -238,20 +227,22 @@ func TestTipSetWeightDeep(t *testing.T) {
 
 	f1b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b1Ticket types.Ticket
-	f1b1.ElectionProof, f1b1Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
-	require.NoError(t, err)
+	f1b1.ElectionProof, f1b1Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
 	f1b1.Tickets = []types.Ticket{f1b1Ticket}
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
+	f1b1.BlockSig, err = mockSigner.SignBytes(f1b1.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f2b1Ticket types.Ticket
-	f2b1.ElectionProof, f2b1Ticket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[2].Power, totalPower, mockSigner)
-	require.NoError(t, err)
+	f2b1.ElectionProof, f2b1Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
 	f2b1.Tickets = []types.Ticket{f2b1Ticket}
 	f2b1.Messages = emptyMessagesCid
 	f2b1.MessageReceipts = emptyReceiptsCid
+	f2b1.BlockSig, err = mockSigner.SignBytes(f2b1.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
 
@@ -277,21 +268,24 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 	f1b2a := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b2aTicket types.Ticket
-	f1b2a.ElectionProof, f1b2aTicket, err = th.MakeProofAndWinningTicket(minerWorker1, info.Miners[1].Power, totalPower, mockSigner)
-	require.NoError(t, err)
+	f1b2a.ElectionProof, f1b2aTicket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
 	f1b2a.Tickets = []types.Ticket{f1b2aTicket}
 	f1b2a.Messages = emptyMessagesCid
 	f1b2a.MessageReceipts = emptyReceiptsCid
+	f1b2a.BlockSig, err = mockSigner.SignBytes(f1b2a.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	fakeChildParams.MinerWorker = minerWorker2
 	f1b2b := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f1b2bTicket types.Ticket
-	f1b2b.ElectionProof, f1b2bTicket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[2].Power, totalPower, mockSigner)
+	f1b2b.ElectionProof, f1b2bTicket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
 	require.NoError(t, err)
 	f1b2b.Tickets = []types.Ticket{f1b2bTicket}
 	f1b2b.Messages = emptyMessagesCid
 	f1b2b.MessageReceipts = emptyReceiptsCid
+	f1b2b.BlockSig, err = mockSigner.SignBytes(f1b2b.SignatureData(), minerWorker1)
+	require.NoError(t, err)
 
 	f1 := th.RequireNewTipSet(t, f1b2a, f1b2b)
 	f1Cids := requirePutBlocks(t, blockSource, f1.ToSlice()...)
@@ -320,11 +314,12 @@ func TestTipSetWeightDeep(t *testing.T) {
 	}
 	f2b2 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
 	var f2b2Ticket types.Ticket
-	f2b2.ElectionProof, f2b2Ticket, err = th.MakeProofAndWinningTicket(minerWorker2, info.Miners[3].Power, totalPower, mockSigner)
-	require.NoError(t, err)
+	f2b2.ElectionProof, f2b2Ticket = consensus.MakeFakeElectionProofForTest(), consensus.MakeFakeTicketForTest()
 	f2b2.Tickets = []types.Ticket{f2b2Ticket}
 	f2b2.Messages = emptyMessagesCid
 	f2b2.MessageReceipts = emptyReceiptsCid
+	f2b2.BlockSig, err = mockSigner.SignBytes(f2b2.SignatureData(), minerWorker2)
+	require.NoError(t, err)
 
 	f2 := th.RequireNewTipSet(t, f2b2)
 	f2Cids := requirePutBlocks(t, blockSource, f2.ToSlice()...)

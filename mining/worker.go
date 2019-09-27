@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -39,7 +40,7 @@ func NewOutput(b *types.Block, e error) Output {
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool
+	Mine(runCtx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
@@ -70,22 +71,34 @@ type MessageApplier interface {
 
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
+}
+
+type electionUtil interface {
+	RunElection(types.Ticket, address.Address, types.Signer) (types.VRFPi, error)
+	IsElectionWinner(context.Context, blockstore.Blockstore, consensus.PowerTableView, state.Tree, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+}
+
+// ticketGenerator creates and finalizes tickets.
+type ticketGenerator interface {
+	NextTicket(types.Ticket, address.Address, types.Signer) (types.Ticket, error)
+	NotarizeTime(*types.Ticket) error
 }
 
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	api workerPorcelainAPI
 
-	createPoSTFunc DoSomeWorkFunc
 	minerAddr      address.Address
 	minerOwnerAddr address.Address
-	workerSigner   consensus.TicketSigner
+	workerSigner   types.Signer
 
 	// consensus things
 	getStateTree GetStateTree
 	getWeight    GetWeight
 	getAncestors GetAncestors
+	election     electionUtil
+	ticketGen    ticketGenerator
 
 	// core filecoin things
 	messageSource MessageSource
@@ -93,6 +106,7 @@ type DefaultWorker struct {
 	messageStore  chain.MessageWriter // nolint: structcheck
 	powerTable    consensus.PowerTableView
 	blockstore    blockstore.Blockstore
+	clock         clock.Clock
 }
 
 // WorkerParameters use for NewDefaultWorker parameters
@@ -101,12 +115,14 @@ type WorkerParameters struct {
 
 	MinerAddr      address.Address
 	MinerOwnerAddr address.Address
-	WorkerSigner   consensus.TicketSigner
+	WorkerSigner   types.Signer
 
 	// consensus things
 	GetStateTree GetStateTree
 	GetWeight    GetWeight
 	GetAncestors GetAncestors
+	Election     electionUtil
+	TicketGen    ticketGenerator
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -114,24 +130,11 @@ type WorkerParameters struct {
 	PowerTable    consensus.PowerTableView
 	MessageStore  chain.MessageWriter
 	Blockstore    blockstore.Blockstore
+	Clock         clock.Clock
 }
 
 // NewDefaultWorker instantiates a new Worker.
 func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
-	w := NewDefaultWorkerWithDeps(parameters,
-		func() {})
-
-	// TODO:
-	//  What to do about PoST is still under discussion.
-	//  see go-filecoin issue #2223
-	w.createPoSTFunc = w.fakeCreatePoST
-
-	return w
-}
-
-// NewDefaultWorkerWithDeps instantiates a new Worker with custom functions.
-func NewDefaultWorkerWithDeps(parameters WorkerParameters,
-	createPoST DoSomeWorkFunc) *DefaultWorker {
 	return &DefaultWorker{
 		api:            parameters.API,
 		getStateTree:   parameters.GetStateTree,
@@ -142,116 +145,119 @@ func NewDefaultWorkerWithDeps(parameters WorkerParameters,
 		processor:      parameters.Processor,
 		powerTable:     parameters.PowerTable,
 		blockstore:     parameters.Blockstore,
-		createPoSTFunc: createPoST,
 		minerAddr:      parameters.MinerAddr,
 		minerOwnerAddr: parameters.MinerOwnerAddr,
 		workerSigner:   parameters.WorkerSigner,
+		election:       parameters.Election,
+		ticketGen:      parameters.TicketGen,
+		clock:          parameters.Clock,
 	}
 }
 
-// DoSomeWorkFunc is a dummy function that mimics doing something time-consuming
-// in the mining loop such as computing proofs. Pass a function that calls Sleep()
-// is a good idea for now.
-type DoSomeWorkFunc func()
-
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (won bool, nextTicket types.Ticket) {
 	log.Info("Worker.Mine")
 	ctx = log.Start(ctx, "Worker.Mine")
 	defer log.Finish(ctx)
 	if !base.Defined() {
 		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
-		return false
+		return
 	}
 
+	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), len(ticketArray))
+	if ctx.Err() != nil {
+		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
+		return
+	}
+
+	// Read uncached worker address
+	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, base.Key())
+	if err != nil {
+		outCh <- Output{Err: err}
+		return
+	}
+
+	// Create the next ticket.
+	// With 0 null blocks derive from mining base's min ticket
+	// With > 0 null blocks use the last mined ticket
+	var prevTicket types.Ticket
+	if len(ticketArray) == 0 {
+		prevTicket, err = base.MinTicket()
+		if err != nil {
+			log.Warningf("Worker.Mine couldn't read parent ticket %s", err)
+			outCh <- Output{Err: err}
+			return
+		}
+	} else {
+		prevTicket = ticketArray[len(ticketArray)-1]
+	}
+
+	nextTicket, err = w.ticketGen.NextTicket(prevTicket, workerAddr, w.workerSigner)
+	if err != nil {
+		log.Warningf("Worker.Mine couldn't generate next ticket %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
+
+	// Provably delay for the blocktime
+	done := make(chan struct{})
+	errCh := make(chan error)
+	go func() {
+		defer close(done)
+		defer close(errCh)
+		err = w.ticketGen.NotarizeTime(&nextTicket)
+		if err != nil {
+			errCh <- err
+		}
+		// TODO #2223 remove this explicit wait if/when NotarizeTime calls VDF
+		w.clock.Sleep(w.api.BlockTime())
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), len(ticketArray))
+		return
+	case <-done:
+	case err := <-errCh:
+		log.Infof("Error notarizing time on ticket")
+		outCh <- Output{Err: err}
+		return
+	}
+
+	// Run an election to check if this miner has won the right to mine
+	electionProof, err := w.election.RunElection(nextTicket, workerAddr, w.workerSigner)
+	if err != nil {
+		log.Errorf("failed to run local election: %s", err)
+		outCh <- Output{Err: err}
+		return
+	}
 	st, err := w.getStateTree(ctx, base)
 	if err != nil {
 		log.Errorf("Worker.Mine couldn't get state tree for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
-		return false
+		return
 	}
-
-	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), nullBlkCount)
-	if ctx.Err() != nil {
-		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
-		return false
-	}
-
-	challenge, err := consensus.CreateChallengeSeed(base, uint64(nullBlkCount))
+	weHaveAWinner, err := w.election.IsElectionWinner(ctx, w.blockstore, w.powerTable, st, nextTicket, electionProof, workerAddr, w.minerAddr)
 	if err != nil {
-		log.Warningf("Worker.Mine couldn't create challenge seed: %s", err.Error())
+		log.Errorf("Worker.Mine couldn't run election: %s", err.Error())
 		outCh <- Output{Err: err}
-		return false
-	}
-	prCh := createProof(challenge, w.createPoSTFunc)
-
-	// Read uncached worker address
-	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr)
-	if err != nil {
-		outCh <- Output{Err: err}
-		return false
+		return
 	}
 
-	var proof types.PoStProof
-	var ticket types.Ticket
-	select {
-	case <-ctx.Done():
-		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), nullBlkCount)
-		return false
-	case prChRead, more := <-prCh:
-		if !more {
-			log.Errorf("Worker.Mine got zero value from channel prChRead")
-			return false
-		}
-		proof := append(types.PoStProof{}, prChRead[:]...)
-		ticket, err = consensus.CreateTicket(proof, workerAddr, w.workerSigner)
-		if err != nil {
-			log.Errorf("failed to create ticket: %s", err)
-			return false
-		}
-	}
-
-	// TODO: Test the interplay of isWinningTicket() and createPoSTFunc()
-	// https://github.com/filecoin-project/go-filecoin/issues/1791
-	weHaveAWinner, err := consensus.IsWinningTicket(ctx, w.blockstore, w.powerTable, st, ticket, w.minerAddr)
-
-	if err != nil {
-		log.Errorf("Worker.Mine couldn't compute ticket: %s", err.Error())
-		outCh <- Output{Err: err}
-		return false
-	}
-
+	// This address has mining rights, so mine a block
 	if weHaveAWinner {
-		next, err := w.Generate(ctx, base, ticket, proof, uint64(nullBlkCount))
+		next, err := w.Generate(ctx, base, append(ticketArray, nextTicket), electionProof, uint64(len(ticketArray)))
 		if err == nil {
 			log.SetTag(ctx, "block", next)
 			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
 		outCh <- NewOutput(next, err)
-		return true
+		won = true
+		return
 	}
 
-	return false
-}
-
-// TODO: Actually use the results of the PoST once it is implemented.
-// Currently createProof just passes the challenge seed through.
-func createProof(challengeSeed types.PoStChallengeSeed, createPoST DoSomeWorkFunc) <-chan types.PoStChallengeSeed {
-	c := make(chan types.PoStChallengeSeed)
-	go func() {
-		// TODO:
-		//  What to do about PoST is still under discussion.
-		//  see go-filecoin issue #2223
-		createPoST()
-		c <- challengeSeed
-	}()
-	return c
-}
-
-// fakeCreatePoST is the default implementation of DoSomeWorkFunc.
-// It simply sleeps for the blockTime.
-func (w *DefaultWorker) fakeCreatePoST() {
-	time.Sleep(w.api.BlockTime())
+	return
 }

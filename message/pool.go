@@ -1,4 +1,4 @@
-package core
+package message
 
 import (
 	"context"
@@ -15,23 +15,23 @@ import (
 
 var mpSize = metrics.NewInt64Gauge("message_pool_size", "The size of the message pool")
 
-// MessagePoolValidator defines a validator that ensures a message can go through the pool.
-type MessagePoolValidator interface {
+// PoolValidator defines a validator that ensures a message can go through the pool.
+type PoolValidator interface {
 	Validate(ctx context.Context, msg *types.SignedMessage) error
 }
 
-// MessagePool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
+// Pool keeps an unordered, de-duplicated set of Messages and supports removal by CID.
 // By 'de-duplicated' we mean that insertion of a message by cid that already
-// exists is a nop. We use a MessagePool to store all messages received by this node
+// exists is a nop. We use a Pool to store all messages received by this node
 // via network or directly created via user command that have yet to be included
 // in a block. Messages are removed as they are processed.
 //
-// MessagePool is safe for concurrent access.
-type MessagePool struct {
+// Pool is safe for concurrent access.
+type Pool struct {
 	lk sync.RWMutex
 
 	cfg           *config.MessagePoolConfig
-	validator     MessagePoolValidator
+	validator     PoolValidator
 	pending       map[cid.Cid]*timedmessage // all pending messages
 	addressNonces map[addressNonce]bool     // set of address nonce pairs used to efficiently validate duplicate nonces
 }
@@ -50,9 +50,9 @@ func newAddressNonce(msg *types.SignedMessage) addressNonce {
 	return addressNonce{addr: msg.From, nonce: uint64(msg.Nonce)}
 }
 
-// NewMessagePool constructs a new MessagePool.
-func NewMessagePool(cfg *config.MessagePoolConfig, validator MessagePoolValidator) *MessagePool {
-	return &MessagePool{
+// NewPool constructs a new Pool.
+func NewPool(cfg *config.MessagePoolConfig, validator PoolValidator) *Pool {
+	return &Pool{
 		cfg:           cfg,
 		validator:     validator,
 		pending:       make(map[cid.Cid]*timedmessage),
@@ -62,7 +62,7 @@ func NewMessagePool(cfg *config.MessagePoolConfig, validator MessagePoolValidato
 
 // Add adds a message to the pool, tagged with the block height at which it was received.
 // Does nothing if the message is already in the pool.
-func (pool *MessagePool) Add(ctx context.Context, msg *types.SignedMessage, height uint64) (cid.Cid, error) {
+func (pool *Pool) Add(ctx context.Context, msg *types.SignedMessage, height uint64) (cid.Cid, error) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -88,7 +88,7 @@ func (pool *MessagePool) Add(ctx context.Context, msg *types.SignedMessage, heig
 }
 
 // Pending returns all pending messages.
-func (pool *MessagePool) Pending() []*types.SignedMessage {
+func (pool *Pool) Pending() []*types.SignedMessage {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 	out := make([]*types.SignedMessage, 0, len(pool.pending))
@@ -100,7 +100,7 @@ func (pool *MessagePool) Pending() []*types.SignedMessage {
 }
 
 // Get retrieves a message from the pool by CID.
-func (pool *MessagePool) Get(c cid.Cid) (*types.SignedMessage, bool) {
+func (pool *Pool) Get(c cid.Cid) (*types.SignedMessage, bool) {
 	pool.lk.RLock()
 	defer pool.lk.RUnlock()
 	value, ok := pool.pending[c]
@@ -113,7 +113,7 @@ func (pool *MessagePool) Get(c cid.Cid) (*types.SignedMessage, bool) {
 }
 
 // Remove removes the message by CID from the pending pool.
-func (pool *MessagePool) Remove(c cid.Cid) {
+func (pool *Pool) Remove(c cid.Cid) {
 	pool.lk.Lock()
 	defer pool.lk.Unlock()
 
@@ -127,7 +127,7 @@ func (pool *MessagePool) Remove(c cid.Cid) {
 
 // LargestNonce returns the largest nonce used by a message from address in the pool.
 // If no messages from address are found, found will be false.
-func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, found bool) {
+func (pool *Pool) LargestNonce(address address.Address) (largest uint64, found bool) {
 	for _, m := range pool.Pending() {
 		if m.From == address {
 			found = true
@@ -140,7 +140,7 @@ func (pool *MessagePool) LargestNonce(address address.Address) (largest uint64, 
 }
 
 // PendingBefore returns the CIDs of messages added with height less than `minimumHeight`.
-func (pool *MessagePool) PendingBefore(minimumHeight uint64) []cid.Cid {
+func (pool *Pool) PendingBefore(minimumHeight uint64) []cid.Cid {
 	pool.lk.RLock()
 	defer pool.lk.RUnlock()
 
@@ -155,7 +155,7 @@ func (pool *MessagePool) PendingBefore(minimumHeight uint64) []cid.Cid {
 
 // validateMessage validates that too many messages aren't added to the pool and the ones that are
 // have a high probability of making it through processing.
-func (pool *MessagePool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
+func (pool *Pool) validateMessage(ctx context.Context, message *types.SignedMessage) error {
 	if uint(len(pool.pending)) >= pool.cfg.MaxPoolSize {
 		return errors.Errorf("message pool is full (%d messages)", pool.cfg.MaxPoolSize)
 	}

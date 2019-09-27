@@ -21,26 +21,24 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	// Put block in storage wired to an exchange so this node and other
 	// nodes can fetch it.
 	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
-	blkCid, err := node.cborStore.Put(ctx, b)
+	blkCid, err := node.Blockstore.cborStore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
-	// TODO Implement principled trusting of ChainInfo's
-	// to address in #2674
-	trusted := true
-	if err := node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
+	trusted := true // This block was mined by us, so we trust it.
+	if err := node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
 		return err
 	}
 
-	return node.PorcelainAPI.PubSubPublish(net.BlockTopic, b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.Network.NetworkName), b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
 	from := pubSubMsg.GetFrom()
-	// ignore messages from ourself
+	// Ignore messages from self
 	if from == node.Host().ID() {
 		return nil
 	}
@@ -50,13 +48,13 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 
 	blk, err := types.DecodeBlock(pubSubMsg.GetData())
 	if err != nil {
-		return errors.Wrap(err, "got bad block data")
+		return errors.Wrapf(err, "bad block data from peer %s", from)
 	}
 
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 
-	log.Infof("Received new block from network cid: %s", blk.Cid().String())
-	log.Debugf("Received new block from network: %s", blk)
+	log.Infof("Received new block %s from peer %s", blk.Cid(), from)
+	log.Debugf("Received new block %s from peer %s", blk, from)
 
 	// The block we went to all that effort decoding is dropped on the floor!
 	// Don't be too quick to change that, though: the syncer re-fetching the block
@@ -65,9 +63,9 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
 	trusted := true
-	err = node.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
+	err = node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
 	if err != nil {
-		return errors.Wrap(err, "processing block from network")
+		return errors.Wrapf(err, "processing block %s from peer %s", blk.Cid(), from)
 	}
 
 	return nil

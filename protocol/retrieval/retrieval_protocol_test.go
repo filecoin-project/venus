@@ -35,7 +35,7 @@ func TestRetrievalProtocolPieceNotFound(t *testing.T) {
 	minerPID, err := minerNode.PorcelainAPI.MinerGetPeerID(ctx, minerAddr)
 	require.NoError(t, err)
 
-	_, err = retrievePieceBytes(ctx, minerNode.RetrievalAPI, someRandomCid, minerPID, minerAddr)
+	_, err = retrievePieceBytes(ctx, minerNode.RetrievalProtocol.RetrievalAPI, someRandomCid, minerPID, minerAddr)
 	require.Error(t, err)
 }
 
@@ -59,7 +59,7 @@ func configureMinerAndClient(t *testing.T) (minerNode *node.Node, clientNode *no
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 
 	// make two nodes, one of which is the minerNode (and gets the miner peer key)
-	minerNode = node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(0))
+	minerNode = node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
 	clientNode = node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{})
 
 	// give the minerNode node a key and the miner associated with that key

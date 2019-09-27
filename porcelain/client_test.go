@@ -54,7 +54,11 @@ func (cla *claPlumbing) ActorLs(ctx context.Context) (<-chan state.GetAllActorsR
 	return out, nil
 }
 
-func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (cla *claPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	if cla.messageFail {
 		return nil, errors.New("MESSAGE FAILURE")
 	}

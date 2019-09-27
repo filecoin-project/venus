@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-// TestView is an implementation of stateView used for testing the chain
+// TestView is an implementation of powertableview used for testing the chain
 // manager.  It provides a consistent view that the storage market
 // stores 1 byte and all miners store 0 bytes regardless of inputs.
 type TestView struct{}
@@ -38,6 +38,11 @@ func (tv *TestView) HasPower(ctx context.Context, st state.Tree, bstore blocksto
 	return true
 }
 
+// WorkerAddr just returns the miner address.
+func (tv *TestView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
+	return mAddr, nil
+}
+
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
 func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
@@ -46,45 +51,28 @@ func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 	return ts
 }
 
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
-
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount) *TestPowerTableView {
-	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower}
-}
-
-// Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-// Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
-}
-
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer consensus.TicketSigner) *types.Block {
-	poStProof := MakeRandomPoStProofForTest()
-	ticket, _ := consensus.CreateTicket(poStProof, minerWorker, signer)
+func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*types.Block, error) {
+	electionProof := consensus.MakeFakeElectionProofForTest()
+	ticket := consensus.MakeFakeTicketForTest()
 
-	return &types.Block{
+	b := &types.Block{
 		Miner:         minerAddr,
 		Tickets:       []types.Ticket{ticket},
 		Parents:       baseTipSet.Key(),
 		ParentWeight:  types.Uint64(10000 * height),
 		Height:        types.Uint64(height),
 		StateRoot:     stateRootCid,
-		ElectionProof: poStProof,
+		ElectionProof: electionProof,
 	}
+	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
+	if err != nil {
+		return nil, err
+	}
+	b.BlockSig = sig
+
+	return b, nil
 }
 
 // MakeRandomPoStProofForTest creates a random proof.

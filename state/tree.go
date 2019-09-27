@@ -8,12 +8,15 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
-	"github.com/polydawn/refmt/obj"
-	"github.com/polydawn/refmt/shared"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
+)
+
+const (
+	// TreeBitWidth is the bit width of the HAMT used to store a state tree
+	TreeBitWidth = 5
 )
 
 // tree is a state tree that maps addresses to actors.
@@ -70,7 +73,7 @@ func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, 
 // LoadStateTree loads the state tree referenced by the given cid.
 func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
 	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
-	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c)
+	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load node for %s", c)
 	}
@@ -96,7 +99,7 @@ func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[ci
 
 func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
-		root:          hamt.NewNode(store),
+		root:          hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
 		store:         store,
 		builtinActors: map[cid.Cid]exec.ExecutableActor{},
 	}
@@ -150,36 +153,15 @@ func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, e
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
-	data, err := t.root.Find(ctx, a.String())
+	var act actor.Actor
+	err := t.root.Find(ctx, a.String(), &act)
 	if err == hamt.ErrNotFound {
 		return nil, &actorNotFoundError{}
 	} else if err != nil {
 		return nil, err
 	}
 
-	var act actor.Actor
-	if err := hackTransferObject(data, &act); err != nil {
-		return nil, err
-	}
-
 	return &act, nil
-}
-
-func hackTransferObject(from, to interface{}) error {
-	m := obj.NewMarshaller(cbor.CborAtlas)
-	if err := m.Bind(from); err != nil {
-		return err
-	}
-
-	u := obj.NewUnmarshaller(cbor.CborAtlas)
-	if err := u.Bind(to); err != nil {
-		return err
-	}
-
-	return shared.TokenPump{
-		TokenSource: m,
-		TokenSink:   u,
-	}.Run()
 }
 
 // GetOrCreateActor retrieves an actor by their address
@@ -210,7 +192,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 	for _, p := range nd.Pointers {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				return err
 			}
 
@@ -224,7 +206,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 			}
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), cst, p.Link)
+			n, err := hamt.LoadNode(context.Background(), cst, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				return err
 			}
@@ -253,7 +235,7 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 			fmt.Printf("%s: %X\n", kv.Key, kv.Value)
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			if err != nil {
 				fmt.Printf("unable to print link: %s: %s\n", p.Link.String(), err)
 				continue
@@ -288,7 +270,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := hackTransferObject(kv.Value, &a); err != nil {
+			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
 				panic(err) // uhm, ignoring errors is bad
 			}
 
@@ -306,7 +288,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 			}
 		}
 		if p.Link.Defined() {
-			n, err := hamt.LoadNode(context.Background(), t.store, p.Link)
+			n, err := hamt.LoadNode(context.Background(), t.store, p.Link, hamt.UseTreeBitWidth(TreeBitWidth))
 			// Even if we hit an error and can't follow this link, we should
 			// keep traversing its siblings.
 			if err != nil {

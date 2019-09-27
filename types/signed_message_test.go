@@ -73,6 +73,22 @@ func TestSignedMessageCid(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.NotEqual(t, c1.String(), c2.String())
+
+}
+
+func TestSignedMessageCidToNode(t *testing.T) {
+	tf.UnitTest(t)
+
+	smsg := makeMessage(t, mockSigner, 41)
+
+	c, err := smsg.Cid()
+	require.NoError(t, err)
+
+	n, err := smsg.ToNode()
+	require.NoError(t, err)
+
+	assert.Equal(t, c, n.Cid())
+
 }
 
 func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {

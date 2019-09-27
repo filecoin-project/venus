@@ -1,4 +1,4 @@
-package core_test
+package message_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -31,19 +31,19 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	gasPrice := types.NewGasPrice(1)
 	gasUnits := types.NewGasUnits(1000)
 
-	makeHandler := func(provider *core.FakeProvider, root types.TipSet) *core.NewHeadHandler {
-		mpool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
-		inbox := core.NewInbox(mpool, maxAge, provider, provider)
-		queue := core.NewMessageQueue()
-		publisher := core.NewDefaultMessagePublisher(&core.MockNetworkPublisher{}, "Topic", mpool)
-		policy := core.NewMessageQueuePolicy(provider, maxAge)
-		outbox := core.NewOutbox(signer, &core.FakeValidator{}, queue, publisher, policy, provider, provider)
+	makeHandler := func(provider *message.FakeProvider, root types.TipSet) *message.HeadHandler {
+		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		inbox := message.NewInbox(mpool, maxAge, provider, provider)
+		queue := message.NewQueue()
+		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, "Topic", mpool)
+		policy := message.NewMessageQueuePolicy(provider, maxAge)
+		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy, provider, provider)
 
-		return core.NewHandler(inbox, outbox, provider, root)
+		return message.NewHeadHandler(inbox, outbox, provider, root)
 	}
 
 	t.Run("test send after reverted message", func(t *testing.T) {
-		provider := core.NewFakeProvider(t)
+		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
 		actr.Nonce = 42
@@ -100,7 +100,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	})
 
 	t.Run("ignores empty tipset", func(t *testing.T) {
-		provider := core.NewFakeProvider(t)
+		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
 		provider.SetHead(root.Key())
 
@@ -110,7 +110,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	})
 
 	t.Run("ignores duplicate tipset", func(t *testing.T) {
-		provider := core.NewFakeProvider(t)
+		provider := message.NewFakeProvider(t)
 		root := provider.NewGenesis()
 		provider.SetHead(root.Key())
 

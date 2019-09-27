@@ -1,4 +1,4 @@
-package core_test
+package message_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -29,7 +29,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 	alice := mm.Addresses()[0]
 	bob := mm.Addresses()[1]
 
-	requireEnqueue := func(q *core.MessageQueue, msg *types.SignedMessage, stamp uint64) *types.SignedMessage {
+	requireEnqueue := func(q *message.Queue, msg *types.SignedMessage, stamp uint64) *types.SignedMessage {
 		err := q.Enqueue(ctx, msg, stamp)
 		require.NoError(t, err)
 		return msg
@@ -37,8 +37,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("old block does nothing", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(blocks, 10)
 
 		fromAlice := mm.NewSignedMessage(alice, 1)
 		fromBob := mm.NewSignedMessage(bob, 1)
@@ -56,8 +56,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("chain truncation does nothing", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(blocks, 10)
 
 		fromAlice := mm.NewSignedMessage(alice, 1)
 		fromBob := mm.NewSignedMessage(bob, 1)
@@ -75,8 +75,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 
 	t.Run("removes mined messages", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(blocks, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(blocks, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -137,8 +137,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("expires old messages", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		messages := blocks
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(messages, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -175,8 +175,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("fails when messages out of nonce order", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		messages := blocks
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(messages, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -202,8 +202,8 @@ func TestMessageQueuePolicy(t *testing.T) {
 	t.Run("removes sequential messages in peer blocks", func(t *testing.T) {
 		blocks := chain.NewBuilder(t, alice)
 		messages := blocks
-		q := core.NewMessageQueue()
-		policy := core.NewMessageQueuePolicy(messages, 10)
+		q := message.NewQueue()
+		policy := message.NewMessageQueuePolicy(messages, 10)
 
 		msgs := []*types.SignedMessage{
 			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
@@ -232,7 +232,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 			b.SetTicket([]byte{2})
-			b.SetTimestamp(0) // Tweak if necessary to force CID ordering opposite ticket ordering.
+			b.SetTimestamp(2) // Tweak if necessary to force CID ordering opposite ticket ordering.
 		})
 
 		assert.True(t, bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) > 0)
@@ -260,6 +260,6 @@ func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {
 	return set
 }
 
-func qm(msg *types.SignedMessage, stamp uint64) *core.QueuedMessage {
-	return &core.QueuedMessage{Msg: msg, Stamp: stamp}
+func qm(msg *types.SignedMessage, stamp uint64) *message.Queued {
+	return &message.Queued{Msg: msg, Stamp: stamp}
 }

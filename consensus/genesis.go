@@ -156,17 +156,15 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		for addr, val := range genCfg.miners {
 			a := miner.NewActor()
 			a.Balance = val.balance
-
-			if err := st.SetActor(ctx, addr, a); err != nil {
-				return nil, err
-			}
-
 			s := storageMap.NewStorage(addr, a)
 			scid, err := s.Put(val.state)
 			if err != nil {
 				return nil, err
 			}
 			if err = s.Commit(scid, a.Head); err != nil {
+				return nil, err
+			}
+			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
 		}
@@ -208,6 +206,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			StateRoot:       c,
 			Messages:        emptyMessagesCid,
 			MessageReceipts: emptyReceiptsCid,
+			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

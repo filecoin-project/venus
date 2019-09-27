@@ -3,14 +3,16 @@ package miner_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -348,7 +350,7 @@ func TestMinerGetPower(t *testing.T) {
 func TestMinerGetProvingPeriod(t *testing.T) {
 	tf.UnitTest(t)
 
-	t.Run("GetProvingPeriod returns unitialized values when proving period is unset", func(t *testing.T) {
+	t.Run("GetProvingWindow returns unitialized values when proving period is unset", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -357,7 +359,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
@@ -373,7 +375,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		assert.Equal(t, types.NewBlockHeight(0), end)
 	})
 
-	t.Run("GetProvingPeriod returns the start and end of the proving period", func(t *testing.T) {
+	t.Run("GetProvingWindow returns the start and end of the proving period", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -393,20 +395,25 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingPeriod", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
+		// end of proving period is now plus proving period size
+		expectedEnd := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)))
+		// start of proving period is end minus the PoSt challenge time
+		expectedStart := expectedEnd.Sub(types.NewBlockHeight(PoStChallengeWindowBlocks))
+
 		start, ok := startVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(42), start)
+		assert.Equal(t, expectedStart, start)
 
 		endVal, err := abi.Deserialize(result[1], abi.BlockHeight)
 		require.NoError(t, err)
 
 		end, ok := endVal.Val.(*types.BlockHeight)
 		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)+blockHeight), end)
+		assert.Equal(t, expectedEnd, end)
 	})
 }
 
@@ -490,7 +497,7 @@ func TestMinerCommitSector(t *testing.T) {
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period matches
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingPeriod", nil)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingWindow", nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 
@@ -755,6 +762,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 			VerifyPoStValid: true,
 		}
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -788,6 +796,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 
 		minerState.ProvingSet = types.NewIntSet(4)
 		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -811,6 +820,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -834,6 +844,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Actor{Bootstrap: false}
 
@@ -1031,7 +1042,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 	secondProvingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
 	secondProvingPeriodEnd := 2*LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
-	lastPossibleSubmission := secondProvingPeriodStart + LargestSectorSizeProvingPeriodBlocks + LargestSectorGenerationAttackThresholdBlocks
+	lastPossibleSubmission := secondProvingPeriodStart + 2*LargestSectorSizeProvingPeriodBlocks - 1
 
 	// add a sector
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
@@ -1053,13 +1064,13 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period is now the next one
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingPeriod", ancestors)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingWindow", ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))
 	})
 
-	t.Run("after generation attack grace period rejected", func(t *testing.T) {
+	t.Run("after proving period grace period PoSt is rejected", func(t *testing.T) {
 		// Rejected one block late
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
@@ -1092,6 +1103,142 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ownerBalance.Sub(fee).String(), owner.Balance.String())
 	})
+
+	t.Run("computes seed randomness at correct chain height when post is on time", func(t *testing.T) {
+		var actualSampleHeight *types.BlockHeight
+
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			actualSampleHeight = sampleHeight
+			return []byte{42}, nil
+		}
+
+		// block time that isn't late
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd - PoStChallengeWindowBlocks + 30)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		// expect to sample randomness at beginning of proving period window before proving period end
+		expectedSampleHeight := types.NewBlockHeight(secondProvingPeriodEnd - PoStChallengeWindowBlocks)
+		assert.Equal(t, expectedSampleHeight, actualSampleHeight)
+	})
+
+	t.Run("computes seed randomness at correct chain height when post is late", func(t *testing.T) {
+		var actualSampleHeight *types.BlockHeight
+
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			actualSampleHeight = sampleHeight
+			return []byte{42}, nil
+		}
+
+		// block time that is late
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks + 30)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		// expect to sample randomness at beginning of proving period window after proving period end
+		expectedSampleHeight := types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks)
+		assert.Equal(t, expectedSampleHeight, actualSampleHeight)
+	})
+
+	t.Run("provides informative error when PoSt attempts to sample chain height before it is ready", func(t *testing.T) {
+		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+
+		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
+
+		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
+			return []byte{}, errors.New("chain randomness unavailable")
+		}
+
+		// block time before proving window
+		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks - 25)
+
+		miner := Actor{}
+		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
+		require.Error(t, err)
+		require.NotEqual(t, uint8(0), code)
+
+		assert.Contains(t, err.Error(), fmt.Sprintf("PoSt arrived at %s, which is before proving window (%d-%d)",
+			vmctx.BlockHeightValue.String(),
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks-PoStChallengeWindowBlocks,
+			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks))
+	})
+
+}
+
+func TestAddFaults(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	provingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	provingPeriodEnd := provingPeriodStart + LargestSectorSizeProvingPeriodBlocks
+	provingWindowStart := provingPeriodEnd - PoStChallengeWindowBlocks
+
+	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "addFaults", []byte{})
+
+	cases := []struct {
+		bh              uint64
+		faults          []uint64
+		initialCurrent  []uint64
+		initialNext     []uint64
+		expectedCurrent []uint64
+		expectedNext    []uint64
+	}{
+		// Adding faults before the proving window adds to the CurrentFaultSet
+		{provingWindowStart - 1, []uint64{42}, []uint64{1}, []uint64{}, []uint64{1, 42}, []uint64{}},
+
+		// Adding faults after the proving window has started adds to NextFaultSet
+		{provingWindowStart + 1, []uint64{42}, []uint64{}, []uint64{1}, []uint64{}, []uint64{1, 42}},
+	}
+
+	for _, tc := range cases {
+		minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(provingPeriodEnd)
+		minerState.CurrentFaultSet = types.NewIntSet(tc.initialCurrent...)
+		minerState.NextFaultSet = types.NewIntSet(tc.initialNext...)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.BlockHeightValue = types.NewBlockHeight(tc.bh)
+
+		miner := Actor{}
+		code, err := miner.AddFaults(vmctx, types.NewFaultSet(tc.faults))
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		err = actor.ReadState(vmctx, &minerState)
+		require.NoError(t, err)
+
+		require.Equal(t, len(tc.expectedCurrent), minerState.CurrentFaultSet.Size())
+		require.True(t, minerState.CurrentFaultSet.HasSubset(types.NewIntSet(tc.expectedCurrent...)))
+
+		require.Equal(t, len(tc.expectedNext), minerState.NextFaultSet.Size())
+		require.True(t, minerState.NextFaultSet.HasSubset(types.NewIntSet(tc.expectedNext...)))
+	}
 }
 
 func TestActorSlashStorageFault(t *testing.T) {
@@ -1101,7 +1248,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	secondProvingPeriodStart := firstCommitBlockHeight + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodStart := secondProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
 	thirdProvingPeriodEnd := thirdProvingPeriodStart + ProvingPeriodDuration(types.OneKiBSectorSize)
-	lastPossibleSubmission := thirdProvingPeriodEnd + LargestSectorGenerationAttackThresholdBlocks
+	lastPossibleSubmission := thirdProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks
 
 	// CreateTestMiner creates a new test miner with the given peerID and miner
 	// owner address and a given number of committed sectors
@@ -1302,7 +1449,7 @@ func TestVerifyPIP(t *testing.T) {
 		}
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
-		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(GenerationAttackTime(minerState.SectorSize)).Add(types.NewBlockHeight(1))
+		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(LatePoStGracePeriod(minerState.SectorSize)).Add(types.NewBlockHeight(1))
 		miner := Actor{}
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
@@ -1431,7 +1578,7 @@ func TestMinerGetPoStState(t *testing.T) {
 	firstCommitBlockHeight := uint64(3)
 
 	lastHeightOfFirstPeriod := firstCommitBlockHeight + LargestSectorSizeProvingPeriodBlocks
-	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + LargestSectorGenerationAttackThresholdBlocks
+	lastHeightOfSecondPeriod := lastHeightOfFirstPeriod + LargestSectorSizeProvingPeriodBlocks
 
 	faults := types.EmptyFaultSet()
 
@@ -1454,11 +1601,11 @@ func TestMinerGetPoStState(t *testing.T) {
 
 		mal.assertPoStStateAtHeight(PoStStateAfterProvingPeriod, lastHeightOfFirstPeriod+1)
 	})
-	t.Run("is reported as PoStStateAfterGenerationAttackThreshold after the proving period", func(t *testing.T) {
+	t.Run("is reported as PoStStateUnrecoverable after the proving period", func(t *testing.T) {
 		mal := setupMinerActorLiason(t)
 		mal.requireCommit(firstCommitBlockHeight, uint64(1))
 
-		mal.assertPoStStateAtHeight(PoStStateAfterGenerationAttackThreshold, lastHeightOfSecondPeriod)
+		mal.assertPoStStateAtHeight(PoStStateUnrecoverable, lastHeightOfSecondPeriod)
 	})
 
 	t.Run("is reported as PoStStateNoStorage when actor has empty proving set", func(t *testing.T) {

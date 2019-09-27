@@ -19,8 +19,8 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 	}
 	log.SetTag(ctx, "message", unmarshaled)
 
-	log.Debugf("Received new message from network: %s", unmarshaled)
+	log.Debugf("Received new message %s from peer %s", unmarshaled, pubSubMsg.GetFrom())
 
-	_, err = node.Inbox.Add(ctx, unmarshaled)
+	_, err = node.Messaging.Inbox.Add(ctx, unmarshaled)
 	return err
 }

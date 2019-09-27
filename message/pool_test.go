@@ -1,16 +1,16 @@
-package core_test
+package message_test
 
 import (
 	"context"
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/message"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -24,7 +24,7 @@ func TestMessagePoolAddRemove(t *testing.T) {
 
 	ctx := context.Background()
 
-	pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 	msg2 := mustSetNonce(mockSigner, newSignedMessage(), 1)
 
@@ -67,7 +67,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		mpoolCfg := config.NewDefaultConfig().Mpool
 		maxMessagePoolSize := mpoolCfg.MaxPoolSize
 		ctx := context.Background()
-		pool := core.NewMessagePool(mpoolCfg, th.NewMockMessagePoolValidator())
+		pool := message.NewPool(mpoolCfg, th.NewMockMessagePoolValidator())
 
 		smsgs := types.NewSignedMsgs(maxMessagePoolSize+1, mockSigner)
 		for _, smsg := range smsgs[:maxMessagePoolSize] {
@@ -87,7 +87,7 @@ func TestMessagePoolValidate(t *testing.T) {
 
 	t.Run("validates no two messages are added with same nonce", func(t *testing.T) {
 		ctx := context.Background()
-		pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		smsg1 := newSignedMessage()
 		_, err := pool.Add(ctx, smsg1, 0)
@@ -103,7 +103,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		ctx := context.Background()
 		validator := th.NewMockMessagePoolValidator()
 		validator.Valid = false
-		pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, validator)
+		pool := message.NewPool(config.NewDefaultConfig().Mpool, validator)
 
 		smsg1 := mustSetNonce(mockSigner, newSignedMessage(), 0)
 		_, err := pool.Add(ctx, smsg1, 0)
@@ -117,7 +117,7 @@ func TestMessagePoolDedup(t *testing.T) {
 
 	ctx := context.Background()
 
-	pool := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+	pool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 	msg1 := newSignedMessage()
 
 	assert.Len(t, pool.Pending(), 0)
@@ -140,7 +140,7 @@ func TestMessagePoolAsync(t *testing.T) {
 	mpoolCfg.MaxPoolSize = count
 	msgs := types.NewSignedMsgs(count, mockSigner)
 
-	pool := core.NewMessagePool(mpoolCfg, th.NewMockMessagePoolValidator())
+	pool := message.NewPool(mpoolCfg, th.NewMockMessagePoolValidator())
 	var wg sync.WaitGroup
 
 	for i := uint(0); i < 4; i++ {
@@ -162,7 +162,7 @@ func TestLargestNonce(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("No matches", func(t *testing.T) {
-		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewSignedMsgs(2, mockSigner)
 		reqAdd(t, p, 0, m[0], m[1])
@@ -172,7 +172,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match, largest is zero", func(t *testing.T) {
-		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
 		m[0].Nonce = 0
@@ -188,7 +188,7 @@ func TestLargestNonce(t *testing.T) {
 	})
 
 	t.Run("Match", func(t *testing.T) {
-		p := core.NewMessagePool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
 		m[1].Nonce = 1
@@ -227,7 +227,7 @@ func signMessage(signer types.Signer, message types.Message) (*types.SignedMessa
 	return types.NewSignedMessage(message, signer, types.NewGasPrice(0), types.NewGasUnits(0))
 }
 
-func reqAdd(t *testing.T, p *core.MessagePool, height uint64, msgs ...*types.SignedMessage) {
+func reqAdd(t *testing.T, p *message.Pool, height uint64, msgs ...*types.SignedMessage) {
 	ctx := context.Background()
 	for _, m := range msgs {
 		_, err := p.Add(ctx, m, height)

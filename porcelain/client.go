@@ -28,7 +28,8 @@ type Ask struct {
 
 type claPlubming interface {
 	ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
@@ -73,7 +74,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 
 	// TODO: at some point, we will need to check that the miners are actually part of the storage market
 	// for now, its impossible for them not to be.
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks")
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsks", plumbing.ChainHeadKey())
 	if err != nil {
 		return err
 	}
@@ -97,8 +98,9 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 
 // The subset of plumbing used by ClientVerifyStorageDeal
 type cvsdPlumbing interface {
+	ChainHeadKey() types.TipSetKey
 	DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // ClientVerifyStorageDeal check to see that a storage deal is in the `Complete` state, and that its PIP is valid
@@ -118,7 +120,7 @@ func ClientVerifyStorageDeal(ctx context.Context, plumbing cvsdPlumbing, proposa
 		proofInfo.PieceInclusionProof,
 	}
 
-	_, err = plumbing.MessageQuery(ctx, address.Undef, deal.Miner, "doVerifyPieceInclusion", params...)
+	_, err = plumbing.MessageQuery(ctx, address.Undef, deal.Miner, "doVerifyPieceInclusion", plumbing.ChainHeadKey(), params...)
 	if err != nil {
 		return err
 	}
@@ -127,7 +129,7 @@ func ClientVerifyStorageDeal(ctx context.Context, plumbing cvsdPlumbing, proposa
 }
 
 func getAskByID(ctx context.Context, plumbing claPlubming, addr address.Address, id uint64) (Ask, error) {
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsk", big.NewInt(int64(id)))
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, addr, "getAsk", plumbing.ChainHeadKey(), big.NewInt(int64(id)))
 	if err != nil {
 		return Ask{}, err
 	}
