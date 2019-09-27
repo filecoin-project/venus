@@ -29,7 +29,7 @@ type FakeActorStateStore struct {
 	minerToWorker map[address.Address]address.Address
 }
 
-// NewFakeActorStateStore creates an actor state that returns a test queryer such that PowerTableView queries return predefined results
+// NewFakeActorStateStore creates an actor state store that produces snapshots such that PowerTableView queries return predefined results
 func NewFakeActorStateStore(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *FakeActorStateStore {
 	return &FakeActorStateStore{
 		minerPower:    minerPower,
@@ -47,7 +47,7 @@ func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHe
 	}
 }
 
-// FakePowerTableViewSnapshot returns a queryer that can be fed into a PowerTableView to produce specific values
+// FakePowerTableViewSnapshot returns a snapshot that can be fed into a PowerTableView to produce specific values
 type FakePowerTableViewSnapshot struct {
 	MinerPower    *types.BytesAmount
 	TotalPower    *types.BytesAmount

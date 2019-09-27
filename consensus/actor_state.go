@@ -41,7 +41,7 @@ type ActorStateSnapshot interface {
 	Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
-// Snapshot returns a query interface to query the chain at a particular tipset
+// Snapshot returns a snapshot of tipset state for querying
 func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey types.TipSetKey) (ActorStateSnapshot, error) {
 	st, err := cs.chainReader.GetTipSetState(ctx, baseKey)
 	if err != nil {
@@ -59,7 +59,7 @@ func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey types.TipSetKey)
 	return cs.StateTreeSnapshot(st, types.NewBlockHeight(h)), nil
 }
 
-// StateTreeSnapshot returns a query interface to query the chain for a particular state tree and optional block height
+// StateTreeSnapshot returns a snapshot representation of a state tree at an optional block height
 func (cs ActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
 	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
 }
@@ -80,7 +80,7 @@ func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHe
 	}
 }
 
-// Query sends a read-only message against the state of the provided base tipset.
+// Query sends a read-only message against the state of the snapshot.
 func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
