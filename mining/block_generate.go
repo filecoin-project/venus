@@ -31,7 +31,12 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "get state tree")
 	}
 
-	if !w.powerTable.HasPower(ctx, stateTree, w.blockstore, w.minerAddr) {
+	powerTable, err := w.getPowerTable(ctx, baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrap(err, "get power table")
+	}
+
+	if !powerTable.HasPower(ctx, w.minerAddr) {
 		return nil, errors.Errorf("bad miner address, miner must store files before mining: %s", w.minerAddr)
 	}
 

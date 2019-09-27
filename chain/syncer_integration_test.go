@@ -112,7 +112,7 @@ func TestLoadFork(t *testing.T) {
 	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
 }
 
-// Syncer handles MarketView weight comparisons.
+// Syncer handles PowerTableView weight comparisons.
 // Current issue: when creating miner mining with addr0, addr0's storage head isn't found in the blockstore
 // and I can't figure out why because we pass in the correct blockstore to createStorageMinerWithpower.
 func TestTipSetWeightDeep(t *testing.T) {
@@ -184,8 +184,9 @@ func TestTipSetWeightDeep(t *testing.T) {
 	// Setup a fetcher for feeding blocks into the syncer.
 	blockSource := th.NewTestFetcher()
 
-	// Now sync the chainStore with consensus using a MarketView.
-	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), &consensus.MarketView{}, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+	// Now sync the chainStore with consensus using a PowerTableView.
+	as := consensus.NewActorStateStore(chainStore, cst, bs)
+	con := consensus.NewExpected(cst, bs, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())

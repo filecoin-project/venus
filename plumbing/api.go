@@ -52,7 +52,7 @@ type API struct {
 	expected      consensus.Protocol
 	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
-	msgQueryer    *msg.Queryer
+	actorState    *consensus.ActorStateStore
 	msgWaiter     *msg.Waiter
 	network       *net.Network
 	outbox        *message.Outbox
@@ -65,6 +65,7 @@ type API struct {
 type APIDeps struct {
 	Bitswap       exchange.Interface
 	Chain         *cst.ChainStateReadWriter
+	ActState      *consensus.ActorStateStore
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
@@ -72,7 +73,6 @@ type APIDeps struct {
 	Expected      consensus.Protocol
 	MsgPool       *message.Pool
 	MsgPreviewer  *msg.Previewer
-	MsgQueryer    *msg.Queryer
 	MsgWaiter     *msg.Waiter
 	Network       *net.Network
 	Outbox        *message.Outbox
@@ -87,13 +87,13 @@ func New(deps *APIDeps) *API {
 
 		bitswap:       deps.Bitswap,
 		chain:         deps.Chain,
+		actorState:    deps.ActState,
 		syncer:        deps.Sync,
 		config:        deps.Config,
 		dag:           deps.DAG,
 		expected:      deps.Expected,
 		msgPool:       deps.MsgPool,
 		msgPreviewer:  deps.MsgPreviewer,
-		msgQueryer:    deps.MsgQueryer,
 		msgWaiter:     deps.MsgWaiter,
 		network:       deps.Network,
 		outbox:        deps.Outbox,
@@ -244,7 +244,16 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
-	return api.msgQueryer.Query(ctx, optFrom, to, method, baseKey, params...)
+	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
+	if err != nil {
+		return [][]byte{}, err
+	}
+	return snapshot.Query(ctx, optFrom, to, method, params...)
+}
+
+// Snapshot returns a interface to the chain state a a particular tipset
+func (api *API) Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+	return api.actorState.Snapshot(ctx, baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the

@@ -27,7 +27,7 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 
 	data, err := cbor.DumpObject(&map[string]uint64{})
 	require.NoError(t, err)
-	queryer := makeQueryer([][]byte{data})
+	snapshot := makeSnapshot([][]byte{data})
 
 	getf := address.NewForTestGetter()
 	ownMiner := getf()
@@ -35,7 +35,7 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 
 	ob := outbox{}
 	sp := slasherPlumbing{
-		Queryer:    queryer,
+		Snapshot:   snapshot,
 		minerAddr:  ownMiner,
 		workerAddr: ownWorker,
 	}
@@ -66,14 +66,14 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		height := types.NewBlockHeight(1)
 		data, err := cbor.DumpObject(&map[string]uint64{})
 		require.NoError(t, err)
-		queryer := makeQueryer([][]byte{data})
+		snapshot := makeSnapshot([][]byte{data})
 
 		getf := address.NewForTestGetter()
 		ownMiner := getf()
 
 		ob := outbox{}
 		sp := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -101,10 +101,10 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		queryer := makeQueryer([][]byte{data})
+		snapshot := makeSnapshot([][]byte{data})
 		ob := outbox{}
 		sp := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -127,10 +127,10 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		queryer := makeQueryer([][]byte{data1})
+		snapshot := makeSnapshot([][]byte{data1})
 		ob := outbox{}
 		plumbing := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -151,7 +151,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 			badMiner2: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
-		plumbing.Queryer = makeQueryer([][]byte{data2})
+		plumbing.Snapshot = makeSnapshot([][]byte{data2})
 		err = fm.Slash(ctx, height)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, ob.msgCount) // A new slashing message.
@@ -168,10 +168,10 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		queryer := makeQueryer([][]byte{data1})
+		snapshot := makeSnapshot([][]byte{data1})
 		ob := outbox{}
 		plumbing := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -198,10 +198,10 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		queryer := makeQueryer([][]byte{data})
+		snapshot := makeSnapshot([][]byte{data})
 		ob := outbox{failSend: true, failErr: "Boom"}
 		sp := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -218,14 +218,14 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		ownMiner := getf()
 
 		ob := outbox{}
-		queryer := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+		snapshot := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			if method == "getLateMiners" {
 				return nil, errors.New("message query failed")
 			}
 			return nil, errors.New("test failed")
 		}
 		sp := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -245,14 +245,14 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		badBytes, err := cbor.DumpObject("junk")
 		require.NoError(t, err)
 
-		queryer := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+		snapshot := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 			if method == "getLateMiners" {
 				return [][]byte{badBytes}, nil
 			}
 			return nil, errors.New("test failed")
 		}
 		sp := slasherPlumbing{
-			Queryer:    queryer,
+			Snapshot:   snapshot,
 			minerAddr:  ownMiner,
 			workerAddr: ownWorker,
 		}
@@ -270,11 +270,11 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		data, err := cbor.DumpObject(&map[string]uint64{})
 		require.NoError(t, err)
-		queryer := makeQueryer([][]byte{data})
+		snapshot := makeSnapshot([][]byte{data})
 		ob := outbox{}
 		sp := slasherPlumbing{
 			workerAddrFail: true,
-			Queryer:        queryer,
+			Snapshot:       snapshot,
 			minerAddr:      ownMiner,
 			workerAddr:     ownWorker,
 		}
@@ -285,7 +285,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 	})
 }
 
-func makeQueryer(returnData [][]byte) msgQueryer {
+func makeSnapshot(returnData [][]byte) msgSnapshot {
 	return func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 		_, err := abi.ToEncodedValues(params...)
 		if err != nil {
@@ -295,11 +295,11 @@ func makeQueryer(returnData [][]byte) msgQueryer {
 	}
 }
 
-type msgQueryer func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+type msgSnapshot func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 
 type slasherPlumbing struct {
 	workerAddrFail        bool
-	Queryer               msgQueryer
+	Snapshot              msgSnapshot
 	minerAddr, workerAddr address.Address
 }
 
@@ -312,7 +312,7 @@ func (tmp *slasherPlumbing) ChainHeadKey() types.TipSetKey {
 }
 
 func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
-	return tmp.Queryer(ctx, optFrom, to, method, params)
+	return tmp.Snapshot(ctx, optFrom, to, method, params)
 }
 
 func (tmp *slasherPlumbing) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {

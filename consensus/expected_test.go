@@ -11,7 +11,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,8 +29,8 @@ func TestNewExpected(t *testing.T) {
 
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore := setupCborBlockstore()
-		ptv := consensus.NewTestPowerTableView(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
-		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
+		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 		assert.NotNil(t, exp)
 	})
 }
@@ -107,10 +106,10 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
-		// Add the miner worker mapping into the test power table view
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		// Add the miner worker mapping into the actor state
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt
@@ -133,8 +132,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
@@ -160,8 +159,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), ptv, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
+		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
@@ -190,8 +189,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks[0].Tickets = append(blocks[0].Tickets, consensus.MakeFakeTicketForTest())
 		tipSet := types.RequireNewTipSet(t, blocks[0])
 
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt
@@ -213,10 +212,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks[0].BlockSig = blocks[1].BlockSig
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
-		// Add the miner worker mapping into the test power table view
-		ptv := consensus.NewTestPowerTableView(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), ptv, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt
@@ -238,48 +236,4 @@ func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
 	cis := &hamt.CborIpldStore{Blocks: blkserv}
 
 	return cis, bs
-}
-
-type FailingTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
-
-func NewFailingTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingTestPowerTableView {
-	return &FailingTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
-}
-
-func (tv *FailingTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return tv.totalPower, errors.New("something went wrong with the total power")
-}
-
-func (tv *FailingTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
-
-func (tv *FailingTestPowerTableView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
-}
-
-func (tv *FailingTestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
-}
-
-type FailingMinerTestPowerTableView struct{ minerPower, totalPower *types.BytesAmount }
-
-func NewFailingMinerTestPowerTableView(minerPower, totalPower *types.BytesAmount) *FailingMinerTestPowerTableView {
-	return &FailingMinerTestPowerTableView{minerPower: minerPower, totalPower: totalPower}
-}
-
-func (tv *FailingMinerTestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-func (tv *FailingMinerTestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, errors.New("something went wrong with the miner power")
-}
-
-func (tv *FailingMinerTestPowerTableView) WorkerAddr(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	return mAddr, nil
-}
-
-func (tv *FailingMinerTestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
 }
