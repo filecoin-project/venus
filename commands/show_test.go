@@ -67,9 +67,6 @@ func TestBlockDaemon(t *testing.T) {
 		// ensure that we were returned the correct block
 
 		require.Equal(t, minedBlockCidStr, blockGetBlock.Header.Cid().String())
-
-		// ensure that the JSON we received from block get conforms to schema
-
 	})
 
 	t.Run("show header <cid-of-genesis-block> --enc json returns JSON for a filecoin block header", func(t *testing.T) {
@@ -90,10 +87,6 @@ func TestBlockDaemon(t *testing.T) {
 		// ensure that we were returned the correct block
 
 		require.Equal(t, minedBlockCidStr, headerGetBlock.Cid().String())
-
-		// ensure that the JSON we received from block get conforms to schema
-
-		requireSchemaConformance(t, []byte(headerGetLine), "filecoin_block")
 	})
 
 	t.Run("show messages <empty-collection-cid> returns empty message collection", func(t *testing.T) {
