@@ -195,10 +195,11 @@ type testStorage struct {
 	state interface{}
 }
 
-var _ exec.Storage = testStorage{}
+var _ exec.Storage = &testStorage{}
 
-// Put satisfies the Storage interface but does nothing.
-func (ts testStorage) Put(v interface{}) (cid.Cid, error) {
+// Put satisfies the Storage interface
+func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
+	ts.state = v
 	return cid.Cid{}, nil
 }
 

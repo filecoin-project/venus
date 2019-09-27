@@ -31,8 +31,8 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *types.Block {
-	head := minerNode.ChainReader.GetHead()
-	headTipSet, err := minerNode.ChainReader.GetTipSet(head)
+	head := minerNode.Chain.ChainReader.GetHead()
+	headTipSet, err := minerNode.Chain.ChainReader.GetTipSet(head)
 	require.NoError(t, err)
 	baseTS := headTipSet
 	require.NotNil(t, baseTS)
@@ -85,7 +85,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	equal := false
 	for i := 0; i < 30; i++ {
 		for j := 1; j < numNodes; j++ {
-			otherHead := nodes[j].ChainReader.GetHead()
+			otherHead := nodes[j].Chain.ChainReader.GetHead()
 			assert.NotNil(t, otherHead)
 			equal = otherHead.ToSlice()[0].Equals(nextBlk.Cid())
 			if equal {
@@ -118,7 +118,7 @@ func TestChainSync(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].ChainReader.GetHead()
+		otherHead := nodes[1].Chain.ChainReader.GetHead()
 		assert.NotNil(t, otherHead)
 		equal = otherHead.ToSlice()[0].Equals(thirdBlock.Cid())
 		if equal {
@@ -133,7 +133,7 @@ func TestChainSync(t *testing.T) {
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	builderOpts := []BuilderOpt{ClockConfigOption(th.NewFakeSystemClock(time.Unix(1234567890, 0)))}
+	builderOpts := []BuilderOpt{ClockConfigOption(th.NewFakeClock(time.Unix(1234567890, 0)))}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
 	)

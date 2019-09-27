@@ -167,7 +167,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	// set up chain and message stores
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
-	chainState := cst.NewChainStateProvider(chainStore, messageStore, &ipldCborStore)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, &ipldCborStore)
 	powerTable := &consensus.MarketView{}
 
 	// create protocol upgrade table
@@ -223,7 +223,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	loader := gsstoreutil.LoaderForBlockstore(bs)
 	storer := gsstoreutil.StorerForBlockstore(bs)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, peerTracker)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, bs, blkValid, nc.Clock, peerTracker)
 
 	// TODO: inject protocol upgrade table into code that requires it (#3360)
 	_, err = version.ConfigureProtocolVersions(network)
@@ -272,28 +272,40 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	outbox := message.NewOutbox(fcWallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chainStore, chainState)
 
 	nd := &Node{
-		blockservice: bservice,
-		Blockstore:   bs,
-		cborStore:    &ipldCborStore,
-		Clock:        nc.Clock,
-		Consensus:    nodeConsensus,
-		ChainReader:  chainStore,
-		ChainSynced:  moresync.NewLatch(1),
-		MessageStore: messageStore,
-		Syncer:       chainSyncer,
-		PowerTable:   powerTable,
-		PeerTracker:  peerTracker,
-		Fetcher:      fetcher,
-		Exchange:     bswap,
-		host:         peerHost,
-		Inbox:        inbox,
-		OfflineMode:  nc.OfflineMode,
-		Outbox:       outbox,
-		NetworkName:  network,
-		PeerHost:     peerHost,
-		Repo:         nc.Repo,
-		Wallet:       fcWallet,
-		Router:       router,
+		Clock:       nc.Clock,
+		OfflineMode: nc.OfflineMode,
+		Repo:        nc.Repo,
+		Network: NetworkSubmodule{
+			host:        peerHost,
+			PeerHost:    peerHost,
+			NetworkName: network,
+			PeerTracker: peerTracker,
+			Router:      router,
+		},
+		Wallet: WalletSubmodule{
+			Wallet: fcWallet,
+		},
+		Messaging: MessagingSubmodule{
+			Inbox:  inbox,
+			Outbox: outbox,
+		},
+		Blockstore: BlockstoreSubmodule{
+			blockservice: bservice,
+			Blockstore:   bs,
+			cborStore:    &ipldCborStore,
+		},
+		StorageNetworking: StorageNetworkingSubmodule{
+			Exchange: bswap,
+		},
+		Chain: ChainSubmodule{
+			Fetcher:      fetcher,
+			Consensus:    nodeConsensus,
+			ChainReader:  chainStore,
+			ChainSynced:  moresync.NewLatch(1),
+			MessageStore: messageStore,
+			Syncer:       chainSyncer,
+			PowerTable:   powerTable,
+		},
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
@@ -328,7 +340,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 	minPeerThreshold := nd.Repo.Config().Bootstrap.MinPeerThreshold
-	nd.Bootstrapper = net.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Router, minPeerThreshold, period)
+	nd.Network.Bootstrapper = net.NewBootstrapper(bpi, nd.Host(), nd.Host().Network(), nd.Network.Router, minPeerThreshold, period)
 
 	return nd, nil
 }

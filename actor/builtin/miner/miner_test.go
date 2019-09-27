@@ -7,11 +7,12 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -1188,6 +1189,56 @@ func TestMinerSubmitPoSt(t *testing.T) {
 			secondProvingPeriodEnd+LargestSectorSizeProvingPeriodBlocks))
 	})
 
+}
+
+func TestAddFaults(t *testing.T) {
+	tf.UnitTest(t)
+
+	firstCommitBlockHeight := uint64(3)
+	provingPeriodStart := LargestSectorSizeProvingPeriodBlocks + firstCommitBlockHeight
+	provingPeriodEnd := provingPeriodStart + LargestSectorSizeProvingPeriodBlocks
+	provingWindowStart := provingPeriodEnd - PoStChallengeWindowBlocks
+
+	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "addFaults", []byte{})
+
+	cases := []struct {
+		bh              uint64
+		faults          []uint64
+		initialCurrent  []uint64
+		initialNext     []uint64
+		expectedCurrent []uint64
+		expectedNext    []uint64
+	}{
+		// Adding faults before the proving window adds to the CurrentFaultSet
+		{provingWindowStart - 1, []uint64{42}, []uint64{1}, []uint64{}, []uint64{1, 42}, []uint64{}},
+
+		// Adding faults after the proving window has started adds to NextFaultSet
+		{provingWindowStart + 1, []uint64{42}, []uint64{}, []uint64{1}, []uint64{}, []uint64{1, 42}},
+	}
+
+	for _, tc := range cases {
+		minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+		minerState.ProvingPeriodEnd = types.NewBlockHeight(provingPeriodEnd)
+		minerState.CurrentFaultSet = types.NewIntSet(tc.initialCurrent...)
+		minerState.NextFaultSet = types.NewIntSet(tc.initialNext...)
+
+		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx.BlockHeightValue = types.NewBlockHeight(tc.bh)
+
+		miner := Actor{}
+		code, err := miner.AddFaults(vmctx, types.NewFaultSet(tc.faults))
+		require.NoError(t, err)
+		require.Equal(t, uint8(0), code)
+
+		err = actor.ReadState(vmctx, &minerState)
+		require.NoError(t, err)
+
+		require.Equal(t, len(tc.expectedCurrent), minerState.CurrentFaultSet.Size())
+		require.True(t, minerState.CurrentFaultSet.HasSubset(types.NewIntSet(tc.expectedCurrent...)))
+
+		require.Equal(t, len(tc.expectedNext), minerState.NextFaultSet.Size())
+		require.True(t, minerState.NextFaultSet.HasSubset(types.NewIntSet(tc.expectedNext...)))
+	}
 }
 
 func TestActorSlashStorageFault(t *testing.T) {

@@ -1,5 +1,82 @@
 # go-filecoin changelog
 
+## go-filecoin 0.5.6
+
+We're happy to announce go-filecoin 0.5.6. Highlights include an updated Proof-of-Spacetime implementation and an upgrade-capable network.
+
+### Features
+
+#### 🌳 Network upgrade capability
+
+Two changes have been made to enable software releases without restarting the network. First, a network name is now embedded in the genesis state, permitting multiple networks to follow different upgrade schedules. In addition, the Git SHA compatibility check has been removed from the Hello protocol, enabling nodes with different, but compatible, code to interoperate. Going forward, the user devnet will no longer be restarted with every software release; it will still be restarted as-needed.
+
+#### 🚀 Updated Proof-of-Spacetime (PoSt)
+
+A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors. 
+
+#### 🎟️ Block and consensus changes
+
+Block headers are now signed by miners, and election tickets form an array in each header. The election process is now split into two phases, ticket generation / validation and election winner generation / validation. Election tickets form an array in each header and mining a null block appends a ticket to this array. Block headers are now signed by miners.
+
+#### 🔗 Chain status command
+
+`go-filecoin chain status` is a new command that provides insight into chain sync progress.
+
+### Performance and Reliability
+
+#### ⚡ Chain syncing performance
+
+Previously in go-filecoin 0.4, we aimed to speed up chain syncing by focusing on the first phase: chain fetching. We have identified the worst of the fetching contention issues that caused forking and unreliable message processing in 0.4. Some of those fixes are now complete, while others such as [#3460](https://github.com/filecoin-project/go-filecoin/pull/3460) are in progress. There may still be some issues that could cause forking that we will continue to work on and update the coming weeks. Please let us know your feedback. 
+
+go-filecoin 0.5 also continues with improvements to the second phase: chain validation. By switching from HAMT bitwidth 8 to HAMT bitwidth 5, we see a general average improvement in benchmarks of about 4-to-1, across memory usage, speed of operations, and bytes written to disk. Users are encouraged to measure and share their own benchmarks. In addition, optimizations to encoding and decoding of HAMT data structures may result in additional performance improvements. 
+
+### Looking Ahead
+
+#### ✏️ New API design (WIP)
+
+Developers are invited to read and comment on the new [HTTP API design](https://github.com/filecoin-project/filecoin-http-api) (work in progress). This design will be implemented initially in go-filecoin and serve as a standard for interacting with Filecoin nodes across implementations. It will support most of operations offered by the current API and provide a framework for future API growth. 
+
+### User Notes
+
+- The proving period is now configured to 300 rounds (2.5 hrs), down from 1000 rounds (10 hours). We’ve made this temporary change for more frequent node interaction and faster experimentation, and we expect to increase the proving period again in the future.
+- Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
+- [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
+- The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed.
+- If you are seeing panics or write failures during sealing, it may be related to disk space requirements. Currently the sector builder uses ~11GiB of free disk space, and assumes it is available on the `/tmp` partition. An proposal to make that directory configurable is in [#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
+
+### CLI diff
+
+| go-filecoin command | change |
+| ------------------- | ------ |
+| chain status        | added  |
+| mining add-piece    | added  |
+| mining seal-now     | behavior changed[1] |
+
+[1] `mining seal-now` no longer stages a piece into a sector. It now has the same behavior as `--auto-seal-interval-seconds`.
+
+### Changelog
+
+A full list of all [67 PRs](https://github.com/filecoin-project/go-filecoin/pulls?utf8=✓&q=is%3Apr+is%3Amerged+merged%3A2019-09-03..2019-09-23+) in this release, including many bugfixes not listed here, can be found on Github.
+
+### Contributors
+
+❤️ Huge thank you to everyone that made this release possible!
+
+###  🙌🏽 Want to contribute?
+
+Would you like to contribute to the Filecoin project and don’t know how? Here are a few places you can get started:
+
+- Check out the [Contributing Guidelines](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
+- Look for issues with the `good-first-issue` label in [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")
+- Join the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat), introduce yourself in #_fil-lobby, and let us know where you would like to contribute
+- Join the [user devnet](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started)
+
+### ⁉️ Do you have questions?
+
+The best place to ask your questions about go-filecoin, how it works, and what you can do with it is at [discuss.filecoin.io](https://discuss.filecoin.io). We are also available at the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat).
+
+---
+
 ## go-filecoin 0.4.6
 
 This release includes the first steps towards increasing the performance for new nodes joining the network through the graphsync protocol.
@@ -65,6 +142,8 @@ Miners now can use the `mining seal-now` command to seal "empty" sectors directl
 - Proof logs will no longer be displayed in log output by default and must be enabled by setting `RUST_LOG=info` before starting the daemon.
 - When building go-filecoin, `git submodules init --recursive` is required to be ran before `go run ./build deps`.
 - Sector size for PoSt construction has been increased from 2 to 4. This has resulted in a slight increase of memory usage, but supports proof calculation over more storage within a single proving period.
+
+---
 
 ## go-filecoin 0.3.2
 
