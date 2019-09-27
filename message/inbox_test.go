@@ -277,6 +277,32 @@ func TestUpdateMessagePool(t *testing.T) {
 		assertPoolEquals(t, p)
 	})
 
+	t.Run("Messages added to new chain are added at chain height", func(t *testing.T) {
+		// Msg pool: [m2, m5],     Chain: b[m0] -> b[m1]
+		// to
+		// Msg pool: [],           Chain: b[m0] -> b[m1] -> b[m2, m3] -> b[m4] -> b[m5, m6]
+		chainProvider, parent := newProviderWithGenesis(t)
+		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
+		ib := message.NewInbox(p, 5, chainProvider, chainProvider)
+
+		m := types.NewSignedMsgs(1, mockSigner)
+
+		// old chain with one tipset containing one message
+		oldChain := requireChainWithMessages(t, chainProvider.Builder, parent, msgsSet{msgs{m[0]}})
+
+		// new chain with 10 tipsets and no messages
+		newChain := requireChainWithMessages(t, chainProvider.Builder, parent,
+			msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}},
+			msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}}, msgsSet{msgs{}},
+		)
+
+		// reorg the chain. Messages added more than 5 tipsets from the head will be immediately dropped
+		assert.NoError(t, ib.HandleNewHead(ctx, oldChain, newChain))
+
+		// expect the first message to still be in the chain because it is added at the new head
+		assertPoolEquals(t, p, m[0])
+	})
+
 	t.Run("Times out old messages", func(t *testing.T) {
 		chainProvider, parent := newProviderWithGenesis(t)
 		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
