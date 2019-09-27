@@ -50,7 +50,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	actorState := consensus.NewActorStateStore(nil, cst, bs)
 	con := consensus.NewExpected(cst,
 		bs,
-		NewTestProcessor(),
+		NewFakeProcessor(),
 		NewFakeBlockValidator(),
 		actorState,
 		params.GenesisCid,

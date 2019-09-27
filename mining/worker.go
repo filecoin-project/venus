@@ -72,7 +72,7 @@ type MessageApplier interface {
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
-	Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error)
+	Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error)
 }
 
 type electionUtil interface {
@@ -234,7 +234,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	}
 	powerTable, err := w.getPowerTable(ctx, base.Key())
 	if err != nil {
-		log.Errorf("Worker.Mine couldn't get queryer for tipset: %s", err.Error())
+		log.Errorf("Worker.Mine couldn't get snapshot for tipset: %s", err.Error())
 		outCh <- Output{Err: err}
 		return
 	}
@@ -261,9 +261,9 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 }
 
 func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey types.TipSetKey) (consensus.PowerTableView, error) {
-	queryer, err := w.api.Queryer(ctx, baseKey)
+	snapshot, err := w.api.Snapshot(ctx, baseKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err
 	}
-	return consensus.NewPowerTableView(queryer), nil
+	return consensus.NewPowerTableView(snapshot), nil
 }

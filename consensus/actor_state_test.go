@@ -57,10 +57,10 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		chainState := NewActorStateStore(chainStore, cst, bs)
-		queryer, err := chainState.Snapshot(ctx, chainStore.GetHead())
+		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
-		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
+		returnValue, err := snapshot.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)
 		v, err := abi.Deserialize(returnValue[0], abi.Address)
@@ -99,10 +99,10 @@ func TestQuery(t *testing.T) {
 		require.NoError(t, err)
 
 		chainState := NewActorStateStore(chainStore, cst, bs)
-		queryer, err := chainState.Snapshot(ctx, chainStore.GetHead())
+		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
-		_, err = queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
+		_, err = snapshot.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "42")
 	})

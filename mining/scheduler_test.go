@@ -71,7 +71,7 @@ func TestMineOnce10Null(t *testing.T) {
 	}
 	messages := chain.NewMessageStore(cst)
 
-	api := th.NewTestWorkerPorcelainAPI(addr, 10, minerToWorker)
+	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
 
 	worker := NewDefaultWorker(WorkerParameters{
 		API: api,
@@ -87,7 +87,7 @@ func TestMineOnce10Null(t *testing.T) {
 		TicketGen:    &consensus.TicketMachine{},
 
 		MessageSource: pool,
-		Processor:     th.NewTestProcessor(),
+		Processor:     th.NewFakeProcessor(),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         clock.NewSystemClock(),

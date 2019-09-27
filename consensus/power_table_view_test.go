@@ -28,9 +28,9 @@ func TestTotal(t *testing.T) {
 	cst, bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	as := consensus.NewActorStateStore(nil, cst, bs)
-	queryer := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
+	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
 
-	actual, err := consensus.NewPowerTableView(queryer).Total(ctx)
+	actual, err := consensus.NewPowerTableView(snapshot).Total(ctx)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
@@ -47,9 +47,9 @@ func TestMiner(t *testing.T) {
 	cst, bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
 	as := consensus.NewActorStateStore(nil, cst, bs)
-	queryer := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
+	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
 
-	actual, err := consensus.NewPowerTableView(queryer).Miner(ctx, addr)
+	actual, err := consensus.NewPowerTableView(snapshot).Miner(ctx, addr)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)

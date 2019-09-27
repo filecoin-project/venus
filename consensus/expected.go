@@ -91,7 +91,7 @@ type ElectionValidator interface {
 	IsElectionWinner(context.Context, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
-// SnapshotGenerator produces queryers to examine actor state
+// SnapshotGenerator produces snapshots to examine actor state
 type SnapshotGenerator interface {
 	StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot
 }
@@ -120,7 +120,7 @@ type Expected struct {
 
 	genesisCid cid.Cid
 
-	// actorState provides produces queryers
+	// actorState provides produces snapshots
 	actorState SnapshotGenerator
 
 	blockTime time.Duration
@@ -411,8 +411,8 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 }
 
 func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
-	queryer := c.actorState.StateTreeSnapshot(st, nil)
-	return NewPowerTableView(queryer)
+	snapshot := c.actorState.StateTreeSnapshot(st, nil)
+	return NewPowerTableView(snapshot)
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {

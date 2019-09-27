@@ -244,15 +244,15 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
 func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
-	queryer, err := api.actorState.Snapshot(ctx, baseKey)
+	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
 	if err != nil {
 		return [][]byte{}, err
 	}
-	return queryer.Query(ctx, optFrom, to, method, params...)
+	return snapshot.Query(ctx, optFrom, to, method, params...)
 }
 
 // Snapshot returns a interface to the chain state a a particular tipset
-func (api *API) Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+func (api *API) Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error) {
 	return api.actorState.Snapshot(ctx, baseKey)
 }
 

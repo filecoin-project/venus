@@ -15,19 +15,19 @@ import (
 // the power table encoded in the tipset's state tree
 // PowerTableView is the power table view used for running expected consensus in
 type PowerTableView struct {
-	queryer ActorStateSnapshot
+	snapshot ActorStateSnapshot
 }
 
-// NewPowerTableView constructs a new view with a queryer pinned to a particular tip set.
+// NewPowerTableView constructs a new view with a snapshot pinned to a particular tip set.
 func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 	return PowerTableView{
-		queryer: q,
+		snapshot: q,
 	}
 }
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	rets, err := v.queryer.Query(ctx, address.Undef, address.StorageMarketAddress, "getTotalStorage")
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.StorageMarketAddress, "getTotalStorage")
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.queryer.Query(ctx, address.Undef, mAddr, "getPower")
+	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, "getPower")
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*type
 
 // WorkerAddr returns the address of the miner worker given the miner address.
 func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (address.Address, error) {
-	rets, err := v.queryer.Query(ctx, address.Undef, mAddr, "getWorker")
+	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, "getWorker")
 	if err != nil {
 		return address.Undef, err
 	}

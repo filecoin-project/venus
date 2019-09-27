@@ -580,9 +580,9 @@ func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, as *co
 		return "", errors.Wrap(err, "could not get genesis state")
 	}
 
-	queryer := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
+	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
 
-	res, err := queryer.Query(ctx, address.Undef, address.InitAddress, "getNetwork")
+	res, err := snapshot.Query(ctx, address.Undef, address.InitAddress, "getNetwork")
 	if err != nil {
 		return "", errors.Wrap(err, "error querying for network name")
 	}

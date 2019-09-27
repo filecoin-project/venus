@@ -109,7 +109,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		// Add the miner worker mapping into the actor state
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt
@@ -190,7 +190,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		tipSet := types.RequireNewTipSet(t, blocks[0])
 
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt
@@ -214,7 +214,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		tipSet := types.RequireNewTipSet(t, blocks...)
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
-		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
 		var emptyReceipts [][]*types.MessageReceipt

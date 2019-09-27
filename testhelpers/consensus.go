@@ -60,28 +60,28 @@ func MakeRandomPoStProofForTest() types.PoStProof {
 }
 
 // FakeSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type TestSignedMessageValidator struct{}
+type FakeSignedMessageValidator struct{}
 
-var _ consensus.SignedMessageValidator = (*TestSignedMessageValidator)(nil)
+var _ consensus.SignedMessageValidator = (*FakeSignedMessageValidator)(nil)
 
 // Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (tsmv *FakeSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 
 // FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
+type FakeBlockRewarder struct{}
 
-var _ consensus.BlockRewarder = (*TestBlockRewarder)(nil)
+var _ consensus.BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward does nothing
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
@@ -152,8 +152,8 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block
 }
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
-func NewTestProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+func NewFakeProcessor() *consensus.DefaultProcessor {
+	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{})
 }
 
 type testSigner struct{}
@@ -217,5 +217,5 @@ func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *type
 }
 
 func newTestApplier() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
+	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{})
 }

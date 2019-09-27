@@ -73,7 +73,7 @@ func Test_Mine(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		outCh := make(chan mining.Output)
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
@@ -86,7 +86,7 @@ func Test_Mine(t *testing.T) {
 			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
-			Processor:     th.NewTestProcessor(),
+			Processor:     th.NewFakeProcessor(),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -103,7 +103,7 @@ func Test_Mine(t *testing.T) {
 		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
@@ -116,7 +116,7 @@ func Test_Mine(t *testing.T) {
 			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
-			Processor:     th.NewTestProcessor(),
+			Processor:     th.NewFakeProcessor(),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -136,7 +136,7 @@ func Test_Mine(t *testing.T) {
 		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
-			API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 			MinerAddr:      minerAddr,
 			MinerOwnerAddr: minerOwnerAddr,
@@ -149,7 +149,7 @@ func Test_Mine(t *testing.T) {
 			TicketGen:    testTicketGen,
 
 			MessageSource: pool,
-			Processor:     th.NewTestProcessor(),
+			Processor:     th.NewFakeProcessor(),
 			Blockstore:    bs,
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
@@ -282,7 +282,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
@@ -295,7 +295,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
-		Processor:     th.NewTestProcessor(),
+		Processor:     th.NewFakeProcessor(),
 		Blockstore:    bs,
 		MessageStore:  messages,
 		Clock:         th.NewFakeClock(time.Unix(1234567890, 0)),
@@ -338,7 +338,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
@@ -445,7 +445,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      minerAddr,
 		MinerOwnerAddr: minerOwnerAddr,
@@ -507,7 +507,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	messages := chain.NewMessageStore(cst)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
@@ -559,7 +559,7 @@ func TestGenerateError(t *testing.T) {
 
 	messages := chain.NewMessageStore(cst)
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
-		API: th.NewDefaultTestWorkerPorcelainAPI(blockSignerAddr),
+		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
 		MinerAddr:      addrs[4],
 		MinerOwnerAddr: addrs[3],
