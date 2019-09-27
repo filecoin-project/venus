@@ -61,19 +61,19 @@ func (cs ActorState) Queryer(ctx context.Context, baseKey types.TipSetKey) (Acto
 
 // StateTreeQueryer returns a query interface to query the chain for a particular state tree and optional block height
 func (cs ActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
-	return NewProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
+	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
 }
 
-// ProcessorQueryer queries the chain at a particular tipset
-type ProcessorQueryer struct {
+// processorQueryer queries the chain at a particular tipset
+type processorQueryer struct {
 	st     state.Tree
 	vms    vm.StorageMap
 	height *types.BlockHeight
 }
 
-// NewProcessorQueryer creates an ActorStateQueryer
-func NewProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight) ActorStateQueryer {
-	return &ProcessorQueryer{
+// newProcessorQueryer creates an ActorStateQueryer
+func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight) ActorStateQueryer {
+	return &processorQueryer{
 		st:     st,
 		vms:    vms,
 		height: height,
@@ -81,7 +81,7 @@ func NewProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHe
 }
 
 // Query sends a read-only message against the state of the provided base tipset.
-func (q *ProcessorQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (q *processorQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode message params")

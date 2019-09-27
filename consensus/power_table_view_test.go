@@ -13,10 +13,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/vm"
-
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,9 +25,10 @@ func TestTotal(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(19)
-	bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
+	as := consensus.NewActorState(nil, cst, bs)
+	queryer := as.StateTreeQueryer(st, types.NewBlockHeight(0))
 
 	actual, err := consensus.NewPowerTableView(queryer).Total(ctx)
 	require.NoError(t, err)
@@ -45,9 +44,10 @@ func TestMiner(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(12)
-	bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	queryer := consensus.NewProcessorQueryer(st, vm.NewStorageMap(bs), nil)
+	as := consensus.NewActorState(nil, cst, bs)
+	queryer := as.StateTreeQueryer(st, types.NewBlockHeight(0))
 
 	actual, err := consensus.NewPowerTableView(queryer).Miner(ctx, addr)
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestMiner(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*hamt.CborIpldStore, bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
@@ -84,5 +84,5 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot, builtin.Actors)
 	require.NoError(t, err)
 
-	return bs, info.Miners[0].Address, stateTree
+	return cst, bs, info.Miners[0].Address, stateTree
 }
