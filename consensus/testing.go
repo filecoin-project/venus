@@ -22,40 +22,40 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.T
 	return ts
 }
 
-// TestActorState provides a queryer that responds to power table view queries with the given parameters
-type TestActorState struct {
+// FakeActorStateStore provides a snapshot that responds to power table view queries with the given parameters
+type FakeActorStateStore struct {
 	minerPower    *types.BytesAmount
 	totalPower    *types.BytesAmount
 	minerToWorker map[address.Address]address.Address
 }
 
-// NewTestActorState creates an actor state that returns a test queryer such that PowerTableView queries return predefined results
-func NewTestActorState(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestActorState {
-	return &TestActorState{
+// NewFakeActorStateStore creates an actor state that returns a test queryer such that PowerTableView queries return predefined results
+func NewFakeActorStateStore(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *FakeActorStateStore {
+	return &FakeActorStateStore{
 		minerPower:    minerPower,
 		totalPower:    totalPower,
 		minerToWorker: minerToWorker,
 	}
 }
 
-// StateTreeQueryer returns a Queryer suitable for PowerTableView queries
-func (t *TestActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
-	return &TestPowerTableViewQueryer{
+// StateTreeSnapshot returns a Snapshot suitable for PowerTableView queries
+func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
+	return &FakePowerTableViewSnapshot{
 		MinerPower:    t.minerPower,
 		TotalPower:    t.totalPower,
 		MinerToWorker: t.minerToWorker,
 	}
 }
 
-// TestPowerTableViewQueryer returns a queryer that can be fed into a PowerTableView to produce specific values
-type TestPowerTableViewQueryer struct {
+// FakePowerTableViewSnapshot returns a queryer that can be fed into a PowerTableView to produce specific values
+type FakePowerTableViewSnapshot struct {
 	MinerPower    *types.BytesAmount
 	TotalPower    *types.BytesAmount
 	MinerToWorker map[address.Address]address.Address
 }
 
 // Query produces test logic in response to PowerTableView queries.
-func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (tq *FakePowerTableViewSnapshot) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	if method == "getTotalStorage" {
 		if tq.TotalPower != nil {
 			return [][]byte{tq.TotalPower.Bytes()}, nil
@@ -74,9 +74,9 @@ func (tq *TestPowerTableViewQueryer) Query(ctx context.Context, optFrom, to addr
 	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
 }
 
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
-	tq := &TestPowerTableViewQueryer{
+// NewFakePowerTableView creates a test power view with the given total power
+func NewFakePowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
+	tq := &FakePowerTableViewSnapshot{
 		MinerPower:    minerPower,
 		TotalPower:    totalPower,
 		MinerToWorker: minerToWorker,
@@ -84,38 +84,38 @@ func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.Byte
 	return NewPowerTableView(tq)
 }
 
-// TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type TestSignedMessageValidator struct{}
+// FakeSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type FakeSignedMessageValidator struct{}
 
-var _ SignedMessageValidator = (*TestSignedMessageValidator)(nil)
+var _ SignedMessageValidator = (*FakeSignedMessageValidator)(nil)
 
 // Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (tsmv *FakeSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
+// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+type FakeBlockRewarder struct{}
 
-var _ BlockRewarder = (*TestBlockRewarder)(nil)
+var _ BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward is a noop
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
-// NewTestProcessor creates a processor with a test validator and test rewarder
-func NewTestProcessor() *DefaultProcessor {
+// NewFakeProcessor creates a processor with a test validator and test rewarder
+func NewFakeProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
-		signedMessageValidator: &TestSignedMessageValidator{},
-		blockRewarder:          &TestBlockRewarder{},
+		signedMessageValidator: &FakeSignedMessageValidator{},
+		blockRewarder:          &FakeBlockRewarder{},
 	}
 }
 
@@ -202,7 +202,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 	require.NoError(t, err)
 	minerToWorker := make(map[address.Address]address.Address)
 	minerToWorker[wAddr] = wAddr
-	ptv := NewTestPowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
+	ptv := NewFakePowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
 	em := ElectionMachine{}
 	tm := TicketMachine{}
 	ctx := context.Background()

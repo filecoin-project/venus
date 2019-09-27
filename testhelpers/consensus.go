@@ -59,7 +59,7 @@ func MakeRandomPoStProofForTest() types.PoStProof {
 	return poStProof
 }
 
-// TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+// FakeSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
 type TestSignedMessageValidator struct{}
 
 var _ consensus.SignedMessageValidator = (*TestSignedMessageValidator)(nil)
@@ -69,7 +69,7 @@ func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types
 	return nil
 }
 
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
 type TestBlockRewarder struct{}
 
 var _ consensus.BlockRewarder = (*TestBlockRewarder)(nil)
@@ -151,7 +151,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block
 	mbv.semanticStubs[child.Cid()] = err
 }
 
-// NewTestProcessor creates a processor with a test validator and test rewarder
+// NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewTestProcessor() *consensus.DefaultProcessor {
 	return consensus.NewConfiguredProcessor(&TestSignedMessageValidator{}, &TestBlockRewarder{})
 }
@@ -168,7 +168,7 @@ func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh
 	return applyTestMessageWithAncestors(st, store, msg, bh, nil)
 }
 
-// ApplyTestMessageWithGas uses the TestBlockRewarder but the default SignedMessageValidator
+// ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
 func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 

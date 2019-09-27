@@ -56,8 +56,8 @@ func TestQuery(t *testing.T) {
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 
-		chainState := NewActorState(chainStore, cst, bs)
-		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
+		chainState := NewActorStateStore(chainStore, cst, bs)
+		queryer, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
 		returnValue, err := queryer.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
@@ -98,8 +98,8 @@ func TestQuery(t *testing.T) {
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 
-		chainState := NewActorState(chainStore, cst, bs)
-		queryer, err := chainState.Queryer(ctx, chainStore.GetHead())
+		chainState := NewActorStateStore(chainStore, cst, bs)
+		queryer, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
 		_, err = queryer.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")

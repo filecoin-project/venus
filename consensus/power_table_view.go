@@ -15,11 +15,11 @@ import (
 // the power table encoded in the tipset's state tree
 // PowerTableView is the power table view used for running expected consensus in
 type PowerTableView struct {
-	queryer ActorStateQueryer
+	queryer ActorStateSnapshot
 }
 
 // NewPowerTableView constructs a new view with a queryer pinned to a particular tip set.
-func NewPowerTableView(q ActorStateQueryer) PowerTableView {
+func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 	return PowerTableView{
 		queryer: q,
 	}

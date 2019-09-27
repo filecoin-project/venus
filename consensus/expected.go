@@ -91,9 +91,9 @@ type ElectionValidator interface {
 	IsElectionWinner(context.Context, PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
 }
 
-// QueryGenerator produces queryers to examine actor state
-type QueryGenerator interface {
-	StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer
+// SnapshotGenerator produces queryers to examine actor state
+type SnapshotGenerator interface {
+	StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot
 }
 
 // Expected implements expected consensus.
@@ -121,7 +121,7 @@ type Expected struct {
 	genesisCid cid.Cid
 
 	// actorState provides produces queryers
-	actorState QueryGenerator
+	actorState SnapshotGenerator
 
 	blockTime time.Duration
 }
@@ -130,7 +130,7 @@ type Expected struct {
 var _ Protocol = (*Expected)(nil)
 
 // NewExpected is the constructor for the Expected consenus.Protocol module.
-func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, actorState QueryGenerator, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
+func NewExpected(cs *hamt.CborIpldStore, bs blockstore.Blockstore, processor Processor, v BlockValidator, actorState SnapshotGenerator, gCid cid.Cid, bt time.Duration, ev ElectionValidator, tv TicketValidator) *Expected {
 	return &Expected{
 		cstore:            cs,
 		blockTime:         bt,
@@ -411,7 +411,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 }
 
 func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
-	queryer := c.actorState.StateTreeQueryer(st, nil)
+	queryer := c.actorState.StateTreeSnapshot(st, nil)
 	return NewPowerTableView(queryer)
 }
 

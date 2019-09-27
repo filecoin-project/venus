@@ -29,7 +29,7 @@ func TestNewExpected(t *testing.T) {
 
 	t.Run("a new Expected can be created", func(t *testing.T) {
 		cst, bstore := setupCborBlockstore()
-		as := consensus.NewTestActorState(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
+		as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(5), make(map[address.Address]address.Address))
 		exp := consensus.NewExpected(cst, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 		assert.NotNil(t, exp)
 	})
@@ -107,7 +107,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the actor state
-		as := consensus.NewTestActorState(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
@@ -132,7 +132,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		as := consensus.NewTestActorState(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
@@ -159,7 +159,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		as := consensus.NewTestActorState(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
@@ -189,7 +189,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks[0].Tickets = append(blocks[0].Tickets, consensus.MakeFakeTicketForTest())
 		tipSet := types.RequireNewTipSet(t, blocks[0])
 
-		as := consensus.NewTestActorState(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		var emptyMessages [][]*types.SignedMessage
@@ -212,7 +212,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks[0].BlockSig = blocks[1].BlockSig
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
-		as := consensus.NewTestActorState(minerPower, totalPower, minerToWorker)
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 

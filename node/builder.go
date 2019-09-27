@@ -168,7 +168,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	chainStore := chain.NewStore(nc.Repo.ChainDatastore(), &ipldCborStore, &state.TreeStateLoader{}, chainStatusReporter, genCid)
 	messageStore := chain.NewMessageStore(&ipldCborStore)
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, &ipldCborStore)
-	actorState := consensus.NewActorState(chainStore, &ipldCborStore, bs)
+	actorState := consensus.NewActorStateStore(chainStore, &ipldCborStore, bs)
 
 	// create protocol upgrade table
 	network, err := networkNameFromGenesis(ctx, chainStore, actorState)

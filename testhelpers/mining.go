@@ -50,9 +50,9 @@ func (t *TestWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ addr
 	return t.workerAddr, nil
 }
 
-// Queryer returns a queryer object for the given tipset
-func (t *TestWorkerPorcelainAPI) Queryer(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateQueryer, error) {
-	return &consensus.TestPowerTableViewQueryer{
+// Snapshot returns a queryer object for the given tipset
+func (t *TestWorkerPorcelainAPI) Queryer(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+	return &consensus.FakePowerTableViewSnapshot{
 		MinerPower:    types.NewBytesAmount(1),
 		TotalPower:    types.NewBytesAmount(t.totalPower),
 		MinerToWorker: t.minerToWorker,

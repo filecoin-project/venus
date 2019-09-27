@@ -951,7 +951,7 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 	actors, stateTree, signer := setupActorsForGasTest(t, th.VMStorage(), fakeActorCodeCid, 0)
 	sender := actors[1]
 	receiver := actors[2]
-	processor := NewTestProcessor()
+	processor := NewFakeProcessor()
 	ctx := context.Background()
 
 	t.Run("A single message whose gas limit is greater than the block gas limit fails permanently", func(t *testing.T) {

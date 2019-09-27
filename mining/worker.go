@@ -72,7 +72,7 @@ type MessageApplier interface {
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
 	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
-	Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateQueryer, error)
+	Queryer(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error)
 }
 
 type electionUtil interface {

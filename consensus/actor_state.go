@@ -21,8 +21,8 @@ type chainStateChainReader interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
-// ActorState knows how to send read-only messages for querying actor state.
-type ActorState struct {
+// ActorStateStore knows how to send read-only messages for querying actor state.
+type ActorStateStore struct {
 	// To get the head tipset state root.
 	chainReader chainStateChainReader
 	// To load the tree for the head tipset state root.
@@ -31,18 +31,18 @@ type ActorState struct {
 	bs bstore.Blockstore
 }
 
-// NewActorState constructs a ActorState.
-func NewActorState(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *ActorState {
-	return &ActorState{chainReader, cst, bs}
+// NewActorStateStore constructs a ActorStateStore.
+func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *ActorStateStore {
+	return &ActorStateStore{chainReader, cst, bs}
 }
 
-// ActorStateQueryer permits queries to chain state at a particular tip set.
-type ActorStateQueryer interface {
+// ActorStateSnapshot permits queries to chain state at a particular tip set.
+type ActorStateSnapshot interface {
 	Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
-// Queryer returns a query interface to query the chain at a particular tipset
-func (cs ActorState) Queryer(ctx context.Context, baseKey types.TipSetKey) (ActorStateQueryer, error) {
+// Snapshot returns a query interface to query the chain at a particular tipset
+func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey types.TipSetKey) (ActorStateSnapshot, error) {
 	st, err := cs.chainReader.GetTipSetState(ctx, baseKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load tree for the state root of tipset: %s", baseKey.String())
@@ -56,24 +56,24 @@ func (cs ActorState) Queryer(ctx context.Context, baseKey types.TipSetKey) (Acto
 		return nil, errors.Wrap(err, "failed to get the head tipset height")
 	}
 
-	return cs.StateTreeQueryer(st, types.NewBlockHeight(h)), nil
+	return cs.StateTreeSnapshot(st, types.NewBlockHeight(h)), nil
 }
 
-// StateTreeQueryer returns a query interface to query the chain for a particular state tree and optional block height
-func (cs ActorState) StateTreeQueryer(st state.Tree, bh *types.BlockHeight) ActorStateQueryer {
+// StateTreeSnapshot returns a query interface to query the chain for a particular state tree and optional block height
+func (cs ActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
 	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
 }
 
-// processorQueryer queries the chain at a particular tipset
-type processorQueryer struct {
+// processorSnapshot queries the chain at a particular tipset
+type processorSnapshot struct {
 	st     state.Tree
 	vms    vm.StorageMap
 	height *types.BlockHeight
 }
 
-// newProcessorQueryer creates an ActorStateQueryer
-func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight) ActorStateQueryer {
-	return &processorQueryer{
+// newProcessorQueryer creates an ActorStateSnapshot
+func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight) ActorStateSnapshot {
+	return &processorSnapshot{
 		st:     st,
 		vms:    vms,
 		height: height,
@@ -81,7 +81,7 @@ func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHe
 }
 
 // Query sends a read-only message against the state of the provided base tipset.
-func (q *processorQueryer) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode message params")

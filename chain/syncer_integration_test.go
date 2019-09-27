@@ -185,7 +185,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	blockSource := th.NewTestFetcher()
 
 	// Now sync the chainStore with consensus using a PowerTableView.
-	as := consensus.NewActorState(chainStore, cst, bs)
+	as := consensus.NewActorStateStore(chainStore, cst, bs)
 	con := consensus.NewExpected(cst, bs, th.NewTestProcessor(), th.NewFakeBlockValidator(), as, calcGenBlk.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
