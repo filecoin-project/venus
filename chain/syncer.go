@@ -54,14 +54,16 @@ type syncerChainReaderWriter interface {
 	GetTipSetAndStatesByParentsAndHeight(pTsKey types.TipSetKey, h uint64) ([]*TipSetAndState, error)
 }
 
+type syncChainSelector interface {
+	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
+	// tipset b is heavier than tipset a.
+	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+}
+
 type syncStateEvaluator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
-
-	// IsHeaver tests whether tipset `a` is heavier than tipset `b`.
-	// The state IDs identify the state to which the tipset applies (i.e. prior to its messages).
-	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -95,6 +97,8 @@ type Syncer struct {
 
 	// Evaluates tipset messages and stores the resulting states.
 	stateEvaluator syncStateEvaluator
+	// Selects the heaviest of two chains
+	chainSelector syncChainSelector
 	// Provides and stores validated tipsets and their state roots.
 	chainStore syncerChainReaderWriter
 	// Provides message collections given cids
@@ -107,13 +111,14 @@ type Syncer struct {
 }
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
+func NewSyncer(e syncStateEvaluator, cs syncChainSelector, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &badTipSetCache{
 			bad: make(map[string]struct{}),
 		},
 		stateEvaluator:  e,
+		chainSelector:   cs,
 		chainStore:      s,
 		messageProvider: m,
 		clock:           c,
@@ -211,7 +216,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, parent, next types.TipSet) er
 		}
 	}
 
-	heavier, err := syncer.stateEvaluator.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
+	heavier, err := syncer.chainSelector.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
 	if err != nil {
 		return err
 	}

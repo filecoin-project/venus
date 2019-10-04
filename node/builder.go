@@ -241,6 +241,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 
 	// set up consensus
 	nodeConsensus := consensus.NewExpected(&ipldCborStore, bs, processor, blkValid, actorState, genCid, nc.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
+	nodeChainSelector := consensus.NewChainSelector(&ipldCborStore, actorState, genCid)
 
 	// Set up libp2p network
 	// TODO PubSub requires strict message signing, disabled for now
@@ -262,7 +263,7 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 	fcWallet := wallet.New(backend)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, nc.Clock)
+	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chainStore, messageStore, fetcher, chainStatusReporter, nc.Clock)
 	msgPool := message.NewPool(nc.Repo.Config().Mpool, consensus.NewIngestionValidator(chainState, nc.Repo.Config().Mpool))
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chainStore, messageStore)
 
@@ -298,12 +299,13 @@ func (nc *Builder) build(ctx context.Context) (*Node, error) {
 			Exchange: bswap,
 		},
 		Chain: ChainSubmodule{
-			Fetcher:      fetcher,
-			Consensus:    nodeConsensus,
-			ChainReader:  chainStore,
-			ChainSynced:  moresync.NewLatch(1),
-			MessageStore: messageStore,
-			Syncer:       chainSyncer,
+			Fetcher:       fetcher,
+			Consensus:     nodeConsensus,
+			ChainSelector: nodeChainSelector,
+			ChainReader:   chainStore,
+			ChainSynced:   moresync.NewLatch(1),
+			MessageStore:  messageStore,
+			Syncer:        chainSyncer,
 		},
 	}
 
