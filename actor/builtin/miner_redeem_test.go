@@ -11,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -209,7 +208,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	blk, err := th.DefaultGenesis(cst, bs)
 	require.NoError(err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(err)
 
 	for _, addr := range targetAddresses {

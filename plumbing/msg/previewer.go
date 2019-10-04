@@ -30,11 +30,13 @@ type Previewer struct {
 	cst *hamt.CborIpldStore
 	// For vm storage.
 	bs bstore.Blockstore
+	// To to preview messages
+	processor consensus.Processor
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
-	return &Previewer{chainReader, cst, bs}
+func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor consensus.Processor) *Previewer {
+	return &Previewer{chainReader, cst, bs, processor}
 }
 
 // Preview sends a read-only message to an actor.
@@ -58,7 +60,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	vms := vm.NewStorageMap(p.bs)
-	usedGas, err := consensus.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	usedGas, err := p.processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "query method returned an error")
 	}

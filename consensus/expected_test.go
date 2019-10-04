@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -99,7 +98,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 
@@ -125,7 +124,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + mining error when election proof validation fails", func(t *testing.T) {
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 
 		vms := vm.NewStorageMap(bstore)
@@ -152,7 +151,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 
 		vms := vm.NewStorageMap(bstore)
@@ -180,7 +179,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("fails when ticket array length inconsistent with block height", func(t *testing.T) {
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
 
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 
@@ -203,7 +202,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("returns nil + mining error when signature is invalid", func(t *testing.T) {
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot, builtin.Actors)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 

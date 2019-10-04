@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -59,7 +58,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	pdata := abi.MustConvertParams(target, big.NewInt(10))
 	msg := types.NewMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
 
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
@@ -934,7 +933,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -972,7 +971,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -1105,7 +1104,7 @@ func TestSignVoucher(t *testing.T) {
 func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
-	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
 	}
@@ -1126,13 +1125,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	blk, err := th.DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	builtinsWithTestActor := map[cid.Cid]exec.ExecutableActor{}
-	for cid, actor := range builtin.Actors {
-		builtinsWithTestActor[cid] = actor
-	}
-	builtinsWithTestActor[pbTestActorCid] = &PBTestActor{}
-
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtinsWithTestActor)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
 	for _, addr := range targetAddresses {
@@ -1141,6 +1134,12 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	}
 
 	return cst, st, vms
+}
+
+func builtinsWithTestActor() builtin.Actors {
+	return builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(pbTestActorCid, 0, &PBTestActor{}).
+		Build()
 }
 
 // system is a helper struct to allow for easier testing of sending various messages to the paymentbroker actor.
@@ -1198,7 +1197,7 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 
 	args := abi.MustConvertParams(params...)
 
-	return consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
+	return consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, method, args, sys.payer, types.NewBlockHeight(height))
 }
 
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
@@ -1234,7 +1233,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(sys.t, err)
 
-	returnValue, exitCode, err := consensus.CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(sys.t, err)
 	assert.Equal(sys.t, uint8(0), exitCode)
 
@@ -1263,14 +1262,14 @@ func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, 
 }
 
 func (sys *system) ApplyMessage(msg *types.Message, height uint64) (*consensus.ApplicationResult, error) {
-	return th.ApplyTestMessage(sys.st, sys.vms, msg, types.NewBlockHeight(height))
+	return th.ApplyTestMessageWithActors(builtinsWithTestActor(), sys.st, sys.vms, msg, types.NewBlockHeight(height))
 }
 
 func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := abi.MustConvertParams(payer)
-	values, ec, err := consensus.CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
 	require.Zero(t, ec)
 	require.NoError(t, err)
 

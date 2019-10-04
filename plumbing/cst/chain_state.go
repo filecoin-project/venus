@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/pkg/errors"
@@ -31,6 +32,7 @@ type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
 	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
 	messageProvider chain.MessageProvider
+	actors          builtin.Actors
 }
 
 var (
@@ -44,11 +46,12 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, cst *hamt.CborIpldStore) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, cst *hamt.CborIpldStore, ba builtin.Actors) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:      crw,
 		cst:             cst,
 		messageProvider: messages,
+		actors:          ba,
 	}
 }
 
@@ -146,12 +149,8 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
-	if err != nil {
-		return nil, err
-	}
-
-	executable, err := st.GetBuiltinActorCode(actor.Code)
+	// TODO: use chain height to determine protocol version
+	executable, err := chn.actors.GetBuiltinActorCode(actor.Code, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}

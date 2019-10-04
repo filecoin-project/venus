@@ -33,4 +33,5 @@ type ChainSubmodule struct {
 	State   *cst.ChainStateReadWriter
 
 	validator consensus.BlockValidator
+	processor *consensus.DefaultProcessor
 }

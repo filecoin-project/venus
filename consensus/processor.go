@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
@@ -59,6 +60,7 @@ type ProcessTipSetResponse struct {
 type DefaultProcessor struct {
 	signedMessageValidator SignedMessageValidator
 	blockRewarder          BlockRewarder
+	actors                 builtin.Actors
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
@@ -68,14 +70,16 @@ func NewDefaultProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
 		signedMessageValidator: NewDefaultMessageValidator(),
 		blockRewarder:          NewDefaultBlockRewarder(),
+		actors:                 builtin.DefaultActors,
 	}
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewarder) *DefaultProcessor {
+func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewarder, actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
 		signedMessageValidator: validator,
 		blockRewarder:          rewarder,
+		actors:                 actors,
 	}
 }
 
@@ -117,7 +121,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 	var emptyResults []*ApplicationResult
 
 	// find miner's owner address
-	minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
+	minerOwnerAddr, err := p.minerOwnerAddress(ctx, st, vms, blk.Miner)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +171,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		// find miner's owner address
-		minerOwnerAddr, err := minerOwnerAddress(ctx, st, vms, blk.Miner)
+		minerOwnerAddr, err := p.minerOwnerAddress(ctx, st, vms, blk.Miner)
 		if err != nil {
 			return &ProcessTipSetResponse{}, err
 		}
@@ -373,7 +377,7 @@ var (
 // CallQueryMethod calls a method on an actor in the given state tree. It does
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
-func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
+func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
@@ -402,6 +406,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 		StorageMap:  vms,
 		GasTracker:  gasTracker,
 		BlockHeight: optBh,
+		Actors:      p.actors,
 	}
 
 	vmCtx := vm.NewVMContext(vmCtxParams)
@@ -411,7 +416,7 @@ func CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to a
 
 // PreviewQueryMethod estimates the amount of gas that will be used by a method
 // call. It accepts all the same arguments as CallQueryMethod.
-func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
+func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return types.NewGasUnits(0), errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
@@ -440,6 +445,7 @@ func PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, t
 		StorageMap:  vms,
 		GasTracker:  gasTracker,
 		BlockHeight: optBh,
+		Actors:      p.actors,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
 	_, _, err = vm.Send(ctx, vmCtx)
@@ -506,6 +512,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		GasTracker:  gasTracker,
 		BlockHeight: bh,
 		Ancestors:   ancestors,
+		Actors:      p.actors,
 	}
 	vmCtx := vm.NewVMContext(vmCtxParams)
 
@@ -659,8 +666,8 @@ func isPermanentError(err error) bool {
 }
 
 // minerOwnerAddress finds the address of the owner of the given miner
-func minerOwnerAddress(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) (address.Address, error) {
-	ret, code, err := CallQueryMethod(ctx, st, vms, minerAddr, "getOwner", []byte{}, address.Undef, types.NewBlockHeight(0))
+func (p *DefaultProcessor) minerOwnerAddress(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) (address.Address, error) {
+	ret, code, err := p.CallQueryMethod(ctx, st, vms, minerAddr, "getOwner", []byte{}, address.Undef, types.NewBlockHeight(0))
 	if err != nil {
 		return address.Undef, errors.FaultErrorWrap(err, "could not get miner owner")
 	}

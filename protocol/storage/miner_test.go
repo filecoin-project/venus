@@ -633,7 +633,11 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 }
 
 func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	return builtin.Actors[types.MinerActorCodeCid].Exports()[method], nil
+	ea, error := builtin.DefaultActors.GetBuiltinActorCode(types.MinerActorCodeCid, 0)
+	if error != nil {
+		return nil, err
+	}
+	return ea.Exports()[method], nil
 }
 
 func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {

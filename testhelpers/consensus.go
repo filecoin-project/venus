@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
@@ -153,7 +154,7 @@ func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{})
+	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{}, builtin.DefaultActors)
 }
 
 type testSigner struct{}
@@ -165,18 +166,23 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
 func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
-	return applyTestMessageWithAncestors(st, store, msg, bh, nil)
+	return applyTestMessageWithAncestors(builtin.DefaultActors, st, store, msg, bh, nil)
+}
+
+// ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
+func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
+func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 
 	smsg, err := types.NewSignedMessage(*msg, signer, gasPrice, gasLimit)
 	if err != nil {
 		panic(err)
 	}
-	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder())
+	applier := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder(), actors)
 	return newMessageApplier(smsg, applier, st, store, bh, minerOwner, nil)
 }
 
@@ -197,7 +203,7 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMa
 
 	pdata := actor.MustConvertParams(params...)
 	msg := types.NewMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
-	return applyTestMessageWithAncestors(st, vms, msg, types.NewBlockHeight(bh), ancestors)
+	return applyTestMessageWithAncestors(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
 }
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
@@ -206,16 +212,16 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
 	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)
 	}
 
-	ta := newTestApplier()
+	ta := newTestApplier(actors)
 	return newMessageApplier(smsg, ta, st, store, bh, address.Undef, ancestors)
 }
 
-func newTestApplier() *consensus.DefaultProcessor {
-	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{})
+func newTestApplier(actors builtin.Actors) *consensus.DefaultProcessor {
+	return consensus.NewConfiguredProcessor(&FakeSignedMessageValidator{}, &FakeBlockRewarder{}, actors)
 }

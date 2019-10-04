@@ -106,7 +106,7 @@ func (m *MockStateTree) Debug() {
 }
 
 // GetBuiltinActorCode implements StateTree.GetBuiltinActorCode
-func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error) {
+func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid, protocol uint64) (exec.ExecutableActor, error) {
 	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %v", c.String())

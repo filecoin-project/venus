@@ -27,7 +27,7 @@ import (
 
 func requireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	tree := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	tree := state.NewEmptyStateTree(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
@@ -335,10 +335,9 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid)
-	}()
+	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
 
 	// Stick one empty actor and one fake actor in the state tree so they can talk.
@@ -365,7 +364,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
+	processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
+	results, err := processor.ProcessBlock(ctx, st, vms, blk, msgs, nil)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(t, err)
@@ -612,10 +612,9 @@ func TestNestedSendBalance(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid)
-	}()
+	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(101))
@@ -633,7 +632,7 @@ func TestNestedSendBalance(t *testing.T) {
 	assert.NoError(t, err)
 	msg1 := types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "nestedBalance", params1)
 
-	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg1, types.NewBlockHeight(0))
+	_, err = th.ApplyTestMessageWithActors(actors, st, th.VMStorage(), msg1, types.NewBlockHeight(0))
 	assert.NoError(t, err)
 
 	gotStCid, err := st.Flush(ctx)
@@ -662,10 +661,9 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid)
-	}()
+	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(0))
@@ -682,8 +680,8 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err := abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(t, err)
 	msg := types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend1", params)
-	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg, types.NewBlockHeight(0))
-	assert.Error(t, err)
+	_, err = th.ApplyTestMessageWithActors(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "second callSendTokens")
 	assert.Contains(t, err.Error(), "not enough balance")
 
@@ -691,8 +689,8 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 	params, err = abi.ToEncodedValues(addr1, addr2)
 	assert.NoError(t, err)
 	msg = types.NewMessage(addr0, addr1, 0, types.ZeroAttoFIL, "attemptMultiSpend2", params)
-	_, err = th.ApplyTestMessage(st, th.VMStorage(), msg, types.NewBlockHeight(0))
-	assert.Error(t, err)
+	_, err = th.ApplyTestMessageWithActors(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0))
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed sendTokens")
 	assert.Contains(t, err.Error(), "not enough balance")
 }
@@ -750,10 +748,9 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer func() {
-		delete(builtin.Actors, fakeActorCodeCid)
-	}()
+	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 
 	addr0, addr1, addr2 := newAddress(), newAddress(), newAddress()
 	act0 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(101))
@@ -774,7 +771,8 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 	args1, err := abi.ToEncodedValues(addr2)
 	assert.NoError(t, err)
 
-	_, exitCode, err := CallQueryMethod(ctx, st, vms, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
+	processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
+	_, exitCode, err := processor.CallQueryMethod(ctx, st, vms, addr1, "nestedBalance", args1, addr0, types.NewBlockHeight(0))
 	require.Equal(t, uint8(0), exitCode)
 	require.NoError(t, err)
 
@@ -792,8 +790,9 @@ func TestApplyMessageChargesGas(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer delete(builtin.Actors, fakeActorCodeCid)
+	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 
 	t.Run("ApplyMessage charges gas on success", func(t *testing.T) {
 		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
@@ -805,7 +804,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasPrice := types.NewAttoFILFromFIL(uint64(3))
 		gasLimit := types.NewGasUnits(200)
 
-		appResult, err := th.ApplyTestMessageWithGas(st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
 			gasPrice, gasLimit, minerAddr)
 		assert.NoError(t, err)
 		assert.NoError(t, appResult.ExecutionError)
@@ -831,7 +830,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasPrice := types.NewAttoFILFromFIL(uint64(3))
 		gasLimit := types.NewGasUnits(200)
 
-		appResult, err := th.ApplyTestMessageWithGas(st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
 			gasPrice, gasLimit, minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "boom")
@@ -858,7 +857,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasPrice := types.NewAttoFILFromFIL(uint64(3))
 		gasLimit := types.NewGasUnits(50)
 
-		appResult, err := th.ApplyTestMessageWithGas(st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
 			gasPrice, gasLimit, minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
@@ -890,7 +889,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasPrice := types.NewAttoFILFromFIL(uint64(3))
 		gasLimit := types.NewGasUnits(600)
 
-		appResult, err := th.ApplyTestMessageWithGas(st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
 			gasPrice, gasLimit, minerAddr)
 		assert.NoError(t, err)
 		assert.NoError(t, appResult.ExecutionError)
@@ -923,7 +922,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasPrice := types.NewAttoFILFromFIL(uint64(3))
 		gasLimit := types.NewGasUnits(50)
 
-		appResult, err := th.ApplyTestMessageWithGas(st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner,
 			gasPrice, gasLimit, minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
@@ -945,13 +944,14 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-	defer delete(builtin.Actors, fakeActorCodeCid)
+	builtinActors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+		Build()
 
 	actors, stateTree, signer := setupActorsForGasTest(t, th.VMStorage(), fakeActorCodeCid, 0)
 	sender := actors[1]
 	receiver := actors[2]
-	processor := NewFakeProcessor()
+	processor := NewFakeProcessor(builtinActors)
 	ctx := context.Background()
 
 	t.Run("A single message whose gas limit is greater than the block gas limit fails permanently", func(t *testing.T) {

@@ -17,7 +17,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
@@ -79,6 +78,12 @@ type Processor interface {
 
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
+
+	// CallQueryMethod calls a method on an actor in the given state tree.
+	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
+
+	// PreviewQueryMethod estimates the amount of gas that will be used by a method
+	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -416,5 +421,5 @@ func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.LoadStateTree(ctx, c.cstore, id, builtin.Actors)
+	return state.LoadStateTree(ctx, c.cstore, id)
 }

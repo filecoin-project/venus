@@ -163,7 +163,7 @@ func TestChangeWorker(t *testing.T) {
 
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		result, err := th.ApplyTestMessageWithGas(st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
 		assert.NoError(t, err)
 
 		require.Error(t, result.ExecutionError)
@@ -438,7 +438,7 @@ func callQueryMethodSuccess(method string,
 	vms vm.StorageMap,
 	fromAddr address.Address,
 	minerAddr address.Address) [][]byte {
-	res, code, err := consensus.CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
+	res, code, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
 	return res
@@ -1292,7 +1292,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		result, err := th.ApplyTestMessageWithGas(st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
 		require.NoError(t, err)
 
 		require.Error(t, result.ExecutionError)
@@ -1543,6 +1543,7 @@ func TestGetProofsMode(t *testing.T) {
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),
 			Ancestors:   []types.TipSet{},
+			Actors:      builtin.DefaultActors,
 		})
 
 		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.TestProofsMode, "test"))
@@ -1562,6 +1563,7 @@ func TestGetProofsMode(t *testing.T) {
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),
 			Ancestors:   []types.TipSet{},
+			Actors:      builtin.DefaultActors,
 		})
 
 		require.NoError(t, consensus.SetupDefaultActors(ctx, st, vms, types.LiveProofsMode, "main"))
