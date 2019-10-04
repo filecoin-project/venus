@@ -41,8 +41,6 @@ type Tree interface {
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
-
-	//GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error)
 }
 
 var _ Tree = &tree{}
@@ -85,12 +83,6 @@ func NewEmptyStateTree(store *hamt.CborIpldStore) Tree {
 	return newEmptyStateTree(store)
 }
 
-// NewEmptyStateTreeWithActors instantiates a new state tree with no data in it, except for the passed in actors.
-//func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[types.CodeVersion]exec.ExecutableActor) Tree {
-//	s := newEmptyStateTree(store)
-//	return s
-//}
-
 func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
 		root:  hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
@@ -129,18 +121,6 @@ func (e actorNotFoundError) Error() string {
 func (e actorNotFoundError) ActorNotFound() bool {
 	return true
 }
-
-//func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
-//	if !codePointer.Defined() {
-//		return nil, fmt.Errorf("missing code")
-//	}
-//	actor, ok := t.builtinActors[types.NewCodeVersion(codePointer, 0)]
-//	if !ok {
-//		return nil, fmt.Errorf("unknown code: %s", codePointer.String())
-//	}
-//
-//	return actor, nil
-//}
 
 // GetActor retrieves an actor by their address. If no actor
 // exists at the given address then an error will be returned

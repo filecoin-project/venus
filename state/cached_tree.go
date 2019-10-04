@@ -22,11 +22,6 @@ func NewCachedStateTree(st Tree) *CachedTree {
 	}
 }
 
-// GetBuiltinActorCode simply delegates to the underlying tree
-//func (t *CachedTree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
-//	return t.st.GetBuiltinActorCode(codePointer)
-//}
-
 // GetActor retrieves an actor from the cache. If it's not found it will get it from the
 // underlying tree and then set it in the cache before returning it.
 func (t *CachedTree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
