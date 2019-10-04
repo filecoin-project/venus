@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 	"time"
+	"fmt"
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -190,9 +191,11 @@ func TestTipSetWeightDeep(t *testing.T) {
 	syncer := chain.NewSyncer(con, chainStore, messageStore, blockSource, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	baseTS := requireHeadTipset(t, chainStore) // this is the last block of the bootstrapping chain creating miners
 	require.Equal(t, 1, baseTS.Len())
+	
 	bootstrapStateRoot := baseTS.ToSlice()[0].StateRoot
 	pSt, err := state.LoadStateTree(ctx, cst, baseTS.ToSlice()[0].StateRoot, builtin.Actors)
 	require.NoError(t, err)
+	
 	/* Test chain diagram and weight calcs */
 	// (Note f1b1 = fork 1 block 1)
 	//
@@ -206,14 +209,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 	//  w({f1b1, f2b1})   = sw + 0   + 11 * 2  = sw + 22
 	//  w({f1b2a, f1b2b}) = sw + 11  + 11 * 2  = sw + 33
 	//  w({f2b2})         = sw + 11  + 108 	   = sw + 119
-	startingWeight, err := con.Weight(ctx, baseTS, pSt)
+	startingWeight, err := con.NewWeight(ctx, baseTS, pSt)
 	require.NoError(t, err)
-
+	requirePrintFixed(t, "baseTS weight", startingWeight)
 	wFun := func(ts types.TipSet) (uint64, error) {
 		// No power-altering messages processed from here on out.
 		// And so bootstrapSt correctly retrives power table for all
 		// test blocks.
-		return con.Weight(ctx, ts, pSt)
+		return con.NewWeight(ctx, ts, pSt)
 	}
 
 	fakeChildParams := th.FakeChildParams{
@@ -232,8 +235,11 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f1b1.Tickets = []types.Ticket{f1b1Ticket}
 	f1b1.Messages = emptyMessagesCid
 	f1b1.MessageReceipts = emptyReceiptsCid
-	f1b1.BlockSig, err = mockSigner.SignBytes(f1b1.SignatureData(), minerWorker1)
+	f1b1.BlockSig, err = mockSigner.SignBytes(f1b1.SignatureData(), minerWorker1)	
 	require.NoError(t, err)
+	f1b1_w, err := con.NewWeight(ctx, types.RequireNewTipSet(t, f1b1), pSt)
+	require.NoError(t, err)
+	requirePrintFixed(t, "f1b1 weight", f1b1_w)
 
 	fakeChildParams.MinerAddr = info.Miners[2].Address
 	f2b1 := th.RequireMkFakeChildCore(t, fakeChildParams, wFun)
@@ -244,8 +250,14 @@ func TestTipSetWeightDeep(t *testing.T) {
 	f2b1.MessageReceipts = emptyReceiptsCid
 	f2b1.BlockSig, err = mockSigner.SignBytes(f2b1.SignatureData(), minerWorker1)
 	require.NoError(t, err)
+	f2b1_w, err := con.NewWeight(ctx, types.RequireNewTipSet(t, f2b1), pSt)
+	require.NoError(t, err)
+	requirePrintFixed(t, "f2b1 weight", f2b1_w)
 
 	tsShared := th.RequireNewTipSet(t, f1b1, f2b1)
+	tsShared_w, err := con.NewWeight(ctx, tsShared, pSt)
+	require.NoError(t, err)
+	requirePrintFixed(t, "tsShared weight", tsShared_w)			
 
 	// Sync first tipset, should have weight 22 + starting
 	sharedCids := requirePutBlocks(t, blockSource, f1b1, f2b1)
@@ -299,6 +311,8 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assertHead(t, chainStore, f1)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
 	require.NoError(t, err)
+	requirePrintFixed(t, "fork 1 weight", measuredWeight)			
+	
 	expectedWeight = startingWeight + uint64(33000)
 	assert.Equal(t, expectedWeight, measuredWeight)
 
@@ -333,6 +347,7 @@ func TestTipSetWeightDeep(t *testing.T) {
 	assertHead(t, chainStore, f2)
 	measuredWeight, err = wFun(requireHeadTipset(t, chainStore))
 	require.NoError(t, err)
+	requirePrintFixed(t, "fork 2 weight", measuredWeight)
 	expectedWeight = startingWeight + uint64(119000)
 	assert.Equal(t, expectedWeight, measuredWeight)
 }
@@ -375,4 +390,11 @@ func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) t
 	}
 	f.AddSourceBlocks(blocks...)
 	return types.NewTipSetKey(cids...)
+}
+
+func requirePrintFixed(t *testing.T, name string, f uint64) {
+	b, err := types.FixedToBig(f)
+	require.NoError(t, err)
+	onething, _ := b.Int64()
+	fmt.Printf("%s: %d\n", name, onething)
 }

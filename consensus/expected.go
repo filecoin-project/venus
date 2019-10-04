@@ -159,7 +159,7 @@ func (c *Expected) BlockTime() time.Duration {
 // representation.
 //
 // w(i) = w(i-1) + (P_i)^(P_n) * [V * num_blks + X ] 
-// P_n(n) = if n < 3:0 else: n, n is number of null rounds
+// P_n = if n < 3:0 else: n, n is number of null rounds
 // X = log_2(total_storage(pSt)) 
 func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
@@ -177,15 +177,21 @@ func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tre
 	if err != nil {
 		return uint64(0), err
 	}
+	
+	func printAsInt(name string, f *big.Float) int64 {
+		i, _ := f.Int64()
+		return i
+	}
 
 	// Each block adds ECV to the weight's inner term
 	innerTerm := new(big.Float)
-	floatECV := new(big.Float).SetInt64(int64(ECV))
+	floatECV := new(big.Float).SetInt64(int64(NewECV))
 	floatNumBlocks := new(big.Float).SetInt64(int64(ts.Len()))
 	innerTerm.Mul(floatECV, floatNumBlocks)
 
 	// Add X to the weight's inner term
-	totalBytes, err := c.PwrTableView.Total(ctx, pSt, c.bstore)
+	powerTableView := c.createPowerTableView(pSt)	
+	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return uint64(0), err
 	}
