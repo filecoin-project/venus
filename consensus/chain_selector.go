@@ -55,11 +55,6 @@ func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tre
 		return uint64(0), err
 	}
 	
-	func printAsInt(name string, f *big.Float) int64 {
-		i, _ := f.Int64()
-		return i
-	}
-
 	// Each block adds ECV to the weight's inner term
 	innerTerm := new(big.Float)
 	floatECV := new(big.Float).SetInt64(int64(NewECV))

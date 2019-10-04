@@ -177,7 +177,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 	verifyTip(t, store, main4, builder.StateForKey(main4.Key()))
 	verifyHead(t, store, main4)
 
-	// Heavier fork updates hea3
+	// Heavier fork updates head3
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), fork3.Key(), heightFromTip(t, fork3)), true))
 	verifyTip(t, store, fork1, builder.StateForKey(fork1.Key()))
 	verifyTip(t, store, fork2, builder.StateForKey(fork2.Key()))

@@ -11,13 +11,9 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -112,6 +108,48 @@ func TestLoadFork(t *testing.T) {
 
 	// The left chain is ok without any fetching though.
 	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+}
+
+// Power table weight comparisons impact syncer's selection.
+// One fork has more blocks but less total power.
+// Verify that the heavier fork is the one with more power.
+func TestSyncerWeighsPower(t *testing.T) {
+	t.Skip("fill this out when making weight upgrade")
+	
+	// Builder makes gen with starting weight
+
+	// Builder constructs two different blocks with different state trees.
+	// This is needed because power table only depends on state root and
+	// the chain selector always reads the power table of the parent
+
+	// Builder adds 3 blocks to fork 1 and total storage power 2^4
+	// delta = 1[V*3 + log(2^4)] = 6 + 4 = 10
+
+	// Builder adds 1 block to fork 2 and total storage power 2^9
+	// delta = 1[V*1 + log(2^9)] = 2 + 9
+
+	// Verify that the syncer selects fork 2
+	
+}
+
+// Null block existence impacts syncer's selection.
+// One fork has more blocks later but more null blocks at the start.
+// Verify that the heavier fork is the one without null blocks.
+func TestSyncerWeighsNulls(t *testing.T) {
+	t.Skip("fill this out when making weight upgrade")
+
+	// Builder makes gen
+
+	// Builder constructs a long chain (fork 1) with many null blocks
+	// 5 null--> block --> 5 null --> block
+	// delta = (0.87)^5[V*1 + X] = (0.49)(2+X) + (0.49)(2+X) = (0.98)(2+X)
+
+	// Builder constructs a short chain (fork 2) with one block
+	// note that X is static across all blocks for this test
+	// delta = 1[V*1 + X] = 2+X
+
+	// Verify that the syncer selects fork 2
+
 }
 
 type requireTsAddedChainStore interface {
