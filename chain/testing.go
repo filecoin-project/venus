@@ -345,7 +345,7 @@ func (FakeStateBuilder) Weigh(tip types.TipSet, state cid.Cid) (uint64, error) {
 
 ///// State evaluator /////
 
-// FakeStateEvaluator is a syncStateEvaluator delegates to the FakeStateBuilder.
+// FakeStateEvaluator is a syncStateEvaluator that delegates to the FakeStateBuilder.
 type FakeStateEvaluator struct {
 	FakeStateBuilder
 }
@@ -355,8 +355,15 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.T
 	return e.ComputeState(stateID, messages)
 }
 
+///// Chain selector /////
+
+// FakeChainSelector is a syncChainSelector that delegates to the FakeStateBuilder
+type FakeChainSelector struct {
+	FakeStateBuilder
+}
+
 // IsHeavier compares chains weighed with StateBuilder.Weigh.
-func (e *FakeStateEvaluator) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
+func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
 	aw, err := e.Weigh(a, aStateID)
 	if err != nil {
 		return false, err

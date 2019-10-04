@@ -425,6 +425,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	// set up consensus
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore, processor)
 	nodeConsensus := consensus.NewExpected(blockstore.cborStore, blockstore.Blockstore, processor, blkValid, actorState, b.genCid, b.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
+	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid)
 
 	// setup fecher
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)
@@ -437,17 +438,18 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	messageStore := chain.NewMessageStore(blockstore.cborStore)
 
 	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)
+	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)
 
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.cborStore, builtin.DefaultActors)
 
 	return ChainSubmodule{
 		// BlockSub: nil,
-		Consensus:    nodeConsensus,
-		ChainReader:  chainStore,
-		MessageStore: messageStore,
-		Syncer:       chainSyncer,
-		ActorState:   actorState,
+		Consensus:     nodeConsensus,
+		ChainSelector: nodeChainSelector,
+		ChainReader:   chainStore,
+		MessageStore:  messageStore,
+		Syncer:        chainSyncer,
+		ActorState:    actorState,
 		// HeaviestTipSetCh: nil,
 		// cancelChainSync: nil,
 		ChainSynced: moresync.NewLatch(1),

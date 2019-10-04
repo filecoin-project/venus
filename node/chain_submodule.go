@@ -13,12 +13,14 @@ import (
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
 type ChainSubmodule struct {
-	BlockSub     pubsub.Subscription
-	Consensus    consensus.Protocol
-	ChainReader  nodeChainReader
-	MessageStore *chain.MessageStore
-	Syncer       nodeChainSyncer
-	ActorState   *consensus.ActorStateStore
+	BlockSub      pubsub.Subscription
+	Consensus     consensus.Protocol
+	ChainSelector nodeChainSelector
+	ChainReader   nodeChainReader
+	MessageStore  *chain.MessageStore
+	Syncer        nodeChainSyncer
+	ActorState    *consensus.ActorStateStore
+
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	HeaviestTipSetCh chan interface{}

@@ -31,6 +31,11 @@ type nodeChainSyncer interface {
 	Status() chain.Status
 }
 
+type nodeChainSelector interface {
+	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+}
+
 // storageFaultSlasher is the interface for needed FaultSlasher functionality
 type storageFaultSlasher interface {
 	OnNewHeaviestTipSet(context.Context, types.TipSet) error

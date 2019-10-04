@@ -177,7 +177,7 @@ func TestAcceptHeavierFork(t *testing.T) {
 	verifyTip(t, store, main4, builder.StateForKey(main4.Key()))
 	verifyHead(t, store, main4)
 
-	// Heavier fork updates hea3
+	// Heavier fork updates head3
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), fork3.Key(), heightFromTip(t, fork3)), true))
 	verifyTip(t, store, fork1, builder.StateForKey(fork1.Key()))
 	verifyTip(t, store, fork2, builder.StateForKey(fork2.Key()))
@@ -194,7 +194,7 @@ func TestFarFutureTipsets(t *testing.T) {
 		genesis := builder.RequireTipSet(store.GetHead())
 		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 		assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), true))
 	})
 
@@ -203,7 +203,7 @@ func TestFarFutureTipsets(t *testing.T) {
 		genesis := builder.RequireTipSet(store.GetHead())
 		farHead := builder.AppendManyOn(chain.UntrustedChainHeightLimit+1, genesis)
 
-		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+		syncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 		err := syncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), farHead.Key(), heightFromTip(t, farHead)), false)
 		assert.Error(t, err)
 	})
@@ -221,7 +221,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, store, builder, emptyFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	newSyncer := chain.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, types.NewChainInfo(peer.ID(""), head.Key(), heightFromTip(t, head)), true))
 }
 
@@ -471,7 +471,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *ch
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
-	syncer := chain.NewSyncer(eval, store, builder, builder, sr, th.NewFakeClock(time.Unix(1234567890, 0)))
+	sel := &chain.FakeChainSelector{}
+	syncer := chain.NewSyncer(eval, sel, store, builder, builder, sr, th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }
