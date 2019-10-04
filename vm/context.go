@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+// ExecutableActorLookup provides a method to get an executable actor by code and protocol version
 type ExecutableActorLookup interface {
 	GetBuiltinActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error)
 }
