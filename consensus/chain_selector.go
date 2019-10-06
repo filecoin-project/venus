@@ -17,8 +17,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// ChainSelector determines which of two heads belong in the main chain
 type ChainSelector struct {
-	cstore *hamt.CborIpldStore
+	cstore     *hamt.CborIpldStore
 	actorState SnapshotGenerator
 	genesisCid cid.Cid
 }
@@ -26,18 +27,18 @@ type ChainSelector struct {
 // NewChainSelector is the constructor for chain selection module.
 func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
 	return &ChainSelector{
-		cstore:            cs,
-		actorState:        actorState,
-		genesisCid:        gCid,
+		cstore:     cs,
+		actorState: actorState,
+		genesisCid: gCid,
 	}
 }
 
 // NewWeight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
 //
-// w(i) = w(i-1) + (P_i)^(P_n) * [V * num_blks + X ] 
+// w(i) = w(i-1) + (PI)^(P_n) * [V * num_blks + X ]
 // P_n = if n < 3:0 else: n, n is number of null rounds
-// X = log_2(total_storage(pSt)) 
+// X = log_2(total_storage(pSt))
 func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
@@ -62,28 +63,28 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt stat
 	innerTerm.Mul(floatECV, floatNumBlocks)
 
 	// Add X to the weight's inner term
-	powerTableView := c.createPowerTableView(pSt)	
+	powerTableView := c.createPowerTableView(pSt)
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return uint64(0), err
 	}
 	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
-	
+
 	// Attenuate weight by the number of tickets
-	numTickets := len(ts.At(0).Tickets) 
-	P := new(big.Float).SetInt64(int64(1))	
+	numTickets := len(ts.At(0).Tickets)
+	P := new(big.Float).SetInt64(int64(1))
 	if numTickets >= NullThresh {
-		bigP_i := new(big.Float).SetFloat64(P_i)
-		// P = P_i^numNull
+		bigPI := new(big.Float).SetFloat64(PI)
+		// P = PI^numNull
 		for i := 0; i < numTickets; i++ {
-			P.Mul(P, bigP_i)
+			P.Mul(P, bigPI)
 		}
 	}
 	update := new(big.Float)
 	update.Mul(innerTerm, P)
 	w.Add(w, update)
-	return types.BigToFixed(w)	
+	return types.BigToFixed(w)
 }
 
 // Weight returns the expected consensus weight of this TipSet in uint64

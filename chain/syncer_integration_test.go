@@ -4,10 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
-	"fmt"
 
 	bserv "github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
@@ -115,7 +113,7 @@ func TestLoadFork(t *testing.T) {
 // Verify that the heavier fork is the one with more power.
 func TestSyncerWeighsPower(t *testing.T) {
 	t.Skip("fill this out when making weight upgrade")
-	
+
 	// Builder makes gen with starting weight
 
 	// Builder constructs two different blocks with different state trees.
@@ -129,7 +127,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	// delta = 1[V*1 + log(2^9)] = 2 + 9
 
 	// Verify that the syncer selects fork 2
-	
+
 }
 
 // Null block existence impacts syncer's selection.
@@ -150,51 +148,4 @@ func TestSyncerWeighsNulls(t *testing.T) {
 
 	// Verify that the syncer selects fork 2
 
-}
-
-type requireTsAddedChainStore interface {
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetAndStatesByParentsAndHeight(types.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
-}
-
-func requireTsAdded(t *testing.T, chain requireTsAddedChainStore, ts types.TipSet) {
-	h, err := ts.Height()
-	require.NoError(t, err)
-	// Tip Index correctly updated
-	gotTs, err := chain.GetTipSet(ts.Key())
-	require.NoError(t, err)
-	require.Equal(t, ts, gotTs)
-	parent, err := ts.Parents()
-	require.NoError(t, err)
-	childTsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(parent, h)
-
-	require.NoError(t, err)
-	require.True(t, containsTipSet(childTsasSlice, ts))
-}
-
-func requireHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
-	require.Equal(t, head, requireHeadTipset(t, chain))
-}
-
-func assertHead(t *testing.T, chain HeadAndTipsetGetter, head types.TipSet) {
-	headTipSet, err := chain.GetTipSet(chain.GetHead())
-	assert.NoError(t, err)
-	assert.Equal(t, head, headTipSet)
-}
-
-func requirePutBlocks(_ *testing.T, f *th.TestFetcher, blocks ...*types.Block) types.TipSetKey {
-	var cids []cid.Cid
-	for _, block := range blocks {
-		c := block.Cid()
-		cids = append(cids, c)
-	}
-	f.AddSourceBlocks(blocks...)
-	return types.NewTipSetKey(cids...)
-}
-
-func requirePrintFixed(t *testing.T, name string, f uint64) {
-	b, err := types.FixedToBig(f)
-	require.NoError(t, err)
-	onething, _ := b.Int64()
-	fmt.Printf("%s: %d\n", name, onething)
 }
