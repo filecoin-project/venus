@@ -101,7 +101,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	next := &types.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
-		Messages:        msgsCid,
+		Messages:        types.TxMeta{SecpRoot: msgsCid, BLSRoot: types.EmptyMessagesCID},
 		MessageReceipts: rcptsCid,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),

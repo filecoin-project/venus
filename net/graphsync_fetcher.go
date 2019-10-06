@@ -224,7 +224,7 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 // non-recursively
 func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.Matcher())
+		efsb.Insert("messages.secpRoot", gsf.ssb.Matcher())
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
 	var wg sync.WaitGroup

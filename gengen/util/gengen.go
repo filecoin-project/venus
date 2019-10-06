@@ -168,7 +168,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 
 	geneblk := &types.Block{
 		StateRoot:       stateRoot,
-		Messages:        emptyMessagesCid,
+		Messages:        types.TxMeta{emptyMessagesCid, emptyMessagesCid},
 		MessageReceipts: emptyReceiptsCid,
 		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}

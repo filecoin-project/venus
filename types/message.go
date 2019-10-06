@@ -174,3 +174,9 @@ func (rC ReceiptCollection) ToNode() ipld.Node {
 
 	return obj
 }
+
+// TxMeta tracks the merkleroots of both secp and bls messages separately
+type TxMeta struct {
+	SecpRoot cid.Cid `json:"secpRoot"`
+	BLSRoot cid.Cid `json:"blsRoot"`
+}
