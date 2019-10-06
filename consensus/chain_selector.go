@@ -38,7 +38,7 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 // w(i) = w(i-1) + (P_i)^(P_n) * [V * num_blks + X ] 
 // P_n = if n < 3:0 else: n, n is number of null rounds
 // X = log_2(total_storage(pSt)) 
-func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
+func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if ts.Len() == 1 && ts.At(0).Cid().Equals(c.genesisCid) {
@@ -54,7 +54,7 @@ func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tre
 	if err != nil {
 		return uint64(0), err
 	}
-	
+
 	// Each block adds ECV to the weight's inner term
 	innerTerm := new(big.Float)
 	floatECV := new(big.Float).SetInt64(int64(NewECV))
@@ -70,13 +70,13 @@ func (c* Expected) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tre
 	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
 	
-	// Attenuate weight by the number of null blocks
-	numNull := len(ts.At(0).Tickets) - 1
+	// Attenuate weight by the number of tickets
+	numTickets := len(ts.At(0).Tickets) 
 	P := new(big.Float).SetInt64(int64(1))	
-	if numNull >= NullThresh {
+	if numTickets >= NullThresh {
 		bigP_i := new(big.Float).SetFloat64(P_i)
 		// P = P_i^numNull
-		for i := 0; i < numNull; i++ {
+		for i := 0; i < numTickets; i++ {
 			P.Mul(P, bigP_i)
 		}
 	}
