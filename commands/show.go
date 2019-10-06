@@ -157,7 +157,10 @@ the filecoin block header.`,
 			return err
 		}
 
-		messages, err := GetPorcelainAPI(env).ChainGetMessages(req.Context, cid)
+		messages, err := GetPorcelainAPI(env).ChainGetMessages(
+			req.Context,
+			types.TxMeta{SecpRoot: cid, BLSRoot: types.EmptyMessagesCID},
+		)
 		if err != nil {
 			return err
 		}

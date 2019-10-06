@@ -314,7 +314,7 @@ func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSet
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *types.Block) cid.Cid { return blk.Messages }, func(rawBlock blocks.Block) error {
+		func(blk *types.Block) cid.Cid { return blk.Messages.SecpRoot }, func(rawBlock blocks.Block) error {
 			messages, err := types.DecodeMessages(rawBlock.RawData())
 			if err != nil {
 				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())

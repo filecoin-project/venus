@@ -89,7 +89,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	// Persist messages to ipld storage
-	msgsCid, err := w.messageStore.StoreMessages(ctx, minedMessages)
+	txMeta, err := w.messageStore.StoreMessages(ctx, minedMessages, []*types.SignedMessage{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
@@ -101,7 +101,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	next := &types.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
-		Messages:        types.TxMeta{SecpRoot: msgsCid, BLSRoot: types.EmptyMessagesCID},
+		Messages:        txMeta,
 		MessageReceipts: rcptsCid,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),

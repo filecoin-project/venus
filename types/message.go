@@ -16,6 +16,7 @@ import (
 
 func init() {
 	cbor.RegisterCborType(Message{})
+	cbor.RegisterCborType(TxMeta{})
 }
 
 var (
@@ -179,4 +180,9 @@ func (rC ReceiptCollection) ToNode() ipld.Node {
 type TxMeta struct {
 	SecpRoot cid.Cid `json:"secpRoot"`
 	BLSRoot cid.Cid `json:"blsRoot"`
+}
+
+// String returns a readable printing string of TxMeta
+func (m TxMeta) String() string {
+	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
 }
