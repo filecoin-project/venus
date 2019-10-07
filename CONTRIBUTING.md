@@ -259,7 +259,7 @@ A **Maintainer** is someone:
 3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
 4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
 
-Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, and @whyrusleeping. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
+Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, @whyrusleeping and @zenground0. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
 
 Responsibilities:
 
