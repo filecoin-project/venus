@@ -28,6 +28,7 @@ type nodeChainReader interface {
 
 type nodeChainSyncer interface {
 	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
+	Status() chain.Status
 }
 
 // storageFaultSlasher is the interface for needed FaultSlasher functionality

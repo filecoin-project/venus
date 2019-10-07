@@ -15,4 +15,6 @@ type MessagingSubmodule struct {
 
 	// Network Fields
 	MessageSub pubsub.Subscription
+
+	msgPool *message.Pool
 }
