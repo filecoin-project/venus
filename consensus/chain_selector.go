@@ -154,11 +154,11 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 		}
 	}
 
-	aW, err := c.Weight(ctx, a, aSt)
+	aW, err := c.NewWeight(ctx, a, aSt)
 	if err != nil {
 		return false, err
 	}
-	bW, err := c.Weight(ctx, b, bSt)
+	bW, err := c.NewWeight(ctx, b, bSt)
 	if err != nil {
 		return false, err
 	}

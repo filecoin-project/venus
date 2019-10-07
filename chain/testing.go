@@ -65,10 +65,14 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	b.messages[types.EmptyMessagesCID] = []*types.SignedMessage{}
 	b.receipts[types.EmptyReceiptsCID] = []*types.MessageReceipt{}
 
-	nullState, err := makeCid("null")
-	require.NoError(t, err)
+	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 	return b
+}
+
+// SetStateBuilder sets the state builder
+func (f *Builder) SetStateBuilder(sb StateBuilder) {
+	f.stateBuilder = sb
 }
 
 // NewGenesis creates and returns a tipset of one block with no parents.
@@ -300,6 +304,8 @@ type StateBuilder interface {
 	ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
+
+//
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
 type FakeStateBuilder struct {
