@@ -16,7 +16,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-
+// AlphaNetUpgrade is the height at which the alphanet weight change protocol
+// upgrade comes into effect.  TODO BEFORE MERGE -- choose an actual height
 var AlphaNetUpgrade = types.NewBlockHeight(300)
 
 // Parameters used by the latest weight function "NewWeight"
@@ -40,7 +41,7 @@ const (
 	ecPrM uint64 = 100
 )
 
-// ChainSelectorV0 weighs and compares chains according to the deprecated v0
+// ChainSelector weighs and compares chains according to the deprecated v0
 // Storage Power Consensus Protocol
 type ChainSelector struct {
 	cstore     *hamt.CborIpldStore
@@ -108,6 +109,7 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt stat
 	update := new(big.Float)
 	update.Mul(innerTerm, P)
 	w.Add(w, update)
+
 	return types.BigToFixed(w)
 }
 
@@ -187,7 +189,7 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 	bWfun, err := c.chooseWeightFunc(b)
 	if err != nil {
 		return false, err
-	}	
+	}
 
 	aW, err := aWfun(ctx, a, aSt)
 	if err != nil {
