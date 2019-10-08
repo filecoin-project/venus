@@ -43,12 +43,9 @@ type detailsStruct struct {
 }
 
 func init() {
-	gopath, err := th.GetGoPath()
-	if err != nil {
-		panic(err)
-	}
+	root := th.ProjectRoot()
 
-	detailspath := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/fixtures/test/gen.json")
+	detailspath := filepath.Join(root, "fixtures/test/gen.json")
 	detailsFile, err := os.Open(detailspath)
 	if err != nil {
 		// fmt.Printf("Fixture data not found. Skipping fixture initialization: %s\n", err)
@@ -92,15 +89,12 @@ func init() {
 
 // KeyFilePaths returns the paths to the wallets of the testaddresses
 func KeyFilePaths() []string {
-	gopath, err := th.GetGoPath()
-	if err != nil {
-		panic(err)
-	}
-	folder := "/src/github.com/filecoin-project/go-filecoin/fixtures/test/"
+	root := th.ProjectRoot()
+	folder := filepath.Join(root, "fixtures/test")
 
 	res := make([]string, len(testKeys))
 	for i, k := range testKeys {
-		res[i] = filepath.Join(gopath, folder, k)
+		res[i] = filepath.Join(folder, k)
 	}
 
 	return res

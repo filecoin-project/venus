@@ -77,11 +77,10 @@ func TestOptions(t *testing.T) {
 }
 
 func requireGetMigrationBinary(t *testing.T) string {
-	gopath, err := testhelpers.GetGoPath()
-	require.NoError(t, err)
+	root := testhelpers.ProjectRoot()
 
-	bin := filepath.Join(gopath, "/src/github.com/filecoin-project/go-filecoin/tools/migration/go-filecoin-migrate")
-	_, err = os.Stat(bin)
+	bin := filepath.Join(root, "tools/migration/go-filecoin-migrate")
+	_, err := os.Stat(bin)
 	require.NoError(t, err)
 
 	return bin

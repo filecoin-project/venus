@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -757,19 +758,18 @@ func RunInit(td *TestDaemon, opts ...string) ([]byte, error) {
 	return process.CombinedOutput()
 }
 
-// GenesisFilePath returns the path of the WalletFile
+// GenesisFilePath returns the path to the test genesis
 func GenesisFilePath() string {
 	return ProjectRoot("/fixtures/test/genesis.car")
 }
 
 // ProjectRoot return the project root joined with any path fragments
 func ProjectRoot(paths ...string) string {
-	gopath, err := GetGoPath()
-	if err != nil {
-		panic(err)
-	}
+	_, currentFile, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(currentFile)
+	dir = filepath.Dir(dir)
 
-	allPaths := append([]string{gopath, "/src/github.com/filecoin-project/go-filecoin"}, paths...)
+	allPaths := append([]string{dir}, paths...)
 
 	return filepath.Join(allPaths...)
 }
