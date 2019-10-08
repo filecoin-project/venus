@@ -52,6 +52,18 @@ func TestUpgradeTable(t *testing.T) {
 		}
 	})
 
+	t.Run("finds correct version when suffix is applied", func(t *testing.T) {
+		// add out of order and expect table to sort
+		put, err := NewProtocolVersionTableBuilder("testnetwork.foo").
+			Add(network, 5, types.NewBlockHeight(0)).
+			Build()
+		require.NoError(t, err)
+
+		version, err := put.VersionAt(types.NewBlockHeight(0))
+		require.NoError(t, err)
+		assert.Equal(t, uint64(5), version)
+	})
+
 	t.Run("constructing a table with no versions is an error", func(t *testing.T) {
 		_, err := NewProtocolVersionTableBuilder(network).Build()
 		require.Error(t, err)
