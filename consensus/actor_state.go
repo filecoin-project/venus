@@ -21,6 +21,12 @@ type chainStateChainReader interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
+// QueryProcessor querys actor state of a particular tipset
+type QueryProcessor interface {
+	// CallQueryMethod calls a method on an actor in the given state tree.
+	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
+}
+
 // ActorStateStore knows how to send read-only messages for querying actor state.
 type ActorStateStore struct {
 	// To get the head tipset state root.
@@ -30,11 +36,11 @@ type ActorStateStore struct {
 	// For vm storage.
 	bs bstore.Blockstore
 	// executable actors
-	processor Processor
+	processor QueryProcessor
 }
 
 // NewActorStateStore constructs a ActorStateStore.
-func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor Processor) *ActorStateStore {
+func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor QueryProcessor) *ActorStateStore {
 	return &ActorStateStore{chainReader, cst, bs, processor}
 }
 
@@ -71,11 +77,11 @@ type processorSnapshot struct {
 	st        state.Tree
 	vms       vm.StorageMap
 	height    *types.BlockHeight
-	processor Processor
+	processor QueryProcessor
 }
 
 // newProcessorQueryer creates an ActorStateSnapshot
-func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight, processor Processor) ActorStateSnapshot {
+func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
 	return &processorSnapshot{
 		st:        st,
 		vms:       vms,

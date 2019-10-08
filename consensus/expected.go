@@ -78,12 +78,6 @@ type Processor interface {
 
 	// ProcessTipSet processes all messages in a tip set.
 	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, types.TipSet, [][]*types.SignedMessage, []types.TipSet) (*ProcessTipSetResponse, error)
-
-	// CallQueryMethod calls a method on an actor in the given state tree.
-	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
-
-	// PreviewQueryMethod estimates the amount of gas that will be used by a method
-	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
