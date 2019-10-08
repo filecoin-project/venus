@@ -14,9 +14,10 @@ import (
 	cid "github.com/ipfs/go-cid"
 )
 
+// codeVersion identifies an ExecutableActor by its code and protocol version
 type codeVersion struct {
-	code    cid.Cid
-	version uint64
+	code            cid.Cid
+	protocolVersion uint64
 }
 
 type Actors struct {
@@ -27,7 +28,7 @@ func (ba Actors) GetBuiltinActorCode(code cid.Cid, version uint64) (exec.Executa
 	if !code.Defined() {
 		return nil, fmt.Errorf("missing code")
 	}
-	actor, ok := ba.actors[codeVersion{code: code, version: version}]
+	actor, ok := ba.actors[codeVersion{code: code, protocolVersion: version}]
 	if !ok {
 		return nil, fmt.Errorf("unknown code: %s", code.String())
 	}
@@ -51,7 +52,7 @@ func BuiltinActorsExtender(actors Actors) *BuiltinActorsBuilder {
 }
 
 func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor exec.ExecutableActor) *BuiltinActorsBuilder {
-	bab.actors[codeVersion{code: c, version: version}] = actor
+	bab.actors[codeVersion{code: c, protocolVersion: version}] = actor
 	return bab
 }
 
