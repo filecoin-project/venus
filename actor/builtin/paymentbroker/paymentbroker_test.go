@@ -1137,7 +1137,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 }
 
 func builtinsWithTestActor() builtin.Actors {
-	return builtin.NewActorsBuilder().
+	return builtin.NewBuilder().
 		AddAll(builtin.DefaultActors).
 		Add(pbTestActorCid, 0, &PBTestActor{}).
 		Build()

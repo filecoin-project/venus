@@ -27,11 +27,11 @@ type Actors struct {
 // GetActorCode returns executable code for an actor by code cid at a specific protocol version
 func (ba Actors) GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error) {
 	if !code.Defined() {
-		return nil, fmt.Errorf("missing code")
+		return nil, fmt.Errorf("undefined code cid")
 	}
 	actor, ok := ba.actors[codeVersion{code: code, protocolVersion: version}]
 	if !ok {
-		return nil, fmt.Errorf("unknown code: %s", code.String())
+		return nil, fmt.Errorf("unknown code: %s, version: %d", code.String(), version)
 	}
 	return actor, nil
 }
@@ -40,7 +40,8 @@ type BuiltinActorsBuilder struct {
 	actors map[codeVersion]exec.ExecutableActor
 }
 
-func NewActorsBuilder() *BuiltinActorsBuilder {
+// NewBuilder creates a builder to generate a builtin.Actor data structure
+func NewBuilder() *BuiltinActorsBuilder {
 	return &BuiltinActorsBuilder{actors: map[codeVersion]exec.ExecutableActor{}}
 }
 
@@ -62,7 +63,7 @@ func (bab *BuiltinActorsBuilder) Build() Actors {
 
 // DefaultActors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
-var DefaultActors = NewActorsBuilder().
+var DefaultActors = NewBuilder().
 	Add(types.AccountActorCodeCid, 0, &account.Actor{}).
 	Add(types.StorageMarketActorCodeCid, 0, &storagemarket.Actor{}).
 	Add(types.PaymentBrokerActorCodeCid, 0, &paymentbroker.Actor{}).

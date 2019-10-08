@@ -43,7 +43,7 @@ func TestQuery(t *testing.T) {
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through geneisus helpers.
 
-		actors := builtin.NewActorsBuilder().AddAll(builtin.DefaultActors).Add(fakeActorCodeCid, 0, &actor.FakeActor{}).Build()
+		actors := builtin.NewBuilder().AddAll(builtin.DefaultActors).Add(fakeActorCodeCid, 0, &actor.FakeActor{}).Build()
 		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
 		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
@@ -83,7 +83,7 @@ func TestQuery(t *testing.T) {
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through geneisus helpers.
-		actors := builtin.NewActorsBuilder().
+		actors := builtin.NewBuilder().
 			AddAll(builtin.DefaultActors).
 			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 			Build()
