@@ -9,27 +9,30 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type chainReader interface {
+type chainReadWriter interface {
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
+	SetHead(context.Context, types.TipSet) error
 }
 
-// ChainStateProvider composes a chain and a state store to provide access to
-// the state (including actors) derived from a chain.
-type ChainStateProvider struct {
-	reader          chainReader         // Provides chain tipsets and state roots.
+// ChainStateReadWriter composes a:
+// ChainReader providing read access to the chain and its associated state.
+// ChainWriter providing write access to the chain head.
+type ChainStateReadWriter struct {
+	readWriter      chainReadWriter
 	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
 	messageProvider chain.MessageProvider
+	actors          builtin.Actors
 }
 
 var (
@@ -42,59 +45,60 @@ var (
 	ErrNoActorImpl = errors.New("no actor implementation")
 )
 
-// NewChainStateProvider returns a new ChainStateProvider.
-func NewChainStateProvider(chainReader chainReader, messages chain.MessageProvider, cst *hamt.CborIpldStore) *ChainStateProvider {
-	return &ChainStateProvider{
-		reader:          chainReader,
+// NewChainStateReadWriter returns a new ChainStateReadWriter.
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, cst *hamt.CborIpldStore, ba builtin.Actors) *ChainStateReadWriter {
+	return &ChainStateReadWriter{
+		readWriter:      crw,
 		cst:             cst,
 		messageProvider: messages,
+		actors:          ba,
 	}
 }
 
 // Head returns the head tipset
-func (chn *ChainStateProvider) Head() (types.TipSet, error) {
-	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
-	if err != nil {
-		return types.UndefTipSet, err
-	}
-	return ts, nil
+func (chn *ChainStateReadWriter) Head() types.TipSetKey {
+	return chn.readWriter.GetHead()
+}
+
+// GetTipSet returns the tipset at the given key
+func (chn *ChainStateReadWriter) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
+	return chn.readWriter.GetTipSet(key)
 }
 
 // Ls returns an iterator over tipsets from head to genesis.
-func (chn *ChainStateProvider) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
-	ts, err := chn.reader.GetTipSet(chn.reader.GetHead())
+func (chn *ChainStateReadWriter) Ls(ctx context.Context) (*chain.TipsetIterator, error) {
+	ts, err := chn.readWriter.GetTipSet(chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
 	}
-	return chain.IterAncestors(ctx, chn.reader, ts), nil
+	return chain.IterAncestors(ctx, chn.readWriter, ts), nil
 }
 
 // GetBlock gets a block by CID
-func (chn *ChainStateProvider) GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
+func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
 	var out types.Block
 	err := chn.cst.Get(ctx, id, &out)
 	return &out, err
 }
 
 // GetMessages gets a message collection by CID.
-func (chn *ChainStateProvider) GetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
+func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
 	return chn.messageProvider.LoadMessages(ctx, id)
 }
 
 // GetReceipts gets a receipt collection by CID.
-func (chn *ChainStateProvider) GetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
+func (chn *ChainStateReadWriter) GetReceipts(ctx context.Context, id cid.Cid) ([]*types.MessageReceipt, error) {
 	return chn.messageProvider.LoadReceipts(ctx, id)
 }
 
 // SampleRandomness samples randomness from the chain at the given height.
-func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
-	head := chn.reader.GetHead()
-	headTipSet, err := chn.reader.GetTipSet(head)
+func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
+	head := chn.readWriter.GetHead()
+	headTipSet, err := chn.readWriter.GetTipSet(head)
 	if err != nil {
 		return nil, err
 	}
-	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
-	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.reader, sampleHeight, ancestorHeight, sampling.LookbackParameter)
+	tipSetBuffer, err := chain.GetRecentAncestors(ctx, headTipSet, chn.readWriter, sampleHeight)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recent ancestors")
 	}
@@ -103,13 +107,13 @@ func (chn *ChainStateProvider) SampleRandomness(ctx context.Context, sampleHeigh
 }
 
 // GetActor returns an actor from the latest state on the chain
-func (chn *ChainStateProvider) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
-	return chn.GetActorAt(ctx, chn.reader.GetHead(), addr)
+func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
+	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
-	st, err := chn.reader.GetTipSetState(ctx, tipKey)
+func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
+	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
 	}
@@ -122,8 +126,8 @@ func (chn *ChainStateProvider) GetActorAt(ctx context.Context, tipKey types.TipS
 }
 
 // LsActors returns a channel with actors from the latest state on the chain
-func (chn *ChainStateProvider) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
-	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
+func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.GetAllActorsResult, error) {
+	st, err := chn.readWriter.GetTipSetState(ctx, chn.readWriter.GetHead())
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +137,7 @@ func (chn *ChainStateProvider) LsActors(ctx context.Context) (<-chan state.GetAl
 // GetActorSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
+func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
 	if method == "" {
 		return nil, ErrNoMethod
 	}
@@ -145,12 +149,8 @@ func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr 
 		return nil, ErrNoActorImpl
 	}
 
-	st, err := chn.reader.GetTipSetState(ctx, chn.reader.GetHead())
-	if err != nil {
-		return nil, err
-	}
-
-	executable, err := st.GetBuiltinActorCode(actor.Code)
+	// TODO: use chain height to determine protocol version (#3360)
+	executable, err := chn.actors.GetActorCode(actor.Code, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
@@ -161,4 +161,13 @@ func (chn *ChainStateProvider) GetActorSignature(ctx context.Context, actorAddr 
 	}
 
 	return export, nil
+}
+
+// SetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
+func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key types.TipSetKey) error {
+	headTs, err := chn.readWriter.GetTipSet(key)
+	if err != nil {
+		return err
+	}
+	return chn.readWriter.SetHead(ctx, headTs)
 }

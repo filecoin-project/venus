@@ -25,8 +25,6 @@ func TestActorDaemon(t *testing.T) {
 
 		var avs []commands.ActorView
 		for _, line := range bytes.Split([]byte(result1), []byte{'\n'}) {
-			requireSchemaConformance(t, line, "actor_ls")
-
 			// unmarshall JSON to actor view an add to slice
 			var av commands.ActorView
 			err := json.Unmarshal(line, &av)

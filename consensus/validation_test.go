@@ -180,7 +180,7 @@ func NewMockIngestionValidatorAPI() *FakeIngestionValidatorAPI {
 	return &FakeIngestionValidatorAPI{Actor: &actor.Actor{}}
 }
 
-// GetActor
+// GetActorCode
 func (api *FakeIngestionValidatorAPI) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
 	if a == api.ActorAddr {
 		return api.Actor, nil

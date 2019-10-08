@@ -66,7 +66,7 @@ func (m *MockStateTree) Flush(ctx context.Context) (c cid.Cid, err error) {
 	return
 }
 
-// GetActor implements StateTree.GetActor.
+// GetActor implements StateTree.GetActorCode.
 func (m *MockStateTree) GetActor(ctx context.Context, address address.Address) (a *actor.Actor, err error) {
 	if m.NoMocks {
 		return
@@ -105,8 +105,8 @@ func (m *MockStateTree) Debug() {
 	panic("do not call me")
 }
 
-// GetBuiltinActorCode implements StateTree.GetBuiltinActorCode
-func (m *MockStateTree) GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error) {
+// GetActorCode implements StateTree.GetActorCode
+func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (exec.ExecutableActor, error) {
 	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %v", c.String())

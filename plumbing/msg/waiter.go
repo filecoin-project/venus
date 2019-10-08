@@ -13,7 +13,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/sampling"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -220,13 +219,12 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	if err != nil {
 		return nil, err
 	}
-	tsBlockHeight := types.NewBlockHeight(tsHeight)
-	ancestorHeight := types.NewBlockHeight(consensus.AncestorRoundsNeeded)
+	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
 	parentTs, err := w.chainReader.GetTipSet(ids)
 	if err != nil {
 		return nil, err
 	}
-	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, tsBlockHeight, ancestorHeight, sampling.LookbackParameter)
+	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, ancestorHeight)
 	if err != nil {
 		return nil, err
 	}

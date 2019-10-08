@@ -5,22 +5,22 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
 	sbtesting "github.com/filecoin-project/go-filecoin/proofs/sectorbuilder/testing"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/require"
 )
@@ -92,7 +92,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 
 	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.Message {
 		suppliedParams := []interface{}{sectorID, pip}
-		pdata := core.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
+		pdata := abi.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
 		return types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	}
 
@@ -186,14 +186,11 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 	copy(commD32[:], commD)
 	sectorIDstr := strconv.FormatUint(sectorID, 10)
 	commitments[sectorIDstr] = types.Commitments{CommD: commD32, CommR: [32]byte{}, CommRStar: [32]byte{}}
-	minerState := &miner.State{
-		SectorCommitments: commitments,
-		NextDoneSet:       types.EmptyIntSet(),
-		ProvingSet:        types.EmptyIntSet(),
-		SlashedSet:        types.EmptyIntSet(),
-		ProvingPeriodEnd:  provingPeriodEnd,
-		SectorSize:        types.OneKiBSectorSize,
-	}
+
+	minerState := miner.NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
+	minerState.SectorCommitments = commitments
+	minerState.ProvingPeriodEnd = provingPeriodEnd
+
 	executableActor := miner.Actor{}
 	if err := executableActor.InitializeState(storage, minerState); err != nil {
 		return err
@@ -211,7 +208,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	blk, err := th.DefaultGenesis(cst, bs)
 	require.NoError(err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(err)
 
 	for _, addr := range targetAddresses {
@@ -223,7 +220,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 }
 
 func establishChannel(st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
-	pdata := core.MustConvertParams(target, eol)
+	pdata := abi.MustConvertParams(target, eol)
 	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {

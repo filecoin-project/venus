@@ -414,7 +414,11 @@ func TestMinerPreviewSetPrice(t *testing.T) {
 
 type minerQueryAndDeserializePlumbing struct{}
 
-func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (mgop *minerQueryAndDeserializePlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	switch method {
 	case "getOwner":
 		return [][]byte{address.TestAddress.Bytes()}, nil
@@ -451,7 +455,7 @@ func TestMinerGetOwnerAddress(t *testing.T) {
 func TestMinerGetWorkerAddress(t *testing.T) {
 	tf.UnitTest(t)
 
-	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2)
+	addr, err := MinerGetWorkerAddress(context.Background(), &minerQueryAndDeserializePlumbing{}, address.TestAddress2, types.NewTipSetKey())
 	assert.NoError(t, err)
 	assert.Equal(t, address.TestAddress2, addr)
 }
@@ -467,8 +471,12 @@ func TestMinerGetPower(t *testing.T) {
 
 type minerGetProvingPeriodPlumbing struct{}
 
-func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	if method == "getProvingPeriod" {
+func (mpp *minerGetProvingPeriodPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+	if method == "getProvingWindow" {
 		return [][]byte{types.NewBlockHeight(10).Bytes(), types.NewBlockHeight(20).Bytes()}, nil
 	}
 	if method == "getProvingSetCommitments" {
@@ -498,7 +506,7 @@ func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context,
 func TestMinerProvingPeriod(t *testing.T) {
 	tf.UnitTest(t)
 
-	pp, err := MinerGetProvingPeriod(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
+	pp, err := MinerGetProvingWindow(context.Background(), &minerGetProvingPeriodPlumbing{}, address.TestAddress2)
 	assert.NoError(t, err)
 	assert.Equal(t, "10", pp.Start.String())
 	assert.Equal(t, "20", pp.End.String())
@@ -507,7 +515,11 @@ func TestMinerProvingPeriod(t *testing.T) {
 
 type minerGetPeerIDPlumbing struct{}
 
-func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (mgop *minerGetPeerIDPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (mgop *minerGetPeerIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 
 	peerID := requirePeerID()
 	return [][]byte{[]byte(peerID)}, nil
@@ -526,7 +538,11 @@ func TestMinerGetPeerID(t *testing.T) {
 
 type minerGetAskPlumbing struct{}
 
-func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (mgop *minerGetAskPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	out, err := cbor.DumpObject(miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
 		Expiry: types.NewBlockHeight(41),
@@ -559,7 +575,11 @@ func requirePeerID() peer.ID {
 
 type minerGetSectorSizePlumbing struct{}
 
-func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (minerGetSectorSizePlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{types.NewBytesAmount(1234).Bytes()}, nil
 }
 func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
@@ -580,7 +600,11 @@ func TestMinerGetSectorSize(t *testing.T) {
 
 type minerGetLastCommittedSectorIDPlumbing struct{}
 
-func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (minerGetLastCommittedSectorIDPlumbing) ChainHeadKey() types.TipSetKey {
+	return types.NewTipSetKey()
+}
+
+func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{leb128.FromUInt64(5432)}, nil
 }
 func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {

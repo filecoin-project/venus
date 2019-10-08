@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -69,7 +69,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}})
+	chainWithMsgs := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -90,7 +90,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chainWithMsgs := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m3, m4}})
+	chainWithMsgs := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m3, m4}})
 
 	wg.Add(2)
 	go testWaitHelp(&wg, t, waiter, m3, false, nil)
@@ -122,7 +122,7 @@ func testWaitError(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, c
 	head := chainStore.GetHead()
 	headTipSet, err := chainStore.GetTipSet(head)
 	require.NoError(t, err)
-	chain := core.NewChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
+	chain := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}}, smsgsSet{smsgs{m3, m4}})
 	// set the head without putting the ancestor block in the chainStore.
 	err = chainStore.SetHead(ctx, chain[len(chain)-1])
 	assert.Nil(t, err)
@@ -183,7 +183,7 @@ func TestWaitConflicting(t *testing.T) {
 	b1.Messages = sm1Cid
 	b1.MessageReceipts = emptyReceiptsCid
 	b1.Tickets = []types.Ticket{{VRFProof: []byte{0}}} // block 1 comes first in message application
-	core.MustPut(cst, b1)
+	mustPut(cst, b1)
 
 	b2 := th.RequireMkFakeChild(t,
 		th.FakeChildParams{
@@ -199,7 +199,7 @@ func TestWaitConflicting(t *testing.T) {
 	b2.Messages = sm2Cid
 	b2.MessageReceipts = emptyReceiptsCid
 	b2.Tickets = []types.Ticket{{VRFProof: []byte{1}}}
-	core.MustPut(cst, b2)
+	mustPut(cst, b2)
 
 	ts := th.RequireNewTipSet(t, b1, b2)
 	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
@@ -249,4 +249,83 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		assert.Fail(t, "Wait should have returned when context was canceled")
 	}
+}
+
+// NewChainWithMessages creates a chain of tipsets containing the given messages
+// and stores them in the given store.  Note the msg arguments are slices of
+// slices of messages -- each slice of slices goes into a successive tipset,
+// and each slice within this slice goes into a block of that tipset
+func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
+	var tipSets []types.TipSet
+	parents := root
+	height := uint64(0)
+	stateRootCidGetter := types.NewCidForTestGetter()
+
+	// only add root to the chain if it is not the zero-valued-tipset
+	if parents.Defined() {
+		for i := 0; i < parents.Len(); i++ {
+			mustPut(store, parents.At(i))
+		}
+		tipSets = append(tipSets, parents)
+		height, _ = parents.Height()
+		height++
+	}
+	emptyMessagesCid, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{})
+	if err != nil {
+		panic(err)
+	}
+	emptyReceiptsCid, err := msgStore.StoreReceipts(context.Background(), []*types.MessageReceipt{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, tsMsgs := range msgSets {
+		var blocks []*types.Block
+		// If a message set does not contain a slice of messages then
+		// add a tipset with no messages and a single block to the chain
+		if len(tsMsgs) == 0 {
+			child := &types.Block{
+				Height:          types.Uint64(height),
+				Parents:         parents.Key(),
+				Messages:        emptyMessagesCid,
+				MessageReceipts: emptyReceiptsCid,
+			}
+			mustPut(store, child)
+			blocks = append(blocks, child)
+		}
+		for _, msgs := range tsMsgs {
+			msgsCid, err := msgStore.StoreMessages(context.Background(), msgs)
+			if err != nil {
+				panic(err)
+			}
+
+			child := &types.Block{
+				Messages:        msgsCid,
+				Parents:         parents.Key(),
+				Height:          types.Uint64(height),
+				StateRoot:       stateRootCidGetter(), // Differentiate all blocks
+				MessageReceipts: emptyReceiptsCid,
+			}
+			mustPut(store, child)
+			blocks = append(blocks, child)
+		}
+		ts, err := types.NewTipSet(blocks...)
+		if err != nil {
+			panic(err)
+		}
+		tipSets = append(tipSets, ts)
+		parents = ts
+		height++
+	}
+
+	return tipSets
+}
+
+// mustPut stores the thingy in the store or panics if it cannot.
+func mustPut(store *hamt.CborIpldStore, thingy interface{}) cid.Cid {
+	cid, err := store.Put(context.Background(), thingy)
+	if err != nil {
+		panic(err)
+	}
+	return cid
 }

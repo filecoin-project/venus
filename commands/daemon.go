@@ -10,12 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	writer "github.com/ipfs/go-log/writer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/clock"
@@ -153,12 +153,12 @@ func getRepo(req *cmds.Request) (repo.Repo, error) {
 // A message sent to or closure of the `terminate` channel signals the server to stop.
 func RunAPIAndWait(ctx context.Context, nd *node.Node, config *config.APIConfig, ready chan interface{}, terminate chan os.Signal) error {
 	servenv := &Env{
-		blockMiningAPI: nd.BlockMiningAPI,
+		blockMiningAPI: nd.BlockMining.BlockMiningAPI,
 		ctx:            ctx,
 		inspectorAPI:   NewInspectorAPI(nd.Repo),
 		porcelainAPI:   nd.PorcelainAPI,
-		retrievalAPI:   nd.RetrievalAPI,
-		storageAPI:     nd.StorageAPI,
+		retrievalAPI:   nd.RetrievalProtocol.RetrievalAPI,
+		storageAPI:     nd.StorageProtocol.StorageAPI,
 	}
 
 	cfg := cmdhttp.NewServerConfig()

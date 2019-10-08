@@ -2,8 +2,6 @@ package testhelpers
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -13,21 +11,25 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type chainWeighter interface {
+	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+}
+
 // FakeChildParams is a wrapper for all the params needed to create fake child blocks.
 type FakeChildParams struct {
-	Consensus      consensus.Protocol
-	GenesisCid     cid.Cid
-	MinerAddr      address.Address
-	NullBlockCount uint64
-	Parent         types.TipSet
-	StateRoot      cid.Cid
-	Signer         consensus.TicketSigner
-	MinerWorker    address.Address
+	ConsensusChainSelection chainWeighter
+	GenesisCid              cid.Cid
+	MinerAddr               address.Address
+	NullBlockCount          uint64
+	Parent                  types.TipSet
+	StateRoot               cid.Cid
+	Signer                  types.Signer
+	MinerWorker             address.Address
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -46,31 +48,23 @@ type FakeChildParams struct {
 // interface.  They are not useful for testing the full range of consensus
 // validation, particularly message processing and mining edge cases.
 func MkFakeChild(params FakeChildParams) (*types.Block, error) {
-
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	powerTableView := &TestView{}
-	con := consensus.NewExpected(cst,
-		bs,
-		NewTestProcessor(),
-		NewFakeBlockValidator(),
-		powerTableView,
+	processor := consensus.NewDefaultProcessor()
+	actorState := consensus.NewActorStateStore(nil, cst, bs, processor)
+	selector := consensus.NewChainSelector(cst,
+		actorState,
 		params.GenesisCid,
-		&verification.FakeVerifier{
-			VerifyPoStValid:                true,
-			VerifyPieceInclusionProofValid: true,
-			VerifySealValid:                true,
-		},
-		BlockTimeTest)
-	params.Consensus = con
+	)
+	params.ConsensusChainSelection = selector
 	return MkFakeChildWithCon(params)
 }
 
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
 func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	wFun := func(ts types.TipSet) (uint64, error) {
-		return params.Consensus.Weight(context.Background(), params.Parent, nil)
+		return params.ConsensusChainSelection.Weight(context.Background(), params.Parent, nil)
 	}
 	return MkFakeChildCore(params.Parent,
 		params.StateRoot,
@@ -88,7 +82,7 @@ func MkFakeChildCore(parent types.TipSet,
 	nullBlockCount uint64,
 	minerAddr address.Address,
 	minerWorker address.Address,
-	signer consensus.TicketSigner,
+	signer types.Signer,
 	wFun func(types.TipSet) (uint64, error)) (*types.Block, error) {
 	// State can be nil because it is assumed consensus uses a
 	// power table view that does not access the state.
@@ -106,7 +100,10 @@ func MkFakeChildCore(parent types.TipSet,
 
 	pIDs := parent.Key()
 
-	newBlock := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
+	newBlock, err := NewValidTestBlockFromTipSet(parent, stateRoot, height, minerAddr, minerWorker, signer)
+	if err != nil {
+		return nil, err
+	}
 
 	// Override fake values with our values
 	newBlock.Parents = pIDs
@@ -138,14 +135,6 @@ func RequireMkFakeChain(t *testing.T, base types.TipSet, num int, params FakeChi
 	return ret
 }
 
-// RequireMkFakeChildWithCon wraps MkFakeChildWithCon with a requirement that
-// it does not error.
-func RequireMkFakeChildWithCon(t *testing.T, params FakeChildParams) *types.Block {
-	child, err := MkFakeChildWithCon(params)
-	require.NoError(t, err)
-	return child
-}
-
 // RequireMkFakeChildCore wraps MkFakeChildCore with a requirement that
 // it does not errror.
 func RequireMkFakeChildCore(t *testing.T,
@@ -169,29 +158,4 @@ func MustNewTipSet(blks ...*types.Block) types.TipSet {
 		panic(err)
 	}
 	return ts
-}
-
-// MakeProofAndWinningTicket generates a proof and ticket that will pass validateMining.
-func MakeProofAndWinningTicket(signerAddr address.Address, minerPower *types.BytesAmount, totalPower *types.BytesAmount, signer consensus.TicketSigner) (types.PoStProof, types.Ticket, error) {
-	poStProof := make([]byte, types.OnePoStProofPartition.ProofLen())
-	var ticket types.Ticket
-
-	quot := totalPower.Quo(minerPower)
-	threshold := types.NewBytesAmount(100000).Mul(types.OneKiBSectorSize)
-
-	if quot.GreaterThan(threshold) {
-		return poStProof, ticket, errors.New("MakeProofAndWinningTicket: minerPower is too small for totalPower to generate a winning ticket")
-	}
-
-	for {
-		poStProof = MakeRandomPoStProofForTest()
-		ticket, err := consensus.CreateTicket(poStProof, signerAddr, signer)
-		if err != nil {
-			errStr := fmt.Sprintf("error creating ticket: %s", err)
-			panic(errStr)
-		}
-		if consensus.CompareTicketPower(ticket, minerPower, totalPower) {
-			return poStProof, ticket, nil
-		}
-	}
 }

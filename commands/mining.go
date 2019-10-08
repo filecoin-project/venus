@@ -105,7 +105,7 @@ type MiningStatusResult struct {
 	Miner         address.Address              `json:"minerAddress"`
 	Owner         address.Address              `json:"owner"`
 	Collateral    types.AttoFIL                `json:"collateral"`
-	ProvingPeriod porcelain.MinerProvingPeriod `json:"provingPeriod,omitempty"`
+	ProvingPeriod porcelain.MinerProvingWindow `json:"provingPeriod,omitempty"`
 	Power         porcelain.MinerPower         `json:"minerPower"`
 }
 
@@ -122,7 +122,7 @@ var miningStatusCmd = &cmds.Command{
 			return err
 		}
 
-		mpp, err := GetPorcelainAPI(env).MinerGetProvingPeriod(req.Context, minerAddress)
+		mpp, err := GetPorcelainAPI(env).MinerGetProvingWindow(req.Context, minerAddress)
 		if err != nil {
 			return err
 		}

@@ -267,13 +267,14 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 // minerQueryAndDeserialize is the subset of the plumbing.API that provides
 // support for sending query messages and getting method signatures.
 type minerQueryAndDeserialize interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
 func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner")
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getOwner", plumbing.ChainHeadKey())
 	if err != nil {
 		return address.Undef, err
 	}
@@ -282,8 +283,8 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize
 }
 
 // MinerGetWorkerAddress queries for the worker address of the given miner
-func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (address.Address, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker")
+func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error) {
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker", baseKey)
 	if err != nil {
 		return address.Undef, err
 	}
@@ -294,8 +295,8 @@ func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserializ
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.
-func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, params ...interface{}) (*abi.Value, error) {
-	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, params...)
+func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, baseKey types.TipSetKey, params ...interface{}) (*abi.Value, error) {
+	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, baseKey, params...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "'%s' query message failed", method)
 	}
@@ -315,7 +316,7 @@ func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize,
 
 // MinerGetSectorSize queries for the sector size of the given miner.
 func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (*types.BytesAmount, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getSectorSize")
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getSectorSize", plumbing.ChainHeadKey())
 	if err != nil {
 		return nil, errors.Wrap(err, "query and deserialize failed")
 	}
@@ -330,7 +331,7 @@ func MinerGetSectorSize(ctx context.Context, plumbing minerQueryAndDeserialize, 
 
 // MinerCalculateLateFee calculates the fee due if a miner's PoSt were to be mined at `height`.
 func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, height *types.BlockHeight) (types.AttoFIL, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "calculateLateFee", height)
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "calculateLateFee", plumbing.ChainHeadKey(), height)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.Wrap(err, "query and deserialize failed")
 	}
@@ -346,7 +347,7 @@ func MinerCalculateLateFee(ctx context.Context, plumbing minerQueryAndDeserializ
 // MinerGetLastCommittedSectorID queries for the id of the last sector committed
 // by the given miner.
 func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (uint64, error) {
-	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getLastUsedSectorID")
+	abiVal, err := queryAndDeserialize(ctx, plumbing, minerAddr, "getLastUsedSectorID", plumbing.ChainHeadKey())
 	if err != nil {
 		return 0, errors.Wrap(err, "query and deserialize failed")
 	}
@@ -361,12 +362,13 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetAsk queries for an ask of the given miner
 func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address, askID uint64) (minerActor.Ask, error) {
-	ret, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getAsk", big.NewInt(int64(askID)))
+	ret, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getAsk", plumbing.ChainHeadKey(), big.NewInt(int64(askID)))
 	if err != nil {
 		return minerActor.Ask{}, err
 	}
@@ -381,12 +383,13 @@ func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address
 
 // mgpidAPI is the subset of the plumbing.API that MinerGetPeerID uses.
 type mgpidAPI interface {
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() types.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetPeerID queries for the peer id of the given miner
 func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Address) (peer.ID, error) {
-	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getPeerID")
+	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getPeerID", plumbing.ChainHeadKey())
 	if err != nil {
 		return "", err
 	}
@@ -398,24 +401,25 @@ func MinerGetPeerID(ctx context.Context, plumbing mgpidAPI, minerAddr address.Ad
 	return pid, nil
 }
 
-// MinerProvingPeriod contains a miners proving period start and end as well
+// MinerProvingWindow contains a miners proving period start and end as well
 // as a set of their proving set.
-type MinerProvingPeriod struct {
+type MinerProvingWindow struct {
 	Start      types.BlockHeight
 	End        types.BlockHeight
 	ProvingSet map[string]types.Commitments
 }
 
-// MinerGetProvingPeriod gets the proving period and commitments for miner `minerAddr`.
-func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingPeriod, error) {
+// MinerGetProvingWindow gets the proving period and commitments for miner `minerAddr`.
+func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address) (MinerProvingWindow, error) {
 	res, err := plumbing.MessageQuery(
 		ctx,
 		address.Undef,
 		minerAddr,
-		"getProvingPeriod",
+		"getProvingWindow",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query ProvingPeriod method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query ProvingPeriod method failed")
 	}
 	start, end := types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1])
 
@@ -424,26 +428,27 @@ func MinerGetProvingPeriod(ctx context.Context, plumbing minerQueryAndDeserializ
 		address.Undef,
 		minerAddr,
 		"getProvingSetCommitments",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query SetCommitments method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query SetCommitments method failed")
 	}
 
 	sig, err := plumbing.ActorGetSignature(ctx, minerAddr, "getProvingSetCommitments")
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "query method failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "query method failed")
 	}
 
 	commitmentsVal, err := abi.Deserialize(res[0], sig.Return[0])
 	if err != nil {
-		return MinerProvingPeriod{}, errors.Wrap(err, "deserialization failed")
+		return MinerProvingWindow{}, errors.Wrap(err, "deserialization failed")
 	}
 	commitments, ok := commitmentsVal.Val.(map[string]types.Commitments)
 	if !ok {
-		return MinerProvingPeriod{}, errors.New("type assertion failed")
+		return MinerProvingWindow{}, errors.New("type assertion failed")
 	}
 
-	return MinerProvingPeriod{
+	return MinerProvingWindow{
 		Start:      *start,
 		End:        *end,
 		ProvingSet: commitments,
@@ -463,6 +468,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 		address.Undef,
 		minerAddr,
 		"getPower",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
 		return MinerPower{}, err
@@ -474,6 +480,7 @@ func MinerGetPower(ctx context.Context, plumbing mgaAPI, minerAddr address.Addre
 		address.Undef,
 		address.StorageMarketAddress,
 		"getTotalStorage",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
 		return MinerPower{}, err
@@ -493,6 +500,7 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 		address.Undef,
 		minerAddr,
 		"getActiveCollateral",
+		plumbing.ChainHeadKey(),
 	)
 	if err != nil {
 		return types.AttoFIL{}, err

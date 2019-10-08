@@ -94,8 +94,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require.NoError(t, err)
 		nd, err := node.New(ctx, opts...)
 		require.NoError(t, err)
-		nd.Bootstrapper.MinPeerThreshold = 2
-		nd.Bootstrapper.Period = 10 * time.Millisecond
+		nd.Network.Bootstrapper.MinPeerThreshold = 2
+		nd.Network.Bootstrapper.Period = 10 * time.Millisecond
 		assert.NoError(t, nd.Start(ctx))
 		defer nd.Stop(ctx)
 
@@ -126,7 +126,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(t, nd.Start(ctx))
 
-	assert.NotEqual(t, 0, nd.ChainReader.GetHead().Len())
+	assert.NotEqual(t, 0, nd.Chain.ChainReader.GetHead().Len())
 	nd.Stop(ctx)
 }
 
@@ -136,7 +136,7 @@ func TestNodeStartMining(t *testing.T) {
 	ctx := context.Background()
 
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
-	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]), node.AutoSealIntervalSecondsOpt(1))
+	minerNode := node.MakeNodeWithChainSeed(t, seed, []node.BuilderOpt{}, node.PeerKeyOpt(node.PeerKeys[0]))
 
 	seed.GiveKey(t, minerNode, 0)
 	mineraddr, ownerAddr := seed.GiveMiner(t, minerNode, 0)
@@ -150,11 +150,11 @@ func TestNodeStartMining(t *testing.T) {
 	t.Run("Start/Stop/Start results in a MiningScheduler that is started", func(t *testing.T) {
 		assert.NoError(t, minerNode.StartMining(ctx))
 		defer minerNode.StopMining(ctx)
-		assert.True(t, minerNode.MiningScheduler.IsStarted())
+		assert.True(t, minerNode.BlockMining.MiningScheduler.IsStarted())
 		minerNode.StopMining(ctx)
-		assert.False(t, minerNode.MiningScheduler.IsStarted())
+		assert.False(t, minerNode.BlockMining.MiningScheduler.IsStarted())
 		assert.NoError(t, minerNode.StartMining(ctx))
-		assert.True(t, minerNode.MiningScheduler.IsStarted())
+		assert.True(t, minerNode.BlockMining.MiningScheduler.IsStarted())
 	})
 
 	t.Run("Start + Start gives an error message saying mining is already started", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestNodeStartMining(t *testing.T) {
 	t.Run("MiningStart sets storage fault slasher", func(t *testing.T) {
 		assert.NoError(t, minerNode.StartMining(ctx))
 		defer minerNode.StopMining(ctx)
-		assert.NotNil(t, minerNode.StorageFaultSlasher)
+		assert.NotNil(t, minerNode.FaultSlasher.StorageFaultSlasher)
 	})
 }
 
@@ -211,8 +211,7 @@ func TestNodeConfig(t *testing.T) {
 		node.BlockTime(time.Duration(configBlockTime)),
 	}
 
-	initOpts := []node.InitOpt{node.AutoSealIntervalSecondsOpt(120)}
-
+	initOpts := []node.InitOpt{}
 	tno := node.TestNodeOptions{
 		BuilderOpts: builderOptions,
 		InitOpts:    initOpts,

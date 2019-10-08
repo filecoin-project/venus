@@ -6,11 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-ipfs-blockstore"
-
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	"github.com/stretchr/testify/mock"
@@ -42,21 +37,21 @@ func (s *MockScheduler) IsStarted() bool {
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFunc func(context.Context, types.TipSet, int, chan<- Output) bool
+	WorkFunc func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket)
 }
 
 // Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
-func (w *TestWorker) Mine(ctx context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func (w *TestWorker) Mine(ctx context.Context, ts types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket) {
 	if w.WorkFunc == nil {
 		panic("must set MutableTestWorker's WorkFunc before calling Work")
 	}
-	return w.WorkFunc(ctx, ts, nullBlkCount, outCh)
+	return w.WorkFunc(ctx, ts, ticketArray, outCh)
 }
 
 // NewTestWorkerWithDeps creates a worker that calls the provided input
 // function when Mine() is called.
-func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, int, chan<- Output) bool) *TestWorker {
+func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket)) *TestWorker {
 	return &TestWorker{
 		WorkFunc: f,
 	}
@@ -64,15 +59,15 @@ func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, int, chan<- Out
 
 // MakeEchoMine returns a test worker function that itself returns the first
 // block of the input tipset as output.
-func MakeEchoMine(t *testing.T) func(context.Context, types.TipSet, int, chan<- Output) bool {
-	echoMine := func(c context.Context, ts types.TipSet, nullBlkCount int, outCh chan<- Output) bool {
+func MakeEchoMine(t *testing.T) func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket) {
+	echoMine := func(c context.Context, ts types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket) {
 		require.True(t, ts.Defined())
 		b := ts.At(0)
 		select {
 		case outCh <- Output{NewBlock: b}:
 		case <-c.Done():
 		}
-		return true
+		return true, types.Ticket{}
 	}
 	return echoMine
 }
@@ -114,30 +109,8 @@ func ReceiveOutCh(ch <-chan Output) int {
 	}
 }
 
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has 1/n power.
-type TestPowerTableView struct {
-	n uint64
-}
-
-var _ consensus.PowerTableView = &TestPowerTableView{}
-
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(n uint64) *TestPowerTableView {
-	return &TestPowerTableView{n: n}
-}
-
-// Total always returns n.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(tv.n), nil
-}
-
-// Miner always returns 1.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return types.NewBytesAmount(uint64(1)), nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
+// NthTicket returns a ticket with a vdf result equal to a byte slice wrapping
+// the input uint8 value.
+func NthTicket(i uint8) types.Ticket {
+	return types.Ticket{VDFResult: []byte{i}}
 }

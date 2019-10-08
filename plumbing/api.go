@@ -20,8 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/core"
 	"github.com/filecoin-project/go-filecoin/exec"
+	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/plumbing/cfg"
@@ -45,17 +45,17 @@ type API struct {
 	logger logging.EventLogger
 
 	bitswap       exchange.Interface
-	chain         *cst.ChainStateProvider
+	chain         *cst.ChainStateReadWriter
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
 	dag           *dag.DAG
 	expected      consensus.Protocol
-	msgPool       *core.MessagePool
+	msgPool       *message.Pool
 	msgPreviewer  *msg.Previewer
-	msgQueryer    *msg.Queryer
+	actorState    *consensus.ActorStateStore
 	msgWaiter     *msg.Waiter
 	network       *net.Network
-	outbox        *core.Outbox
+	outbox        *message.Outbox
 	sectorBuilder func() sectorbuilder.SectorBuilder
 	storagedeals  *strgdls.Store
 	wallet        *wallet.Wallet
@@ -64,18 +64,18 @@ type API struct {
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
 	Bitswap       exchange.Interface
-	Chain         *cst.ChainStateProvider
+	Chain         *cst.ChainStateReadWriter
+	ActState      *consensus.ActorStateStore
 	Sync          *cst.ChainSyncProvider
 	Config        *cfg.Config
 	DAG           *dag.DAG
 	Deals         *strgdls.Store
 	Expected      consensus.Protocol
-	MsgPool       *core.MessagePool
+	MsgPool       *message.Pool
 	MsgPreviewer  *msg.Previewer
-	MsgQueryer    *msg.Queryer
 	MsgWaiter     *msg.Waiter
 	Network       *net.Network
-	Outbox        *core.Outbox
+	Outbox        *message.Outbox
 	SectorBuilder func() sectorbuilder.SectorBuilder
 	Wallet        *wallet.Wallet
 }
@@ -87,13 +87,13 @@ func New(deps *APIDeps) *API {
 
 		bitswap:       deps.Bitswap,
 		chain:         deps.Chain,
+		actorState:    deps.ActState,
 		syncer:        deps.Sync,
 		config:        deps.Config,
 		dag:           deps.DAG,
 		expected:      deps.Expected,
 		msgPool:       deps.MsgPool,
 		msgPreviewer:  deps.MsgPreviewer,
-		msgQueryer:    deps.MsgQueryer,
 		msgWaiter:     deps.MsgWaiter,
 		network:       deps.Network,
 		outbox:        deps.Outbox,
@@ -156,9 +156,19 @@ func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.Mess
 	return api.chain.GetReceipts(ctx, id)
 }
 
-// ChainHead returns the head tipset
-func (api *API) ChainHead() (types.TipSet, error) {
+// ChainHeadKey returns the head tipset key
+func (api *API) ChainHeadKey() types.TipSetKey {
 	return api.chain.Head()
+}
+
+// ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
+func (api *API) ChainSetHead(ctx context.Context, key types.TipSetKey) error {
+	return api.chain.SetHead(ctx, key)
+}
+
+// ChainTipSet returns the tipset at the given key
+func (api *API) ChainTipSet(key types.TipSetKey) (types.TipSet, error) {
+	return api.chain.GetTipSet(key)
 }
 
 // ChainLs returns an iterator of tipsets from head to genesis
@@ -200,7 +210,7 @@ func (api *API) OutboxQueues() []address.Address {
 }
 
 // OutboxQueueLs lists messages in the queue for an address.
-func (api *API) OutboxQueueLs(sender address.Address) []*core.QueuedMessage {
+func (api *API) OutboxQueueLs(sender address.Address) []*message.Queued {
 	return api.outbox.Queue().List(sender)
 }
 
@@ -233,8 +243,17 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
-	return api.msgQueryer.Query(ctx, optFrom, to, method, params...)
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
+	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
+	if err != nil {
+		return [][]byte{}, err
+	}
+	return snapshot.Query(ctx, optFrom, to, method, params...)
+}
+
+// Snapshot returns a interface to the chain state a a particular tipset
+func (api *API) Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+	return api.actorState.Snapshot(ctx, baseKey)
 }
 
 // MessageSend sends a message. It uses the default from address if none is given and signs the
@@ -340,8 +359,8 @@ func (api *API) WalletNewAddress() (address.Address, error) {
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet
-func (api *API) WalletImport(kinfos []*types.KeyInfo) ([]address.Address, error) {
-	return api.wallet.Import(kinfos)
+func (api *API) WalletImport(kinfos ...*types.KeyInfo) ([]address.Address, error) {
+	return api.wallet.Import(kinfos...)
 }
 
 // WalletExport returns the KeyInfos for the given wallet addresses

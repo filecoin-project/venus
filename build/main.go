@@ -122,7 +122,6 @@ func deps() {
 		//     offline development.
 		cmd("go mod download"),
 		// Download and build proofs.
-		cmd("./scripts/install-rust-fil-proofs.sh"),
 		cmd("./scripts/install-go-bls-sigs.sh"),
 		cmd("./scripts/install-go-sectorbuilder.sh"),
 		cmd("./scripts/install-filecoin-parameters.sh"),
@@ -355,9 +354,5 @@ func main() {
 }
 
 func getCommitSha() string {
-	commit := runCapture("git log -n 1 --format=%H")
-	if os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA") != "" {
-		commit = os.Getenv("FILECOIN_OVERRIDE_BUILD_SHA")
-	}
-	return commit
+	return runCapture("git log -n 1 --format=%H")
 }

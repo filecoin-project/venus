@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
-	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
@@ -25,8 +26,10 @@ func init() {
 	cbor.RegisterCborType(Message{})
 }
 
-// Protocol is the libp2p protocol identifier for the hello protocol.
-const protocol = "/fil/hello/1.0.0"
+// protocol is the libp2p protocol identifier for the hello protocol.
+func helloProtocol(networkName string) protocol.ID {
+	return protocol.ID(fmt.Sprintf("/fil/hello/%s", networkName))
+}
 
 var log = logging.Logger("/fil/hello")
 
@@ -57,7 +60,7 @@ type Handler struct {
 	// for filling out our hello messages.
 	getHeaviestTipSet getTipSetFunc
 
-	net string
+	networkName string
 }
 
 // New creates a new instance of the hello protocol and registers it to
@@ -68,9 +71,9 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 		genesis:           gen,
 		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
-		net:               net,
+		networkName:       net,
 	}
-	h.SetStreamHandler(protocol, hello.handleNewStream)
+	h.SetStreamHandler(helloProtocol(net), hello.handleNewStream)
 
 	// register for connection notifications
 	h.Network().Notify((*helloNotify)(hello))
@@ -81,7 +84,7 @@ func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSe
 func (h *Handler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 	if err := h.sendHello(s); err != nil {
-		log.Errorf("failed to send hello message:%s", err)
+		log.Debugf("failed to send hello message:%s", err)
 	}
 	return
 }
@@ -116,11 +119,11 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 
 // ReceiveHello receives a hello message from peer `p` and returns it.
 func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error) {
-	s, err := h.host.NewStream(ctx, p, protocol)
+	s, err := h.host.NewStream(ctx, p, helloProtocol(h.networkName))
 	if err != nil {
 		return nil, err
 	}
-	defer s.Close() // nolint: errcheck
+	defer func() { _ = s.Close() }()
 
 	var hello Message
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
@@ -161,8 +164,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		from := c.RemotePeer()
 		hello, err := hn.hello().ReceiveHello(ctx, from)
 		if err != nil {
-			log.Warningf("failed to receive hello handshake from peer %s: %s", from, err)
-			_ = c.Close()
+			log.Debugf("failed to receive hello handshake from peer %s: %s", from, err)
 			return
 		}
 
@@ -171,6 +173,7 @@ func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
 		case err == ErrBadGenesis:
 			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.hello().genesis, from)
 			genesisErrCt.Inc(context.TODO(), 1)
+			_ = c.Close()
 			return
 		case err == nil:
 			hn.hello().callBack(ci)

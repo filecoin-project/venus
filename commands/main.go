@@ -306,8 +306,8 @@ func getAPIAddress(req *cmds.Request) (string, error) {
 }
 
 func requiresDaemon(req *cmds.Request) bool {
-	for _, cmd := range rootSubcmdsLocal {
-		if req.Command == cmd {
+	for cmd := range rootSubcmdsLocal {
+		if len(req.Path) > 0 && req.Path[0] == cmd {
 			return false
 		}
 	}

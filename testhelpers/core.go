@@ -13,7 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -31,7 +30,7 @@ import (
 // the state tree, requiring that all its steps succeed.
 func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	tree := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	tree := state.NewEmptyStateTree(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
@@ -178,7 +177,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 	blk, err := DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot, builtin.Actors)
+	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
 	vms := vm.NewStorageMap(bs)
@@ -195,10 +194,11 @@ type testStorage struct {
 	state interface{}
 }
 
-var _ exec.Storage = testStorage{}
+var _ exec.Storage = &testStorage{}
 
-// Put satisfies the Storage interface but does nothing.
-func (ts testStorage) Put(v interface{}) (cid.Cid, error) {
+// Put satisfies the Storage interface
+func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
+	ts.state = v
 	return cid.Cid{}, nil
 }
 
