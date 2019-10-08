@@ -24,7 +24,8 @@ type Actors struct {
 	actors map[codeVersion]exec.ExecutableActor
 }
 
-func (ba Actors) GetBuiltinActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error) {
+// GetActorCode returns executable code for an actor by code cid at a specific protocol version
+func (ba Actors) GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error) {
 	if !code.Defined() {
 		return nil, fmt.Errorf("missing code")
 	}
@@ -39,16 +40,15 @@ type BuiltinActorsBuilder struct {
 	actors map[codeVersion]exec.ExecutableActor
 }
 
-func NewBuiltinActorsBuilder() *BuiltinActorsBuilder {
+func NewActorsBuilder() *BuiltinActorsBuilder {
 	return &BuiltinActorsBuilder{actors: map[codeVersion]exec.ExecutableActor{}}
 }
 
-func BuiltinActorsExtender(actors Actors) *BuiltinActorsBuilder {
-	newActors := make(map[codeVersion]exec.ExecutableActor, len(actors.actors))
-	for k, v := range actors.actors {
-		newActors[k] = v
+func (bab *BuiltinActorsBuilder) AddAll(actors Actors) *BuiltinActorsBuilder {
+	for cv, a := range actors.actors {
+		bab.Add(cv.code, cv.protocolVersion, a)
 	}
-	return &BuiltinActorsBuilder{actors: newActors}
+	return bab
 }
 
 func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor exec.ExecutableActor) *BuiltinActorsBuilder {
@@ -62,7 +62,7 @@ func (bab *BuiltinActorsBuilder) Build() Actors {
 
 // DefaultActors is list of all actors that ship with Filecoin.
 // They are indexed by their CID.
-var DefaultActors = NewBuiltinActorsBuilder().
+var DefaultActors = NewActorsBuilder().
 	Add(types.AccountActorCodeCid, 0, &account.Actor{}).
 	Add(types.StorageMarketActorCodeCid, 0, &storagemarket.Actor{}).
 	Add(types.PaymentBrokerActorCodeCid, 0, &paymentbroker.Actor{}).

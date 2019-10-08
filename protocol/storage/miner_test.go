@@ -633,7 +633,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 }
 
 func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
-	ea, error := builtin.DefaultActors.GetBuiltinActorCode(types.MinerActorCodeCid, 0)
+	ea, error := builtin.DefaultActors.GetActorCode(types.MinerActorCodeCid, 0)
 	if error != nil {
 		return nil, err
 	}

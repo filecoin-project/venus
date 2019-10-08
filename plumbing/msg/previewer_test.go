@@ -37,7 +37,8 @@ func TestPreview(t *testing.T) {
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through genesis helpers.
-		actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+		actors := builtin.NewActorsBuilder().
+			AddAll(builtin.DefaultActors).
 			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 			Build()
 		processor := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder(), actors)

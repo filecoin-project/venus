@@ -335,7 +335,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	actors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(2)
@@ -612,7 +613,8 @@ func TestNestedSendBalance(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	actors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 
@@ -661,7 +663,8 @@ func TestReentrantTransferDoesntAllowMultiSpending(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	actors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 
@@ -748,7 +751,8 @@ func TestApplyQueryMessageWillNotAlterState(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	actors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 
@@ -790,7 +794,8 @@ func TestApplyMessageChargesGas(t *testing.T) {
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	actors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	actors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 
@@ -944,7 +949,8 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
 	fakeActorCodeCid := types.NewCidForTestGetter()()
-	builtinActors := builtin.BuiltinActorsExtender(builtin.DefaultActors).
+	builtinActors := builtin.NewActorsBuilder().
+		AddAll(builtin.DefaultActors).
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 

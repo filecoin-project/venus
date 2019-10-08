@@ -101,7 +101,7 @@ func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 // IsActorNotFoundError is true of the error returned by
-// GetActor when no actor was found at the given address.
+// GetActorCode when no actor was found at the given address.
 func IsActorNotFoundError(err error) bool {
 	cause := errors.Cause(err)
 	e, ok := cause.(actornotfound)
@@ -122,7 +122,7 @@ func (e actorNotFoundError) ActorNotFound() bool {
 	return true
 }
 
-// GetActor retrieves an actor by their address. If no actor
+// GetActorCode retrieves an actor by their address. If no actor
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {

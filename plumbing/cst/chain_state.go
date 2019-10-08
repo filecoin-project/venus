@@ -106,7 +106,7 @@ func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHei
 	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }
 
-// GetActor returns an actor from the latest state on the chain
+// GetActorCode returns an actor from the latest state on the chain
 func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
 }
@@ -150,7 +150,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 	}
 
 	// TODO: use chain height to determine protocol version
-	executable, err := chn.actors.GetBuiltinActorCode(actor.Code, 0)
+	executable, err := chn.actors.GetActorCode(actor.Code, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
