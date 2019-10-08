@@ -58,11 +58,6 @@ func TestChainLs(t *testing.T) {
 			require.NoError(t, err)
 			bs = append(bs, b)
 			require.Equal(t, 1, len(b))
-			line = bytes.TrimPrefix(line, []byte{'['})
-			line = bytes.TrimSuffix(line, []byte{']'})
-
-			// ensure conformance with JSON schema
-			requireSchemaConformance(t, line, "filecoin_block")
 		}
 
 		assert.Equal(t, 2, len(bs))
