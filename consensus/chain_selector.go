@@ -16,6 +16,27 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+// Parameters used by the latest weight function "NewWeight"
+const (
+	// newECV is the constant V defined in the EC spec.
+	newECV uint64 = 2
+
+	// pi is the multiplicand in the null penalty term
+	pi float64 = 0.87
+
+	// nullThresh is the min number of null rounds before the penalty kicks in
+	nullThresh = 3
+)
+
+// Parameters used by the deprecated weight function before the alphanet upgrade
+const (
+	// ecV is the constant V defined in the EC spec.
+	ecV uint64 = 10
+
+	// ecPrM is the power ratio magnitude defined in the EC spec.
+	ecPrM uint64 = 100
+)
+
 // ChainSelector weighs and compares chains according to the Storage Power
 // Consensus Protocol
 type ChainSelector struct {
@@ -33,8 +54,62 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 	}
 }
 
-// Weight returns the expected consensus weight of this TipSet in uint64
-// encoded fixed point representation.
+// NewWeight returns the EC weight of this TipSet in uint64 encoded fixed point
+// representation.
+//
+// w(i) = w(i-1) + (pi)^(P_n) * [V * num_blks + X ]
+// P_n(n) = if n < 3:0 else: n, n is number of null rounds
+// X = log_2(total_storage(pSt))
+func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
+	ctx = log.Start(ctx, "Expected.Weight")
+	log.LogKV(ctx, "Weight", ts.String())
+	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
+		return uint64(0), nil
+	}
+	// Retrieve parent weight.
+	parentW, err := ts.ParentWeight()
+	if err != nil {
+		return uint64(0), err
+	}
+
+	w, err := types.FixedToBig(parentW)
+	if err != nil {
+		return uint64(0), err
+	}
+
+	// Each block adds ECV to the weight's inner term
+	innerTerm := new(big.Float)
+	floatECV := new(big.Float).SetInt64(int64(newECV))
+	floatNumBlocks := new(big.Float).SetInt64(int64(ts.Len()))
+	innerTerm.Mul(floatECV, floatNumBlocks)
+
+	// Add bitnum(total storage power) to the weight's inner term
+	powerTableView := c.createPowerTableView(pSt)
+	totalBytes, err := powerTableView.Total(ctx)
+	if err != nil {
+		return uint64(0), err
+	}
+	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
+	innerTerm.Add(innerTerm, roughLogTotalBytes)
+
+	// Attenuate weight by the number of tickets
+	numTickets := len(ts.At(0).Tickets)
+	P := new(big.Float).SetInt64(int64(1))
+	if numTickets >= nullThresh {
+		bigPI := new(big.Float).SetFloat64(pi)
+		// P = pi^numNull
+		for i := 0; i < numTickets; i++ {
+			P.Mul(P, bigPI)
+		}
+	}
+	update := new(big.Float)
+	update.Mul(innerTerm, P)
+	w.Add(w, update)
+	return types.BigToFixed(w)
+}
+
+// Weight returns the EC weight of this TipSet in uint64 encoded fixed point
+// representation.
 func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
@@ -54,14 +129,14 @@ func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pSt state.T
 
 	powerTableView := c.createPowerTableView(pSt)
 
-	// Each block in the tipset adds ECV + ECPrm * miner_power to parent weight.
+	// Each block in the tipset adds ecV + ECPrm * miner_power to parent weight.
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return uint64(0), err
 	}
 	floatTotalBytes := new(big.Float).SetInt(totalBytes.BigInt())
-	floatECV := new(big.Float).SetInt64(int64(ECV))
-	floatECPrM := new(big.Float).SetInt64(int64(ECPrM))
+	floatECV := new(big.Float).SetInt64(int64(ecV))
+	floatECPrM := new(big.Float).SetInt64(int64(ecPrM))
 	for _, blk := range ts.ToSlice() {
 		minerBytes, err := powerTableView.Miner(ctx, blk.Miner)
 		if err != nil {

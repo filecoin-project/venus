@@ -622,7 +622,8 @@ func getWeightTest(_ context.Context, ts types.TipSet) (uint64, error) {
 	if err != nil {
 		return uint64(0), err
 	}
-	return w + uint64(ts.Len())*consensus.ECV, nil
+	// consensus.ecV = 10
+	return w + uint64(ts.Len())*10, nil
 }
 
 func makeExplodingGetStateTree(st state.Tree) func(context.Context, types.TipSet) (state.Tree, error) {
