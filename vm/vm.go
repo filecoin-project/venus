@@ -42,7 +42,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 		return nil, 0, nil
 	}
 
-	// TODO: use chain height based protocol version here
+	// TODO: use chain height based protocol version here (#3360)
 	toExecutable, err := vmCtx.actors.GetActorCode(vmCtx.to.Code, 0)
 	if err != nil {
 		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]

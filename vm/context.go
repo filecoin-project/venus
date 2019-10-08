@@ -202,7 +202,7 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 	newActor.Code = code
 
 	childStorage := ctx.storageMap.NewStorage(addr, newActor)
-	// TODO: need to use blockheight derived version
+	// TODO: need to use blockheight derived version (#3360)
 	execActor, err := ctx.actors.GetActorCode(code, 0)
 	if err != nil {
 		return errors.NewRevertErrorf("attempt to create executable actor from non-existent code %s", code.String())
