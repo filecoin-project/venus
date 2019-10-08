@@ -7,7 +7,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
@@ -27,7 +26,7 @@ func TestTotal(t *testing.T) {
 	numCommittedSectors := uint64(19)
 	cst, bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	as := consensus.NewActorStateStore(nil, cst, bs)
+	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
 	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
 
 	actual, err := consensus.NewPowerTableView(snapshot).Total(ctx)
@@ -46,7 +45,7 @@ func TestMiner(t *testing.T) {
 	numCommittedSectors := uint64(12)
 	cst, bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	as := consensus.NewActorStateStore(nil, cst, bs)
+	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
 	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
 
 	actual, err := consensus.NewPowerTableView(snapshot).Miner(ctx, addr)
@@ -81,7 +80,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot, builtin.Actors)
+	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot)
 	require.NoError(t, err)
 
 	return cst, bs, info.Miners[0].Address, stateTree

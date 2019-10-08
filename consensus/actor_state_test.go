@@ -42,10 +42,9 @@ func TestQuery(t *testing.T) {
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through geneisus helpers.
-		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-		defer func() {
-			delete(builtin.Actors, fakeActorCodeCid)
-		}()
+
+		actors := builtin.NewBuilder().AddAll(builtin.DefaultActors).Add(fakeActorCodeCid, 0, &actor.FakeActor{}).Build()
+		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
 		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
 			AddActor(fakeActorAddr, fakeActor),
@@ -56,7 +55,7 @@ func TestQuery(t *testing.T) {
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 
-		chainState := NewActorStateStore(chainStore, cst, bs)
+		chainState := NewActorStateStore(chainStore, cst, bs, processor)
 		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
@@ -84,10 +83,11 @@ func TestQuery(t *testing.T) {
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through geneisus helpers.
-		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-		defer func() {
-			delete(builtin.Actors, fakeActorCodeCid)
-		}()
+		actors := builtin.NewBuilder().
+			AddAll(builtin.DefaultActors).
+			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+			Build()
+		processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
 		testGen := MakeGenesisFunc(
 			// Actor we will send the query to.
 			AddActor(fakeActorAddr, fakeActor),
@@ -98,7 +98,7 @@ func TestQuery(t *testing.T) {
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 
-		chainState := NewActorStateStore(chainStore, cst, bs)
+		chainState := NewActorStateStore(chainStore, cst, bs, processor)
 		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -112,10 +113,11 @@ func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 }
 
 // NewFakeProcessor creates a processor with a test validator and test rewarder
-func NewFakeProcessor() *DefaultProcessor {
+func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
 		signedMessageValidator: &FakeSignedMessageValidator{},
 		blockRewarder:          &FakeBlockRewarder{},
+		actors:                 actors,
 	}
 }
 

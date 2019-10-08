@@ -37,8 +37,11 @@ func TestPreview(t *testing.T) {
 		// the given address but doesn't set up the mapping from its code cid to
 		// actor implementation, so we do that here. Might be nice to handle this
 		// setup/teardown through genesis helpers.
-		builtin.Actors[fakeActorCodeCid] = &actor.FakeActor{}
-		defer delete(builtin.Actors, fakeActorCodeCid)
+		actors := builtin.NewBuilder().
+			AddAll(builtin.DefaultActors).
+			Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
+			Build()
+		processor := consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), consensus.NewDefaultBlockRewarder(), actors)
 		testGen := consensus.MakeGenesisFunc(
 			// Actor we will send the query to.
 			consensus.AddActor(fakeActorAddr, fakeActor),
@@ -47,7 +50,7 @@ func TestPreview(t *testing.T) {
 		)
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
-		previewer := NewPreviewer(deps.chainStore, deps.cst, deps.blockstore)
+		previewer := NewPreviewer(deps.chainStore, deps.cst, deps.blockstore, processor)
 		returnValue, err := previewer.Preview(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)

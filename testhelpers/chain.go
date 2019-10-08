@@ -47,7 +47,8 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
-	actorState := consensus.NewActorStateStore(nil, cst, bs)
+	processor := consensus.NewDefaultProcessor()
+	actorState := consensus.NewActorStateStore(nil, cst, bs, processor)
 	con := consensus.NewExpected(cst,
 		bs,
 		NewFakeProcessor(),

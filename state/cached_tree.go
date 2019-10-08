@@ -2,11 +2,9 @@ package state
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -22,11 +20,6 @@ func NewCachedStateTree(st Tree) *CachedTree {
 		st:    st,
 		cache: make(map[address.Address]*actor.Actor),
 	}
-}
-
-// GetBuiltinActorCode simply delegates to the underlying tree
-func (t *CachedTree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
-	return t.st.GetBuiltinActorCode(codePointer)
 }
 
 // GetActor retrieves an actor from the cache. If it's not found it will get it from the

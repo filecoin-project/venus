@@ -48,7 +48,7 @@ func TestStatePutGet(t *testing.T) {
 	tcid, err := tree.Flush(ctx)
 	assert.NoError(t, err)
 
-	tree2, err := LoadStateTree(ctx, cst, tcid, nil)
+	tree2, err := LoadStateTree(ctx, cst, tcid)
 	assert.NoError(t, err)
 
 	act1out2, err := tree2.GetActor(ctx, addr1)
@@ -74,7 +74,7 @@ func TestStateErrors(t *testing.T) {
 	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
 	assert.NoError(t, err)
 
-	tr2, err := LoadStateTree(ctx, cst, c, nil)
+	tr2, err := LoadStateTree(ctx, cst, c)
 	assert.Error(t, err)
 	assert.Nil(t, tr2)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -37,7 +38,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
-	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
@@ -258,7 +258,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Deals:         strgdls.New(b.Repo.DealsDatastore()),
 		Expected:      nd.Chain.Consensus,
 		MsgPool:       nd.Messaging.msgPool,
-		MsgPreviewer:  msg.NewPreviewer(nd.Chain.ChainReader, nd.Blockstore.cborStore, nd.Blockstore.Blockstore),
+		MsgPreviewer:  msg.NewPreviewer(nd.Chain.ChainReader, nd.Blockstore.cborStore, nd.Blockstore.Blockstore, nd.Chain.processor),
 		ActState:      nd.Chain.ActorState,
 		MsgWaiter:     msg.NewWaiter(nd.Chain.ChainReader, nd.Chain.MessageStore, nd.Blockstore.Blockstore, nd.Blockstore.cborStore),
 		Network:       nd.Network.Network,
@@ -405,11 +405,11 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	chainStore := chain.NewStore(b.Repo.ChainDatastore(), blockstore.cborStore, &state.TreeStateLoader{}, chainStatusReporter, b.genCid)
 
 	// set up processor
-	var processor consensus.Processor
+	var processor *consensus.DefaultProcessor
 	if b.Rewarder == nil {
 		processor = consensus.NewDefaultProcessor()
 	} else {
-		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), b.Rewarder)
+		processor = consensus.NewConfiguredProcessor(consensus.NewDefaultMessageValidator(), b.Rewarder, builtin.DefaultActors)
 	}
 
 	// setup block validation
@@ -423,7 +423,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	}
 
 	// set up consensus
-	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore)
+	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore, processor)
 	nodeConsensus := consensus.NewExpected(blockstore.cborStore, blockstore.Blockstore, processor, blkValid, actorState, b.genCid, b.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
 
 	// setup fecher
@@ -439,7 +439,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)
 
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.cborStore)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.cborStore, builtin.DefaultActors)
 
 	return ChainSubmodule{
 		// BlockSub: nil,
@@ -454,6 +454,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 		Fetcher:     fetcher,
 		State:       chainState,
 		validator:   blkValid,
+		processor:   processor,
 	}, nil
 }
 
@@ -529,7 +530,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blocksto
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	tree, err := state.LoadStateTree(ctx, cborStore, genesis.StateRoot, map[cid.Cid]exec.ExecutableActor{})
+	tree, err := state.LoadStateTree(ctx, cborStore, genesis.StateRoot)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot)
 	}

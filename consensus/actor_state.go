@@ -21,6 +21,12 @@ type chainStateChainReader interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
+// QueryProcessor querys actor state of a particular tipset
+type QueryProcessor interface {
+	// CallQueryMethod calls a method on an actor in the given state tree.
+	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
+}
+
 // ActorStateStore knows how to send read-only messages for querying actor state.
 type ActorStateStore struct {
 	// To get the head tipset state root.
@@ -29,11 +35,13 @@ type ActorStateStore struct {
 	cst *hamt.CborIpldStore
 	// For vm storage.
 	bs bstore.Blockstore
+	// executable actors
+	processor QueryProcessor
 }
 
 // NewActorStateStore constructs a ActorStateStore.
-func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *ActorStateStore {
-	return &ActorStateStore{chainReader, cst, bs}
+func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor QueryProcessor) *ActorStateStore {
+	return &ActorStateStore{chainReader, cst, bs, processor}
 }
 
 // ActorStateSnapshot permits queries to chain state at a particular tip set.
@@ -61,22 +69,24 @@ func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey types.TipSetKey)
 
 // StateTreeSnapshot returns a snapshot representation of a state tree at an optional block height
 func (cs ActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
-	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh)
+	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh, cs.processor)
 }
 
 // processorSnapshot queries the chain at a particular tipset
 type processorSnapshot struct {
-	st     state.Tree
-	vms    vm.StorageMap
-	height *types.BlockHeight
+	st        state.Tree
+	vms       vm.StorageMap
+	height    *types.BlockHeight
+	processor QueryProcessor
 }
 
 // newProcessorQueryer creates an ActorStateSnapshot
-func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight) ActorStateSnapshot {
+func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
 	return &processorSnapshot{
-		st:     st,
-		vms:    vms,
-		height: height,
+		st:        st,
+		vms:       vms,
+		height:    height,
+		processor: processor,
 	}
 }
 
@@ -87,7 +97,7 @@ func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Addre
 		return nil, errors.Wrap(err, "failed to encode message params")
 	}
 
-	r, ec, err := CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
+	r, ec, err := q.processor.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method returned an error")
 	} else if ec != 0 {

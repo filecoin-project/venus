@@ -88,7 +88,8 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{}})
+		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{}}
+		tree := state.NewCachedStateTree(stateTree)
 		vmCtxParams := NewContextParams{
 			From:        actor1,
 			To:          actor2,
@@ -97,6 +98,7 @@ func TestSendErrorHandling(t *testing.T) {
 			StorageMap:  vms,
 			GasTracker:  NewGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
+			Actors:      stateTree,
 		}
 		vmCtx := NewVMContext(vmCtxParams)
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
@@ -115,9 +117,10 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{
+		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{
 			actor2.Code: &actor.FakeActor{},
-		}})
+		}}
+		tree := state.NewCachedStateTree(stateTree)
 
 		vmCtxParams := NewContextParams{
 			From:        actor1,
@@ -127,6 +130,7 @@ func TestSendErrorHandling(t *testing.T) {
 			StorageMap:  vms,
 			GasTracker:  NewGasTracker(),
 			BlockHeight: types.NewBlockHeight(0),
+			Actors:      stateTree,
 		}
 		vmCtx := NewVMContext(vmCtxParams)
 		_, code, sendErr := send(context.Background(), deps, vmCtx)
