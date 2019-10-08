@@ -18,6 +18,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
+// ExecutableActorLookup provides a method to get an executable actor by code and protocol version
+type ExecutableActorLookup interface {
+	GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error)
+}
+
 // Context is the only thing exposed to an actor while executing.
 // All methods on the Context are ABI methods exposed to actors.
 type Context struct {
@@ -29,6 +34,7 @@ type Context struct {
 	gasTracker  *GasTracker
 	blockHeight *types.BlockHeight
 	ancestors   []types.TipSet
+	actors      ExecutableActorLookup
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -45,6 +51,7 @@ type NewContextParams struct {
 	GasTracker  *GasTracker
 	BlockHeight *types.BlockHeight
 	Ancestors   []types.TipSet
+	Actors      ExecutableActorLookup
 }
 
 // NewVMContext returns an initialized context.
@@ -58,6 +65,7 @@ func NewVMContext(params NewContextParams) *Context {
 		gasTracker:  params.GasTracker,
 		blockHeight: params.BlockHeight,
 		ancestors:   params.Ancestors,
+		actors:      params.Actors,
 		deps:        makeDeps(params.State),
 	}
 }
@@ -140,6 +148,7 @@ func (ctx *Context) Send(to address.Address, method string, value types.AttoFIL,
 		GasTracker:  ctx.gasTracker,
 		BlockHeight: ctx.blockHeight,
 		Ancestors:   ctx.ancestors,
+		Actors:      ctx.actors,
 	}
 	innerCtx := NewVMContext(innerParams)
 
@@ -193,7 +202,8 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 	newActor.Code = code
 
 	childStorage := ctx.storageMap.NewStorage(addr, newActor)
-	execActor, err := ctx.state.GetBuiltinActorCode(code)
+	// TODO: need to use blockheight derived version (#3360)
+	execActor, err := ctx.actors.GetActorCode(code, 0)
 	if err != nil {
 		return errors.NewRevertErrorf("attempt to create executable actor from non-existent code %s", code.String())
 	}

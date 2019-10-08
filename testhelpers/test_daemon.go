@@ -571,8 +571,8 @@ func (td *TestDaemon) MakeMoney(rewards int, peers ...*TestDaemon) {
 
 // GetDefaultAddress returns the default sender address for this daemon.
 func (td *TestDaemon) GetDefaultAddress() string {
-	addrs := td.RunSuccess("address", "ls")
-	return strings.Split(addrs.ReadStdout(), "\n")[0]
+	addrs := td.RunSuccess("address", "default")
+	return addrs.ReadStdout()
 }
 
 func tryAPICheck(td *TestDaemon) error {

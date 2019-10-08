@@ -259,7 +259,7 @@ A **Maintainer** is someone:
 3. **who is actively engaged in project progress and stewardship** by enabling others through project-wide planning, code reviews, design feedback, etc.; and
 4. **who is a model of trustworthiness, technical judgement, civility, and helpfulness**.
 
-Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, @phritz, @whyrusleeping. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
+Currently, `go-filecoin` maintainers are (alphabetically): @acruikshank, @anorth, @whyrusleeping and @zenground0. They can be mentioned in issues and PRs by tagging `@filecoin-project/go-filecoin-maintainers`.
 
 Responsibilities:
 
@@ -300,7 +300,6 @@ that should not happen and that a dev should go look at.
 - Prefer to test the output/contracts.
 - Daemon tests (integration tests that run a node and send it commands):
   - Daemon tests should test integration, not comprehensive functionality
-  - Daemon tests should validate that their responses conform to a JSON schema
 - Tests should be placed in a separate package, and follow the naming pattern `$PACKAGE_test`. For example, a test of the chain package should live in a package named `chain_test`. In limited situations, exceptions may be made for some "white box" tests placed in the same package as the code it tests.
 
 #### Profiling

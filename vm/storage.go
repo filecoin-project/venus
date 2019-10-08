@@ -1,14 +1,16 @@
 package vm
 
 import (
+	"bytes"
 	"errors"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
+	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -109,8 +111,19 @@ func (s Storage) Put(v interface{}) (cid.Cid, error) {
 	if blk, ok := v.(blocks.Block); ok {
 		// optimize putting blocks
 		nd, err = cbor.DecodeBlock(blk)
-	} else if bytes, ok := v.([]byte); ok {
-		nd, err = cbor.Decode(bytes, types.DefaultHashFunction, -1)
+	} else if raw, ok := v.([]byte); ok {
+		nd, err = cbor.Decode(raw, types.DefaultHashFunction, -1)
+
+	} else if cm, ok := v.(cbg.CBORMarshaler); ok {
+		// TODO: Remote this clause once
+		// https://github.com/ipfs/go-ipld-cbor/pull/64
+		// is merged and cbor.WrapObject can be called directly on objects that
+		// support fastpath marshalling / unmarshalling
+		buf := new(bytes.Buffer)
+		err = cm.MarshalCBOR(buf)
+		if err == nil {
+			nd, err = cbor.Decode(buf.Bytes(), types.DefaultHashFunction, -1)
+		}
 	} else {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}

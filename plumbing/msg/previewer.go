@@ -9,7 +9,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
@@ -22,6 +21,11 @@ type previewerChainReader interface {
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 }
 
+type messagePreviewer interface {
+	// PreviewQueryMethod estimates the amount of gas that will be used by a method
+	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
+}
+
 // Previewer calculates the amount of Gas needed for a command
 type Previewer struct {
 	// To get the head tipset state root.
@@ -30,11 +34,13 @@ type Previewer struct {
 	cst *hamt.CborIpldStore
 	// For vm storage.
 	bs bstore.Blockstore
+	// To to preview messages
+	processor messagePreviewer
 }
 
 // NewPreviewer constructs a Previewer.
-func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore) *Previewer {
-	return &Previewer{chainReader, cst, bs}
+func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs bstore.Blockstore, processor messagePreviewer) *Previewer {
+	return &Previewer{chainReader, cst, bs, processor}
 }
 
 // Preview sends a read-only message to an actor.
@@ -58,7 +64,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 	}
 
 	vms := vm.NewStorageMap(p.bs)
-	usedGas, err := consensus.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
+	usedGas, err := p.processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "query method returned an error")
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -72,6 +73,17 @@ func (smsg *SignedMessage) Cid() (cid.Cid, error) {
 	}
 
 	return obj.Cid(), nil
+}
+
+// ToNode converts the SignedMessage to an IPLD node.
+func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
+	// Use 32 byte / 256 bit digest.
+	obj, err := cbor.WrapObject(smsg, DefaultHashFunction, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	return obj, nil
 }
 
 // RecoverAddress returns the address derived from the signature and message encapsulated in `SignedMessage`

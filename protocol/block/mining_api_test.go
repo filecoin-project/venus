@@ -135,9 +135,7 @@ func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	builderOpts := []node.BuilderOpt{}
 
-	nd := node.MakeNodeWithChainSeed(t, seed, builderOpts,
-		node.AutoSealIntervalSecondsOpt(1),
-	)
+	nd := node.MakeNodeWithChainSeed(t, seed, builderOpts)
 	bt := nd.PorcelainAPI.BlockTime()
 	seed.GiveKey(t, nd, 0)
 	mAddr, ownerAddr := seed.GiveMiner(t, nd, 0)
@@ -146,7 +144,7 @@ func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
 	return bapi.New(
 		nd.MiningAddress,
 		nd.AddNewBlock,
-		nd.ChainReader,
+		nd.Chain.ChainReader,
 		nd.IsMining,
 		bt,
 		nd.SetupMining,

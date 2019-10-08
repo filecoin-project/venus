@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 	logging "github.com/ipfs/go-log"
 	writer "github.com/ipfs/go-log/writer"
-	oldlogging "github.com/whyrusleeping/go-logging"
 )
 
 var loglogger = logging.Logger("commands/log")
@@ -81,11 +80,9 @@ the event log.
 			s = fmt.Sprintf("Changed log level of '%s' to '%s'", subsystem, level)
 			loglogger.Info(s)
 		} else {
-			lvl, err := getLogLevel(level)
-			if err != nil {
+			if err := logging.SetLogLevel("*", level); err != nil {
 				return err
 			}
-			logging.SetAllLoggers(oldlogging.Level(lvl))
 			s = fmt.Sprintf("Changed log level of all subsystems to: %s", level)
 			loglogger.Info(s)
 		}
@@ -121,25 +118,4 @@ subsystems of a running daemon.
 			return nil
 		}),
 	},
-}
-
-func getLogLevel(level string) (int, error) {
-	var lvl int
-	switch level {
-	case "debug":
-		lvl = 5
-	case "info":
-		lvl = 4
-	case "warning":
-		lvl = 3
-	case "error":
-		lvl = 2
-	case "fatal":
-		lvl = 1
-	case "panic":
-		lvl = 0
-	default:
-		return -1, fmt.Errorf("unknown log level: %s. Available levels: debug, info, warning, error, fatal, panic", level)
-	}
-	return lvl, nil
 }

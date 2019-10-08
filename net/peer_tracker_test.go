@@ -147,9 +147,6 @@ func TestUpdateWithErrors(t *testing.T) {
 	tracker.Track(ci2)
 	tracker.Track(ci3)
 
-	updatedHead := types.NewTipSetKey(types.CidFromString(t, "UPDATE"))
-	updatedHeight := uint64(100)
-
 	// fail everything
 	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
 		return nil, fmt.Errorf("failed to update peer")
@@ -158,6 +155,9 @@ func TestUpdateWithErrors(t *testing.T) {
 	// if it all fails error.
 	err := tracker.UpdateTrusted(context.Background())
 	assert.Error(t, err, "all updates failed")
+
+	updatedHead := types.NewTipSetKey(types.CidFromString(t, "UPDATE"))
+	updatedHeight := uint64(100)
 
 	// fail to update `failPeer`
 	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {

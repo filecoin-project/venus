@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	. "github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -114,6 +115,7 @@ func makeCtx(method string) exec.VMContext {
 		Message:     types.NewMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
 		GasTracker:  vm.NewGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
+		Actors:      builtin.DefaultActors,
 	}
 
 	return vm.NewVMContext(vmCtxParams)

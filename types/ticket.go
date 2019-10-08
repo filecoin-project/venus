@@ -1,6 +1,8 @@
 package types
 
 import (
+	"fmt"
+
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -25,6 +27,11 @@ type Ticket struct {
 // SortKey returns the canonical byte ordering of the ticket
 func (t Ticket) SortKey() []byte {
 	return t.VRFProof
+}
+
+// String returns the string representation of the VDFResult of the ticket
+func (t Ticket) String() string {
+	return fmt.Sprintf("%x", t.VDFResult)
 }
 
 // VRFPi is the proof output from running a VRF.

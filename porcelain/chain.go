@@ -8,21 +8,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-type chBlockHeightPlumbing interface {
-	ChainHead() (types.TipSet, error)
+type chainHeadPlumbing interface {
+	ChainHeadKey() types.TipSetKey
+	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
 }
 
-// ChainBlockHeight determines the current block height
-func ChainBlockHeight(plumbing chBlockHeightPlumbing) (*types.BlockHeight, error) {
-	head, err := plumbing.ChainHead()
-	if err != nil {
-		return nil, err
-	}
-	height, err := head.Height()
-	if err != nil {
-		return nil, err
-	}
-	return types.NewBlockHeight(height), nil
+// ChainHead gets the current head tipset from plumbing.
+func ChainHead(plumbing chainHeadPlumbing) (types.TipSet, error) {
+	return plumbing.ChainTipSet(plumbing.ChainHeadKey())
 }
 
 type fullBlockPlumbing interface {

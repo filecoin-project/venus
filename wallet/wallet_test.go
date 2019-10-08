@@ -6,12 +6,9 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/consensus"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/wallet"
 )
 
@@ -176,7 +173,7 @@ func TestSignErrorCases(t *testing.T) {
 	assert.Contains(t, err.Error(), "could not find address:")
 }
 
-func TestGetAddressForPubKeyy(t *testing.T) {
+func TestGetAddressForPubKey(t *testing.T) {
 	tf.UnitTest(t)
 
 	ds := datastore.NewMapDatastore()
@@ -197,30 +194,4 @@ func TestGetAddressForPubKeyy(t *testing.T) {
 		assert.Equal(t, expectedAddr, actualAddr)
 	}
 
-}
-
-func TestWallet_CreateTicket(t *testing.T) {
-	tf.UnitTest(t)
-
-	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds)
-	assert.NoError(t, err)
-	w := wallet.New(fs)
-	addr, err := wallet.NewAddress(w)
-	require.NoError(t, err)
-
-	t.Run("Returns real ticket and nil error with good params", func(t *testing.T) {
-		proof := types.PoStProof{0xbb}
-		ticket, err := consensus.CreateTicket(proof, addr, w)
-		assert.NoError(t, err)
-		assert.NotNil(t, ticket.VRFProof)
-	})
-
-	t.Run("Returns error and empty ticket when signer is invalid", func(t *testing.T) {
-		proof := types.PoStProof{0xc0}
-		badAddress := address.TestAddress
-		ticket, err := consensus.CreateTicket(proof, badAddress, w)
-		assert.Error(t, err, "t, SignBytes error in CreateTicket: public key not found")
-		assert.Equal(t, types.VRFPi(nil), ticket.VRFProof)
-	})
 }

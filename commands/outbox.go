@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/core"
+	"github.com/filecoin-project/go-filecoin/message"
 )
 
 var outboxCmd = &cmds.Command{
@@ -23,7 +23,7 @@ var outboxCmd = &cmds.Command{
 // OutboxLsResult is a listing of the outbox for a single address.
 type OutboxLsResult struct {
 	Address  address.Address
-	Messages []*core.QueuedMessage
+	Messages []*message.Queued
 }
 
 var outboxLsCmd = &cmds.Command{

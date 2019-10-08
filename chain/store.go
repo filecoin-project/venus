@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -247,7 +246,7 @@ func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (st
 	if err != nil {
 		return nil, err
 	}
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid, builtin.Actors)
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, stateCid)
 }
 
 // GetGenesisState returns the state tree at genesis to retrieve initialization parameters.
@@ -259,7 +258,7 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 	}
 
 	// create state tree
-	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot, builtin.Actors)
+	return store.stateTreeLoader.LoadStateTree(ctx, store.stateAndBlockSource.cborStore, genesis.StateRoot)
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.

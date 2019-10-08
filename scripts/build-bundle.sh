@@ -12,12 +12,8 @@ cp ../go-filecoin filecoin/
 chmod +x filecoin/go-filecoin
 
 # proof params data
-cp ../proofs/bin/paramfetch filecoin/
-chmod +x filecoin/paramfetch
-cp ../proofs/bin/paramcache filecoin/
+cp ../go-sectorbuilder/paramcache filecoin/
 chmod +x filecoin/paramcache
-cp ../proofs/rust-fil-proofs/parameters.json filecoin/
-
 
 tar -zcvf "filecoin-$RELEASE_TAG-`uname`.tar.gz" filecoin
 rm -rf filecoin

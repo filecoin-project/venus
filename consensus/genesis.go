@@ -8,7 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -131,7 +130,7 @@ func NewEmptyConfig() *Config {
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 		ctx := context.Background()
-		st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+		st := state.NewEmptyStateTree(cst)
 		storageMap := vm.NewStorageMap(bs)
 
 		genCfg := NewEmptyConfig()
@@ -156,17 +155,15 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		for addr, val := range genCfg.miners {
 			a := miner.NewActor()
 			a.Balance = val.balance
-
-			if err := st.SetActor(ctx, addr, a); err != nil {
-				return nil, err
-			}
-
 			s := storageMap.NewStorage(addr, a)
 			scid, err := s.Put(val.state)
 			if err != nil {
 				return nil, err
 			}
 			if err = s.Commit(scid, a.Head); err != nil {
+				return nil, err
+			}
+			if err := st.SetActor(ctx, addr, a); err != nil {
 				return nil, err
 			}
 		}
@@ -208,6 +205,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			StateRoot:       c,
 			Messages:        emptyMessagesCid,
 			MessageReceipts: emptyReceiptsCid,
+			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

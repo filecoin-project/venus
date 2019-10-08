@@ -28,5 +28,5 @@ codecov:
     require_ci_to_pass: false
     # number of expected builds to receive before sending notifications
     # we can set this to prevent notifications of partial results due to CI parallelism
-    # set this with respect to the unit- and integration-test parallelism in Circle CI configuration
-    after_n_builds: 4
+    # set this with respect to the sum of test parallelism in Circle CI configuration.
+    after_n_builds: 6

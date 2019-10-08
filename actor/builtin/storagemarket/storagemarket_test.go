@@ -194,8 +194,8 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 				Name:        "after 3rd proving period start",
 				BlockHeight: thirdProvingPeriodStart + 1,
 				ExpectedMiners: map[string]uint64{
-					addr1.String(): miner.PoStStateAfterGenerationAttackThreshold,
-					addr2.String(): miner.PoStStateAfterGenerationAttackThreshold}},
+					addr1.String(): miner.PoStStateUnrecoverable,
+					addr2.String(): miner.PoStStateUnrecoverable}},
 		}
 		for _, el := range tc {
 			t.Run(el.Name, func(t *testing.T) {
