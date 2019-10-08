@@ -8,7 +8,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/actor"
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
@@ -131,7 +130,7 @@ func NewEmptyConfig() *Config {
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
 		ctx := context.Background()
-		st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+		st := state.NewEmptyStateTree(cst)
 		storageMap := vm.NewStorageMap(bs)
 
 		genCfg := NewEmptyConfig()

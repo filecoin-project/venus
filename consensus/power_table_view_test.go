@@ -1,4 +1,4 @@
-package chain_test
+package consensus_test
 
 import (
 	"context"
@@ -7,15 +7,13 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
-
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,9 +24,12 @@ func TestTotal(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(19)
-	bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, bs, _, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	actual, err := (&consensus.MarketView{}).Total(ctx, st, bs)
+	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
+	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
+
+	actual, err := consensus.NewPowerTableView(snapshot).Total(ctx)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
@@ -42,9 +43,12 @@ func TestMiner(t *testing.T) {
 	ctx := context.Background()
 
 	numCommittedSectors := uint64(12)
-	bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
+	cst, bs, addr, st := requireMinerWithNumCommittedSectors(ctx, t, numCommittedSectors)
 
-	actual, err := (&consensus.MarketView{}).Miner(ctx, st, bs, addr)
+	as := consensus.NewActorStateStore(nil, cst, bs, consensus.NewDefaultProcessor())
+	snapshot := as.StateTreeSnapshot(st, types.NewBlockHeight(0))
+
+	actual, err := consensus.NewPowerTableView(snapshot).Miner(ctx, addr)
 	require.NoError(t, err)
 
 	expected := types.NewBytesAmount(types.OneKiBSectorSize.Uint64() * numCommittedSectors)
@@ -52,7 +56,7 @@ func TestMiner(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (bstore.Blockstore, address.Address, state.Tree) {
+func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numCommittedSectors uint64) (*hamt.CborIpldStore, bstore.Blockstore, address.Address, state.Tree) {
 	r := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(r.Datastore())
 	cst := hamt.NewCborStore()
@@ -76,8 +80,8 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	var calcGenBlk types.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot, builtin.Actors)
+	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot)
 	require.NoError(t, err)
 
-	return bs, info.Miners[0].Address, stateTree
+	return cst, bs, info.Miners[0].Address, stateTree
 }

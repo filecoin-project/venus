@@ -3,13 +3,10 @@ package consensus
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
-	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -26,74 +23,101 @@ func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.T
 	return ts
 }
 
-// TestPowerTableView is an implementation of the powertable view used for testing mining
-// wherein each miner has totalPower/minerPower power.
-type TestPowerTableView struct {
-	minerPower, totalPower *types.BytesAmount
-	minerToWorker          map[address.Address]address.Address
+// FakeActorStateStore provides a snapshot that responds to power table view queries with the given parameters
+type FakeActorStateStore struct {
+	minerPower    *types.BytesAmount
+	totalPower    *types.BytesAmount
+	minerToWorker map[address.Address]address.Address
 }
 
-// NewTestPowerTableView creates a test power view with the given total power
-func NewTestPowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *TestPowerTableView {
-	return &TestPowerTableView{minerPower: minerPower, totalPower: totalPower, minerToWorker: minerToWorker}
-}
-
-// Total always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Total(ctx context.Context, st state.Tree, bstore blockstore.Blockstore) (*types.BytesAmount, error) {
-	return tv.totalPower, nil
-}
-
-// Miner always returns value that was supplied to NewTestPowerTableView.
-func (tv *TestPowerTableView) Miner(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) (*types.BytesAmount, error) {
-	return tv.minerPower, nil
-}
-
-// HasPower always returns true.
-func (tv *TestPowerTableView) HasPower(ctx context.Context, st state.Tree, bstore blockstore.Blockstore, mAddr address.Address) bool {
-	return true
-}
-
-// WorkerAddr returns the miner address.
-func (tv *TestPowerTableView) WorkerAddr(_ context.Context, _ state.Tree, _ blockstore.Blockstore, mAddr address.Address) (address.Address, error) {
-	wAddr, ok := tv.minerToWorker[mAddr]
-	if !ok {
-		return address.Undef, errors.New("no such miner address in power table")
+// NewFakeActorStateStore creates an actor state store that produces snapshots such that PowerTableView queries return predefined results
+func NewFakeActorStateStore(minerPower, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) *FakeActorStateStore {
+	return &FakeActorStateStore{
+		minerPower:    minerPower,
+		totalPower:    totalPower,
+		minerToWorker: minerToWorker,
 	}
-	return wAddr, nil
 }
 
-// TestSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type TestSignedMessageValidator struct{}
+// StateTreeSnapshot returns a Snapshot suitable for PowerTableView queries
+func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
+	return &FakePowerTableViewSnapshot{
+		MinerPower:    t.minerPower,
+		TotalPower:    t.totalPower,
+		MinerToWorker: t.minerToWorker,
+	}
+}
 
-var _ SignedMessageValidator = (*TestSignedMessageValidator)(nil)
+// FakePowerTableViewSnapshot returns a snapshot that can be fed into a PowerTableView to produce specific values
+type FakePowerTableViewSnapshot struct {
+	MinerPower    *types.BytesAmount
+	TotalPower    *types.BytesAmount
+	MinerToWorker map[address.Address]address.Address
+}
+
+// Query produces test logic in response to PowerTableView queries.
+func (tq *FakePowerTableViewSnapshot) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+	if method == "getTotalStorage" {
+		if tq.TotalPower != nil {
+			return [][]byte{tq.TotalPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the total power")
+	} else if method == "getPower" {
+		if tq.MinerPower != nil {
+			return [][]byte{tq.MinerPower.Bytes()}, nil
+		}
+		return [][]byte{}, errors.New("something went wrong with the miner power")
+	} else if method == "getWorker" {
+		if tq.MinerToWorker != nil {
+			return [][]byte{tq.MinerToWorker[to].Bytes()}, nil
+		}
+	}
+	return [][]byte{}, fmt.Errorf("unknown method for TestQueryer '%s'", method)
+}
+
+// NewFakePowerTableView creates a test power view with the given total power
+func NewFakePowerTableView(minerPower *types.BytesAmount, totalPower *types.BytesAmount, minerToWorker map[address.Address]address.Address) PowerTableView {
+	tq := &FakePowerTableViewSnapshot{
+		MinerPower:    minerPower,
+		TotalPower:    totalPower,
+		MinerToWorker: minerToWorker,
+	}
+	return NewPowerTableView(tq)
+}
+
+// FakeSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type FakeSignedMessageValidator struct{}
+
+var _ SignedMessageValidator = (*FakeSignedMessageValidator)(nil)
 
 // Validate always returns nil
-func (tsmv *TestSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (tsmv *FakeSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 
-// TestBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
-type TestBlockRewarder struct{}
+// FakeBlockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
+type FakeBlockRewarder struct{}
 
-var _ BlockRewarder = (*TestBlockRewarder)(nil)
+var _ BlockRewarder = (*FakeBlockRewarder)(nil)
 
 // BlockReward is a noop
-func (tbr *TestBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
+func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerAddr address.Address) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
 // GasReward is a noop
-func (tbr *TestBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
 
-// NewTestProcessor creates a processor with a test validator and test rewarder
-func NewTestProcessor() *DefaultProcessor {
+// NewFakeProcessor creates a processor with a test validator and test rewarder
+func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		signedMessageValidator: &TestSignedMessageValidator{},
-		blockRewarder:          &TestBlockRewarder{},
+		signedMessageValidator: &FakeSignedMessageValidator{},
+		blockRewarder:          &FakeBlockRewarder{},
+		actors:                 actors,
 	}
 }
 
@@ -106,7 +130,7 @@ func (fem *FakeElectionMachine) RunElection(ticket types.Ticket, candidateAddr a
 }
 
 // IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -140,7 +164,7 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket types.Ticket, si
 type FailingElectionValidator struct{}
 
 // IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, bs blockstore.Blockstore, ptv PowerTableView, st state.Tree, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
@@ -175,22 +199,12 @@ func MakeFakeElectionProofForTest() []byte {
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
 func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) types.Ticket {
-
-	// Lots of setup just to get an empty tree object :(
-	// TODO #3078 should help with this
-	mds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(mds)
-	offl := offline.Exchange(bs)
-	blkserv := blockservice.New(bs, offl)
-	cst := &hamt.CborIpldStore{Blocks: blkserv}
-	st := state.NewEmptyStateTree(cst)
-
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
 	minerToWorker := make(map[address.Address]address.Address)
 	minerToWorker[wAddr] = wAddr
-	ptv := NewTestPowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
+	ptv := NewFakePowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
 	em := ElectionMachine{}
 	tm := TicketMachine{}
 	ctx := context.Background()
@@ -202,7 +216,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 		proof, err := em.RunElection(curr, wAddr, signer)
 		require.NoError(t, err)
 
-		wins, err := em.IsElectionWinner(ctx, bs, ptv, st, curr, proof, wAddr, wAddr)
+		wins, err := em.IsElectionWinner(ctx, ptv, curr, proof, wAddr, wAddr)
 		require.NoError(t, err)
 		if wins {
 			// We have enough tickets, we're done

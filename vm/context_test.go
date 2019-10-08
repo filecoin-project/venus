@@ -101,6 +101,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		StorageMap:  vms,
 		GasTracker:  NewGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
+		Actors:      &mockStateTree,
 	}
 
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {

@@ -10,7 +10,6 @@ import (
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-hamt-ipld"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -37,7 +36,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/version"
-	"github.com/filecoin-project/go-filecoin/vm"
 	vmerr "github.com/filecoin-project/go-filecoin/vm/errors"
 )
 
@@ -56,38 +54,51 @@ type Node struct {
 	// Clock is a clock used by the node for time.
 	Clock clock.Clock
 
-	VersionTable version.ProtocolVersionTable
-
-	PorcelainAPI *porcelain.API
-
 	// Repo is the repo this node was created with.
 	//
 	// It contains all persistent artifacts of the filecoin node.
 	Repo repo.Repo
 
-	Blockstore BlockstoreSubmodule
+	PorcelainAPI *porcelain.API
 
-	Network NetworkSubmodule
+	//
+	// Core services
+	//
 
-	Messaging MessagingSubmodule
+	Blockstore   BlockstoreSubmodule
+	Network      NetworkSubmodule
+	Blockservice BlockserviceSubmodule
 
-	Chain ChainSubmodule
+	//
+	// Subsystems
+	//
 
-	BlockMining BlockMiningSubmodule
-
-	StorageProtocol StorageProtocolSubmodule
-
-	RetrievalProtocol RetrievalProtocolSubmodule
-
+	Chain         ChainSubmodule
+	BlockMining   BlockMiningSubmodule
 	SectorStorage SectorBuilderSubmodule
 
-	FaultSlasher FaultSlasherSubmodule
+	//
+	// Supporting services
+	//
 
-	HelloProtocol HelloProtocolSubmodule
-
+	Wallet            WalletSubmodule
+	Messaging         MessagingSubmodule
 	StorageNetworking StorageNetworkingSubmodule
 
-	Wallet WalletSubmodule
+	//
+	// Protocols
+	//
+
+	VersionTable      version.ProtocolVersionTable
+	HelloProtocol     HelloProtocolSubmodule
+	StorageProtocol   StorageProtocolSubmodule
+	RetrievalProtocol RetrievalProtocolSubmodule
+
+	//
+	// Additional services
+	//
+
+	FaultSlasher FaultSlasherSubmodule
 }
 
 // Start boots up the node.
@@ -107,7 +118,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 	// Only set these up if there is a miner configured.
 	if _, err := node.MiningAddress(); err == nil {
-		if err := node.setupMining(ctx); err != nil {
+		if err := node.setupSectorBuilder(ctx); err != nil {
 			log.Errorf("setup mining failed: %v", err)
 			return err
 		}
@@ -253,7 +264,7 @@ func (node *Node) setupHeartbeatServices(ctx context.Context) error {
 	return nil
 }
 
-func (node *Node) setupMining(ctx context.Context) error {
+func (node *Node) setupSectorBuilder(ctx context.Context) error {
 	// initialize a sector builder
 	sectorBuilder, err := initSectorBuilderForNode(ctx, node)
 	if err != nil {
@@ -424,7 +435,7 @@ func (node *Node) SetupMining(ctx context.Context) error {
 
 	// ensure we have a sector builder
 	if node.SectorBuilder() == nil {
-		if err := node.setupMining(ctx); err != nil {
+		if err := node.setupSectorBuilder(ctx); err != nil {
 			return err
 		}
 	}
@@ -573,24 +584,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	return nil
 }
 
-// NetworkNameFromGenesis retrieves the name of the current network from the genesis block.
-// The network name can not change while this node is running. Since the network name determines
-// the protocol version, we must retrieve it at genesis where the protocol is known.
-func networkNameFromGenesis(ctx context.Context, chainStore *chain.Store, bs bstore.Blockstore) (string, error) {
-	st, err := chainStore.GetGenesisState(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "could not get genesis state")
-	}
-
-	vms := vm.NewStorageMap(bs)
-	res, _, err := consensus.CallQueryMethod(ctx, st, vms, address.InitAddress, "getNetwork", nil, address.Undef, types.NewBlockHeight(0))
-	if err != nil {
-		return "", errors.Wrap(err, "error querying for network name")
-	}
-
-	return string(res[0]), nil
-}
-
 func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.SectorBuilder, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
@@ -630,7 +623,7 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 		return nil, err
 	}
 	cfg := sectorbuilder.RustSectorBuilderConfig{
-		BlockService:     node.Blockstore.blockservice,
+		BlockService:     node.Blockservice.blockservice,
 		LastUsedSectorID: lastUsedSectorID,
 		MetadataDir:      stagingDir,
 		MinerAddr:        minerAddr,
@@ -790,7 +783,6 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		MessageSource: node.Messaging.Inbox.Pool(),
 		MessageStore:  node.Chain.MessageStore,
 		Processor:     processor,
-		PowerTable:    node.Chain.PowerTable,
 		Blockstore:    node.Blockstore.Blockstore,
 		Clock:         node.Clock,
 	}), nil
@@ -838,7 +830,7 @@ func (node *Node) SectorBuilder() sectorbuilder.SectorBuilder {
 
 // BlockService returns the nodes blockservice.
 func (node *Node) BlockService() bserv.BlockService {
-	return node.Blockstore.blockservice
+	return node.Blockservice.blockservice
 }
 
 // CborStore returns the nodes cborStore.

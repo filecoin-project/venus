@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/exec"
 )
 
 const (
@@ -24,8 +23,6 @@ type tree struct {
 	// root is the root of the state merklehamt
 	root  *hamt.Node
 	store *hamt.CborIpldStore
-
-	builtinActors map[cid.Cid]exec.ExecutableActor
 }
 
 // RevID identifies a snapshot of the StateTree.
@@ -44,8 +41,6 @@ type Tree interface {
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
-
-	GetBuiltinActorCode(c cid.Cid) (exec.ExecutableActor, error)
 }
 
 var _ Tree = &tree{}
@@ -59,19 +54,19 @@ type IpldStore interface {
 
 // TreeLoader defines an interfaces for loading a state tree from an IpldStore.
 type TreeLoader interface {
-	LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error)
+	LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error)
 }
 
 // TreeStateLoader implements the state.StateLoader interface.
 type TreeStateLoader struct{}
 
 // LoadStateTree is a wrapper around state.LoadStateTree.
-func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
-	return LoadStateTree(ctx, store, c, builtinActors)
+func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error) {
+	return LoadStateTree(ctx, store, c)
 }
 
 // LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActors map[cid.Cid]exec.ExecutableActor) (Tree, error) {
+func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error) {
 	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
 	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
 	if err != nil {
@@ -79,8 +74,6 @@ func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid, builtinActor
 	}
 	stateTree := newEmptyStateTree(store.(*hamt.CborIpldStore))
 	stateTree.root = root
-
-	stateTree.builtinActors = builtinActors
 
 	return stateTree, nil
 }
@@ -90,18 +83,10 @@ func NewEmptyStateTree(store *hamt.CborIpldStore) Tree {
 	return newEmptyStateTree(store)
 }
 
-// NewEmptyStateTreeWithActors instantiates a new state tree with no data in it, except for the passed in actors.
-func NewEmptyStateTreeWithActors(store *hamt.CborIpldStore, builtinActors map[cid.Cid]exec.ExecutableActor) Tree {
-	s := newEmptyStateTree(store)
-	s.builtinActors = builtinActors
-	return s
-}
-
 func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	return &tree{
-		root:          hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
-		store:         store,
-		builtinActors: map[cid.Cid]exec.ExecutableActor{},
+		root:  hamt.NewNode(store, hamt.UseTreeBitWidth(TreeBitWidth)),
+		store: store,
 	}
 }
 
@@ -116,7 +101,7 @@ func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 }
 
 // IsActorNotFoundError is true of the error returned by
-// GetActor when no actor was found at the given address.
+// GetActorCode when no actor was found at the given address.
 func IsActorNotFoundError(err error) bool {
 	cause := errors.Cause(err)
 	e, ok := cause.(actornotfound)
@@ -137,19 +122,7 @@ func (e actorNotFoundError) ActorNotFound() bool {
 	return true
 }
 
-func (t *tree) GetBuiltinActorCode(codePointer cid.Cid) (exec.ExecutableActor, error) {
-	if !codePointer.Defined() {
-		return nil, fmt.Errorf("missing code")
-	}
-	actor, ok := t.builtinActors[codePointer]
-	if !ok {
-		return nil, fmt.Errorf("unknown code: %s", codePointer.String())
-	}
-
-	return actor, nil
-}
-
-// GetActor retrieves an actor by their address. If no actor
+// GetActorCode retrieves an actor by their address. If no actor
 // exists at the given address then an error will be returned
 // for which IsActorNotFoundError(err) is true.
 func (t *tree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {

@@ -107,7 +107,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	st := state.NewEmptyStateTreeWithActors(cst, builtin.Actors)
+	st := state.NewEmptyStateTree(cst)
 	storageMap := vm.NewStorageMap(bs)
 
 	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode, cfg.Network); err != nil {
@@ -367,7 +367,7 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	}
 
 	// create new processor that doesn't reward and doesn't validate
-	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{})
+	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{}, builtin.DefaultActors)
 
 	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Undef, types.NewBlockHeight(0), nil)
 	if err != nil {

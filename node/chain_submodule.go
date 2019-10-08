@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
 )
 
@@ -17,7 +18,7 @@ type ChainSubmodule struct {
 	ChainReader  nodeChainReader
 	MessageStore *chain.MessageStore
 	Syncer       nodeChainSyncer
-	PowerTable   consensus.PowerTableView
+	ActorState   *consensus.ActorStateStore
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
 	// https://github.com/filecoin-project/go-filecoin/issues/2309
 	HeaviestTipSetCh chan interface{}
@@ -29,4 +30,8 @@ type ChainSubmodule struct {
 	ChainSynced *moresync.Latch
 	// Fetcher is the interface for fetching data from nodes.
 	Fetcher net.Fetcher
+	State   *cst.ChainStateReadWriter
+
+	validator consensus.BlockValidator
+	processor *consensus.DefaultProcessor
 }
