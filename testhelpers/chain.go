@@ -12,19 +12,24 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+type chainWeighter interface {
+	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+}
+
 // FakeChildParams is a wrapper for all the params needed to create fake child blocks.
 type FakeChildParams struct {
-	Consensus      consensus.Protocol
-	GenesisCid     cid.Cid
-	MinerAddr      address.Address
-	NullBlockCount uint64
-	Parent         types.TipSet
-	StateRoot      cid.Cid
-	Signer         types.Signer
-	MinerWorker    address.Address
+	ConsensusChainSelection chainWeighter
+	GenesisCid              cid.Cid
+	MinerAddr               address.Address
+	NullBlockCount          uint64
+	Parent                  types.TipSet
+	StateRoot               cid.Cid
+	Signer                  types.Signer
+	MinerWorker             address.Address
 }
 
 // MkFakeChild creates a mock child block of a genesis block. If a
@@ -43,30 +48,23 @@ type FakeChildParams struct {
 // interface.  They are not useful for testing the full range of consensus
 // validation, particularly message processing and mining edge cases.
 func MkFakeChild(params FakeChildParams) (*types.Block, error) {
-
 	// Create consensus for reading the valid weight
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
 	processor := consensus.NewDefaultProcessor()
 	actorState := consensus.NewActorStateStore(nil, cst, bs, processor)
-	con := consensus.NewExpected(cst,
-		bs,
-		NewFakeProcessor(),
-		NewFakeBlockValidator(),
+	selector := consensus.NewChainSelector(cst,
 		actorState,
 		params.GenesisCid,
-		BlockTimeTest,
-		consensus.ElectionMachine{},
-		consensus.TicketMachine{},
 	)
-	params.Consensus = con
+	params.ConsensusChainSelection = selector
 	return MkFakeChildWithCon(params)
 }
 
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
 func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	wFun := func(ts types.TipSet) (uint64, error) {
-		return params.Consensus.Weight(context.Background(), params.Parent, nil)
+		return params.ConsensusChainSelection.Weight(context.Background(), params.Parent, nil)
 	}
 	return MkFakeChildCore(params.Parent,
 		params.StateRoot,
@@ -135,14 +133,6 @@ func RequireMkFakeChain(t *testing.T, base types.TipSet, num int, params FakeChi
 		params.Parent = ts
 	}
 	return ret
-}
-
-// RequireMkFakeChildWithCon wraps MkFakeChildWithCon with a requirement that
-// it does not error.
-func RequireMkFakeChildWithCon(t *testing.T, params FakeChildParams) *types.Block {
-	child, err := MkFakeChildWithCon(params)
-	require.NoError(t, err)
-	return child
 }
 
 // RequireMkFakeChildCore wraps MkFakeChildCore with a requirement that

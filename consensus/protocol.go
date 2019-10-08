@@ -15,7 +15,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -25,13 +24,6 @@ import (
 // the most theoretically obvious or pleasing and should not be considered
 // finalized.
 type Protocol interface {
-	// Weight returns the weight given to the input ts by this consensus protocol.
-	Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error)
-
-	// IsHeaver returns 1 if tipset a is heavier than tipset b and -1 if
-	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
-
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)

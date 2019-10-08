@@ -801,13 +801,13 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	}
 	// TODO handle genesis cid more gracefully
 	if parent.Len() == 0 {
-		return node.Chain.Consensus.Weight(ctx, ts, nil)
+		return node.Chain.ChainSelector.Weight(ctx, ts, nil)
 	}
 	pSt, err := node.Chain.ChainReader.GetTipSetState(ctx, parent)
 	if err != nil {
 		return uint64(0), err
 	}
-	return node.Chain.Consensus.Weight(ctx, ts, pSt)
+	return node.Chain.ChainSelector.Weight(ctx, ts, pSt)
 }
 
 // getAncestors is the default GetAncestors function for the mining worker.
