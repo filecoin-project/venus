@@ -16,6 +16,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
+
+var AlphaNetUpgrade = types.NewBlockHeight(300)
+
 // Parameters used by the latest weight function "NewWeight"
 const (
 	// newECV is the constant V defined in the EC spec.
@@ -37,8 +40,8 @@ const (
 	ecPrM uint64 = 100
 )
 
-// ChainSelector weighs and compares chains according to the Storage Power
-// Consensus Protocol
+// ChainSelectorV0 weighs and compares chains according to the deprecated v0
+// Storage Power Consensus Protocol
 type ChainSelector struct {
 	cstore     *hamt.CborIpldStore
 	actorState SnapshotGenerator
@@ -175,11 +178,22 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 		}
 	}
 
-	aW, err := c.Weight(ctx, a, aSt)
+	// Select weighting function based on protocol version
+	aWfun, err := c.chooseWeightFunc(a)
 	if err != nil {
 		return false, err
 	}
-	bW, err := c.Weight(ctx, b, bSt)
+
+	bWfun, err := c.chooseWeightFunc(b)
+	if err != nil {
+		return false, err
+	}	
+
+	aW, err := aWfun(ctx, a, aSt)
+	if err != nil {
+		return false, err
+	}
+	bW, err := bWfun(ctx, b, bSt)
 	if err != nil {
 		return false, err
 	}
@@ -214,6 +228,18 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 		return false, ErrUnorderedTipSets
 	}
 	return cmp == 1, nil
+}
+
+func (c *ChainSelector) chooseWeightFunc(ts types.TipSet) (func(context.Context, types.TipSet, state.Tree) (uint64, error), error) {
+	wFun := c.Weight
+	h, err := ts.Height()
+	if err != nil {
+		return nil, err
+	}
+	if types.NewBlockHeight(h).GreaterEqual(AlphaNetUpgrade) {
+		wFun = c.NewWeight
+	}
+	return wFun, nil
 }
 
 func (c *ChainSelector) createPowerTableView(st state.Tree) PowerTableView {

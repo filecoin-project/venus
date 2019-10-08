@@ -32,7 +32,7 @@ type nodeChainSyncer interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+	NewWeight(context.Context, types.TipSet, state.Tree) (uint64, error)
 	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
