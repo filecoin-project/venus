@@ -11,7 +11,6 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 
-	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -189,14 +188,14 @@ func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrat
 func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
-		treeGen := treeFromString(isb.t, "16Power", isb.cst)
+		treeGen := state.TreeFromString(isb.t, "16Power", isb.cst)
 		genRoot, err := treeGen.Flush(context.Background())
 		require.NoError(isb.t, err)
 		return genRoot, nil
 	}
 	// setup fork with state we associate with more power
 	if len(blocksMessages[0]) > 0 {
-		treeFork := treeFromString(isb.t, "512Power", isb.cst)
+		treeFork := state.TreeFromString(isb.t, "512Power", isb.cst)
 		forkRoot, err := treeFork.Flush(context.Background())
 		require.NoError(isb.t, err)
 		isb.c512 = forkRoot
@@ -216,11 +215,9 @@ func (isb *integrationStateBuilder) Weigh(tip types.TipSet, pstate cid.Cid) (uin
 	if tip.At(0).Cid().Equals(isb.cGen) {
 		return uint64(0), nil
 	}
-	st, err := state.LoadStateTree(context.Background(), isb.cst, pstate)
-	require.NoError(isb.t, err)
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
-	return sel.NewWeight(context.Background(), tip, st)
+	return sel.NewWeight(context.Background(), tip, pstate)
 }
 
 // noopStateEvaluator returns the parent state root
@@ -235,18 +232,6 @@ func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts typ
 		}
 	}
 	return ts.At(0).StateRoot, nil
-}
-
-// treeFromInt sets a state tree based on an int.  TODO: this is a silly level
-// of indirect.  We should be able to get this at a simpler layer by changing
-// cborStore to an interface and then making a test impl
-func treeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) state.Tree {
-	tree := state.NewEmptyStateTree(cst)
-	strAddr, err := address.NewActorAddress([]byte(s))
-	require.NoError(t, err)
-	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
-	require.NoError(t, err)
-	return tree
 }
 
 type forkSnapshotGen struct {

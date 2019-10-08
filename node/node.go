@@ -9,6 +9,7 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -801,13 +802,17 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	}
 	// TODO handle genesis cid more gracefully
 	if parent.Len() == 0 {
-		return node.Chain.ChainSelector.NewWeight(ctx, ts, nil)
+		return node.Chain.ChainSelector.NewWeight(ctx, ts, cid.Undef)
 	}
 	pSt, err := node.Chain.ChainReader.GetTipSetState(ctx, parent)
 	if err != nil {
 		return uint64(0), err
 	}
-	return node.Chain.ChainSelector.NewWeight(ctx, ts, pSt)
+	root, err := pSt.Flush(ctx)
+	if err != nil {
+		return uint64(0), err
+	}
+	return node.Chain.ChainSelector.NewWeight(ctx, ts, root)
 }
 
 // getAncestors is the default GetAncestors function for the mining worker.

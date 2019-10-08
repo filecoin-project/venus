@@ -6,6 +6,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"math/big"
 	"strings"
 
@@ -64,7 +65,7 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 // w(i) = w(i-1) + (pi)^(P_n) * [V * num_blks + X ]
 // P_n(n) = if n < 3:0 else: n, n is number of null rounds
 // X = log_2(total_storage(pSt))
-func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
+func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
@@ -75,7 +76,6 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt stat
 	if err != nil {
 		return uint64(0), err
 	}
-
 	w, err := types.FixedToBig(parentW)
 	if err != nil {
 		return uint64(0), err
@@ -88,6 +88,13 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt stat
 	innerTerm.Mul(floatECV, floatNumBlocks)
 
 	// Add bitnum(total storage power) to the weight's inner term
+	if !pStateID.Defined() {
+		return uint64(0), errors.New("undefined state passed to chain selector new weight")
+	}
+	pSt, err := c.loadStateTree(ctx, pStateID)
+	if err != nil {
+		return uint64(0), err
+	}
 	powerTableView := c.createPowerTableView(pSt)
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
@@ -115,26 +122,33 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pSt stat
 
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
-func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pSt state.Tree) (uint64, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
 	ctx = log.Start(ctx, "Expected.Weight")
 	log.LogKV(ctx, "Weight", ts.String())
 	if ts.Len() == 1 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
+
 	// Compute parent weight.
 	parentW, err := ts.ParentWeight()
 	if err != nil {
 		return uint64(0), err
 	}
-
 	w, err := types.FixedToBig(parentW)
 	if err != nil {
 		return uint64(0), err
 	}
 
+	if !pStateID.Defined() {
+		return uint64(0), errors.New("undefined state passed to chain selector weight")
+	}
+	pSt, err := c.loadStateTree(ctx, pStateID)
+	if err != nil {
+		return uint64(0), err
+	}
 	powerTableView := c.createPowerTableView(pSt)
 
-	// Each block in the tipset adds ecV + ECPrm * miner_power to parent weight.
+	// Each block in the tipset adds ecV + ecPrm * miner_power to parent weight.
 	totalBytes, err := powerTableView.Total(ctx)
 	if err != nil {
 		return uint64(0), err
@@ -165,21 +179,6 @@ func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pSt state.T
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
 func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
-	var aSt, bSt state.Tree
-	var err error
-	if aStateID.Defined() {
-		aSt, err = c.loadStateTree(ctx, aStateID)
-		if err != nil {
-			return false, err
-		}
-	}
-	if bStateID.Defined() {
-		bSt, err = c.loadStateTree(ctx, bStateID)
-		if err != nil {
-			return false, err
-		}
-	}
-
 	// Select weighting function based on protocol version
 	aWfun, err := c.chooseWeightFunc(a)
 	if err != nil {
@@ -191,11 +190,11 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 		return false, err
 	}
 
-	aW, err := aWfun(ctx, a, aSt)
+	aW, err := aWfun(ctx, a, aStateID)
 	if err != nil {
 		return false, err
 	}
-	bW, err := bWfun(ctx, b, bSt)
+	bW, err := bWfun(ctx, b, bStateID)
 	if err != nil {
 		return false, err
 	}
@@ -232,7 +231,7 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) chooseWeightFunc(ts types.TipSet) (func(context.Context, types.TipSet, state.Tree) (uint64, error), error) {
+func (c *ChainSelector) chooseWeightFunc(ts types.TipSet) (func(context.Context, types.TipSet, cid.Cid) (uint64, error), error) {
 	wFun := c.Weight
 	h, err := ts.Height()
 	if err != nil {
