@@ -149,7 +149,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, ErrNoActorImpl
 	}
 
-	// TODO: use chain height to determine protocol version
+	// TODO: use chain height to determine protocol version (#3360)
 	executable, err := chn.actors.GetActorCode(actor.Code, 0)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load actor code")
