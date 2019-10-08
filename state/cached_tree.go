@@ -22,7 +22,7 @@ func NewCachedStateTree(st Tree) *CachedTree {
 	}
 }
 
-// GetActorCode retrieves an actor from the cache. If it's not found it will get it from the
+// GetActor retrieves an actor from the cache. If it's not found it will get it from the
 // underlying tree and then set it in the cache before returning it.
 func (t *CachedTree) GetActor(ctx context.Context, a address.Address) (*actor.Actor, error) {
 	var err error

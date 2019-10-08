@@ -106,7 +106,7 @@ func (chn *ChainStateReadWriter) SampleRandomness(ctx context.Context, sampleHei
 	return sampling.SampleChainRandomness(sampleHeight, tipSetBuffer)
 }
 
-// GetActorCode returns an actor from the latest state on the chain
+// GetActor returns an actor from the latest state on the chain
 func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Address) (*actor.Actor, error) {
 	return chn.GetActorAt(ctx, chn.readWriter.GetHead(), addr)
 }

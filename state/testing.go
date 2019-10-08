@@ -66,7 +66,7 @@ func (m *MockStateTree) Flush(ctx context.Context) (c cid.Cid, err error) {
 	return
 }
 
-// GetActorCode implements StateTree.GetActorCode.
+// GetActor implements StateTree.GetActorCode.
 func (m *MockStateTree) GetActor(ctx context.Context, address address.Address) (a *actor.Actor, err error) {
 	if m.NoMocks {
 		return
