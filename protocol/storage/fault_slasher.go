@@ -13,7 +13,7 @@ import (
 )
 
 // DefaultFaultSlasherGasPrice is the default gas price to be used when sending messages
-var DefaultFaultSlasherGasPrice = types.NewAttoFILFromFIL(1)
+var DefaultFaultSlasherGasPrice, _ = types.NewAttoFILFromFILString("0.001")
 
 // DefaultFaultSlasherGasLimit is the default gas limit to be used when sending messages
 var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
