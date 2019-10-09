@@ -14,6 +14,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"	
 )
 
 func TestBlockValidSemantic(t *testing.T) {
@@ -23,21 +24,23 @@ func TestBlockValidSemantic(t *testing.T) {
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	require.NoError(t, err)	
 
-	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
+	validator := consensus.NewDefaultBlockValidator(blockTime, mclock, pvt)
 
 	t.Run("reject block with same height as parents", func(t *testing.T) {
 		// passes with valid height
 		c := &types.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents))
+		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents, 0))
 
 		// invalidate parent by matching child height
 		p = &types.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
 		parents = consensus.RequireNewTipSet(require.New(t), p)
 
-		err := validator.ValidateSemantic(ctx, c, &parents)
+		err := validator.ValidateSemantic(ctx, c, &parents, 0)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid height")
 
@@ -48,11 +51,11 @@ func TestBlockValidSemantic(t *testing.T) {
 		c := &types.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents))
+		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents, 0))
 
 		// fails with invalid timestamp
 		c = &types.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
-		err := validator.ValidateSemantic(ctx, c, &parents)
+		err := validator.ValidateSemantic(ctx, c, &parents, 0)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
@@ -63,21 +66,41 @@ func TestBlockValidSemantic(t *testing.T) {
 		c := &types.Block{Height: 3, Timestamp: types.Uint64(ts.Add(2 * blockTime).Unix())}
 		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		err := validator.ValidateSemantic(ctx, c, &parents)
+		err := validator.ValidateSemantic(ctx, c, &parents, 0)
 		require.NoError(t, err)
 
 		// fail when nul block calc is off by one blocktime
 		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
-		err = validator.ValidateSemantic(ctx, c, &parents)
+		err = validator.ValidateSemantic(ctx, c, &parents, 0)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
 		// fail with same timestamp as parent
 		c = &types.Block{Height: 3, Timestamp: types.Uint64(ts.Unix())}
-		err = validator.ValidateSemantic(ctx, c, &parents)
+		err = validator.ValidateSemantic(ctx, c, &parents, 0)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
+	})
+
+	t.Run("reject block mined with invalid parent weight after alphanet upgrade", func(t *testing.T) {
+		hUpgrade := 300
+		c := &types.Block{Height: types.Uint64(hUpgrade) + 50, ParentWeight: 5000, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
+		p := &types.Block{Height: types.Uint64(hUpgrade) + 49, Timestamp: types.Uint64(ts.Unix())}
+		parents := consensus.RequireNewTipSet(require.New(t), p)
+
+		err := validator.ValidateSemantic(ctx, c, &parents, 30)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid parent weight")	
+	})
+
+	t.Run("accept block mined with invalid parent weight before alphanet upgrade", func(t *testing.T) {
+		c := &types.Block{Height: 2, ParentWeight: 5000, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
+		p := &types.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
+		parents := consensus.RequireNewTipSet(require.New(t), p)
+
+		err := validator.ValidateSemantic(ctx, c, &parents, 30)
+		assert.NoError(t, err)
 	})
 }
 
@@ -87,10 +110,11 @@ func TestBlockValidSyntax(t *testing.T) {
 	blockTime := consensus.DefaultBlockTime
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
-
 	ctx := context.Background()
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	require.NoError(t, err)		
 
-	validator := consensus.NewDefaultBlockValidator(blockTime, mclock)
+	validator := consensus.NewDefaultBlockValidator(blockTime, mclock, pvt)
 
 	validTs := types.Uint64(ts.Unix())
 	validSt := types.NewCidForTestGetter()()

@@ -19,6 +19,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"	
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,14 +118,16 @@ func TestSyncerWeighsPower(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	require.NoError(t, err)
 
-	isb := newIntegrationStateBuilder(t, cst)
+	isb := newIntegrationStateBuilder(t, cst, pvt)
 	builder.SetStateBuilder(isb)
 
 	// Construct genesis with readable state tree root
 	gen := builder.BuildOneOn(types.UndefTipSet, func(bb *chain.BlockBuilder) {
 		// All blocks in this test follow alphanet upgrade weighting rules
-		bb.IncHeight(types.Uint64(uint64(consensus.AlphaNetUpgrade.AsBigInt().Int64())))
+		bb.IncHeight(300)
 	})
 
 	// Builder constructs two different blocks with different state trees
@@ -159,7 +162,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{gen.At(0).StateRoot, gen}))
 	require.NoError(t, store.SetHead(ctx, gen))
-	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid(), pvt), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", head1.Key(), heightFromTip(t, head1)), true))
@@ -174,9 +177,10 @@ type integrationStateBuilder struct {
 	c512 cid.Cid
 	cGen cid.Cid
 	cst  *hamt.CborIpldStore
+	pvt  *version.ProtocolVersionTable
 }
 
-func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrationStateBuilder {
+func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore, pvt *version.ProtocolVersionTable) *integrationStateBuilder {
 	return &integrationStateBuilder{
 		t:    t,
 		c512: cid.Undef,
@@ -216,7 +220,7 @@ func (isb *integrationStateBuilder) Weigh(tip types.TipSet, pstate cid.Cid) (uin
 		return uint64(0), nil
 	}
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
-	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
+	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen, isb.pvt)
 	return sel.NewWeight(context.Background(), tip, pstate)
 }
 
@@ -225,7 +229,7 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts types.TipSet, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts types.TipSet, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []types.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Equals(n.c512) {
 			return n.c512, nil

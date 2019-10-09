@@ -90,7 +90,7 @@ type Node struct {
 	// Protocols
 	//
 
-	VersionTable      version.ProtocolVersionTable
+	VersionTable      *version.ProtocolVersionTable
 	HelloProtocol     HelloProtocolSubmodule
 	StorageProtocol   StorageProtocolSubmodule
 	RetrievalProtocol RetrievalProtocolSubmodule
@@ -530,7 +530,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						log.Errorf("failed to get worker address %s", err)
 						continue
 					}
-
+					
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
 					msgCid, err := node.PorcelainAPI.MessageSend(
@@ -569,7 +569,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 				case <-miningCtx.Done():
 					return
 				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
-					log.Info("auto-seal has been triggered")
+//					log.Info("auto-seal has been triggered")
 					if err := node.SectorBuilder().SealAllStagedSectors(miningCtx); err != nil {
 						log.Errorf("scheduler received error from node.SectorStorage.sectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
 						return
@@ -796,13 +796,28 @@ func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree
 
 // getWeight is the default GetWeight function for the mining worker.
 func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error) {
+	h, err := ts.Height()
+	if err != nil {
+		return 0, err
+	}
+	var wFun func(context.Context, types.TipSet, cid.Cid) (uint64, error)
+	v, err := node.VersionTable.VersionAt(types.NewBlockHeight(h))
+	if err != nil {
+		return 0, err
+	}
+	if v >= version.Protocol1 {
+		wFun = node.Chain.ChainSelector.NewWeight
+	} else {
+		wFun = node.Chain.ChainSelector.Weight
+	}
+	
 	parent, err := ts.Parents()
 	if err != nil {
 		return uint64(0), err
 	}
 	// TODO handle genesis cid more gracefully
 	if parent.Len() == 0 {
-		return node.Chain.ChainSelector.NewWeight(ctx, ts, cid.Undef)
+		return wFun(ctx, ts, cid.Undef)
 	}
 	pSt, err := node.Chain.ChainReader.GetTipSetState(ctx, parent)
 	if err != nil {
@@ -812,7 +827,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	if err != nil {
 		return uint64(0), err
 	}
-	return node.Chain.ChainSelector.NewWeight(ctx, ts, root)
+	return wFun(ctx, ts, root)
 }
 
 // getAncestors is the default GetAncestors function for the mining worker.

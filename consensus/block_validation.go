@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"	
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -26,7 +27,7 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error
+	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -46,27 +47,42 @@ type MessageSyntaxValidator interface {
 type DefaultBlockValidator struct {
 	clock.Clock
 	blockTime time.Duration
+	ptv       *version.ProtocolVersionTable
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock, ptv *version.ProtocolVersionTable) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
 		Clock:     c,
 		blockTime: blkTime,
+		ptv:       ptv,
 	}
 }
 
 // ValidateSemantic validates a block is correctly derived from its parent.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error {
 	pmin, err := parents.MinTimestamp()
 	if err != nil {
 		return err
 	}
 
+	// Alphanet upgrade
 	ph, err := parents.Height()
 	if err != nil {
 		return err
+	}
+
+	parentVersion, err := dv.ptv.VersionAt(types.NewBlockHeight(ph))
+	if err != nil {
+		return err
+	}
+	if parentVersion >= version.Protocol1 {
+		if uint64(child.ParentWeight) != parentWeight {
+			fmt.Printf("consensus fault: parentweight (%d) != expected parentweight (%d)\n", uint64(child.ParentWeight), parentWeight)
+			return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
+		}
+		fmt.Printf("Validated parent weight is correct\n") 
 	}
 
 	if uint64(child.Height) <= ph {

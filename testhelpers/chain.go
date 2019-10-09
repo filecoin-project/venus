@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"	
 )
 
 type chainWeighter interface {
@@ -51,10 +52,16 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
 	processor := consensus.NewDefaultProcessor()
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	if err != nil {
+		return nil, err
+	}
+	
 	actorState := consensus.NewActorStateStore(nil, cst, bs, processor)
 	selector := consensus.NewChainSelector(cst,
 		actorState,
 		params.GenesisCid,
+		pvt,
 	)
 	params.ConsensusChainSelection = selector
 	return MkFakeChildWithCon(params)

@@ -15,11 +15,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"	
 )
-
-// AlphaNetUpgrade is the height at which the alphanet weight change protocol
-// upgrade comes into effect.  TODO BEFORE MERGE -- choose an actual height
-var AlphaNetUpgrade = types.NewBlockHeight(300)
 
 // Parameters used by the latest weight function "NewWeight"
 const (
@@ -48,14 +45,17 @@ type ChainSelector struct {
 	cstore     *hamt.CborIpldStore
 	actorState SnapshotGenerator
 	genesisCid cid.Cid
+
+	pvt *version.ProtocolVersionTable
 }
 
 // NewChainSelector is the constructor for chain selection module.
-func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid) *ChainSelector {
+func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid cid.Cid, pvt *version.ProtocolVersionTable) *ChainSelector {
 	return &ChainSelector{
 		cstore:     cs,
 		actorState: actorState,
 		genesisCid: gCid,
+		pvt:        pvt,
 	}
 }
 
@@ -198,7 +198,6 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 	if err != nil {
 		return false, err
 	}
-
 	// Without ties pass along the comparison.
 	if aW != bW {
 		return aW > bW, nil
@@ -237,7 +236,11 @@ func (c *ChainSelector) chooseWeightFunc(ts types.TipSet) (func(context.Context,
 	if err != nil {
 		return nil, err
 	}
-	if types.NewBlockHeight(h).GreaterEqual(AlphaNetUpgrade) {
+	v, err := c.pvt.VersionAt(types.NewBlockHeight(h))
+	if err != nil {
+		return nil, err
+	}
+	if v >= version.Protocol1 {
 		wFun = c.NewWeight
 	}
 	return wFun, nil

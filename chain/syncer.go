@@ -65,7 +65,7 @@ type syncChainSelector interface {
 type syncStateEvaluator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error)
+	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -191,7 +191,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextMessages, nextReceipts, ancestors, stateRoot)
+	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextMessages, nextReceipts, ancestors, parentWeight, stateRoot)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 	heavier, err := syncer.chainSelector.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
 	if err != nil {
 		return err
-	}
+	} 
 
 	// If it is the heaviest update the chainStore.
 	if heavier {
@@ -240,7 +240,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 		// Gather the entire new chain for reorg comparison and logging.
 		syncer.logReorg(ctx, headTipSet, next)
 	}
-
+	
 	return nil
 }
 
