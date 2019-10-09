@@ -38,7 +38,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/version"	
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 const visitsPerBlock = 4

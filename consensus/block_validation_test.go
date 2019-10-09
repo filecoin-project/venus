@@ -14,7 +14,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/version"	
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 func TestBlockValidSemantic(t *testing.T) {
@@ -25,7 +25,7 @@ func TestBlockValidSemantic(t *testing.T) {
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
 	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)	
+	require.NoError(t, err)
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock, pvt)
 
@@ -91,7 +91,7 @@ func TestBlockValidSemantic(t *testing.T) {
 
 		err := validator.ValidateSemantic(ctx, c, &parents, 30)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid parent weight")	
+		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
 
 	t.Run("accept block mined with invalid parent weight before alphanet upgrade", func(t *testing.T) {
@@ -112,7 +112,7 @@ func TestBlockValidSyntax(t *testing.T) {
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
 	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)		
+	require.NoError(t, err)
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock, pvt)
 

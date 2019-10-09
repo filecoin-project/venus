@@ -530,7 +530,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						log.Errorf("failed to get worker address %s", err)
 						continue
 					}
-					
+
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
 					msgCid, err := node.PorcelainAPI.MessageSend(
@@ -569,7 +569,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 				case <-miningCtx.Done():
 					return
 				case <-time.After(time.Duration(node.Repo.Config().Mining.AutoSealIntervalSeconds) * time.Second):
-//					log.Info("auto-seal has been triggered")
+					log.Info("auto-seal has been triggered")
 					if err := node.SectorBuilder().SealAllStagedSectors(miningCtx); err != nil {
 						log.Errorf("scheduler received error from node.SectorStorage.sectorBuilder.SealAllStagedSectors (%s) - exiting", err.Error())
 						return
@@ -810,7 +810,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	} else {
 		wFun = node.Chain.ChainSelector.Weight
 	}
-	
+
 	parent, err := ts.Parents()
 	if err != nil {
 		return uint64(0), err

@@ -230,7 +230,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 	heavier, err := syncer.chainSelector.IsHeavier(ctx, next, headTipSet, nextParentStateID, headParentStateID)
 	if err != nil {
 		return err
-	} 
+	}
 
 	// If it is the heaviest update the chainStore.
 	if heavier {
@@ -240,7 +240,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 		// Gather the entire new chain for reorg comparison and logging.
 		syncer.logReorg(ctx, headTipSet, next)
 	}
-	
+
 	return nil
 }
 
@@ -274,7 +274,7 @@ func (syncer *Syncer) familyFromStore(ts types.TipSet) (types.TipSet, types.TipS
 	if grandParentCids.Empty() {
 		// parent == genesis ==> grandParent undef
 		return parent, types.UndefTipSet, nil
-	} 
+	}
 	grandParent, err := syncer.chainStore.GetTipSet(grandParentCids)
 	if err != nil {
 		return types.UndefTipSet, types.UndefTipSet, err
@@ -428,12 +428,11 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	// Fetcher returns chain in Traversal order, reverse it to height order
 	Reverse(chain)
 
-
 	parent, grandParent, err := syncer.familyFromStore(chain[0])
 	if err != nil {
 		return err
 	}
-	
+
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
 	for i, ts := range chain {
@@ -469,7 +468,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 				// so we don't really lose anything with this simplification.
 				syncer.badTipSets.AddChain(chain[i:])
 				return err
-		}	
+			}
 		}
 		if i%500 == 0 {
 			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())

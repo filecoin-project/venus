@@ -757,7 +757,6 @@ func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
 	}
 
 	commitments, err := sm.getActorSectorCommitments(ctx)
-	fmt.Printf("OHT: number of commitments: %d\n", len(commitments))
 	if err != nil {
 		return doneLatch, errors.Errorf("failed to get miner actor commitments: %s", err)
 	}

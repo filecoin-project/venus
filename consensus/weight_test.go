@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/version"	
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 func TestNewWeight(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNewWeight(t *testing.T) {
 	fakeRoot, err := fakeTree.Flush(ctx)
 	require.NoError(t, err)
 	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)		
+	require.NoError(t, err)
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5
 	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))

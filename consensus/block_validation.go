@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/version"	
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -82,7 +82,7 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 			fmt.Printf("consensus fault: parentweight (%d) != expected parentweight (%d)\n", uint64(child.ParentWeight), parentWeight)
 			return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
 		}
-		fmt.Printf("Validated parent weight is correct\n") 
+		fmt.Printf("Validated parent weight is correct\n")
 	}
 
 	if uint64(child.Height) <= ph {

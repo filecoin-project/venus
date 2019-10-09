@@ -401,7 +401,7 @@ func (b *Builder) buildBlockservice(ctx context.Context, blockstore *BlockstoreS
 	}, nil
 }
 
-func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, ptv *version.ProtocolVersionTable) (ChainSubmodule, error) {
+func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, pvt *version.ProtocolVersionTable) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(b.Repo.ChainDatastore(), blockstore.cborStore, &state.TreeStateLoader{}, chainStatusReporter, b.genCid)
@@ -416,7 +416,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(b.BlockTime, b.Clock, ptv)
+	blkValid := consensus.NewDefaultBlockValidator(b.BlockTime, b.Clock, pvt)
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
@@ -427,7 +427,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	// set up consensus
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore, processor)
 	nodeConsensus := consensus.NewExpected(blockstore.cborStore, blockstore.Blockstore, processor, blkValid, actorState, b.genCid, b.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
-	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid, ptv)
+	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid, pvt)
 
 	// setup fecher
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)

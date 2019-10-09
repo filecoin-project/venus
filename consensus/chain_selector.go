@@ -15,7 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/filecoin-project/go-filecoin/version"	
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 // Parameters used by the latest weight function "NewWeight"

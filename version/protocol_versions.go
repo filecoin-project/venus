@@ -34,6 +34,6 @@ func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 		Add(USER, Protocol1, types.NewBlockHeight(40000)).
 		Add(DEVNET4, Protocol1, types.NewBlockHeight(300)).
 		Add(LOCALNET, Protocol1, types.NewBlockHeight(300)).
-		Add(TEST, Protocol1, types.NewBlockHeight(300)).		
+		Add(TEST, Protocol1, types.NewBlockHeight(300)).
 		Build()
 }
