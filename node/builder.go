@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -279,7 +278,6 @@ func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConf
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
-	fmt.Printf("networkName: %s\n", networkName)
 
 	periodStr := config.Period
 	period, err := time.ParseDuration(periodStr)
