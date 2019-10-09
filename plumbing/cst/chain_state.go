@@ -36,7 +36,6 @@ type chainReadWriter interface {
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
 	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
-	store           *carStore
 	messageProvider chain.MessageProvider
 	actors          builtin.Actors
 }
@@ -68,7 +67,6 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 	return &ChainStateReadWriter{
 		readWriter:      crw,
 		cst:             cst,
-		store:           newCarStore(cst),
 		messageProvider: messages,
 		actors:          ba,
 	}
@@ -195,25 +193,24 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key types.TipSetKe
 	return chn.readWriter.SetHead(ctx, headTs)
 }
 
-// ChainExport exports nodes current chain to `out`
-func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) (types.TipSetKey, error) {
+// ChainExport exports the chain from `head` up to and including the genesis block to `out`
+func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) error {
 	headTS, err := chn.GetTipSet(head)
 	if err != nil {
-		return types.UndefTipSet.Key(), err
+		return err
 	}
-	logStore.Info("starting CAR file export")
-	headKey, err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, out)
-	if err != nil {
-		return types.UndefTipSet.Key(), err
+	logStore.Infof("starting CAR file export: %s", head.String())
+	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, out); err != nil {
+		return err
 	}
-	logStore.Infof("exported CAR file with head: %s", headKey)
-	return headKey, nil
+	logStore.Infof("exported CAR file with head: %s", head.String())
+	return nil
 }
 
-// ChainImport imports a chain with the same genesis block from `in`.
+// ChainImport imports a chain from `in`.
 func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) (types.TipSetKey, error) {
 	logStore.Info("starting CAR file import")
-	headKey, err := chain.Import(ctx, chn.store, in)
+	headKey, err := chain.Import(ctx, newCarStore(chn.cst), in)
 	if err != nil {
 		return types.UndefTipSet.Key(), err
 	}

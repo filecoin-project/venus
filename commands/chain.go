@@ -198,11 +198,10 @@ var storeExportCmd = &cmds.Command{
 		}
 		expKey := types.NewTipSetKey(expCids...)
 
-		headKey, err := GetPorcelainAPI(env).ChainExport(req.Context, expKey, f)
-		if err != nil {
+		if err := GetPorcelainAPI(env).ChainExport(req.Context, expKey, f); err != nil {
 			return err
 		}
-		return re.Emit(headKey)
+		return nil
 	},
 }
 
