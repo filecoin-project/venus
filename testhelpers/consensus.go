@@ -96,7 +96,7 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 }
 
 // ValidateSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, _ uint64) error {
 	return nil
 }
 
@@ -131,7 +131,7 @@ func NewStubBlockValidator() *StubBlockValidator {
 }
 
 // ValidateSemantic returns nil or error for stubbed block `child`.
-func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, _ uint64) error {
 	return mbv.semanticStubs[child.Cid()]
 }
 

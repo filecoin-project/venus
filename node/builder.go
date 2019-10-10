@@ -189,12 +189,17 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
+	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.Network.NetworkName)
+	if err != nil {
+		return nil, err
+	}
+
 	nd.Blockservice, err = b.buildBlockservice(ctx, &nd.Blockstore, &nd.Network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.Chain, err = b.buildChain(ctx, &nd.Blockstore, &nd.Network)
+	nd.Chain, err = b.buildChain(ctx, &nd.Blockstore, &nd.Network, nd.VersionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -241,12 +246,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.FaultSlasher, err = b.buildFaultSlasher(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.FaultSlasher")
-	}
-
-	// TODO: inject protocol upgrade table into code that requires it (#3360)
-	_, err = version.ConfigureProtocolVersions(nd.Network.NetworkName)
-	if err != nil {
-		return nil, err
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
@@ -399,7 +398,7 @@ func (b *Builder) buildBlockservice(ctx context.Context, blockstore *BlockstoreS
 	}, nil
 }
 
-func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule) (ChainSubmodule, error) {
+func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, pvt *version.ProtocolVersionTable) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(b.Repo.ChainDatastore(), blockstore.cborStore, &state.TreeStateLoader{}, chainStatusReporter, b.genCid)
@@ -414,7 +413,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(b.BlockTime, b.Clock)
+	blkValid := consensus.NewDefaultBlockValidator(b.BlockTime, b.Clock, pvt)
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
@@ -425,7 +424,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	// set up consensus
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore, processor)
 	nodeConsensus := consensus.NewExpected(blockstore.cborStore, blockstore.Blockstore, processor, blkValid, actorState, b.genCid, b.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
-	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid)
+	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid, pvt)
 
 	// setup fecher
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)

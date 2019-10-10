@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -26,7 +27,7 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error
+	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -46,19 +47,21 @@ type MessageSyntaxValidator interface {
 type DefaultBlockValidator struct {
 	clock.Clock
 	blockTime time.Duration
+	pvt       *version.ProtocolVersionTable
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock) *DefaultBlockValidator {
+func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock, pvt *version.ProtocolVersionTable) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
 		Clock:     c,
 		blockTime: blkTime,
+		pvt:       pvt,
 	}
 }
 
 // ValidateSemantic validates a block is correctly derived from its parent.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet) error {
+func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error {
 	pmin, err := parents.MinTimestamp()
 	if err != nil {
 		return err
@@ -67,6 +70,23 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 	ph, err := parents.Height()
 	if err != nil {
 		return err
+	}
+
+	parentVersion, err := dv.pvt.VersionAt(types.NewBlockHeight(ph))
+	if err != nil {
+		return err
+	}
+	// Protocol version 1 upgrade introduces validation of the weight field
+	// on the header.  During protocol version 0 validators do not validate
+	// that the parent weight written to the header actually corresponds to
+	// the weight measured by the validators.  Introducing this check
+	// prevents a validator from writing arbitrary parent weight values
+	// into a header and trivially generating the heaviest chain.
+	if parentVersion >= version.Protocol1 {
+		// Protocol Version 1 upgrade
+		if uint64(child.ParentWeight) != parentWeight {
+			return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
+		}
 	}
 
 	if uint64(child.Height) <= ph {

@@ -3,12 +3,16 @@ package state
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/exec"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MustFlush flushes the StateTree or panics if it can't.
@@ -113,4 +117,17 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (exec.Executabl
 	}
 
 	return a, nil
+}
+
+// TreeFromString sets a state tree based on an int.  TODO: this indirection
+// can be avoided when we are able to change cborStore to an interface and then
+// making a test implementation of the cbor store that can map test cids to test
+// states.
+func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
+	tree := NewEmptyStateTree(cst)
+	strAddr, err := address.NewActorAddress([]byte(s))
+	require.NoError(t, err)
+	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
+	require.NoError(t, err)
+	return tree
 }

@@ -43,9 +43,14 @@ var _ TipSetProvider = (*Builder)(nil)
 var _ net.Fetcher = (*Builder)(nil)
 var _ MessageProvider = (*Builder)(nil)
 
-// NewBuilder builds a new chain faker.
-// Blocks will have `miner` set as the miner address, or a default if empty.
+// NewBuilder builds a new chain faker with default fake state building.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
+	return NewBuilderWithState(t, miner, &FakeStateBuilder{})
+}
+
+// NewBuilderWithState builds a new chain faker.
+// Blocks will have `miner` set as the miner address, or a default if empty.
+func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *Builder {
 	if miner.Empty() {
 		var err error
 		miner, err = address.NewActorAddress([]byte("miner"))
@@ -55,7 +60,7 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	b := &Builder{
 		t:            t,
 		minerAddress: miner,
-		stateBuilder: &FakeStateBuilder{},
+		stateBuilder: sb,
 		blocks:       make(map[cid.Cid]*types.Block),
 		tipStateCids: make(map[string]cid.Cid),
 		messages:     make(map[cid.Cid][]*types.SignedMessage),
@@ -65,8 +70,7 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	b.messages[types.EmptyMessagesCID] = []*types.SignedMessage{}
 	b.receipts[types.EmptyReceiptsCID] = []*types.MessageReceipt{}
 
-	nullState, err := makeCid("null")
-	require.NoError(t, err)
+	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 	return b
 }
@@ -351,7 +355,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, stateID cid.Cid) (cid.Cid, error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error) {
 	return e.ComputeState(stateID, messages)
 }
 
@@ -373,6 +377,11 @@ func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aS
 		return false, err
 	}
 	return aw > bw, nil
+}
+
+// NewWeight delegates to the statebuilder
+func (e *FakeChainSelector) NewWeight(ctx context.Context, ts types.TipSet, stID cid.Cid) (uint64, error) {
+	return e.Weigh(ts, stID)
 }
 
 ///// Interface and accessor implementations /////

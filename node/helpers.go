@@ -21,6 +21,7 @@ type nodeChainReader interface {
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetState(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()
@@ -32,7 +33,8 @@ type nodeChainSyncer interface {
 }
 
 type nodeChainSelector interface {
-	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+	NewWeight(context.Context, types.TipSet, cid.Cid) (uint64, error)
+	Weight(context.Context, types.TipSet, cid.Cid) (uint64, error)
 	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 

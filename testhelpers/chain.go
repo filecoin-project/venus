@@ -12,12 +12,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
-	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 type chainWeighter interface {
-	Weight(context.Context, types.TipSet, state.Tree) (uint64, error)
+	Weight(context.Context, types.TipSet, cid.Cid) (uint64, error)
 }
 
 // FakeChildParams is a wrapper for all the params needed to create fake child blocks.
@@ -52,10 +52,16 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 	bs := bstore.NewBlockstore(repo.NewInMemoryRepo().Datastore())
 	cst := hamt.NewCborStore()
 	processor := consensus.NewDefaultProcessor()
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	if err != nil {
+		return nil, err
+	}
+
 	actorState := consensus.NewActorStateStore(nil, cst, bs, processor)
 	selector := consensus.NewChainSelector(cst,
 		actorState,
 		params.GenesisCid,
+		pvt,
 	)
 	params.ConsensusChainSelection = selector
 	return MkFakeChildWithCon(params)
@@ -64,7 +70,7 @@ func MkFakeChild(params FakeChildParams) (*types.Block, error) {
 // MkFakeChildWithCon creates a chain with the given consensus weight function.
 func MkFakeChildWithCon(params FakeChildParams) (*types.Block, error) {
 	wFun := func(ts types.TipSet) (uint64, error) {
-		return params.ConsensusChainSelection.Weight(context.Background(), params.Parent, nil)
+		return params.ConsensusChainSelection.Weight(context.Background(), params.Parent, cid.Undef)
 	}
 	return MkFakeChildCore(params.Parent,
 		params.StateRoot,

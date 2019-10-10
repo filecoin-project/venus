@@ -117,7 +117,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 		}
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -143,7 +143,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 		}
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "block author did not win election")
 	})
 
@@ -170,7 +170,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 		}
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 		assert.Contains(t, err.Error(), "position 0")
@@ -196,7 +196,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
 		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.Error(t, err)
 	})
 
@@ -222,7 +222,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 		}
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.EqualError(t, err, "block signature invalid")
 	})
 }
