@@ -114,21 +114,17 @@ func TestLoadFork(t *testing.T) {
 // Power table weight comparisons impact syncer's selection.
 // One fork has more blocks but less total power.
 // Verify that the heavier fork is the one with more power.
+// All blocks in this test follow protocol version 1 upgrade weighting rules.
 func TestSyncerWeighsPower(t *testing.T) {
-	builder := chain.NewBuilder(t, address.Undef)
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
 	pvt, err := version.ConfigureProtocolVersions(version.TEST)
 	require.NoError(t, err)
-
 	isb := newIntegrationStateBuilder(t, cst, pvt)
-	builder.SetStateBuilder(isb)
+	builder := chain.NewBuilderWithState(t, address.Undef, isb)
 
 	// Construct genesis with readable state tree root
-	gen := builder.BuildOneOn(types.UndefTipSet, func(bb *chain.BlockBuilder) {
-		// All blocks in this test follow alphanet upgrade weighting rules
-		bb.IncHeight(300)
-	})
+	gen := builder.BuildOneOn(types.UndefTipSet, func(bb *chain.BlockBuilder) {})
 
 	// Builder constructs two different blocks with different state trees
 	// for building two forks.
@@ -148,8 +144,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 	fork1 := types.RequireNewTipSet(t, split.At(0))
 	fork2 := types.RequireNewTipSet(t, split.At(1))
 
-	// Builder adds 3 blocks to fork 1 and total storage power 2^4
-	// 3 + 3*delta = 3[V*1 + bits(2^0)] = 3 + 3[2 + 1] = 3 + 9 = 12
+	// Builder adds 3 blocks to fork 1 and total storage power 2^0
+	// 3 + 3*delta = 3 + 3[V*1 + bits(2^0)] = 3 + 3[2 + 1] = 3 + 9 = 12
 	head1 := builder.AppendManyOn(3, fork1)
 
 	// Builder adds 1 block to fork 2 and total storage power 2^9
@@ -172,6 +168,17 @@ func TestSyncerWeighsPower(t *testing.T) {
 	assert.Equal(t, head2.Key(), store.GetHead())
 }
 
+// integrationStateBuilder is a chain/testing.go `StateBuilder` used for
+// construction of a chain where the state root cids signify the total power
+// in the power table without actually needing to construct a valid state
+// state machine tree.
+//
+// All blocks with at least one message are assigned a special cid: c512.
+// In TestSyncerWeighsPower this state root is interpreted as having
+// 512 bytes of power.
+//
+// integrationStateBuilder also weighs the chain according to the protocol
+// version 1 upgrade.
 type integrationStateBuilder struct {
 	t    *testing.T
 	c512 cid.Cid
@@ -192,7 +199,7 @@ func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore, pvt *vers
 func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
-		treeGen := state.TreeFromString(isb.t, "16Power", isb.cst)
+		treeGen := state.TreeFromString(isb.t, "1Power", isb.cst)
 		genRoot, err := treeGen.Flush(context.Background())
 		require.NoError(isb.t, err)
 		return genRoot, nil
@@ -224,7 +231,8 @@ func (isb *integrationStateBuilder) Weigh(tip types.TipSet, pstate cid.Cid) (uin
 	return sel.NewWeight(context.Background(), tip, pstate)
 }
 
-// noopStateEvaluator returns the parent state root
+// integrationStateEvaluator returns the parent state root.  If there are multiple
+// parent blocks and any contain state root c512 then it will return c512.
 type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
@@ -238,6 +246,8 @@ func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts typ
 	return ts.At(0).StateRoot, nil
 }
 
+// forkSnapshotGen reads power from fake state tree root cids.  It reads
+// power of `forkPower` from cid `forkRoot` and `defaultPower` from all others.
 type forkSnapshotGen struct {
 	forkPower    *types.BytesAmount
 	defaultPower *types.BytesAmount

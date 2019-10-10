@@ -58,7 +58,7 @@ type syncChainSelector interface {
 	// IsHeaver returns true if tipset a is heavier than tipset b and false if
 	// tipset b is heavier than tipset a.
 	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
-	// NewWeight returns the weight of a tipset
+	// NewWeight returns the weight of a tipset after the upgrade to version 1
 	NewWeight(ctx context.Context, ts types.TipSet, stRoot cid.Cid) (uint64, error)
 }
 
@@ -187,8 +187,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 		return err
 	}
 
-	_ = parentWeight
-
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
 	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextMessages, nextReceipts, ancestors, parentWeight, stateRoot)
@@ -257,8 +255,8 @@ func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandPa
 	return syncer.chainSelector.NewWeight(ctx, parent, gpStRoot)
 }
 
-// familyFromStore returns the parent and grandparent tipsets of `ts`
-func (syncer *Syncer) familyFromStore(ts types.TipSet) (types.TipSet, types.TipSet, error) {
+// ancestorsFromStore returns the parent and grandparent tipsets of `ts`
+func (syncer *Syncer) ancestorsFromStore(ts types.TipSet) (types.TipSet, types.TipSet, error) {
 	parentCids, err := ts.Parents()
 	if err != nil {
 		return types.UndefTipSet, types.UndefTipSet, err
@@ -428,7 +426,7 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 	// Fetcher returns chain in Traversal order, reverse it to height order
 	Reverse(chain)
 
-	parent, grandParent, err := syncer.familyFromStore(chain[0])
+	parent, grandParent, err := syncer.ancestorsFromStore(chain[0])
 	if err != nil {
 		return err
 	}

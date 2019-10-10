@@ -21,6 +21,7 @@ type nodeChainReader interface {
 	GetHead() types.TipSetKey
 	GetTipSet(types.TipSetKey) (types.TipSet, error)
 	GetTipSetState(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error)
+	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()

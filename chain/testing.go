@@ -43,9 +43,14 @@ var _ TipSetProvider = (*Builder)(nil)
 var _ net.Fetcher = (*Builder)(nil)
 var _ MessageProvider = (*Builder)(nil)
 
-// NewBuilder builds a new chain faker.
-// Blocks will have `miner` set as the miner address, or a default if empty.
+// NewBuilder builds a new chain faker with default fake state building.
 func NewBuilder(t *testing.T, miner address.Address) *Builder {
+	return NewBuilderWithState(t, miner, &FakeStateBuilder{})
+}
+
+// NewBuilderWithState builds a new chain faker.
+// Blocks will have `miner` set as the miner address, or a default if empty.
+func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *Builder {
 	if miner.Empty() {
 		var err error
 		miner, err = address.NewActorAddress([]byte("miner"))
@@ -55,7 +60,7 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	b := &Builder{
 		t:            t,
 		minerAddress: miner,
-		stateBuilder: &FakeStateBuilder{},
+		stateBuilder: sb,
 		blocks:       make(map[cid.Cid]*types.Block),
 		tipStateCids: make(map[string]cid.Cid),
 		messages:     make(map[cid.Cid][]*types.SignedMessage),
@@ -68,11 +73,6 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[types.NewTipSetKey().String()] = nullState
 	return b
-}
-
-// SetStateBuilder sets the state builder
-func (f *Builder) SetStateBuilder(sb StateBuilder) {
-	f.stateBuilder = sb
 }
 
 // NewGenesis creates and returns a tipset of one block with no parents.
@@ -304,8 +304,6 @@ type StateBuilder interface {
 	ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
-
-//
 
 // FakeStateBuilder computes a fake state CID by hashing the CIDs of a block's parents and messages.
 type FakeStateBuilder struct {

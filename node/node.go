@@ -819,11 +819,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 	if parent.Len() == 0 {
 		return wFun(ctx, ts, cid.Undef)
 	}
-	pSt, err := node.Chain.ChainReader.GetTipSetState(ctx, parent)
-	if err != nil {
-		return uint64(0), err
-	}
-	root, err := pSt.Flush(ctx)
+	root, err := node.Chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
 		return uint64(0), err
 	}

@@ -189,7 +189,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
-	// TODO: inject protocol upgrade table into code that requires it (#3360)
 	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.Network.NetworkName)
 	if err != nil {
 		return nil, err

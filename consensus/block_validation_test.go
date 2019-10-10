@@ -24,7 +24,10 @@ func TestBlockValidSemantic(t *testing.T) {
 	ts := time.Unix(1234567890, 0)
 	mclock := th.NewFakeClock(ts)
 	ctx := context.Background()
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	pvt, err := version.NewProtocolVersionTableBuilder(version.TEST).
+		Add(version.TEST, version.Protocol0, types.NewBlockHeight(0)).
+		Add(version.TEST, version.Protocol1, types.NewBlockHeight(300)).
+		Build()
 	require.NoError(t, err)
 
 	validator := consensus.NewDefaultBlockValidator(blockTime, mclock, pvt)
@@ -83,13 +86,15 @@ func TestBlockValidSemantic(t *testing.T) {
 
 	})
 
-	t.Run("reject block mined with invalid parent weight after alphanet upgrade", func(t *testing.T) {
+	t.Run("reject block mined with invalid parent weight after protocol 1 upgrade", func(t *testing.T) {
 		hUpgrade := 300
 		c := &types.Block{Height: types.Uint64(hUpgrade) + 50, ParentWeight: 5000, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		p := &types.Block{Height: types.Uint64(hUpgrade) + 49, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
 
-		err := validator.ValidateSemantic(ctx, c, &parents, 30)
+		// validator expects parent weight different from 5000
+		pwExpectedByValidator := uint64(30)
+		err := validator.ValidateSemantic(ctx, c, &parents, pwExpectedByValidator)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
