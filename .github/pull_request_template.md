@@ -1,7 +1,9 @@
-Fixes #
+### Motivation
 
-Changes proposed:
 
-#### Does this PR include breaking changes in these areas?
-- Protocol-breaking? Y/N
-- API-breaking? Y/N (often triggered by changes to data structures)
+### Proposed changes
+
+Closes issue #
+
+<!-- Add the label "protocol breaking" if this PR alters protocol compatibility -->
+
