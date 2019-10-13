@@ -14,6 +14,7 @@ import (
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	cmdhttp "github.com/ipfs/go-ipfs-cmds/http"
 	writer "github.com/ipfs/go-log/writer"
+	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr-net"
 	"github.com/pkg/errors"
@@ -38,6 +39,7 @@ var daemonCmd = &cmds.Command{
 		cmdkit.BoolOption(ELStdout),
 		cmdkit.BoolOption(IsRelay, "advertise and allow filecoin network traffic to be relayed through this node"),
 		cmdkit.StringOption(BlockTime, "time a node waits before trying to mine the next block").WithDefault(consensus.DefaultBlockTime.String()),
+		cmdkit.StringOption(GossipsubHeartbeat, "gossipsub router heartbeat interval for pubsub system").WithDefault(libp2pps.GossipSubHeartbeatInterval.String()),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		return daemonRun(req, re)
@@ -89,13 +91,23 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	if !ok {
 		return errors.New("Bad block time passed")
 	}
-
 	blockTime, err := time.ParseDuration(durStr)
 	if err != nil {
 		return errors.Wrap(err, "Bad block time passed")
 	}
+
+	heartbeatDurStr, ok := req.Options[GossipsubHeartbeat].(string)
+	if !ok {
+		return errors.New("Bad gossipsub heartbeat passed")
+	}
+	heartbeat, err := time.ParseDuration(heartbeatDurStr)
+	if err != nil {
+		return errors.Wrap(err, "Bad gossipsub heartbeat passed")
+	}
+
 	opts = append(opts, node.BlockTime(blockTime))
 	opts = append(opts, node.ClockConfigOption(clock.NewSystemClock()))
+	opts = append(opts, node.GossipsubHeartbeat(heartbeat))
 
 	journal, err := journal.NewZapJournal(rep.JournalPath())
 	if err != nil {

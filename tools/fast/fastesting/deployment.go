@@ -73,7 +73,7 @@ func makeLocal(ctx context.Context, t *testing.T, dir string, fastenvOpts fast.F
 	require.NoError(t, err)
 
 	fastenvOpts.InitOpts = append([]fast.ProcessInitOption{fast.POGenesisFile(genesisURI)}, fastenvOpts.InitOpts...)
-	fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Second * 5)}, fastenvOpts.DaemonOpts...)
+	fastenvOpts.DaemonOpts = append([]fast.ProcessDaemonOption{fast.POBlockTime(time.Second * 5), fast.POGossibsubHeartbeat(100 * time.Millisecond)}, fastenvOpts.DaemonOpts...)
 
 	ctx = series.SetCtxSleepDelay(ctx, time.Second*5)
 

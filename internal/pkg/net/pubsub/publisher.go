@@ -1,6 +1,16 @@
 package pubsub
 
-import "github.com/libp2p/go-libp2p-pubsub"
+import (
+	"time"
+
+	"github.com/libp2p/go-libp2p-pubsub"
+)
+
+// DefaultGossipsubHeartbeat is the default value of the gossipsub parameter.
+// We store it here separately so that multiple tests can reference a static
+// value instead of the mutable global var in the pubsub package.  This should
+// be updated when go-libp2p-pubsub updates the variable.
+const DefaultGossipsubHeartbeat = 100 * time.Millisecond
 
 // Publisher publishes to pubsub topics
 type Publisher struct {

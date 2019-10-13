@@ -79,7 +79,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 
 	nextBlk := requireMineOnce(ctx, t, minerNode)
 	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 300)
+	time.Sleep(time.Second)
 
 	assert.NoError(t, minerNode.AddNewBlock(ctx, nextBlk))
 
@@ -135,7 +135,10 @@ func TestChainSync(t *testing.T) {
 // makeNodes makes at least two nodes, a miner and a client; numNodes is the total wanted
 func makeNodesBlockPropTests(t *testing.T, numNodes int) (address.Address, []*Node) {
 	seed := MakeChainSeed(t, TestGenCfg)
-	builderOpts := []BuilderOpt{ClockConfigOption(th.NewFakeClock(time.Unix(1234567890, 0)))}
+	builderOpts := []BuilderOpt{
+		ClockConfigOption(th.NewFakeClock(time.Unix(1234567890, 0))),
+		GossipsubHeartbeat(th.GossipsubHeartbeatTest),
+	}
 	minerNode := MakeNodeWithChainSeed(t, seed, builderOpts,
 		PeerKeyOpt(PeerKeys[0]),
 	)

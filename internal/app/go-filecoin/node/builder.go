@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/msg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"	
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
@@ -27,16 +28,17 @@ import (
 
 // Builder is a helper to aid in the construction of a filecoin node.
 type Builder struct {
-	blockTime   time.Duration
-	libp2pOpts  []libp2p.Option
-	offlineMode bool
-	verifier    verification.Verifier
-	rewarder    consensus.BlockRewarder
-	repo        repo.Repo
-	journal     journal.Journal
-	isRelay     bool
-	clock       clock.Clock
-	genCid      cid.Cid
+	blockTime     time.Duration
+	libp2pOpts    []libp2p.Option
+	offlineMode   bool
+	verifier      verification.Verifier
+	rewarder      consensus.BlockRewarder
+	repo          repo.Repo
+	journal       journal.Journal
+	isRelay       bool
+	clock         clock.Clock
+	genCid        cid.Cid
+	gsubHeartbeat time.Duration
 }
 
 // BuilderOpt is an option for building a filecoin node.
@@ -102,6 +104,14 @@ func ClockConfigOption(clk clock.Clock) BuilderOpt {
 	}
 }
 
+// GossipsubHeartbeat sets the pubsub gossipsub heartbeat.
+func GossipsubHeartbeat(heartbeat time.Duration) BuilderOpt {
+	return func(c *Builder) error {
+		c.gsubHeartbeat = heartbeat
+		return nil
+	}
+}
+
 // JournalConfigOption returns a function that sets the journal to use in the node.
 func JournalConfigOption(jrl journal.Journal) BuilderOpt {
 	return func(c *Builder) error {
@@ -115,6 +125,7 @@ func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	// initialize builder and set base values
 	n := &Builder{
 		offlineMode: false,
+		gsubHeartbeat: pubsub.DefaultGossipsubHeartbeat,
 	}
 
 	// apply builder options
@@ -289,6 +300,10 @@ func (b builder) Rewarder() consensus.BlockRewarder {
 
 func (b builder) Libp2pOpts() []libp2p.Option {
 	return b.libp2pOpts
+}
+
+func (b builder) GossipsubHeartbeat() time.Duration {
+	return b.gsubHeartbeat
 }
 
 func (b builder) OfflineMode() bool {

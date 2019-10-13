@@ -14,6 +14,9 @@ import (
 // BlockTimeTest is the block time used by workers during testing.
 const BlockTimeTest = time.Second
 
+// GossipsubHeartbeatTest is the gossipsub heartbeat used during testing.
+var GossipsubHeartbeatTest = 100 * time.Millisecond
+
 // FakeWorkerPorcelainAPI implements the WorkerPorcelainAPI>
 type FakeWorkerPorcelainAPI struct {
 	blockTime     time.Duration

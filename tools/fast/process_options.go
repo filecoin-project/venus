@@ -69,6 +69,13 @@ func POBlockTime(d time.Duration) ProcessDaemonOption {
 	}
 }
 
+// POGossibsubHeartbeat proves the `--gossipsub-heartbeat=<duration>` option to process when starting.
+func POGossibsubHeartbeat(d time.Duration) ProcessDaemonOption {
+	return func() []string {
+		return []string{"--gossipsub-heartbeat", d.String()}
+	}
+}
+
 // POIsRelay provides the `--is-relay` to process when starting.
 func POIsRelay() ProcessDaemonOption {
 	return func() []string {

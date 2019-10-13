@@ -40,7 +40,7 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
-	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(network.fsub), net.MessageTopic(network.NetworkName), msgPool)
+	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(network.gsub), net.MessageTopic(network.NetworkName), msgPool)
 	outbox := message.NewOutbox(wallet.Wallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
 
 	return MessagingSubmodule{

@@ -55,14 +55,16 @@ func TestMessagePropagation(t *testing.T) {
 	// Connect nodes in series
 	connect(t, nodes[0], nodes[1])
 	connect(t, nodes[1], nodes[2])
-	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 50)
 
 	require.Equal(t, 0, len(nodes[1].Messaging.Inbox.Pool().Pending()))
 	require.Equal(t, 0, len(nodes[2].Messaging.Inbox.Pool().Pending()))
 	require.Equal(t, 0, len(nodes[0].Messaging.Inbox.Pool().Pending()))
 
 	fooMethod := types.MethodID(7232)
+
+	// Wait for gossipsub mesh to propagate.
+	// This is necessary because gossipsub Publish races with mesh creation
+	time.Sleep(100 * time.Millisecond)
 
 	t.Run("message propagates", func(t *testing.T) {
 		_, err := sender.PorcelainAPI.MessageSend(
@@ -76,7 +78,7 @@ func TestMessagePropagation(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		require.NoError(t, th.WaitForIt(50, 100*time.Millisecond, func() (bool, error) {
+		assert.NoError(t, th.WaitForIt(50, 100*time.Millisecond, func() (bool, error) {
 			return len(nodes[0].Messaging.Inbox.Pool().Pending()) == 1 &&
 				len(nodes[1].Messaging.Inbox.Pool().Pending()) == 1 &&
 				len(nodes[2].Messaging.Inbox.Pool().Pending()) == 1, nil

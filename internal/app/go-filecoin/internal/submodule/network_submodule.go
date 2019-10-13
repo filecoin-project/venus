@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
@@ -46,7 +47,7 @@ type NetworkSubmodule struct {
 	// Router is a router from IPFS
 	Router routing.Routing
 
-	fsub *libp2pps.PubSub
+	gsub *libp2pps.PubSub
 
 	// TODO: split chain bitswap from storage bitswap (issue: ???)
 	Bitswap exchange.Interface
@@ -64,6 +65,7 @@ type networkConfig interface {
 	OfflineMode() bool
 	IsRelay() bool
 	Libp2pOpts() []libp2p.Option
+	GossipsubHeartbeat() time.Duration
 }
 
 type networkRepo interface {
@@ -114,10 +116,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// Set up libp2p network
 	// TODO: PubSub requires strict message signing, disabled for now
 	// reference issue: #3124
-	fsub, err := libp2pps.NewFloodSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}
+	// The gossipsub heartbeat timeout needs to be set sufficiently low
+	// to enable publishing on first connection.  The default of one
+	// second is not acceptable for tests.
+	libp2pps.GossipSubHeartbeatInterval = config.GossipsubHeartbeat()
 
 	// set up bitswap
 	nwork := bsnet.NewFromIpfsHost(peerHost, router)
@@ -128,14 +134,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	pingService := ping.NewPingService(peerHost)
 
 	// build network
-	network := net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
+	network := net.New(peerHost, pubsub.NewPublisher(gsub), pubsub.NewSubscriber(gsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
 
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName: networkName,
 		Host:        peerHost,
 		Router:      router,
-		fsub:        fsub,
+		gsub:        gsub,
 		Bitswap:     bswap,
 		Network:     network,
 	}, nil
