@@ -49,7 +49,7 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, meta types.TxMeta) ([]
 	err = ms.ipldStore.Get(ctx, meta.BLSRoot, &bls)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to load bls messages %s", meta.BLSRoot.String())
-	}	
+	}
 	return []*types.SignedMessage(secp), []*types.SignedMessage(bls), nil
 }
 
@@ -70,7 +70,7 @@ func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages, blsMess
 	if err != nil {
 		return ret, err
 	}
-	
+
 	ret.SecpRoot = secpRoot
 	ret.BLSRoot = blsRoot
 	return ret, nil

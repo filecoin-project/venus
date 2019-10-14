@@ -67,7 +67,7 @@ func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *
 		receipts:     make(map[cid.Cid][]*types.MessageReceipt),
 	}
 
-	b.messages[types.TxMeta{types.EmptyMessagesCID, types.EmptyMessagesCID}] = []*types.SignedMessage{}
+	b.messages[types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: types.EmptyMessagesCID}] = []*types.SignedMessage{}
 	b.receipts[types.EmptyMessagesCID] = []*types.MessageReceipt{}
 
 	nullState := types.CidFromString(t, "null")
@@ -179,7 +179,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 			ParentWeight:    types.Uint64(parentWeight),
 			Parents:         parent.Key(),
 			Height:          height,
-			Messages:        types.TxMeta{types.EmptyMessagesCID, types.EmptyMessagesCID},
+			Messages:        types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: types.EmptyMessagesCID},
 			MessageReceipts: types.EmptyReceiptsCID,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
