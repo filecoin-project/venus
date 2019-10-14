@@ -9,6 +9,7 @@ import (
 	"time"
 
 	bserv "github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -89,7 +90,7 @@ type Node struct {
 	// Protocols
 	//
 
-	VersionTable      version.ProtocolVersionTable
+	VersionTable      *version.ProtocolVersionTable
 	HelloProtocol     HelloProtocolSubmodule
 	StorageProtocol   StorageProtocolSubmodule
 	RetrievalProtocol RetrievalProtocolSubmodule
@@ -795,19 +796,34 @@ func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree
 
 // getWeight is the default GetWeight function for the mining worker.
 func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error) {
+	h, err := ts.Height()
+	if err != nil {
+		return 0, err
+	}
+	var wFun func(context.Context, types.TipSet, cid.Cid) (uint64, error)
+	v, err := node.VersionTable.VersionAt(types.NewBlockHeight(h))
+	if err != nil {
+		return 0, err
+	}
+	if v >= version.Protocol1 {
+		wFun = node.Chain.ChainSelector.NewWeight
+	} else {
+		wFun = node.Chain.ChainSelector.Weight
+	}
+
 	parent, err := ts.Parents()
 	if err != nil {
 		return uint64(0), err
 	}
 	// TODO handle genesis cid more gracefully
 	if parent.Len() == 0 {
-		return node.Chain.ChainSelector.Weight(ctx, ts, nil)
+		return wFun(ctx, ts, cid.Undef)
 	}
-	pSt, err := node.Chain.ChainReader.GetTipSetState(ctx, parent)
+	root, err := node.Chain.ChainReader.GetTipSetStateRoot(parent)
 	if err != nil {
 		return uint64(0), err
 	}
-	return node.Chain.ChainSelector.Weight(ctx, ts, pSt)
+	return wFun(ctx, ts, root)
 }
 
 // getAncestors is the default GetAncestors function for the mining worker.

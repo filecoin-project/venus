@@ -13,12 +13,17 @@ import (
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/version"
 )
 
 func TestNewWeight(t *testing.T) {
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
-	fakeTree := &state.MockStateTree{}
+	fakeTree := state.TreeFromString(t, "test-NewWeight-StateCid", cst)
+	fakeRoot, err := fakeTree.Flush(ctx)
+	require.NoError(t, err)
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	require.NoError(t, err)
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5
 	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
@@ -27,11 +32,11 @@ func TestNewWeight(t *testing.T) {
 		ParentWeight: 0,
 		Tickets:      tickets,
 	})
-	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"))
+	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"), pvt)
 
 	t.Run("basic happy path", func(t *testing.T) {
 		// 0 + 1[2*1 + 5] = 7
-		fixWeight, err := sel.NewWeight(ctx, toWeigh, fakeTree)
+		fixWeight, err := sel.NewWeight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 7, fixWeight)
 	})
@@ -42,20 +47,20 @@ func TestNewWeight(t *testing.T) {
 		asHigherX := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(32), make(map[address.Address]address.Address))
 
 		// Weight is 1 lower than total = 16 with total = 15
-		selLower := consensus.NewChainSelector(cst, asLowerX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err := selLower.NewWeight(ctx, toWeigh, fakeTree)
+		selLower := consensus.NewChainSelector(cst, asLowerX, types.CidFromString(t, "genesisCid"), pvt)
+		fixWeight, err := selLower.NewWeight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 6, fixWeight)
 
 		// Weight is same as total = 16 with total = 31
-		selSame := consensus.NewChainSelector(cst, asSameX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err = selSame.NewWeight(ctx, toWeigh, fakeTree)
+		selSame := consensus.NewChainSelector(cst, asSameX, types.CidFromString(t, "genesisCid"), pvt)
+		fixWeight, err = selSame.NewWeight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 7, fixWeight)
 
 		// Weight is 1 higher than total = 16 with total = 32
-		selHigher := consensus.NewChainSelector(cst, asHigherX, types.CidFromString(t, "genesisCid"))
-		fixWeight, err = selHigher.NewWeight(ctx, toWeigh, fakeTree)
+		selHigher := consensus.NewChainSelector(cst, asHigherX, types.CidFromString(t, "genesisCid"), pvt)
+		fixWeight, err = selHigher.NewWeight(ctx, toWeigh, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 8, fixWeight)
 	})
@@ -69,7 +74,7 @@ func TestNewWeight(t *testing.T) {
 		})
 
 		// 49 + 1[2*1 + 5] = 56
-		fixWeight, err := sel.NewWeight(ctx, toWeighWithParent, fakeTree)
+		fixWeight, err := sel.NewWeight(ctx, toWeighWithParent, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 56, fixWeight)
 	})
@@ -93,7 +98,7 @@ func TestNewWeight(t *testing.T) {
 			},
 		)
 		// 0 + 1[2*3 + 5] = 11
-		fixWeight, err := sel.NewWeight(ctx, toWeighThreeBlock, fakeTree)
+		fixWeight, err := sel.NewWeight(ctx, toWeighThreeBlock, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 11, fixWeight)
 	})
@@ -110,7 +115,7 @@ func TestNewWeight(t *testing.T) {
 		})
 
 		// 0 + 1[2*1 + 5] = 7
-		fixWeight, err := sel.NewWeight(ctx, toWeighTwoTickets, fakeTree)
+		fixWeight, err := sel.NewWeight(ctx, toWeighTwoTickets, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 7, fixWeight)
 	})
@@ -135,7 +140,7 @@ func TestNewWeight(t *testing.T) {
 		require.NoError(t, err)
 
 		// 0 + ((0.87)^15)[2*1 + 5]
-		fixWeight, err := sel.NewWeight(ctx, toWeighFifteenNull, fakeTree)
+		fixWeight, err := sel.NewWeight(ctx, toWeighFifteenNull, fakeRoot)
 		assert.NoError(t, err)
 		assert.Equal(t, fixExpected, fixWeight)
 	})
