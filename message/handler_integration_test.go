@@ -3,6 +3,7 @@ package message_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/message"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -20,6 +22,7 @@ import (
 func TestNewHeadHandlerIntegration(t *testing.T) {
 	tf.UnitTest(t)
 	signer, _ := types.NewMockSignersAndKeyInfo(2)
+	objournal := journal.NewInMemoryJournal(t, th.NewFakeClock(time.Unix(1234567890, 0))).Topic("outbox")
 	sender := signer.Addresses[0]
 	dest := signer.Addresses[1]
 	ctx := context.Background()
@@ -37,7 +40,8 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		queue := message.NewQueue()
 		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, "Topic", mpool)
 		policy := message.NewMessageQueuePolicy(provider, maxAge)
-		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy, provider, provider)
+		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy,
+			provider, provider, objournal)
 
 		return message.NewHeadHandler(inbox, outbox, provider, root)
 	}

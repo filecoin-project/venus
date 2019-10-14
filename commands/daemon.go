@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/node"
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -95,6 +96,12 @@ func daemonRun(req *cmds.Request, re cmds.ResponseEmitter) error {
 	}
 	opts = append(opts, node.BlockTime(blockTime))
 	opts = append(opts, node.ClockConfigOption(clock.NewSystemClock()))
+
+	journal, err := journal.NewZapJournal(rep.JournalPath())
+	if err != nil {
+		return err
+	}
+	opts = append(opts, node.JournalConfigOption(journal))
 
 	// Instantiate the node.
 	fcn, err := node.New(req.Context, opts...)
