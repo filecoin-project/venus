@@ -191,7 +191,7 @@ func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
 		ParentWeight:    0,
 		Height:          height,
 		MessageReceipts: types.EmptyMessagesCID,
-		Messages:        types.EmptyReceiptsCID,
+		Messages:        types.TxMeta{SecpRoot: types.EmptyReceiptsCID, BLSRoot: types.EmptyMessagesCID},
 	})
 	if err != nil {
 		t.Fatal(err)

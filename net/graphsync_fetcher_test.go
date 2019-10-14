@@ -41,7 +41,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/version"
 )
 
-const visitsPerBlock = 4
+const visitsPerBlock = 5
 
 type notDecodable struct {
 	Num    int    `json:"num"`
@@ -72,7 +72,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", ssb.Matcher())
+		efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
+			messagesSelector.Insert("secpRoot", ssb.Matcher())
+		}))
 		efsb.Insert("messageReceipts", ssb.Matcher())
 	}).Selector()
 	require.NoError(t, err)
@@ -81,7 +83,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 			efsb.Insert("parents", ssb.ExploreUnion(
 				ssb.ExploreAll(
 					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-						efsb.Insert("messages", ssb.Matcher())
+						efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
+							messagesSelector.Insert("secpRoot", ssb.Matcher())
+						}))
 						efsb.Insert("messageReceipts", ssb.Matcher())
 					}),
 				),
@@ -475,7 +479,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	t.Run("blocks present but messages don't decode", func(t *testing.T) {
 		mgs := newMockableGraphsync(ctx, bs, clock, t)
 		block := requireSimpleValidBlock(t, 3, address.Undef)
-		block.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid()}
+		block.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
 		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
@@ -1156,7 +1160,7 @@ func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) 
 func simpleBlock() *types.Block {
 	meta := types.TxMeta{
 		SecpRoot: types.EmptyMessagesCID,
-		BLSRoot: types.EmptyMessagesCID,
+		BLSRoot:  types.EmptyMessagesCID,
 	}
 	return &types.Block{
 		ParentWeight:    0,
