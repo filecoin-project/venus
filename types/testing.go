@@ -80,8 +80,8 @@ func MustGenerateKeyInfo(n int, seed byte) []KeyInfo {
 		}
 
 		ki := &KeyInfo{
-			PrivateKey: prv,
-			Curve:      SECP256K1,
+			PrivateKey:  prv,
+			CryptSystem: SECP256K1,
 		}
 		keyinfos = append(keyinfos, *ki)
 	}
@@ -99,7 +99,7 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 	return crypto.Sign(ki.Key(), hash[:])
 }
 
-// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
+// GetSecpAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
 func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 

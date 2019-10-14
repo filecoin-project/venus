@@ -24,18 +24,6 @@ func TestSignedMessageString(t *testing.T) {
 	assert.Contains(t, got, cid.String())
 }
 
-func TestSignedMessageRecover(t *testing.T) {
-	tf.UnitTest(t)
-
-	smsg := makeMessage(t, mockSigner, 42)
-
-	mockRecoverer := MockRecoverer{}
-
-	addr, err := smsg.RecoverAddress(&mockRecoverer)
-	assert.NoError(t, err)
-	assert.Equal(t, mockSigner.Addresses[0], addr)
-}
-
 func TestSignedMessageMarshal(t *testing.T) {
 	tf.UnitTest(t)
 

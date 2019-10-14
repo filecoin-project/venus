@@ -16,8 +16,8 @@ func TestKeyInfoMarshal(t *testing.T) {
 	assert.NoError(t, err)
 	testType := "test_key_type"
 	ki := &KeyInfo{
-		PrivateKey: testKey,
-		Curve:      testType,
+		PrivateKey:  testKey,
+		CryptSystem: testType,
 	}
 
 	marshaled, err := ki.Marshal()

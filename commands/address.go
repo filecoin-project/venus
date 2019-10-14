@@ -245,7 +245,7 @@ var walletExportCmd = &cmds.Command{
 					return err
 				}
 				privateKeyInBase64 := base64.StdEncoding.EncodeToString(k.PrivateKey)
-				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.Curve)
+				_, err = fmt.Fprintf(w, "Address:\t%s\nPrivateKey:\t%s\nCurve:\t\t%s\n\n", a.String(), privateKeyInBase64, k.CryptSystem)
 				if err != nil {
 					return err
 				}

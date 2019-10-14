@@ -194,8 +194,8 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
 		}
 
 		ki := &types.KeyInfo{
-			PrivateKey: sk,
-			Curve:      types.SECP256K1,
+			PrivateKey:  sk,
+			CryptSystem: types.SECP256K1,
 		}
 
 		keys[i] = ki

@@ -27,7 +27,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Len(t, w.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress()
+	addr, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -49,7 +49,7 @@ func TestWalletSimple(t *testing.T) {
 	assert.Equal(t, list[0], addr)
 
 	t.Log("addresses are sorted")
-	addr2, err := fs.NewAddress()
+	addr2, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	if bytes.Compare(addr2.Bytes(), addr.Bytes()) < 0 {
@@ -78,7 +78,7 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	assert.Len(t, w.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address in the backend")
-	addr, err := fs.NewAddress()
+	addr, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -113,16 +113,6 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	secondValid, err := w.Verify(dataB, pkb, sig)
 	assert.NoError(t, err)
 	assert.False(t, secondValid)
-
-	t.Log("recovered public key matchs known public key for signed data")
-	maybePk, err := w.Ecrecover(dataA, sig)
-	assert.NoError(t, err)
-	assert.Equal(t, pkb, maybePk)
-
-	t.Log("recovered public key is different than known public key for unsigned data")
-	maybePk, err = w.Ecrecover(dataB, sig)
-	assert.NoError(t, err)
-	assert.NotEqual(t, pkb, maybePk)
 }
 
 func TestSignErrorCases(t *testing.T) {
@@ -146,9 +136,9 @@ func TestSignErrorCases(t *testing.T) {
 	assert.Len(t, w2.Backends(wallet.DSBackendType), 1)
 
 	t.Log("create a new address each backend")
-	addr1, err := fs1.NewAddress()
+	addr1, err := fs1.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
-	addr2, err := fs2.NewAddress()
+	addr2, err := fs2.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("test HasAddress")
@@ -171,27 +161,4 @@ func TestSignErrorCases(t *testing.T) {
 	_, err = w1.SignBytes(dataA, addr2)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not find address:")
-}
-
-func TestGetAddressForPubKey(t *testing.T) {
-	tf.UnitTest(t)
-
-	ds := datastore.NewMapDatastore()
-	fs, err := wallet.NewDSBackend(ds)
-	assert.NoError(t, err)
-	w := wallet.New(fs)
-
-	for range []int{0, 1, 2} {
-		ki, err := w.NewKeyInfo()
-		if err != nil {
-			panic("w.NewKeyInfo failed for this wallet")
-		}
-
-		expectedAddr, _ := ki.Address()
-		pubkey := ki.PublicKey()
-		actualAddr, err := w.GetAddressForPubKey(pubkey)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedAddr, actualAddr)
-	}
-
 }

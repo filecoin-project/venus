@@ -76,7 +76,7 @@ func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func
 }
 
 func (mpc *minerCreate) WalletDefaultAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
+	return wallet.NewAddress(mpc.wallet, address.SECP256K1)
 }
 
 func TestMinerCreate(t *testing.T) {
@@ -148,7 +148,7 @@ func (mpc *minerPreviewCreate) NetworkGetPeerID() peer.ID {
 }
 
 func (mpc *minerPreviewCreate) WalletDefaultAddress() (address.Address, error) {
-	return wallet.NewAddress(mpc.wallet)
+	return wallet.NewAddress(mpc.wallet, address.SECP256K1)
 }
 
 func TestMinerPreviewCreate(t *testing.T) {

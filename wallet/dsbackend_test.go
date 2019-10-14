@@ -4,6 +4,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.Len(t, fs.Addresses(), 0)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress()
+	addr, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored")
@@ -51,7 +52,7 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("can create new address")
-	addr, err := fs.NewAddress()
+	addr, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored")
@@ -87,7 +88,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("can create new address in fs1")
-	addr, err := fs1.NewAddress()
+	addr, err := fs1.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
 
 	t.Log("address is stored fs1")
@@ -123,7 +124,7 @@ func TestDSBackendParallel(t *testing.T) {
 	wg.Add(count)
 	for i := 0; i < count; i++ {
 		go func() {
-			_, err := fs.NewAddress()
+			_, err := fs.NewAddress(address.SECP256K1)
 			assert.NoError(t, err)
 			wg.Done()
 		}()
