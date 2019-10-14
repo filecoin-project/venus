@@ -119,7 +119,7 @@ func (sb *RustSectorBuilder) AddPiece(ctx context.Context, pieceRef cid.Cid, pie
 		defer func() {
 			err := fifoFile.Close()
 			if err != nil {
-				log.Warningf("failed to close fifoFile: %s", err)
+				log.Warnf("failed to close fifoFile: %s", err)
 			}
 		}()
 

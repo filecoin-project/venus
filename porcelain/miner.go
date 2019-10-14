@@ -8,7 +8,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
@@ -20,8 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	vmErrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
-
-var log = logging.Logger("porcelain")
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
 type mcAPI interface {
@@ -52,11 +49,6 @@ func MinerCreate(
 			return nil, err
 		}
 	}
-
-	ctx = log.Start(ctx, "Node.CreateStorageMiner")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
 
 	addr, err := plumbing.ConfigGet("mining.minerAddress")
 	if err != nil {
@@ -130,11 +122,6 @@ func MinerPreviewCreate(
 	if _, err := plumbing.ConfigGet("mining.minerAddress"); err != nil {
 		return types.NewGasUnits(0), fmt.Errorf("can only have one miner per node")
 	}
-
-	ctx = log.Start(ctx, "Node.CreateStorageMiner")
-	defer func() {
-		log.FinishWithErr(ctx, err)
-	}()
 
 	usedGas, err = plumbing.MessagePreview(
 		ctx,

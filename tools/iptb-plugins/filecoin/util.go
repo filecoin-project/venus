@@ -24,7 +24,7 @@ func WaitOnAPI(l testbedi.Libp2p) error {
 		if err == nil {
 			return nil
 		}
-		log.Warning(err.Error())
+		log.Warn(err.Error())
 		time.Sleep(time.Millisecond * 400)
 	}
 

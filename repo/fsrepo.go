@@ -241,7 +241,7 @@ func (r *FSRepo) Config() *config.Config {
 // ReplaceConfig replaces the current config with the newly passed in one.
 func (r *FSRepo) ReplaceConfig(cfg *config.Config) error {
 	if err := r.SnapshotConfig(r.Config()); err != nil {
-		log.Warningf("failed to create snapshot: %s", err.Error())
+		log.Warnf("failed to create snapshot: %s", err.Error())
 	}
 	r.lk.Lock()
 	defer r.lk.Unlock()

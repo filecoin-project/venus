@@ -323,7 +323,7 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 			}
 			newHead, ok := ts.(types.TipSet)
 			if !ok {
-				log.Warning("non-tipset published on heaviest tipset channel")
+				log.Warn("non-tipset published on heaviest tipset channel")
 				continue
 			}
 
@@ -396,7 +396,7 @@ type newBlockFunc func(context.Context, *types.Block)
 func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
 	log.Debugf("Got a newly mined block from the mining worker: %s", b)
 	if err := node.AddNewBlock(ctx, b); err != nil {
-		log.Warningf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
+		log.Warnf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
 	}
 }
 

@@ -145,7 +145,7 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 				if failedAt.IsZero() { // First failure since connection
 					failedAt = now
 					erroredAt = failedAt // Start the timer on raising to ERROR level
-					logfn = log.Warningf
+					logfn = log.Warnf
 				} else if now.Sub(erroredAt) > connectionFailureErrorLogPeriodMinutes {
 					logfn = log.Errorf
 					erroredAt = now // Reset the timer
@@ -160,7 +160,7 @@ func (hbs *HeartbeatService) Start(ctx context.Context) {
 			// we connected, send heartbeats!
 			// Run will block until it fails to send a heartbeat.
 			if err := hbs.Run(ctx); err != nil {
-				log.Warning("disconnecting from aggregator, failed to send heartbeat")
+				log.Warn("disconnecting from aggregator, failed to send heartbeat")
 				continue
 			}
 		}
@@ -206,7 +206,7 @@ func (hbs *HeartbeatService) Beat(ctx context.Context) Heartbeat {
 	tipset := ts.Key().String()
 	height, err := ts.Height()
 	if err != nil {
-		log.Warningf("heartbeat service failed to get chain height: %s", err)
+		log.Warnf("heartbeat service failed to get chain height: %s", err)
 	}
 	addr := hbs.MinerAddressGetter()
 	return Heartbeat{
@@ -249,7 +249,7 @@ func (hbs *HeartbeatService) Connect(ctx context.Context) error {
 		log.Debugf("failed to open stream, peerID: %s, targetAddr: %s %s", peerid, targetAddr, err)
 		return err
 	}
-	log.Infof("successfully to open stream, peerID: %s, targetAddr: %s", peerid, targetAddr)
+	log.Infow("successfully to open stream", "peerID", peerid, "address", targetAddr)
 
 	hbs.SetStream(s)
 	return nil

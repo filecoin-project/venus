@@ -136,7 +136,7 @@ func (p *Prover) CalculatePoSt(ctx context.Context, start, end *types.BlockHeigh
 		return nil, err
 	}
 	if feeDue.GreaterThan(balance) {
-		log.Warningf("PoSt fee of %s exceeds available balance of %s for owner %s", feeDue, balance, workerAddr)
+		log.Warnf("PoSt fee of %s exceeds available balance of %s for owner %s", feeDue, balance, workerAddr)
 		// Submit anyway, in case the balance is topped up before the PoSt message is mined.
 	}
 

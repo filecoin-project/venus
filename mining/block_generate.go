@@ -129,7 +129,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		if err == nil {
 			w.messageSource.Remove(mc)
 		} else {
-			log.Warningf("failed to get CID from message", err)
+			log.Warnf("failed to get CID from message", err)
 		}
 	}
 

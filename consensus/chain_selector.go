@@ -66,8 +66,6 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 // P_n(n) = if n < 3:0 else: n, n is number of null rounds
 // X = log_2(total_storage(pSt))
 func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
-	ctx = log.Start(ctx, "Expected.Weight")
-	log.LogKV(ctx, "Weight", ts.String())
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
@@ -123,8 +121,6 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pStateID
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
 func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
-	ctx = log.Start(ctx, "Expected.Weight")
-	log.LogKV(ctx, "Weight", ts.String())
 	if ts.Len() == 1 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}

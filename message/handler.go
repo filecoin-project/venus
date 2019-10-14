@@ -27,11 +27,11 @@ func NewHeadHandler(inbox *Inbox, outbox *Outbox, chain chainProvider, head type
 // HandleNewHead computes the chain delta implied by a new head and updates the inbox and outbox.
 func (h *HeadHandler) HandleNewHead(ctx context.Context, newHead types.TipSet) error {
 	if !newHead.Defined() {
-		log.Warning("received empty tipset, ignoring")
+		log.Warn("received empty tipset, ignoring")
 		return nil
 	}
 	if newHead.Equals(h.prevHead) {
-		log.Warningf("received non-new head tipset, ignoring %s", newHead.Key())
+		log.Warnf("received non-new head tipset, ignoring %s", newHead.Key())
 		return nil
 	}
 

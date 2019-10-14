@@ -75,8 +75,6 @@ func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool,
 // traverses the entire chain. We should use an index instead.
 // https://github.com/filecoin-project/go-filecoin/issues/1518
 func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
-	ctx = log.Start(ctx, "Waiter.Wait")
-	defer log.Finish(ctx)
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 
 	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
