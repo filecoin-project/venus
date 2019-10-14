@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
 )
@@ -59,7 +60,10 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
-	messages := mq.Drain()
+	secpMessages, blsMessages := w.divideMessages(mq.Drain())
+
+	// bls messages are processed first
+	messages := append(blsMessages, secpMessages...)
 
 	vms := vm.NewStorageMap(w.blockstore)
 	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
@@ -83,13 +87,10 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		receipts = append(receipts, r.Receipt)
 	}
 
-	minedMessages := []*types.SignedMessage{}
-	for _, msg := range res.SuccessfulMessages {
-		minedMessages = append(minedMessages, msg)
-	}
+	minedSecpMessages, minedBLSMessages := w.divideMessages(res.SuccessfulMessages)
 
 	// Persist messages to ipld storage
-	txMeta, err := w.messageStore.StoreMessages(ctx, minedMessages, []*types.SignedMessage{})
+	txMeta, err := w.messageStore.StoreMessages(ctx, minedSecpMessages, minedBLSMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
@@ -141,4 +142,18 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	}
 
 	return next, nil
+}
+
+func (w *DefaultWorker) divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []*types.SignedMessage) {
+	secpMessages := []*types.SignedMessage{}
+	blsMessages := []*types.SignedMessage{}
+
+	for _, m := range messages {
+		if m.From.Protocol() == address.BLS {
+			blsMessages = append(blsMessages, m)
+		} else {
+			secpMessages = append(secpMessages, m)
+		}
+	}
+	return secpMessages, blsMessages
 }
