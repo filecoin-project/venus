@@ -67,6 +67,7 @@ the event log.
 
 	Options: []cmdkit.Option{
 		cmdkit.StringOption("subsystem", "The subsystem logging identifier"),
+		cmdkit.StringOption("expression", "Subsystem identifier by regular expression"),
 	},
 
 	Run: func(req *cmds.Request, res cmds.ResponseEmitter, env cmds.Environment) error {
@@ -79,10 +80,18 @@ the event log.
 			}
 			s = fmt.Sprintf("Changed log level of '%s' to '%s'", subsystem, level)
 			loglogger.Info(s)
-		} else {
-			if err := logging.SetLogLevel("*", level); err != nil {
+		} else if expression, ok := req.Options["expression"].(string); ok {
+			if err := logging.SetLogLevelRegex(expression, level); err != nil {
 				return err
 			}
+			s = fmt.Sprintf("Changed log level matching expression '%s' to '%s'", subsystem, level)
+			loglogger.Info(s)
+		} else {
+			lvl, err := logging.LevelFromString(level)
+			if err != nil {
+				return err
+			}
+			logging.SetAllLoggers(lvl)
 			s = fmt.Sprintf("Changed log level of all subsystems to: %s", level)
 			loglogger.Info(s)
 		}
