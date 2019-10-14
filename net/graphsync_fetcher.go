@@ -148,7 +148,6 @@ func (gsf *GraphSyncFetcher) fetchFirstTipset(ctx context.Context, key types.Tip
 		if err != nil {
 			return types.UndefTipSet, err
 		}
-		fmt.Printf("verifiedTip: %v, blocksToFetch %v\n", verifiedTip, blocksToFetch)
 		if len(blocksToFetch) == 0 {
 			return verifiedTip, nil
 		}
