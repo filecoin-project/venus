@@ -133,7 +133,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
-		Messages:  cidGetter(),
+		Messages:  types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
 		Tickets:   []types.Ticket{{VRFProof: []byte{0x1}}},
 	}
 
@@ -145,7 +145,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
-		Messages:  cidGetter(),
+		Messages:  types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
 		Tickets:   []types.Ticket{{VRFProof: []byte{0x2}}},
 	}
 

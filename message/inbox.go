@@ -28,7 +28,7 @@ type Inbox struct {
 
 // messageProvider provides message collections given their cid.
 type messageProvider interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.SignedMessage, error)
 }
 
 // NewInbox constructs a new inbox.
@@ -76,11 +76,11 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.T
 	for _, tipset := range oldChain {
 		for i := 0; i < tipset.Len(); i++ {
 			block := tipset.At(i)
-			msgs, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, block.Messages)
 			if err != nil {
 				return err
 			}
-			for _, msg := range msgs {
+			for _, msg := range secpMsgs {
 				_, err = ib.pool.Add(ctx, msg, chainHeight)
 				if err != nil {
 					// Messages from the removed chain are frequently invalidated, e.g. because that
@@ -96,11 +96,11 @@ func (ib *Inbox) HandleNewHead(ctx context.Context, oldChain, newChain []types.T
 	var removeCids []cid.Cid
 	for _, tipset := range newChain {
 		for i := 0; i < tipset.Len(); i++ {
-			msgs, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			secpMsgs, _, err := ib.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
 			if err != nil {
 				return err
 			}
-			for _, msg := range msgs {
+			for _, msg := range secpMsgs {
 				cid, err := msg.Cid()
 				if err != nil {
 					return err

@@ -203,7 +203,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 
 		genesis := &types.Block{
 			StateRoot:       c,
-			Messages:        emptyMessagesCid,
+			Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
 			MessageReceipts: emptyReceiptsCid,
 			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}

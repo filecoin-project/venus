@@ -147,8 +147,8 @@ func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, er
 }
 
 // ChainGetMessages gets a message collection by CID
-func (api *API) ChainGetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
-	return api.chain.GetMessages(ctx, id)
+func (api *API) ChainGetMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, error) {
+	return api.chain.GetMessages(ctx, meta)
 }
 
 // ChainGetReceipts gets a receipt collection by CID

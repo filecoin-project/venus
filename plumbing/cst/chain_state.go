@@ -82,8 +82,12 @@ func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*typ
 }
 
 // GetMessages gets a message collection by CID.
-func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, id cid.Cid) ([]*types.SignedMessage, error) {
-	return chn.messageProvider.LoadMessages(ctx, id)
+func (chn *ChainStateReadWriter) GetMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, error) {
+	secp, _, err := chn.messageProvider.LoadMessages(ctx, meta)
+	if err != nil {
+		return []*types.SignedMessage{}, err
+	}
+	return secp, nil
 }
 
 // GetReceipts gets a receipt collection by CID.
