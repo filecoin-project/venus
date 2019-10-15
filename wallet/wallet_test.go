@@ -71,6 +71,7 @@ func TestWalletBLSKeys(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	wb, err := wallet.NewDSBackend(ds)
+	require.NoError(t, err)
 	w := wallet.New(wb)
 
 	addr, err := wallet.NewAddress(w, address.BLS)

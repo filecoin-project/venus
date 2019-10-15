@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -60,7 +61,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
-	secpMessages, blsMessages := w.divideMessages(mq.Drain())
+	secpMessages, blsMessages := divideMessages(mq.Drain())
 
 	// bls messages are processed first
 	messages := append(blsMessages, secpMessages...)
@@ -87,10 +88,17 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		receipts = append(receipts, r.Receipt)
 	}
 
-	minedSecpMessages, minedBLSMessages := w.divideMessages(res.SuccessfulMessages)
+	// split mined messages into secp and bls
+	minedSecpMessages, minedBLSMessages := divideMessages(res.SuccessfulMessages)
+
+	// create an aggregage signature for messages
+	unwrappedBLSMessages, blsAggregateSig, err := aggregateBLS(minedBLSMessages)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not aggregate bls messages")
+	}
 
 	// Persist messages to ipld storage
-	txMeta, err := w.messageStore.StoreMessages(ctx, minedSecpMessages, minedBLSMessages)
+	txMeta, err := w.messageStore.StoreMessages(ctx, minedSecpMessages, unwrappedBLSMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
@@ -110,6 +118,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		StateRoot:       newStateTreeCid,
 		Tickets:         tickets,
 		Timestamp:       types.Uint64(w.clock.Now().Unix()),
+		BLSAggregateSig: blsAggregateSig,
 	}
 	workerAddr, err := w.api.MinerGetWorkerAddress(ctx, w.minerAddr, baseTipSet.Key())
 	if err != nil {
@@ -144,7 +153,27 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	return next, nil
 }
 
-func (w *DefaultWorker) divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []*types.SignedMessage) {
+func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.MeteredMessage, types.Signature, error) {
+	sigs := []bls.Signature{}
+	unwrappedMsgs := []*types.MeteredMessage{}
+	for _, msg := range blsMessages {
+		// unwrap messages
+		unwrappedMsgs = append(unwrappedMsgs, &msg.MeteredMessage)
+		sig := msg.Signature
+
+		// store message signature as bls signature
+		blsSig := bls.Signature{}
+		copy(blsSig[:], sig)
+		sigs = append(sigs, blsSig)
+	}
+	blsAggregateSig := bls.Aggregate(sigs)
+	if blsAggregateSig == nil {
+		return []*types.MeteredMessage{}, types.Signature{}, errors.New("could not aggregate signatures")
+	}
+	return unwrappedMsgs, blsAggregateSig[:], nil
+}
+
+func divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []*types.SignedMessage) {
 	secpMessages := []*types.SignedMessage{}
 	blsMessages := []*types.SignedMessage{}
 

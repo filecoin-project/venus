@@ -28,7 +28,7 @@ type Inbox struct {
 
 // messageProvider provides message collections given their cid.
 type messageProvider interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.SignedMessage, error)
+	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.MeteredMessage, error)
 }
 
 // NewInbox constructs a new inbox.

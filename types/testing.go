@@ -66,7 +66,7 @@ func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
 	return signer, ki
 }
 
-// MustGenerateMixedKeys produces m bls keys and n secp keys.
+// MustGenerateMixedKeyInfo produces m bls keys and n secp keys.
 // BLS and Secp will be interleaved. The keys will be valid, but not deterministic.
 func MustGenerateMixedKeyInfo(m int, n int) []KeyInfo {
 	info := []KeyInfo{}
@@ -125,11 +125,14 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 		return nil, errors.New("Unknown address -- can't sign")
 	}
 
-	hash := blake2b.Sum256(data)
-	return crypto.SignSecp(ki.Key(), hash[:])
+	if ki.CryptSystem == SECP256K1 {
+		hash := blake2b.Sum256(data)
+		return crypto.SignSecp(ki.Key(), hash[:])
+	}
+	return crypto.SignBLS(ki.PrivateKey, data)
 }
 
-// GetSecpAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
+// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner
 func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 

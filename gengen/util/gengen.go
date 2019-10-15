@@ -152,6 +152,10 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
+	emptySignedMessagesCid, err := cst.Put(ctx, types.SignedMessageCollection{})
+	if err != nil {
+		return nil, err
+	}
 	emptyMessagesCid, err := cst.Put(ctx, types.MessageCollection{})
 	if err != nil {
 		return nil, err
@@ -161,14 +165,15 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	if !emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
+	if !emptySignedMessagesCid.Equals(types.EmptyMessagesCID) ||
+		!emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
 		!emptyReceiptsCid.Equals(types.EmptyReceiptsCID) {
 		return nil, errors.New("bad CID for empty messages/receipts")
 	}
 
 	geneblk := &types.Block{
 		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
+		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptySignedMessagesCid},
 		MessageReceipts: emptyReceiptsCid,
 		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}

@@ -68,7 +68,7 @@ func (ki *KeyInfo) Address() (address.Address, error) {
 	if ki.CryptSystem == SECP256K1 {
 		return address.NewSecp256k1Address(ki.PublicKey())
 	}
-	return address.Undef, errors.Errorf("can not generate address for unkown crypto system: %s", ki.CryptSystem)
+	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %s", ki.CryptSystem)
 }
 
 // PublicKey returns the public key part as uncompressed bytes.

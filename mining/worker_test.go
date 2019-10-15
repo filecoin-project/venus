@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -99,6 +100,7 @@ func Test_Mine(t *testing.T) {
 		assert.True(t, testTicketGen.timeNotarized)
 		cancel()
 	})
+
 	t.Run("Block generation fails", func(t *testing.T) {
 		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -262,7 +264,7 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestApplyBLSMessagesFist(t *testing.T) {
+func TestApplyBLSMessages(t *testing.T) {
 	tf.UnitTest(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -294,7 +296,6 @@ func TestApplyBLSMessagesFist(t *testing.T) {
 	assert.Equal(t, address.SECP256K1, secpAddress.Protocol())
 
 	// create secp and bls signed messages interleaved
-	messages := []*types.SignedMessage{}
 	for i := 0; i < 10; i++ {
 		var addr address.Address
 		if i%2 == 0 {
@@ -303,8 +304,8 @@ func TestApplyBLSMessagesFist(t *testing.T) {
 			addr = secpAddress
 		}
 		smsg := requireSignedMessage(t, mockSigner, addr, addrs[3], uint64(i/2), types.NewAttoFILFromFIL(1))
-		pool.Add(ctx, smsg, uint64(0))
-		messages = append(messages, smsg)
+		_, err := pool.Add(ctx, smsg, uint64(0))
+		require.NoError(t, err)
 	}
 
 	testTicketGen := &mockTicketGen{}
@@ -356,6 +357,27 @@ func TestApplyBLSMessagesFist(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Len(t, receipts, 10)
+	})
+
+	t.Run("block bls signature can be used to validate messages", func(t *testing.T) {
+		digests := []bls.Digest{}
+		keys := []bls.PublicKey{}
+
+		_, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
+		require.NoError(t, err)
+		for _, msg := range blsMessages {
+			msgBytes, err := msg.Marshal()
+			require.NoError(t, err)
+			digests = append(digests, bls.Hash(msgBytes))
+
+			pubKey := bls.PublicKey{}
+			copy(pubKey[:], msg.From.Payload())
+			keys = append(keys, pubKey)
+		}
+
+		blsSig := bls.Signature{}
+		copy(blsSig[:], block.BLSAggregateSig)
+		bls.Verify(&blsSig, digests, keys)
 	})
 }
 
@@ -642,7 +664,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
-	assert.Equal(t, types.MessageCollection{}.Cid(), blk.Messages.SecpRoot)
+	assert.Equal(t, types.SignedMessageCollection{}.Cid(), blk.Messages.SecpRoot)
 	assert.Equal(t, types.ReceiptCollection{}.Cid(), blk.MessageReceipts)
 }
 

@@ -477,12 +477,12 @@ func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []types.TipSet
 }
 
 // LoadMessages returns the message collections tracked by the builder.
-func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.SignedMessage, error) {
+func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.MeteredMessage, error) {
 	msgs, ok := f.messages[meta]
 	if !ok {
 		return nil, nil, errors.Errorf("no message for %s", meta.SecpRoot)
 	}
-	return msgs, []*types.SignedMessage{}, nil
+	return msgs, []*types.MeteredMessage{}, nil
 }
 
 // LoadReceipts returns the message collections tracked by the builder.

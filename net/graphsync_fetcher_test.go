@@ -121,7 +121,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 			blk := ts.At(i)
 			rawBlock, err := bs.Get(blk.Messages.SecpRoot)
 			require.NoError(t, err)
-			messages, err := types.DecodeMessages(rawBlock.RawData())
+			messages, err := types.DecodeSignedMessages(rawBlock.RawData())
 			require.NoError(t, err)
 			expectedMessages, _, err := builder.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
@@ -498,7 +498,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		block.MessageReceipts = notDecodableBlock.Cid()
 		key := types.NewTipSetKey(block.Cid())
 		chain0 := types.NewChainInfo(pid0, key, uint64(block.Height))
-		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.MessageCollection{}.ToNode()})
+		notDecodableLoader := simpleLoader([]format.Node{block.ToNode(), notDecodableBlock, types.SignedMessageCollection{}.ToNode()})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, block.Cid())
 		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
@@ -825,7 +825,7 @@ func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, 
 	}
 	meta := types.TxMeta{SecpRoot: c, BLSRoot: types.EmptyMessagesCID}
 	if messages, _, err := f.LoadMessages(ctx, meta); err == nil {
-		return types.MessageCollection(messages).ToNode(), nil
+		return types.SignedMessageCollection(messages).ToNode(), nil
 	}
 	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
 		return types.ReceiptCollection(receipts).ToNode(), nil
