@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
-	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 var (
@@ -105,12 +104,6 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 		return nil, errors.Wrapf(err, "could not find address: %s", addr)
 	}
 	return backend.SignBytes(data, addr)
-}
-
-// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
-// the public key `pk`.
-func (w *Wallet) Verify(data []byte, pk []byte, sig types.Signature) (bool, error) {
-	return wutil.Verify(pk, data, sig)
 }
 
 // NewAddress creates a new account address on the default wallet backend.

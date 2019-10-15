@@ -17,10 +17,6 @@ type Backend interface {
 	// Sign cryptographically signs `data` using the private key `priv`.
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 
-	// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
-	// the public key `pk`.
-	Verify(data, pk []byte, sig types.Signature) bool
-
 	// GetKeyInfo will return the keyinfo associated with address `addr`
 	// iff backend contains the addr.
 	GetKeyInfo(addr address.Address) (*types.KeyInfo, error)

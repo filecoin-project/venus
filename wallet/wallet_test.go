@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -63,6 +66,47 @@ func TestWalletSimple(t *testing.T) {
 	}
 }
 
+func TestWalletBLSKeys(t *testing.T) {
+	tf.UnitTest(t)
+
+	ds := datastore.NewMapDatastore()
+	wb, err := wallet.NewDSBackend(ds)
+	w := wallet.New(wb)
+
+	addr, err := wallet.NewAddress(w, address.BLS)
+	require.NoError(t, err)
+
+	data := []byte("data to be signed")
+	sig, err := w.SignBytes(data, addr)
+	require.NoError(t, err)
+
+	t.Run("address is BLS protocol", func(t *testing.T) {
+		assert.Equal(t, address.BLS, addr.Protocol())
+	})
+
+	t.Run("key uses BLS cryptography", func(t *testing.T) {
+		ki, err := wb.GetKeyInfo(addr)
+		require.NoError(t, err)
+		assert.Equal(t, types.BLS, ki.CryptSystem)
+	})
+
+	t.Run("valid signatures verify", func(t *testing.T) {
+		verified := types.IsValidSignature(data, addr, sig)
+		assert.True(t, verified)
+	})
+
+	t.Run("invalid signatures do not verify", func(t *testing.T) {
+		notTheData := []byte("not the data")
+		verified := types.IsValidSignature(notTheData, addr, sig)
+		assert.False(t, verified)
+
+		notTheSig := [bls.SignatureBytes]byte{}
+		copy(notTheSig[:], []byte("not the sig"))
+		verified = types.IsValidSignature(data, addr, notTheSig[:])
+		assert.False(t, verified)
+	})
+}
+
 func TestSimpleSignAndVerify(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -95,23 +139,14 @@ func TestSimpleSignAndVerify(t *testing.T) {
 	sig, err := w.SignBytes(dataA, addr)
 	assert.NoError(t, err)
 
-	// get the key pair for validation
-	t.Log("get the key pair from the backend")
-	ki, err := backend.GetKeyInfo(addr)
-	assert.NoError(t, err)
-
-	pkb := ki.PublicKey()
-
 	t.Log("verify signed content")
-	valid, err := w.Verify(dataA, pkb, sig)
-	assert.NoError(t, err)
+	valid := types.IsValidSignature(dataA, addr, sig)
 	assert.True(t, valid)
 
 	// data that is unsigned
 	dataB := []byte("I AM UNSIGNED DATA!")
 	t.Log("verify fails for unsigned content")
-	secondValid, err := w.Verify(dataB, pkb, sig)
-	assert.NoError(t, err)
+	secondValid := types.IsValidSignature(dataB, addr, sig)
 	assert.False(t, secondValid)
 }
 

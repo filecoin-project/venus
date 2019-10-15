@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
-	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 // NewTestPoSt creates a trivial, right-sized byte slice for a Proof of Spacetime.
@@ -24,14 +24,6 @@ func NewTestPoSt() []byte {
 
 // MockRecoverer implements the Recoverer interface
 type MockRecoverer struct{}
-
-// Ecrecover returns an uncompressed public key that could produce the given
-// signature from data.
-// Note: The returned public key should not be used to verify `data` is valid
-// since a public key may have N private key pairs
-func (mr *MockRecoverer) Ecrecover(data []byte, sig Signature) ([]byte, error) {
-	return wutil.Ecrecover(data, sig)
-}
 
 // MockSigner implements the Signer interface
 type MockSigner struct {
@@ -48,7 +40,14 @@ func NewMockSigner(kis []KeyInfo) MockSigner {
 	for _, k := range kis {
 		// extract public key
 		pub := k.PublicKey()
-		newAddr, err := address.NewSecp256k1Address(pub)
+
+		var newAddr address.Address
+		var err error
+		if k.CryptSystem == SECP256K1 {
+			newAddr, err = address.NewSecp256k1Address(pub)
+		} else if k.CryptSystem == BLS {
+			newAddr, err = address.NewBLSAddress(pub)
+		}
 		if err != nil {
 			panic(err)
 		}
@@ -65,6 +64,37 @@ func NewMockSignersAndKeyInfo(numSigners int) (MockSigner, []KeyInfo) {
 	ki := MustGenerateKeyInfo(numSigners, 42)
 	signer := NewMockSigner(ki)
 	return signer, ki
+}
+
+// MustGenerateMixedKeys produces m bls keys and n secp keys.
+// BLS and Secp will be interleaved. The keys will be valid, but not deterministic.
+func MustGenerateMixedKeyInfo(m int, n int) []KeyInfo {
+	info := []KeyInfo{}
+	for m > 0 && n > 0 {
+		if m > 0 {
+			pk := bls.PrivateKeyGenerate()
+			ki := KeyInfo{
+				PrivateKey:  pk[:],
+				CryptSystem: BLS,
+			}
+			info = append(info, ki)
+			m--
+		}
+
+		if n > 0 {
+			pk, err := crypto.GenerateKey()
+			if err != nil {
+				panic(err)
+			}
+			ki := KeyInfo{
+				PrivateKey:  pk[:],
+				CryptSystem: SECP256K1,
+			}
+			info = append(info, ki)
+			n--
+		}
+	}
+	return info
 }
 
 // MustGenerateKeyInfo generates `n` distinct keyinfos using seed `seed`.
@@ -96,7 +126,7 @@ func (ms MockSigner) SignBytes(data []byte, addr address.Address) (Signature, er
 	}
 
 	hash := blake2b.Sum256(data)
-	return crypto.Sign(ki.Key(), hash[:])
+	return crypto.SignSecp(ki.Key(), hash[:])
 }
 
 // GetSecpAddressForPubKey looks up a KeyInfo address associated with a given PublicKey for a MockSigner

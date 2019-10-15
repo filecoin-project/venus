@@ -262,6 +262,110 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestApplyBLSMessagesFist(t *testing.T) {
+	tf.UnitTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ki := types.MustGenerateMixedKeyInfo(5, 5)
+	mockSignerVal := types.NewMockSigner(ki)
+	mockSigner := &mockSignerVal
+
+	newCid := types.NewCidForTestGetter()
+	stateRoot := newCid()
+	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot, Tickets: []types.Ticket{{VRFProof: []byte{0}}}}
+	tipSet := th.RequireNewTipSet(t, baseBlock)
+
+	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
+	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+		return nil, nil
+	}
+
+	msgStore := chain.NewMessageStore(cst)
+
+	// assert that first two addresses have different protocols
+	blsAddress := addrs[0]
+	assert.Equal(t, address.BLS, blsAddress.Protocol())
+	secpAddress := addrs[1]
+	assert.Equal(t, address.SECP256K1, secpAddress.Protocol())
+
+	// create secp and bls signed messages interleaved
+	messages := []*types.SignedMessage{}
+	for i := 0; i < 10; i++ {
+		var addr address.Address
+		if i%2 == 0 {
+			addr = blsAddress
+		} else {
+			addr = secpAddress
+		}
+		smsg := requireSignedMessage(t, mockSigner, addr, addrs[3], uint64(i/2), types.NewAttoFILFromFIL(1))
+		pool.Add(ctx, smsg, uint64(0))
+		messages = append(messages, smsg)
+	}
+
+	testTicketGen := &mockTicketGen{}
+
+	worker := mining.NewDefaultWorker(mining.WorkerParameters{
+		API: th.NewDefaultFakeWorkerPorcelainAPI(mockSigner.Addresses[5]),
+
+		MinerAddr:      addrs[3],
+		MinerOwnerAddr: addrs[4],
+		WorkerSigner:   mockSigner,
+
+		GetStateTree: getStateTree,
+		GetWeight:    getWeightTest,
+		GetAncestors: getAncestors,
+		Election:     &consensus.FakeElectionMachine{},
+		TicketGen:    testTicketGen,
+
+		MessageSource: pool,
+		Processor:     th.NewFakeProcessor(),
+		Blockstore:    bs,
+		MessageStore:  msgStore,
+		Clock:         clock.NewSystemClock(),
+	})
+
+	outCh := make(chan mining.Output)
+	go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
+	r := <-outCh
+	require.NoError(t, r.Err)
+	block := r.NewBlock
+
+	t.Run("messages are divided into bls and secp messages", func(t *testing.T) {
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
+		require.NoError(t, err)
+
+		assert.Len(t, secpMessages, 5)
+		assert.Len(t, blsMessages, 5)
+
+		for _, msg := range secpMessages {
+			assert.Equal(t, address.SECP256K1, msg.From.Protocol())
+		}
+
+		for _, msg := range blsMessages {
+			assert.Equal(t, address.BLS, msg.From.Protocol())
+		}
+	})
+
+	t.Run("all 10 messages are executed", func(t *testing.T) {
+		receipts, err := msgStore.LoadReceipts(ctx, block.MessageReceipts)
+		require.NoError(t, err)
+
+		assert.Len(t, receipts, 10)
+	})
+}
+
+func requireSignedMessage(t *testing.T, signer types.Signer, from, to address.Address, nonce uint64, value types.AttoFIL) *types.SignedMessage {
+	msg := types.NewMessage(from, to, nonce, value, "", []byte{})
+	smsg, err := types.NewSignedMessage(*msg, signer, types.NewAttoFILFromFIL(1), 300)
+	require.NoError(t, err)
+	return smsg
+}
+
 func TestGenerateMultiBlockTipSet(t *testing.T) {
 	tf.UnitTest(t)
 
