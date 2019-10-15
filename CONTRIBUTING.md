@@ -27,7 +27,6 @@ Filecoin, including go-filecoin and all related modules, follows the
   - [Pull Requests and Reviews](#pull-requests-and-reviews)
     - [Reviewer Responsibilities:](#reviewer-responsibilities)
   - [Landing Changes](#landing-changes)
-  - [Developer Do's and Don'ts](#developer-dos-and-donts)
 - [Issues and tracking](#issues-and-tracking)
   - [Good First Issues](#good-first-issues)
   - [Pipelines (ZenHub)](#pipelines-zenhub)
@@ -41,15 +40,9 @@ Filecoin, including go-filecoin and all related modules, follows the
   - [Committers](#committers)
   - [Maintainers](#maintainers)
 - [Additional Developer Notes](#additional-developer-notes)
-    - [Error Handling](#error-handling)
     - [Testing](#testing)
     - [Profiling](#profiling)
-    - [Gotchas](#gotchas)
     - [Conventions and Style](#conventions-and-style)
-    - [The Spec](#the-spec)
-      - [Filing / triaging go-filecoin issues](#filing--triaging-go-filecoin-issues)
-      - [Picking up issues](#picking-up-issues)
-    - [What is the bar for inclusion in master?](#what-is-the-bar-for-inclusion-in-master)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -62,7 +55,7 @@ Here at `go-filecoin`, there’s always a lot of work to do. There are many ways
 
 - **Write code:** Once you've read this contributing guide, check out [Good First Issues](#good-first-issues) for well-prepared starter issues.
 
-- **Improve or write documentation:** Docs currently live in the [Wiki](https://github.com/filecoin-project/go-filecoin/wiki). You can add feedback to [#1689](https://github.com/filecoin-project/go-filecoin/issues/1689), or submit a PR with proposed changes (process coming soon).
+- **Improve or write documentation:** Docs live at [filecoin-project/docs](https://github.com/filecoin-project/docs).
 
 - **New ideas:** Open a thread on the [Discussion Board](https://discuss.filecoin.io/).
 
@@ -82,11 +75,11 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 We review every change before merging to master, using GitHub pull requests.
 **Try to keep PRs small**, no more than 400 lines or 8 files. Code reviews are easier, faster, and more effective when the diff is small.
 
-`go-filecoin` requires 2 approvals for all PRs. We use the following process, which aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
+Merging a PR to `master` requires maintainer approval. The following process aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
 
-1. The first review is done by a committer familiar with that area of the codebase. Once they deem it ready for merge, they will assign a maintainer for the second review.
-1. Once the PR has 2 Approvals and blocking comments have been addressed, the committer [rebases and merges](#landing-changes) the PR.
-    - If the author has merge access as a committer or maintainer, they merge their own PRs.
+1. Committers require approval from any single maintainer, before [landing](#landing-changes) their own PRs (maintainers require approval from any committer).
+1. Non-committers require approval first from a committer familiar with the relevant area of code. Once they deem it ready for merge, the reviewer will assign a maintainer for approval.
+    - Once approved, the reviewing committer is responsible for landing the commits.
 
 If your PR hasn't been reviewed in 3 days, pinging reviewers via Github or community chat is welcome and encouraged.
 
@@ -121,23 +114,6 @@ Both of these will rebase your branch, squashing out any trailing merge commits 
 
 We may enable GitHub branch protections requiring that a CI build has passed on the branch, that the branch is up to date with master, or both.
 If either protection is not in force, committers should use their best judgement when landing an untested commit.
-
-### Developer Do's and Don'ts
-
-- **DO be aware of patterns from closely related systems.** It often makes sense to draw patterns from more established, closely related platforms than to derive them from first principles. For example, we draw heavily on patterns in IPFS for things like configuration, commands, and persistence. Similarly, we draw on patterns in Ethereum for message processing.
-- **DO NOT create technical debt.** Half-completed features give us a false sense of progress.
-  - *Example: you add a cache for something. To prevent the cache
-    from becoming a DOS vector, it requires the addition of a tricky
-    replacement policy. You are tempted to defer that work
-    because there is a lot else to do. "Do not create technical debt"
-    means you should implement the replacement policy along with the cache,
-    and not defer that work into the future.*
-* **DO NOT add dependencies on `Node` or add more implementation to `Node`**: The
-  `Node` has become a god object and a dependency of convenience. Abstractions
-  should not take a `Node` as a dependency: they should take the narrower
-  set of things they actually need. Building blocks should not go on `Node`;
-  they should go into separate, smaller abstractions that depend on the
-  narrow set of things they actually need. [More detail in #1223](https://github.com/filecoin-project/go-filecoin/issues/1223#issuecomment-433764709).
 
 ## Issues and tracking
 
@@ -188,6 +164,7 @@ Labels mark [dimensions including](https://github.com/filecoin-project/go-fileco
 - *Engagement* (name prefixed with `E-`): issues suitable for broader community involvement
 - *Importance* (name prefixed with `I-`): highlights why issues are important, e.g. related to security, scale, or runtime crashes
 - *Priority* (`P0` thru `P3`): not consistently used across the repo; may be used within epics or areas
+- *`protocol breaking`*: resolution of the issue will break compatibility with previous versions of the code
 - ...plus a few other binary tags
 
 ### Epics (ZenHub)
@@ -278,28 +255,10 @@ Abilities:
 
 ## Additional Developer Notes
 
-#### Error Handling
-
-The overarching concern is safety of the user: do not give the user an
-incorrect view of the world.
-
-* **DO NOT INTENTIONALLY CRASH THE NODE**. Don't panic() if you can exit cleanly. panic()ing stops the node
-  from doing useful work that might be unrelated to the error and does not give subsystems an opportunity to
-  clean up, thus potentially creating additional problems.
-  * If an error is likely a function of an input, discard the input.
-  * If an error could be transient, attempt to continue making progress.
-  * If an error appears to be permanent or we have inconsistent internal state, error out to the top level
-  and exit cleanly if possible.
-
-We should log an ERROR only in truly unexpected conditions
-that should not happen and that a dev should go look at.
-
 #### Testing
 
-- All new code should be accompanied by unit tests (except commands, which should be daemon tested). Prefer focussed unit tests to integration tests for thorough validation of behaviour. Existing code is not necessarily a good model, here.
-- Prefer to test the output/contracts.
-- Daemon tests (integration tests that run a node and send it commands):
-  - Daemon tests should test integration, not comprehensive functionality
+- All new code should be accompanied by unit tests. Prefer focussed unit tests to integration tests for thorough validation of behaviour. Existing code is not necessarily a good model, here.
+- Integration tests (in-process, daemon, or FAST) should test integration, not comprehensive functionality
 - Tests should be placed in a separate package, and follow the naming pattern `$PACKAGE_test`. For example, a test of the chain package should live in a package named `chain_test`. In limited situations, exceptions may be made for some "white box" tests placed in the same package as the code it tests.
 
 #### Profiling
@@ -320,35 +279,7 @@ Then, use pprof to view the dump:
 go tool pprof /tmp/profile.dump
 ```
 
-#### Gotchas
-
-- Equality
-  - Don't use `==` to compare `*types.Block`; use `Block.Equals()`
-  - Ditto for `*cid.Cid`
-  - For `types.Message` use `types.MsgCidsEqual` (or better submit a PR to add `Message.Equals()`)
-  - DO use `==` for `address.Address`, it's just an address
-
 #### Conventions and Style
-
-There are always exceptions, but generally:
-* Comments:
-   * **Use precise language.**
-     * NO: "Actor is the builtin actor responsible for individual accounts". What does "responsible for" mean? What is an *individual* account?
-     * YES: "Actor represents a user's account, holding its balance and nonce. A message from a user is sent from their account actor."
-   * Comments shouldn't just say what the thing does, they should briefly say *why* it might be called or *how* it is used.
-     * NO: "flushAndCache flushes and caches the input tipset's state"
-     * YES: "flushAndCache flushes and caches the input tipset's state. It is called after successfully running messages to persist state changes."
-* Accessors: `Foo(), SetFoo()`
-* Predicates: `isFoo()`
-* Variable names
-   * Channels: `fooCh`
-   * Cids: `fooCid`
-* Test-only methods: use a parallel type
-* Logging
-   * `Warning`: noteworthy but not completely unexpected
-   * `Error`: a truly unexpected condition that should not happen in Real Life and that a dev should go look at
-* Protocol messages are nouns (eg, `DealQuery`, `DealResponse`). Handlers are verbs (eg, `QueryDeal`).
-* Do not put implementation in commands. Commands should call out to functionality elsewhere, in a pattern borrowed from [Git Internals: Plumbing and Porcelain](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain).
 
 We use the following import ordering.
 ```
@@ -361,6 +292,8 @@ import (
 )
 ```
 
+Where a package name does not match its directory name, an explicit alias is expected (`goimports` will add this for you).
+
 Example:
 
 ```go
@@ -369,7 +302,7 @@ import (
 	"testing"
 
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"github.com/ipfs/go-cid"
+	cid "github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 
@@ -377,40 +310,3 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 )
 ```
-
-#### The Spec
-
-The [Filecoin Specification](https://github.com/filecoin-project/specs) must be in sync with the code.
-
-We have some light process in place to keep the go-filecoin implementation from getting out of sync with the spec.
-Most tasks are performed by the [spec shepherd](https://github.com/filecoin-project/pm/pull/107).  The following are the tasks all contributors should be aware of.
-
-##### Filing / triaging go-filecoin issues
-A `protocol change` is a modification to go-filecoin that breaks interoperability with the current version of go-filecoin.
-When filing issues that involve a protocol change please flag this issue with the `PROTOCOL BREAKING` label and identify the breaking changes in the `Protocol Changes` section of the issue template.
-If you do not know if an issue involves a protocol change you should just leave this section blank.
-Protocol changes will be added during the triage process.
-
-##### Picking up issues
-When picking up an issue with items in the `Protocol Changes` section it is your responsibility to dig into the relevant sections of the spec.
-If the spec does not have the information necessary for a developer to implement this issue it is your responsibility to file an issue, or better yet, a PR in the specs repo.
-In other words the `PROTOCOL BREAKING` label **implies an additional acceptance criterion**, that **all protocol changes are documented in the spec**.
-You can go ahead and implement in parallel, but note that your PR will be blocked from merging until the spec reflects this protocol change.
-If a change requires enough work to warrant multiple PRs and all this work is blocked on a spec PR merging it is encouraged to submit these PRs to a branch other than master.
-Then once the spec PR is merged this branch can be merged with master.
-If at any point the change to the spec seems too onerous, for example if you would have to write multiple pages or a completely new section, reach out to the spec shepherd who will clarify your responsibilities and potentially move the spec work to a separate issue.
-The spec shepherd may choose to overrule blocking on the spec based on relative priorities of the spec and go-filecoin projects.
-
-#### What is the bar for inclusion in master?
-
-Presently (Q1'19) the minimum bar is:
-* Unit tests.
-* Tests must not be flaky.
-* Must pass CI.
-* Code review (see above).
-* Lint (`go run ./build/*.go lint`).
-* Must match a subset of the spec.
-* Documentation is up to date.
-* For major or risky changes: the code must be integrated.
-Integrated means verifying that it works for real in a devnet, not just that it passes tests.
-This higher bar ensures major changes actually work, and reduces surprises/nightmares during release.
