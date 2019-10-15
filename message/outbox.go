@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/metrics"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -38,6 +39,8 @@ type Outbox struct {
 
 	// Protects the "next nonce" calculation to avoid collisions.
 	nonceLock sync.Mutex
+
+	journal journal.Writer
 }
 
 type actorProvider interface {
@@ -53,7 +56,7 @@ var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of er
 
 // NewOutbox creates a new outbox
 func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *Queue,
-	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider) *Outbox {
+	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider, jw journal.Writer) *Outbox {
 	return &Outbox{
 		signer:    signer,
 		validator: validator,
@@ -62,6 +65,7 @@ func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, 
 		policy:    policy,
 		chains:    chains,
 		actors:    actors,
+		journal:   jw,
 	}
 }
 
@@ -78,6 +82,10 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
 		}
+		ob.journal.Write("Send",
+			"to", to.String(), "from", from.String(), "value", value.AsBigInt().Uint64(), "method", method,
+			"gasPrice", gasPrice.AsBigInt().Uint64(), "gasLimit", uint64(gasLimit), "bcast", bcast,
+			"params", params, "error", err, "cid", out.String())
 	}()
 
 	encodedParams, err := abi.ToEncodedValues(params...)

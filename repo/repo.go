@@ -49,6 +49,9 @@ type Repo interface {
 	// Path returns the repo path.
 	Path() (string, error)
 
+	// JournalPath returns the journal path.
+	JournalPath() string
+
 	// Close shuts down the repo.
 	Close() error
 }
