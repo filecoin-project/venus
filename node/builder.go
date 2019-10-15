@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/message"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
@@ -65,6 +66,7 @@ type Builder struct {
 	Verifier    verification.Verifier
 	Rewarder    consensus.BlockRewarder
 	Repo        repo.Repo
+	Journal     journal.Journal
 	IsRelay     bool
 	Clock       clock.Clock
 	genCid      cid.Cid
@@ -133,6 +135,14 @@ func ClockConfigOption(clk clock.Clock) BuilderOpt {
 	}
 }
 
+// JournalConfigOption returns a function that sets the journal to use in the node.
+func JournalConfigOption(jrl journal.Journal) BuilderOpt {
+	return func(c *Builder) error {
+		c.Journal = jrl
+		return nil
+	}
+}
+
 // New creates a new node.
 func New(ctx context.Context, opts ...BuilderOpt) (*Node, error) {
 	// initialize builder and set base values
@@ -162,6 +172,9 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 
 	if b.Repo == nil {
 		b.Repo = repo.NewInMemoryRepo()
+	}
+	if b.Journal == nil {
+		b.Journal = journal.NewNoopJournal()
 	}
 
 	var err error
@@ -369,7 +382,7 @@ func (b *Builder) buildMessaging(ctx context.Context, network *NetworkSubmodule,
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
 	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(network.fsub), net.MessageTopic(network.NetworkName), msgPool)
-	outbox := message.NewOutbox(wallet.Wallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State)
+	outbox := message.NewOutbox(wallet.Wallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, b.Journal.Topic("outbox"))
 
 	return MessagingSubmodule{
 		Inbox:   inbox,

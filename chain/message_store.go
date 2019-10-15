@@ -13,14 +13,14 @@ import (
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
-	LoadMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.SignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 }
 
 // MessageWriter is an interface exposing the write methods of the
 // MessageStore.
 type MessageWriter interface {
-	StoreMessages(context.Context, []*types.SignedMessage) (cid.Cid, error)
+	StoreMessages(ctx context.Context, secpMessages, blsMessages []*types.SignedMessage) (types.TxMeta, error)
 	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
 }
 
@@ -38,23 +38,42 @@ func NewMessageStore(cst *hamt.CborIpldStore) *MessageStore {
 
 // LoadMessages loads the signed messages in the collection with cid c from ipld
 // storage.
-func (ms *MessageStore) LoadMessages(ctx context.Context, c cid.Cid) ([]*types.SignedMessage, error) {
+func (ms *MessageStore) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.SignedMessage, error) {
 	// TODO #1324 message collection shouldn't be a slice
-	var out types.MessageCollection
-	err := ms.ipldStore.Get(ctx, c, &out)
+	var secp types.MessageCollection
+	err := ms.ipldStore.Get(ctx, meta.SecpRoot, &secp)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load messages %s", c.String())
+		return nil, nil, errors.Wrapf(err, "failed to load secp messages %s", meta.SecpRoot.String())
 	}
-	return []*types.SignedMessage(out), nil
+	var bls types.MessageCollection
+	err = ms.ipldStore.Get(ctx, meta.BLSRoot, &bls)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to load bls messages %s", meta.BLSRoot.String())
+	}
+	return []*types.SignedMessage(secp), []*types.SignedMessage(bls), nil
 }
 
 // StoreMessages puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
-func (ms *MessageStore) StoreMessages(ctx context.Context, msgs []*types.SignedMessage) (cid.Cid, error) {
+func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages, blsMessages []*types.SignedMessage) (types.TxMeta, error) {
 	// For now the collection is just a slice (cbor array)
 	// TODO #1324 put these messages in a merkelized collection
-	msgCollection := types.MessageCollection(msgs)
-	return ms.ipldStore.Put(ctx, msgCollection)
+	var ret types.TxMeta
+	secpMsgCollection := types.MessageCollection(secpMessages)
+	secpRoot, err := ms.ipldStore.Put(ctx, secpMsgCollection)
+	if err != nil {
+		return ret, err
+	}
+
+	blsMsgCollection := types.MessageCollection(blsMessages)
+	blsRoot, err := ms.ipldStore.Put(ctx, blsMsgCollection)
+	if err != nil {
+		return ret, err
+	}
+
+	ret.SecpRoot = secpRoot
+	ret.BLSRoot = blsRoot
+	return ret, nil
 }
 
 // LoadReceipts loads the signed messages in the collection with cid c from ipld

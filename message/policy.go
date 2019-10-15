@@ -65,11 +65,11 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	chain.Reverse(newTips)
 	for _, tipset := range newTips {
 		for i := 0; i < tipset.Len(); i++ {
-			msgs, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			secpMsgs, _, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
 			if err != nil {
 				return err
 			}
-			for _, minedMsg := range msgs {
+			for _, minedMsg := range secpMsgs {
 				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
 				if err != nil {
 					return err
@@ -93,11 +93,11 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	// Traverse these in descending height order.
 	for _, tipset := range oldTips {
 		for i := 0; i < tipset.Len(); i++ {
-			msgs, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
+			secpMsgs, _, err := p.messageProvider.LoadMessages(ctx, tipset.At(i).Messages)
 			if err != nil {
 				return err
 			}
-			for _, restoredMsg := range msgs {
+			for _, restoredMsg := range secpMsgs {
 				err := target.Requeue(ctx, restoredMsg, chainHeight)
 				if err != nil {
 					return err

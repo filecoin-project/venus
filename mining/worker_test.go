@@ -312,7 +312,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	assert.Equal(t, types.EmptyMessagesCID, blk.Messages)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
 	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
@@ -416,7 +416,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 
 	// message and receipts can be loaded from message store and have
 	// length 1.
-	msgs, err := messages.LoadMessages(ctx, blk.Messages)
+	msgs, _, err := messages.LoadMessages(ctx, blk.Messages)
 	require.NoError(t, err)
 	assert.Len(t, msgs, 1) // This is the good message
 	rcpts, err := messages.LoadReceipts(ctx, blk.MessageReceipts)
@@ -538,7 +538,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
-	assert.Equal(t, types.MessageCollection{}.Cid(), blk.Messages)
+	assert.Equal(t, types.MessageCollection{}.Cid(), blk.Messages.SecpRoot)
 	assert.Equal(t, types.ReceiptCollection{}.Cid(), blk.MessageReceipts)
 }
 

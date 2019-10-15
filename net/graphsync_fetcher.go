@@ -224,7 +224,9 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 // non-recursively
 func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, cids []cid.Cid, targetPeer peer.ID) error {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-		efsb.Insert("messages", gsf.ssb.Matcher())
+		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
+			messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+		}))
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
 	var wg sync.WaitGroup
@@ -289,7 +291,9 @@ func (gsf *GraphSyncFetcher) fetchBlocksRecursively(ctx context.Context, baseCid
 		efsb.Insert("parents", gsf.ssb.ExploreUnion(
 			gsf.ssb.ExploreAll(
 				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
-					efsb.Insert("messages", gsf.ssb.Matcher())
+					efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
+						messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+					}))
 					efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 				}),
 			),
@@ -314,7 +318,7 @@ func (gsf *GraphSyncFetcher) loadAndVerify(ctx context.Context, key types.TipSet
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *types.Block) cid.Cid { return blk.Messages }, func(rawBlock blocks.Block) error {
+		func(blk *types.Block) cid.Cid { return blk.Messages.SecpRoot }, func(rawBlock blocks.Block) error {
 			messages, err := types.DecodeMessages(rawBlock.RawData())
 			if err != nil {
 				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())

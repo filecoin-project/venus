@@ -172,7 +172,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 		height, _ = parents.Height()
 		height++
 	}
-	emptyMessagesCid, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{})
+	emptyMessagesCid, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{}, []*types.SignedMessage{})
 	if err != nil {
 		panic(err)
 	}
@@ -196,7 +196,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
-			msgsCid, err := msgStore.StoreMessages(context.Background(), msgs)
+			msgsCid, err := msgStore.StoreMessages(context.Background(), msgs, []*types.SignedMessage{})
 			if err != nil {
 				panic(err)
 			}

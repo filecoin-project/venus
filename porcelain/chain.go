@@ -20,7 +20,7 @@ func ChainHead(plumbing chainHeadPlumbing) (types.TipSet, error) {
 
 type fullBlockPlumbing interface {
 	ChainGetBlock(context.Context, cid.Cid) (*types.Block, error)
-	ChainGetMessages(context.Context, cid.Cid) ([]*types.SignedMessage, error)
+	ChainGetMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, error)
 	ChainGetReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 }
 

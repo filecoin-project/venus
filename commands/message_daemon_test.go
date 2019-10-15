@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -124,7 +123,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 
 	doubleTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) * 2)
 	halfTheBlockGasLimit := strconv.Itoa(int(types.BlockGasLimit) / 2)
-	result := struct{ Messages cid.Cid }{}
+	result := struct{ Messages types.TxMeta }{}
 
 	t.Run("when the gas limit is above the block limit, the message fails", func(t *testing.T) {
 		d.RunFail("block gas limit",
@@ -146,7 +145,7 @@ func TestMessageSendBlockGasLimit(t *testing.T) {
 		blockInfo := d.RunSuccess("show", "header", blockCid, "--enc", "json").ReadStdoutTrimNewlines()
 
 		require.NoError(t, json.Unmarshal([]byte(blockInfo), &result))
-		assert.NotEmpty(t, result.Messages, "msg under the block gas limit passes validation and is run in the block")
+		assert.NotEmpty(t, result.Messages.SecpRoot, "msg under the block gas limit passes validation and is run in the block")
 	})
 }
 

@@ -31,10 +31,10 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 	}
 
 	ms := chain.NewMessageStore(hamt.NewCborStore())
-	msgsCid, err := ms.StoreMessages(ctx, msgs)
+	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.SignedMessage{})
 	assert.NoError(t, err)
 
-	rtMsgs, err := ms.LoadMessages(ctx, msgsCid)
+	rtMsgs, _, err := ms.LoadMessages(ctx, msgsCid)
 	assert.NoError(t, err)
 
 	assert.Equal(t, msgs, rtMsgs)

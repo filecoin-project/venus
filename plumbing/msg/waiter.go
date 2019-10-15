@@ -107,11 +107,11 @@ func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Ci
 		}
 		for i := 0; i < iterator.Value().Len(); i++ {
 			blk := iterator.Value().At(i)
-			msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+			secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
 			if err != nil {
 				return nil, false, err
 			}
-			for _, msg := range msgs {
+			for _, msg := range secpMsgs {
 				c, err := msg.Cid()
 				if err != nil {
 					return nil, false, err
@@ -150,11 +150,11 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 			case types.TipSet:
 				for i := 0; i < raw.Len(); i++ {
 					blk := raw.At(i)
-					msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+					secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
 					if err != nil {
 						return nil, false, err
 					}
-					for _, msg := range msgs {
+					for _, msg := range secpMsgs {
 						c, err := msg.Cid()
 						if err != nil {
 							return nil, false, err
@@ -230,11 +230,11 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 	var tsMessages [][]*types.SignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		msgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+		secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, err
 		}
-		tsMessages = append(tsMessages, msgs)
+		tsMessages = append(tsMessages, secpMsgs)
 	}
 
 	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
@@ -267,11 +267,11 @@ func (w *Waiter) msgIndexOfTipSet(ctx context.Context, msgCid cid.Cid, ts types.
 	duplicates := make(map[cid.Cid]struct{})
 	var msgCnt int
 	for i := 0; i < ts.Len(); i++ {
-		messages, err := w.messageProvider.LoadMessages(ctx, ts.At(i).Messages)
+		secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, ts.At(i).Messages)
 		if err != nil {
 			return -1, err
 		}
-		for _, msg := range messages {
+		for _, msg := range secpMsgs {
 			c, err := msg.Cid()
 			if err != nil {
 				return -1, err

@@ -64,7 +64,7 @@ func TestTriangleEncoding(t *testing.T) {
 			Miner:           newAddress(),
 			Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 			Height:          Uint64(2),
-			Messages:        CidFromString(t, "somecid"),
+			Messages:        TxMeta{SecpRoot: CidFromString(t, "somecid"), BLSRoot: EmptyMessagesCID},
 			MessageReceipts: CidFromString(t, "somecid"),
 			Parents:         NewTipSetKey(CidFromString(t, "somecid")),
 			ParentWeight:    Uint64(1000),
@@ -128,7 +128,7 @@ func TestDecodeBlock(t *testing.T) {
 			Tickets:         []Ticket{{VRFProof: []uint8{}}},
 			Parents:         NewTipSetKey(c1),
 			Height:          2,
-			Messages:        cM,
+			Messages:        TxMeta{SecpRoot: cM, BLSRoot: EmptyMessagesCID},
 			StateRoot:       c2,
 			MessageReceipts: cR,
 		}
@@ -212,7 +212,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	child.Parents = NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 
-	child.Messages = CidFromString(t, "somecid")
+	child.Messages = TxMeta{SecpRoot: CidFromString(t, "somecid"), BLSRoot: EmptyMessagesCID}
 	child.MessageReceipts = CidFromString(t, "somecid")
 
 	marshalled, e1 := json.Marshal(&child)
@@ -221,7 +221,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 
 	assert.Contains(t, str, child.Miner.String())
 	assert.Contains(t, str, parent.Cid().String())
-	assert.Contains(t, str, child.Messages.String())
+	assert.Contains(t, str, child.Messages.SecpRoot.String())
 	assert.Contains(t, str, child.MessageReceipts.String())
 
 	// marshal/unmarshal symmetry
@@ -242,7 +242,7 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 		Height:          Uint64(2),
-		Messages:        CidFromString(t, "somecid"),
+		Messages:        TxMeta{SecpRoot: CidFromString(t, "somecid"), BLSRoot: EmptyMessagesCID},
 		MessageReceipts: CidFromString(t, "somecid"),
 		Parents:         NewTipSetKey(CidFromString(t, "somecid")),
 		ParentWeight:    Uint64(1000),
@@ -256,7 +256,7 @@ func TestSignatureData(t *testing.T) {
 		Miner:           newAddress(),
 		Tickets:         []Ticket{{VRFProof: []byte{0x03, 0x01, 0x02}}},
 		Height:          Uint64(3),
-		Messages:        CidFromString(t, "someothercid"),
+		Messages:        TxMeta{SecpRoot: CidFromString(t, "someothercid"), BLSRoot: EmptyMessagesCID},
 		MessageReceipts: CidFromString(t, "someothercid"),
 		Parents:         NewTipSetKey(CidFromString(t, "someothercid")),
 		ParentWeight:    Uint64(1001),
