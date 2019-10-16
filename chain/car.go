@@ -66,17 +66,25 @@ func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carM
 				filter[hdr.Cid()] = true
 			}
 
-			msgs, err := mr.LoadMessages(ctx, hdr.Messages)
+			secpMsgs, blsMsgs, err := mr.LoadMessages(ctx, hdr.Messages)
 			if err != nil {
 				return err
 			}
 
-			if !filter[hdr.Messages] {
+			if !filter[hdr.Messages.SecpRoot] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(out, hdr.Messages.Bytes(), types.MessageCollection(msgs).ToNode().RawData()); err != nil {
+				if err := carutil.LdWrite(out, hdr.Messages.SecpRoot.Bytes(), types.MessageCollection(secpMsgs).ToNode().RawData()); err != nil {
 					return err
 				}
-				filter[hdr.Messages] = true
+				filter[hdr.Messages.SecpRoot] = true
+			}
+
+			if !filter[hdr.Messages.BLSRoot] {
+				logCar.Debugf("writing message collection: %s", hdr.Messages)
+				if err := carutil.LdWrite(out, hdr.Messages.BLSRoot.Bytes(), types.MessageCollection(blsMsgs).ToNode().RawData()); err != nil {
+					return err
+				}
+				filter[hdr.Messages.BLSRoot] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.

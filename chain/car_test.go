@@ -256,9 +256,14 @@ func validateBlockstoreImport(t *testing.T, start, stop types.TipSetKey, bstore 
 			blk, err := types.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			bsMsgs, err := bstore.Get(blk.Messages)
+			bsSecpMsgs, err := bstore.Get(blk.Messages.SecpRoot)
 			assert.NoError(t, err)
-			_, err = types.DecodeMessages(bsMsgs.RawData())
+			_, err = types.DecodeMessages(bsSecpMsgs.RawData())
+			assert.NoError(t, err)
+
+			bsBlsMsgs, err := bstore.Get(blk.Messages.BLSRoot)
+			assert.NoError(t, err)
+			_, err = types.DecodeMessages(bsBlsMsgs.RawData())
 			assert.NoError(t, err)
 
 			bsRcts, err := bstore.Get(blk.MessageReceipts)
