@@ -256,19 +256,15 @@ func validateBlockstoreImport(t *testing.T, start, stop types.TipSetKey, bstore 
 			blk, err := types.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			if !blk.Messages.Equals(types.EmptyMessagesCID) {
-				bsMsgs, err := bstore.Get(blk.Messages)
-				assert.NoError(t, err)
-				_, err = types.DecodeMessages(bsMsgs.RawData())
-				assert.NoError(t, err)
-			}
+			bsMsgs, err := bstore.Get(blk.Messages)
+			assert.NoError(t, err)
+			_, err = types.DecodeMessages(bsMsgs.RawData())
+			assert.NoError(t, err)
 
-			if !blk.MessageReceipts.Equals(types.EmptyReceiptsCID) {
-				bsRcts, err := bstore.Get(blk.MessageReceipts)
-				assert.NoError(t, err)
-				_, err = types.DecodeReceipts(bsRcts.RawData())
-				assert.NoError(t, err)
-			}
+			bsRcts, err := bstore.Get(blk.MessageReceipts)
+			assert.NoError(t, err)
+			_, err = types.DecodeReceipts(bsRcts.RawData())
+			assert.NoError(t, err)
 
 			for _, p := range blk.Parents.ToSlice() {
 				parents = append(parents, p)

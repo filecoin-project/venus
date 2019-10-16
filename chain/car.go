@@ -7,6 +7,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	car "github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 
@@ -24,6 +25,9 @@ type carMessageReader interface {
 
 // Export will export a chain (all blocks and their messages) to the writer `out`.
 func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carMessageReader, out io.Writer) error {
+	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
+	filter := make(map[cid.Cid]bool)
+
 	// fail if headTS isn't in the store.
 	if _, err := cr.GetTipSet(headTS.Key()); err != nil {
 		return err
@@ -54,8 +58,12 @@ func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carM
 		for i := 0; i < tip.Len(); i++ {
 			hdr := tip.At(i)
 			logCar.Debugf("writing block: %s", hdr.Cid())
-			if err := carutil.LdWrite(out, hdr.Cid().Bytes(), hdr.ToNode().RawData()); err != nil {
-				return err
+
+			if !filter[hdr.Cid()] {
+				if err := carutil.LdWrite(out, hdr.Cid().Bytes(), hdr.ToNode().RawData()); err != nil {
+					return err
+				}
+				filter[hdr.Cid()] = true
 			}
 
 			msgs, err := mr.LoadMessages(ctx, hdr.Messages)
@@ -63,11 +71,12 @@ func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carM
 				return err
 			}
 
-			if len(msgs) > 0 {
+			if !filter[hdr.Messages] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
 				if err := carutil.LdWrite(out, hdr.Messages.Bytes(), types.MessageCollection(msgs).ToNode().RawData()); err != nil {
 					return err
 				}
+				filter[hdr.Messages] = true
 			}
 
 			// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
@@ -76,11 +85,12 @@ func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carM
 				return err
 			}
 
-			if len(rect) > 0 {
+			if !filter[hdr.MessageReceipts] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
 				if err := carutil.LdWrite(out, hdr.MessageReceipts.Bytes(), types.ReceiptCollection(rect).ToNode().RawData()); err != nil {
 					return err
 				}
+				filter[hdr.MessageReceipts] = true
 			}
 		}
 	}
