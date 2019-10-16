@@ -86,7 +86,7 @@ func main() {
 
 		resp, err := http.Post(reqStr, "application/json", nil)
 		if err != nil {
-			log.Errorf("failed to Post request. Status: %s Error: %s", resp.Status, err)
+			log.Errorf("failed to Post request. Error: %s", err)
 			http.Error(w, err.Error(), 500)
 			return
 		}
