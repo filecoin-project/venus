@@ -411,6 +411,48 @@ func (b *Builder) buildBlockservice(ctx context.Context, blockstore *BlockstoreS
 	}, nil
 }
 
+func (b *Builder) buildSyncer(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, messaging *MessagingSubmodule, chain *ChainSubmodule, pvt *version.ProtocolVersionTable) (SyncerSubmodule, error) {
+	// setup graphsync fetcher
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)
+	bridge := ipldbridge.NewIPLDBridge()
+	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
+	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
+	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, chain.validator, b.Clock, network.PeerTracker)
+
+	// register block validation on floodsub
+	btv := net.NewBlockTopicValidator(blkValid)
+	if err := network.fsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
+		return ChainSubmodule{}, errors.Wrap(err, "failed to register block validator")
+	}
+
+	// fork selection
+	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, chain.ActorState, b.genCid, pvt)
+
+	// setup the pipelines for validation, propagation at different syncing phases
+	syncerInitPipeline := syncer.NewInitPipeline(chain.ChainStore, chain.MessageStore)
+	syncerBootstrapPipeline := syncer.NewBootstrapPipeline()
+	syncerSnapshotPipeline := syncer.NewSnapshotPipeline()
+	syncerCatchupPipeline := syncer.NewCatchupPipeline(chain.Consensus, fetcher, chain.ChainStore, chain.MessageStore, b.Clock, nodeChainSelector)
+	syncerFollowPipeline := syncer.NewFollowPipeline(chain.Consensus, fetcher, chain.ChainStore, chain.MessageStore, b.Clock, nodeChainSelector, messaging.msgPool)
+
+	// setup head targeting
+	syncerTargeter := syncer.NewTargeter()
+
+	// partiton detection. TODO: this might be able to drop down to the networking submodule
+	syncerPartitionDetector := syncer.NewPartitionDetector()
+
+	syncerDispatcher := syncer.NewDispatcher(syncerTargeter, syncerPartitionDetection, chain.ChainStore, b.Clock, syncerInitPipeline, syncerBootstrapPipeline, syncerSnapshotPipeline, syncerCatchupPipeline, syncerFollowPipeline)
+
+	return SyncerSubmodule{
+		Dispatcher: syncerDispatcher,
+		Targeter: syncerTargeter,
+		PartitionDetector: syncer.PartitionDetector,
+		ChainSelector: nodeChainSelector,
+		Fetcher: fetcher,
+	}
+}
+
 func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, pvt *version.ProtocolVersionTable) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
@@ -428,44 +470,22 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	// TODO when #2961 is resolved do the needful here.
 	blkValid := consensus.NewDefaultBlockValidator(b.BlockTime, b.Clock, pvt)
 
-	// register block validation on floodsub
-	btv := net.NewBlockTopicValidator(blkValid)
-	if err := network.fsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
-		return ChainSubmodule{}, errors.Wrap(err, "failed to register block validator")
-	}
-
 	// set up consensus
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.cborStore, blockstore.Blockstore, processor)
 	nodeConsensus := consensus.NewExpected(blockstore.cborStore, blockstore.Blockstore, processor, blkValid, actorState, b.genCid, b.BlockTime, consensus.ElectionMachine{}, consensus.TicketMachine{})
-	nodeChainSelector := consensus.NewChainSelector(blockstore.cborStore, actorState, b.genCid, pvt)
-
-	// setup fecher
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)
-	bridge := ipldbridge.NewIPLDBridge()
-	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
-	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
-	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, b.Clock, network.PeerTracker)
 
 	messageStore := chain.NewMessageStore(blockstore.cborStore)
-
-	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)
-
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.cborStore, builtin.DefaultActors)
 
 	return ChainSubmodule{
 		// BlockSub: nil,
 		Consensus:     nodeConsensus,
-		ChainSelector: nodeChainSelector,
-		ChainReader:   chainStore,
+		ChainStore:   chainStore,
 		MessageStore:  messageStore,
-		Syncer:        chainSyncer,
 		ActorState:    actorState,
 		// HeaviestTipSetCh: nil,
 		// cancelChainSync: nil,
 		ChainSynced: moresync.NewLatch(1),
-		Fetcher:     fetcher,
 		State:       chainState,
 		validator:   blkValid,
 		processor:   processor,

@@ -15,10 +15,8 @@ import (
 type ChainSubmodule struct {
 	BlockSub      pubsub.Subscription
 	Consensus     consensus.Protocol
-	ChainSelector nodeChainSelector
-	ChainReader   nodeChainReader
+	ChainStore    *chain.Store
 	MessageStore  *chain.MessageStore
-	Syncer        nodeChainSyncer
 	ActorState    *consensus.ActorStateStore
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.
@@ -36,4 +34,15 @@ type ChainSubmodule struct {
 
 	validator consensus.BlockValidator
 	processor *consensus.DefaultProcessor
+}
+
+// SyncerSubmodule enhances the `Node` with syncing capabilities
+type SyncerSubmodule struct {
+	// Maybe we don't need this?
+	Dispatcher   syncer.Dispatcher
+	Targeter     syncer.Targeter
+	PartitionDetector syncer.PartitionDetector
+	ChainSelector nodeChainSelector
+	// Fetcher is the interface for fetching chain data from nodes.
+	Fetcher net.Fetcher
 }
