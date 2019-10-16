@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -110,14 +111,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		var emptyMessages [][]*types.SignedMessage
-		var emptyReceipts [][]*types.MessageReceipt
-		for i := 0; i < len(blocks); i++ {
-			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
-		}
+		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -136,15 +132,41 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		var emptyMessages [][]*types.SignedMessage
-		var emptyReceipts [][]*types.MessageReceipt
-		for i := 0; i < len(blocks); i++ {
-			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
-		}
+		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "block author did not win election")
+	})
+
+	t.Run("fails when bls signature is not valid across bls messages", func(t *testing.T) {
+		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
+		require.NoError(t, err)
+		vms := vm.NewStorageMap(bstore)
+
+		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
+
+		tipSet := types.RequireNewTipSet(t, blocks...)
+		// Add the miner worker mapping into the actor state
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
+
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+
+		_, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+
+		// Create BLS messages but do not update signature
+		blsKey := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
+		blsAddr, err := address.NewBLSAddress(blsKey[:])
+		require.NoError(t, err)
+
+		blsMessages := make([][]*types.MeteredMessage, tipSet.Len())
+		msg := types.NewMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
+		mmsg := &types.MeteredMessage{Message: *msg}
+		blsMessages[0] = append(blsMessages[0], mmsg)
+
+		_, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
 
 	t.Run("returns nil + mining error when ticket validation fails", func(t *testing.T) {
@@ -163,14 +185,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := types.RequireNewTipSet(t, blocks...)
 
-		var emptyMessages [][]*types.SignedMessage
-		var emptyReceipts [][]*types.MessageReceipt
-		for i := 0; i < len(blocks); i++ {
-			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
-		}
+		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 		assert.Contains(t, err.Error(), "position 0")
@@ -191,12 +208,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		var emptyMessages [][]*types.SignedMessage
-		var emptyReceipts [][]*types.MessageReceipt
-		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.Error(t, err)
 	})
 
@@ -215,16 +229,23 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		var emptyMessages [][]*types.SignedMessage
-		var emptyReceipts [][]*types.MessageReceipt
-		for i := 0; i < len(blocks); i++ {
-			emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-			emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
-		}
+		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.EqualError(t, err, "block signature invalid")
 	})
+}
+
+func emptyMessagesAndReceipts(numBlocks int) ([][]*types.MeteredMessage, [][]*types.SignedMessage, [][]*types.MessageReceipt) {
+	var emptyBLSMessages [][]*types.MeteredMessage
+	var emptyMessages [][]*types.SignedMessage
+	var emptyReceipts [][]*types.MessageReceipt
+	for i := 0; i < numBlocks; i++ {
+		emptyBLSMessages = append(emptyBLSMessages, []*types.MeteredMessage{})
+		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
+		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
+	}
+	return emptyBLSMessages, emptyMessages, emptyReceipts
 }
 
 func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {

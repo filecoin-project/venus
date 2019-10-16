@@ -61,6 +61,25 @@ func VerifyBLS(pubKey, msg, signature []byte) bool {
 	return bls.Verify(&blsSig, []bls.Digest{bls.Hash(msg)}, []bls.PublicKey{blsPubKey})
 }
 
+// VerifyBLSAggregate checks the given signature is a valid aggregate signature over all messages and public keys
+func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
+	digests := []bls.Digest{}
+	for _, msg := range msgs {
+		digests = append(digests, bls.Hash(msg))
+	}
+
+	keys := []bls.PublicKey{}
+	for _, pubKey := range pubKeys {
+		var blsPubKey bls.PublicKey
+		copy(blsPubKey[:], pubKey)
+	}
+
+	var blsSig bls.Signature
+	copy(blsSig[:], signature)
+
+	return bls.Verify(&blsSig, digests, keys)
+}
+
 // GenerateKeyFromSeed generates a new key from the given reader.
 func GenerateKeyFromSeed(seed io.Reader) ([]byte, error) {
 	key, err := ecdsa.GenerateKey(secp256k1.S256(), seed)

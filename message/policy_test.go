@@ -224,7 +224,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 			b.SetTicket([]byte{1})
-			b.SetTimestamp(2)
+			b.SetTimestamp(1)
 		})
 		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(

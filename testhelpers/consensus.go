@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -29,15 +30,17 @@ func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
 func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*types.Block, error) {
 	electionProof := consensus.MakeFakeElectionProofForTest()
 	ticket := consensus.MakeFakeTicketForTest()
+	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
 
 	b := &types.Block{
-		Miner:         minerAddr,
-		Tickets:       []types.Ticket{ticket},
-		Parents:       baseTipSet.Key(),
-		ParentWeight:  types.Uint64(10000 * height),
-		Height:        types.Uint64(height),
-		StateRoot:     stateRootCid,
-		ElectionProof: electionProof,
+		Miner:           minerAddr,
+		Tickets:         []types.Ticket{ticket},
+		Parents:         baseTipSet.Key(),
+		ParentWeight:    types.Uint64(10000 * height),
+		Height:          types.Uint64(height),
+		StateRoot:       stateRootCid,
+		ElectionProof:   electionProof,
+		BLSAggregateSig: emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
 	if err != nil {

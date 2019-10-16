@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -167,6 +168,8 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 	parentWeight, err := f.stateBuilder.Weigh(parent, f.StateForKey(grandparentKey))
 	require.NoError(f.t, err)
 
+	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
+
 	for i := 0; i < width; i++ {
 		ticket := types.Ticket{}
 		ticket.VRFProof = types.VRFPi(make([]byte, binary.Size(f.seq)))
@@ -181,6 +184,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 			Height:          height,
 			Messages:        types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: types.EmptyMessagesCID},
 			MessageReceipts: types.EmptyReceiptsCID,
+			BLSAggregateSig: emptyBLSSig,
 			// Omitted fields below
 			//StateRoot:       stateRoot,
 			//Proof            PoStProof
@@ -196,7 +200,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 		prevState := f.StateForKey(parent.Key())
 		msgs, ok := f.messages[b.Messages]
 		require.True(f.t, ok)
-		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.SignedMessage{msgs})
+		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.MeteredMessage{}, [][]*types.SignedMessage{msgs})
 		require.NoError(f.t, err)
 
 		f.blocks[b.Cid()] = b
@@ -227,7 +231,7 @@ func (f *Builder) ComputeState(tip types.TipSet) cid.Cid {
 	require.NoError(f.t, err)
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
-	state, err := f.stateBuilder.ComputeState(prev, f.tipMessages(tip))
+	state, err := f.stateBuilder.ComputeState(prev, [][]*types.MeteredMessage{}, f.tipMessages(tip))
 	require.NoError(f.t, err)
 	return state
 }
@@ -302,7 +306,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
-	ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error)
+	ComputeState(prev cid.Cid, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
 
@@ -315,10 +319,19 @@ type FakeStateBuilder struct {
 // is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, blocksMessages [][]*types.SignedMessage) (cid.Cid, error) {
+func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
-	for _, blockMessages := range blocksMessages {
+	for _, blockMessages := range blsMessages {
+		for _, msg := range blockMessages {
+			mCId, err := msg.Cid()
+			if err != nil {
+				return cid.Undef, err
+			}
+			inputs = append(inputs, mCId)
+		}
+	}
+	for _, blockMessages := range secpMessages {
 		for _, msg := range blockMessages {
 			mCId, err := msg.Cid()
 			if err != nil {
@@ -356,8 +369,8 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, messages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error) {
-	return e.ComputeState(stateID, messages)
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error) {
+	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
 ///// Chain selector /////
