@@ -204,7 +204,8 @@ func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*
 		require.NoError(isb.t, err)
 		return genRoot, nil
 	}
-	// setup fork with state we associate with more power
+	// Setup fork with state we associate with more power.
+	// This fork is distiguished by a block with a single secp message.
 	if len(secpMessages[0]) > 0 {
 		treeFork := state.TreeFromString(isb.t, "512Power", isb.cst)
 		forkRoot, err := treeFork.Flush(context.Background())

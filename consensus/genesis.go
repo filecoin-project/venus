@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -200,11 +201,13 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		if err != nil {
 			return nil, err
 		}
+		emptyBLSSig := bls.Aggregate([]bls.Signature{})
 
 		genesis := &types.Block{
 			StateRoot:       c,
 			Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
 			MessageReceipts: emptyReceiptsCid,
+			BLSAggregateSig: emptyBLSSig[:],
 			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 

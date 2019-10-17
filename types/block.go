@@ -160,6 +160,7 @@ func (b *Block) SignatureData() []byte {
 		MessageReceipts: b.MessageReceipts,
 		ElectionProof:   b.ElectionProof,
 		Timestamp:       b.Timestamp,
+		BLSAggregateSig: b.BLSAggregateSig,
 		// BlockSig omitted
 	}
 

@@ -7,6 +7,7 @@ import (
 	mrand "math/rand"
 	"strconv"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -160,6 +161,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	if err != nil {
 		return nil, err
 	}
+	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 	emptyReceiptsCid, err := cst.Put(ctx, types.ReceiptCollection{})
 	if err != nil {
 		return nil, err
@@ -173,8 +175,9 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 
 	geneblk := &types.Block{
 		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptySignedMessagesCid},
+		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptyMessagesCid},
 		MessageReceipts: emptyReceiptsCid,
+		BLSAggregateSig: emptyBLSSignature[:],
 		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}
 
