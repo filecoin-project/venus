@@ -26,7 +26,7 @@ require (
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.0.2
+	github.com/ipfs/go-blockservice v0.1.2
 	github.com/ipfs/go-car v0.0.2-0.20190926002512-a64e86334410
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.0.5
@@ -67,6 +67,8 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/multiformats/go-multiaddr v0.1.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
