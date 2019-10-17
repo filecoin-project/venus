@@ -116,7 +116,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			b.dhtBootStarted = true
 			err := b.bootstrapIpfsRouting()
 			if err != nil {
-				logBootstrap.Warningf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
+				logBootstrap.Warnf("got error trying to bootstrap Routing: %s. Peer discovery may suffer.", err.Error())
 			}
 		}
 		cancel()
@@ -142,7 +142,7 @@ func (b *Bootstrapper) bootstrap(currentPeers []peer.ID) {
 			return
 		}
 	}
-	logBootstrap.Warningf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
+	logBootstrap.Warnf("not enough bootstrap nodes to maintain %d connections (current connections: %d)", b.MinPeerThreshold, len(currentPeers))
 }
 
 func hasPID(pids []peer.ID, pid peer.ID) bool {

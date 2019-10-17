@@ -78,7 +78,7 @@ func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
 	_, tracking := tracker.peers[ci.Peer]
 	_, trusted := tracker.trusted[ci.Peer]
 	tracker.peers[ci.Peer] = ci
-	logPeerTracker.Infof("Tracking %s, new=%t, count=%d trusted=%t", ci, !tracking, len(tracker.peers), trusted)
+	logPeerTracker.Infow("Track peer", "chainInfo", ci, "new", !tracking, "count", len(tracker.peers), "trusted", trusted)
 }
 
 // Self returns the peer tracker's owner ID
@@ -112,9 +112,9 @@ func (tracker *PeerTracker) Remove(pid peer.ID) {
 	if _, tracking := tracker.peers[pid]; tracking {
 		delete(tracker.peers, pid)
 		if trusted {
-			logPeerTracker.Warningf("Dropping peer=%s trusted=%t", pid.Pretty(), trusted)
+			logPeerTracker.Warnw("Dropping peer", "peer", pid.Pretty(), "trusted", trusted)
 		} else {
-			logPeerTracker.Infof("Dropping peer=%s trusted=%t", pid.Pretty(), trusted)
+			logPeerTracker.Infow("Dropping peer", "peer", pid.Pretty(), "trusted", trusted)
 		}
 	}
 }
@@ -165,7 +165,7 @@ func (tracker *PeerTracker) updatePeers(ctx context.Context, ps ...peer.ID) erro
 		return errors.New("canot call PeerTracker peer update logic without setting an update function")
 	}
 	if len(ps) == 0 {
-		logPeerTracker.Info("update peers aborting: no peers to update")
+		logPeerTracker.With("error", "no peers to update").Info("update peers aborting")
 		return nil
 	}
 
@@ -187,11 +187,13 @@ func (tracker *PeerTracker) updatePeers(ctx context.Context, ps ...peer.ID) erro
 	if err := grp.Wait(); err != nil {
 		// full failure return an error
 		if updateErrs == uint64(len(ps)) {
-			logPeerTracker.Errorf("failed to update all %d peers: %s", len(ps), err)
+			logPeerTracker.With(
+				"error", err,
+			).Errorf("failed to update all %d peers", len(ps))
 			return errors.New("all peers failed to update")
 		}
 		// partial failure
-		logPeerTracker.Infof("failed to update %d of %d peers: %s", updateErrs, len(ps), err)
+		logPeerTracker.With("error", err).Infof("failed to update %d of %d peers", updateErrs, len(ps))
 	}
 	return nil
 }

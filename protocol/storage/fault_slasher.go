@@ -129,7 +129,7 @@ func (sfm *FaultSlasher) Slash(ctx context.Context, currentHeight *types.BlockHe
 		}
 
 		if lateMinerActorAddr == myMinerActorAddr {
-			sfm.log.Warningf("skip slashing self %s", lateMinerActorAddr)
+			sfm.log.Warnf("skip slashing self %s", lateMinerActorAddr)
 			continue
 		}
 

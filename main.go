@@ -3,32 +3,16 @@ package main
 import (
 	"context"
 	"os"
-	"strconv"
 
 	logging "github.com/ipfs/go-log"
-	oldlogging "github.com/whyrusleeping/go-logging"
 
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/metrics"
 )
 
 func main() {
-	// TODO: make configurable - this should be done via a command like go-ipfs
-	// something like:
-	//		`go-filecoin log level "system" "level"`
-	// TODO: find a better home for this
-	// TODO fix this in go-log 4 == INFO
-	n, err := strconv.Atoi(os.Getenv("GO_FILECOIN_LOG_LEVEL"))
-	if err != nil {
-		n = 4
-	}
 
-	if os.Getenv("GO_FILECOIN_LOG_JSON") == "1" {
-		oldlogging.SetFormatter(&metrics.JSONFormatter{})
-	}
-
-	logging.SetAllLoggers(oldlogging.Level(n))
-
+	// set default log level if no flags given
+	logging.SetAllLoggers(logging.LevelInfo)
 	logging.SetLogLevel("dht", "error")          // nolint: errcheck
 	logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
 	logging.SetLogLevel("graphsync", "info")     // nolint: errcheck

@@ -156,17 +156,15 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 // The returned bool indicates if this miner created a new block or not.
 func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (won bool, nextTicket types.Ticket) {
 	log.Info("Worker.Mine")
-	ctx = log.Start(ctx, "Worker.Mine")
-	defer log.Finish(ctx)
 	if !base.Defined() {
-		log.Warning("Worker.Mine returning because it can't mine on an empty tipset")
+		log.Warn("Worker.Mine returning because it can't mine on an empty tipset")
 		outCh <- Output{Err: errors.New("bad input tipset with no blocks sent to Mine()")}
 		return
 	}
 
 	log.Debugf("Mining on tipset: %s, with %d null blocks.", base.String(), len(ticketArray))
 	if ctx.Err() != nil {
-		log.Warningf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
+		log.Warnf("Worker.Mine returning with ctx error %s", ctx.Err().Error())
 		return
 	}
 
@@ -184,7 +182,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	if len(ticketArray) == 0 {
 		prevTicket, err = base.MinTicket()
 		if err != nil {
-			log.Warningf("Worker.Mine couldn't read parent ticket %s", err)
+			log.Warnf("Worker.Mine couldn't read parent ticket %s", err)
 			outCh <- Output{Err: err}
 			return
 		}
@@ -194,7 +192,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 
 	nextTicket, err = w.ticketGen.NextTicket(prevTicket, workerAddr, w.workerSigner)
 	if err != nil {
-		log.Warningf("Worker.Mine couldn't generate next ticket %s", err)
+		log.Warnf("Worker.Mine couldn't generate next ticket %s", err)
 		outCh <- Output{Err: err}
 		return
 	}
@@ -216,11 +214,11 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 
 	select {
 	case <-ctx.Done():
-		log.Infof("Mining run on base %s with %d null blocks canceled.", base.String(), len(ticketArray))
+		log.Infow("Mining run on tipset with null blocks canceled.", "tipset", base, "nullBlocks", len(ticketArray))
 		return
 	case <-done:
 	case err := <-errCh:
-		log.Infof("Error notarizing time on ticket")
+		log.Info("Error notarizing time on ticket")
 		outCh <- Output{Err: err}
 		return
 	}
@@ -249,7 +247,6 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	if weHaveAWinner {
 		next, err := w.Generate(ctx, base, append(ticketArray, nextTicket), electionProof, uint64(len(ticketArray)))
 		if err == nil {
-			log.SetTag(ctx, "block", next)
 			log.Debugf("Worker.Mine generates new winning block! %s", next.Cid().String())
 		}
 		outCh <- NewOutput(next, err)

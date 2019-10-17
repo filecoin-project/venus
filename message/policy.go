@@ -75,7 +75,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 					return err
 				}
 				if found && !minedMsg.Equals(removed) {
-					log.Warningf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
+					log.Warnf("Queued message %v differs from mined message %v with same sender & nonce", removed, minedMsg)
 				}
 				// Else if not found, the message was not sent by this node, or has already been removed
 				// from the queue (e.g. a blockchain re-org).
@@ -110,7 +110,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 	if chainHeight >= p.maxAgeRounds { // avoid uint subtraction overflow
 		expired := target.ExpireBefore(ctx, chainHeight-p.maxAgeRounds)
 		for _, msg := range expired {
-			log.Warningf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
+			log.Warnf("Outbound message %v expired un-mined after %d rounds", msg, p.maxAgeRounds)
 		}
 	}
 	return nil

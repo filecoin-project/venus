@@ -287,7 +287,7 @@ func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead types.TipSe
 	if err != nil {
 		// Should never get here because reorgs should always have a
 		// common ancestor..
-		logSyncer.Warningf("unexpected error when running FindCommonAncestor for reorg log: %s", err.Error())
+		logSyncer.Warnf("unexpected error when running FindCommonAncestor for reorg log: %s", err.Error())
 		return
 	}
 
@@ -296,10 +296,16 @@ func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead types.TipSe
 		reorgCnt.Inc(ctx, 1)
 		dropped, added, err := ReorgDiff(curHead, newHead, commonAncestor)
 		if err == nil {
-			logSyncer.Infof("reorg dropping %d height and adding %d height from %s to %s", dropped, added, curHead.String(), newHead.String())
+			logSyncer.With(
+				"currentHead", curHead,
+				"newHead", newHead,
+			).Infof("reorg dropping %d height and adding %d", dropped, added)
 		} else {
-			logSyncer.Infof("reorg from %s to %s", curHead.String(), newHead.String())
-			logSyncer.Errorf("unexpected error from ReorgDiff during log: %s", err.Error())
+			logSyncer.With(
+				"currentHead", curHead,
+				"newHead", newHead,
+			).Infof("reorg")
+			logSyncer.Errorw("unexpected error from ReorgDiff during log", "error", err)
 		}
 	}
 }

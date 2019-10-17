@@ -49,7 +49,7 @@ func (rm *Miner) handleRetrievePieceForFree(s inet.Stream) {
 
 	reader, err := rm.node.SectorBuilder().ReadPieceFromSealedSector(req.PieceRef)
 	if err != nil {
-		log.Warningf("failed to obtain a reader for piece with CID %s: %s", req.PieceRef.String(), err)
+		log.Warnf("failed to obtain a reader for piece with CID %s: %s", req.PieceRef.String(), err)
 
 		resp := RetrievePieceResponse{
 			Status:       Failure,
@@ -57,7 +57,7 @@ func (rm *Miner) handleRetrievePieceForFree(s inet.Stream) {
 		}
 
 		if err := cbu.NewMsgWriter(s).WriteMsg(&resp); err != nil {
-			log.Warningf("failed to write response for piece with CID %s: %s", req.PieceRef.String(), err)
+			log.Warnf("failed to write response for piece with CID %s: %s", req.PieceRef.String(), err)
 		}
 
 		return
@@ -73,7 +73,7 @@ func (rm *Miner) handleRetrievePieceForFree(s inet.Stream) {
 	}
 
 	if err := cbu.NewMsgWriter(s).WriteMsg(&resp); err != nil {
-		log.Warningf("failed to write response for piece with CID %s: %s", req.PieceRef.String(), err)
+		log.Warnf("failed to write response for piece with CID %s: %s", req.PieceRef.String(), err)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (rm *Miner) handleRetrievePieceForFree(s inet.Stream) {
 		}
 
 		if err := cbu.NewMsgWriter(s).WriteMsg(&chunk); err != nil {
-			log.Warningf("failed to write chunk for CID %s: %s", req.PieceRef.String(), err)
+			log.Warnf("failed to write chunk for CID %s: %s", req.PieceRef.String(), err)
 			return
 		}
 	}
