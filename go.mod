@@ -26,7 +26,7 @@ require (
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-blockservice v0.1.2
-	github.com/ipfs/go-car v0.0.2-0.20190926002512-a64e86334410
+	github.com/ipfs/go-car v0.0.2
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ds-badger v0.0.5
