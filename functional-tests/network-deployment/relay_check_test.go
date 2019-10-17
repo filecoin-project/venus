@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-circuit"
 	pr "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	"github.com/multiformats/go-multiaddr"
@@ -162,7 +161,7 @@ func TestRelayCheck(t *testing.T) {
 		// of our relays
 
 		protop2p := multiaddr.ProtocolWithCode(multiaddr.P_P2P)
-		protocircuit := multiaddr.ProtocolWithCode(relay.P_CIRCUIT)
+		protocircuit := multiaddr.ProtocolWithCode(multiaddr.P_CIRCUIT)
 
 		// /ipfs/<ID>
 		peercomp, err := multiaddr.NewComponent(protop2p.Name, details.ID.String())
@@ -176,7 +175,7 @@ func TestRelayCheck(t *testing.T) {
 		relaypeer := relaycomp.Encapsulate(peercomp)
 
 		for maddr := range maddrChan {
-			if _, err := maddr.ValueForProtocol(relay.Protocol.Code); err != nil {
+			if _, err := maddr.ValueForProtocol(multiaddr.P_CIRCUIT); err != nil {
 				continue
 			}
 

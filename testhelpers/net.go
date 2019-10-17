@@ -129,7 +129,7 @@ func RandPeerID() (peer.ID, error) {
 func RequireIntPeerID(t *testing.T, i int64) peer.ID {
 	buf := make([]byte, 16)
 	n := binary.PutVarint(buf, i)
-	h, err := mh.Sum(buf[:n], mh.ID, -1)
+	h, err := mh.Sum(buf[:n], mh.IDENTITY, -1)
 	require.NoError(t, err)
 	pid, err := peer.IDFromBytes(h)
 	require.NoError(t, err)
