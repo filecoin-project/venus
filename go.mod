@@ -45,7 +45,7 @@ require (
 	github.com/ipfs/go-ipld-cbor v0.0.3
 	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144
-	github.com/ipfs/go-merkledag v0.2.3
+	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.1
 	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
