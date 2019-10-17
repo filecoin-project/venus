@@ -20,7 +20,7 @@ type KeyInfo struct {
 	// Private key.
 	PrivateKey []byte `json:"privateKey"`
 	// Cryptographic system used to generate private key.
-	CryptSystem string `json:"curve"`
+	CryptSystem string `json:"cryptSystem"`
 }
 
 // Unmarshal decodes raw cbor bytes into KeyInfo.
@@ -61,8 +61,6 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
 	if ki.CryptSystem == BLS {
-		var blsPrivateKey bls.PrivateKey
-		copy(blsPrivateKey[:], ki.PrivateKey)
 		return address.NewBLSAddress(ki.PublicKey())
 	}
 	if ki.CryptSystem == SECP256K1 {

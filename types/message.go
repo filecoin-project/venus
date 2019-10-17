@@ -151,7 +151,7 @@ func (mC SignedMessageCollection) ToNode() ipld.Node {
 // MessageCollection tracks a group of messages and assigns it a cid.
 type MessageCollection []*MeteredMessage
 
-// DecodeMessages decodes raw bytes into an array of signed messages
+// DecodeMessages decodes raw bytes into an array of metered messages
 func DecodeMessages(b []byte) ([]*MeteredMessage, error) {
 	var out MessageCollection
 	if err := cbor.DecodeInto(b, &out); err != nil {
