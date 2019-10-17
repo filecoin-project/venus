@@ -44,13 +44,6 @@ func TestMessageValidator(t *testing.T) {
 		assert.NoError(t, validator.Validate(ctx, msg, actor))
 	})
 
-	t.Run("invalid signature fails", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
-		msg.Signature = []byte{}
-		assert.Errorf(t, validator.Validate(ctx, msg, actor), "signature")
-
-	})
-
 	t.Run("self send fails", func(t *testing.T) {
 		msg := newMessage(t, alice, alice, 100, 5, 1, 0)
 		assert.Errorf(t, validator.Validate(ctx, msg, actor), "self")
@@ -114,14 +107,6 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 
 		err := validator.Validate(ctx, unsigned, actor)
 		assert.NoError(t, err)
-	})
-
-	t.Run("outbound validator does not ignore bls signature", func(t *testing.T) {
-		validator := consensus.NewOutboundMessageValidator()
-
-		err := validator.Validate(ctx, unsigned, actor)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid signature")
 	})
 
 	t.Run("ingestion validator does not ignore bls signature", func(t *testing.T) {

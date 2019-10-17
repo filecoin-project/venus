@@ -36,15 +36,14 @@ type SignedMessageValidator interface {
 }
 
 type defaultMessageValidator struct {
-	allowHighNonce          bool
-	bypassBLSSignatureCheck bool
+	allowHighNonce bool
 }
 
 // NewDefaultMessageValidator creates a new default validator.
 // A default validator checks for both permanent semantic problems (e.g. invalid signature)
 // as well as temporary conditions which may change (e.g. actor can't cover gas limit).
 func NewDefaultMessageValidator() SignedMessageValidator {
-	return &defaultMessageValidator{bypassBLSSignatureCheck: true}
+	return &defaultMessageValidator{}
 }
 
 // NewOutboundMessageValidator creates a new default validator for outbound messages. This
@@ -57,12 +56,6 @@ func NewOutboundMessageValidator() SignedMessageValidator {
 var _ SignedMessageValidator = (*defaultMessageValidator)(nil)
 
 func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	if !v.bypassBLSSignatureCheck || msg.From.Protocol() != address.BLS {
-		if !msg.VerifySignature() {
-			return errInvalidSignature
-		}
-	}
-
 	if msg.From == msg.To {
 		return errSelfSend
 	}
@@ -143,6 +136,11 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Validate validates the signed message.
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+	// ensure message is properly signed
+	if !msg.VerifySignature() {
+		return errInvalidSignature
+	}
+
 	// retrieve from actor
 	fromActor, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {

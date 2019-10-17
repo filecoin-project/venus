@@ -169,6 +169,41 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
 
+	t.Run("fails when secp message has invalid signature", func(t *testing.T) {
+		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
+		require.NoError(t, err)
+		vms := vm.NewStorageMap(bstore)
+
+		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
+
+		tipSet := types.RequireNewTipSet(t, blocks...)
+		// Add the miner worker mapping into the actor state
+		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
+
+		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
+
+		emptyBLSMessages, _, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+
+		// Create secp message with invalid signature
+		keys := types.MustGenerateKeyInfo(1, 42)
+		blsAddr, err := address.NewSecp256k1Address(keys[0].PublicKey())
+		require.NoError(t, err)
+
+		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
+		msg := types.NewMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
+		mmsg := &types.MeteredMessage{Message: *msg}
+		smsg := &types.SignedMessage{
+			MeteredMessage: *mmsg,
+			Signature:      []byte("not a signature"),
+		}
+		secpMessages[0] = append(secpMessages[0], smsg)
+
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "secp message signature invalid")
+	})
+
 	t.Run("returns nil + mining error when ticket validation fails", func(t *testing.T) {
 
 		pTipSet := types.RequireNewTipSet(t, genesisBlock)

@@ -156,7 +156,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsM
 		return cid.Undef, err
 	}
 
-	if err := c.validateMining(ctx, priorState, ts, ancestors[0], blsMessages); err != nil {
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0], blsMessages, secpMessages); err != nil {
 		return cid.Undef, err
 	}
 
@@ -183,7 +183,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsM
 //      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet, blsMsgs [][]*types.MeteredMessage) error {
+func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet, blsMsgs [][]*types.MeteredMessage, secpMsgs [][]*types.SignedMessage) error {
 	prevTicket, err := parentTs.MinTicket()
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent min ticket")
@@ -210,6 +210,13 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		// Verify that the BLS signature is correct
 		if err := verifyBLSMessageAggregate(blk.BLSAggregateSig, blsMsgs[i]); err != nil {
 			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
+		}
+
+		// Verify that all secp message signatures are correct
+		for i, msg := range secpMsgs[i] {
+			if !msg.VerifySignature() {
+				return errors.Errorf("secp message signature invalid for message, %d, in block %s", i, blk.Cid())
+			}
 		}
 
 		// Validate ElectionProof
