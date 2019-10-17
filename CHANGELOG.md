@@ -12,13 +12,13 @@ We're happy to announce go-filecoin 0.5.6. Highlights include an updated Proof-o
 
 Two changes have been made to enable software releases without restarting the network. First, a network name is now embedded in the genesis state, permitting multiple networks to follow different upgrade schedules. In addition, the Git SHA compatibility check has been removed from the Hello protocol, enabling nodes with different, but compatible, code to interoperate. Going forward, the user devnet will no longer be restarted with every software release; it will still be restarted as-needed.
 
-已经做了两项更改来启用软件发布，而无需重新启动网络。首先，网络名称现在嵌入在genesis状态中，允许多个网络遵循不同的升级计划。此外，从Hello协议中删除了Git SHA兼容性检查，使具有不同但兼容的代码的节点能够进行互操作。未来，用户devnet将不再在每次软件发布时都重新启动;它仍然会根据需要重新启动。
+(我们)已经做了两项更改来启用软件发布，而无需重新启动网络。首先，网络名称现在嵌入在genesis状态中，允许多个网络遵循不同的升级计划。此外，从Hello协议中删除了Git SHA兼容性检查，使具有不同但兼容的代码的节点能够进行互操作。未来，用户devnet将不再在每次软件发布时都重新启动;它仍然会根据需要重新启动。
 
 #### 🚀 Updated Proof-of-Spacetime (PoSt) - 更新时空证明 (PoSt)
 
 A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors. 
 
-一个新的证明结构，[Rational PoSt](https://github.com/filecoin- project/specs/blob/master/pro- of-spacetime.md)已经被[实现](https://github.com/filecoin-project/rust-fil-proofs/pull/763)和[integrated](https://github.com/filecoin- project/filecoin/pull/3318)。这种结构与我们的testnet候选结构是相同的形状，解决了在许多扇区上证明的突出限制。
+一个新的证明结构，[Rational PoSt](https://github.com/filecoin-project/specs/blob/master/pro-of-spacetime.md)已经被[实现](https://github.com/filecoin-project/rust-fil-proofs/pull/763)和[integrated](https://github.com/filecoin-project/filecoin/pull/3318)。这种结构与我们的testnet候选结构是相同的形状，解决了在许多扇区上证明的突出限制。
 
 #### 🎟️ Block and consensus changes - 块和共识更改
 
@@ -59,7 +59,7 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 - Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
 - Groth参数不再从网络获取，而是在需要时本地生成。这可能需要很多分钟(但比网络更可靠)。
 - [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
-- [块头结构](https://github.com/filecoin-project/go- filecoin/blob/rele0.5.0 /types/block.go)已经改变，所以解析链数据的工具需要更新。
+- [块头结构](https://github.com/filecoin-project/go-filecoin/blob/rele0.5.0 /types/block.go)已经改变，所以解析链数据的工具需要更新。
 - The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed.
 - 默认的存储矿工等待15轮后，才开始一个PoSt计算，但不是健壮的re-org _超过15块_，改变它的挑战种子
 - If you are seeing panics or write failures during sealing, it may be related to disk space requirements. Currently the sector builder uses ~11GiB of free disk space, and assumes it is available on the `/tmp` partition. An proposal to make that directory configurable is in [#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
