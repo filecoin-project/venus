@@ -18,7 +18,7 @@ Two changes have been made to enable software releases without restarting the ne
 
 A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors. 
 
-一个新的证明结构，[Rational PoSt](https://github.com/filecoin-project/specs/blob/master/pro-of-spacetime.md)已经被[实现](https://github.com/filecoin-project/rust-fil-proofs/pull/763)和[integrated](https://github.com/filecoin-project/filecoin/pull/3318)。这种结构与我们的testnet候选结构是相同的形状，解决了在许多扇区上证明的突出限制。
+一个新的证明结构，[Rational PoSt](https://github.com/filecoin-project/specs/blob/master/pro-of-spacetime.md)已经被[实现](https://github.com/filecoin-project/rust-fil-proofs/pull/763)和[集成](https://github.com/filecoin-project/filecoin/pull/3318)。这种结构与我们的testnet候选结构是相同的形状，解决了在许多扇区上证明的突出限制。
 
 #### 🎟️ Block and consensus changes - 块和共识更改
 
@@ -38,11 +38,11 @@ Block headers are now signed by miners, and election tickets form an array in ea
 
 Previously in go-filecoin 0.4, we aimed to speed up chain syncing by focusing on the first phase: chain fetching. We have identified the worst of the fetching contention issues that caused forking and unreliable message processing in 0.4. Some of those fixes are now complete, while others such as [#3460](https://github.com/filecoin-project/go-filecoin/pull/3460) are in progress. There may still be some issues that could cause forking that we will continue to work on and update the coming weeks. Please let us know your feedback. 
 
-在go-filecoin 0.4之前，我们的目标是通过关注第一阶段:链获取来加速链同步。我们已经在0.4中确定了导致分叉和不可靠消息处理的最严重的抓取争用问题。其中一些修复现在已经完成，而其他的修复如[#3460](https://github.com/filecoin-project/go-filecoin/pull/3460)正在进行中。可能仍有一些问题会导致分叉，我们将继续工作，并在未来几周更新。请让我们知道你的反馈。
+在go-filecoin 0.4之前，我们的目标是通过关注第一阶段：链获取来加速链同步。我们已经在0.4中确定了导致分叉和不可靠消息处理的最严重的抓取争用问题。其中一些修复现在已经完成，而其他的修复如[#3460](https://github.com/filecoin-project/go-filecoin/pull/3460)正在进行中。可能仍有一些问题会导致分叉，我们将继续工作，并在未来几周更新。请让我们知道你的反馈。
 
 go-filecoin 0.5 also continues with improvements to the second phase: chain validation. By switching from HAMT bitwidth 8 to HAMT bitwidth 5, we see a general average improvement in benchmarks of about 4-to-1, across memory usage, speed of operations, and bytes written to disk. Users are encouraged to measure and share their own benchmarks. In addition, optimizations to encoding and decoding of HAMT data structures may result in additional performance improvements. 
 
-go-filecoin 0.5还继续改进第二阶段:链验证。通过从HAMT bitwidth 8切换到HAMT bitwidth 5，我们可以看到在内存使用、操作速度和写到磁盘的字节数方面，基准测试的总体平均性能提高了4到1。鼓励用户测量和共享他们自己的基准。此外，对HAMT数据结构的编码和解码的优化可能会带来额外的性能改进。
+go-filecoin 0.5还继续改进第二阶段：链验证。通过从HAMT bitwidth 8切换到HAMT bitwidth 5，我们可以看到在内存使用、操作速度和写到磁盘的字节数方面，基准测试的总体平均性能提高了4到1。鼓励用户测量和共享他们自己的基准。此外，对HAMT数据结构的编码和解码的优化可能会带来额外的性能改进。
 
 ### Looking Ahead - 展望未来
 
@@ -55,11 +55,11 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 ### User Notes - 用户须知
 
 - The proving period is now configured to 300 rounds (2.5 hrs), down from 1000 rounds (10 hours). We’ve made this temporary change for more frequent node interaction and faster experimentation, and we expect to increase the proving period again in the future.
-- 检定周期现在配置为300发(2.5小时)，而不是1000发(10小时)。为了更频繁的节点交互和更快的实验，我们做了这个临时的改变，并且我们期望在未来再次增加验证周期。
+- 检定周期现在配置为300轮(2.5小时)，而不是1000轮(10小时)。为了更频繁的节点交互和更快的实验，我们做了这个临时的改变，并且我们期望在未来再次增加验证周期。
 - Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
 - Groth参数不再从网络获取，而是在需要时本地生成。这可能需要很多分钟(但比网络更可靠)。
 - [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
-- [块头结构](https://github.com/filecoin-project/go-filecoin/blob/rele0.5.0 /types/block.go)已经改变，所以解析链数据的工具需要更新。
+- [块头结构](https://github.com/filecoin-project/go-filecoin/blob/rele0.5.0/types/block.go)已经改变，所以解析链数据的工具需要更新。
 - The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed.
 - 默认的存储矿工等待15轮后，才开始一个PoSt计算，但不是健壮的re-org _超过15块_，改变它的挑战种子
 - If you are seeing panics or write failures during sealing, it may be related to disk space requirements. Currently the sector builder uses ~11GiB of free disk space, and assumes it is available on the `/tmp` partition. An proposal to make that directory configurable is in [#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
@@ -74,16 +74,19 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 | mining seal-now     | behavior changed[1] |
 
 [1] `mining seal-now` no longer stages a piece into a sector. It now has the same behavior as `--auto-seal-interval-seconds`.
+
 [1] `mining seal-now`不再将一个板块划分为多个板块。它现在的行为与`--auto-seal-interval-seconds`相同。
 
 ### Changelog -变更日志
 
 A full list of all [67 PRs](https://github.com/filecoin-project/go-filecoin/pulls?utf8=✓&q=is%3Apr+is%3Amerged+merged%3A2019-09-03..2019-09-23+) in this release, including many bugfixes not listed here, can be found on Github.
+
 本次发布的完整PR列表[67 PRs](https://github.com/filecoin-project/go-filecoin/pulls?utf8=✓&q=is%3Apr+is%3Amerged+merged%3A2019-09-03..2019-09-23+)，包括这里没有列出的许多bug修复，可以在Github上找到。
 
 ### Contributors - 贡献者
 
 ❤️ Huge thank you to everyone that made this release possible!
+
 ❤️ 非常感谢每一个人，使这个版本成为可能!
 
 ###  🙌🏽 Want to contribute? - 要作出贡献?
