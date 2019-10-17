@@ -55,7 +55,7 @@ type syncerChainReaderWriter interface {
 }
 
 type syncChainSelector interface {
-	// IsHeaver returns true if tipset a is heavier than tipset b and false if
+	// IsHeavier returns true if tipset a is heavier than tipset b and false if
 	// tipset b is heavier than tipset a.
 	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 	// NewWeight returns the weight of a tipset after the upgrade to version 1

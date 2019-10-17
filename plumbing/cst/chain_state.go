@@ -3,9 +3,12 @@ package cst
 import (
 	"context"
 	"fmt"
+	"io"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
+	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -17,6 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 )
+
+var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
 	GetHead() types.TipSetKey
@@ -33,6 +38,18 @@ type ChainStateReadWriter struct {
 	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
 	messageProvider chain.MessageProvider
 	actors          builtin.Actors
+}
+
+type carStore struct {
+	store *hamt.CborIpldStore
+}
+
+func newCarStore(cst *hamt.CborIpldStore) *carStore {
+	return &carStore{cst}
+}
+
+func (cs *carStore) Put(b blocks.Block) error {
+	return cs.store.Blocks.AddBlock(b)
 }
 
 var (
@@ -174,4 +191,29 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key types.TipSetKe
 		return err
 	}
 	return chn.readWriter.SetHead(ctx, headTs)
+}
+
+// ChainExport exports the chain from `head` up to and including the genesis block to `out`
+func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) error {
+	headTS, err := chn.GetTipSet(head)
+	if err != nil {
+		return err
+	}
+	logStore.Infof("starting CAR file export: %s", head.String())
+	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, out); err != nil {
+		return err
+	}
+	logStore.Infof("exported CAR file with head: %s", head.String())
+	return nil
+}
+
+// ChainImport imports a chain from `in`.
+func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) (types.TipSetKey, error) {
+	logStore.Info("starting CAR file import")
+	headKey, err := chain.Import(ctx, newCarStore(chn.cst), in)
+	if err != nil {
+		return types.UndefTipSet.Key(), err
+	}
+	logStore.Infof("imported CAR file with head: %s", headKey)
+	return headKey, nil
 }
