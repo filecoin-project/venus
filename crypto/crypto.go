@@ -23,16 +23,16 @@ func PublicKey(sk []byte) []byte {
 	return elliptic.Marshal(secp256k1.S256(), x, y)
 }
 
-// SignSecp signs the given message using an elliptic curve, which must be 32 bytes long.
+// SignSecp signs the given message using secp256k1 based cryptography, which must be 32 bytes long.
 func SignSecp(sk, msg []byte) ([]byte, error) {
 	return secp256k1.Sign(msg, sk)
 }
 
 // SignBLS signs the given message with BLS.
 func SignBLS(sk, msg []byte) ([]byte, error) {
-	var pk bls.PrivateKey
-	copy(pk[:], sk)
-	sig := bls.PrivateKeySign(pk, msg)
+	var privateKey bls.PrivateKey
+	copy(privateKey[:], sk)
+	sig := bls.PrivateKeySign(privateKey, msg)
 	return sig[:], nil
 }
 
@@ -41,7 +41,7 @@ func Equals(sk, other []byte) bool {
 	return bytes.Equal(sk, other)
 }
 
-// VerifySecp checks the given signature is an elliptic curve signature and returns true if it is valid.
+// VerifySecp checks the given signature is a secp256k1 signature and returns true if it is valid.
 func VerifySecp(pk, msg, signature []byte) bool {
 	if len(signature) == 65 {
 		// Drop the V (1byte) in [R | S | V] style signatures.

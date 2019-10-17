@@ -13,7 +13,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
-func TestGenerateKey(t *testing.T) {
+func TestGenerateSecpKey(t *testing.T) {
 	tf.UnitTest(t)
 
 	rand.Seed(time.Now().UnixNano())
@@ -76,4 +76,13 @@ func TestBLSSigning(t *testing.T) {
 
 	valid := crypto.VerifyBLS(publicKey[:], data, signature)
 	require.True(t, valid)
+
+	// invalid signature fails
+	valid = crypto.VerifyBLS(publicKey[:], data, signature[3:])
+	require.False(t, valid)
+
+	// invalid digest fails
+	valid = crypto.VerifyBLS(publicKey[:], data[3:], signature)
+	require.False(t, valid)
+
 }
