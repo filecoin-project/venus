@@ -12,7 +12,19 @@ import (
 func main() {
 
 	// set default log level if no flags given
-	logging.SetAllLoggers(logging.LevelInfo)
+	var level logging.LogLevel
+	var err error
+	lvl := os.Getenv("GO_FILECOIN_LOG_LEVEL")
+	if lvl == "" {
+		level = logging.LevelInfo
+	} else {
+		level, err = logging.LevelFromString(lvl)
+		if err != nil {
+			level = logging.LevelInfo
+		}
+	}
+
+	logging.SetAllLoggers(level)
 	logging.SetLogLevel("dht", "error")          // nolint: errcheck
 	logging.SetLogLevel("bitswap", "error")      // nolint: errcheck
 	logging.SetLogLevel("graphsync", "info")     // nolint: errcheck
