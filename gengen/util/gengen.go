@@ -7,6 +7,7 @@ import (
 	mrand "math/rand"
 	"strconv"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -152,24 +153,31 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
+	emptySignedMessagesCid, err := cst.Put(ctx, types.SignedMessageCollection{})
+	if err != nil {
+		return nil, err
+	}
 	emptyMessagesCid, err := cst.Put(ctx, types.MessageCollection{})
 	if err != nil {
 		return nil, err
 	}
+	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 	emptyReceiptsCid, err := cst.Put(ctx, types.ReceiptCollection{})
 	if err != nil {
 		return nil, err
 	}
 
-	if !emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
+	if !emptySignedMessagesCid.Equals(types.EmptyMessagesCID) ||
+		!emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
 		!emptyReceiptsCid.Equals(types.EmptyReceiptsCID) {
 		return nil, errors.New("bad CID for empty messages/receipts")
 	}
 
 	geneblk := &types.Block{
 		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
+		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptyMessagesCid},
 		MessageReceipts: emptyReceiptsCid,
+		BLSAggregateSig: emptyBLSSignature[:],
 		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}
 
@@ -194,8 +202,8 @@ func genKeys(cfgkeys int, pnrg io.Reader) ([]*types.KeyInfo, error) {
 		}
 
 		ki := &types.KeyInfo{
-			PrivateKey: sk,
-			Curve:      types.SECP256K1,
+			PrivateKey:  sk,
+			CryptSystem: types.SECP256K1,
 		}
 
 		keys[i] = ki

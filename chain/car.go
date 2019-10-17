@@ -73,7 +73,7 @@ func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carM
 
 			if !filter[hdr.Messages.SecpRoot] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(out, hdr.Messages.SecpRoot.Bytes(), types.MessageCollection(secpMsgs).ToNode().RawData()); err != nil {
+				if err := carutil.LdWrite(out, hdr.Messages.SecpRoot.Bytes(), types.SignedMessageCollection(secpMsgs).ToNode().RawData()); err != nil {
 					return err
 				}
 				filter[hdr.Messages.SecpRoot] = true

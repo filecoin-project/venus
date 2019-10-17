@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"io"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	secp256k1 "github.com/ipsn/go-secp256k1"
 )
 
@@ -22,9 +23,17 @@ func PublicKey(sk []byte) []byte {
 	return elliptic.Marshal(secp256k1.S256(), x, y)
 }
 
-// Sign signs the given message, which must be 32 bytes long.
-func Sign(sk, msg []byte) ([]byte, error) {
+// SignSecp signs the given message using secp256k1 based cryptography, which must be 32 bytes long.
+func SignSecp(sk, msg []byte) ([]byte, error) {
 	return secp256k1.Sign(msg, sk)
+}
+
+// SignBLS signs the given message with BLS.
+func SignBLS(sk, msg []byte) ([]byte, error) {
+	var privateKey bls.PrivateKey
+	copy(privateKey[:], sk)
+	sig := bls.PrivateKeySign(privateKey, msg)
+	return sig[:], nil
 }
 
 // Equals compares two private key for equality and returns true if they are the same.
@@ -32,8 +41,8 @@ func Equals(sk, other []byte) bool {
 	return bytes.Equal(sk, other)
 }
 
-// Verify checks the given signature and returns true if it is valid.
-func Verify(pk, msg, signature []byte) bool {
+// VerifySecp checks the given signature is a secp256k1 signature and returns true if it is valid.
+func VerifySecp(pk, msg, signature []byte) bool {
 	if len(signature) == 65 {
 		// Drop the V (1byte) in [R | S | V] style signatures.
 		// The V (1byte) is the recovery bit and is not apart of the signature verification.
@@ -41,6 +50,34 @@ func Verify(pk, msg, signature []byte) bool {
 	}
 
 	return secp256k1.VerifySignature(pk[:], msg, signature)
+}
+
+// VerifyBLS checks the given signature is valid using BLS cryptography.
+func VerifyBLS(pubKey, msg, signature []byte) bool {
+	var blsSig bls.Signature
+	copy(blsSig[:], signature)
+	var blsPubKey bls.PublicKey
+	copy(blsPubKey[:], pubKey)
+	return bls.Verify(&blsSig, []bls.Digest{bls.Hash(msg)}, []bls.PublicKey{blsPubKey})
+}
+
+// VerifyBLSAggregate checks the given signature is a valid aggregate signature over all messages and public keys
+func VerifyBLSAggregate(pubKeys, msgs [][]byte, signature []byte) bool {
+	digests := []bls.Digest{}
+	for _, msg := range msgs {
+		digests = append(digests, bls.Hash(msg))
+	}
+
+	keys := []bls.PublicKey{}
+	for _, pubKey := range pubKeys {
+		var blsPubKey bls.PublicKey
+		copy(blsPubKey[:], pubKey)
+	}
+
+	var blsSig bls.Signature
+	copy(blsSig[:], signature)
+
+	return bls.Verify(&blsSig, digests, keys)
 }
 
 // GenerateKeyFromSeed generates a new key from the given reader.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -41,13 +42,6 @@ func TestMessageValidator(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
 		assert.NoError(t, validator.Validate(ctx, msg, actor))
-	})
-
-	t.Run("invalid signature fails", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
-		msg.Signature = []byte{}
-		assert.Errorf(t, validator.Validate(ctx, msg, actor), "signature")
-
 	})
 
 	t.Run("self send fails", func(t *testing.T) {
@@ -88,6 +82,44 @@ func TestMessageValidator(t *testing.T) {
 	t.Run("high nonce", func(t *testing.T) {
 		msg := newMessage(t, alice, bob, 101, 5, 1, 0)
 		assert.Errorf(t, validator.Validate(ctx, msg, actor), "too high")
+	})
+}
+
+func TestBLSSignatureValidationConfiguration(t *testing.T) {
+	tf.UnitTest(t)
+
+	// create bls address
+	pubKey := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
+	from, err := address.NewBLSAddress(pubKey[:])
+	require.NoError(t, err)
+
+	msg := types.NewMessage(from, addresses[1], 0, types.ZeroAttoFIL, "method", []byte("params"))
+	unsigned := &types.SignedMessage{MeteredMessage: types.MeteredMessage{
+		Message:  *msg,
+		GasPrice: types.NewGasPrice(1),
+		GasLimit: types.NewGasUnits(300),
+	}}
+	actor := newActor(t, 1000, 0)
+
+	ctx := context.Background()
+	t.Run("default validator ignores bls signatures", func(t *testing.T) {
+		validator := consensus.NewDefaultMessageValidator()
+
+		err := validator.Validate(ctx, unsigned, actor)
+		assert.NoError(t, err)
+	})
+
+	t.Run("ingestion validator does not ignore bls signature", func(t *testing.T) {
+		api := NewMockIngestionValidatorAPI()
+		api.ActorAddr = from
+		api.Actor = actor
+
+		mpoolCfg := config.NewDefaultConfig().Mpool
+		validator := consensus.NewIngestionValidator(api, mpoolCfg)
+
+		err := validator.Validate(ctx, unsigned)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature")
 	})
 }
 

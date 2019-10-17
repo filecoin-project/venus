@@ -72,6 +72,7 @@ func TestTriangleEncoding(t *testing.T) {
 			StateRoot:       CidFromString(t, "somecid"),
 			Timestamp:       Uint64(1),
 			BlockSig:        []byte{0x3},
+			BLSAggregateSig: []byte{0x3},
 		}
 		s := reflect.TypeOf(*b)
 		// This check is here to request that you add a non-zero value for new fields
@@ -79,7 +80,7 @@ func TestTriangleEncoding(t *testing.T) {
 		// Also please add non zero fields to "b" and "diff" in TestSignatureData
 		// and add a new check that different values of the new field result in
 		// different output data.
-		require.Equal(t, 13, s.NumField()) // Note: this also counts private fields
+		require.Equal(t, 14, s.NumField()) // Note: this also counts private fields
 		testRoundTrip(t, b)
 	})
 }

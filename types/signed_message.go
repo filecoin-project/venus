@@ -9,8 +9,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/address"
 )
 
 var (
@@ -84,26 +82,6 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 	}
 
 	return obj, nil
-}
-
-// RecoverAddress returns the address derived from the signature and message encapsulated in `SignedMessage`
-func (smsg *SignedMessage) RecoverAddress(r Recoverer) (address.Address, error) {
-	if len(smsg.Signature) < 1 {
-		return address.Undef, ErrMessageUnsigned
-	}
-
-	bmsg, err := smsg.MeteredMessage.Marshal()
-	if err != nil {
-		return address.Undef, err
-	}
-
-	maybePk, err := r.Ecrecover(bmsg, smsg.Signature)
-	if err != nil {
-		return address.Undef, err
-	}
-
-	return address.NewSecp256k1Address(maybePk)
-
 }
 
 // VerifySignature returns true iff the signature over the message as calculated

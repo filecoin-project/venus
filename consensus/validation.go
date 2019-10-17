@@ -56,10 +56,6 @@ func NewOutboundMessageValidator() SignedMessageValidator {
 var _ SignedMessageValidator = (*defaultMessageValidator)(nil)
 
 func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	if !msg.VerifySignature() {
-		return errInvalidSignature
-	}
-
 	if msg.From == msg.To {
 		return errSelfSend
 	}
@@ -140,6 +136,11 @@ func NewIngestionValidator(api ingestionValidatorAPI, cfg *config.MessagePoolCon
 // Validate validates the signed message.
 // Errors probably mean the validation failed, but possibly indicate a failure to retrieve state
 func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMessage) error {
+	// ensure message is properly signed
+	if !msg.VerifySignature() {
+		return errInvalidSignature
+	}
+
 	// retrieve from actor
 	fromActor, err := v.api.GetActor(ctx, msg.From)
 	if err != nil {

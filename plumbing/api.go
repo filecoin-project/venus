@@ -365,7 +365,7 @@ func (api *API) WalletGetPubKeyForAddress(addr address.Address) ([]byte, error) 
 
 // WalletNewAddress generates a new wallet address
 func (api *API) WalletNewAddress() (address.Address, error) {
-	return wallet.NewAddress(api.wallet)
+	return wallet.NewAddress(api.wallet, address.SECP256K1)
 }
 
 // WalletImport adds a given set of KeyInfos to the wallet

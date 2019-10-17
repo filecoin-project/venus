@@ -242,46 +242,6 @@ func TestProcessTipsConflicts(t *testing.T) {
 	assert.True(t, expStCid.Equals(gotStCid))
 }
 
-func TestProcessBlockBadMsgSig(t *testing.T) {
-	tf.UnitTest(t)
-
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
-
-	toAddr := newAddress()
-	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
-	fromAct := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000))
-	_, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
-		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(100000)),
-		fromAddr:               fromAct,
-	})
-
-	vms := th.VMStorage()
-	minerAddr, err := address.NewActorAddress([]byte("miner"))
-	require.NoError(t, err)
-	minerOwner, err := address.NewActorAddress([]byte("mo"))
-	require.NoError(t, err)
-	stCid, _ := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
-
-	msg := types.NewMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), "", nil)
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner, types.NewGasPrice(1), types.NewGasUnits(0))
-	require.NoError(t, err)
-	// corrupt the message data
-	smsg.Message.Nonce = 13
-
-	msgs := []*types.SignedMessage{smsg}
-	blk := &types.Block{
-		Height:    20,
-		StateRoot: stCid,
-		Miner:     minerAddr,
-	}
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
-	require.Nil(t, results)
-	assert.EqualError(t, err, "apply message failed: invalid signature by sender over message data")
-}
-
 // ProcessBlock should not fail with an unsigned block reward message.
 func TestProcessBlockReward(t *testing.T) {
 	tf.UnitTest(t)

@@ -28,7 +28,7 @@ func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	fs, err := NewDSBackend(ds)
 	require.NoError(t, err)
 
-	addr, err := fs.NewAddress()
+	addr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 	return fs, addr
 }
@@ -82,7 +82,7 @@ func TestInvalidAddress(t *testing.T) {
 	sig, err := fs.SignBytes(data, addr)
 	require.NoError(t, err)
 
-	badAddr, err := fs.NewAddress()
+	badAddr, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
 	assert.False(t, types.IsValidSignature(data, badAddr, sig))
@@ -122,7 +122,7 @@ func TestBadFrom(t *testing.T) {
 	tf.UnitTest(t)
 
 	fs, addr := requireSignerAddr(t)
-	addr2, err := fs.NewAddress()
+	addr2, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
 	msg := types.NewMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)

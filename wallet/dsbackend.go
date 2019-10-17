@@ -5,20 +5,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	ds "github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	"github.com/minio/blake2b-simd"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/types"
-	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
-)
-
-const (
-	// SECP256K1 is a curve used to computer private keys
-	SECP256K1 = "secp256k1"
 )
 
 // DSBackendType is the reflect type of the DSBackend.
@@ -95,7 +91,18 @@ func (backend *DSBackend) HasAddress(addr address.Address) bool {
 
 // NewAddress creates a new address and stores it.
 // Safe for concurrent access.
-func (backend *DSBackend) NewAddress() (address.Address, error) {
+func (backend *DSBackend) NewAddress(protocol address.Protocol) (address.Address, error) {
+	switch protocol {
+	case address.BLS:
+		return backend.newBLSAddress()
+	case address.SECP256K1:
+		return backend.newSecpAddress()
+	default:
+		return address.Undef, errors.Errorf("Unknown address protocol %d", protocol)
+	}
+}
+
+func (backend *DSBackend) newSecpAddress() (address.Address, error) {
 	prv, err := crypto.GenerateKey()
 	if err != nil {
 		return address.Undef, err
@@ -103,8 +110,23 @@ func (backend *DSBackend) NewAddress() (address.Address, error) {
 
 	// TODO: maybe the above call should just return a keyinfo?
 	ki := &types.KeyInfo{
-		PrivateKey: prv,
-		Curve:      SECP256K1,
+		PrivateKey:  prv,
+		CryptSystem: types.SECP256K1,
+	}
+
+	if err := backend.putKeyInfo(ki); err != nil {
+		return address.Undef, err
+	}
+
+	return ki.Address()
+}
+
+func (backend *DSBackend) newBLSAddress() (address.Address, error) {
+	privateKey := bls.PrivateKeyGenerate()
+
+	ki := &types.KeyInfo{
+		PrivateKey:  privateKey[:],
+		CryptSystem: types.BLS,
 	}
 
 	if err := backend.putKeyInfo(ki); err != nil {
@@ -143,13 +165,13 @@ func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (types.Si
 		return nil, err
 	}
 
-	return wutil.Sign(ki.Key(), data)
-}
+	if ki.CryptSystem == types.BLS {
+		return crypto.SignBLS(ki.PrivateKey, data)
+	}
 
-// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
-// the public key `pk`.
-func (backend *DSBackend) Verify(data, pk []byte, sig types.Signature) bool {
-	return crypto.Verify(pk, data, sig)
+	// sign the content
+	hash := blake2b.Sum256(data)
+	return crypto.SignSecp(ki.PrivateKey, hash[:])
 }
 
 // GetKeyInfo will return the private & public keys associated with address `addr`

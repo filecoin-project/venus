@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
-	wutil "github.com/filecoin-project/go-filecoin/wallet/util"
 )
 
 var (
@@ -107,46 +106,15 @@ func (w *Wallet) SignBytes(data []byte, addr address.Address) (types.Signature, 
 	return backend.SignBytes(data, addr)
 }
 
-// GetAddressForPubKey looks up a KeyInfo address associated with a given PublicKey
-func (w *Wallet) GetAddressForPubKey(pk []byte) (address.Address, error) {
-	var addr address.Address
-	addrs := w.Addresses()
-	for _, addr = range addrs {
-		testPk, err := w.GetPubKeyForAddress(addr)
-		if err != nil {
-			return addr, errors.New("could not fetch public key")
-		}
-
-		if bytes.Equal(testPk, pk) {
-			return addr, nil
-		}
-	}
-	return addr, errors.New("public key not found in wallet")
-}
-
-// Verify cryptographically verifies that 'sig' is the signed hash of 'data' with
-// the public key `pk`.
-func (w *Wallet) Verify(data []byte, pk []byte, sig types.Signature) (bool, error) {
-	return wutil.Verify(pk, data, sig)
-}
-
-// Ecrecover returns an uncompressed public key that could produce the given
-// signature from data.
-// Note: The returned public key should not be used to verify `data` is valid
-// since a public key may have N private key pairs
-func (w *Wallet) Ecrecover(data []byte, sig types.Signature) ([]byte, error) {
-	return wutil.Ecrecover(data, sig)
-}
-
 // NewAddress creates a new account address on the default wallet backend.
-func NewAddress(w *Wallet) (address.Address, error) {
+func NewAddress(w *Wallet, p address.Protocol) (address.Address, error) {
 	backends := w.Backends(DSBackendType)
 	if len(backends) == 0 {
 		return address.Undef, fmt.Errorf("missing default ds backend")
 	}
 
 	backend := (backends[0]).(*DSBackend)
-	return backend.NewAddress()
+	return backend.NewAddress(p)
 }
 
 // GetPubKeyForAddress returns the public key in the keystore associated with
@@ -162,7 +130,7 @@ func (w *Wallet) GetPubKeyForAddress(addr address.Address) ([]byte, error) {
 
 // NewKeyInfo creates a new KeyInfo struct in the wallet backend and returns it
 func (w *Wallet) NewKeyInfo() (*types.KeyInfo, error) {
-	newAddr, err := NewAddress(w)
+	newAddr, err := NewAddress(w, address.SECP256K1)
 	if err != nil {
 		return &types.KeyInfo{}, err
 	}

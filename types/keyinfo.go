@@ -3,7 +3,9 @@ package types
 import (
 	"bytes"
 
+	"github.com/filecoin-project/go-bls-sigs"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
@@ -17,8 +19,8 @@ func init() {
 type KeyInfo struct {
 	// Private key.
 	PrivateKey []byte `json:"privateKey"`
-	// Curve used to generate private key.
-	Curve string `json:"curve"`
+	// Cryptographic system used to generate private key.
+	CryptSystem string `json:"cryptSystem"`
 }
 
 // Unmarshal decodes raw cbor bytes into KeyInfo.
@@ -38,7 +40,7 @@ func (ki *KeyInfo) Key() []byte {
 
 // Type returns the type of curve used to generate the private key
 func (ki *KeyInfo) Type() string {
-	return ki.Curve
+	return ki.CryptSystem
 }
 
 // Equals returns true if the KeyInfo is equal to other.
@@ -49,7 +51,7 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	if ki == nil || other == nil {
 		return false
 	}
-	if ki.Curve != other.Curve {
+	if ki.CryptSystem != other.CryptSystem {
 		return false
 	}
 
@@ -58,11 +60,26 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 
 // Address returns the address for this keyinfo
 func (ki *KeyInfo) Address() (address.Address, error) {
-	// TODO: Use the address type we are running on from the config.
-	return address.NewSecp256k1Address(ki.PublicKey())
+	if ki.CryptSystem == BLS {
+		return address.NewBLSAddress(ki.PublicKey())
+	}
+	if ki.CryptSystem == SECP256K1 {
+		return address.NewSecp256k1Address(ki.PublicKey())
+	}
+	return address.Undef, errors.Errorf("can not generate address for unknown crypto system: %s", ki.CryptSystem)
 }
 
 // PublicKey returns the public key part as uncompressed bytes.
 func (ki *KeyInfo) PublicKey() []byte {
-	return crypto.PublicKey(ki.PrivateKey)
+	if ki.CryptSystem == BLS {
+		var blsPrivateKey bls.PrivateKey
+		copy(blsPrivateKey[:], ki.PrivateKey)
+		publicKey := bls.PrivateKeyPublicKey(blsPrivateKey)
+
+		return publicKey[:]
+	}
+	if ki.CryptSystem == SECP256K1 {
+		return crypto.PublicKey(ki.PrivateKey)
+	}
+	return []byte{}
 }

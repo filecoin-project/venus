@@ -25,7 +25,7 @@ var (
 )
 
 // EmptyMessagesCID is the cid of an empty collection of messages.
-var EmptyMessagesCID = MessageCollection{}.Cid()
+var EmptyMessagesCID = SignedMessageCollection{}.Cid()
 
 // EmptyReceiptsCID is the cid of an empty collection of receipts.
 var EmptyReceiptsCID = ReceiptCollection{}.Cid()
@@ -115,12 +115,12 @@ func (msg *Message) Equals(other *Message) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
-// MessageCollection tracks a group of messages and assigns it a cid.
-type MessageCollection []*SignedMessage
+// SignedMessageCollection tracks a group of messages and assigns it a cid.
+type SignedMessageCollection []*SignedMessage
 
-// DecodeMessages decodes raw bytes into an array of signed messages
-func DecodeMessages(b []byte) ([]*SignedMessage, error) {
-	var out MessageCollection
+// DecodeSignedMessages decodes raw bytes into an array of signed messages
+func DecodeSignedMessages(b []byte) ([]*SignedMessage, error) {
+	var out SignedMessageCollection
 	if err := cbor.DecodeInto(b, &out); err != nil {
 		return nil, err
 	}
@@ -132,6 +132,34 @@ func DecodeMessages(b []byte) ([]*SignedMessage, error) {
 // keep them in order to use the ipld cborstore with the default hash function
 // because we need to implement hamt.cidProvider which doesn't handle errors.
 // We can clean all this up when we can use our own CborIpldStore with the hamt.
+
+// Cid returns the cid of the message collection.
+func (mC SignedMessageCollection) Cid() cid.Cid {
+	return mC.ToNode().Cid()
+}
+
+// ToNode converts the collection to an IPLD node.
+func (mC SignedMessageCollection) ToNode() ipld.Node {
+	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return obj
+}
+
+// MessageCollection tracks a group of messages and assigns it a cid.
+type MessageCollection []*MeteredMessage
+
+// DecodeMessages decodes raw bytes into an array of metered messages
+func DecodeMessages(b []byte) ([]*MeteredMessage, error) {
+	var out MessageCollection
+	if err := cbor.DecodeInto(b, &out); err != nil {
+		return nil, err
+	}
+
+	return []*MeteredMessage(out), nil
+}
 
 // Cid returns the cid of the message collection.
 func (mC MessageCollection) Cid() cid.Cid {

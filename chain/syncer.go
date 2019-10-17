@@ -65,7 +65,7 @@ type syncChainSelector interface {
 type syncStateEvaluator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
+	RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -165,11 +165,12 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 	}
 
 	// Gather tipset messages
-	var nextMessages [][]*types.SignedMessage
+	var nextSecpMessages [][]*types.SignedMessage
+	var nextBlsMessages [][]*types.MeteredMessage
 	var nextReceipts [][]*types.MessageReceipt
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
-		secpMsgs, _, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
+		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
 		}
@@ -177,7 +178,9 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading receipts list %s for block %s", next.Key(), blk.MessageReceipts, blk.Cid())
 		}
-		nextMessages = append(nextMessages, secpMsgs)
+
+		nextBlsMessages = append(nextBlsMessages, blsMsgs)
+		nextSecpMessages = append(nextSecpMessages, secpMsgs)
 		nextReceipts = append(nextReceipts, rcpts)
 	}
 
@@ -189,7 +192,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextMessages, nextReceipts, ancestors, parentWeight, stateRoot)
+	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, nextReceipts, ancestors, parentWeight, stateRoot)
 	if err != nil {
 		return err
 	}

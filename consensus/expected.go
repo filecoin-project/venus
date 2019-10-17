@@ -17,6 +17,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -139,7 +140,7 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -155,12 +156,12 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMe
 		return cid.Undef, err
 	}
 
-	if err := c.validateMining(ctx, priorState, ts, ancestors[0]); err != nil {
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0], blsMessages, secpMessages); err != nil {
 		return cid.Undef, err
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err := c.runMessages(ctx, priorState, vms, ts, tsMessages, tsReceipts, ancestors)
+	st, err := c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, tsReceipts, ancestors)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -182,7 +183,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, tsMe
 //      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet) error {
+func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet, blsMsgs [][]*types.MeteredMessage, secpMsgs [][]*types.SignedMessage) error {
 	prevTicket, err := parentTs.MinTicket()
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent min ticket")
@@ -204,6 +205,18 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 		// Validate block signature
 		if valid := types.IsValidSignature(blk.SignatureData(), workerAddr, blk.BlockSig); !valid {
 			return errors.New("block signature invalid")
+		}
+
+		// Verify that the BLS signature is correct
+		if err := verifyBLSMessageAggregate(blk.BLSAggregateSig, blsMsgs[i]); err != nil {
+			return errors.Wrapf(err, "bls message verification failed for block %s", blk.Cid())
+		}
+
+		// Verify that all secp message signatures are correct
+		for i, msg := range secpMsgs[i] {
+			if !msg.VerifySignature() {
+				return errors.Errorf("secp message signature invalid for message, %d, in block %s", i, blk.Cid())
+			}
 		}
 
 		// Validate ElectionProof
@@ -241,7 +254,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: don't process messages twice
@@ -257,7 +270,9 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, tsMessages[i], ancestors)
+		// wrap bls messages and combine to process bls messages first
+		msgs := append(wrapMessages(blsMessages[i]), secpMessages[i]...)
+		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, msgs, ancestors)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
 		}
@@ -282,7 +297,8 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, tsMessages, ancestors)
+	allMessages := combineMessages(blsMessages, secpMessages)
+	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
 	}
@@ -296,4 +312,41 @@ func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
 	return state.LoadStateTree(ctx, c.cstore, id)
+}
+
+// verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures
+func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.MeteredMessage) error {
+	pubKeys := [][]byte{}
+	marshalledMsgs := [][]byte{}
+	for _, msg := range msgs {
+		pubKeys = append(pubKeys, msg.From.Payload())
+		msgBytes, err := msg.Marshal()
+		if err != nil {
+			return err
+		}
+		marshalledMsgs = append(marshalledMsgs, msgBytes)
+	}
+	if !crypto.VerifyBLSAggregate(pubKeys, marshalledMsgs, sig) {
+		return errors.New("block BLS signature does not validate against BLS messages")
+	}
+	return nil
+}
+
+func combineMessages(blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) [][]*types.SignedMessage {
+	messages := [][]*types.SignedMessage{}
+	for _, msgs := range blsMessages {
+		messages = append(messages, wrapMessages(msgs))
+	}
+	for _, msgs := range secpMessages {
+		messages = append(messages, msgs)
+	}
+	return messages
+}
+
+func wrapMessages(blsMessages []*types.MeteredMessage) []*types.SignedMessage {
+	signed := []*types.SignedMessage{}
+	for _, msg := range blsMessages {
+		signed = append(signed, &types.SignedMessage{MeteredMessage: *msg})
+	}
+	return signed
 }

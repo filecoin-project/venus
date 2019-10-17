@@ -55,6 +55,9 @@ type Block struct {
 	// The signature of the miner's worker key over the block
 	BlockSig Signature `json:"blocksig"`
 
+	// The aggregate signature of all BLS signed messages in the block
+	BLSAggregateSig Signature `json:"blsAggregateSig"`
+
 	cachedCid cid.Cid
 
 	cachedBytes []byte
@@ -157,6 +160,7 @@ func (b *Block) SignatureData() []byte {
 		MessageReceipts: b.MessageReceipts,
 		ElectionProof:   b.ElectionProof,
 		Timestamp:       b.Timestamp,
+		BLSAggregateSig: b.BLSAggregateSig,
 		// BlockSig omitted
 	}
 

@@ -55,7 +55,7 @@ func (wdatp *wdaTestPlumbing) WalletAddresses() []address.Address {
 }
 
 func (wdatp *wdaTestPlumbing) WalletNewAddress() (address.Address, error) {
-	return wallet.NewAddress(wdatp.wallet)
+	return wallet.NewAddress(wdatp.wallet, address.SECP256K1)
 }
 
 func TestWalletBalance(t *testing.T) {
