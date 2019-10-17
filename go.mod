@@ -22,7 +22,6 @@ require (
 	github.com/golangci/golangci-lint v1.17.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
@@ -40,15 +39,15 @@ require (
 	github.com/ipfs/go-ipfs-cmds v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
-	github.com/ipfs/go-ipfs-files v0.0.1
+	github.com/ipfs/go-ipfs-files v0.0.3
 	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
-	github.com/ipfs/go-ipld-format v0.0.1
+	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144
-	github.com/ipfs/go-merkledag v0.0.2
+	github.com/ipfs/go-merkledag v0.2.3
 	github.com/ipfs/go-path v0.0.1
-	github.com/ipfs/go-unixfs v0.0.1
+	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipld/go-ipld-prime v0.0.1-filecoin
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
