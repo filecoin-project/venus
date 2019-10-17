@@ -22,12 +22,11 @@ require (
 	github.com/golangci/golangci-lint v1.17.1
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/ipfs/go-bitswap v0.1.5
 	github.com/ipfs/go-block-format v0.0.2
-	github.com/ipfs/go-blockservice v0.0.2
-	github.com/ipfs/go-car v0.0.2-0.20190926002512-a64e86334410
+	github.com/ipfs/go-blockservice v0.1.2
+	github.com/ipfs/go-car v0.0.2
 	github.com/ipfs/go-cid v0.0.3
 	github.com/ipfs/go-datastore v0.0.5
 	github.com/ipfs/go-ds-badger v0.0.5
@@ -40,39 +39,39 @@ require (
 	github.com/ipfs/go-ipfs-cmds v0.0.1
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
-	github.com/ipfs/go-ipfs-files v0.0.1
+	github.com/ipfs/go-ipfs-files v0.0.3
 	github.com/ipfs/go-ipfs-keystore v0.0.1
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipld-cbor v0.0.3
-	github.com/ipfs/go-ipld-format v0.0.1
+	github.com/ipfs/go-ipld-format v0.0.2
 	github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144
-	github.com/ipfs/go-merkledag v0.0.2
+	github.com/ipfs/go-merkledag v0.2.4
 	github.com/ipfs/go-path v0.0.1
-	github.com/ipfs/go-unixfs v0.0.1
+	github.com/ipfs/go-unixfs v0.2.2
 	github.com/ipfs/iptb v1.3.8-0.20190401234037-98ccf4228a73
 	github.com/ipld/go-ipld-prime v0.0.1-filecoin
 	github.com/ipsn/go-secp256k1 v0.0.0-20180726113642-9d62b9f0bc52
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/libp2p/go-libp2p v0.2.1
+	github.com/libp2p/go-libp2p v0.4.0
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
-	github.com/libp2p/go-libp2p-circuit v0.1.0
-	github.com/libp2p/go-libp2p-core v0.0.9
+	github.com/libp2p/go-libp2p-circuit v0.1.3
+	github.com/libp2p/go-libp2p-core v0.2.3
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
-	github.com/libp2p/go-libp2p-peerstore v0.1.2
+	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-pubsub v0.1.0
-	github.com/libp2p/go-libp2p-swarm v0.1.1
+	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/magiconair/properties v1.8.1
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
-	github.com/multiformats/go-multiaddr v0.0.4
-	github.com/multiformats/go-multiaddr-dns v0.0.3
-	github.com/multiformats/go-multiaddr-net v0.0.1
+	github.com/multiformats/go-multiaddr v0.1.1
+	github.com/multiformats/go-multiaddr-dns v0.2.0
+	github.com/multiformats/go-multiaddr-net v0.1.0
 	github.com/multiformats/go-multibase v0.0.1
-	github.com/multiformats/go-multihash v0.0.6
+	github.com/multiformats/go-multihash v0.0.8
 	github.com/multiformats/go-multistream v0.1.0
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
@@ -93,11 +92,8 @@ require (
 	github.com/whyrusleeping/cbor-gen v0.0.0-20190910031516-c1cbffdb01bb
 	github.com/whyrusleeping/go-logging v0.0.0-20170515211332-0457bb6b88fc
 	github.com/whyrusleeping/go-sysinfo v0.0.0-20190219211824-4a357d4b90b1
-	go.opencensus.io v0.22.0
+	go.opencensus.io v0.22.1
 	go.uber.org/zap v1.10.0
-	golang.org/x/exp v0.0.0-20190718202018-cfdd5522f6f6 // indirect
-	golang.org/x/image v0.0.0-20190703141733-d6a02ce849c9 // indirect
-	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/api v0.7.0 // indirect
