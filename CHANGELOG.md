@@ -4,47 +4,68 @@
 
 We're happy to announce go-filecoin 0.5.6. Highlights include an updated Proof-of-Spacetime implementation and an upgrade-capable network.
 
-### Features
+我们很高兴地宣布go-filecoin 0.5.6。重点包括一个更新的时空证明实现和一个可升级的网络。
 
-#### 🌳 Network upgrade capability
+### Features-特性
+
+#### 🌳 Network upgrade capability-网络升级能力
 
 Two changes have been made to enable software releases without restarting the network. First, a network name is now embedded in the genesis state, permitting multiple networks to follow different upgrade schedules. In addition, the Git SHA compatibility check has been removed from the Hello protocol, enabling nodes with different, but compatible, code to interoperate. Going forward, the user devnet will no longer be restarted with every software release; it will still be restarted as-needed.
 
-#### 🚀 Updated Proof-of-Spacetime (PoSt)
+已经做了两项更改来启用软件发布，而无需重新启动网络。首先，网络名称现在嵌入在genesis状态中，允许多个网络遵循不同的升级计划。此外，从Hello协议中删除了Git SHA兼容性检查，使具有不同但兼容的代码的节点能够进行互操作。未来，用户devnet将不再在每次软件发布时都重新启动;它仍然会根据需要重新启动。
+
+#### 🚀 Updated Proof-of-Spacetime (PoSt) - 更新时空证明 (PoSt)
 
 A new proof construction, [Rational PoSt](https://github.com/filecoin-project/specs/blob/master/proof-of-spacetime.md), has been [implemented](https://github.com/filecoin-project/rust-fil-proofs/pull/763) and [integrated](https://github.com/filecoin-project/go-filecoin/pull/3318). This construction is the same shape as our candidate for testnet and resolves outstanding limitations on proving over many sectors. 
 
-#### 🎟️ Block and consensus changes
+一个新的证明结构，[Rational PoSt](https://github.com/filecoin- project/specs/blob/master/pro- of-spacetime.md)已经被[实现](https://github.com/filecoin-project/rust-fil-proofs/pull/763)和[integrated](https://github.com/filecoin- project/filecoin/pull/3318)。这种结构与我们的testnet候选结构是相同的形状，解决了在许多扇区上证明的突出限制。
+
+#### 🎟️ Block and consensus changes - 块和共识更改
 
 Block headers are now signed by miners, and election tickets form an array in each header. The election process is now split into two phases, ticket generation / validation and election winner generation / validation. Election tickets form an array in each header and mining a null block appends a ticket to this array. Block headers are now signed by miners.
 
-#### 🔗 Chain status command
+块头现在由矿工签名，并且选举票在每个头中形成一个数组。选举过程现在分为两个阶段，票的产生/验证和选举获胜者的产生/验证。选举票证在每个标头中形成一个数组，挖掘一个空块会将票证附加到该数组中。块头现在由矿工签名。
+
+#### 🔗 Chain status command - 链状态指令
 
 `go-filecoin chain status` is a new command that provides insight into chain sync progress.
 
-### Performance and Reliability
+`go-filecoin chain status`是一个新的命令，提供了对链同步进程的观察。
 
-#### ⚡ Chain syncing performance
+### Performance and Reliability - 性能和可靠性
+
+#### ⚡ Chain syncing performance - 链同步性能
 
 Previously in go-filecoin 0.4, we aimed to speed up chain syncing by focusing on the first phase: chain fetching. We have identified the worst of the fetching contention issues that caused forking and unreliable message processing in 0.4. Some of those fixes are now complete, while others such as [#3460](https://github.com/filecoin-project/go-filecoin/pull/3460) are in progress. There may still be some issues that could cause forking that we will continue to work on and update the coming weeks. Please let us know your feedback. 
 
+在go-filecoin 0.4之前，我们的目标是通过关注第一阶段:链获取来加速链同步。我们已经在0.4中确定了导致分叉和不可靠消息处理的最严重的抓取争用问题。其中一些修复现在已经完成，而其他的修复如[#3460](https://github.com/filecoin-project/go-filecoin/pull/3460)正在进行中。可能仍有一些问题会导致分叉，我们将继续工作，并在未来几周更新。请让我们知道你的反馈。
+
 go-filecoin 0.5 also continues with improvements to the second phase: chain validation. By switching from HAMT bitwidth 8 to HAMT bitwidth 5, we see a general average improvement in benchmarks of about 4-to-1, across memory usage, speed of operations, and bytes written to disk. Users are encouraged to measure and share their own benchmarks. In addition, optimizations to encoding and decoding of HAMT data structures may result in additional performance improvements. 
 
-### Looking Ahead
+go-filecoin 0.5还继续改进第二阶段:链验证。通过从HAMT bitwidth 8切换到HAMT bitwidth 5，我们可以看到在内存使用、操作速度和写到磁盘的字节数方面，基准测试的总体平均性能提高了4到1。鼓励用户测量和共享他们自己的基准。此外，对HAMT数据结构的编码和解码的优化可能会带来额外的性能改进。
 
-#### ✏️ New API design (WIP)
+### Looking Ahead - 展望未来
+
+#### ✏️ New API design (WIP) - 新的接口设计(WIP)
 
 Developers are invited to read and comment on the new [HTTP API design](https://github.com/filecoin-project/filecoin-http-api) (work in progress). This design will be implemented initially in go-filecoin and serve as a standard for interacting with Filecoin nodes across implementations. It will support most of operations offered by the current API and provide a framework for future API growth. 
 
-### User Notes
+我们邀请开发人员阅读和评论新的[HTTP API设计](https://github.com/filecoin-project/filecoin-http-api)(正在进行中)。此设计最初将在go-filecoin中实现，并作为跨实现与Filecoin节点交互的标准。它将支持当前API提供的大部分操作，并为未来的API增长提供一个框架。
+
+### User Notes - 用户须知
 
 - The proving period is now configured to 300 rounds (2.5 hrs), down from 1000 rounds (10 hours). We’ve made this temporary change for more frequent node interaction and faster experimentation, and we expect to increase the proving period again in the future.
+- 检定周期现在配置为300发(2.5小时)，而不是1000发(10小时)。为了更频繁的节点交互和更快的实验，我们做了这个临时的改变，并且我们期望在未来再次增加验证周期。
 - Groth parameters are no longer fetched from the network, but instead locally generated when needed. This can take many minutes (but is more reliable than network). 
+- Groth参数不再从网络获取，而是在需要时本地生成。这可能需要很多分钟(但比网络更可靠)。
 - [Block header structure](https://github.com/filecoin-project/go-filecoin/blob/release-0.5.0/types/block.go) has changed, so tools which parse chain data will need updating.
+- [块头结构](https://github.com/filecoin-project/go- filecoin/blob/rele0.5.0 /types/block.go)已经改变，所以解析链数据的工具需要更新。
 - The default storage miner waits 15 rounds _after the start of the proving window_ before beginning a PoSt computation, but is not robust to a re-org of _more than 15 blocks_ that changes its challenge seed.
+- 默认的存储矿工等待15轮后，才开始一个PoSt计算，但不是健壮的re-org _超过15块_，改变它的挑战种子
 - If you are seeing panics or write failures during sealing, it may be related to disk space requirements. Currently the sector builder uses ~11GiB of free disk space, and assumes it is available on the `/tmp` partition. An proposal to make that directory configurable is in [#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
+- 如果您在密封期间看到恐慌或写失败，可能与磁盘空间需求有关。目前扇区生成器使用~11GiB的空闲磁盘空间，并假设它在`/tmp`分区上可用。[#3497](https://github.com/filecoin-project/go-filecoin/issues/3497)
 
-### CLI diff
+### CLI diff - 客户端指令变化
 
 | go-filecoin command | change |
 | ------------------- | ------ |
@@ -53,27 +74,38 @@ Developers are invited to read and comment on the new [HTTP API design](https://
 | mining seal-now     | behavior changed[1] |
 
 [1] `mining seal-now` no longer stages a piece into a sector. It now has the same behavior as `--auto-seal-interval-seconds`.
+[1] `mining seal-now`不再将一个板块划分为多个板块。它现在的行为与`--auto-seal-interval-seconds`相同。
 
-### Changelog
+### Changelog -变更日志
 
 A full list of all [67 PRs](https://github.com/filecoin-project/go-filecoin/pulls?utf8=✓&q=is%3Apr+is%3Amerged+merged%3A2019-09-03..2019-09-23+) in this release, including many bugfixes not listed here, can be found on Github.
+本次发布的完整PR列表[67 PRs](https://github.com/filecoin-project/go-filecoin/pulls?utf8=✓&q=is%3Apr+is%3Amerged+merged%3A2019-09-03..2019-09-23+)，包括这里没有列出的许多bug修复，可以在Github上找到。
 
-### Contributors
+### Contributors - 贡献者
 
 ❤️ Huge thank you to everyone that made this release possible!
+❤️ 非常感谢每一个人，使这个版本成为可能!
 
-###  🙌🏽 Want to contribute?
+###  🙌🏽 Want to contribute? - 要作出贡献?
 
 Would you like to contribute to the Filecoin project and don’t know how? Here are a few places you can get started:
 
-- Check out the [Contributing Guidelines](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
-- Look for issues with the `good-first-issue` label in [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")
-- Join the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat), introduce yourself in #_fil-lobby, and let us know where you would like to contribute
-- Join the [user devnet](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started)
+您愿意为Filecoin项目贡献自己的一份力量吗?这里有几个地方你可以开始:
 
-### ⁉️ Do you have questions?
+- Check out the [Contributing Guidelines](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
+- (Git)检出[贡献操作指南](https://github.com/filecoin-project/go-filecoin/blob/master/CONTRIBUTING.md)
+- Look for issues with the `good-first-issue` label in [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) and [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")
+- 在issue中找到`good-first-issue`标签，它在 [go-filecoin](https://docs.google.com/document/d/1dfTVASs9cQMo4NPqJmXjEEX-Ju_M9Vw-4AelN1aHOV8/edit#) 和 [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs/issues?q=is%3Aissue+is%3Aopen+label%3A"good+first+issue")中。
+- Join the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat), introduce yourself in #_fil-lobby, and let us know where you would like to contribute
+- 加入[Matrix/Slack上的社区聊天](https://github.com/filecoin-project/community#chat)，在#_fil-lobby中介绍你自己，让我们知道你想在哪里投稿
+- Join the [user devnet](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started)
+- 加入[用户开发网](https://github.com/filecoin-project/go-filecoin/wiki/Getting-Started)
+
+### ⁉️ Do you have questions? - 你有疑问？
 
 The best place to ask your questions about go-filecoin, how it works, and what you can do with it is at [discuss.filecoin.io](https://discuss.filecoin.io). We are also available at the [community chat on Matrix/Slack](https://github.com/filecoin-project/community#chat).
+
+关于go-filecoin是如何工作的，以及你可以用它做什么，最好的提问地点是[discuss.filecoin.io](https://discuss.filecoin.io)。也可以在[Matrix/Slack上的社区聊天](https://github.com/filecoin-project/community#chat)找到我们。
 
 ---
 
