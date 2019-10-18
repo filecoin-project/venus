@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/crypto"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -173,12 +174,12 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, errors.New("bad CID for empty messages/receipts")
 	}
 
-	geneblk := &types.Block{
+	geneblk := &block.Block{
 		StateRoot:       stateRoot,
 		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptyMessagesCid},
 		MessageReceipts: emptyReceiptsCid,
 		BLSAggregateSig: emptyBLSSignature[:],
-		Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
+		Tickets:         []block.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}
 
 	c, err := cst.Put(ctx, geneblk)

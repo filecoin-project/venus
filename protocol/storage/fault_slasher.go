@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -20,10 +21,10 @@ var DefaultFaultSlasherGasLimit = types.NewGasUnits(300)
 
 // monitorPlumbing is an interface for the functionality FaultSlasher needs
 type monitorPlumbing interface {
-	ChainHeadKey() types.TipSetKey
+	ChainHeadKey() block.TipSetKey
 	ConfigGet(string) (interface{}, error)
-	MessageQuery(context.Context, address.Address, address.Address, string, types.TipSetKey, ...interface{}) ([][]byte, error)
-	MinerGetWorkerAddress(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	MessageQuery(context.Context, address.Address, address.Address, string, block.TipSetKey, ...interface{}) ([][]byte, error)
+	MinerGetWorkerAddress(context.Context, address.Address, block.TipSetKey) (address.Address, error)
 }
 
 // slashingMsgOutbox is the interface for the functionality of Outbox FaultSlasher needs
@@ -67,7 +68,7 @@ func NewFaultSlasher(plumbing monitorPlumbing, outbox slashingMsgOutbox, gasPric
 }
 
 // OnNewHeaviestTipSet is a wrapper for calling the Slash function, after getting the TipSet height.
-func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts types.TipSet) error {
+func (sfm *FaultSlasher) OnNewHeaviestTipSet(ctx context.Context, ts block.TipSet) error {
 	height, err := ts.Height()
 	if err != nil {
 		return errors.Wrap(err, "failed to get tipset height")

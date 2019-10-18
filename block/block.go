@@ -1,9 +1,10 @@
-package types
+package block
 
 import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	node "github.com/ipfs/go-ipld-format"
@@ -29,14 +30,14 @@ type Block struct {
 	Parents TipSetKey `json:"parents"`
 
 	// ParentWeight is the aggregate chain weight of the parent set.
-	ParentWeight Uint64 `json:"parentWeight"`
+	ParentWeight types.Uint64 `json:"parentWeight"`
 
 	// Height is the chain height of this block.
-	Height Uint64 `json:"height"`
+	Height types.Uint64 `json:"height"`
 
 	// Messages is the set of messages included in this block
 	// TODO: should be a merkletree-ish thing
-	Messages TxMeta `json:"messages,omitempty" refmt:",omitempty"`
+	Messages types.TxMeta `json:"messages,omitempty" refmt:",omitempty"`
 
 	// StateRoot is a cid pointer to the state tree after application of the
 	// transactions state transitions.
@@ -50,13 +51,13 @@ type Block struct {
 	ElectionProof VRFPi `json:"proof"`
 
 	// The timestamp, in seconds since the Unix epoch, at which this block was created.
-	Timestamp Uint64 `json:"timestamp"`
+	Timestamp types.Uint64 `json:"timestamp"`
 
 	// The signature of the miner's worker key over the block
-	BlockSig Signature `json:"blocksig"`
+	BlockSig types.Signature `json:"blocksig"`
 
 	// The aggregate signature of all BLS signed messages in the block
-	BLSAggregateSig Signature `json:"blsAggregateSig"`
+	BLSAggregateSig types.Signature `json:"blsAggregateSig"`
 
 	cachedCid cid.Cid
 
@@ -81,7 +82,7 @@ func (b *Block) Cid() cid.Cid {
 		c, err := cid.Prefix{
 			Version:  1,
 			Codec:    cid.DagCBOR,
-			MhType:   DefaultHashFunction,
+			MhType:   types.DefaultHashFunction,
 			MhLength: -1,
 		}.Sum(b.cachedBytes)
 		if err != nil {
@@ -103,7 +104,7 @@ func (b *Block) Cid() cid.Cid {
 // ToNode converts the Block to an IPLD node.
 func (b *Block) ToNode() node.Node {
 	// Use 32 byte / 256 bit digest. TODO pull this out into a constant?
-	obj, err := cbor.WrapObject(b, DefaultHashFunction, -1)
+	obj, err := cbor.WrapObject(b, types.DefaultHashFunction, -1)
 	if err != nil {
 		panic(err)
 	}

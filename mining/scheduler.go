@@ -37,9 +37,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Scheduler is the mining interface consumers use. When you Start() the
@@ -63,7 +62,7 @@ type timingScheduler struct {
 	mineDelay time.Duration
 	// pollHeadFunc is the function the scheduler uses to poll for the
 	// current heaviest tipset
-	pollHeadFunc func() (types.TipSet, error)
+	pollHeadFunc func() (block.TipSet, error)
 
 	isStarted bool
 }
@@ -94,9 +93,9 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	s.isStarted = true
 	go func() {
 		defer doneWg.Done()
-		ticketArray := []types.Ticket{}
-		var newTicket types.Ticket
-		var prevBase types.TipSet
+		ticketArray := []block.Ticket{}
+		var newTicket block.Ticket
+		var prevBase block.TipSet
 		var prevWon bool
 		for {
 			select {
@@ -150,15 +149,15 @@ func (s *timingScheduler) IsStarted() bool {
 // nextTicketArray outputs the next ticket array for use in mining on top of
 // the current base tipset, curBase, given the previous base, prevBase and the
 // exisiting ticket array.
-func nextTicketArray(prevTicketArray []types.Ticket, prevBase, curBase types.TipSetKey) []types.Ticket {
+func nextTicketArray(prevTicketArray []block.Ticket, prevBase, curBase block.TipSetKey) []block.Ticket {
 	// We haven't mined before, start with empty ticket array.
 	if prevBase.Empty() {
-		return []types.Ticket{}
+		return []block.Ticket{}
 	}
 	// We mined on a different base last time.  We need to throw away all
 	// tickets from mining on the previous base and start fresh.
 	if !prevBase.Equals(curBase) {
-		return []types.Ticket{}
+		return []block.Ticket{}
 	}
 
 	// prevBase.Equals(curBase)
@@ -170,7 +169,7 @@ func nextTicketArray(prevTicketArray []types.Ticket, prevBase, curBase types.Tip
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the
 // input worker.
-func NewScheduler(w Worker, md time.Duration, f func() (types.TipSet, error)) Scheduler {
+func NewScheduler(w Worker, md time.Duration, f func() (block.TipSet, error)) Scheduler {
 	return &timingScheduler{worker: w, mineDelay: md, pollHeadFunc: f}
 }
 
@@ -180,8 +179,8 @@ func NewScheduler(w Worker, md time.Duration, f func() (types.TipSet, error)) Sc
 // It makes a polling function that simply returns the provided tipset.
 // Then the scheduler takes this polling function, and the worker and the
 // mining duration
-func MineOnce(ctx context.Context, w Worker, md time.Duration, ts types.TipSet) (Output, error) {
-	pollHeadFunc := func() (types.TipSet, error) {
+func MineOnce(ctx context.Context, w Worker, md time.Duration, ts block.TipSet) (Output, error) {
+	pollHeadFunc := func() (block.TipSet, error) {
 		return ts, nil
 	}
 	s := NewScheduler(w, md, pollHeadFunc)

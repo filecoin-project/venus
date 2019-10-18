@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,12 +48,12 @@ func New(plumbing *plumbing.API) *API {
 }
 
 // ChainHead returns the current head tipset
-func (a *API) ChainHead() (types.TipSet, error) {
+func (a *API) ChainHead() (block.TipSet, error) {
 	return ChainHead(a)
 }
 
 // ChainGetFullBlock returns the full block given the header cid
-func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*types.FullBlock, error) {
+func (a *API) ChainGetFullBlock(ctx context.Context, id cid.Cid) (*block.FullBlock, error) {
 	return GetFullBlock(ctx, a, id)
 }
 
@@ -128,7 +129,7 @@ func (a *API) MinerGetOwnerAddress(ctx context.Context, minerAddr address.Addres
 }
 
 // MinerGetWorkerAddress queries for the worker address of the given miner
-func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error) {
+func (a *API) MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
 	return MinerGetWorkerAddress(ctx, a, minerAddr, baseKey)
 }
 

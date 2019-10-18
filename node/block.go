@@ -3,17 +3,17 @@ package node
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/net"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // AddNewBlock receives a newly mined block and stores, validates and propagates it to the network.
-func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
+func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 	ctx, span := trace.StartSpan(ctx, "Node.AddNewBlock")
 	span.AddAttributes(trace.StringAttribute("block", b.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -29,7 +29,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *types.Block) (err error) {
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
 	trusted := true // This block was mined by us, so we trust it.
-	if err := node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(node.Host().ID(), types.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
+	if err := node.Chain.Syncer.HandleNewTipSet(ctx, block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	ctx, span := trace.StartSpan(ctx, "Node.processBlock")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	blk, err := types.DecodeBlock(pubSubMsg.GetData())
+	blk, err := block.DecodeBlock(pubSubMsg.GetData())
 	if err != nil {
 		return errors.Wrapf(err, "bad block data from peer %s", from)
 	}
@@ -63,7 +63,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
 	trusted := true
-	err = node.Chain.Syncer.HandleNewTipSet(ctx, types.NewChainInfo(from, types.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
+	err = node.Chain.Syncer.HandleNewTipSet(ctx, block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
 	if err != nil {
 		return errors.Wrapf(err, "processing block %s from peer %s", blk.Cid(), from)
 	}

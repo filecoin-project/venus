@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -61,7 +62,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// get the mined block by its CID
 		blockGetLine := th.RunSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
-		var blockGetBlock types.FullBlock
+		var blockGetBlock block.FullBlock
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		// ensure that we were returned the correct block
@@ -81,7 +82,7 @@ func TestBlockDaemon(t *testing.T) {
 		// get the mined block by its CID
 		headerGetLine := th.RunSuccessFirstLine(d, "show", "header", minedBlockCidStr, "--enc", "json")
 
-		var headerGetBlock types.Block
+		var headerGetBlock block.Block
 		require.NoError(t, json.Unmarshal([]byte(headerGetLine), &headerGetBlock))
 
 		// ensure that we were returned the correct block
@@ -165,7 +166,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		// Full block checks out
 		blockGetLine := th.RunSuccessFirstLine(d, "show", "block", minedBlockCidStr, "--enc", "json")
-		var blockGetBlock types.FullBlock
+		var blockGetBlock block.FullBlock
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		assert.Equal(t, 3, len(blockGetBlock.Messages))

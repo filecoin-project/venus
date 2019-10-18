@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-pubsub/pb"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -84,12 +85,12 @@ func TestBlockPubSubValidation(t *testing.T) {
 	miner := address.NewForTestGetter()()
 
 	// create an invalid block
-	invalidBlk := &types.Block{
+	invalidBlk := &block.Block{
 		Height:    1,
 		Timestamp: types.Uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
 		StateRoot: types.NewCidForTestGetter()(),
 		Miner:     miner,
-		Tickets:   []types.Ticket{{VRFProof: []byte{0}}},
+		Tickets:   []block.Ticket{{VRFProof: []byte{0}}},
 	}
 	// publish the invalid block
 	err = fsub1.Publish(btv.Topic(network), invalidBlk.ToNode().RawData())
@@ -99,12 +100,12 @@ func TestBlockPubSubValidation(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	// create a valid block
-	validBlk := &types.Block{
+	validBlk := &block.Block{
 		Height:    1,
 		Timestamp: types.Uint64(now.Unix()), // valid because it was publish "now".
 		StateRoot: types.NewCidForTestGetter()(),
 		Miner:     miner,
-		Tickets:   []types.Ticket{{VRFProof: []byte{0}}},
+		Tickets:   []block.Ticket{{VRFProof: []byte{0}}},
 	}
 	// publish the invalid block
 	err = fsub1.Publish(btv.Topic(network), validBlk.ToNode().RawData())
@@ -126,7 +127,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	assert.NoError(t, err, "Receieved an invalid block over pubsub, seee issue #3285 for help debugging")
 
 	// decode the block from pubsub
-	maybeBlk, err := types.DecodeBlock(received.GetData())
+	maybeBlk, err := block.DecodeBlock(received.GetData())
 	require.NoError(t, err)
 
 	// assert this block is the valid one
@@ -134,7 +135,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 }
 
 // convert a types.Block to a pubsub message
-func blkToPubSub(blk *types.Block) *pubsub.Message {
+func blkToPubSub(blk *block.Block) *pubsub.Message {
 	pbm := &pubsub_pb.Message{
 		Data: blk.ToNode().RawData(),
 	}

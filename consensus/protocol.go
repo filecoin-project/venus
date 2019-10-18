@@ -13,6 +13,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -26,13 +27,13 @@ import (
 type Protocol interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateID`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
 
 	// ValidateSyntax validates a single block is correctly formed.
-	ValidateSyntax(ctx context.Context, b *types.Block) error
+	ValidateSyntax(ctx context.Context, b *block.Block) error
 
 	// ValidateSemantic validates a block is correctly derived from its parent.
-	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error
+	ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, parentWeight uint64) error
 
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -57,14 +58,14 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
 	// tipsets can be reconstructed. The chain builder used for testing doesn't do that, so do
 	// it manually here.
-	for _, tip := range []types.TipSet{left, right} {
+	for _, tip := range []block.TipSet{left, right} {
 		for itr := chain.IterAncestors(ctx, builder, tip); !itr.Complete(); require.NoError(t, itr.Next()) {
 			for _, block := range itr.Value().ToSlice() {
 				_, err := cborStore.Put(ctx, block)
@@ -104,11 +105,11 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
 
-	err = offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
+	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, types.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
 }
 
 // Power table weight comparisons impact syncer's selection.
@@ -124,7 +125,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	builder := chain.NewBuilderWithState(t, address.Undef, isb)
 
 	// Construct genesis with readable state tree root
-	gen := builder.BuildOneOn(types.UndefTipSet, func(bb *chain.BlockBuilder) {})
+	gen := builder.BuildOneOn(block.UndefTipSet, func(bb *chain.BlockBuilder) {})
 
 	// Builder constructs two different blocks with different state trees
 	// for building two forks.
@@ -141,8 +142,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 			)
 		}
 	})
-	fork1 := types.RequireNewTipSet(t, split.At(0))
-	fork2 := types.RequireNewTipSet(t, split.At(1))
+	fork1 := th.RequireNewTipSet(t, split.At(0))
+	fork2 := th.RequireNewTipSet(t, split.At(1))
 
 	// Builder adds 3 blocks to fork 1 and total storage power 2^0
 	// 3 + 3*delta = 3 + 3[V*1 + bits(2^0)] = 3 + 3[2 + 1] = 3 + 9 = 12
@@ -161,10 +162,10 @@ func TestSyncerWeighsPower(t *testing.T) {
 	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid(), pvt), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", head1.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head1.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head1.Key(), store.GetHead())
 	// sync fork 2
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, types.NewChainInfo("", head2.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head2.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head2.Key(), store.GetHead())
 }
 
@@ -216,8 +217,8 @@ func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*
 	return prev, nil
 }
 
-func (isb *integrationStateBuilder) Weigh(tip types.TipSet, pstate cid.Cid) (uint64, error) {
-	if tip.Equals(types.UndefTipSet) {
+func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uint64, error) {
+	if tip.Equals(block.UndefTipSet) {
 		return uint64(0), nil
 	}
 	if isb.cGen.Equals(cid.Undef) && tip.Len() == 1 {
@@ -238,7 +239,7 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts types.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []types.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Equals(n.c512) {
 			return n.c512, nil
@@ -286,7 +287,7 @@ func (fs *forkSnapshotGen) StateTreeSnapshot(st state.Tree, bh *types.BlockHeigh
 // that implements the needed interface and grabs blocks from the builder as
 // needed.  Once #3078 is in place we will have the flexibility to use a
 // testing type as the cbor store.
-func dumpBlocksToCborStore(t *testing.T, builder *chain.Builder, cst *hamt.CborIpldStore, heads ...types.TipSet) {
+func dumpBlocksToCborStore(t *testing.T, builder *chain.Builder, cst *hamt.CborIpldStore, heads ...block.TipSet) {
 	cids := make(map[cid.Cid]struct{})
 	// traverse builder frontier adding cids to the map. Traverse
 	// duplicates over doing anything clever.

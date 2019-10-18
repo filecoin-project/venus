@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
@@ -28,32 +29,32 @@ var log = logging.Logger("mining")
 // block or an error, mimicing the golang (retVal, error) pattern.
 // If a mining run's context is canceled there is no output.
 type Output struct {
-	NewBlock *types.Block
+	NewBlock *block.Block
 	Err      error
 }
 
 // NewOutput instantiates a new Output.
-func NewOutput(b *types.Block, e error) Output {
+func NewOutput(b *block.Block, e error) Output {
 	return Output{NewBlock: b, Err: e}
 }
 
 // Worker is the interface called by the Scheduler to run the mining work being
 // scheduled.
 type Worker interface {
-	Mine(runCtx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket)
+	Mine(runCtx context.Context, base block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (bool, block.Ticket)
 }
 
 // GetStateTree is a function that gets the aggregate state tree of a TipSet. It's
 // its own function to facilitate testing.
-type GetStateTree func(context.Context, types.TipSet) (state.Tree, error)
+type GetStateTree func(context.Context, block.TipSet) (state.Tree, error)
 
 // GetWeight is a function that calculates the weight of a TipSet.  Weight is
 // expressed as two uint64s comprising a rational number.
-type GetWeight func(context.Context, types.TipSet) (uint64, error)
+type GetWeight func(context.Context, block.TipSet) (uint64, error)
 
 // GetAncestors is a function that returns the necessary ancestor chain to
 // process the input tipset.
-type GetAncestors func(context.Context, types.TipSet, *types.BlockHeight) ([]types.TipSet, error)
+type GetAncestors func(context.Context, block.TipSet, *types.BlockHeight) ([]block.TipSet, error)
 
 // MessageSource provides message candidates for mining into blocks
 type MessageSource interface {
@@ -66,24 +67,24 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) (consensus.ApplyMessagesResponse, error)
 }
 
 type workerPorcelainAPI interface {
 	BlockTime() time.Duration
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
-	Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
+	Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensus.ActorStateSnapshot, error)
 }
 
 type electionUtil interface {
-	RunElection(types.Ticket, address.Address, types.Signer) (types.VRFPi, error)
-	IsElectionWinner(context.Context, consensus.PowerTableView, types.Ticket, types.VRFPi, address.Address, address.Address) (bool, error)
+	RunElection(block.Ticket, address.Address, types.Signer) (block.VRFPi, error)
+	IsElectionWinner(context.Context, consensus.PowerTableView, block.Ticket, block.VRFPi, address.Address, address.Address) (bool, error)
 }
 
 // ticketGenerator creates and finalizes tickets.
 type ticketGenerator interface {
-	NextTicket(types.Ticket, address.Address, types.Signer) (types.Ticket, error)
-	NotarizeTime(*types.Ticket) error
+	NextTicket(block.Ticket, address.Address, types.Signer) (block.Ticket, error)
+	NotarizeTime(*block.Ticket) error
 }
 
 // DefaultWorker runs a mining job.
@@ -154,7 +155,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 
 // Mine implements the DefaultWorkers main mining function..
 // The returned bool indicates if this miner created a new block or not.
-func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (won bool, nextTicket types.Ticket) {
+func (w *DefaultWorker) Mine(ctx context.Context, base block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (won bool, nextTicket block.Ticket) {
 	log.Info("Worker.Mine")
 	if !base.Defined() {
 		log.Warn("Worker.Mine returning because it can't mine on an empty tipset")
@@ -178,7 +179,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	// Create the next ticket.
 	// With 0 null blocks derive from mining base's min ticket
 	// With > 0 null blocks use the last mined ticket
-	var prevTicket types.Ticket
+	var prevTicket block.Ticket
 	if len(ticketArray) == 0 {
 		prevTicket, err = base.MinTicket()
 		if err != nil {
@@ -257,7 +258,7 @@ func (w *DefaultWorker) Mine(ctx context.Context, base types.TipSet, ticketArray
 	return
 }
 
-func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey types.TipSetKey) (consensus.PowerTableView, error) {
+func (w *DefaultWorker) getPowerTable(ctx context.Context, baseKey block.TipSetKey) (consensus.PowerTableView, error) {
 	snapshot, err := w.api.Snapshot(ctx, baseKey)
 	if err != nil {
 		return consensus.PowerTableView{}, err

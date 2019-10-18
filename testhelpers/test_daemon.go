@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multiaddr-net"
@@ -506,7 +507,7 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 	for _, blk := range expHeadBlks {
 		expHeadCids = append(expHeadCids, blk.Cid())
 	}
-	expHeadKey := types.NewTipSetKey(expHeadCids...)
+	expHeadKey := block.NewTipSetKey(expHeadCids...)
 
 	for _, p := range peers {
 		wg.Add(1)
@@ -517,7 +518,7 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 				for _, blk := range actHeadBlks {
 					actHeadCids = append(actHeadCids, blk.Cid())
 				}
-				actHeadKey := types.NewTipSetKey(actHeadCids...)
+				actHeadKey := block.NewTipSetKey(actHeadCids...)
 				if expHeadKey.Equals(actHeadKey) {
 					wg.Done()
 					return
@@ -541,19 +542,19 @@ func (td *TestDaemon) MustHaveChainHeadBy(wait time.Duration, peers []*TestDaemo
 }
 
 // GetChainHead returns the blocks in the head tipset from `td`
-func (td *TestDaemon) GetChainHead() []types.Block {
+func (td *TestDaemon) GetChainHead() []block.Block {
 	out := td.RunSuccess("chain", "ls", "--enc=json")
 	bc := td.MustUnmarshalChain(out.ReadStdout())
 	return bc[0]
 }
 
 // MustUnmarshalChain unmarshals the chain from `input` into a slice of blocks
-func (td *TestDaemon) MustUnmarshalChain(input string) [][]types.Block {
+func (td *TestDaemon) MustUnmarshalChain(input string) [][]block.Block {
 	chain := strings.Trim(input, "\n")
-	var bs [][]types.Block
+	var bs [][]block.Block
 
 	for _, line := range bytes.Split([]byte(chain), []byte{'\n'}) {
-		var b []types.Block
+		var b []block.Block
 		if err := json.Unmarshal(line, &b); err != nil {
 			td.test.Fatal(err)
 		}

@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/config"
@@ -29,8 +30,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/protocol/block"
 	"github.com/filecoin-project/go-filecoin/protocol/hello"
+	mining_protocol "github.com/filecoin-project/go-filecoin/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -151,7 +152,7 @@ func (node *Node) Start(ctx context.Context) error {
 		net.TrackerRegisterDisconnect(node.Network.host.Network(), node.Network.PeerTracker)
 
 		// Start up 'hello' handshake service
-		helloCallback := func(ci *types.ChainInfo) {
+		helloCallback := func(ci *block.ChainInfo) {
 			node.Network.PeerTracker.Track(ci)
 			// TODO Implement principled trusting of ChainInfo's
 			// to address in #2674
@@ -176,12 +177,12 @@ func (node *Node) Start(ctx context.Context) error {
 		node.HelloProtocol.HelloSvc = hello.New(node.Host(), node.Chain.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Network.NetworkName)
 
 		// register the update function on the peer tracker now that we have a hello service
-		node.Network.PeerTracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
+		node.Network.PeerTracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*block.ChainInfo, error) {
 			hmsg, err := node.HelloProtocol.HelloSvc.ReceiveHello(ctx, p)
 			if err != nil {
 				return nil, err
 			}
-			return types.NewChainInfo(p, hmsg.HeaviestTipSetCids, hmsg.HeaviestTipSetHeight), nil
+			return block.NewChainInfo(p, hmsg.HeaviestTipSetCids, hmsg.HeaviestTipSetHeight), nil
 		})
 
 		// Subscribe to block pubsub after the initial sync completes.
@@ -311,7 +312,7 @@ func (node *Node) handleNewMiningOutput(ctx context.Context, miningOutCh <-chan 
 
 }
 
-func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet) {
+func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet) {
 	node.Chain.HeaviestTipSetCh = node.Chain.ChainReader.HeadEvents().Sub(chain.NewHeadTopic)
 	handler := message.NewHeadHandler(node.Messaging.Inbox, node.Messaging.Outbox, node.Chain.ChainReader, prevHead)
 
@@ -321,7 +322,7 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead types.TipSet
 			if !ok {
 				return
 			}
-			newHead, ok := ts.(types.TipSet)
+			newHead, ok := ts.(block.TipSet)
 			if !ok {
 				log.Warn("non-tipset published on heaviest tipset channel")
 				continue
@@ -391,9 +392,9 @@ func (node *Node) Stop(ctx context.Context) {
 	fmt.Println("stopping filecoin :(")
 }
 
-type newBlockFunc func(context.Context, *types.Block)
+type newBlockFunc func(context.Context, *block.Block)
 
-func (node *Node) addNewlyMinedBlock(ctx context.Context, b *types.Block) {
+func (node *Node) addNewlyMinedBlock(ctx context.Context, b *block.Block) {
 	log.Debugf("Got a newly mined block from the mining worker: %s", b)
 	if err := node.AddNewBlock(ctx, b); err != nil {
 		log.Warnf("error adding new mined block: %s. err: %s", b.Cid().String(), err.Error())
@@ -721,7 +722,7 @@ func (node *Node) handleSubscription(ctx context.Context, sub pubsub.Subscriptio
 // for each
 func (node *Node) setupProtocols() error {
 	_, mineDelay := node.MiningTimes()
-	blockMiningAPI := block.New(
+	blockMiningAPI := mining_protocol.New(
 		node.MiningAddress,
 		node.AddNewBlock,
 		node.Chain.ChainReader,
@@ -790,17 +791,17 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 }
 
 // getStateTree is the default GetStateTree function for the mining worker.
-func (node *Node) getStateTree(ctx context.Context, ts types.TipSet) (state.Tree, error) {
+func (node *Node) getStateTree(ctx context.Context, ts block.TipSet) (state.Tree, error) {
 	return node.Chain.ChainReader.GetTipSetState(ctx, ts.Key())
 }
 
 // getWeight is the default GetWeight function for the mining worker.
-func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error) {
+func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (uint64, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return 0, err
 	}
-	var wFun func(context.Context, types.TipSet, cid.Cid) (uint64, error)
+	var wFun func(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	v, err := node.VersionTable.VersionAt(types.NewBlockHeight(h))
 	if err != nil {
 		return 0, err
@@ -827,7 +828,7 @@ func (node *Node) getWeight(ctx context.Context, ts types.TipSet) (uint64, error
 }
 
 // getAncestors is the default GetAncestors function for the mining worker.
-func (node *Node) getAncestors(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+func (node *Node) getAncestors(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 	ancestorHeight := newBlockHeight.Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
 	return chain.GetRecentAncestors(ctx, ts, node.Chain.ChainReader, ancestorHeight)
 }

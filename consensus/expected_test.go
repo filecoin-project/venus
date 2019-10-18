@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -35,7 +36,7 @@ func TestNewExpected(t *testing.T) {
 	})
 }
 
-func requireNewValidTestBlock(t *testing.T, baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *types.Block {
+func requireNewValidTestBlock(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
 	b, err := th.NewValidTestBlockFromTipSet(baseTipSet, stateRootCid, height, minerAddr, minerWorker, signer)
 	require.NoError(t, err)
 	return b
@@ -43,7 +44,7 @@ func requireNewValidTestBlock(t *testing.T, baseTipSet types.TipSet, stateRootCi
 
 // requireMakeBlocks sets up 3 blocks with 3 owner actors and 3 miner actors and puts them in the state tree.
 // the owner actors have associated mockSigners for signing blocks and tickets.
-func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, tree state.Tree, vms vm.StorageMap) ([]*types.Block, map[address.Address]address.Address) {
+func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet block.TipSet, tree state.Tree, vms vm.StorageMap) ([]*block.Block, map[address.Address]address.Address) {
 	// make a set of owner keypairs so they can sign blocks
 	mockSigner, kis := types.NewMockSignersAndKeyInfo(3)
 
@@ -74,7 +75,7 @@ func requireMakeBlocks(ctx context.Context, t *testing.T, pTipSet types.TipSet, 
 	stateRoot, err := tree.Flush(ctx)
 	require.NoError(t, err)
 
-	blocks := []*types.Block{
+	blocks := []*block.Block{
 		requireNewValidTestBlock(t, pTipSet, stateRoot, 1, minerAddrs[0], minerWorkers[0], mockSigner),
 		requireNewValidTestBlock(t, pTipSet, stateRoot, 1, minerAddrs[1], minerWorkers[1], mockSigner),
 		requireNewValidTestBlock(t, pTipSet, stateRoot, 1, minerAddrs[2], minerWorkers[2], mockSigner),
@@ -98,14 +99,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	totalPower := types.NewBytesAmount(1)
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the actor state
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
@@ -113,12 +114,12 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns nil + mining error when election proof validation fails", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
@@ -130,23 +131,23 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		assert.EqualError(t, err, "block author did not win election")
 	})
 
 	t.Run("fails when bls signature is not valid across bls messages", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the actor state
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
@@ -163,20 +164,20 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
 
 	t.Run("fails when secp message has invalid signature", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
 
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 		// Add the miner worker mapping into the actor state
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
@@ -197,14 +198,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secp message signature invalid")
 	})
 
 	t.Run("returns nil + mining error when ticket validation fails", func(t *testing.T) {
 
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
@@ -216,18 +217,18 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 		assert.Contains(t, err.Error(), "position 0")
 	})
 
 	t.Run("fails when ticket array length inconsistent with block height", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
@@ -236,19 +237,19 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
 		// change ticket array length but not height
 		blocks[0].Tickets = append(blocks[0].Tickets, consensus.MakeFakeTicketForTest())
-		tipSet := types.RequireNewTipSet(t, blocks[0])
+		tipSet := th.RequireNewTipSet(t, blocks[0])
 
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.Error(t, err)
 	})
 
 	t.Run("returns nil + mining error when signature is invalid", func(t *testing.T) {
-		pTipSet := types.RequireNewTipSet(t, genesisBlock)
+		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
 		require.NoError(t, err)
 		vms := vm.NewStorageMap(bstore)
@@ -257,14 +258,14 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		// Give block 0 an invalid signature
 		blocks[0].BlockSig = blocks[1].BlockSig
 
-		tipSet := types.RequireNewTipSet(t, blocks...)
+		tipSet := th.RequireNewTipSet(t, blocks...)
 		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
+		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		assert.EqualError(t, err, "block signature invalid")
 	})
 }

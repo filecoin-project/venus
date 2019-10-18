@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -356,7 +357,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 			return [][]byte{}, errors.New("test error")
 		}
 
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "bootstrapping")
@@ -372,7 +373,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 
 		// empty TipSet causes error if bootstrap miner is not set (see "Errors if tipset has no blocks")
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 		require.NoError(t, err)
 	})
 
@@ -386,7 +387,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get miner actor commitments")
@@ -404,7 +405,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse commitment sector id")
@@ -420,7 +421,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		}
 		api.messageHandlers = handlers
 
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get proving period")
@@ -432,7 +433,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		api.messageHandlers = successMessageHandlers(t)
 
-		_, err := miner.OnNewHeaviestTipSet(types.TipSet{})
+		_, err := miner.OnNewHeaviestTipSet(block.TipSet{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get block height")
@@ -456,8 +457,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		height := uint64(200) // Right on the proving window start
 		api.blockHeight = height
-		block := &types.Block{Height: types.Uint64(height)}
-		ts, err := types.NewTipSet(block)
+		blk := &block.Block{Height: types.Uint64(height)}
+		ts, err := block.NewTipSet(blk)
 		require.NoError(t, err)
 
 		done, err := miner.OnNewHeaviestTipSet(ts)
@@ -469,8 +470,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		height = uint64(215) // Right after the challenge delay
 		api.blockHeight = height
-		block = &types.Block{Height: types.Uint64(height)}
-		ts, err = types.NewTipSet(block)
+		blk = &block.Block{Height: types.Uint64(height)}
+		ts, err = block.NewTipSet(blk)
 		require.NoError(t, err)
 
 		done, err = miner.OnNewHeaviestTipSet(ts)
@@ -498,8 +499,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		height := uint64(190)
 		api.blockHeight = height
-		block := &types.Block{Height: types.Uint64(height)}
-		ts, err := types.NewTipSet(block)
+		blk := &block.Block{Height: types.Uint64(height)}
+		ts, err := block.NewTipSet(blk)
 		require.NoError(t, err)
 
 		done, err := miner.OnNewHeaviestTipSet(ts)
@@ -527,8 +528,8 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		height := uint64(400)
 		api.blockHeight = height
-		block := &types.Block{Height: types.Uint64(height)}
-		ts, err := types.NewTipSet(block)
+		blk := &block.Block{Height: types.Uint64(height)}
+		ts, err := block.NewTipSet(blk)
 		require.NoError(t, err)
 
 		done, err := miner.OnNewHeaviestTipSet(ts)
@@ -649,7 +650,7 @@ func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address
 	return cid.Cid{}, nil
 }
 
-func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	handler, ok := mtp.messageHandlers[method]
 	if ok {
 		return handler(to, types.ZeroAttoFIL, params...)
@@ -660,7 +661,7 @@ func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to add
 	return mtp.messageQueryPaymentBrokerLs()
 }
 
-func (mtp *minerTestPorcelain) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
+func (mtp *minerTestPorcelain) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	return mtp.workerAddress, nil
 }
 
@@ -691,12 +692,12 @@ func (mtp *minerTestPorcelain) ConfigGet(dottedPath string) (interface{}, error)
 	return mtp.config.Get(dottedPath)
 }
 
-func (mtp *minerTestPorcelain) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (mtp *minerTestPorcelain) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (mtp *minerTestPorcelain) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
-	return types.NewTipSet(&types.Block{Height: types.Uint64(mtp.blockHeight)})
+func (mtp *minerTestPorcelain) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
+	return block.NewTipSet(&block.Block{Height: types.Uint64(mtp.blockHeight)})
 }
 
 func (mtp *minerTestPorcelain) ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error) {
@@ -712,7 +713,7 @@ func (mtp *minerTestPorcelain) ValidatePaymentVoucherCondition(ctx context.Conte
 	return nil
 }
 
-func (mtp *minerTestPorcelain) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (mtp *minerTestPorcelain) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return nil
 }
 

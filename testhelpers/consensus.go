@@ -6,8 +6,8 @@ import (
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/block"
 	cid "github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -17,24 +17,16 @@ import (
 	"github.com/filecoin-project/go-filecoin/vm"
 )
 
-// RequireNewTipSet instantiates and returns a new tipset of the given blocks
-// and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*types.Block) types.TipSet {
-	ts, err := types.NewTipSet(blks...)
-	require.NoError(t, err)
-	return ts
-}
-
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
 // to be correct
-func NewValidTestBlockFromTipSet(baseTipSet types.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*types.Block, error) {
+func NewValidTestBlockFromTipSet(baseTipSet block.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*block.Block, error) {
 	electionProof := consensus.MakeFakeElectionProofForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
 
-	b := &types.Block{
+	b := &block.Block{
 		Miner:           minerAddr,
-		Tickets:         []types.Ticket{ticket},
+		Tickets:         []block.Ticket{ticket},
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(10000 * height),
 		Height:          types.Uint64(height),
@@ -99,12 +91,12 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 }
 
 // ValidateSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, _ uint64) error {
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
 	return nil
 }
 
 // ValidateSyntax does nothing.
-func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+func (fbv *FakeBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
 	return nil
 }
 
@@ -134,24 +126,24 @@ func NewStubBlockValidator() *StubBlockValidator {
 }
 
 // ValidateSemantic returns nil or error for stubbed block `child`.
-func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, _ uint64) error {
+func (mbv *StubBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
 	return mbv.semanticStubs[child.Cid()]
 }
 
 // ValidateSyntax return nil or error for stubbed block `blk`.
-func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+func (mbv *StubBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
 	return mbv.syntaxStubs[blk.Cid()]
 }
 
 // StubSyntaxValidationForBlock stubs an error when the ValidateSyntax is called
 // on the with the given block.
-func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *types.Block, err error) {
+func (mbv *StubBlockValidator) StubSyntaxValidationForBlock(blk *block.Block, err error) {
 	mbv.syntaxStubs[blk.Cid()] = err
 }
 
 // StubSemanticValidationForBlock stubs an error when the ValidateSemantic is called
 // on the with the given child block.
-func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *types.Block, err error) {
+func (mbv *StubBlockValidator) StubSemanticValidationForBlock(child *block.Block, err error) {
 	mbv.semanticStubs[child.Cid()] = err
 }
 
@@ -188,7 +180,7 @@ func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.Stor
 }
 
 func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultProcessor, st state.Tree, storageMap vm.StorageMap,
-	bh *types.BlockHeight, minerOwner address.Address, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+	bh *types.BlockHeight, minerOwner address.Address, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	amr, err := processor.ApplyMessagesAndPayRewards(context.Background(), st, storageMap, []*types.SignedMessage{smsg}, minerOwner, bh, ancestors)
 
 	if len(amr.Results) > 0 {
@@ -199,7 +191,7 @@ func newMessageApplier(smsg *types.SignedMessage, processor *consensus.DefaultPr
 }
 
 // CreateAndApplyTestMessageFrom wraps the given parameters in a message and calls ApplyTestMessage.
-func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMap, from address.Address, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMap, from address.Address, to address.Address, val, bh uint64, method string, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	t.Helper()
 
 	pdata := actor.MustConvertParams(params...)
@@ -209,11 +201,11 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMa
 
 // CreateAndApplyTestMessage wraps the given parameters in a message and calls
 // CreateAndApplyTestMessageFrom sending the message from address.TestAddress
-func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, ancestors []types.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
+func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, to address.Address, val, bh uint64, method string, ancestors []block.TipSet, params ...interface{}) (*consensus.ApplicationResult, error) {
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []block.TipSet) (*consensus.ApplicationResult, error) {
 	msg.GasPrice = types.NewGasPrice(1)
 	msg.GasLimit = types.NewGasUnits(300)
 	smsg, err := types.NewSignedMessage(*msg, testSigner{})

@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
@@ -51,9 +52,9 @@ all other block properties will be included as well.`,
 
 		return re.Emit(block)
 	},
-	Type: types.FullBlock{},
+	Type: block.FullBlock{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *types.FullBlock) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.FullBlock) error {
 			wStr, err := types.FixedStr(uint64(block.Header.ParentWeight))
 			if err != nil {
 				return err
@@ -117,9 +118,9 @@ all other block properties will be included as well.`,
 
 		return re.Emit(block)
 	},
-	Type: types.Block{},
+	Type: block.Block{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *types.Block) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, block *block.Block) error {
 			wStr, err := types.FixedStr(uint64(block.ParentWeight))
 			if err != nil {
 				return err

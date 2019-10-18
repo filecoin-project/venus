@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-sectorbuilder"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -27,9 +28,9 @@ const (
 // ProofReader provides information about the blockchain to the proving process.
 type ProofReader interface {
 	// ChainHeadKey returns the cids of the head tipset
-	ChainHeadKey() types.TipSetKey
+	ChainHeadKey() block.TipSetKey
 	// ChainTipSet returns the tipset with the given key
-	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
+	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 	// ChainSampleRandomness returns bytes derived from the blockchain before `sampleHeight`.
 	ChainSampleRandomness(ctx context.Context, sampleHeight *types.BlockHeight) ([]byte, error)
 	// MinerCalculateLateFee calculates the fee due for a proof submitted at some height.
@@ -37,7 +38,7 @@ type ProofReader interface {
 	// WalletBalance returns the balance for an actor.
 	WalletBalance(ctx context.Context, addr address.Address) (types.AttoFIL, error)
 	// MinerGetWorkerAddress returns the current worker address for a miner
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 }
 
 // ProofCalculator creates the proof-of-spacetime bytes.

@@ -1,15 +1,17 @@
-package types
+package block
+
+import "github.com/filecoin-project/go-filecoin/types"
 
 // FullBlock carries a block header and the message and receipt collections
 // referenced from the header.
 type FullBlock struct {
 	Header   *Block
-	Messages []*SignedMessage
-	Receipts []*MessageReceipt
+	Messages []*types.SignedMessage
+	Receipts []*types.MessageReceipt
 }
 
 // NewFullBlock constructs a new full block.
-func NewFullBlock(header *Block, msgs []*SignedMessage, rcpts []*MessageReceipt) *FullBlock {
+func NewFullBlock(header *Block, msgs []*types.SignedMessage, rcpts []*types.MessageReceipt) *FullBlock {
 	return &FullBlock{
 		Header:   header,
 		Messages: msgs,

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -18,10 +19,10 @@ import (
 
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
-	baseTipSet types.TipSet,
-	tickets []types.Ticket,
-	electionProof types.VRFPi,
-	nullBlockCount uint64) (*types.Block, error) {
+	baseTipSet block.TipSet,
+	tickets []block.Ticket,
+	electionProof block.VRFPi,
+	nullBlockCount uint64) (*block.Block, error) {
 
 	generateTimer := time.Now()
 	defer func() {
@@ -107,7 +108,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "error persisting receipts")
 	}
 
-	next := &types.Block{
+	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
 		Messages:        txMeta,

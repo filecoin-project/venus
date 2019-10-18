@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-sectorbuilder"
@@ -27,11 +28,11 @@ func (tppp *testProtocolParamsPlumbing) ConfigGet(path string) (interface{}, err
 	return tppp.autoSealInterval, nil
 }
 
-func (tppp *testProtocolParamsPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (tppp *testProtocolParamsPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	if method == "getProofsMode" {
 		return [][]byte{{byte(types.TestProofsMode)}}, nil
 	} else if method == "getNetwork" {

@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/mining"
-	"github.com/filecoin-project/go-filecoin/protocol/block"
+	mining_protocol "github.com/filecoin-project/go-filecoin/protocol/mining"
 )
 
 // BlockMiningSubmodule enhances the `Node` with block mining capabilities.
 type BlockMiningSubmodule struct {
-	BlockMiningAPI *block.MiningAPI
+	BlockMiningAPI *mining_protocol.API
 
 	// Mining stuff.
 	AddNewlyMinedBlock newBlockFunc

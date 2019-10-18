@@ -3,6 +3,7 @@ package msg
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
@@ -16,9 +17,9 @@ import (
 
 // Abstracts over a store of blockchain state.
 type previewerChainReader interface {
-	GetHead() types.TipSetKey
-	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetHead() block.TipSetKey
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
 type messagePreviewer interface {

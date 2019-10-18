@@ -1,9 +1,10 @@
-package types
+package block
 
 import (
 	"bytes"
 	"sort"
 
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 )
@@ -127,7 +128,7 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 }
 
 // MinTimestamp returns the smallest timestamp of all blocks in the tipset.
-func (ts TipSet) MinTimestamp() (Uint64, error) {
+func (ts TipSet) MinTimestamp() (types.Uint64, error) {
 	if len(ts.blocks) == 0 {
 		return 0, errUndefTipSet
 	}

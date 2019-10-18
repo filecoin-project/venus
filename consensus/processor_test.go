@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -69,7 +70,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	msgs := []*types.SignedMessage{smsg}
-	blk := &types.Block{
+	blk := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
@@ -129,24 +130,24 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	require.NoError(t, err)
 	msgs1 := []*types.SignedMessage{smsg1}
 	cidGetter := types.NewCidForTestGetter()
-	blk1 := &types.Block{
+	blk1 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
 		Messages:  types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
-		Tickets:   []types.Ticket{{VRFProof: []byte{0x1}}},
+		Tickets:   []block.Ticket{{VRFProof: []byte{0x1}}},
 	}
 
 	msg2 := types.NewMeteredMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
 	require.NoError(t, err)
 	msgs2 := []*types.SignedMessage{smsg2}
-	blk2 := &types.Block{
+	blk2 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,
 		Messages:  types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
-		Tickets:   []types.Ticket{{VRFProof: []byte{0x2}}},
+		Tickets:   []block.Ticket{{VRFProof: []byte{0x2}}},
 	}
 
 	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
@@ -201,10 +202,10 @@ func TestProcessTipsConflicts(t *testing.T) {
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
 	require.NoError(t, err)
 	msgs1 := []*types.SignedMessage{smsg1}
-	blk1 := &types.Block{
+	blk1 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Tickets:   []types.Ticket{{VRFProof: []byte{0, 0}}}, // Block with smaller ticket
+		Tickets:   []block.Ticket{{VRFProof: []byte{0, 0}}}, // Block with smaller ticket
 		Miner:     minerAddr,
 	}
 
@@ -212,10 +213,10 @@ func TestProcessTipsConflicts(t *testing.T) {
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
 	require.NoError(t, err)
 	msgs2 := []*types.SignedMessage{smsg2}
-	blk2 := &types.Block{
+	blk2 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
-		Tickets:   []types.Ticket{{VRFProof: []byte{1, 1}}},
+		Tickets:   []block.Ticket{{VRFProof: []byte{1, 1}}},
 		Miner:     minerAddr,
 	}
 
@@ -266,7 +267,7 @@ func TestProcessBlockReward(t *testing.T) {
 	vms := th.VMStorage()
 	stCid, _ := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
 
-	blk := &types.Block{
+	blk := &block.Block{
 		Miner:     minerAddr,
 		Height:    20,
 		StateRoot: stCid,
@@ -317,7 +318,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
 	require.NoError(t, err)
 	msgs := []*types.SignedMessage{smsg}
-	blk := &types.Block{
+	blk := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
 		Miner:     minerAddr,

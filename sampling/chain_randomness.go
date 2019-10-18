@@ -1,6 +1,7 @@
 package sampling
 
 import (
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -9,7 +10,7 @@ import (
 // SampleChainRandomness produces a slice of bytes (a ticket) sampled from the highest tipset with
 // height less than or equal to `sampleHeight`.
 // The tipset slice must be sorted by descending block height.
-func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []types.TipSet) ([]byte, error) {
+func SampleChainRandomness(sampleHeight *types.BlockHeight, tipSetsDescending []block.TipSet) ([]byte, error) {
 	if sampleHeight.LessThan(types.NewBlockHeight(0)) {
 		return nil, errors.Errorf("can't sample chain at negative height %s", sampleHeight)
 	}

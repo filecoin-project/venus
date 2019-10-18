@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/state"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/version"
 )
@@ -27,8 +29,8 @@ func TestNewWeight(t *testing.T) {
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5
 	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
-	tickets := []types.Ticket{consensus.MakeFakeTicketForTest()}
-	toWeigh := types.RequireNewTipSet(t, &types.Block{
+	tickets := []block.Ticket{consensus.MakeFakeTicketForTest()}
+	toWeigh := th.RequireNewTipSet(t, &block.Block{
 		ParentWeight: 0,
 		Tickets:      tickets,
 	})
@@ -68,7 +70,7 @@ func TestNewWeight(t *testing.T) {
 	t.Run("non-zero parent weight", func(t *testing.T) {
 		parentWeight, err := types.BigToFixed(new(big.Float).SetInt64(int64(49)))
 		require.NoError(t, err)
-		toWeighWithParent := types.RequireNewTipSet(t, &types.Block{
+		toWeighWithParent := th.RequireNewTipSet(t, &block.Block{
 			ParentWeight: types.Uint64(parentWeight),
 			Tickets:      tickets,
 		})
@@ -80,18 +82,18 @@ func TestNewWeight(t *testing.T) {
 	})
 
 	t.Run("many blocks", func(t *testing.T) {
-		toWeighThreeBlock := types.RequireNewTipSet(t,
-			&types.Block{
+		toWeighThreeBlock := th.RequireNewTipSet(t,
+			&block.Block{
 				ParentWeight: 0,
 				Tickets:      tickets,
 				Timestamp:    types.Uint64(0),
 			},
-			&types.Block{
+			&block.Block{
 				ParentWeight: 0,
 				Tickets:      tickets,
 				Timestamp:    types.Uint64(1),
 			},
-			&types.Block{
+			&block.Block{
 				ParentWeight: 0,
 				Tickets:      tickets,
 				Timestamp:    types.Uint64(2),
@@ -104,12 +106,12 @@ func TestNewWeight(t *testing.T) {
 	})
 
 	t.Run("few null", func(t *testing.T) {
-		twoTickets := []types.Ticket{
+		twoTickets := []block.Ticket{
 			consensus.MakeFakeTicketForTest(),
 			consensus.MakeFakeTicketForTest(),
 		}
 
-		toWeighTwoTickets := types.RequireNewTipSet(t, &types.Block{
+		toWeighTwoTickets := th.RequireNewTipSet(t, &block.Block{
 			ParentWeight: 0,
 			Tickets:      twoTickets,
 		})
@@ -121,14 +123,14 @@ func TestNewWeight(t *testing.T) {
 	})
 
 	t.Run("many null", func(t *testing.T) {
-		fifteenTickets := []types.Ticket{}
+		fifteenTickets := []block.Ticket{}
 		expected := 1.0
 		for i := 0; i < 15; i++ {
 			fifteenTickets = append(fifteenTickets, consensus.MakeFakeTicketForTest())
 			// consensus.pi = 0.87, expected = (pi^pn)(0.87)^15
 			expected *= 0.87
 		}
-		toWeighFifteenNull := types.RequireNewTipSet(t, &types.Block{
+		toWeighFifteenNull := th.RequireNewTipSet(t, &block.Block{
 			ParentWeight: 0,
 			Tickets:      fifteenTickets,
 		})

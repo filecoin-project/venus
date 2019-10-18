@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -17,8 +18,8 @@ import (
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(require *require.Assertions, blks ...*types.Block) types.TipSet {
-	ts, err := types.NewTipSet(blks...)
+func RequireNewTipSet(require *require.Assertions, blks ...*block.Block) block.TipSet {
+	ts, err := block.NewTipSet(blks...)
 	require.NoError(err)
 	return ts
 }
@@ -125,12 +126,12 @@ func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 type FakeElectionMachine struct{}
 
 // RunElection returns a fake election proof.
-func (fem *FakeElectionMachine) RunElection(ticket types.Ticket, candidateAddr address.Address, signer types.Signer) (types.VRFPi, error) {
+func (fem *FakeElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer) (block.VRFPi, error) {
 	return MakeFakeElectionProofForTest(), nil
 }
 
 // IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -138,17 +139,17 @@ func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerT
 type FakeTicketMachine struct{}
 
 // NextTicket returns a fake ticket
-func (ftm *FakeTicketMachine) NextTicket(parent types.Ticket, signerAddr address.Address, signer types.Signer) (types.Ticket, error) {
+func (ftm *FakeTicketMachine) NextTicket(parent block.Ticket, signerAddr address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
 }
 
 // NotarizeTime does nothing
-func (ftm *FakeTicketMachine) NotarizeTime(ticket *types.Ticket) error {
+func (ftm *FakeTicketMachine) NotarizeTime(ticket *block.Ticket) error {
 	return nil
 }
 
 // IsValidTicket always returns true
-func (ftm *FakeTicketMachine) IsValidTicket(parent, ticket types.Ticket, signerAddr address.Address) bool {
+func (ftm *FakeTicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
 	return true
 }
 
@@ -156,7 +157,7 @@ func (ftm *FakeTicketMachine) IsValidTicket(parent, ticket types.Ticket, signerA
 type FailingTicketValidator struct{}
 
 // IsValidTicket always returns false
-func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket types.Ticket, signerAddr address.Address) bool {
+func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
 	return false
 }
 
@@ -164,17 +165,17 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket types.Ticket, si
 type FailingElectionValidator struct{}
 
 // IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket types.Ticket, electionProof types.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
 // MakeFakeTicketForTest creates a fake ticket
-func MakeFakeTicketForTest() types.Ticket {
+func MakeFakeTicketForTest() block.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
-	return types.Ticket{
-		VRFProof:  types.VRFPi(val[:]),
-		VDFResult: types.VDFY(val[:]),
+	return block.Ticket{
+		VRFProof:  block.VRFPi(val[:]),
+		VDFResult: block.VDFY(val[:]),
 	}
 }
 
@@ -198,7 +199,7 @@ func MakeFakeElectionProofForTest() []byte {
 // inputs as miner power might be so low that winning a ticket is very
 // unlikely.  However runtime is deterministic so if it runs fast once on
 // given inputs is safe to use in tests.
-func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) types.Ticket {
+func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) block.Ticket {
 	signer := types.NewMockSigner([]types.KeyInfo{*ki})
 	wAddr, err := ki.Address()
 	require.NoError(t, err)
@@ -210,7 +211,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 	ctx := context.Background()
 
 	curr := MakeFakeTicketForTest()
-	tickets := []types.Ticket{curr}
+	tickets := []block.Ticket{curr}
 
 	for {
 		proof, err := em.RunElection(curr, wAddr, signer)
@@ -225,7 +226,7 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 			}
 
 			// We won too early, reset memory
-			tickets = []types.Ticket{}
+			tickets = []block.Ticket{}
 		}
 
 		// make a new ticket off the chain

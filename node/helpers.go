@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 
 	ps "github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/pkg/errors"
@@ -18,29 +18,29 @@ type pubSubHandler func(ctx context.Context, msg pubsub.Message) error
 
 type nodeChainReader interface {
 	GenesisCid() cid.Cid
-	GetHead() types.TipSetKey
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetState(ctx context.Context, tsKey types.TipSetKey) (state.Tree, error)
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.Tree, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()
 }
 
 type nodeChainSyncer interface {
-	HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error
+	HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error
 	Status() chain.Status
 }
 
 type nodeChainSelector interface {
-	NewWeight(context.Context, types.TipSet, cid.Cid) (uint64, error)
-	Weight(context.Context, types.TipSet, cid.Cid) (uint64, error)
-	IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	NewWeight(context.Context, block.TipSet, cid.Cid) (uint64, error)
+	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)
+	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
 // storageFaultSlasher is the interface for needed FaultSlasher functionality
 type storageFaultSlasher interface {
-	OnNewHeaviestTipSet(context.Context, types.TipSet) error
+	OnNewHeaviestTipSet(context.Context, block.TipSet) error
 }
 
 type blankValidator struct{}

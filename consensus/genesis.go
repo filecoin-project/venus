@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -21,7 +22,7 @@ import (
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
-type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error)
+type GenesisInitFunc func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error)
 
 var (
 	defaultAccounts map[address.Address]types.AttoFIL
@@ -129,7 +130,7 @@ func NewEmptyConfig() *Config {
 
 // MakeGenesisFunc returns a genesis function configured by a set of options.
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
-	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
 		st := state.NewEmptyStateTree(cst)
 		storageMap := vm.NewStorageMap(bs)
@@ -203,12 +204,12 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 		}
 		emptyBLSSig := bls.Aggregate([]bls.Signature{})
 
-		genesis := &types.Block{
+		genesis := &block.Block{
 			StateRoot:       c,
 			Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
 			MessageReceipts: emptyReceiptsCid,
 			BLSAggregateSig: emptyBLSSig[:],
-			Tickets:         []types.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
+			Tickets:         []block.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

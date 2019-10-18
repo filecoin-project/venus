@@ -1,42 +1,44 @@
-package types
+package block
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 const parentWeight = uint64(1337000)
 
 var (
 	cid1, cid2        cid.Cid
-	mockSignerForTest MockSigner
+	mockSignerForTest types.MockSigner
 	cidGetter         func() cid.Cid
 )
 
 func init() {
-	cidGetter = NewCidForTestGetter()
+	cidGetter = types.NewCidForTestGetter()
 	cid1 = cidGetter()
 	cid2 = cidGetter()
 
-	mockSignerForTest, _ = NewMockSignersAndKeyInfo(2)
+	mockSignerForTest, _ = types.NewMockSignersAndKeyInfo(2)
 }
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
 	return &Block{
 		Tickets:         []Ticket{{VRFProof: ticket}},
 		Parents:         NewTipSetKey(parentCid),
-		ParentWeight:    Uint64(parentWeight),
-		Height:          Uint64(42 + uint64(height)),
-		Messages:        TxMeta{SecpRoot: cidGetter(), BLSRoot: EmptyMessagesCID},
+		ParentWeight:    types.Uint64(parentWeight),
+		Height:          types.Uint64(42 + uint64(height)),
+		Messages:        types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
 		StateRoot:       cidGetter(),
 		MessageReceipts: cidGetter(),
-		Timestamp:       Uint64(timestamp),
+		Timestamp:       types.Uint64(timestamp),
 	}
 }
 
@@ -194,7 +196,7 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.ParentWeight = Uint64(3000)
+		b1.ParentWeight = types.Uint64(3000)
 		ts, err := NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
@@ -235,4 +237,12 @@ func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
 	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
 	return b1, b2, b3
+}
+
+// RequireNewTipSet instantiates and returns a new tipset of the given blocks
+// and requires that the setup validation succeed.
+func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
+	ts, err := NewTipSet(blks...)
+	require.NoError(t, err)
+	return ts
 }

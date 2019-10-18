@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var chainCmd = &cmds.Command{
@@ -83,9 +82,9 @@ var storeLsCmd = &cmds.Command{
 		}
 		return nil
 	},
-	Type: []types.Block{},
+	Type: []block.Block{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]types.Block) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *[]block.Block) error {
 			showAll, _ := req.Options["long"].(bool)
 			blocks := *res
 
@@ -142,7 +141,7 @@ var storeSetHeadCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		maybeNewHead := types.NewTipSetKey(headCids...)
+		maybeNewHead := block.NewTipSetKey(headCids...)
 		return GetPorcelainAPI(env).ChainSetHead(req.Context, maybeNewHead)
 	},
 }
@@ -167,8 +166,8 @@ var storeSyncCmd = &cmds.Command{
 			return err
 		}
 
-		syncKey := types.NewTipSetKey(syncCids...)
-		ci := &types.ChainInfo{
+		syncKey := block.NewTipSetKey(syncCids...)
+		ci := &block.ChainInfo{
 			Peer:   syncPid,
 			Height: 0, // only checked when trusted is false.
 			Head:   syncKey,
@@ -196,7 +195,7 @@ var storeExportCmd = &cmds.Command{
 		if err != nil {
 			return err
 		}
-		expKey := types.NewTipSetKey(expCids...)
+		expKey := block.NewTipSetKey(expCids...)
 
 		if err := GetPorcelainAPI(env).ChainExport(req.Context, expKey, f); err != nil {
 			return err

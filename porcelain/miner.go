@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,7 +26,7 @@ type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -74,7 +75,7 @@ func MinerCreate(
 	}
 
 	var minerAddr address.Address
-	err = plumbing.MessageWait(ctx, smsgCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
+	err = plumbing.MessageWait(ctx, smsgCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) (err error) {
 		if receipt.ExitCode != uint8(0) {
 			return vmErrors.VMExitCodeToError(receipt.ExitCode, storagemarket.Errors)
 		}
@@ -143,7 +144,7 @@ type mspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
 // MinerSetPriceResponse collects relevant stats from the set price process
@@ -192,7 +193,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// wait for ask to be mined
-	err = plumbing.MessageWait(ctx, res.AddAskCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err = plumbing.MessageWait(ctx, res.AddAskCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
 		res.BlockCid = blk.Cid()
 
 		if receipt.ExitCode != uint8(0) {
@@ -254,8 +255,8 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 // minerQueryAndDeserialize is the subset of the plumbing.API that provides
 // support for sending query messages and getting method signatures.
 type minerQueryAndDeserialize interface {
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error)
 }
 
@@ -270,7 +271,7 @@ func MinerGetOwnerAddress(ctx context.Context, plumbing minerQueryAndDeserialize
 }
 
 // MinerGetWorkerAddress queries for the worker address of the given miner
-func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error) {
+func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error) {
 	res, err := plumbing.MessageQuery(ctx, address.Undef, minerAddr, "getWorker", baseKey)
 	if err != nil {
 		return address.Undef, err
@@ -282,7 +283,7 @@ func MinerGetWorkerAddress(ctx context.Context, plumbing minerQueryAndDeserializ
 // queryAndDeserialize is a convenience method. It sends a query message to a
 // miner and, based on the method return-type, deserializes to the appropriate
 // ABI type.
-func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, baseKey types.TipSetKey, params ...interface{}) (*abi.Value, error) {
+func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize, minerAddr address.Address, method string, baseKey block.TipSetKey, params ...interface{}) (*abi.Value, error) {
 	rets, err := plumbing.MessageQuery(ctx, address.Address{}, minerAddr, method, baseKey, params...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "'%s' query message failed", method)
@@ -349,8 +350,8 @@ func MinerGetLastCommittedSectorID(ctx context.Context, plumbing minerQueryAndDe
 
 // mgaAPI is the subset of the plumbing.API that MinerGetAsk uses.
 type mgaAPI interface {
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetAsk queries for an ask of the given miner
@@ -370,8 +371,8 @@ func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address
 
 // mgpidAPI is the subset of the plumbing.API that MinerGetPeerID uses.
 type mgpidAPI interface {
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // MinerGetPeerID queries for the peer id of the given miner

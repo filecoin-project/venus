@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
 // the input chain store.
-func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.Store, head types.TipSetKey, source *chain.Builder, count int) {
+func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.Store, head block.TipSetKey, source *chain.Builder, count int) {
 	tss := source.RequireTipSets(head, count)
 	for _, ts := range tss {
 		tsas := &chain.TipSetAndState{
@@ -41,18 +42,18 @@ func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.St
 	}
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey types.TipSetKey, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey block.TipSetKey, h uint64) []*chain.TipSetAndState {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
 }
 
 type HeadAndTipsetGetter interface {
-	GetHead() types.TipSetKey
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
-func requirePutBlocksToCborStore(t *testing.T, cst *hamt.CborIpldStore, blocks ...*types.Block) {
+func requirePutBlocksToCborStore(t *testing.T, cst *hamt.CborIpldStore, blocks ...*block.Block) {
 	for _, block := range blocks {
 		_, err := cst.Put(context.Background(), block)
 		require.NoError(t, err)
@@ -191,7 +192,7 @@ func TestGetByParent(t *testing.T) {
 	// Put the test chain to the store
 	requirePutTestChain(ctx, t, cs, link4.Key(), builder, 5)
 
-	gotG := requireGetTsasByParentAndHeight(t, cs, types.TipSetKey{}, uint64(0))
+	gotG := requireGetTsasByParentAndHeight(t, cs, block.TipSetKey{}, uint64(0))
 	got1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), uint64(1))
 	got2 := requireGetTsasByParentAndHeight(t, cs, link1.Key(), uint64(2))
 	got3 := requireGetTsasByParentAndHeight(t, cs, link2.Key(), uint64(3))
@@ -261,7 +262,7 @@ func TestSetGenesis(t *testing.T) {
 	require.Equal(t, genTS.At(0).Cid(), cs.GenesisCid())
 }
 
-func assertSetHead(t *testing.T, chainStore *chain.Store, ts types.TipSet) {
+func assertSetHead(t *testing.T, chainStore *chain.Store, ts block.TipSet) {
 	ctx := context.Background()
 	err := chainStore.SetHead(ctx, ts)
 	assert.NoError(t, err)
@@ -284,7 +285,7 @@ func TestHead(t *testing.T) {
 	link4 := builder.BuildOn(link3, 2, func(bb *chain.BlockBuilder, i int) { bb.IncHeight(2) })
 
 	// Head starts as an empty cid set
-	assert.Equal(t, types.TipSetKey{}, cs.GetHead())
+	assert.Equal(t, block.TipSetKey{}, cs.GetHead())
 
 	// Set Head
 	assertSetHead(t, cs, genTS)
@@ -337,7 +338,7 @@ func TestHeadEvents(t *testing.T) {
 	assertSetHead(t, chainStore, link2)
 	assertSetHead(t, chainStore, link1)
 	assertSetHead(t, chainStore, genTS)
-	heads := []types.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
+	heads := []block.TipSet{genTS, link1, link2, link3, link4, link3, link2, link1, genTS}
 
 	// Heads arrive in the expected order
 	for i := 0; i < 9; i++ {
@@ -407,20 +408,20 @@ func TestLoadAndReboot(t *testing.T) {
 }
 
 type tipSetGetter interface {
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
-func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key types.TipSetKey) types.TipSet {
+func requireGetTipSet(ctx context.Context, t *testing.T, chainStore tipSetGetter, key block.TipSetKey) block.TipSet {
 	ts, err := chainStore.GetTipSet(key)
 	require.NoError(t, err)
 	return ts
 }
 
 type tipSetStateRootGetter interface {
-	GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
 }
 
-func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key types.TipSetKey) cid.Cid {
+func requireGetTipSetStateRoot(ctx context.Context, t *testing.T, chainStore tipSetStateRootGetter, key block.TipSetKey) cid.Cid {
 	stateCid, err := chainStore.GetTipSetStateRoot(key)
 	require.NoError(t, err)
 	return stateCid

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -10,12 +11,12 @@ import (
 
 // TipSetProvider provides tipsets for traversal.
 type TipSetProvider interface {
-	GetTipSet(tsKey types.TipSetKey) (types.TipSet, error)
+	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
 }
 
 // IterAncestors returns an iterator over tipset ancestors, yielding first the start tipset and
 // then its parent tipsets until (and including) the genesis tipset.
-func IterAncestors(ctx context.Context, store TipSetProvider, start types.TipSet) *TipsetIterator {
+func IterAncestors(ctx context.Context, store TipSetProvider, start block.TipSet) *TipsetIterator {
 	return &TipsetIterator{ctx, store, start}
 }
 
@@ -23,11 +24,11 @@ func IterAncestors(ctx context.Context, store TipSetProvider, start types.TipSet
 type TipsetIterator struct {
 	ctx   context.Context
 	store TipSetProvider
-	value types.TipSet
+	value block.TipSet
 }
 
 // Value returns the iterator's current value, if not Complete().
-func (it *TipsetIterator) Value() types.TipSet {
+func (it *TipsetIterator) Value() block.TipSet {
 	return it.value
 }
 
@@ -45,7 +46,7 @@ func (it *TipsetIterator) Next() error {
 		parentKey, err := it.value.Parents()
 		// Parents is empty (without error) for the genesis tipset.
 		if err != nil || parentKey.Len() == 0 {
-			it.value = types.UndefTipSet
+			it.value = block.UndefTipSet
 		} else {
 			it.value, err = it.store.GetTipSet(parentKey)
 		}
@@ -55,20 +56,20 @@ func (it *TipsetIterator) Next() error {
 
 // BlockProvider provides blocks.
 type BlockProvider interface {
-	GetBlock(ctx context.Context, cid cid.Cid) (*types.Block, error)
+	GetBlock(ctx context.Context, cid cid.Cid) (*block.Block, error)
 }
 
 // LoadTipSetBlocks loads all the blocks for a tipset from the store.
-func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key types.TipSetKey) (types.TipSet, error) {
-	var blocks []*types.Block
+func LoadTipSetBlocks(ctx context.Context, store BlockProvider, key block.TipSetKey) (block.TipSet, error) {
+	var blocks []*block.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		blk, err := store.GetBlock(ctx, it.Value())
 		if err != nil {
-			return types.UndefTipSet, err
+			return block.UndefTipSet, err
 		}
 		blocks = append(blocks, blk)
 	}
-	return types.NewTipSet(blocks...)
+	return block.NewTipSet(blocks...)
 }
 
 type tipsetFromBlockProvider struct {
@@ -84,14 +85,14 @@ func TipSetProviderFromBlocks(ctx context.Context, blocks BlockProvider) TipSetP
 }
 
 // GetTipSet loads the blocks for a tipset.
-func (p *tipsetFromBlockProvider) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
+func (p *tipsetFromBlockProvider) GetTipSet(tsKey block.TipSetKey) (block.TipSet, error) {
 	return LoadTipSetBlocks(p.ctx, p.blocks, tsKey)
 }
 
 // CollectTipsToCommonAncestor traverses chains from two tipsets (called old and new) until their common
 // ancestor, collecting all tipsets that are in one chain but not the other.
 // The resulting lists of tipsets are ordered by decreasing height.
-func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldHead, newHead types.TipSet) (oldTips, newTips []types.TipSet, err error) {
+func CollectTipsToCommonAncestor(ctx context.Context, store TipSetProvider, oldHead, newHead block.TipSet) (oldTips, newTips []block.TipSet, err error) {
 	oldIter := IterAncestors(ctx, store, oldHead)
 	newIter := IterAncestors(ctx, store, newHead)
 

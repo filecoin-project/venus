@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -122,15 +123,15 @@ type fakeProverContext struct {
 	faults        []uint64
 }
 
-func (f *fakeProverContext) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (f *fakeProverContext) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (f *fakeProverContext) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
+func (f *fakeProverContext) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
 	if f.height == nil {
-		return types.TipSet{}, errors.New("could not get the tipset at this height")
+		return block.TipSet{}, errors.New("could not get the tipset at this height")
 	}
-	return types.NewTipSet(&types.Block{Height: types.Uint64(f.height.AsBigInt().Uint64())})
+	return block.NewTipSet(&block.Block{Height: types.Uint64(f.height.AsBigInt().Uint64())})
 }
 
 func (f *fakeProverContext) ChainSampleRandomness(ctx context.Context, periodStart *types.BlockHeight) ([]byte, error) {
@@ -155,6 +156,6 @@ func (f *fakeProverContext) CalculatePoSt(ctx context.Context, sortedCommRs go_s
 	return f.proof, nil
 }
 
-func (f *fakeProverContext) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
+func (f *fakeProverContext) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	return f.workerAddress, nil
 }

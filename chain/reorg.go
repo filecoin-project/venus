@@ -1,16 +1,15 @@
 package chain
 
 import (
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // IsReorg determines if choosing the end of the newChain as the new head
 // would cause a "reorg" given the current head is at curHead.
 // A reorg occurs when the old head is not a member of the new chain AND the
 // old head is not a subset of the new head.
-func IsReorg(old, new, commonAncestor types.TipSet) bool {
+func IsReorg(old, new, commonAncestor block.TipSet) bool {
 	oldSortedSet := old.Key()
 	newSortedSet := new.Key()
 
@@ -19,7 +18,7 @@ func IsReorg(old, new, commonAncestor types.TipSet) bool {
 
 // ReorgDiff returns the dropped and added block heights resulting from the
 // reorg given the old and new heads and their common ancestor.
-func ReorgDiff(old, new, commonAncestor types.TipSet) (uint64, uint64, error) {
+func ReorgDiff(old, new, commonAncestor block.TipSet) (uint64, uint64, error) {
 	hOld, err := old.Height()
 	if err != nil {
 		return 0, 0, err

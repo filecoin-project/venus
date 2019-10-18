@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/journal"
 	"github.com/filecoin-project/go-filecoin/metrics"
@@ -45,7 +46,7 @@ type Outbox struct {
 
 type actorProvider interface {
 	// GetActorAt returns the actor state defined by the chain up to some tipset
-	GetActorAt(ctx context.Context, tipset types.TipSetKey, addr address.Address) (*actor.Actor, error)
+	GetActorAt(ctx context.Context, tipset block.TipSetKey, addr address.Address) (*actor.Actor, error)
 }
 
 type publisher interface {
@@ -139,7 +140,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 }
 
 // HandleNewHead maintains the message queue in response to a new head tipset.
-func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []types.TipSet) error {
+func (ob *Outbox) HandleNewHead(ctx context.Context, oldTips, newTips []block.TipSet) error {
 	return ob.policy.HandleNewHead(ctx, ob.queue, oldTips, newTips)
 }
 
@@ -158,7 +159,7 @@ func nextNonce(act *actor.Actor, queue *Queue, address address.Address) (uint64,
 	return actorNonce, nil
 }
 
-func tipsetHeight(provider chainProvider, key types.TipSetKey) (uint64, error) {
+func tipsetHeight(provider chainProvider, key block.TipSetKey) (uint64, error) {
 	head, err := provider.GetTipSet(key)
 	if err != nil {
 		return 0, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-sectorbuilder"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -29,8 +30,8 @@ type ProtocolParams struct {
 
 type protocolParamsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	BlockTime() time.Duration
 }
 

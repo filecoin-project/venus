@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -22,9 +23,9 @@ var log = logging.Logger("messageimpl")
 
 // Abstracts over a store of blockchain state.
 type waiterChainReader interface {
-	GetHead() types.TipSetKey
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
+	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
 	HeadEvents() *pubsub.PubSub
 }
 
@@ -39,7 +40,7 @@ type Waiter struct {
 // ChainMessage is an on-chain message with its block and receipt.
 type ChainMessage struct {
 	Message *types.SignedMessage
-	Block   *types.Block
+	Block   *block.Block
 	Receipt *types.MessageReceipt
 }
 
@@ -74,7 +75,7 @@ func (w *Waiter) Find(ctx context.Context, msgCid cid.Cid) (*ChainMessage, bool,
 // TODO: This implementation will become prohibitively expensive since it
 // traverses the entire chain. We should use an index instead.
 // https://github.com/filecoin-project/go-filecoin/issues/1518
-func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	log.Infof("Calling Waiter.Wait CID: %s", msgCid.String())
 
 	ch := w.chainReader.HeadEvents().Sub(chain.NewHeadTopic)
@@ -98,7 +99,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block,
 // findMessage looks for a message CID in the chain and returns the message,
 // block and receipt, when it is found. Returns the found message/block or nil
 // if now block with the given CID exists in the chain.
-func (w *Waiter) findMessage(ctx context.Context, ts types.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
 	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
 		if err != nil {
@@ -147,7 +148,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				e := raw.(error)
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
-			case types.TipSet:
+			case block.TipSet:
 				for i := 0; i < raw.Len(); i++ {
 					blk := raw.At(i)
 					secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
@@ -179,7 +180,7 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 // input tipset.  This can differ from the message's receipt as stored in its
 // parent block in the case that the message is in conflict with another
 // message of the tipset.
-func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts block.TipSet) (*types.MessageReceipt, error) {
 	// Receipts always match block if tipset has only 1 member.
 	var rcpt *types.MessageReceipt
 	if ts.Len() == 1 {
@@ -263,7 +264,7 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts types
 // message ordering of the given tipset, or an error if it is not in the
 // tipset.
 // TODO: find a better home for this method
-func (w *Waiter) msgIndexOfTipSet(ctx context.Context, msgCid cid.Cid, ts types.TipSet, fails map[cid.Cid]struct{}) (int, error) {
+func (w *Waiter) msgIndexOfTipSet(ctx context.Context, msgCid cid.Cid, ts block.TipSet, fails map[cid.Cid]struct{}) (int, error) {
 	duplicates := make(map[cid.Cid]struct{})
 	var msgCnt int
 	for i := 0; i < ts.Len(); i++ {

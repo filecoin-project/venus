@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 	}
 }
 
-func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *types.Block {
+func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
 	head := minerNode.Chain.ChainReader.GetHead()
 	headTipSet, err := minerNode.Chain.ChainReader.GetTipSet(head)
 	require.NoError(t, err)
@@ -47,7 +48,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *types.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		wonElection, _ = worker.Mine(ctx, headTipSet, []types.Ticket{}, out)
+		wonElection, _ = worker.Mine(ctx, headTipSet, []block.Ticket{}, out)
 		wg.Done()
 	}()
 	next := <-out

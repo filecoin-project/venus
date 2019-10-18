@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestChainHead(t *testing.T) {
@@ -51,9 +51,9 @@ func TestChainLs(t *testing.T) {
 		op2 := d.RunSuccess("chain", "ls", "--enc", "json")
 		result2 := op2.ReadStdoutTrimNewlines()
 
-		var bs [][]types.Block
+		var bs [][]block.Block
 		for _, line := range bytes.Split([]byte(result2), []byte{'\n'}) {
-			var b []types.Block
+			var b []block.Block
 			err := json.Unmarshal(line, &b)
 			require.NoError(t, err)
 			bs = append(bs, b)
@@ -72,7 +72,7 @@ func TestChainLs(t *testing.T) {
 		op := d.RunSuccess("chain", "ls", "--enc", "json")
 		result := op.ReadStdoutTrimNewlines()
 
-		var b []types.Block
+		var b []block.Block
 		err := json.Unmarshal([]byte(result), &b)
 		require.NoError(t, err)
 
@@ -83,7 +83,7 @@ func TestChainLs(t *testing.T) {
 		daemon := makeTestDaemonWithMinerAndStart(t)
 		defer daemon.ShutdownSuccess()
 
-		var blocks []types.Block
+		var blocks []block.Block
 		blockJSON := daemon.RunSuccess("chain", "ls", "--enc", "json").ReadStdoutTrimNewlines()
 		err := json.Unmarshal([]byte(blockJSON), &blocks)
 		genesisBlockCid := blocks[0].Cid().String()

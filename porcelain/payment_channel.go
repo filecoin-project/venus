@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -11,8 +12,8 @@ import (
 )
 
 type pclPlumbing interface {
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -54,8 +55,8 @@ func PaymentChannelLs(
 }
 
 type pcvPlumbing interface {
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 	WalletDefaultAddress() (address.Address, error)
 }
