@@ -109,8 +109,8 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor at %s", from)
 	}
 
-	rawMsg := types.NewMessage(from, to, nonce, value, method, encodedParams)
-	signed, err := types.NewSignedMessage(*rawMsg, ob.signer, gasPrice, gasLimit)
+	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, gasPrice, gasLimit)
+	signed, err := types.NewSignedMessage(*rawMsg, ob.signer)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}

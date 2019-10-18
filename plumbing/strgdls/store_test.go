@@ -28,7 +28,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 	totalPrice := types.NewAttoFILFromFIL(13)
 	duration := uint64(23)
 	channelID := *types.NewChannelID(19)
-	channelMessageCid, err := convert.ToCid(&types.Message{})
+	channelMessageCid, err := convert.ToCid(&types.UnsignedMessage{})
 	require.NoError(t, err)
 	clientAddr := addressMaker()
 	validAt := types.NewBlockHeight(231)

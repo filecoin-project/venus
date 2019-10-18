@@ -140,7 +140,7 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -183,7 +183,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts types.TipSet, blsM
 //      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet, blsMsgs [][]*types.MeteredMessage, secpMsgs [][]*types.SignedMessage) error {
+func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.TipSet, parentTs types.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage) error {
 	prevTicket, err := parentTs.MinTicket()
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent min ticket")
@@ -254,7 +254,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts types.T
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: don't process messages twice
@@ -315,7 +315,7 @@ func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, e
 }
 
 // verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures
-func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.MeteredMessage) error {
+func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessage) error {
 	pubKeys := [][]byte{}
 	marshalledMsgs := [][]byte{}
 	for _, msg := range msgs {
@@ -332,7 +332,7 @@ func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.MeteredMessage
 	return nil
 }
 
-func combineMessages(blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) [][]*types.SignedMessage {
+func combineMessages(blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) [][]*types.SignedMessage {
 	messages := [][]*types.SignedMessage{}
 	for _, msgs := range blsMessages {
 		messages = append(messages, wrapMessages(msgs))
@@ -343,10 +343,10 @@ func combineMessages(blsMessages [][]*types.MeteredMessage, secpMessages [][]*ty
 	return messages
 }
 
-func wrapMessages(blsMessages []*types.MeteredMessage) []*types.SignedMessage {
+func wrapMessages(blsMessages []*types.UnsignedMessage) []*types.SignedMessage {
 	signed := []*types.SignedMessage{}
 	for _, msg := range blsMessages {
-		signed = append(signed, &types.SignedMessage{MeteredMessage: *msg})
+		signed = append(signed, &types.SignedMessage{Message: *msg})
 	}
 	return signed
 }

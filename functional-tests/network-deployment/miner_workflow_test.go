@@ -161,7 +161,7 @@ func TestMinerWorkflow(t *testing.T) {
 		//
 
 		minfo, err := series.WaitForChainMessage(ctx, miner, func(ctx context.Context, node *fast.Filecoin, msg *types.SignedMessage) (bool, error) {
-			if msg.Method == "submitPoSt" && msg.To == ask.Miner {
+			if msg.Message.Method == "submitPoSt" && msg.Message.To == ask.Miner {
 				return true, nil
 			}
 

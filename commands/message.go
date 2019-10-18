@@ -175,7 +175,7 @@ var msgWaitCmd = &cmds.Command{
 
 		err = GetPorcelainAPI(env).MessageWait(ctx, msgCid, func(blk *types.Block, msg *types.SignedMessage, receipt *types.MessageReceipt) error {
 			found = true
-			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.To, msg.Method)
+			sig, err := GetPorcelainAPI(env).ActorGetSignature(req.Context, msg.Message.To, msg.Message.Method)
 			if err != nil && err != cst.ErrNoMethod && err != cst.ErrNoActorImpl {
 				return errors.Wrap(err, "Couldn't get signature for message")
 			}
@@ -292,7 +292,7 @@ var msgStatusCmd = &cmds.Command{
 			var msg *types.SignedMessage
 			if res.InOutbox {
 				msg = res.OutboxMsg.Msg
-				sw.Printf("In outbox: %s, sent at height %d\n", res.OutboxMsg.Msg.From, res.OutboxMsg.Stamp)
+				sw.Printf("In outbox: %s, sent at height %d\n", res.OutboxMsg.Msg.Message.From, res.OutboxMsg.Stamp)
 			}
 			if res.InPool {
 				msg = res.PoolMsg

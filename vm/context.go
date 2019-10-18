@@ -28,7 +28,7 @@ type ExecutableActorLookup interface {
 type Context struct {
 	from        *actor.Actor
 	to          *actor.Actor
-	message     *types.Message
+	message     *types.UnsignedMessage
 	state       *state.CachedTree
 	storageMap  StorageMap
 	gasTracker  *GasTracker
@@ -45,7 +45,7 @@ var _ exec.VMContext = (*Context)(nil)
 type NewContextParams struct {
 	From        *actor.Actor
 	To          *actor.Actor
-	Message     *types.Message
+	Message     *types.UnsignedMessage
 	State       *state.CachedTree
 	StorageMap  StorageMap
 	GasTracker  *GasTracker
@@ -78,7 +78,7 @@ func (ctx *Context) Storage() exec.Storage {
 }
 
 // Message retrieves the message associated with this context.
-func (ctx *Context) Message() *types.Message {
+func (ctx *Context) Message() *types.UnsignedMessage {
 	return ctx.message
 }
 
@@ -126,7 +126,7 @@ func (ctx *Context) Send(to address.Address, method string, value types.AttoFIL,
 		return nil, 1, errors.RevertErrorWrap(err, "encoding params failed")
 	}
 
-	msg := types.NewMessage(from, to, 0, value, method, paramData)
+	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
 	if msg.From == msg.To {
 		// TODO: handle this
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)

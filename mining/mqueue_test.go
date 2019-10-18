@@ -22,12 +22,14 @@ func TestMessageQueueOrder(t *testing.T) {
 	to := mockSigner.Addresses[9]
 
 	sign := func(from address.Address, to address.Address, nonce uint64, units uint64, price int64) *types.SignedMessage {
-		msg := types.Message{
-			From:  from,
-			To:    to,
-			Nonce: types.Uint64(nonce),
+		msg := types.UnsignedMessage{
+			From:       from,
+			To:         to,
+			CallSeqNum: types.Uint64(nonce),
+			GasPrice:   types.NewGasPrice(price),
+			GasLimit:   types.NewGasUnits(units),
 		}
-		s, err := types.NewSignedMessage(msg, &mockSigner, types.NewGasPrice(price), types.NewGasUnits(units))
+		s, err := types.NewSignedMessage(msg, &mockSigner)
 		require.NoError(t, err)
 		return s
 	}
@@ -63,11 +65,11 @@ func TestMessageQueueOrder(t *testing.T) {
 
 		lastFromAddr := make(map[address.Address]uint64)
 		for msg, more := q.Pop(); more == true; msg, more = q.Pop() {
-			last, seen := lastFromAddr[msg.From]
+			last, seen := lastFromAddr[msg.Message.From]
 			if seen {
-				assert.True(t, last <= uint64(msg.Nonce))
+				assert.True(t, last <= uint64(msg.Message.CallSeqNum))
 			}
-			lastFromAddr[msg.From] = uint64(msg.Nonce)
+			lastFromAddr[msg.Message.From] = uint64(msg.Message.CallSeqNum)
 		}
 		assert.True(t, q.Empty())
 	})

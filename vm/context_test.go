@@ -43,7 +43,7 @@ func TestVMContextStorage(t *testing.T) {
 	toAddr := addrGetter()
 
 	assert.NoError(t, st.SetActor(ctx, toAddr, toActor))
-	msg := types.NewMessage(addrGetter(), toAddr, 0, types.ZeroAttoFIL, "hello", nil)
+	msg := types.NewUnsignedMessage(addrGetter(), toAddr, 0, types.ZeroAttoFIL, "hello", nil)
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(t, err)

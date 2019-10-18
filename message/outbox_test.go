@@ -74,7 +74,7 @@ func TestOutbox(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
 			assert.NotNil(t, publisher.Message)
-			assert.Equal(t, test.nonce, publisher.Message.Nonce)
+			assert.Equal(t, test.nonce, publisher.Message.Message.CallSeqNum)
 			assert.Equal(t, uint64(test.height), publisher.Height)
 			assert.Equal(t, test.bcast, publisher.Bcast)
 		}
@@ -126,9 +126,9 @@ func TestOutbox(t *testing.T) {
 		nonces := map[uint64]bool{}
 		for _, message := range enqueued {
 			assert.Equal(t, uint64(1000), message.Stamp)
-			_, found := nonces[uint64(message.Msg.Nonce)]
+			_, found := nonces[uint64(message.Msg.Message.CallSeqNum)]
 			require.False(t, found)
-			nonces[uint64(message.Msg.Nonce)] = true
+			nonces[uint64(message.Msg.Message.CallSeqNum)] = true
 		}
 
 		for i := 0; i < 60; i++ {

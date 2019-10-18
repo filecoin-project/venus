@@ -200,7 +200,7 @@ func (f *Builder) Build(parent types.TipSet, width int, build func(b *BlockBuild
 		prevState := f.StateForKey(parent.Key())
 		msgs, ok := f.messages[b.Messages]
 		require.True(f.t, ok)
-		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.MeteredMessage{}, [][]*types.SignedMessage{msgs})
+		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{}, [][]*types.SignedMessage{msgs})
 		require.NoError(f.t, err)
 
 		f.blocks[b.Cid()] = b
@@ -231,7 +231,7 @@ func (f *Builder) ComputeState(tip types.TipSet) cid.Cid {
 	require.NoError(f.t, err)
 	// Load the state of the parent tipset and compute the required state (recursively).
 	prev := f.StateForKey(parentKey)
-	state, err := f.stateBuilder.ComputeState(prev, [][]*types.MeteredMessage{}, f.tipMessages(tip))
+	state, err := f.stateBuilder.ComputeState(prev, [][]*types.UnsignedMessage{}, f.tipMessages(tip))
 	require.NoError(f.t, err)
 	return state
 }
@@ -306,7 +306,7 @@ func (bb *BlockBuilder) SetStateRoot(root cid.Cid) {
 
 // StateBuilder abstracts the computation of state root CIDs from the chain builder.
 type StateBuilder interface {
-	ComputeState(prev cid.Cid, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error)
+	ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error)
 	Weigh(tip types.TipSet, state cid.Cid) (uint64, error)
 }
 
@@ -319,7 +319,7 @@ type FakeStateBuilder struct {
 // is the same as the input state.
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
-func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
+func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
 	for _, blockMessages := range blsMessages {
@@ -369,7 +369,7 @@ type FakeStateEvaluator struct {
 }
 
 // RunStateTransition delegates to StateBuilder.ComputeState.
-func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error) {
+func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip types.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, receipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error) {
 	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
@@ -490,12 +490,12 @@ func (f *Builder) RequireTipSets(head types.TipSetKey, count int) []types.TipSet
 }
 
 // LoadMessages returns the message collections tracked by the builder.
-func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.MeteredMessage, error) {
+func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	msgs, ok := f.messages[meta]
 	if !ok {
 		return nil, nil, errors.Errorf("no message for %s", meta.SecpRoot)
 	}
-	return msgs, []*types.MeteredMessage{}, nil
+	return msgs, []*types.UnsignedMessage{}, nil
 }
 
 // LoadReceipts returns the message collections tracked by the builder.

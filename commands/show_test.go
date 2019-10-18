@@ -173,7 +173,7 @@ func TestBlockDaemon(t *testing.T) {
 
 		fromAddr, err := address.NewFromString(from)
 		require.NoError(t, err)
-		assert.Equal(t, fromAddr, blockGetBlock.Messages[0].MeteredMessage.Message.From)
+		assert.Equal(t, fromAddr, blockGetBlock.Messages[0].Message.From)
 		assert.Equal(t, uint8(0), blockGetBlock.Receipts[0].ExitCode)
 
 		// Full block matches show messages

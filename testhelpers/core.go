@@ -136,7 +136,7 @@ func CreateTestMinerWith(
 ) address.Address {
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
-	msg := types.NewMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
+	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
 
 	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)
@@ -224,7 +224,7 @@ func (ts testStorage) Head() cid.Cid {
 
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
 type FakeVMContext struct {
-	MessageValue            *types.Message
+	MessageValue            *types.UnsignedMessage
 	StorageValue            exec.Storage
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
@@ -241,7 +241,7 @@ type FakeVMContext struct {
 var _ exec.VMContext = &FakeVMContext{}
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
-func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext {
+func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVMContext {
 	randomness := make([]byte, 32)
 	copy(randomness[:], []byte("only random in the figurative sense"))
 
@@ -272,14 +272,14 @@ func NewFakeVMContext(message *types.Message, state interface{}) *FakeVMContext 
 }
 
 // NewFakeVMContextWithVerifier creates a fake VMContext with the given verifier
-func NewFakeVMContextWithVerifier(message *types.Message, state interface{}, verifier verification.Verifier) *FakeVMContext {
+func NewFakeVMContextWithVerifier(message *types.UnsignedMessage, state interface{}, verifier verification.Verifier) *FakeVMContext {
 	vmctx := NewFakeVMContext(message, state)
 	vmctx.VerifierValue = verifier
 	return vmctx
 }
 
 // Message is the message that triggered this invocation
-func (tc *FakeVMContext) Message() *types.Message {
+func (tc *FakeVMContext) Message() *types.UnsignedMessage {
 	return tc.MessageValue
 }
 

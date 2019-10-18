@@ -26,29 +26,27 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	MeteredMessage `json:"meteredMessage"`
-	Signature      Signature `json:"signature"`
+	Message   UnsignedMessage `json:"meteredMessage"`
+	Signature Signature       `json:"signature"`
 	// Pay attention to Equals() if updating this struct.
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the serialized `msg` and `msg.From`
-func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
-
-	mmsg, err := meteredMsg.Marshal()
+func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
+	msgData, err := msg.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := s.SignBytes(mmsg, msg.From)
+	sig, err := s.SignBytes(msgData, msg.From)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SignedMessage{
-		MeteredMessage: *meteredMsg,
-		Signature:      sig,
+		Message:   msg,
+		Signature: sig,
 	}, nil
 }
 
@@ -84,15 +82,14 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 	return obj, nil
 }
 
-// VerifySignature returns true iff the signature over the message as calculated
-// from EC recover matches the message sender address.
+// VerifySignature returns true iff the signature is valid for the message content and from address.
 func (smsg *SignedMessage) VerifySignature() bool {
-	bmsg, err := smsg.MeteredMessage.Marshal()
+	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
 		log.Infof("invalid signature: %s", err)
 		return false
 	}
-	return IsValidSignature(bmsg, smsg.From, smsg.Signature)
+	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
 func (smsg *SignedMessage) String() string {
@@ -110,6 +107,6 @@ func (smsg *SignedMessage) String() string {
 
 // Equals tests whether two signed messages are equal.
 func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
-	return smsg.MeteredMessage.Equals(&other.MeteredMessage) &&
+	return smsg.Message.Equals(&other.Message) &&
 		bytes.Equal(smsg.Signature, other.Signature)
 }

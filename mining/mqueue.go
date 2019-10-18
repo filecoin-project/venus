@@ -28,14 +28,14 @@ func NewMessageQueue(msgs []*types.SignedMessage) MessageQueue {
 	// Group messages by sender.
 	bySender := make(map[address.Address]nonceQueue)
 	for _, m := range msgs {
-		bySender[m.From] = append(bySender[m.From], m)
+		bySender[m.Message.From] = append(bySender[m.Message.From], m)
 	}
 
 	// Order each sender queue by nonce and initialize heap structure.
 	addrHeap := make(queueHeap, len(bySender))
 	heapIdx := 0
 	for _, nq := range bySender {
-		sort.Slice(nq, func(i, j int) bool { return nq[i].Nonce < nq[j].Nonce })
+		sort.Slice(nq, func(i, j int) bool { return nq[i].Message.CallSeqNum < nq[j].Message.CallSeqNum })
 		addrHeap[heapIdx] = nq
 		heapIdx++
 	}
@@ -80,7 +80,7 @@ func (mq *MessageQueue) Drain() []*types.SignedMessage {
 	return out
 }
 
-// A slice of messages ordered by Nonce (for a single sender).
+// A slice of messages ordered by CallSeqNum (for a single sender).
 type nonceQueue []*types.SignedMessage
 
 // Implements heap.Interface to hold a priority queue of nonce-ordered queues, one per sender.
@@ -93,13 +93,13 @@ func (pq queueHeap) Len() int { return len(pq) }
 
 // Less implements Heap.Interface.Less to compare items on gas price and sender address.
 func (pq queueHeap) Less(i, j int) bool {
-	delta := pq[i][0].MeteredMessage.GasPrice.Sub(pq[j][0].MeteredMessage.GasPrice)
+	delta := pq[i][0].Message.GasPrice.Sub(pq[j][0].Message.GasPrice)
 	if !delta.Equal(types.ZeroAttoFIL) {
 		// We want Pop to give us the highest gas price, so use GreaterThan.
 		return delta.GreaterThan(types.ZeroAttoFIL)
 	}
 	// Secondarily order by address to give a stable ordering.
-	return bytes.Compare(pq[i][0].From.Bytes(), pq[j][0].From.Bytes()) < 0
+	return bytes.Compare(pq[i][0].Message.From.Bytes(), pq[j][0].Message.From.Bytes()) < 0
 }
 
 func (pq queueHeap) Swap(i, j int) {

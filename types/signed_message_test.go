@@ -38,13 +38,7 @@ func TestSignedMessageMarshal(t *testing.T) {
 	err = smsgBack.Unmarshal(marshalled)
 	assert.NoError(t, err)
 
-	assert.Equal(t, smsg.To, smsgBack.To)
-	assert.Equal(t, smsg.From, smsgBack.From)
-	assert.Equal(t, smsg.Value, smsgBack.Value)
-	assert.Equal(t, smsg.Method, smsgBack.Method)
-	assert.Equal(t, smsg.Params, smsgBack.Params)
-	assert.Equal(t, smsg.GasPrice, smsgBack.GasPrice)
-	assert.Equal(t, smsg.GasLimit, smsgBack.GasLimit)
+	assert.Equal(t, smsg.Message, smsgBack.Message)
 	assert.Equal(t, smsg.Signature, smsgBack.Signature)
 	assert.True(t, smsg.Equals(&smsgBack))
 }
@@ -83,14 +77,16 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 	newAddr, err := address.NewActorAddress([]byte("receiver"))
 	require.NoError(t, err)
 
-	msg := NewMessage(
+	msg := NewMeteredMessage(
 		signer.Addresses[0],
 		newAddr,
 		nonce,
 		NewAttoFILFromFIL(2),
 		"method",
-		[]byte("params"))
-	smsg, err := NewSignedMessage(*msg, &signer, NewGasPrice(1000), NewGasUnits(100))
+		[]byte("params"),
+		NewGasPrice(1000),
+		NewGasUnits(100))
+	smsg, err := NewSignedMessage(*msg, &signer)
 	require.NoError(t, err)
 
 	// This check requests that you add a non-zero value for new fields above,

@@ -55,14 +55,14 @@ func (mq *Queue) Enqueue(ctx context.Context, msg *types.SignedMessage, stamp ui
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
-	q := mq.queues[msg.From]
+	q := mq.queues[msg.Message.From]
 	if len(q) > 0 {
-		nextNonce := q[len(q)-1].Msg.Nonce + 1
-		if msg.Nonce != nextNonce {
-			return errors.Errorf("Invalid nonce in %d in enqueue, expected %d", msg.Nonce, nextNonce)
+		nextNonce := q[len(q)-1].Msg.Message.CallSeqNum + 1
+		if msg.Message.CallSeqNum != nextNonce {
+			return errors.Errorf("Invalid nonce in %d in enqueue, expected %d", msg.Message.CallSeqNum, nextNonce)
 		}
 	}
-	mq.queues[msg.From] = append(q, &Queued{msg, stamp})
+	mq.queues[msg.Message.From] = append(q, &Queued{msg, stamp})
 	return nil
 }
 
@@ -77,14 +77,14 @@ func (mq *Queue) Requeue(ctx context.Context, msg *types.SignedMessage, stamp ui
 	mq.lk.Lock()
 	defer mq.lk.Unlock()
 
-	q := mq.queues[msg.From]
+	q := mq.queues[msg.Message.From]
 	if len(q) > 0 {
-		prevNonce := q[0].Msg.Nonce - 1
-		if msg.Nonce != prevNonce {
-			return errors.Errorf("Invalid nonce %d in requeue, expected %d", msg.Nonce, prevNonce)
+		prevNonce := q[0].Msg.Message.CallSeqNum - 1
+		if msg.Message.CallSeqNum != prevNonce {
+			return errors.Errorf("Invalid nonce %d in requeue, expected %d", msg.Message.CallSeqNum, prevNonce)
 		}
 	}
-	mq.queues[msg.From] = append([]*Queued{{msg, stamp}}, q...)
+	mq.queues[msg.Message.From] = append([]*Queued{{msg, stamp}}, q...)
 	return nil
 }
 
@@ -105,12 +105,12 @@ func (mq *Queue) RemoveNext(ctx context.Context, sender address.Address, expecte
 	q := mq.queues[sender]
 	if len(q) > 0 {
 		head := q[0]
-		if expectedNonce == uint64(head.Msg.Nonce) {
+		if expectedNonce == uint64(head.Msg.Message.CallSeqNum) {
 			mq.queues[sender] = q[1:] // pop the head
 			msg = head.Msg
 			found = true
-		} else if expectedNonce > uint64(head.Msg.Nonce) {
-			err = errors.Errorf("Next message for %s has nonce %d, expected %d", sender, head.Msg.Nonce, expectedNonce)
+		} else if expectedNonce > uint64(head.Msg.Message.CallSeqNum) {
+			err = errors.Errorf("Next message for %s has nonce %d, expected %d", sender, head.Msg.Message.CallSeqNum, expectedNonce)
 		}
 		// else expected nonce was before the head of the queue, already removed
 	}
@@ -168,7 +168,7 @@ func (mq *Queue) LargestNonce(sender address.Address) (largest uint64, found boo
 	defer mq.lk.RUnlock()
 	q := mq.queues[sender]
 	if len(q) > 0 {
-		return uint64(q[len(q)-1].Msg.Nonce), true
+		return uint64(q[len(q)-1].Msg.Message.CallSeqNum), true
 	}
 	return 0, false
 }

@@ -173,7 +173,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 	ctx := context.Background()
 	storage := vmctx.Storage()
 	payerAddress := vmctx.Message().From
-	channelID := types.NewChannelID(uint64(vmctx.Message().Nonce))
+	channelID := types.NewChannelID(uint64(vmctx.Message().CallSeqNum))
 
 	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID exec.Lookup) error {
 		// check to see if payment channel is duplicate

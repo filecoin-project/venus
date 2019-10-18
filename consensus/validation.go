@@ -55,7 +55,8 @@ func NewOutboundMessageValidator() SignedMessageValidator {
 
 var _ SignedMessageValidator = (*defaultMessageValidator)(nil)
 
-func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (v *defaultMessageValidator) Validate(ctx context.Context, smsg *types.SignedMessage, fromActor *actor.Actor) error {
+	msg := smsg.Message
 	if msg.From == msg.To {
 		return errSelfSend
 	}
@@ -83,19 +84,19 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 	}
 
 	// Avoid processing messages for actors that cannot pay.
-	if !canCoverGasLimit(msg, fromActor) {
+	if !canCoverGasLimit(smsg, fromActor) {
 		log.Debugf("Insufficient funds for message: %s to cover gas limit from actor: %s", msg.String(), msg.From.String())
 		errInsufficientGasCt.Inc(ctx, 1)
 		return errInsufficientGas
 	}
 
-	if msg.Nonce < fromActor.Nonce {
+	if msg.CallSeqNum < fromActor.Nonce {
 		log.Debugf("Message: %s nonce lower than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
 		errNonceTooLowCt.Inc(ctx, 1)
 		return errNonceTooLow
 	}
 
-	if !v.allowHighNonce && msg.Nonce > fromActor.Nonce {
+	if !v.allowHighNonce && msg.CallSeqNum > fromActor.Nonce {
 		log.Debugf("Message: %s nonce greater than actor nonce: %s from actor: %s", msg.String(), fromActor.Nonce, msg.From.String())
 		errNonceTooHighCt.Inc(ctx, 1)
 		return errNonceTooHigh
@@ -108,8 +109,8 @@ func (v *defaultMessageValidator) Validate(ctx context.Context, msg *types.Signe
 // Note that this is an imperfect test, since nested messages invoked by this one may transfer
 // more value from the actor's balance.
 func canCoverGasLimit(msg *types.SignedMessage, actor *actor.Actor) bool {
-	maximumGasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(msg.GasLimit)))
-	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Value))
+	maximumGasCharge := msg.Message.GasPrice.MulBigInt(big.NewInt(int64(msg.Message.GasLimit)))
+	return maximumGasCharge.LessEqual(actor.Balance.Sub(msg.Message.Value))
 }
 
 // IngestionValidatorAPI allows the validator to access latest state
@@ -142,7 +143,7 @@ func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMess
 	}
 
 	// retrieve from actor
-	fromActor, err := v.api.GetActor(ctx, msg.From)
+	fromActor, err := v.api.GetActor(ctx, msg.Message.From)
 	if err != nil {
 		if state.IsActorNotFoundError(err) {
 			fromActor = &actor.Actor{}
@@ -152,8 +153,8 @@ func (v *IngestionValidator) Validate(ctx context.Context, msg *types.SignedMess
 	}
 
 	// check that message nonce is not too high
-	if msg.Nonce > fromActor.Nonce && msg.Nonce-fromActor.Nonce > v.cfg.MaxNonceGap {
-		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.Nonce, fromActor.Nonce)
+	if msg.Message.CallSeqNum > fromActor.Nonce && msg.Message.CallSeqNum-fromActor.Nonce > v.cfg.MaxNonceGap {
+		return errors.NewRevertErrorf("message nonce (%d) is too much greater than actor nonce (%d)", msg.Message.CallSeqNum, fromActor.Nonce)
 	}
 
 	return v.validator.Validate(ctx, msg, fromActor)

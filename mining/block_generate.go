@@ -153,12 +153,12 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	return next, nil
 }
 
-func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.MeteredMessage, types.Signature, error) {
+func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage, types.Signature, error) {
 	sigs := []bls.Signature{}
-	unwrappedMsgs := []*types.MeteredMessage{}
+	unwrappedMsgs := []*types.UnsignedMessage{}
 	for _, msg := range blsMessages {
 		// unwrap messages
-		unwrappedMsgs = append(unwrappedMsgs, &msg.MeteredMessage)
+		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
 		sig := msg.Signature
 
 		// store message signature as bls signature
@@ -168,7 +168,7 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.MeteredMessage, 
 	}
 	blsAggregateSig := bls.Aggregate(sigs)
 	if blsAggregateSig == nil {
-		return []*types.MeteredMessage{}, types.Signature{}, errors.New("could not aggregate signatures")
+		return []*types.UnsignedMessage{}, types.Signature{}, errors.New("could not aggregate signatures")
 	}
 	return unwrappedMsgs, blsAggregateSig[:], nil
 }
@@ -178,7 +178,7 @@ func divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []
 	blsMessages := []*types.SignedMessage{}
 
 	for _, m := range messages {
-		if m.From.Protocol() == address.BLS {
+		if m.Message.From.Protocol() == address.BLS {
 			blsMessages = append(blsMessages, m)
 		} else {
 			secpMessages = append(secpMessages, m)

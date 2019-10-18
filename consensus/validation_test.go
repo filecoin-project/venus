@@ -93,12 +93,8 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMessage(from, addresses[1], 0, types.ZeroAttoFIL, "method", []byte("params"))
-	unsigned := &types.SignedMessage{MeteredMessage: types.MeteredMessage{
-		Message:  *msg,
-		GasPrice: types.NewGasPrice(1),
-		GasLimit: types.NewGasUnits(300),
-	}}
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, "method", []byte("params"), types.NewGasPrice(1), types.NewGasUnits(300))
+	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
 	ctx := context.Background()
@@ -183,15 +179,17 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 	gasPrice int64, gasLimit uint64) *types.SignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
-	msg := types.NewMessage(
+	msg := types.NewMeteredMessage(
 		from,
 		to,
 		nonce,
 		val,
 		"method",
 		[]byte("params"),
+		types.NewGasPrice(gasPrice),
+		types.NewGasUnits(gasLimit),
 	)
-	signed, err := types.NewSignedMessage(*msg, signer, types.NewGasPrice(gasPrice), types.NewGasUnits(gasLimit))
+	signed, err := types.NewSignedMessage(*msg, signer)
 	require.NoError(t, err)
 	return signed
 }

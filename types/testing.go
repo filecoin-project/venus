@@ -165,14 +165,16 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 		if err != nil {
 			panic(err)
 		}
-		msg := NewMessage(
+		msg := NewMeteredMessage(
 			ms.Addresses[0], // from needs to be an address from the signer
 			newAddr,
 			0,
 			ZeroAttoFIL,
 			s,
-			[]byte("params"))
-		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasUnits(0))
+			[]byte("params"),
+			NewGasPrice(0),
+			NewGasUnits(0))
+		smsg, err := NewSignedMessage(*msg, &ms)
 		if err != nil {
 			panic(err)
 		}
@@ -210,9 +212,9 @@ func NewCidForTestGetter() func() cid.Cid {
 // in tests instead of manually creating messages -- it both reduces duplication and gives us
 // exactly one place to create valid messages for tests if messages require validation in the
 // future.
-func NewMessageForTestGetter() func() *Message {
+func NewMessageForTestGetter() func() *UnsignedMessage {
 	i := 0
-	return func() *Message {
+	return func() *UnsignedMessage {
 		s := fmt.Sprintf("msg%d", i)
 		i++
 		from, err := address.NewActorAddress([]byte(s + "-from"))
@@ -223,7 +225,7 @@ func NewMessageForTestGetter() func() *Message {
 		if err != nil {
 			panic(err)
 		}
-		return NewMessage(
+		return NewUnsignedMessage(
 			from,
 			to,
 			0,
@@ -244,12 +246,12 @@ func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
 // NewMsgs returns n messages. The messages returned are unique to this invocation
 // but are not unique globally (ie, a second call to NewMsgs will return the same
 // set of messages).
-func NewMsgs(n int) []*Message {
+func NewMsgs(n int) []*UnsignedMessage {
 	newMsg := NewMessageForTestGetter()
-	msgs := make([]*Message, n)
+	msgs := make([]*UnsignedMessage, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = newMsg()
-		msgs[i].Nonce = Uint64(i)
+		msgs[i].CallSeqNum = Uint64(i)
 	}
 	return msgs
 }
@@ -264,8 +266,10 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 	for i := uint(0); i < n; i++ {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
-		msg.Nonce = Uint64(i)
-		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(1), NewGasUnits(0))
+		msg.CallSeqNum = Uint64(i)
+		msg.GasPrice = NewGasPrice(1)
+		msg.GasLimit = NewGasUnits(0)
+		smsgs[i], err = NewSignedMessage(*msg, ms)
 		if err != nil {
 			panic(err)
 		}
@@ -275,10 +279,10 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 
 // SignMsgs returns a slice of signed messages where the original messages
 // are `msgs`, if signing one of the `msgs` fails an error is returned
-func SignMsgs(ms MockSigner, msgs []*Message) ([]*SignedMessage, error) {
+func SignMsgs(ms MockSigner, msgs []*UnsignedMessage) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(*m, &ms, NewGasPrice(0), NewGasUnits(0))
+		s, err := NewSignedMessage(*m, &ms)
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +293,7 @@ func SignMsgs(ms MockSigner, msgs []*Message) ([]*SignedMessage, error) {
 
 // MsgCidsEqual returns true if the message cids are equal. It panics if
 // it can't get their cid.
-func MsgCidsEqual(m1, m2 *Message) bool {
+func MsgCidsEqual(m1, m2 *UnsignedMessage) bool {
 	m1Cid, err := m1.Cid()
 	if err != nil {
 		panic(err)
@@ -318,12 +322,12 @@ func SmsgCidsEqual(m1, m2 *SignedMessage) bool {
 // NewMsgsWithAddrs returns a slice of `n` messages who's `From` field's are pulled
 // from `a`. This method should be used when the addresses returned are to be signed
 // at a later point.
-func NewMsgsWithAddrs(n int, a []address.Address) []*Message {
+func NewMsgsWithAddrs(n int, a []address.Address) []*UnsignedMessage {
 	if n > len(a) {
 		panic("cannot create more messages than there are addresess for")
 	}
 	newMsg := NewMessageForTestGetter()
-	msgs := make([]*Message, n)
+	msgs := make([]*UnsignedMessage, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = newMsg()
 		msgs[i].From = a[i]

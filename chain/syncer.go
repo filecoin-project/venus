@@ -65,7 +65,7 @@ type syncChainSelector interface {
 type syncStateEvaluator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
+	RunStateTransition(ctx context.Context, ts types.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []types.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
 }
 
 // Syncer updates its chain.Store according to the methods of its
@@ -166,7 +166,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next typ
 
 	// Gather tipset messages
 	var nextSecpMessages [][]*types.SignedMessage
-	var nextBlsMessages [][]*types.MeteredMessage
+	var nextBlsMessages [][]*types.UnsignedMessage
 	var nextReceipts [][]*types.MessageReceipt
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)

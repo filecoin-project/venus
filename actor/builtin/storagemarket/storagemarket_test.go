@@ -32,7 +32,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 
 	pid := th.RequireRandomPeerID(t)
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result.ExecutionError)
@@ -68,13 +68,13 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
 	require.NoError(t, err)
 
-	msg := types.NewMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, th.RequireRandomPeerID(t))
-	msg = types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
@@ -96,7 +96,7 @@ func TestProofsMode(t *testing.T) {
 	defer cancel()
 
 	st, vms := th.RequireCreateStorages(ctx, t)
-	msg := types.NewMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
 	require.NoError(t, err)

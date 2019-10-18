@@ -289,7 +289,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	tagMethod := msg.Method
+	tagMethod := msg.Message.Method
 	if tagMethod == "" {
 		tagMethod = "sendFIL"
 	}
@@ -345,12 +345,12 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 
 	// At this point we consider the message successfully applied so inc
 	// the nonce.
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromActor, err := st.GetActor(ctx, msg.Message.From)
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
 	fromActor.IncNonce()
-	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
+	if err := st.SetActor(ctx, msg.Message.From, fromActor); err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
@@ -386,13 +386,13 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedStateTree(st)
 
-	msg := &types.Message{
-		From:   from,
-		To:     to,
-		Nonce:  0,
-		Value:  types.ZeroAttoFIL,
-		Method: method,
-		Params: params,
+	msg := &types.UnsignedMessage{
+		From:       from,
+		To:         to,
+		CallSeqNum: 0,
+		Value:      types.ZeroAttoFIL,
+		Method:     method,
+		Params:     params,
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
@@ -425,13 +425,13 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedStateTree(st)
 
-	msg := &types.Message{
-		From:   from,
-		To:     to,
-		Nonce:  0,
-		Value:  types.ZeroAttoFIL,
-		Method: method,
-		Params: params,
+	msg := &types.UnsignedMessage{
+		From:       from,
+		To:         to,
+		CallSeqNum: 0,
+		Value:      types.ZeroAttoFIL,
+		Method:     method,
+		Params:     params,
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
@@ -459,7 +459,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
 func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*types.MessageReceipt, error) {
-	gasTracker.ResetForNewMessage(msg.MeteredMessage)
+	gasTracker.ResetForNewMessage(msg.Message)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -467,14 +467,14 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}, err
 	}
 
-	fromActor, err := st.GetActor(ctx, msg.From)
+	fromActor, err := st.GetActor(ctx, msg.Message.From)
 	if state.IsActorNotFoundError(err) {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
 			GasAttoFIL: types.ZeroAttoFIL,
 		}, errFromAccountNotFound
 	} else if err != nil {
-		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
+		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.Message.From)
 	}
 
 	err = p.signedMessageValidator.Validate(ctx, msg, fromActor)
@@ -493,7 +493,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
+	toActor, err := st.GetOrCreateActor(ctx, msg.Message.To, func() (*actor.Actor, error) {
 		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
 		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
 		// actor to collect any balance that may be transferred.
@@ -522,7 +522,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	}
 
 	// compute gas charge
-	gasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(vmCtx.GasUnits())))
+	gasCharge := msg.Message.GasPrice.MulBigInt(big.NewInt(int64(vmCtx.GasUnits())))
 
 	receipt := &types.MessageReceipt{
 		ExitCode:   exitCode,
@@ -609,7 +609,7 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
 func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
 	cachedTree := state.NewCachedStateTree(st)
-	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, gas, cachedTree); err != nil {
+	if err := rewardTransfer(ctx, msg.Message.From, minerOwnerAddr, gas, cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)
