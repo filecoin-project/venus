@@ -46,7 +46,7 @@ type UnsignedMessage struct {
 	// When receiving a message from a user account the nonce in
 	// the message must match the expected nonce in the from actor.
 	// This prevents replay attacks.
-	CallSeqNum Uint64 `json:"nonce"`
+	CallSeqNum Uint64 `json:"callSeqNum"`
 
 	Value AttoFIL `json:"value"`
 

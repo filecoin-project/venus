@@ -33,7 +33,6 @@ type SignedMessage struct {
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the serialized `msg` and `msg.From`
-// TODO: this is not an appropriate place to add price and limit
 func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	msgData, err := msg.Marshal()
 	if err != nil {
@@ -83,8 +82,7 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 	return obj, nil
 }
 
-// VerifySignature returns true iff the signature over the message as calculated
-// from EC recover matches the message sender address.
+// VerifySignature returns true iff the signature is valid for the message content and from addres.
 func (smsg *SignedMessage) VerifySignature() bool {
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
