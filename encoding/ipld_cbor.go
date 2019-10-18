@@ -4,17 +4,17 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-// CborEncoder is an object encoder that encodes objects based on the CBOR standard.
+// IpldCborEncoder is an object encoder that encodes objects based on the CBOR standard.
 type IpldCborEncoder struct {
 	raw []byte
 }
 
-// CborDecoder is an object decoder that decodes objects based on the CBOR standard.
+// IpldCborDecoder is an object decoder that decodes objects based on the CBOR standard.
 type IpldCborDecoder struct {
 	raw []byte
 }
 
-// RegisterCborType registers a type for Cbor encoding/decoding
+// RegisterIpldCborType registers a type for Cbor encoding/decoding
 func RegisterIpldCborType(i interface{}) {
 	cbor.RegisterCborType(i)
 }

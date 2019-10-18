@@ -1,7 +1,5 @@
 package encoding
 
-// TODO: add support to receive an Encoder/Decoder as optional argument
-
 // Encodable represents types that can be encoded using this library.
 type Encodable interface {
 	Encode(encoder Encoder) error
@@ -29,6 +27,7 @@ type defaultEncoder = IpldCborEncoder
 type defaultDecoder = IpldCborDecoder
 
 // Encode encodes an encodable type, returning a byte array.
+// XXX: add support to receive an Encoder/Decoder as optional argument
 func Encode(obj Encodable) ([]byte, error) {
 	var encoder Encoder = &defaultEncoder{}
 
@@ -41,6 +40,7 @@ func Encode(obj Encodable) ([]byte, error) {
 }
 
 // Decode decodes a decodable type, and populates a pointer to the type.
+// XXX: add support to receive an Encoder/Decoder as optional argument
 func Decode(raw []byte, obj Decodable) error {
 	var decoder Decoder = &defaultDecoder{}
 	decoder.SetBytes(raw)
