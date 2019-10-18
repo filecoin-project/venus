@@ -70,7 +70,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 	}
 }
 
-// NewMeterMessage adds gas price and gas limit to the message
+// NewMeteredMessage adds gas price and gas limit to the message
 func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
