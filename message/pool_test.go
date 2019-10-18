@@ -93,7 +93,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		_, err := pool.Add(ctx, smsg1, 0)
 		require.NoError(t, err)
 
-		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Nonce)
+		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.CallSeqNum)
 		_, err = pool.Add(ctx, smsg2, 0)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "message with same actor and nonce")
@@ -175,7 +175,7 @@ func TestLargestNonce(t *testing.T) {
 		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(1, mockSigner.Addresses)
-		m[0].Nonce = 0
+		m[0].CallSeqNum = 0
 
 		sm, err := types.SignMsgs(mockSigner, m)
 		require.NoError(t, err)
@@ -191,8 +191,8 @@ func TestLargestNonce(t *testing.T) {
 		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 
 		m := types.NewMsgsWithAddrs(3, mockSigner.Addresses)
-		m[1].Nonce = 1
-		m[2].Nonce = 2
+		m[1].CallSeqNum = 1
+		m[2].CallSeqNum = 2
 		m[2].From = m[1].From
 
 		sm, err := types.SignMsgs(mockSigner, m)
@@ -208,7 +208,7 @@ func TestLargestNonce(t *testing.T) {
 
 func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
 	return mustResignMessage(signer, message, func(m *types.UnsignedMessage) {
-		m.Nonce = nonce
+		m.CallSeqNum = nonce
 	})
 }
 

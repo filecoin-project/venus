@@ -82,7 +82,7 @@ var mpoolShowCmd = &cmds.Command{
 			_, err := fmt.Fprintf(w, `Message Details
 To:        %s
 From:      %s
-Nonce:     %s
+CallSeqNum:     %s
 Value:     %s
 Method:    %s
 Params:    %s
@@ -92,7 +92,7 @@ Signature: %s
 `,
 				msg.To,
 				msg.From,
-				strconv.FormatUint(uint64(msg.Nonce), 10),
+				strconv.FormatUint(uint64(msg.CallSeqNum), 10),
 				msg.Value,
 				msg.Method,
 				base64.StdEncoding.EncodeToString(msg.Params),

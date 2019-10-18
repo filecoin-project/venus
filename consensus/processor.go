@@ -387,12 +387,12 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	cachedSt := state.NewCachedStateTree(st)
 
 	msg := &types.UnsignedMessage{
-		From:   from,
-		To:     to,
-		Nonce:  0,
-		Value:  types.ZeroAttoFIL,
-		Method: method,
-		Params: params,
+		From:       from,
+		To:         to,
+		CallSeqNum: 0,
+		Value:      types.ZeroAttoFIL,
+		Method:     method,
+		Params:     params,
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.
@@ -426,12 +426,12 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	cachedSt := state.NewCachedStateTree(st)
 
 	msg := &types.UnsignedMessage{
-		From:   from,
-		To:     to,
-		Nonce:  0,
-		Value:  types.ZeroAttoFIL,
-		Method: method,
-		Params: params,
+		From:       from,
+		To:         to,
+		CallSeqNum: 0,
+		Value:      types.ZeroAttoFIL,
+		Method:     method,
+		Params:     params,
 	}
 
 	// Set the gas limit to the max because this message send should always succeed; it doesn't cost gas.

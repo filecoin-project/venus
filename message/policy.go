@@ -70,7 +70,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 				return err
 			}
 			for _, minedMsg := range secpMsgs {
-				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.Nonce))
+				removed, found, err := target.RemoveNext(ctx, minedMsg.From, uint64(minedMsg.CallSeqNum))
 				if err != nil {
 					return err
 				}

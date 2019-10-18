@@ -249,7 +249,7 @@ func NewMsgs(n int) []*UnsignedMessage {
 	msgs := make([]*UnsignedMessage, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = newMsg()
-		msgs[i].Nonce = Uint64(i)
+		msgs[i].CallSeqNum = Uint64(i)
 	}
 	return msgs
 }
@@ -264,7 +264,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 	for i := uint(0); i < n; i++ {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
-		msg.Nonce = Uint64(i)
+		msg.CallSeqNum = Uint64(i)
 		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(1), NewGasUnits(0))
 		if err != nil {
 			panic(err)

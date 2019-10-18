@@ -162,6 +162,6 @@ func TestSignedMessageCorrupted(t *testing.T) {
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 
-	smsg.UnsignedMessage.Nonce = types.Uint64(uint64(42))
+	smsg.UnsignedMessage.CallSeqNum = types.Uint64(uint64(42))
 	assert.False(t, smsg.VerifySignature())
 }

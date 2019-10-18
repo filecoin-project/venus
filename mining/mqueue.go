@@ -35,7 +35,7 @@ func NewMessageQueue(msgs []*types.SignedMessage) MessageQueue {
 	addrHeap := make(queueHeap, len(bySender))
 	heapIdx := 0
 	for _, nq := range bySender {
-		sort.Slice(nq, func(i, j int) bool { return nq[i].Nonce < nq[j].Nonce })
+		sort.Slice(nq, func(i, j int) bool { return nq[i].CallSeqNum < nq[j].CallSeqNum })
 		addrHeap[heapIdx] = nq
 		heapIdx++
 	}
@@ -80,7 +80,7 @@ func (mq *MessageQueue) Drain() []*types.SignedMessage {
 	return out
 }
 
-// A slice of messages ordered by Nonce (for a single sender).
+// A slice of messages ordered by CallSeqNum (for a single sender).
 type nonceQueue []*types.SignedMessage
 
 // Implements heap.Interface to hold a priority queue of nonce-ordered queues, one per sender.
