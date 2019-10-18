@@ -18,7 +18,7 @@ func TestDefaultMessagePublisher_Publish(t *testing.T) {
 
 	ms, _ := types.NewMockSignersAndKeyInfo(2)
 	msg := types.NewUnsignedMessage(ms.Addresses[0], ms.Addresses[1], 0, types.ZeroAttoFIL, "", []byte{})
-	signed, err := types.NewSignedMessage(*msg, ms, types.ZeroAttoFIL, types.NewGasUnits(0))
+	signed, err := types.NewSignedMessage(*msg, ms)
 	require.NoError(t, err)
 	msgCid, err := signed.Cid()
 	require.NoError(t, err)

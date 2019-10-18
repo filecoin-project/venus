@@ -178,10 +178,8 @@ func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.S
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, signer *types.MockSigner,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
-
-	smsg, err := types.NewSignedMessage(*msg, signer, gasPrice, gasLimit)
+func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, signer *types.MockSigner, minerOwner address.Address) (*consensus.ApplicationResult, error) {
+	smsg, err := types.NewSignedMessage(*msg, signer)
 	if err != nil {
 		panic(err)
 	}
@@ -216,7 +214,9 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 }
 
 func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
-	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
+	msg.GasPrice = types.NewGasPrice(1)
+	msg.GasLimit = types.NewGasUnits(300)
+	smsg, err := types.NewSignedMessage(*msg, testSigner{})
 	if err != nil {
 		panic(err)
 	}

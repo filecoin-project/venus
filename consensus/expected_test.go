@@ -192,8 +192,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
 		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
 		smsg := &types.SignedMessage{
-			UnsignedMessage: *msg,
-			Signature:       []byte("not a signature"),
+			Message:   *msg,
+			Signature: []byte("not a signature"),
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 

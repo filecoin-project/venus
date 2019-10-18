@@ -26,18 +26,15 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	UnsignedMessage `json:"meteredMessage"`
-	Signature       Signature `json:"signature"`
+	Message   UnsignedMessage `json:"meteredMessage"`
+	Signature Signature       `json:"signature"`
 	// Pay attention to Equals() if updating this struct.
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the serialized `msg` and `msg.From`
 // TODO: this is not an appropriate place to add price and limit
-func NewSignedMessage(msg UnsignedMessage, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	msg.GasPrice = gasPrice
-	msg.GasLimit = gasLimit
-
+func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	msgData, err := msg.Marshal()
 	if err != nil {
 		return nil, err
@@ -49,8 +46,8 @@ func NewSignedMessage(msg UnsignedMessage, s Signer, gasPrice AttoFIL, gasLimit 
 	}
 
 	return &SignedMessage{
-		UnsignedMessage: msg,
-		Signature:       sig,
+		Message:   msg,
+		Signature: sig,
 	}, nil
 }
 
@@ -89,12 +86,12 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 // VerifySignature returns true iff the signature over the message as calculated
 // from EC recover matches the message sender address.
 func (smsg *SignedMessage) VerifySignature() bool {
-	bmsg, err := smsg.UnsignedMessage.Marshal()
+	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
 		log.Infof("invalid signature: %s", err)
 		return false
 	}
-	return IsValidSignature(bmsg, smsg.From, smsg.Signature)
+	return IsValidSignature(bmsg, smsg.Message.From, smsg.Signature)
 }
 
 func (smsg *SignedMessage) String() string {
@@ -112,6 +109,6 @@ func (smsg *SignedMessage) String() string {
 
 // Equals tests whether two signed messages are equal.
 func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
-	return smsg.UnsignedMessage.Equals(&other.UnsignedMessage) &&
+	return smsg.Message.Equals(&other.Message) &&
 		bytes.Equal(smsg.Signature, other.Signature)
 }

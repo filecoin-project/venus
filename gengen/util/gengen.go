@@ -366,10 +366,10 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 // Outside genesis, direct execution of actor code is a really bad idea.
 func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value types.AttoFIL, method string, params ...interface{}) ([][]byte, error) {
 	pdata := actor.MustConvertParams(params...)
-	msg := types.NewUnsignedMessage(from, to, 0, value, method, pdata)
 	// this should never fail due to lack of gas since gas doesn't have meaning here
 	gasLimit := types.BlockGasLimit
-	smsg, err := types.NewSignedMessage(*msg, &signer{}, types.NewGasPrice(0), gasLimit)
+	msg := types.NewMeteredMessage(from, to, 0, value, method, pdata, types.NewGasPrice(0), gasLimit)
+	smsg, err := types.NewSignedMessage(*msg, &signer{})
 	if err != nil {
 		return nil, err
 	}

@@ -78,7 +78,8 @@ var mpoolShowCmd = &cmds.Command{
 	},
 	Type: &types.SignedMessage{},
 	Encoders: cmds.EncoderMap{
-		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, msg *types.SignedMessage) error {
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, smsg *types.SignedMessage) error {
+			msg := smsg.Message
 			_, err := fmt.Fprintf(w, `Message Details
 To:        %s
 From:      %s
@@ -98,7 +99,7 @@ Signature: %s
 				base64.StdEncoding.EncodeToString(msg.Params),
 				msg.GasPrice.String(),
 				strconv.FormatUint(uint64(msg.GasLimit), 10),
-				base64.StdEncoding.EncodeToString(msg.Signature),
+				base64.StdEncoding.EncodeToString(smsg.Signature),
 			)
 			return err
 		}),

@@ -165,14 +165,16 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 		if err != nil {
 			panic(err)
 		}
-		msg := NewUnsignedMessage(
+		msg := NewMeteredMessage(
 			ms.Addresses[0], // from needs to be an address from the signer
 			newAddr,
 			0,
 			ZeroAttoFIL,
 			s,
-			[]byte("params"))
-		smsg, err := NewSignedMessage(*msg, &ms, NewGasPrice(0), NewGasUnits(0))
+			[]byte("params"),
+			NewGasPrice(0),
+			NewGasUnits(0))
+		smsg, err := NewSignedMessage(*msg, &ms)
 		if err != nil {
 			panic(err)
 		}
@@ -265,7 +267,9 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 		msg := newMsg()
 		msg.From = ms.Addresses[0]
 		msg.CallSeqNum = Uint64(i)
-		smsgs[i], err = NewSignedMessage(*msg, ms, NewGasPrice(1), NewGasUnits(0))
+		msg.GasPrice = NewGasPrice(1)
+		msg.GasLimit = NewGasUnits(0)
+		smsgs[i], err = NewSignedMessage(*msg, ms)
 		if err != nil {
 			panic(err)
 		}
@@ -278,7 +282,7 @@ func NewSignedMsgs(n uint, ms MockSigner) []*SignedMessage {
 func SignMsgs(ms MockSigner, msgs []*UnsignedMessage) ([]*SignedMessage, error) {
 	var smsgs []*SignedMessage
 	for _, m := range msgs {
-		s, err := NewSignedMessage(*m, &ms, NewGasPrice(0), NewGasUnits(0))
+		s, err := NewSignedMessage(*m, &ms)
 		if err != nil {
 			return nil, err
 		}

@@ -110,8 +110,8 @@ func TestSignMessageOk(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
 	assert.True(t, smsg.VerifySignature())
@@ -132,8 +132,8 @@ func TestBadFrom(t *testing.T) {
 	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
 	require.NoError(t, err)
 	smsg := &types.SignedMessage{
-		UnsignedMessage: *msg,
-		Signature:       sig,
+		Message:   *msg,
+		Signature: sig,
 	}
 
 	assert.False(t, smsg.VerifySignature())
@@ -144,8 +144,8 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	tf.UnitTest(t)
 
 	fs, addr := requireSignerAddr(t)
-	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
 	smsg.Signature[0] = smsg.Signature[0] ^ 0xFF
@@ -158,10 +158,10 @@ func TestSignedMessageCorrupted(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
-	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
-	smsg.UnsignedMessage.CallSeqNum = types.Uint64(uint64(42))
+	smsg.Message.CallSeqNum = types.Uint64(uint64(42))
 	assert.False(t, smsg.VerifySignature())
 }

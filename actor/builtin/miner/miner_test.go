@@ -159,11 +159,11 @@ func TestChangeWorker(t *testing.T) {
 
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
-		msg := types.NewUnsignedMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata)
-
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata, gasPrice, gasLimit)
+
+		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, mockSigner.Addresses[0])
 		assert.NoError(t, err)
 
 		require.Error(t, result.ExecutionError)
@@ -1288,11 +1288,11 @@ func TestActorSlashStorageFault(t *testing.T) {
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		// change worker
-		msg := types.NewUnsignedMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{})
-
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, gasPrice, gasLimit, mockSigner.Addresses[0])
+		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{}, gasPrice, gasLimit)
+
+		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, mockSigner.Addresses[0])
 		require.NoError(t, err)
 
 		require.Error(t, result.ExecutionError)

@@ -158,7 +158,7 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 	unwrappedMsgs := []*types.UnsignedMessage{}
 	for _, msg := range blsMessages {
 		// unwrap messages
-		unwrappedMsgs = append(unwrappedMsgs, &msg.UnsignedMessage)
+		unwrappedMsgs = append(unwrappedMsgs, &msg.Message)
 		sig := msg.Signature
 
 		// store message signature as bls signature
@@ -178,7 +178,7 @@ func divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []
 	blsMessages := []*types.SignedMessage{}
 
 	for _, m := range messages {
-		if m.From.Protocol() == address.BLS {
+		if m.Message.From.Protocol() == address.BLS {
 			blsMessages = append(blsMessages, m)
 		} else {
 			secpMessages = append(secpMessages, m)

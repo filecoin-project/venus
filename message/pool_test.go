@@ -93,7 +93,7 @@ func TestMessagePoolValidate(t *testing.T) {
 		_, err := pool.Add(ctx, smsg1, 0)
 		require.NoError(t, err)
 
-		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.CallSeqNum)
+		smsg2 := mustSetNonce(mockSigner, newSignedMessage(), smsg1.Message.CallSeqNum)
 		_, err = pool.Add(ctx, smsg2, 0)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "message with same actor and nonce")
@@ -214,7 +214,7 @@ func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types
 
 func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.UnsignedMessage)) *types.SignedMessage {
 	var msg types.UnsignedMessage
-	msg = message.UnsignedMessage
+	msg = message.Message
 	f(&msg)
 	smg, err := signMessage(signer, msg)
 	if err != nil {
@@ -224,7 +224,7 @@ func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func
 }
 
 func signMessage(signer types.Signer, message types.UnsignedMessage) (*types.SignedMessage, error) {
-	return types.NewSignedMessage(message, signer, types.NewGasPrice(0), types.NewGasUnits(0))
+	return types.NewSignedMessage(message, signer)
 }
 
 func reqAdd(t *testing.T, p *message.Pool, height uint64, msgs ...*types.SignedMessage) {

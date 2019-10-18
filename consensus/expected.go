@@ -346,7 +346,7 @@ func combineMessages(blsMessages [][]*types.UnsignedMessage, secpMessages [][]*t
 func wrapMessages(blsMessages []*types.UnsignedMessage) []*types.SignedMessage {
 	signed := []*types.SignedMessage{}
 	for _, msg := range blsMessages {
-		signed = append(signed, &types.SignedMessage{UnsignedMessage: *msg})
+		signed = append(signed, &types.SignedMessage{Message: *msg})
 	}
 	return signed
 }

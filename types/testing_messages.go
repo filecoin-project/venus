@@ -48,14 +48,16 @@ func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *Si
 	mm.seq++
 	to, err := address.NewActorAddress([]byte("destination"))
 	require.NoError(mm.t, err)
-	msg := NewUnsignedMessage(
+	msg := NewMeteredMessage(
 		from,
 		to,
 		nonce,
 		ZeroAttoFIL,
 		"method"+fmt.Sprintf("%d", seq),
-		[]byte("params"))
-	signed, err := NewSignedMessage(*msg, mm.signer, mm.DefaultGasPrice, mm.DefaultGasUnits)
+		[]byte("params"),
+		mm.DefaultGasPrice,
+		mm.DefaultGasUnits)
+	signed, err := NewSignedMessage(*msg, mm.signer)
 	require.NoError(mm.t, err)
 	return signed
 }

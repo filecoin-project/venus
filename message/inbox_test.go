@@ -405,7 +405,7 @@ func msgAsString(msg *types.SignedMessage) string {
 	// to "msgN" so we print that (it will correspond
 	// to a variable of the same name in the tests
 	// below).
-	return msg.UnsignedMessage.Method
+	return msg.Message.Method
 }
 
 func msgsAsString(msgs []*types.SignedMessage) string {
