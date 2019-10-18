@@ -19,23 +19,25 @@ func TestMessageMarshal(t *testing.T) {
 	// TODO: allow more types than just strings for the params
 	// currently []interface{} results in type information getting lost when doing
 	// a roundtrip with the default cbor encoder.
-	msg := NewMessage(
+	msg := NewMeteredMessage(
 		addrGetter(),
 		addrGetter(),
 		42,
 		NewAttoFILFromFIL(17777),
 		"send",
 		[]byte("foobar"),
+		NewAttoFILFromFIL(3),
+		NewGasUnits(4),
 	)
 
 	// This check requests that you add a non-zero value for new fields above,
 	// then update the field count below.
-	require.Equal(t, 6, reflect.TypeOf(*msg).NumField())
+	require.Equal(t, 8, reflect.TypeOf(*msg).NumField())
 
 	marshalled, err := msg.Marshal()
 	assert.NoError(t, err)
 
-	msgBack := Message{}
+	msgBack := UnsignedMessage{}
 	assert.False(t, msg.Equals(&msgBack))
 
 	err = msgBack.Unmarshal(marshalled)
@@ -46,6 +48,8 @@ func TestMessageMarshal(t *testing.T) {
 	assert.Equal(t, msg.Value, msgBack.Value)
 	assert.Equal(t, msg.Method, msgBack.Method)
 	assert.Equal(t, msg.Params, msgBack.Params)
+	assert.Equal(t, msg.GasLimit, msgBack.GasLimit)
+	assert.Equal(t, msg.GasPrice, msgBack.GasPrice)
 	assert.True(t, msg.Equals(&msgBack))
 }
 
@@ -54,7 +58,7 @@ func TestMessageCid(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 
-	msg1 := NewMessage(
+	msg1 := NewUnsignedMessage(
 		addrGetter(),
 		addrGetter(),
 		0,
@@ -63,7 +67,7 @@ func TestMessageCid(t *testing.T) {
 		nil,
 	)
 
-	msg2 := NewMessage(
+	msg2 := NewUnsignedMessage(
 		addrGetter(),
 		addrGetter(),
 		0,
@@ -85,7 +89,7 @@ func TestMessageString(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 
-	msg := NewMessage(
+	msg := NewUnsignedMessage(
 		addrGetter(),
 		addrGetter(),
 		0,

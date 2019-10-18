@@ -26,29 +26,31 @@ func init() {
 // TODO do not export these fields as it increases the chances of producing a
 // `SignedMessage` with an empty signature.
 type SignedMessage struct {
-	MeteredMessage `json:"meteredMessage"`
-	Signature      Signature `json:"signature"`
+	UnsignedMessage `json:"meteredMessage"`
+	Signature       Signature `json:"signature"`
 	// Pay attention to Equals() if updating this struct.
 }
 
 // NewSignedMessage accepts a message `msg` and a signer `s`. NewSignedMessage returns a `SignedMessage` containing
 // a signature derived from the serialized `msg` and `msg.From`
-func NewSignedMessage(msg Message, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
-	meteredMsg := NewMeteredMessage(msg, gasPrice, gasLimit)
+// TODO: this is not an appropriate place to add price and limit
+func NewSignedMessage(msg UnsignedMessage, s Signer, gasPrice AttoFIL, gasLimit GasUnits) (*SignedMessage, error) {
+	msg.GasPrice = gasPrice
+	msg.GasLimit = gasLimit
 
-	mmsg, err := meteredMsg.Marshal()
+	msgData, err := msg.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	sig, err := s.SignBytes(mmsg, msg.From)
+	sig, err := s.SignBytes(msgData, msg.From)
 	if err != nil {
 		return nil, err
 	}
 
 	return &SignedMessage{
-		MeteredMessage: *meteredMsg,
-		Signature:      sig,
+		UnsignedMessage: msg,
+		Signature:       sig,
 	}, nil
 }
 
@@ -87,7 +89,7 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 // VerifySignature returns true iff the signature over the message as calculated
 // from EC recover matches the message sender address.
 func (smsg *SignedMessage) VerifySignature() bool {
-	bmsg, err := smsg.MeteredMessage.Marshal()
+	bmsg, err := smsg.UnsignedMessage.Marshal()
 	if err != nil {
 		log.Infof("invalid signature: %s", err)
 		return false
@@ -110,6 +112,6 @@ func (smsg *SignedMessage) String() string {
 
 // Equals tests whether two signed messages are equal.
 func (smsg *SignedMessage) Equals(other *SignedMessage) bool {
-	return smsg.MeteredMessage.Equals(&other.MeteredMessage) &&
+	return smsg.UnsignedMessage.Equals(&other.UnsignedMessage) &&
 		bytes.Equal(smsg.Signature, other.Signature)
 }

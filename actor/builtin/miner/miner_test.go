@@ -43,13 +43,13 @@ func TestAskFunctions(t *testing.T) {
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
-	msg := types.NewMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "addAsk", pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "addAsk", pdata)
 
 	_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 	assert.NoError(t, err)
 
 	pdata = actor.MustConvertParams(big.NewInt(0))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(t, err)
 
@@ -68,20 +68,20 @@ func TestAskFunctions(t *testing.T) {
 
 	// Look for an ask that doesn't exist
 	pdata = actor.MustConvertParams(big.NewInt(3453))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(t, err)
 	assert.Equal(t, Errors[ErrAskNotFound], result.ExecutionError)
 
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 3, types.ZeroAttoFIL, "addAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 3, types.ZeroAttoFIL, "addAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(3))
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	pdata = actor.MustConvertParams(big.NewInt(1))
-	msg = types.NewMessage(address.TestAddress, minerAddr, 4, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 4, types.ZeroAttoFIL, "getAsk", pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 
@@ -91,7 +91,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(t, types.NewBlockHeight(203), ask2.Expiry)
 	assert.Equal(t, uint64(1), ask2.ID.Uint64())
 
-	msg = types.NewMessage(address.TestAddress, minerAddr, 5, types.ZeroAttoFIL, "getAsks", nil)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 5, types.ZeroAttoFIL, "getAsks", nil)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 	assert.NoError(t, result.ExecutionError)
@@ -120,7 +120,7 @@ func TestChangeWorker(t *testing.T) {
 
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
-		msg := types.NewMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+		msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
 
 		_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 		assert.NoError(t, err)
@@ -144,7 +144,7 @@ func TestChangeWorker(t *testing.T) {
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
 		badActor := address.TestAddress2
-		msg := types.NewMessage(badActor, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+		msg := types.NewUnsignedMessage(badActor, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
 
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 		assert.NoError(t, err)
@@ -159,7 +159,7 @@ func TestChangeWorker(t *testing.T) {
 
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
-		msg := types.NewMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata)
+		msg := types.NewUnsignedMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata)
 
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
@@ -315,7 +315,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// update peer ID and expect authorization failure (TestAddress2 isn't the miner's worker address)
-		updatePeerIdMsg := types.NewMessage(
+		updatePeerIdMsg := types.NewUnsignedMessage(
 			address.TestAddress2,
 			minerAddr,
 			th.RequireGetNonce(t, st, address.TestAddress2),
@@ -418,7 +418,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 }
 
 func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
-	updatePeerIdMsg := types.NewMessage(
+	updatePeerIdMsg := types.NewUnsignedMessage(
 		fromAddr,
 		minerAddr,
 		th.RequireGetNonce(t, st, fromAddr),
@@ -743,7 +743,7 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 func TestMinerSubmitPoStVerification(t *testing.T) {
 	tf.UnitTest(t)
 
-	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", nil)
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", nil)
 	comm1 := th.MakeCommitments()
 	comm2 := th.MakeCommitments()
 	comm3 := th.MakeCommitments()
@@ -1107,7 +1107,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	t.Run("computes seed randomness at correct chain height when post is on time", func(t *testing.T) {
 		var actualSampleHeight *types.BlockHeight
 
-		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1136,7 +1136,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	t.Run("computes seed randomness at correct chain height when post is late", func(t *testing.T) {
 		var actualSampleHeight *types.BlockHeight
 
-		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1163,7 +1163,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	})
 
 	t.Run("provides informative error when PoSt attempts to sample chain height before it is ready", func(t *testing.T) {
-		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1199,7 +1199,7 @@ func TestAddFaults(t *testing.T) {
 	provingPeriodEnd := provingPeriodStart + LargestSectorSizeProvingPeriodBlocks
 	provingWindowStart := provingPeriodEnd - PoStChallengeWindowBlocks
 
-	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "addFaults", []byte{})
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "addFaults", []byte{})
 
 	cases := []struct {
 		bh              uint64
@@ -1288,7 +1288,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
 
 		// change worker
-		msg := types.NewMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{})
+		msg := types.NewUnsignedMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{})
 
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
@@ -1407,7 +1407,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is invalid if miner isn't proving anything", func(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
-		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
 
 		comm1 := th.MakeCommitments()
 		comm2 := th.MakeCommitments()
@@ -1430,7 +1430,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is invalid if miner is tardy/slashable", func(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
-		message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
 
 		comm1 := th.MakeCommitments()
 		comm2 := th.MakeCommitments()
@@ -1537,7 +1537,7 @@ func TestGetProofsMode(t *testing.T) {
 		vmCtx := vm.NewVMContext(vm.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
-			Message:     &types.Message{},
+			Message:     &types.UnsignedMessage{},
 			State:       state.NewCachedStateTree(st),
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
@@ -1557,7 +1557,7 @@ func TestGetProofsMode(t *testing.T) {
 		vmCtx := vm.NewVMContext(vm.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
-			Message:     &types.Message{},
+			Message:     &types.UnsignedMessage{},
 			State:       state.NewCachedStateTree(st),
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
@@ -1621,7 +1621,7 @@ func TestMinerGetPoStState(t *testing.T) {
 func TestGetProvingSetCommitments(t *testing.T) {
 	tf.UnitTest(t)
 
-	message := types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "getProvingSetCommitments", nil)
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "getProvingSetCommitments", nil)
 	comm1 := th.MakeCommitments()
 	comm2 := th.MakeCommitments()
 	comm3 := th.MakeCommitments()
@@ -1721,7 +1721,7 @@ func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *
 		b.verifier = &verification.FakeVerifier{}
 	}
 
-	vmctx := th.NewFakeVMContextWithVerifier(types.NewMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
+	vmctx := th.NewFakeVMContextWithVerifier(types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
 
 	return vmctx, b.verifier, &Actor{}
 }

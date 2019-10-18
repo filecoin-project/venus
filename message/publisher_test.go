@@ -17,7 +17,7 @@ func TestDefaultMessagePublisher_Publish(t *testing.T) {
 	pool := message.NewPool(config.NewDefaultConfig().Mpool, testhelpers.NewMockMessagePoolValidator())
 
 	ms, _ := types.NewMockSignersAndKeyInfo(2)
-	msg := types.NewMessage(ms.Addresses[0], ms.Addresses[1], 0, types.ZeroAttoFIL, "", []byte{})
+	msg := types.NewUnsignedMessage(ms.Addresses[0], ms.Addresses[1], 0, types.ZeroAttoFIL, "", []byte{})
 	signed, err := types.NewSignedMessage(*msg, ms, types.ZeroAttoFIL, types.NewGasUnits(0))
 	require.NoError(t, err)
 	msgCid, err := signed.Cid()

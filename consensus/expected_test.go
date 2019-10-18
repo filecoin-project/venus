@@ -159,10 +159,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		blsAddr, err := address.NewBLSAddress(blsKey[:])
 		require.NoError(t, err)
 
-		blsMessages := make([][]*types.MeteredMessage, tipSet.Len())
-		msg := types.NewMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
-		mmsg := &types.MeteredMessage{Message: *msg}
-		blsMessages[0] = append(blsMessages[0], mmsg)
+		blsMessages := make([][]*types.UnsignedMessage, tipSet.Len())
+		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
+		blsMessages[0] = append(blsMessages[0], msg)
 
 		_, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []types.TipSet{pTipSet}, 0, blocks[0].StateRoot)
 		require.Error(t, err)
@@ -191,11 +190,10 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
-		msg := types.NewMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
-		mmsg := &types.MeteredMessage{Message: *msg}
+		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
 		smsg := &types.SignedMessage{
-			MeteredMessage: *mmsg,
-			Signature:      []byte("not a signature"),
+			UnsignedMessage: *msg,
+			Signature:       []byte("not a signature"),
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 
@@ -271,12 +269,12 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	})
 }
 
-func emptyMessagesAndReceipts(numBlocks int) ([][]*types.MeteredMessage, [][]*types.SignedMessage, [][]*types.MessageReceipt) {
-	var emptyBLSMessages [][]*types.MeteredMessage
+func emptyMessagesAndReceipts(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.SignedMessage, [][]*types.MessageReceipt) {
+	var emptyBLSMessages [][]*types.UnsignedMessage
 	var emptyMessages [][]*types.SignedMessage
 	var emptyReceipts [][]*types.MessageReceipt
 	for i := 0; i < numBlocks; i++ {
-		emptyBLSMessages = append(emptyBLSMessages, []*types.MeteredMessage{})
+		emptyBLSMessages = append(emptyBLSMessages, []*types.UnsignedMessage{})
 		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
 		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 	}

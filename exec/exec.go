@@ -67,7 +67,7 @@ type FunctionSignature struct {
 
 // VMContext defines the ABI interface exposed to actors.
 type VMContext interface {
-	Message() *types.Message
+	Message() *types.UnsignedMessage
 	Storage() Storage
 	Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (address.Address, error)

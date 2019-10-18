@@ -22,7 +22,7 @@ func TestMessageQueueOrder(t *testing.T) {
 	to := mockSigner.Addresses[9]
 
 	sign := func(from address.Address, to address.Address, nonce uint64, units uint64, price int64) *types.SignedMessage {
-		msg := types.Message{
+		msg := types.UnsignedMessage{
 			From:  from,
 			To:    to,
 			Nonce: types.Uint64(nonce),

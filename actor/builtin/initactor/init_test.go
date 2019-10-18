@@ -46,7 +46,7 @@ func TestInitActorGetNetwork(t *testing.T) {
 		Network: "bar",
 	}
 
-	msg := types.NewMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, "getAddress", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, "getAddress", []byte{})
 	vmctx := th.NewFakeVMContext(msg, state)
 
 	network, code, err := initExecActor.GetNetwork(vmctx)

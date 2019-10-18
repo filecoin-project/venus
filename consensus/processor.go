@@ -386,7 +386,7 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedStateTree(st)
 
-	msg := &types.Message{
+	msg := &types.UnsignedMessage{
 		From:   from,
 		To:     to,
 		Nonce:  0,
@@ -425,7 +425,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
 	cachedSt := state.NewCachedStateTree(st)
 
-	msg := &types.Message{
+	msg := &types.UnsignedMessage{
 		From:   from,
 		To:     to,
 		Nonce:  0,
@@ -459,7 +459,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
 func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*types.MessageReceipt, error) {
-	gasTracker.ResetForNewMessage(msg.MeteredMessage)
+	gasTracker.ResetForNewMessage(msg.UnsignedMessage)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -506,7 +506,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	vmCtxParams := vm.NewContextParams{
 		From:        fromActor,
 		To:          toActor,
-		Message:     &msg.Message,
+		Message:     &msg.UnsignedMessage,
 		State:       st,
 		StorageMap:  store,
 		GasTracker:  gasTracker,

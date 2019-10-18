@@ -22,7 +22,7 @@ func NewGasTracker() *GasTracker {
 }
 
 // ResetForNewMessage will reset the per-message gas accumulator and set the MsgGasLimit to that of the message.
-func (gasTracker *GasTracker) ResetForNewMessage(message types.MeteredMessage) {
+func (gasTracker *GasTracker) ResetForNewMessage(message types.UnsignedMessage) {
 	gasTracker.MsgGasLimit = message.GasLimit
 	gasTracker.gasConsumedByMessage = types.NewGasUnits(0)
 }

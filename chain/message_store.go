@@ -13,14 +13,14 @@ import (
 // MessageProvider is an interface exposing the load methods of the
 // MessageStore.
 type MessageProvider interface {
-	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.MeteredMessage, error)
+	LoadMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error)
 	LoadReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 }
 
 // MessageWriter is an interface exposing the write methods of the
 // MessageStore.
 type MessageWriter interface {
-	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.MeteredMessage) (types.TxMeta, error)
+	StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (types.TxMeta, error)
 	StoreReceipts(context.Context, []*types.MessageReceipt) (cid.Cid, error)
 }
 
@@ -38,7 +38,7 @@ func NewMessageStore(cst *hamt.CborIpldStore) *MessageStore {
 
 // LoadMessages loads the signed messages in the collection with cid c from ipld
 // storage.
-func (ms *MessageStore) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.MeteredMessage, error) {
+func (ms *MessageStore) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
 	// TODO #1324 message collection shouldn't be a slice
 	var secp types.SignedMessageCollection
 	err := ms.ipldStore.Get(ctx, meta.SecpRoot, &secp)
@@ -50,12 +50,12 @@ func (ms *MessageStore) LoadMessages(ctx context.Context, meta types.TxMeta) ([]
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to load bls messages %s", meta.BLSRoot.String())
 	}
-	return []*types.SignedMessage(secp), []*types.MeteredMessage(bls), nil
+	return []*types.SignedMessage(secp), []*types.UnsignedMessage(bls), nil
 }
 
 // StoreMessages puts the input signed messages to a collection and then writes
 // this collection to ipld storage.  The cid of the collection is returned.
-func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.MeteredMessage) (types.TxMeta, error) {
+func (ms *MessageStore) StoreMessages(ctx context.Context, secpMessages []*types.SignedMessage, blsMessages []*types.UnsignedMessage) (types.TxMeta, error) {
 	// For now the collection is just a slice (cbor array)
 	// TODO #1324 put these messages in a merkelized collection
 	var ret types.TxMeta

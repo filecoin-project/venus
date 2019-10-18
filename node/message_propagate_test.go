@@ -80,8 +80,8 @@ func TestMessagePropagation(t *testing.T) {
 				len(nodes[2].Messaging.Inbox.Pool().Pending()) == 1, nil
 		}), "failed to propagate messages")
 
-		assert.True(t, nodes[0].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[1].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[2].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
+		assert.True(t, nodes[0].Messaging.Inbox.Pool().Pending()[0].UnsignedMessage.Method == "foo")
+		assert.True(t, nodes[1].Messaging.Inbox.Pool().Pending()[0].UnsignedMessage.Method == "foo")
+		assert.True(t, nodes[2].Messaging.Inbox.Pool().Pending()[0].UnsignedMessage.Method == "foo")
 	})
 }

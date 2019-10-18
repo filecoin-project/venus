@@ -207,14 +207,14 @@ func TestLargestNonce(t *testing.T) {
 }
 
 func mustSetNonce(signer types.Signer, message *types.SignedMessage, nonce types.Uint64) *types.SignedMessage {
-	return mustResignMessage(signer, message, func(m *types.Message) {
+	return mustResignMessage(signer, message, func(m *types.UnsignedMessage) {
 		m.Nonce = nonce
 	})
 }
 
-func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.Message)) *types.SignedMessage {
-	var msg types.Message
-	msg = message.Message
+func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func(*types.UnsignedMessage)) *types.SignedMessage {
+	var msg types.UnsignedMessage
+	msg = message.UnsignedMessage
 	f(&msg)
 	smg, err := signMessage(signer, msg)
 	if err != nil {
@@ -223,7 +223,7 @@ func mustResignMessage(signer types.Signer, message *types.SignedMessage, f func
 	return smg
 }
 
-func signMessage(signer types.Signer, message types.Message) (*types.SignedMessage, error) {
+func signMessage(signer types.Signer, message types.UnsignedMessage) (*types.SignedMessage, error) {
 	return types.NewSignedMessage(message, signer, types.NewGasPrice(0), types.NewGasUnits(0))
 }
 

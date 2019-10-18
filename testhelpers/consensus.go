@@ -168,17 +168,17 @@ func (ms testSigner) SignBytes(data []byte, addr address.Address) (types.Signatu
 
 // ApplyTestMessage sends a message directly to the vm, bypassing message
 // validation
-func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessage(st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(builtin.DefaultActors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithActors sends a message directly to the vm with a given set of builtin actors
-func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
+func ApplyTestMessageWithActors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight) (*consensus.ApplicationResult, error) {
 	return applyTestMessageWithAncestors(actors, st, store, msg, bh, nil)
 }
 
 // ApplyTestMessageWithGas uses the FakeBlockRewarder but the default SignedMessageValidator
-func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, signer *types.MockSigner,
+func ApplyTestMessageWithGas(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, signer *types.MockSigner,
 	gasPrice types.AttoFIL, gasLimit types.GasUnits, minerOwner address.Address) (*consensus.ApplicationResult, error) {
 
 	smsg, err := types.NewSignedMessage(*msg, signer, gasPrice, gasLimit)
@@ -205,7 +205,7 @@ func CreateAndApplyTestMessageFrom(t *testing.T, st state.Tree, vms vm.StorageMa
 	t.Helper()
 
 	pdata := actor.MustConvertParams(params...)
-	msg := types.NewMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
+	msg := types.NewUnsignedMessage(from, to, 0, types.NewAttoFILFromFIL(val), method, pdata)
 	return applyTestMessageWithAncestors(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(bh), ancestors)
 }
 
@@ -215,7 +215,7 @@ func CreateAndApplyTestMessage(t *testing.T, st state.Tree, vms vm.StorageMap, t
 	return CreateAndApplyTestMessageFrom(t, st, vms, address.TestAddress, to, val, bh, method, ancestors, params...)
 }
 
-func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.Message, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
+func applyTestMessageWithAncestors(actors builtin.Actors, st state.Tree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, ancestors []types.TipSet) (*consensus.ApplicationResult, error) {
 	smsg, err := types.NewSignedMessage(*msg, testSigner{}, types.NewGasPrice(1), types.NewGasUnits(300))
 	if err != nil {
 		panic(err)

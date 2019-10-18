@@ -110,7 +110,7 @@ func TestSignMessageOk(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
+	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 
@@ -125,16 +125,15 @@ func TestBadFrom(t *testing.T) {
 	addr2, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	msg := types.NewMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
-	meteredMsg := types.NewMeteredMessage(*msg, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
 	// Can't use NewSignedMessage constructor as it always signs with msg.From.
-	bmsg, err := meteredMsg.Marshal()
+	bmsg, err := msg.Marshal()
 	require.NoError(t, err)
 	sig, err := fs.SignBytes(bmsg, addr2) // sign with addr != msg.From
 	require.NoError(t, err)
 	smsg := &types.SignedMessage{
-		MeteredMessage: *meteredMsg,
-		Signature:      sig,
+		UnsignedMessage: *msg,
+		Signature:       sig,
 	}
 
 	assert.False(t, smsg.VerifySignature())
@@ -145,7 +144,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	tf.UnitTest(t)
 
 	fs, addr := requireSignerAddr(t)
-	msg := types.NewMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
+	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 
@@ -159,10 +158,10 @@ func TestSignedMessageCorrupted(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
+	msg := types.NewUnsignedMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil)
 	smsg, err := types.NewSignedMessage(*msg, fs, types.NewGasPrice(0), types.NewGasUnits(0))
 	require.NoError(t, err)
 
-	smsg.Message.Nonce = types.Uint64(uint64(42))
+	smsg.UnsignedMessage.Nonce = types.Uint64(uint64(42))
 	assert.False(t, smsg.VerifySignature())
 }

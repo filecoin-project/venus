@@ -112,7 +112,7 @@ func makeCtx(method string) exec.VMContext {
 	addrGetter := address.NewForTestGetter()
 
 	vmCtxParams := vm.NewContextParams{
-		Message:     types.NewMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
+		Message:     types.NewUnsignedMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
 		GasTracker:  vm.NewGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
 		Actors:      builtin.DefaultActors,

@@ -83,7 +83,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 	newAddr, err := address.NewActorAddress([]byte("receiver"))
 	require.NoError(t, err)
 
-	msg := NewMessage(
+	msg := NewUnsignedMessage(
 		signer.Addresses[0],
 		newAddr,
 		nonce,

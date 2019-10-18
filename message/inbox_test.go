@@ -348,7 +348,7 @@ func TestUpdateMessagePool(t *testing.T) {
 		assertPoolEquals(t, p, m[5:]...)
 	})
 
-	t.Run("Message timeout is unaffected by null tipsets", func(t *testing.T) {
+	t.Run("UnsignedMessage timeout is unaffected by null tipsets", func(t *testing.T) {
 		chainProvider, parent := newProviderWithGenesis(t)
 		p := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		maxAge := uint(10)
@@ -405,7 +405,7 @@ func msgAsString(msg *types.SignedMessage) string {
 	// to "msgN" so we print that (it will correspond
 	// to a variable of the same name in the tests
 	// below).
-	return msg.Message.Method
+	return msg.UnsignedMessage.Method
 }
 
 func msgsAsString(msgs []*types.SignedMessage) string {

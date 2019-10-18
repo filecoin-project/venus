@@ -196,7 +196,7 @@ func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore, pvt *vers
 	}
 }
 
-func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.MeteredMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
+func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
 		treeGen := state.TreeFromString(isb.t, "1Power", isb.cst)
@@ -238,7 +238,7 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts types.TipSet, _ [][]*types.MeteredMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []types.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts types.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []types.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Equals(n.c512) {
 			return n.c512, nil

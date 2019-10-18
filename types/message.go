@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -14,8 +15,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 )
 
+// GasUnits represents number of units of gas consumed
+type GasUnits = Uint64
+
+// BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
+var BlockGasLimit = NewGasUnits(10000000)
+
 func init() {
-	cbor.RegisterCborType(Message{})
+	cbor.RegisterCborType(UnsignedMessage{})
 	cbor.RegisterCborType(TxMeta{})
 }
 
@@ -30,10 +37,10 @@ var EmptyMessagesCID = SignedMessageCollection{}.Cid()
 // EmptyReceiptsCID is the cid of an empty collection of receipts.
 var EmptyReceiptsCID = ReceiptCollection{}.Cid()
 
-// Message is an exchange of information between two actors modeled
+// UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.
 // Messages are the equivalent of transactions in Ethereum.
-type Message struct {
+type UnsignedMessage struct {
 	To   address.Address `json:"to"`
 	From address.Address `json:"from"`
 	// When receiving a message from a user account the nonce in
@@ -45,12 +52,15 @@ type Message struct {
 
 	Method string `json:"method"`
 	Params []byte `json:"params"`
+
+	GasPrice AttoFIL  `json:"gasPrice"`
+	GasLimit GasUnits `json:"gasLimit"`
 	// Pay attention to Equals() if updating this struct.
 }
 
-// NewMessage creates a new message.
-func NewMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte) *Message {
-	return &Message{
+// NewUnsignedMessage creates a new message.
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte) *UnsignedMessage {
+	return &UnsignedMessage{
 		From:   from,
 		To:     to,
 		Nonce:  Uint64(nonce),
@@ -60,18 +70,32 @@ func NewMessage(from, to address.Address, nonce uint64, value AttoFIL, method st
 	}
 }
 
+// NewMeterMessage adds gas price and gas limit to the message
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+	return &UnsignedMessage{
+		From:     from,
+		To:       to,
+		Nonce:    Uint64(nonce),
+		Value:    value,
+		Method:   method,
+		Params:   params,
+		GasPrice: price,
+		GasLimit: limit,
+	}
+}
+
 // Unmarshal a message from the given bytes.
-func (msg *Message) Unmarshal(b []byte) error {
+func (msg *UnsignedMessage) Unmarshal(b []byte) error {
 	return cbor.DecodeInto(b, msg)
 }
 
 // Marshal the message into bytes.
-func (msg *Message) Marshal() ([]byte, error) {
+func (msg *UnsignedMessage) Marshal() ([]byte, error) {
 	return cbor.DumpObject(msg)
 }
 
 // ToNode converts the Message to an IPLD node.
-func (msg *Message) ToNode() (ipld.Node, error) {
+func (msg *UnsignedMessage) ToNode() (ipld.Node, error) {
 	// Use 32 byte / 256 bit digest.
 	obj, err := cbor.WrapObject(msg, DefaultHashFunction, -1)
 	if err != nil {
@@ -83,7 +107,7 @@ func (msg *Message) ToNode() (ipld.Node, error) {
 
 // Cid returns the canonical CID for the message.
 // TODO: can we avoid returning an error?
-func (msg *Message) Cid() (cid.Cid, error) {
+func (msg *UnsignedMessage) Cid() (cid.Cid, error) {
 	obj, err := msg.ToNode()
 	if err != nil {
 		return cid.Undef, errPkg.Wrap(err, "failed to marshal to cbor")
@@ -92,7 +116,7 @@ func (msg *Message) Cid() (cid.Cid, error) {
 	return obj.Cid(), nil
 }
 
-func (msg *Message) String() string {
+func (msg *UnsignedMessage) String() string {
 	errStr := "(error encoding Message)"
 	cid, err := msg.Cid()
 	if err != nil {
@@ -106,12 +130,14 @@ func (msg *Message) String() string {
 }
 
 // Equals tests whether two messages are equal
-func (msg *Message) Equals(other *Message) bool {
+func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 	return msg.To == other.To &&
 		msg.From == other.From &&
 		msg.Nonce == other.Nonce &&
 		msg.Value.Equal(other.Value) &&
 		msg.Method == other.Method &&
+		msg.GasPrice.Equal(other.GasPrice) &&
+		msg.GasLimit == other.GasLimit &&
 		bytes.Equal(msg.Params, other.Params)
 }
 
@@ -149,16 +175,16 @@ func (mC SignedMessageCollection) ToNode() ipld.Node {
 }
 
 // MessageCollection tracks a group of messages and assigns it a cid.
-type MessageCollection []*MeteredMessage
+type MessageCollection []*UnsignedMessage
 
 // DecodeMessages decodes raw bytes into an array of metered messages
-func DecodeMessages(b []byte) ([]*MeteredMessage, error) {
+func DecodeMessages(b []byte) ([]*UnsignedMessage, error) {
 	var out MessageCollection
 	if err := cbor.DecodeInto(b, &out); err != nil {
 		return nil, err
 	}
 
-	return []*MeteredMessage(out), nil
+	return []*UnsignedMessage(out), nil
 }
 
 // Cid returns the cid of the message collection.
@@ -202,6 +228,16 @@ func (rC ReceiptCollection) ToNode() ipld.Node {
 	}
 
 	return obj
+}
+
+// NewGasPrice constructs a gas price (in AttoFIL) from the given number.
+func NewGasPrice(price int64) AttoFIL {
+	return NewAttoFIL(big.NewInt(price))
+}
+
+// NewGasUnits constructs a new GasUnits from the given number.
+func NewGasUnits(cost uint64) GasUnits {
+	return Uint64(cost)
 }
 
 // TxMeta tracks the merkleroots of both secp and bls messages separately

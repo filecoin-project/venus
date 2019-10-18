@@ -90,10 +90,10 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		return signature
 	}
 
-	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.Message {
+	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.UnsignedMessage {
 		suppliedParams := []interface{}{sectorID, pip}
 		pdata := abi.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		return types.NewMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+		return types.NewUnsignedMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
 	}
 
 	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
@@ -221,7 +221,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 
 func establishChannel(st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
-	msg := types.NewMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
+	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)

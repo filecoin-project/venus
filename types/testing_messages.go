@@ -48,7 +48,7 @@ func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *Si
 	mm.seq++
 	to, err := address.NewActorAddress([]byte("destination"))
 	require.NoError(mm.t, err)
-	msg := NewMessage(
+	msg := NewUnsignedMessage(
 		from,
 		to,
 		nonce,
