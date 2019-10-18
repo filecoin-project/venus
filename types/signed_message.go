@@ -82,7 +82,7 @@ func (smsg *SignedMessage) ToNode() (ipld.Node, error) {
 	return obj, nil
 }
 
-// VerifySignature returns true iff the signature is valid for the message content and from addres.
+// VerifySignature returns true iff the signature is valid for the message content and from address.
 func (smsg *SignedMessage) VerifySignature() bool {
 	bmsg, err := smsg.Message.Marshal()
 	if err != nil {
