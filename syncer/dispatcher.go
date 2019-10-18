@@ -1,28 +1,28 @@
 package syncer
 
 import (
+	"container/heap"
 	"errors"
 	"sync"
-	"container/heap"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
-var ErrBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
-var ErrBadPop = errors.New("a programmer is not checking targetQueue length before popping")
+var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
+var errBadPop = errors.New("a programmer is not checking targetQueue length before popping")
 
 // NewDispatcher creates a new syncing dispatcher.
 func NewDispatcher() *Dispatcher {
-	
+
 	return &Dispatcher{
 		targetSet: make(map[string]struct{}),
 		targetQ:   NewTargetQueue(),
 	}
 }
 
-// Dispatcher executes syncing requests 
+// Dispatcher executes syncing requests
 type Dispatcher struct {
-	// The dispatcher maintains a targetting system for determining the
+	// The dispatcher maintains a targeting system for determining the
 	// current best syncing target
 	// targetMu protects the targeting system
 	targetMu sync.Mutex
@@ -34,11 +34,13 @@ type Dispatcher struct {
 }
 
 // ReceiveHello handles chain information from bootstrap peers.
-func (d *Dispatcher) ReceiveHello(ci types.ChainInfo) error {return d.receive(ci)}
-// RecieveOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) ReceiveOwnBlock(ci types.ChainInfo) error {return d.receive(ci)}
+func (d *Dispatcher) ReceiveHello(ci types.ChainInfo) error { return d.receive(ci) }
+
+// ReceiveOwnBlock handles chain info from a node's own mining system
+func (d *Dispatcher) ReceiveOwnBlock(ci types.ChainInfo) error { return d.receive(ci) }
+
 // ReceiveGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) ReceiveGossipBlock(ci types.ChainInfo) error {return d.receive(ci)}
+func (d *Dispatcher) ReceiveGossipBlock(ci types.ChainInfo) error { return d.receive(ci) }
 
 func (d *Dispatcher) receive(ci types.ChainInfo) error {
 	d.targetMu.Lock()
@@ -61,20 +63,20 @@ func (d *Dispatcher) receive(ci types.ChainInfo) error {
 // dispatches syncRequests against the correct syncer.
 //
 // This method determines the default "business logic" of the syncing
-// subsystem.  It is responsible for interpreting information from the network 
+// subsystem.  It is responsible for interpreting information from the network
 // and using it to securely update the node's chain state.
 func (d *Dispatcher) Start() {
 	// TODO: fill me in to link up existing syncer with dispatcher
 }
 
-// syncRequest tracks a logical request of the syncing subsystem to run a
+// SyncRequest tracks a logical request of the syncing subsystem to run a
 // syncing job against given inputs. syncRequests are created by the
 // Dispatcher by inspecting incoming hello messages from bootstrap peers
 // and gossipsub block propagations.
 type SyncRequest struct {
 	types.ChainInfo
 	// needed by internal container/heap methods for maintaining sort
-	index  int
+	index int
 }
 
 // rawQueue orders the dispatchers syncRequests by a policy.
@@ -85,7 +87,7 @@ type SyncRequest struct {
 type rawQueue []*SyncRequest
 
 // Heavily inspired by https://golang.org/pkg/container/heap/
-func (rq rawQueue) Len() int {return len(rq)}
+func (rq rawQueue) Len() int { return len(rq) }
 
 func (rq rawQueue) Less(i, j int) bool {
 	// We want Pop to give us the highest priority so we use greater than
@@ -109,9 +111,9 @@ func (rq *rawQueue) Pop() interface{} {
 	old := *rq
 	n := len(old)
 	item := old[n-1]
-	old[n-1] = nil // avoid memory leak
+	old[n-1] = nil  // avoid memory leak
 	item.index = -1 // for safety
-	*rq = old[0: n-1]
+	*rq = old[0 : n-1]
 	return item
 }
 
@@ -133,7 +135,7 @@ func NewTargetQueue() *TargetQueue {
 func (tq *TargetQueue) Push(req *SyncRequest) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = ErrBadPush
+			err = errBadPush
 		}
 	}()
 	heap.Push(&tq.q, req)
@@ -145,7 +147,7 @@ func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			req = nil
-			err = ErrBadPop
+			err = errBadPop
 		}
 	}()
 	return heap.Pop(&tq.q).(*SyncRequest), nil
