@@ -7,14 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/syncer"
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestNewDispatcher(t *testing.T) {
+	tf.UnitTest(t)
 	syncer.NewDispatcher()
 }
 
 func TestQueueHappy(t *testing.T) {
+	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
@@ -44,19 +47,8 @@ func TestQueueHappy(t *testing.T) {
 	assert.Equal(t, 0, testQ.Len())
 }
 
-// requirePop is a helper requiring that pop does not error
-func requirePop(t *testing.T, q *syncer.TargetQueue) *syncer.SyncRequest {
-	req, err := q.Pop()
-	require.NoError(t, err)
-	return req
-}
-
-// requirePush is a helper requiring that push does not error
-func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
-	require.NoError(t, q.Push(req))
-}
-
 func TestQueueDuplicates(t *testing.T) {
+	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
@@ -78,6 +70,7 @@ func TestQueueDuplicates(t *testing.T) {
 }
 
 func TestQueueEmptyPop(t *testing.T) {
+	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 	sR0 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 0}}
 	sR47 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 47}}
@@ -96,4 +89,16 @@ func TestQueueEmptyPop(t *testing.T) {
 	_, err := testQ.Pop()
 	assert.Error(t, err)
 	assert.Equal(t, 0, testQ.Len())
+}
+
+// requirePop is a helper requiring that pop does not error
+func requirePop(t *testing.T, q *syncer.TargetQueue) *syncer.SyncRequest {
+	req, err := q.Pop()
+	require.NoError(t, err)
+	return req
+}
+
+// requirePush is a helper requiring that push does not error
+func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
+	require.NoError(t, q.Push(req))
 }

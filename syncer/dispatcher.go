@@ -59,16 +59,6 @@ func (d *Dispatcher) receive(ci types.ChainInfo) error {
 	return nil
 }
 
-// Start initialize the run loop that pops from the target queue and
-// dispatches syncRequests against the correct syncer.
-//
-// This method determines the default "business logic" of the syncing
-// subsystem.  It is responsible for interpreting information from the network
-// and using it to securely update the node's chain state.
-func (d *Dispatcher) Start() {
-	// TODO: fill me in to link up existing syncer with dispatcher
-}
-
 // SyncRequest tracks a logical request of the syncing subsystem to run a
 // syncing job against given inputs. syncRequests are created by the
 // Dispatcher by inspecting incoming hello messages from bootstrap peers
