@@ -21,6 +21,7 @@ type WhyCborDecoder struct {
 // CborEncoder
 //
 
+// EncodeObject encodes an object.
 func (encoder *WhyCborEncoder) EncodeObject(obj Encodable) error {
 	cborobj, ok := obj.(cbg.CBORMarshaler)
 	if !ok {
@@ -29,6 +30,7 @@ func (encoder *WhyCborEncoder) EncodeObject(obj Encodable) error {
 	return cborobj.MarshalCBOR(encoder.b)
 }
 
+// IntoBytes returns the encoded bytes.
 func (encoder WhyCborEncoder) IntoBytes() []byte {
 	return encoder.b.Bytes()
 }
@@ -37,10 +39,12 @@ func (encoder WhyCborEncoder) IntoBytes() []byte {
 // CborDecoder
 //
 
+// SetBytes sets the initializer internal bytes to match the input.
 func (decoder *WhyCborDecoder) SetBytes(raw []byte) {
 	decoder.b = bytes.NewBuffer(raw)
 }
 
+// DecodeObject decodes an object.
 func (decoder WhyCborDecoder) DecodeObject(obj Decodable) error {
 	cborobj, ok := obj.(cbg.CBORUnmarshaler)
 	if !ok {

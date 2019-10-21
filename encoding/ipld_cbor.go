@@ -23,6 +23,7 @@ func RegisterIpldCborType(i interface{}) {
 // CborEncoder
 //
 
+// EncodeObject encodes an object.
 func (encoder *IpldCborEncoder) EncodeObject(obj Encodable) error {
 	var err error
 
@@ -34,6 +35,7 @@ func (encoder *IpldCborEncoder) EncodeObject(obj Encodable) error {
 	return nil
 }
 
+// IntoBytes returns the encoded bytes.
 func (encoder IpldCborEncoder) IntoBytes() []byte {
 	return encoder.raw
 }
@@ -42,10 +44,12 @@ func (encoder IpldCborEncoder) IntoBytes() []byte {
 // CborDecoder
 //
 
+// SetBytes sets the initializer internal bytes to match the input.
 func (decoder *IpldCborDecoder) SetBytes(raw []byte) {
 	decoder.raw = raw
 }
 
+// DecodeObject decodes an object.
 func (decoder IpldCborDecoder) DecodeObject(obj Decodable) error {
 	err := cbor.DecodeInto(decoder.raw, obj)
 	if err != nil {

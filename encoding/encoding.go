@@ -12,13 +12,17 @@ type Decodable interface {
 
 // Encoder represents types that can encode values.
 type Encoder interface {
+	// EncodeObject encodes an object.
 	EncodeObject(obj Encodable) error
+	// IntoBytes returns the encoded bytes.
 	IntoBytes() []byte
 }
 
 // Decoder represents types that can decode values.
 type Decoder interface {
+	// SetBytes sets the initializer internal bytes to match the input.
 	SetBytes([]byte)
+	// DecodeObject decodes an object.
 	DecodeObject(obj Decodable) error
 }
 
