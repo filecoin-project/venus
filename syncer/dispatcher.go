@@ -1,6 +1,8 @@
 package syncer
 
 import (
+
+	"fmt"
 	"container/heap"
 	"context"	
 	"errors"
@@ -154,38 +156,72 @@ func (rq *rawQueue) Pop() interface{} {
 
 // TargetQueue orders dispatcher syncRequests by the underlying rawQueue's
 // policy. It exposes programmer errors as return values instead of panicing.
-// Callers should check that length is greater than 0 before popping
+// Errors should only be returned from Push and Pop in the case of programmer
+// error.
+// 
+// All methods are threadsafe.  Concurrent pushes and pops are allowed.
+// Pop is a blocking call in the case the queue is empty.
 type TargetQueue struct {
 	q rawQueue
+	
+	// the following fields ensure thread safety
+	// popMu ensures that a single popper will wait for the empty wg
+	popMu sync.Mutex
+	// rawMu ensures a single go-routine accesses rawQueue
+	rawMu sync.Mutex
+	// empty signals when a queue is empty and no-longer empty
+	empty sync.WaitGroup
 }
 
 // NewTargetQueue returns a new target queue with an initialized rawQueue
 func NewTargetQueue() *TargetQueue {
 	rq := make(rawQueue, 0)
 	heap.Init(&rq)
-	return &TargetQueue{q: rq}
+	var empty sync.WaitGroup
+	empty.Add(1) // queue starts off empty
+	return &TargetQueue{q: rq, empty: empty}
 }
 
 // Push adds a sync request to the target queue.
 func (tq *TargetQueue) Push(req *SyncRequest) (err error) {
+	tq.rawMu.Lock()
+	defer tq.rawMu.Unlock()
 	defer func() {
 		if r := recover(); r != nil {
+			fmt.Printf("r: %v\n", r)
 			err = errBadPush
 		}
 	}()
 	heap.Push(&tq.q, req)
+	if tq.q.Len() == 1 {
+		// Signal that the queue has gone from empty to non-empty
+		tq.empty.Done()
+	}
+	
 	return nil
 }
 
 // Pop removes and returns the highest priority syncing target.
 func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
+	tq.popMu.Lock()
+	defer tq.popMu.Unlock()
+	// Wait for a non-empty queue	
+	tq.empty.Wait()
+
+	tq.rawMu.Lock()
+	defer tq.rawMu.Unlock()
 	defer func() {
 		if r := recover(); r != nil {
 			req = nil
 			err = errBadPop
 		}
 	}()
-	return heap.Pop(&tq.q).(*SyncRequest), nil
+	req, err = heap.Pop(&tq.q).(*SyncRequest), nil
+	if tq.q.Len() == 0 {
+		// Signal that the queue has gone from non-empty to empty
+		tq.empty.Add(1)
+	}
+	return req, err
 }
 
 // Len returns the number of targets in the queue.

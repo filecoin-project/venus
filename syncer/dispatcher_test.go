@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"testing"
+	"sync"
 
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ func TestQueueDuplicates(t *testing.T) {
 	assert.Equal(t, uint64(0), second.ChainInfo.Height)
 }
 
-func TestQueueEmptyPop(t *testing.T) {
+func TestQueueEmptyPopBlocks(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
@@ -81,9 +82,18 @@ func TestQueueEmptyPop(t *testing.T) {
 	_ = requirePop(t, testQ)
 	assert.Equal(t, 0, testQ.Len())
 
-	_, err := testQ.Pop()
-	assert.Error(t, err)
-	assert.Equal(t, 0, testQ.Len())
+	var start,done  sync.WaitGroup
+	start.Add(1)
+	done.Add(1)
+	go func() {
+		start.Wait()
+		async := requirePop(t, testQ)
+		assert.Equal(t, uint64(47), async.ChainInfo.Height)
+		done.Done()
+	}()
+	start.Done() // trigger Pop before Push
+	requirePush(t, sR47, testQ)
+	done.Wait() // wait for goroutine checks to pass
 }
 
 // requirePop is a helper requiring that pop does not error
