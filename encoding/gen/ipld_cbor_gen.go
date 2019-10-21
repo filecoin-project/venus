@@ -42,11 +42,13 @@ func (generator IpldCborTypeEncodingGenerator) WriteInit(w io.Writer, tis []Type
 
 // WriteEncodingForType outputs the encoding for the given type.
 func (generator IpldCborTypeEncodingGenerator) WriteEncodingForType(w io.Writer, ti TypeInfo) error {
-	doTemplate(w, ti, `
+	if err := doTemplate(w, ti, `
 //
 // Encoding/Decoding impls for {{ .Name }} 
 // 
-	`)
+	`),  err != nil {
+		return err
+	}
 
 	if err := writeEncode(w, ti); err != nil {
 		return err
