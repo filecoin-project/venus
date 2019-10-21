@@ -7,7 +7,7 @@ import (
 
 // IpldCborTypeEncodingGenerator generates encoding/decoding implementations for the IpldCbor encoding.
 //
-// This code generator only with the IpldCborEncoder/IpldCborDecoder pair
+// This code generator only works with the IpldCborEncoder/IpldCborDecoder pair
 // and is intended as an intermediate step towards a pure CBOR encoder/decoder.
 type IpldCborTypeEncodingGenerator struct {
 }
