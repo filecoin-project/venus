@@ -9,6 +9,11 @@ import (
 	whygen "github.com/whyrusleeping/cbor-gen"
 )
 
+type Point struct {
+	X uint64
+	Y uint64
+}
+
 func main() {
 	err := gen.WriteToFile("/tmp/types_gen.go", gen.IpldCborTypeEncodingGenerator{}, "types",
 		types.Ticket{},
@@ -23,6 +28,7 @@ func main() {
 
 	err = whygen.WriteTupleEncodersToFile("/tmp/types_whygen.go", "types",
 		types.Ticket{},
+		Point{},
 		// types.Message{}, AttoFil needs to be part of it too
 		// types.SignedMessage{},
 		// types.MessageReceipt{}, XXX: it has a uint8 that is not supproted by whygen

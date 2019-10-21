@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"bytes"
+	"fmt"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
 )
@@ -23,8 +24,7 @@ type WhyCborDecoder struct {
 func (encoder *WhyCborEncoder) EncodeObject(obj Encodable) error {
 	cborobj, ok := obj.(cbg.CBORMarshaler)
 	if !ok {
-		// XXX: return error
-		return nil
+		return fmt.Errorf("Object is not a CBORMarshaler")
 	}
 	return cborobj.MarshalCBOR(encoder.b)
 }
@@ -44,8 +44,7 @@ func (decoder *WhyCborDecoder) SetBytes(raw []byte) {
 func (decoder WhyCborDecoder) DecodeObject(obj Decodable) error {
 	cborobj, ok := obj.(cbg.CBORUnmarshaler)
 	if !ok {
-		// XXX: return error
-		return nil
+		return fmt.Errorf("Object is not a CBORUnmarshaler")
 	}
 	return cborobj.UnmarshalCBOR(decoder.b)
 }

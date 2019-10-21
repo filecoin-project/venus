@@ -13,7 +13,6 @@ type Decodable interface {
 // Encoder represents types that can encode values.
 type Encoder interface {
 	EncodeObject(obj Encodable) error
-	// IntoBytes returns the encoded bytes.
 	IntoBytes() []byte
 }
 
@@ -27,7 +26,6 @@ type defaultEncoder = IpldCborEncoder
 type defaultDecoder = IpldCborDecoder
 
 // Encode encodes an encodable type, returning a byte array.
-// XXX: add support to receive an Encoder/Decoder as optional argument
 func Encode(obj Encodable) ([]byte, error) {
 	var encoder Encoder = &defaultEncoder{}
 
@@ -40,7 +38,6 @@ func Encode(obj Encodable) ([]byte, error) {
 }
 
 // Decode decodes a decodable type, and populates a pointer to the type.
-// XXX: add support to receive an Encoder/Decoder as optional argument
 func Decode(raw []byte, obj Decodable) error {
 	var decoder Decoder = &defaultDecoder{}
 	decoder.SetBytes(raw)

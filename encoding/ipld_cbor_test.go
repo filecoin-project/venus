@@ -31,3 +31,15 @@ func TestIpldCborDecodingOutput(t *testing.T) {
 	var expected = Point{X: 8, Y: 3}
 	assert.Equal(t, output, expected)
 }
+
+func TestIpldCborDecodingFromWhyOutput(t *testing.T) {
+	var input = []byte{130, 8, 3}
+
+	var decoder = &IpldCborDecoder{}
+	decoder.SetBytes(input)
+	var output = Point{}
+	decoder.DecodeObject(&output)
+
+	var expected = Point{X: 8, Y: 3}
+	assert.Equal(t, output, expected)
+}
