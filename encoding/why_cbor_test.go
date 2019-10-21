@@ -6,7 +6,6 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -17,7 +16,8 @@ func TestWhyCborEncodingOutput(t *testing.T) {
 	var encoder = WhyCborEncoder{b: bytes.NewBuffer([]byte{})}
 
 	err := encoder.EncodeObject(original)
-	require.NoError(t, err)
+	assert.NilError(t, err)
+
 	output := encoder.IntoBytes()
 
 	var expected = []byte{130, 8, 3}
@@ -29,8 +29,10 @@ func TestWhyCborDecodingOutput(t *testing.T) {
 
 	var decoder = &WhyCborDecoder{}
 	decoder.SetBytes(input)
+
 	var output = Point{}
-	decoder.DecodeObject(&output)
+	err := decoder.DecodeObject(&output)
+	assert.NilError(t, err)
 
 	var expected = Point{X: 8, Y: 3}
 	assert.Equal(t, output, expected)

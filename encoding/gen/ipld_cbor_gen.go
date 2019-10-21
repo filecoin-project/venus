@@ -12,6 +12,16 @@ import (
 type IpldCborTypeEncodingGenerator struct {
 }
 
+// WriteImports outputs the imports.
+func (generator IpldCborTypeEncodingGenerator) WriteImports(w io.Writer) error {
+	return doTemplate(w, nil, `
+import (
+	"github.com/filecoin-project/go-filecoin/encoding"
+)
+`)
+}
+
+// WriteInit outputs the init for the file.
 func (generator IpldCborTypeEncodingGenerator) WriteInit(w io.Writer, tis []TypeInfo) error {
 	if _, err := fmt.Fprintln(w, "\nfunc init() {"); err != nil {
 		return err
@@ -30,14 +40,7 @@ func (generator IpldCborTypeEncodingGenerator) WriteInit(w io.Writer, tis []Type
 	return nil
 }
 
-func (generator IpldCborTypeEncodingGenerator) WriteImports(w io.Writer) error {
-	return doTemplate(w, nil, `
-import (
-	"github.com/filecoin-project/go-filecoin/encoding"
-)
-`)
-}
-
+// WriteEncodingForType outputs the encoding for the given type.
 func (generator IpldCborTypeEncodingGenerator) WriteEncodingForType(w io.Writer, ti TypeInfo) error {
 	doTemplate(w, ti, `
 //

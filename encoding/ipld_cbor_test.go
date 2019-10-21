@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -13,7 +12,8 @@ func TestIpldCborEncodingOutput(t *testing.T) {
 	var encoder = IpldCborEncoder{}
 
 	err := encoder.EncodeObject(original)
-	require.NoError(t, err)
+	assert.NilError(t, err)
+
 	output := encoder.IntoBytes()
 
 	var expected = []byte{162, 97, 120, 8, 97, 121, 3}
@@ -25,8 +25,10 @@ func TestIpldCborDecodingOutput(t *testing.T) {
 
 	var decoder = &IpldCborDecoder{}
 	decoder.SetBytes(input)
+
 	var output = Point{}
-	decoder.DecodeObject(&output)
+	err := decoder.DecodeObject(&output)
+	assert.NilError(t, err)
 
 	var expected = Point{X: 8, Y: 3}
 	assert.Equal(t, output, expected)
@@ -37,8 +39,10 @@ func TestIpldCborDecodingFromWhyOutput(t *testing.T) {
 
 	var decoder = &IpldCborDecoder{}
 	decoder.SetBytes(input)
+
 	var output = Point{}
-	decoder.DecodeObject(&output)
+	err := decoder.DecodeObject(&output)
+	assert.NilError(t, err)
 
 	var expected = Point{X: 8, Y: 3}
 	assert.Equal(t, output, expected)

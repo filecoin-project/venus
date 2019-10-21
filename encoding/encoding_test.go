@@ -8,6 +8,7 @@ import (
 	"gotest.tools/assert"
 )
 
+// Point is the testing point.
 type Point struct {
 	X uint64
 	Y uint64
