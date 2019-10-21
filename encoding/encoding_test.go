@@ -17,7 +17,7 @@ func init() {
 	RegisterIpldCborType(Point{})
 }
 
-func (p Point) encode(encoder Encoder) error {
+func (p Point) Encode(encoder Encoder) error {
 	var err error
 
 	if err = encoder.EncodeObject(p); err != nil {
@@ -27,7 +27,7 @@ func (p Point) encode(encoder Encoder) error {
 	return nil
 }
 
-func (p *Point) decode(decoder Decoder) error {
+func (p *Point) Decode(decoder Decoder) error {
 	if err := decoder.DecodeObject(p); err != nil {
 		return err
 	}
