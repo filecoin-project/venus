@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -40,12 +39,12 @@ func TestEncodeDecodeIsClosed(t *testing.T) {
 	var original Encodable = &Point{X: 8, Y: 3}
 
 	raw, err := Encode(original)
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
 	var decoded Decodable = &Point{}
 
 	err = Decode(raw, decoded)
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
 	assert.Assert(t, reflect.DeepEqual(original, decoded))
 }
