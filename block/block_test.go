@@ -1,4 +1,4 @@
-package block
+package block_test
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	blk "github.com/filecoin-project/go-filecoin/block"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
@@ -36,17 +37,17 @@ func TestTriangleEncoding(t *testing.T) {
 
 	newAddress := address.NewForTestGetter()
 
-	testRoundTrip := func(t *testing.T, exp *Block) {
+	testRoundTrip := func(t *testing.T, exp *blk.Block) {
 		jb, err := json.Marshal(exp)
 		require.NoError(t, err)
-		var jsonRoundTrip Block
+		var jsonRoundTrip blk.Block
 		err = json.Unmarshal(jb, &jsonRoundTrip)
 		require.NoError(t, err)
 
 		ipldNodeOrig, err := cbor.DumpObject(exp)
 		assert.NoError(t, err)
 		// NOTICE: skips the intermediate json steps from above.
-		var cborJSONRoundTrip Block
+		var cborJSONRoundTrip blk.Block
 		err = cbor.DecodeInto(ipldNodeOrig, &cborJSONRoundTrip)
 		assert.NoError(t, err)
 
@@ -54,20 +55,20 @@ func TestTriangleEncoding(t *testing.T) {
 	}
 
 	t.Run("encoding block with zero fields works", func(t *testing.T) {
-		testRoundTrip(t, &Block{})
+		testRoundTrip(t, &blk.Block{})
 	})
 
 	t.Run("encoding block with nonzero fields works", func(t *testing.T) {
 		// We should ensure that every field is set -- zero values might
 		// pass when non-zero values do not due to nil/null encoding.
 
-		b := &Block{
+		b := &blk.Block{
 			Miner:           newAddress(),
-			Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
+			Tickets:         []blk.Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 			Height:          types.Uint64(2),
 			Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
 			MessageReceipts: types.CidFromString(t, "somecid"),
-			Parents:         NewTipSetKey(types.CidFromString(t, "somecid")),
+			Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 			ParentWeight:    types.Uint64(1000),
 			ElectionProof:   types.NewTestPoSt(),
 			StateRoot:       types.CidFromString(t, "somecid"),
@@ -89,7 +90,7 @@ func TestTriangleEncoding(t *testing.T) {
 func TestBlockString(t *testing.T) {
 	tf.UnitTest(t)
 
-	var b Block
+	var b blk.Block
 
 	cid := b.Cid()
 
@@ -106,7 +107,7 @@ func TestBlockScore(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			n := uint64(source.Int63())
 
-			var b Block
+			var b blk.Block
 			b.Height = types.Uint64(n)
 
 			assert.Equal(t, uint64(b.Height), b.Score(), "block height: %d - block score %d", b.Height, b.Score())
@@ -125,24 +126,24 @@ func TestDecodeBlock(t *testing.T) {
 		cM := types.CidFromString(t, "messages")
 		cR := types.CidFromString(t, "receipts")
 
-		before := &Block{
+		before := &blk.Block{
 			Miner:           addrGetter(),
-			Tickets:         []Ticket{{VRFProof: []uint8{}}},
-			Parents:         NewTipSetKey(c1),
+			Tickets:         []blk.Ticket{{VRFProof: []uint8{}}},
+			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
 			Messages:        types.TxMeta{SecpRoot: cM, BLSRoot: types.EmptyMessagesCID},
 			StateRoot:       c2,
 			MessageReceipts: cR,
 		}
 
-		after, err := DecodeBlock(before.ToNode().RawData())
+		after, err := blk.DecodeBlock(before.ToNode().RawData())
 		assert.NoError(t, err)
 		assert.Equal(t, after.Cid(), before.Cid())
 		assert.Equal(t, before, after)
 	})
 
 	t.Run("decode failure results in an error", func(t *testing.T) {
-		_, err := DecodeBlock([]byte{1, 2, 3})
+		_, err := blk.DecodeBlock([]byte{1, 2, 3})
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "malformed stream")
 	})
@@ -160,15 +161,15 @@ func TestEquals(t *testing.T) {
 	var h1 types.Uint64 = 1
 	var h2 types.Uint64 = 2
 
-	b1 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b2 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h1}
-	b3 := &Block{Parents: NewTipSetKey(c1), StateRoot: s2, Height: h1}
-	b4 := &Block{Parents: NewTipSetKey(c2), StateRoot: s1, Height: h1}
-	b5 := &Block{Parents: NewTipSetKey(c1), StateRoot: s1, Height: h2}
-	b6 := &Block{Parents: NewTipSetKey(c2), StateRoot: s1, Height: h2}
-	b7 := &Block{Parents: NewTipSetKey(c1), StateRoot: s2, Height: h2}
-	b8 := &Block{Parents: NewTipSetKey(c2), StateRoot: s2, Height: h1}
-	b9 := &Block{Parents: NewTipSetKey(c2), StateRoot: s2, Height: h2}
+	b1 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b2 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h1}
+	b3 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h1}
+	b4 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h1}
+	b5 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s1, Height: h2}
+	b6 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s1, Height: h2}
+	b7 := &blk.Block{Parents: blk.NewTipSetKey(c1), StateRoot: s2, Height: h2}
+	b8 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h1}
+	b9 := &blk.Block{Parents: blk.NewTipSetKey(c2), StateRoot: s2, Height: h2}
 	assert.True(t, b1.Equals(b1))
 	assert.True(t, b1.Equals(b2))
 	assert.False(t, b1.Equals(b3))
@@ -190,28 +191,13 @@ func TestEquals(t *testing.T) {
 	assert.True(t, b9.Equals(b9))
 }
 
-func TestParanoidPanic(t *testing.T) {
-	tf.UnitTest(t)
-
-	paranoid = true
-
-	b1 := &Block{Height: 1}
-	b1.Cid()
-
-	b1.Height = 2
-
-	assert.Panics(t, func() {
-		b1.Cid()
-	})
-}
-
 func TestBlockJsonMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	var parent, child Block
+	var parent, child blk.Block
 	child.Miner = address.NewForTestGetter()()
 	child.Height = 1
-	child.Parents = NewTipSetKey(parent.Cid())
+	child.Parents = blk.NewTipSetKey(parent.Cid())
 	child.StateRoot = parent.Cid()
 
 	child.Messages = types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID}
@@ -227,7 +213,7 @@ func TestBlockJsonMarshal(t *testing.T) {
 	assert.Contains(t, str, child.MessageReceipts.String())
 
 	// marshal/unmarshal symmetry
-	var unmarshalled Block
+	var unmarshalled blk.Block
 	e2 := json.Unmarshal(marshalled, &unmarshalled)
 	assert.NoError(t, e2)
 
@@ -240,13 +226,13 @@ func TestSignatureData(t *testing.T) {
 	tf.UnitTest(t)
 	newAddress := address.NewForTestGetter()
 
-	b := &Block{
+	b := &blk.Block{
 		Miner:           newAddress(),
-		Tickets:         []Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
+		Tickets:         []blk.Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
 		Height:          types.Uint64(2),
 		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
 		MessageReceipts: types.CidFromString(t, "somecid"),
-		Parents:         NewTipSetKey(types.CidFromString(t, "somecid")),
+		Parents:         blk.NewTipSetKey(types.CidFromString(t, "somecid")),
 		ParentWeight:    types.Uint64(1000),
 		ElectionProof:   []byte{0x1},
 		StateRoot:       types.CidFromString(t, "somecid"),
@@ -254,13 +240,13 @@ func TestSignatureData(t *testing.T) {
 		BlockSig:        []byte{0x3},
 	}
 
-	diff := &Block{
+	diff := &blk.Block{
 		Miner:           newAddress(),
-		Tickets:         []Ticket{{VRFProof: []byte{0x03, 0x01, 0x02}}},
+		Tickets:         []blk.Ticket{{VRFProof: []byte{0x03, 0x01, 0x02}}},
 		Height:          types.Uint64(3),
 		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
 		MessageReceipts: types.CidFromString(t, "someothercid"),
-		Parents:         NewTipSetKey(types.CidFromString(t, "someothercid")),
+		Parents:         blk.NewTipSetKey(types.CidFromString(t, "someothercid")),
 		ParentWeight:    types.Uint64(1001),
 		ElectionProof:   []byte{0x2},
 		StateRoot:       types.CidFromString(t, "someothercid"),

@@ -64,11 +64,6 @@ type Block struct {
 	cachedBytes []byte
 }
 
-// set this to true to panic if the blocks data differs from the cached cid. This should
-// be obviated by changing the block to have protected construction, private fields, and
-// getters for all the values.
-var paranoid = false
-
 // Cid returns the content id of this block.
 func (b *Block) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
@@ -90,12 +85,6 @@ func (b *Block) Cid() cid.Cid {
 		}
 
 		b.cachedCid = c
-	}
-
-	if paranoid {
-		if b.cachedCid != b.ToNode().Cid() {
-			panic("somewhere, a programmer was very bad")
-		}
 	}
 
 	return b.cachedCid

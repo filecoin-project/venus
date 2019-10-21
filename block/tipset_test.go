@@ -1,4 +1,4 @@
-package block
+package block_test
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	blk "github.com/filecoin-project/go-filecoin/block"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -29,10 +30,10 @@ func init() {
 	mockSignerForTest, _ = types.NewMockSignersAndKeyInfo(2)
 }
 
-func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *Block {
-	return &Block{
-		Tickets:         []Ticket{{VRFProof: ticket}},
-		Parents:         NewTipSetKey(parentCid),
+func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *blk.Block {
+	return &blk.Block{
+		Tickets:         []blk.Ticket{{VRFProof: ticket}},
+		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    types.Uint64(parentWeight),
 		Height:          types.Uint64(42 + uint64(height)),
 		Messages:        types.TxMeta{SecpRoot: cidGetter(), BLSRoot: types.EmptyMessagesCID},
@@ -48,7 +49,7 @@ func TestTipSet(t *testing.T) {
 	b1, b2, b3 := makeTestBlocks(t)
 
 	t.Run("undefined tipset", func(t *testing.T) {
-		assert.False(t, UndefTipSet.Defined())
+		assert.False(t, blk.UndefTipSet.Defined())
 		// No other methods are defined
 	})
 
@@ -58,7 +59,7 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, b1, ts.At(0))
 		assert.Equal(t, b2, ts.At(1))
 		assert.Equal(t, b3, ts.At(2))
-		assert.Equal(t, []*Block{b1, b2, b3}, ts.ToSlice())
+		assert.Equal(t, []*blk.Block{b1, b2, b3}, ts.ToSlice())
 	})
 
 	t.Run("order breaks ties with CID", func(t *testing.T) {
@@ -67,9 +68,9 @@ func TestTipSet(t *testing.T) {
 
 		ts := RequireNewTipSet(t, b1, b2)
 		if bytes.Compare(b1.Cid().Bytes(), b2.Cid().Bytes()) < 0 {
-			assert.Equal(t, []*Block{b1, b2}, ts.ToSlice())
+			assert.Equal(t, []*blk.Block{b1, b2}, ts.ToSlice())
 		} else {
-			assert.Equal(t, []*Block{b2, b1}, ts.ToSlice())
+			assert.Equal(t, []*blk.Block{b2, b1}, ts.ToSlice())
 		}
 	})
 
@@ -84,8 +85,8 @@ func TestTipSet(t *testing.T) {
 	})
 
 	t.Run("key", func(t *testing.T) {
-		assert.Equal(t, NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
-		assert.Equal(t, NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
+		assert.Equal(t, blk.NewTipSetKey(b1.Cid()), RequireNewTipSet(t, b1).Key())
+		assert.Equal(t, blk.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()),
 			RequireNewTipSet(t, b1, b2, b3).Key())
 	})
 
@@ -130,22 +131,22 @@ func TestTipSet(t *testing.T) {
 		assert.Equal(t, ts1a, ts1b)
 		assert.NotEqual(t, ts1a, ts2)
 		assert.NotEqual(t, ts1a, ts3)
-		assert.NotEqual(t, ts1a, UndefTipSet)
-		assert.NotEqual(t, ts2, UndefTipSet)
-		assert.NotEqual(t, ts3, UndefTipSet)
+		assert.NotEqual(t, ts1a, blk.UndefTipSet)
+		assert.NotEqual(t, ts2, blk.UndefTipSet)
+		assert.NotEqual(t, ts3, blk.UndefTipSet)
 	})
 
 	t.Run("slice", func(t *testing.T) {
-		assert.Equal(t, []*Block{b1}, RequireNewTipSet(t, b1).ToSlice())
+		assert.Equal(t, []*blk.Block{b1}, RequireNewTipSet(t, b1).ToSlice())
 
 		ts := RequireNewTipSet(t, b3, b2, b1) // Presented in reverse order
 		slice := ts.ToSlice()
-		assert.Equal(t, []*Block{b1, b2, b3}, slice)
+		assert.Equal(t, []*blk.Block{b1, b2, b3}, slice)
 
 		slice[1] = b1
 		slice[2] = b2
 		assert.NotEqual(t, slice, ts.ToSlice())
-		assert.Equal(t, []*Block{b1, b2, b3}, ts.ToSlice()) // tipset is immutable
+		assert.Equal(t, []*blk.Block{b1, b2, b3}, ts.ToSlice()) // tipset is immutable
 	})
 
 	t.Run("string", func(t *testing.T) {
@@ -153,19 +154,19 @@ func TestTipSet(t *testing.T) {
 		// datastore key and depends on the format exactly.
 		assert.Equal(t, "{ "+b1.Cid().String()+" }", RequireNewTipSet(t, b1).String())
 
-		expected := NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
+		expected := blk.NewTipSetKey(b1.Cid(), b2.Cid(), b3.Cid()).String()
 		assert.Equal(t, expected, RequireNewTipSet(t, b3, b2, b1).String())
 	})
 
 	t.Run("empty new tipset fails", func(t *testing.T) {
-		_, err := NewTipSet()
-		assert.Error(t, err)
-		assert.Equal(t, errNoBlocks, err)
+		_, err := blk.NewTipSet()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no blocks for tipset")
 	})
 
 	t.Run("duplicate block fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		ts, err := NewTipSet(b1, b2, b1)
+		ts, err := blk.NewTipSet(b1, b2, b1)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -173,15 +174,15 @@ func TestTipSet(t *testing.T) {
 	t.Run("mismatched height fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.Height = 3
-		ts, err := NewTipSet(b1, b2, b3)
+		ts, err := blk.NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
 
 	t.Run("mismatched parents fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
-		b1.Parents = NewTipSetKey(cid1, cid2)
-		ts, err := NewTipSet(b1, b2, b3)
+		b1.Parents = blk.NewTipSetKey(cid1, cid2)
+		ts, err := blk.NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -189,7 +190,7 @@ func TestTipSet(t *testing.T) {
 	t.Run("mismatched ticket arrays fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.Tickets = append(b1.Tickets, b2.Tickets[0])
-		ts, err := NewTipSet(b1, b2, b3)
+		ts, err := blk.NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -197,7 +198,7 @@ func TestTipSet(t *testing.T) {
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.ParentWeight = types.Uint64(3000)
-		ts, err := NewTipSet(b1, b2, b3)
+		ts, err := blk.NewTipSet(b1, b2, b3)
 		assert.Error(t, err)
 		assert.False(t, ts.Defined())
 	})
@@ -206,10 +207,10 @@ func TestTipSet(t *testing.T) {
 // TestTipSetMinTicket checks that MinTicket is the minimum of the last of the
 // tickets of the tipset, even when other tickets are smaller.
 func TestTipSetMinTicket(t *testing.T) {
-	tickets1 := []Ticket{{VRFProof: []byte{0x0}}, {VRFProof: []byte{0x3}}}
-	tickets2 := []Ticket{{VRFProof: []byte{0x2}}, {VRFProof: []byte{0x4}}}
-	tickets3 := []Ticket{{VRFProof: []byte{0x1}}, {VRFProof: []byte{0x5}}}
-	expMinTicket := Ticket{VRFProof: []byte{0x3}}
+	tickets1 := []blk.Ticket{{VRFProof: []byte{0x0}}, {VRFProof: []byte{0x3}}}
+	tickets2 := []blk.Ticket{{VRFProof: []byte{0x2}}, {VRFProof: []byte{0x4}}}
+	tickets3 := []blk.Ticket{{VRFProof: []byte{0x1}}, {VRFProof: []byte{0x5}}}
+	expMinTicket := blk.Ticket{VRFProof: []byte{0x3}}
 
 	b1, b2, b3 := makeTestBlocks(t)
 	b1.Tickets = tickets1
@@ -226,13 +227,13 @@ func TestTipSetMinTicket(t *testing.T) {
 }
 
 func TestUndefKey(t *testing.T) {
-	ts := UndefTipSet
+	ts := blk.UndefTipSet
 	udKey := ts.Key()
 	assert.True(t, udKey.Empty())
 }
 
 // Test methods: String, Key, ToSlice, MinTicket, Height, NewTipSet, Equals
-func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
+func makeTestBlocks(t *testing.T) (*blk.Block, *blk.Block, *blk.Block) {
 	b1 := block(t, []byte{1}, 1, cid1, parentWeight, 1, "1")
 	b2 := block(t, []byte{2}, 1, cid1, parentWeight, 2, "2")
 	b3 := block(t, []byte{3}, 1, cid1, parentWeight, 3, "3")
@@ -241,8 +242,8 @@ func makeTestBlocks(t *testing.T) (*Block, *Block, *Block) {
 
 // RequireNewTipSet instantiates and returns a new tipset of the given blocks
 // and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
-	ts, err := NewTipSet(blks...)
+func RequireNewTipSet(t *testing.T, blks ...*blk.Block) blk.TipSet {
+	ts, err := blk.NewTipSet(blks...)
 	require.NoError(t, err)
 	return ts
 }
