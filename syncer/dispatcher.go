@@ -2,14 +2,15 @@ package syncer
 
 import (
 	"container/heap"
-	"context"	
+	"context"
 	"errors"
 	"sync"
 
-	logging "github.com/ipfs/go-log" 	
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/block"
 )
+
 var log = logging.Logger("sync.dispatch")
 
 var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
@@ -23,9 +24,8 @@ type syncer interface {
 
 // NewDispatcher creates a new syncing dispatcher.
 func NewDispatcher(catchupSyncer syncer) *Dispatcher {
-
 	return &Dispatcher{
-		targetQ:   NewTargetQueue(),
+		targetQ:       NewTargetQueue(),
 		catchupSyncer: catchupSyncer,
 	}
 }
@@ -34,11 +34,6 @@ func NewDispatcher(catchupSyncer syncer) *Dispatcher {
 type Dispatcher struct {
 	// The dispatcher maintains a targeting system for determining the
 	// current best syncing target
-	// targetMu protects the targeting system
-	targetMu sync.Mutex
-	// targetSet tracks all tipsetkeys currently being targeted to prevent
-	// pushing duplicates to the target queue
-	targetSet map[string]struct{}
 	// targetQ is a priority queue of target tipsets
 	targetQ *TargetQueue
 
@@ -57,14 +52,10 @@ func (d *Dispatcher) ReceiveOwnBlock(ci *block.ChainInfo) error { return d.recei
 func (d *Dispatcher) ReceiveGossipBlock(ci *block.ChainInfo) error { return d.receive(ci) }
 
 func (d *Dispatcher) receive(ci *block.ChainInfo) error {
-	d.targetMu.Lock()
-	defer d.targetMu.Unlock()
-
 	err := d.targetQ.Push(&SyncRequest{ChainInfo: *ci})
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -75,28 +66,24 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 	// Loop on targetQ.Pop()
 	// Pop() should block when there is nothing there
 	// When we get something we should dispatch the request to the appropriate syncer
-	go func () {
+	go func() {
 		for {
-			d.loop(syncingCtx)
+			// Pop() blocks until there is something to sync
+			syncReq, err := d.targetQ.Pop()
+			if err != nil {
+				log.Errorf("error popping next sync request %s", err)
+			}
+			err = d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncReq.ChainInfo, true)
+			if err != nil {
+				log.Infof("error running sync request", err)
+			}
 		}
 	}()
 }
 
-// loop is the execution loop of sync dispatching
-func (d *Dispatcher) loop(ctx context.Context) {
-	d.targetMu.Lock()
-	defer d.targetMu.Unlock()
-	if d.targetQ.Len() != 0 {
-		syncReq, err := d.targetQ.Pop()
-		if err != nil {
-			log.Errorf("error popping next sync request %s", err)
-			return
-		}
-		err = d.catchupSyncer.HandleNewTipSet(ctx, &syncReq.ChainInfo, true)
-		if err != nil {
-			log.Infof("error running sync request", err)
-		}
-	}
+// ActiveRequests informs of the number of sync requests currently enqueued.
+func (d *Dispatcher) ActiveRequests() int {
+	return d.targetQ.Len()
 }
 
 // SyncRequest tracks a logical request of the syncing subsystem to run a
@@ -151,17 +138,17 @@ func (rq *rawQueue) Pop() interface{} {
 // policy. It exposes programmer errors as return values instead of panicing.
 // Errors should only be returned from Push and Pop in the case of programmer
 // error.
-// 
+//
 // All methods are threadsafe.  Concurrent pushes and pops are allowed.
 // Pop is a blocking call in the case the queue is empty.
 type TargetQueue struct {
 	q         rawQueue
 	targetSet map[string]struct{}
-	
+
 	// the following fields ensure thread safety
 	// popMu ensures that a single popper will wait for the empty wg
 	popMu sync.Mutex
-	// rawMu ensures a single go-routine accesses rawQueue and 
+	// rawMu ensures a single go-routine accesses rawQueue and
 	rawMu sync.Mutex
 	// empty signals when a queue is empty and no-longer empty
 	empty sync.WaitGroup
@@ -172,10 +159,10 @@ func NewTargetQueue() *TargetQueue {
 	rq := make(rawQueue, 0)
 	heap.Init(&rq)
 	tq := &TargetQueue{
-		q: rq,
-		targetSet: make(map[string]struct{}),	
+		q:         rq,
+		targetSet: make(map[string]struct{}),
 	}
-	
+
 	// Important to add to waitgroup directly on struct, waitgroup internals
 	// rely on memory not moving!
 	tq.empty.Add(1)
@@ -201,8 +188,8 @@ func (tq *TargetQueue) Push(req *SyncRequest) (err error) {
 		// Signal that the queue has gone from empty to non-empty
 		tq.empty.Done()
 	}
-	tq.targetSet[req.ChainInfo.Head.String()] = struct{}{}	
-	
+	tq.targetSet[req.ChainInfo.Head.String()] = struct{}{}
+
 	return nil
 }
 
@@ -215,7 +202,7 @@ func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
 	tq.rawMu.Lock()
 	defer tq.rawMu.Unlock()
 	defer func() {
-		// This converts heap.Pop panics to programmer errors		
+		// This converts heap.Pop panics to programmer errors
 		if r := recover(); r != nil {
 			req = nil
 			err = errBadPop
@@ -237,6 +224,6 @@ func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
 // Len returns the number of targets in the queue.
 func (tq *TargetQueue) Len() int {
 	tq.rawMu.Lock()
-	defer tq.rawMu.Unlock()	
+	defer tq.rawMu.Unlock()
 	return tq.q.Len()
 }

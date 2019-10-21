@@ -61,9 +61,9 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	err = node.Chain.SyncDispatch.ReceiveGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)), )
+	err = node.Chain.SyncDispatch.ReceiveGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
 	if err != nil {
-		return errors.Wrapf(err, "recieve block %s from peer %s", blk.Cid(), from)
+		return errors.Wrapf(err, "receive block %s from peer %s", blk.Cid(), from)
 	}
 
 	return nil

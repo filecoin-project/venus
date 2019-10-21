@@ -1,9 +1,11 @@
 package syncer_test
 
 import (
-	"testing"
+	"context"
 	"strconv"
 	"sync"
+	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/types"	
@@ -14,15 +16,60 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
+type fakeSyncer struct {
+	headsCalled []types.TipSetKey
+}
+
+func (fs *fakeSyncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, t bool) error {
+	fs.headsCalled = append(fs.headsCalled, ci.Head)
+	return nil
+}
+
+func TestDispatchStartHappy(t *testing.T) {
+	tf.UnitTest(t)
+	s := &fakeSyncer{
+		headsCalled: make([]types.TipSetKey, 0),
+	}
+	testDispatch := syncer.NewDispatcher(s)
+
+	cis := []*types.ChainInfo{
+		chainInfoFromHeight(t, 0),
+		chainInfoFromHeight(t, 42),
+		chainInfoFromHeight(t, 3),
+		chainInfoFromHeight(t, 16),
+		chainInfoFromHeight(t, 2),
+	}
+
+	// receive requests before Start() to test deterministic order
+	for _, ci := range cis {
+		assert.NoError(t, testDispatch.ReceiveHello(ci))
+	}
+
+	assert.Equal(t, len(cis), testDispatch.ActiveRequests())
+	testDispatch.Start(context.Background())
+
+	// poll for no more active requests
+	for testDispatch.ActiveRequests() != 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// check that the fakeSyncer synced in order
+	expectedOrder := []int{1, 3, 2, 4, 0}
+	require.Equal(t, len(expectedOrder), len(s.headsCalled))
+	for i := range cis {
+		assert.Equal(t, cis[expectedOrder[i]].Head, s.headsCalled[i])
+	}
+}
+
 func TestQueueHappy(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
-	sR1 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 1)}
-	sR2 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 2)}
-	sR47 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 47)}
+	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR1 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 1))}
+	sR2 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 2))}
+	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	requirePush(t, sR2, testQ)
 	requirePush(t, sR47, testQ)
@@ -50,8 +97,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
-	sR0dup := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
+	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0dup := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
 
 	err := testQ.Push(sR0)
 	assert.NoError(t, err)
@@ -62,7 +109,7 @@ func TestQueueDuplicates(t *testing.T) {
 	// Only one of these makes it onto the queue
 	assert.Equal(t, 1, testQ.Len())
 
-	// Pop 
+	// Pop
 	first := requirePop(t, testQ)
 	assert.Equal(t, uint64(0), first.ChainInfo.Height)
 
@@ -72,14 +119,14 @@ func TestQueueDuplicates(t *testing.T) {
 	assert.Equal(t, 1, testQ.Len())
 
 	second := requirePop(t, testQ)
-	assert.Equal(t, uint64(0), second.ChainInfo.Height)	
+	assert.Equal(t, uint64(0), second.ChainInfo.Height)
 }
 
 func TestQueueEmptyPopBlocks(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
-	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
-	sR47 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 47)}
+	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	// Push 2
 	requirePush(t, sR47, testQ)
@@ -92,7 +139,7 @@ func TestQueueEmptyPopBlocks(t *testing.T) {
 	_ = requirePop(t, testQ)
 	assert.Equal(t, 0, testQ.Len())
 
-	var start,done  sync.WaitGroup
+	var start, done sync.WaitGroup
 	start.Add(1)
 	done.Add(1)
 	go func() {
@@ -121,10 +168,10 @@ func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
 // chainInfoFromHeight is a helper that constructs a unique chain info off of
 // an int. The tipset key is a faked cid from the string of that integer and
 // the height is that integer.
-func chainInfoFromHeight(t *testing.T, h int) types.ChainInfo {
+func chainInfoFromHeight(t *testing.T, h int) *types.ChainInfo {
 	hStr := strconv.Itoa(h)
 	c := types.CidFromString(t, hStr)
-	return block.ChainInfo{
+	return &block.ChainInfo{
 		Head: types.NewTipSetKey(c),
 		Height: uint64(h),
 	}
