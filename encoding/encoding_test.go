@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"gotest.tools/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 // Point is the testing point.
@@ -36,6 +38,8 @@ func (p *Point) Decode(decoder Decoder) error {
 }
 
 func TestEncodeDecodeIsClosed(t *testing.T) {
+	tf.UnitTest(t)
+
 	var original Encodable = &Point{X: 8, Y: 3}
 
 	raw, err := Encode(original)

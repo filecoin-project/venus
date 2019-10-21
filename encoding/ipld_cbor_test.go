@@ -5,9 +5,13 @@ import (
 	"testing"
 
 	"gotest.tools/assert"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestIpldCborEncodingOutput(t *testing.T) {
+	tf.UnitTest(t)
+
 	var original = &Point{X: 8, Y: 3}
 	var encoder = IpldCborEncoder{}
 
@@ -21,6 +25,8 @@ func TestIpldCborEncodingOutput(t *testing.T) {
 }
 
 func TestIpldCborDecodingOutput(t *testing.T) {
+	tf.UnitTest(t)
+
 	var input = []byte{162, 97, 120, 8, 97, 121, 3}
 
 	var decoder = &IpldCborDecoder{}

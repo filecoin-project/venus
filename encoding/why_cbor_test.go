@@ -9,9 +9,13 @@ import (
 	"gotest.tools/assert"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
 func TestWhyCborEncodingOutput(t *testing.T) {
+	tf.UnitTest(t)
+
 	var original = &Point{X: 8, Y: 3}
 	var encoder = WhyCborEncoder{b: bytes.NewBuffer([]byte{})}
 
@@ -25,6 +29,8 @@ func TestWhyCborEncodingOutput(t *testing.T) {
 }
 
 func TestWhyCborDecodingOutput(t *testing.T) {
+	tf.UnitTest(t)
+
 	var input = []byte{130, 8, 3}
 
 	var decoder = &WhyCborDecoder{}
