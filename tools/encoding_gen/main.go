@@ -4,20 +4,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/encoding/gen"
 	"github.com/filecoin-project/go-filecoin/types"
 	whygen "github.com/whyrusleeping/cbor-gen"
 )
 
-type Point struct {
-	X uint64
-	Y uint64
-}
-
 func main() {
 	err := gen.WriteToFile("/tmp/types_gen.go", gen.IpldCborTypeEncodingGenerator{}, "types",
-		types.Ticket{},
-		types.Message{},
+		block.Ticket{},
+		types.UnsignedMessage{},
 		types.SignedMessage{},
 		types.MessageReceipt{},
 	)
@@ -27,8 +23,7 @@ func main() {
 	}
 
 	err = whygen.WriteTupleEncodersToFile("/tmp/types_whygen.go", "types",
-		types.Ticket{},
-		Point{},
+		block.Ticket{},
 		// types.Message{}, AttoFil needs to be part of it too
 		// types.SignedMessage{},
 		// types.MessageReceipt{}, XXX: it has a uint8 that is not supproted by whygen
