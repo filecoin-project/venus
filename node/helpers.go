@@ -33,9 +33,9 @@ type nodeChainSyncer interface {
 }
 
 type nodeSyncDispatcher interface {
-	ReceiveHello(*types.ChainInfo) error
-	ReceiveOwnBlock(*types.ChainInfo) error
-	ReceiveGossipBlock(*types.ChainInfo) error
+	ReceiveHello(*block.ChainInfo) error
+	ReceiveOwnBlock(*block.ChainInfo) error
+	ReceiveGossipBlock(*block.ChainInfo) error
 	Start(context.Context)
 	ActiveRequests() int
 }

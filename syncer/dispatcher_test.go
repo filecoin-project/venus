@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-filecoin/types"	
+	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,10 +17,10 @@ import (
 )
 
 type fakeSyncer struct {
-	headsCalled []types.TipSetKey
+	headsCalled []block.TipSetKey
 }
 
-func (fs *fakeSyncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, t bool) error {
+func (fs *fakeSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, t bool) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)
 	return nil
 }
@@ -28,11 +28,11 @@ func (fs *fakeSyncer) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, 
 func TestDispatchStartHappy(t *testing.T) {
 	tf.UnitTest(t)
 	s := &fakeSyncer{
-		headsCalled: make([]types.TipSetKey, 0),
+		headsCalled: make([]block.TipSetKey, 0),
 	}
 	testDispatch := syncer.NewDispatcher(s)
 
-	cis := []*types.ChainInfo{
+	cis := []*block.ChainInfo{
 		chainInfoFromHeight(t, 0),
 		chainInfoFromHeight(t, 42),
 		chainInfoFromHeight(t, 3),
@@ -168,11 +168,11 @@ func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
 // chainInfoFromHeight is a helper that constructs a unique chain info off of
 // an int. The tipset key is a faked cid from the string of that integer and
 // the height is that integer.
-func chainInfoFromHeight(t *testing.T, h int) *types.ChainInfo {
+func chainInfoFromHeight(t *testing.T, h int) *block.ChainInfo {
 	hStr := strconv.Itoa(h)
 	c := types.CidFromString(t, hStr)
 	return &block.ChainInfo{
-		Head: types.NewTipSetKey(c),
+		Head:   block.NewTipSetKey(c),
 		Height: uint64(h),
 	}
 }

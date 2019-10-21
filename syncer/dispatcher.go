@@ -19,7 +19,7 @@ var errBadSet = errors.New("a programmer is not correctly maintaining the target
 
 // syncer is the interface of the logic syncing incoming chains
 type syncer interface {
-	HandleNewTipSet(context.Context, *types.ChainInfo, bool) error
+	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
 }
 
 // NewDispatcher creates a new syncing dispatcher.
