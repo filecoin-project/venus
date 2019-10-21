@@ -148,18 +148,18 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start bootstrapper.
 		node.Network.Bootstrapper.Start(context.Background())
 
+		// Start syncing dispatch
+		node.Chain.SyncDispatch.Start(context.Background())
+
 		// Register peer tracker disconnect function with network.
 		net.TrackerRegisterDisconnect(node.Network.host.Network(), node.Network.PeerTracker)
 
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *block.ChainInfo) {
 			node.Network.PeerTracker.Track(ci)
-			// TODO Implement principled trusting of ChainInfo's
-			// to address in #2674
-			trusted := true
-			err := node.Chain.Syncer.HandleNewTipSet(context.Background(), ci, trusted)
+			err := node.Chain.SyncDispatch.ReceiveHello(ci)
 			if err != nil {
-				log.Infof("error handling tipset from hello %s: %s", ci, err)
+				log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 				return
 			}
 			// For now, consider the initial bootstrap done after the syncer has (synchronously)

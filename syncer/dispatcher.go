@@ -2,21 +2,31 @@ package syncer
 
 import (
 	"container/heap"
+	"context"	
 	"errors"
 	"sync"
 
+	logging "github.com/ipfs/go-log" 	
+
 	"github.com/filecoin-project/go-filecoin/block"
 )
+var log = logging.Logger("sync.dispatch")
 
 var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
 var errBadPop = errors.New("a programmer is not checking targetQueue length before popping")
 
+// syncer is the interface of the logic syncing incoming chains
+type syncer interface {
+	HandleNewTipSet(context.Context, *types.ChainInfo, bool) error
+}
+
 // NewDispatcher creates a new syncing dispatcher.
-func NewDispatcher() *Dispatcher {
+func NewDispatcher(catchupSyncer syncer) *Dispatcher {
 
 	return &Dispatcher{
 		targetSet: make(map[string]struct{}),
 		targetQ:   NewTargetQueue(),
+		catchupSyncer: catchupSyncer,
 	}
 }
 
@@ -31,18 +41,22 @@ type Dispatcher struct {
 	targetSet map[string]struct{}
 	// targetQ is a priority queue of target tipsets
 	targetQ *TargetQueue
+
+	// catchupSyncer is used for dispatching sync requests for chain heads
+	// during the CHAIN_CATCHUP mode of operation
+	catchupSyncer syncer
 }
 
 // ReceiveHello handles chain information from bootstrap peers.
-func (d *Dispatcher) ReceiveHello(ci block.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveHello(ci *block.ChainInfo) error { return d.receive(ci) }
 
 // ReceiveOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) ReceiveOwnBlock(ci block.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveOwnBlock(ci *block.ChainInfo) error { return d.receive(ci) }
 
 // ReceiveGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) ReceiveGossipBlock(ci block.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveGossipBlock(ci *block.ChainInfo) error { return d.receive(ci) }
 
-func (d *Dispatcher) receive(ci block.ChainInfo) error {
+func (d *Dispatcher) receive(ci *block.ChainInfo) error {
 	d.targetMu.Lock()
 	defer d.targetMu.Unlock()
 
@@ -51,12 +65,43 @@ func (d *Dispatcher) receive(ci block.ChainInfo) error {
 		// already tracking drop quickly
 		return nil
 	}
-	err := d.targetQ.Push(&SyncRequest{ChainInfo: ci})
+	err := d.targetQ.Push(&SyncRequest{ChainInfo: *ci})
 	if err != nil {
 		return err
 	}
 	d.targetSet[ci.Head.String()] = struct{}{}
 	return nil
+}
+
+// Start launches the business logic for the syncing subsystem.
+// It reads syncing requests from the target queue and dispatches them to the
+// appropriate syncer.
+func (d *Dispatcher) Start(syncingCtx context.Context) {
+	// Loop on targetQ.Pop()
+	// Pop() should block when there is nothing there
+	// When we get something we should dispatch the request to the appropriate syncer
+	go func () {
+		for {
+			d.loop(syncingCtx)
+		}
+	}()
+}
+
+// loop is the execution loop of sync dispatching
+func (d *Dispatcher) loop(ctx context.Context) {
+	d.targetMu.Lock()
+	defer d.targetMu.Unlock()
+	if d.targetQ.Len() != 0 {
+		syncReq, err := d.targetQ.Pop()
+		if err != nil {
+			log.Errorf("error popping next sync request %s", err)
+			return
+		}
+		err = d.catchupSyncer.HandleNewTipSet(ctx, &syncReq.ChainInfo, true)
+		if err != nil {
+			log.Infof("error running sync request", err)
+		}
+	}
 }
 
 // SyncRequest tracks a logical request of the syncing subsystem to run a

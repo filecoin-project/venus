@@ -19,6 +19,7 @@ type ChainSubmodule struct {
 	ChainReader   nodeChainReader
 	MessageStore  *chain.MessageStore
 	Syncer        nodeChainSyncer
+	SyncDispatch  nodeSyncDispatcher
 	ActorState    *consensus.ActorStateStore
 
 	// HeavyTipSetCh is a subscription to the heaviest tipset topic on the chain.

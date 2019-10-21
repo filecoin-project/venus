@@ -11,11 +11,6 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 )
 
-func TestNewDispatcher(t *testing.T) {
-	tf.UnitTest(t)
-	syncer.NewDispatcher()
-}
-
 func TestQueueHappy(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()

@@ -32,6 +32,13 @@ type nodeChainSyncer interface {
 	Status() chain.Status
 }
 
+type nodeSyncDispatcher interface {
+	ReceiveHello(*types.ChainInfo) error
+	ReceiveOwnBlock(*types.ChainInfo) error
+	ReceiveGossipBlock(*types.ChainInfo) error
+	Start(context.Context)
+}
+
 type nodeChainSelector interface {
 	NewWeight(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)

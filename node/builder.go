@@ -53,6 +53,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
+	"github.com/filecoin-project/go-filecoin/syncer"	
 	"github.com/filecoin-project/go-filecoin/util/moresync"
 	"github.com/filecoin-project/go-filecoin/version"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -451,6 +452,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)
+	syncerDispatcher := syncer.NewDispatcher(chainSyncer)
 
 	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.cborStore, builtin.DefaultActors)
 
@@ -460,7 +462,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 		ChainSelector: nodeChainSelector,
 		ChainReader:   chainStore,
 		MessageStore:  messageStore,
-		Syncer:        chainSyncer,
+		SyncDispatch:  syncerDispatcher,
 		ActorState:    actorState,
 		// HeaviestTipSetCh: nil,
 		// cancelChainSync: nil,
