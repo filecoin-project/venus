@@ -3,12 +3,12 @@ package syncer_test
 import (
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/syncer"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func TestNewDispatcher(t *testing.T) {
@@ -21,10 +21,10 @@ func TestQueueHappy(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 0}}
-	sR1 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 1}}
-	sR2 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 2}}
-	sR47 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 47}}
+	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
+	sR1 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 1}}
+	sR2 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 2}}
+	sR47 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 47}}
 
 	requirePush(t, sR2, testQ)
 	requirePush(t, sR47, testQ)
@@ -52,8 +52,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 0}}
-	sR0dup := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 0}}
+	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
+	sR0dup := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
 
 	err := testQ.Push(sR0)
 	assert.NoError(t, err)
@@ -72,8 +72,8 @@ func TestQueueDuplicates(t *testing.T) {
 func TestQueueEmptyPop(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
-	sR0 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 0}}
-	sR47 := &syncer.SyncRequest{ChainInfo: types.ChainInfo{Height: 47}}
+	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
+	sR47 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 47}}
 
 	// Push 2
 	requirePush(t, sR47, testQ)
