@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/Workiva/go-datastructures v1.0.50
+	github.com/coreos/etcd v3.3.10+incompatible
 	github.com/cskr/pubsub v1.0.2
 	github.com/dgraph-io/badger v1.6.0 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -20,6 +21,7 @@ require (
 	github.com/go-critic/go-critic v0.0.0-20181204210945-ee9bf5809ead // indirect
 	github.com/golang/mock v1.3.1 // indirect
 	github.com/golangci/golangci-lint v1.17.1
+	github.com/google/go-cmp v0.3.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
@@ -96,6 +98,7 @@ require (
 	go.uber.org/zap v1.10.0
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	google.golang.org/api v0.7.0 // indirect
 	google.golang.org/appengine v1.6.1 // indirect
 	google.golang.org/genproto v0.0.0-20190716160619-c506a9f90610 // indirect
