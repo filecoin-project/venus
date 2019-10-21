@@ -2,9 +2,11 @@ package syncer_test
 
 import (
 	"testing"
+	"strconv"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/types"	
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,10 +19,10 @@ func TestQueueHappy(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
-	sR1 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 1}}
-	sR2 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 2}}
-	sR47 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 47}}
+	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
+	sR1 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 1)}
+	sR2 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 2)}
+	sR47 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 47)}
 
 	requirePush(t, sR2, testQ)
 	requirePush(t, sR47, testQ)
@@ -48,8 +50,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
-	sR0dup := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
+	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
+	sR0dup := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
 
 	err := testQ.Push(sR0)
 	assert.NoError(t, err)
@@ -57,19 +59,27 @@ func TestQueueDuplicates(t *testing.T) {
 	err = testQ.Push(sR0dup)
 	assert.NoError(t, err)
 
-	// Pop twice
-	first := requirePop(t, testQ)
-	second := requirePop(t, testQ)
+	// Only one of these makes it onto the queue
+	assert.Equal(t, 1, testQ.Len())
 
+	// Pop 
+	first := requirePop(t, testQ)
 	assert.Equal(t, uint64(0), first.ChainInfo.Height)
-	assert.Equal(t, uint64(0), second.ChainInfo.Height)
+
+	// Now if we push the duplicate it goes back on
+	err = testQ.Push(sR0dup)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, testQ.Len())
+
+	second := requirePop(t, testQ)
+	assert.Equal(t, uint64(0), second.ChainInfo.Height)	
 }
 
 func TestQueueEmptyPopBlocks(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
-	sR0 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 0}}
-	sR47 := &syncer.SyncRequest{ChainInfo: block.ChainInfo{Height: 47}}
+	sR0 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 0)}
+	sR47 := &syncer.SyncRequest{ChainInfo: chainInfoFromHeight(t, 47)}
 
 	// Push 2
 	requirePush(t, sR47, testQ)
@@ -106,4 +116,16 @@ func requirePop(t *testing.T, q *syncer.TargetQueue) *syncer.SyncRequest {
 // requirePush is a helper requiring that push does not error
 func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
 	require.NoError(t, q.Push(req))
+}
+
+// chainInfoFromHeight is a helper that constructs a unique chain info off of
+// an int. The tipset key is a faked cid from the string of that integer and
+// the height is that integer.
+func chainInfoFromHeight(t *testing.T, h int) types.ChainInfo {
+	hStr := strconv.Itoa(h)
+	c := types.CidFromString(t, hStr)
+	return block.ChainInfo{
+		Head: types.NewTipSetKey(c),
+		Height: uint64(h),
+	}
 }
