@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -82,8 +83,8 @@ type Miner struct {
 type minerPorcelain interface {
 	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
 
-	ChainHeadKey() types.TipSetKey
-	ChainTipSet(types.TipSetKey) (types.TipSet, error)
+	ChainHeadKey() block.TipSetKey
+	ChainTipSet(block.TipSetKey) (block.TipSet, error)
 	ConfigGet(dottedPath string) (interface{}, error)
 
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
@@ -92,9 +93,9 @@ type minerPorcelain interface {
 	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
 
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 	SectorBuilder() sectorbuilder.SectorBuilder
 	types.Signer
 }
@@ -301,7 +302,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedPro
 	messageCid := p.Payment.ChannelMsgCid
 
 	waitCtx, waitCancel := context.WithDeadline(ctx, time.Now().Add(waitForPaymentChannelDuration))
-	err := sm.porcelainAPI.MessageWait(waitCtx, *messageCid, func(blk *types.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err := sm.porcelainAPI.MessageWait(waitCtx, *messageCid, func(blk *block.Block, smsg *types.SignedMessage, receipt *types.MessageReceipt) error {
 		return nil
 	})
 	waitCancel()
@@ -741,7 +742,7 @@ func (sm *Miner) handleQueryDeal(s inet.Stream) {
 // need to trigger PoSt submission.
 // If a PoSt computation is started as a result of this new tipset, the returned latch is held until
 // the computation completes.
-func (sm *Miner) OnNewHeaviestTipSet(ts types.TipSet) (*moresync.Latch, error) {
+func (sm *Miner) OnNewHeaviestTipSet(ts block.TipSet) (*moresync.Latch, error) {
 	ctx := context.Background()
 	doneLatch := moresync.NewLatch(0)
 

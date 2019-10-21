@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -191,8 +192,8 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		return nil, fmt.Errorf("expected car with only a single root")
 	}
 
-	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
-		var blk types.Block
+	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+		var blk block.Block
 
 		if err := cst.Get(ctx, ch.Roots[0], &blk); err != nil {
 			return nil, err

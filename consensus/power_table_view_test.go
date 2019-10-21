@@ -8,6 +8,7 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -77,7 +78,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
 	require.NoError(t, err)
 
-	var calcGenBlk types.Block
+	var calcGenBlk block.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
 	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot)

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -65,7 +66,7 @@ func TestIsElectionWinner(t *testing.T) {
 		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
 			ptv := consensus.NewFakePowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
-			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv, types.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
+			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv, block.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
@@ -73,7 +74,7 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
 		ptv1 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{MinerPower: types.NewBytesAmount(cases[0].myPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, block.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
 
@@ -81,7 +82,7 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
 		ptv2 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{TotalPower: types.NewBytesAmount(cases[0].totalPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, types.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, block.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 	})
@@ -148,7 +149,7 @@ func TestGenValidTicketChain(t *testing.T) {
 	}
 }
 
-func requireValidTicket(t *testing.T, parent types.Ticket, signer types.Signer, signerAddr address.Address) types.Ticket {
+func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, signerAddr address.Address) block.Ticket {
 	tm := consensus.TicketMachine{}
 
 	ticket, err := tm.NextTicket(parent, signerAddr, signer)
@@ -173,12 +174,12 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 }
 
 func TestElectionFailsWithInvalidSigner(t *testing.T) {
-	parent := types.Ticket{VDFResult: types.VDFY{0xbb}}
+	parent := block.Ticket{VDFResult: block.VDFY{0xbb}}
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddress := address.TestAddress
 	ep, err := consensus.ElectionMachine{}.RunElection(parent, badAddress, signer)
 	assert.Error(t, err)
-	assert.Equal(t, types.VRFPi{}, ep)
+	assert.Equal(t, block.VRFPi{}, ep)
 }
 
 func requireAddress(t *testing.T, ki *types.KeyInfo) address.Address {

@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -54,8 +55,8 @@ const (
 
 type clientPorcelainAPI interface {
 	BlockTime() time.Duration
-	ChainHeadKey() types.TipSetKey
-	ChainTipSet(types.TipSetKey) (types.TipSet, error)
+	ChainHeadKey() block.TipSetKey
+	ChainTipSet(block.TipSetKey) (block.TipSet, error)
 	CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	DAGGetFileSize(context.Context, cid.Cid) (uint64, error)
@@ -65,7 +66,7 @@ type clientPorcelainAPI interface {
 	MinerGetAsk(ctx context.Context, minerAddr address.Address, askID uint64) (miner.Ask, error)
 	MinerGetSectorSize(ctx context.Context, minerAddr address.Address) (*types.BytesAmount, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
-	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey types.TipSetKey) (address.Address, error)
+	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 	MinerGetPeerID(ctx context.Context, minerAddr address.Address) (peer.ID, error)
 	types.Signer
 	PingMinerWithTimeout(ctx context.Context, p peer.ID, to time.Duration) error

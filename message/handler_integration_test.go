@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +35,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 	gasPrice := types.NewGasPrice(1)
 	gasUnits := types.NewGasUnits(1000)
 
-	makeHandler := func(provider *message.FakeProvider, root types.TipSet) *message.HeadHandler {
+	makeHandler := func(provider *message.FakeProvider, root block.TipSet) *message.HeadHandler {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		inbox := message.NewInbox(mpool, maxAge, provider, provider)
 		queue := message.NewQueue()
@@ -109,7 +110,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		provider.SetHead(root.Key())
 
 		handler := makeHandler(provider, root)
-		err := handler.HandleNewHead(ctx, types.UndefTipSet)
+		err := handler.HandleNewHead(ctx, block.UndefTipSet)
 		assert.NoError(t, err)
 	})
 

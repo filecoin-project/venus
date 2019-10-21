@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -298,12 +299,12 @@ func (ctp *clientTestAPI) BlockTime() time.Duration {
 	return 100 * time.Millisecond
 }
 
-func (ctp *clientTestAPI) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (ctp *clientTestAPI) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (ctp *clientTestAPI) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
-	return types.NewTipSet(&types.Block{Height: types.Uint64(ctp.blockHeight)})
+func (ctp *clientTestAPI) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
+	return block.NewTipSet(&block.Block{Height: types.Uint64(ctp.blockHeight)})
 }
 
 func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.CreatePaymentsParams) (*porcelain.CreatePaymentsReturn, error) {
@@ -353,7 +354,7 @@ func (ctp *clientTestAPI) MinerGetOwnerAddress(ctx context.Context, minerAddr ad
 	return address.TestAddress, nil
 }
 
-func (ctp *clientTestAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
+func (ctp *clientTestAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	return ctp.worker, nil
 }
 
@@ -430,6 +431,6 @@ func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	return nil
 }
 
-func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }

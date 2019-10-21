@@ -3,6 +3,7 @@ package porcelain_test
 import (
 	"context"
 	"errors"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-ipld-cbor"
 	"math/big"
 	"testing"
@@ -29,7 +30,7 @@ type paymentsTestPlumbing struct {
 	msgCid cid.Cid
 
 	messageSend  func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
 }
 
@@ -47,7 +48,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 			target = params[0].(address.Address)
 			return msgCid, nil
 		},
-		messageWait: func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+		messageWait: func(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 			return cb(nil, nil, &types.MessageReceipt{
 				ExitCode:   uint8(0),
 				Return:     [][]byte{channelID.Bytes()},
@@ -76,20 +77,20 @@ func (ptp *paymentsTestPlumbing) MessageSend(ctx context.Context, from, to addre
 	return ptp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
-func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return ptp.messageWait(ctx, msgCid, cb)
 }
 
-func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
-func (ptp *paymentsTestPlumbing) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
-	return types.NewTipSet(&types.Block{Height: types.Uint64(ptp.height)})
+func (ptp *paymentsTestPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
+	return block.NewTipSet(&block.Block{Height: types.Uint64(ptp.height)})
 }
 
-func (ptp *paymentsTestPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (ptp *paymentsTestPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
 func (ptp *paymentsTestPlumbing) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
@@ -260,7 +261,7 @@ func TestCreatePayments(t *testing.T) {
 
 	t.Run("Errors waiting for message are surfaced", func(t *testing.T) {
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageWait = func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+		plumbing.messageWait = func(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 			return errors.New("Error in MessageWait")
 		}
 
@@ -272,7 +273,7 @@ func TestCreatePayments(t *testing.T) {
 
 	t.Run("Errors in create channel response are surfaced", func(t *testing.T) {
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageWait = func(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+		plumbing.messageWait = func(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 			receipt := &types.MessageReceipt{
 				ExitCode: 1,
 			}

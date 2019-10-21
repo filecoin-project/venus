@@ -7,9 +7,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var blockTopicLogger = logging.Logger("net/block_validator")
@@ -28,7 +28,7 @@ func NewBlockTopicValidator(bv consensus.BlockSyntaxValidator, opts ...pubsub.Va
 	return &BlockTopicValidator{
 		opts: opts,
 		validator: func(ctx context.Context, p peer.ID, msg *pubsub.Message) bool {
-			blk, err := types.DecodeBlock(msg.GetData())
+			blk, err := block.DecodeBlock(msg.GetData())
 			if err != nil {
 				blockTopicLogger.Debugf("block from peer: %s failed to decode: %s", p.String(), err.Error())
 				mDecodeBlkFail.Inc(ctx, 1)

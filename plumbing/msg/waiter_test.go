@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/stretchr/testify/assert"
@@ -21,10 +22,10 @@ var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
 
 var newSignedMessage = types.NewSignedMessageForTestGetter(mockSigner)
 
-func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) {
+func testWaitHelp(wg *sync.WaitGroup, t *testing.T, waiter *Waiter, expectMsg *types.SignedMessage, expectError bool, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) {
 	expectCid, err := expectMsg.Cid()
 	if cb == nil {
-		cb = func(b *types.Block, msg *types.SignedMessage,
+		cb = func(b *block.Block, msg *types.SignedMessage,
 			rcp *types.MessageReceipt) error {
 			assert.True(t, types.SmsgCidsEqual(expectMsg, msg))
 			if wg != nil {
@@ -130,7 +131,7 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	_, _, _, waiter := setupTest(t)
 
-	failIfCalledCb := func(b *types.Block, msg *types.SignedMessage,
+	failIfCalledCb := func(b *block.Block, msg *types.SignedMessage,
 		rcp *types.MessageReceipt) error {
 		assert.Fail(t, "Should not be called -- message doesnt exist")
 		return nil
@@ -157,8 +158,8 @@ func TestWaitRespectsContextCancel(t *testing.T) {
 // and stores them in the given store.  Note the msg arguments are slices of
 // slices of messages -- each slice of slices goes into a successive tipset,
 // and each slice within this slice goes into a block of that tipset
-func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root types.TipSet, msgSets ...[][]*types.SignedMessage) []types.TipSet {
-	var tipSets []types.TipSet
+func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStore, root block.TipSet, msgSets ...[][]*types.SignedMessage) []block.TipSet {
+	var tipSets []block.TipSet
 	parents := root
 	height := uint64(0)
 	stateRootCidGetter := types.NewCidForTestGetter()
@@ -182,11 +183,11 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 	}
 
 	for _, tsMsgs := range msgSets {
-		var blocks []*types.Block
+		var blocks []*block.Block
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
-			child := &types.Block{
+			child := &block.Block{
 				Height:          types.Uint64(height),
 				Parents:         parents.Key(),
 				Messages:        emptyMessagesCid,
@@ -201,7 +202,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 				panic(err)
 			}
 
-			child := &types.Block{
+			child := &block.Block{
 				Messages:        msgsCid,
 				Parents:         parents.Key(),
 				Height:          types.Uint64(height),
@@ -211,7 +212,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 			mustPut(store, child)
 			blocks = append(blocks, child)
 		}
-		ts, err := types.NewTipSet(blocks...)
+		ts, err := block.NewTipSet(blocks...)
 		if err != nil {
 			panic(err)
 		}

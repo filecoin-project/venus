@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -34,12 +35,12 @@ type mockTicketGen struct {
 	timeNotarized bool
 }
 
-func (mtg *mockTicketGen) NextTicket(ticket types.Ticket, genAddr address.Address, signer types.Signer) (types.Ticket, error) {
+func (mtg *mockTicketGen) NextTicket(ticket block.Ticket, genAddr address.Address, signer types.Signer) (block.Ticket, error) {
 	mtg.ticketGen = true
 	return consensus.MakeFakeTicketForTest(), nil
 }
 
-func (mtg *mockTicketGen) NotarizeTime(ticket *types.Ticket) error {
+func (mtg *mockTicketGen) NotarizeTime(ticket *block.Ticket) error {
 	mtg.timeNotarized = true
 	return nil
 }
@@ -52,14 +53,14 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot, Tickets: []types.Ticket{{VRFProof: []byte{0}}}}
+	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -93,7 +94,7 @@ func Test_Mine(t *testing.T) {
 			Clock:         clock.NewSystemClock(),
 		})
 
-		go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
+		go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
 		assert.True(t, testTicketGen.ticketGen)
@@ -125,7 +126,7 @@ func Test_Mine(t *testing.T) {
 		})
 		outCh := make(chan mining.Output)
 
-		go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
+		go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
 		assert.True(t, testTicketGen.ticketGen)
@@ -156,9 +157,9 @@ func Test_Mine(t *testing.T) {
 			MessageStore:  messages,
 			Clock:         clock.NewSystemClock(),
 		})
-		input := types.TipSet{}
+		input := block.TipSet{}
 		outCh := make(chan mining.Output)
-		go worker.Mine(ctx, input, []types.Ticket{}, outCh)
+		go worker.Mine(ctx, input, []block.Ticket{}, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "bad input tipset with no blocks sent to Mine()")
 		assert.False(t, testTicketGen.ticketGen)
@@ -276,14 +277,14 @@ func TestApplyBLSMessages(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &types.Block{Height: 2, StateRoot: stateRoot, Tickets: []types.Ticket{{VRFProof: []byte{0}}}}
+	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -331,7 +332,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	})
 
 	outCh := make(chan mining.Output)
-	go worker.Mine(ctx, tipSet, []types.Ticket{}, outCh)
+	go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
 	r := <-outCh
 	require.NoError(t, r.Err)
 	block := r.NewBlock
@@ -397,10 +398,10 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	mockSigner, blockSignerAddr := setupSigner()
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -436,7 +437,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	blk, err := worker.Generate(ctx, baseTipset, []types.Ticket{{VRFProof: []byte{2}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, baseTipset, []block.Ticket{{VRFProof: []byte{2}}}, consensus.MakeFakeElectionProofForTest(), 0)
 
 	assert.NoError(t, err)
 
@@ -444,7 +445,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
-	assert.Equal(t, types.Ticket{VRFProof: []byte{2}}, blk.Tickets[0])
+	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Tickets[0])
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -456,10 +457,10 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -527,13 +528,13 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	stateRoot, err := st.Flush(ctx)
 	require.NoError(t, err)
 
-	baseBlock := types.Block{
-		Parents:       types.NewTipSetKey(newCid()),
+	baseBlock := block.Block{
+		Parents:       block.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     stateRoot,
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -561,10 +562,10 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 	minerAddr := addrs[4]
@@ -594,14 +595,14 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 
 	h := types.Uint64(100)
 	w := types.Uint64(1000)
-	baseBlock := types.Block{
+	baseBlock := block.Block{
 		Height:        h,
 		ParentWeight:  w,
 		StateRoot:     newCid(),
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	tArr := []types.Ticket{mining.NthTicket(1), mining.NthTicket(3), mining.NthTicket(3), mining.NthTicket(7)}
+	tArr := []block.Ticket{mining.NthTicket(1), mining.NthTicket(3), mining.NthTicket(3), mining.NthTicket(7)}
 	blk, err := worker.Generate(ctx, baseTipSet, tArr, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
@@ -609,7 +610,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	assert.Equal(t, minerAddr, blk.Miner)
 	assert.Equal(t, tArr, blk.Tickets)
 
-	blk, err = worker.Generate(ctx, baseTipSet, []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 1)
+	blk, err = worker.Generate(ctx, baseTipSet, []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
@@ -625,10 +626,10 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	newCid := types.NewCidForTestGetter()
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
-	getStateTree := func(c context.Context, ts types.TipSet) (state.Tree, error) {
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -655,13 +656,13 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	})
 
 	assert.Len(t, pool.Pending(), 0)
-	baseBlock := types.Block{
-		Parents:       types.NewTipSetKey(newCid()),
+	baseBlock := block.Block{
+		Parents:       block.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     newCid(),
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -681,7 +682,7 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
 
-	getAncestors := func(ctx context.Context, ts types.TipSet, newBlockHeight *types.BlockHeight) ([]types.TipSet, error) {
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
@@ -714,14 +715,14 @@ func TestGenerateError(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 1)
-	baseBlock := types.Block{
-		Parents:       types.NewTipSetKey(newCid()),
+	baseBlock := block.Block{
+		Parents:       block.NewTipSetKey(newCid()),
 		Height:        types.Uint64(100),
 		StateRoot:     newCid(),
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, []types.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, baseTipSet, []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.Error(t, err, "boom")
 	assert.Nil(t, blk)
 
@@ -745,7 +746,7 @@ func (st *stateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
 	return st.TestFlush(ctx)
 }
 
-func getWeightTest(_ context.Context, ts types.TipSet) (uint64, error) {
+func getWeightTest(_ context.Context, ts block.TipSet) (uint64, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
 		return uint64(0), err
@@ -754,8 +755,8 @@ func getWeightTest(_ context.Context, ts types.TipSet) (uint64, error) {
 	return w + uint64(ts.Len())*10, nil
 }
 
-func makeExplodingGetStateTree(st state.Tree) func(context.Context, types.TipSet) (state.Tree, error) {
-	return func(c context.Context, ts types.TipSet) (state.Tree, error) {
+func makeExplodingGetStateTree(st state.Tree) func(context.Context, block.TipSet) (state.Tree, error) {
+	return func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		stt := wrapStateTreeForTest(st)
 		stt.TestFlush = func(ctx context.Context) (cid.Cid, error) {
 			return cid.Undef, errors.New("boom no flush")

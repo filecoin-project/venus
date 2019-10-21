@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,12 +102,12 @@ type testRedeemPlumbing struct {
 	ResultingVoucherValidAt *types.BlockHeight
 }
 
-func (trp *testRedeemPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (trp *testRedeemPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (trp *testRedeemPlumbing) ChainTipSet(_ types.TipSetKey) (types.TipSet, error) {
-	return types.NewTipSet(&types.Block{Height: types.Uint64(trp.blockHeight)})
+func (trp *testRedeemPlumbing) ChainTipSet(_ block.TipSetKey) (block.TipSet, error) {
+	return block.NewTipSet(&block.Block{Height: types.Uint64(trp.blockHeight)})
 }
 
 func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagedeal.Deal, error) {

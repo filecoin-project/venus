@@ -6,14 +6,14 @@ import (
 	"github.com/ipfs/go-ipfs-cmds"
 
 	"github.com/filecoin-project/go-filecoin/porcelain"
-	"github.com/filecoin-project/go-filecoin/protocol/block"
+	"github.com/filecoin-project/go-filecoin/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 )
 
 // Env is the environment for command API handlers.
 type Env struct {
-	blockMiningAPI *block.MiningAPI
+	blockMiningAPI *mining.API
 	ctx            context.Context
 	porcelainAPI   *porcelain.API
 	retrievalAPI   *retrieval.API
@@ -41,7 +41,7 @@ func GetPorcelainAPI(env cmds.Environment) *porcelain.API {
 }
 
 // GetBlockAPI returns the block protocol api from the given environment.
-func GetBlockAPI(env cmds.Environment) *block.MiningAPI {
+func GetBlockAPI(env cmds.Environment) *mining.API {
 	ce := env.(*Env)
 	return ce.blockMiningAPI
 }

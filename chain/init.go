@@ -8,10 +8,10 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // Init initializes a DefaultSycner in the given repo.
@@ -23,7 +23,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Cbor
 	if err != nil {
 		return nil, err
 	}
-	genTipSet, err := types.NewTipSet(genesis)
+	genTipSet, err := block.NewTipSet(genesis)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}

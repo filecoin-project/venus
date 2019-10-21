@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/exec"
@@ -521,7 +522,7 @@ func TestMinerCommitSector(t *testing.T) {
 type minerActorLiason struct {
 	st            state.Tree
 	vms           vm.StorageMap
-	ancestors     []types.TipSet
+	ancestors     []block.TipSet
 	minerAddr     address.Address
 	t             *testing.T
 	currentHeight uint64
@@ -598,7 +599,7 @@ func (mal *minerActorLiason) assertPoStStateAtHeight(expected int64, queryHeight
 	assert.Equal(mal.t, big.NewInt(expected), ret.Val)
 }
 
-func newMinerActorLiason(t *testing.T, st state.Tree, vms vm.StorageMap, ancestors []types.TipSet, minerAddr address.Address) *minerActorLiason {
+func newMinerActorLiason(t *testing.T, st state.Tree, vms vm.StorageMap, ancestors []block.TipSet, minerAddr address.Address) *minerActorLiason {
 	return &minerActorLiason{
 		t:             t,
 		st:            st,
@@ -614,7 +615,7 @@ func setupMinerActorLiason(t *testing.T) *minerActorLiason {
 	st, vms := th.RequireCreateStorages(ctx, t)
 
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendManyOn(10, types.UndefTipSet)
+	head := builder.AppendManyOn(10, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
@@ -1026,7 +1027,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	st, vms := th.RequireCreateStorages(ctx, t)
 
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendManyOn(10, types.UndefTipSet)
+	head := builder.AppendManyOn(10, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), 10)
 	origPid := th.RequireRandomPeerID(t)
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
@@ -1258,7 +1259,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		builder := chain.NewBuilder(t, address.Undef)
-		head := builder.AppendManyOn(10, types.UndefTipSet)
+		head := builder.AppendManyOn(10, block.UndefTipSet)
 		ancestors := builder.RequireTipSets(head.Key(), 10)
 		proof := th.MakeRandomPoStProofForTest()
 		doneDefault := types.EmptyIntSet()
@@ -1542,7 +1543,7 @@ func TestGetProofsMode(t *testing.T) {
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),
-			Ancestors:   []types.TipSet{},
+			Ancestors:   []block.TipSet{},
 			Actors:      builtin.DefaultActors,
 		})
 
@@ -1562,7 +1563,7 @@ func TestGetProofsMode(t *testing.T) {
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),
-			Ancestors:   []types.TipSet{},
+			Ancestors:   []block.TipSet{},
 			Actors:      builtin.DefaultActors,
 		})
 

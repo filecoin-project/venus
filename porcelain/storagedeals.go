@@ -3,6 +3,7 @@ package porcelain
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -87,8 +88,8 @@ func DealsLs(ctx context.Context, plumbing dealLsPlumbing) (<-chan *StorageDealL
 }
 
 type dealRedeemPlumbing interface {
-	ChainHeadKey() types.TipSetKey
-	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
+	ChainHeadKey() block.TipSetKey
+	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	MessagePreview(context.Context, address.Address, address.Address, string, ...interface{}) (types.GasUnits, error)
 	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)

@@ -228,7 +228,7 @@ Much in mining package, but also a bunch in the node implementation.
 ##### Protocol Mining APIs
 The [`storage`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/storage/),
 [`retrieval`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/retrieval/)
-and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/block/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
+and [`block`](https://github.com/filecoin-project/go-filecoin/tree/master/protocol/mining/) packages now house their own APIs. These are the new interfaces for all mining commands, but not miner creation. These Protocol APIs provide a the new interface for the Network layer of go-filecoin.  Protocol APIs also consume Plumbing and Porcelain APIs. They are ephemeral, like the Porcelain API. Note also that the MiningOnce command uses `BlockMiningAPI` to create its own block mining worker, which lasts only for the time it takes to mine and post a new block.
 
 
 

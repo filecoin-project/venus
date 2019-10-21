@@ -235,14 +235,6 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 	}
 }
 
-// RequireNewTipSet instantiates and returns a new tipset of the given blocks
-// and requires that the setup validation succeed.
-func RequireNewTipSet(t *testing.T, blks ...*Block) TipSet {
-	ts, err := NewTipSet(blks...)
-	require.NoError(t, err)
-	return ts
-}
-
 // NewMsgs returns n messages. The messages returned are unique to this invocation
 // but are not unique globally (ie, a second call to NewMsgs will return the same
 // set of messages).

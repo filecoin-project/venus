@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	blocks "github.com/ipfs/go-block-format"
 	car "github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
@@ -17,14 +18,14 @@ import (
 var logCar = logging.Logger("chain/car")
 
 type carChainReader interface {
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 type carMessageReader interface {
 	MessageProvider
 }
 
 // Export will export a chain (all blocks and their messages) to the writer `out`.
-func Export(ctx context.Context, headTS types.TipSet, cr carChainReader, mr carMessageReader, out io.Writer) error {
+func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
 	filter := make(map[cid.Cid]bool)
 
@@ -110,11 +111,11 @@ type carStore interface {
 }
 
 // Import imports a chain from `in` to `bs`.
-func Import(ctx context.Context, cs carStore, in io.Reader) (types.TipSetKey, error) {
+func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, error) {
 	header, err := car.LoadCar(cs, in)
 	if err != nil {
-		return types.UndefTipSet.Key(), err
+		return block.UndefTipSet.Key(), err
 	}
-	headKey := types.NewTipSetKey(header.Roots...)
+	headKey := block.NewTipSetKey(header.Roots...)
 	return headKey, nil
 }

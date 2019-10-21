@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -28,8 +29,8 @@ type Ask struct {
 
 type claPlubming interface {
 	ActorLs(ctx context.Context) (<-chan state.GetAllActorsResult, error)
-	ChainHeadKey() types.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // ClientListAsks returns a channel with asks from the latest chain state
@@ -98,9 +99,9 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 
 // The subset of plumbing used by ClientVerifyStorageDeal
 type cvsdPlumbing interface {
-	ChainHeadKey() types.TipSetKey
+	ChainHeadKey() block.TipSetKey
 	DealGet(ctx context.Context, proposalCid cid.Cid) (*storagedeal.Deal, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 }
 
 // ClientVerifyStorageDeal check to see that a storage deal is in the `Complete` state, and that its PIP is valid

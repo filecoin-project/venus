@@ -3,7 +3,7 @@ package chain
 import (
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/block"
 )
 
 // badTipSetCache keeps track of bad tipsets that the syncer should not try to
@@ -20,7 +20,7 @@ type badTipSetCache struct {
 // AddChain adds the chain of tipsets to the badTipSetCache.  For now it just
 // does the simplest thing and adds all blocks of the chain to the cache.
 // TODO: might want to cache a random subset once cache size is limited.
-func (cache *badTipSetCache) AddChain(chain []types.TipSet) {
+func (cache *badTipSetCache) AddChain(chain []block.TipSet) {
 	for _, ts := range chain {
 		cache.Add(ts.String())
 	}

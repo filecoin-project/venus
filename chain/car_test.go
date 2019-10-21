@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -214,19 +215,19 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	validateBlockstoreImport(t, ts3.Key(), gene.Key(), bstore)
 }
 
-func mustExportToBuffer(ctx context.Context, t *testing.T, head types.TipSet, cb *chain.Builder, carW *bufio.Writer) {
+func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, carW *bufio.Writer) {
 	err := chain.Export(ctx, head, cb, cb, carW)
 	assert.NoError(t, err)
 	require.NoError(t, carW.Flush())
 }
 
-func mustImportFromBuffer(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, carR *bufio.Reader) types.TipSetKey {
+func mustImportFromBuffer(ctx context.Context, t *testing.T, bstore blockstore.Blockstore, carR *bufio.Reader) block.TipSetKey {
 	importedKey, err := chain.Import(ctx, bstore, carR)
 	assert.NoError(t, err)
 	return importedKey
 }
 
-func setupDeps(t *testing.T) (context.Context, types.TipSet, *chain.Builder, *bufio.Writer, *bufio.Reader, blockstore.Blockstore) {
+func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bufio.Writer, *bufio.Reader, blockstore.Blockstore) {
 	// context for operations
 	ctx := context.Background()
 
@@ -245,7 +246,7 @@ func setupDeps(t *testing.T) (context.Context, types.TipSet, *chain.Builder, *bu
 
 }
 
-func validateBlockstoreImport(t *testing.T, start, stop types.TipSetKey, bstore blockstore.Blockstore) {
+func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore blockstore.Blockstore) {
 	// walk the blockstore and assert it had all blocks imported
 	cur := start
 	for {
@@ -253,7 +254,7 @@ func validateBlockstoreImport(t *testing.T, start, stop types.TipSetKey, bstore 
 		for _, c := range cur.ToSlice() {
 			bsBlk, err := bstore.Get(c)
 			assert.NoError(t, err)
-			blk, err := types.DecodeBlock(bsBlk.RawData())
+			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
 			bsSecpMsgs, err := bstore.Get(blk.Messages.SecpRoot)
@@ -278,6 +279,6 @@ func validateBlockstoreImport(t *testing.T, start, stop types.TipSetKey, bstore 
 		if cur.Equals(stop) {
 			break
 		}
-		cur = types.NewTipSetKey(parents...)
+		cur = block.NewTipSetKey(parents...)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -52,7 +53,7 @@ func TestOutbox(t *testing.T) {
 		publisher := &message.MockPublisher{}
 		provider := message.NewFakeProvider(t)
 
-		head := provider.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)
@@ -93,7 +94,7 @@ func TestOutbox(t *testing.T) {
 		provider := message.NewFakeProvider(t)
 		bcast := true
 
-		head := provider.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		head := provider.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(1000)
 		})
 		actr, _ := account.NewActor(types.ZeroAttoFIL)

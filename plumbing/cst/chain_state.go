@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -24,10 +25,10 @@ import (
 var logStore = logging.Logger("plumbing/chain_store")
 
 type chainReadWriter interface {
-	GetHead() types.TipSetKey
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
-	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
-	SetHead(context.Context, types.TipSet) error
+	GetHead() block.TipSetKey
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	SetHead(context.Context, block.TipSet) error
 }
 
 // ChainStateReadWriter composes a:
@@ -73,12 +74,12 @@ func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider
 }
 
 // Head returns the head tipset
-func (chn *ChainStateReadWriter) Head() types.TipSetKey {
+func (chn *ChainStateReadWriter) Head() block.TipSetKey {
 	return chn.readWriter.GetHead()
 }
 
 // GetTipSet returns the tipset at the given key
-func (chn *ChainStateReadWriter) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
+func (chn *ChainStateReadWriter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
 	return chn.readWriter.GetTipSet(key)
 }
 
@@ -92,8 +93,8 @@ func (chn *ChainStateReadWriter) Ls(ctx context.Context) (*chain.TipsetIterator,
 }
 
 // GetBlock gets a block by CID
-func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
-	var out types.Block
+func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*block.Block, error) {
+	var out block.Block
 	err := chn.cst.Get(ctx, id, &out)
 	return &out, err
 }
@@ -133,7 +134,7 @@ func (chn *ChainStateReadWriter) GetActor(ctx context.Context, addr address.Addr
 }
 
 // GetActorAt returns an actor at a specified tipset key.
-func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey types.TipSetKey, addr address.Address) (*actor.Actor, error) {
+func (chn *ChainStateReadWriter) GetActorAt(ctx context.Context, tipKey block.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	st, err := chn.readWriter.GetTipSetState(ctx, tipKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load latest state")
@@ -185,7 +186,7 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 }
 
 // SetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
-func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key types.TipSetKey) error {
+func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key block.TipSetKey) error {
 	headTs, err := chn.readWriter.GetTipSet(key)
 	if err != nil {
 		return err
@@ -194,7 +195,7 @@ func (chn *ChainStateReadWriter) SetHead(ctx context.Context, key types.TipSetKe
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
-func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) error {
+func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
 	headTS, err := chn.GetTipSet(head)
 	if err != nil {
 		return err
@@ -208,11 +209,11 @@ func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head types.Tip
 }
 
 // ChainImport imports a chain from `in`.
-func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) (types.TipSetKey, error) {
+func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) (block.TipSetKey, error) {
 	logStore.Info("starting CAR file import")
 	headKey, err := chain.Import(ctx, newCarStore(chn.cst), in)
 	if err != nil {
-		return types.UndefTipSet.Key(), err
+		return block.UndefTipSet.Key(), err
 	}
 	logStore.Infof("imported CAR file with head: %s", headKey)
 	return headKey, nil

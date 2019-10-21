@@ -3,12 +3,12 @@ package cst
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type chainSync interface {
-	HandleNewTipSet(context.Context, *types.ChainInfo, bool) error
+	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
 	Status() chain.Status
 }
 
@@ -34,6 +34,6 @@ func (chs *ChainSyncProvider) Status() chain.Status {
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (chs *ChainSyncProvider) HandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error {
+func (chs *ChainSyncProvider) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error {
 	return chs.sync.HandleNewTipSet(ctx, ci, trusted)
 }

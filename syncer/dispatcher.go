@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/block"
 )
 
 var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
@@ -34,15 +34,15 @@ type Dispatcher struct {
 }
 
 // ReceiveHello handles chain information from bootstrap peers.
-func (d *Dispatcher) ReceiveHello(ci types.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveHello(ci block.ChainInfo) error { return d.receive(ci) }
 
 // ReceiveOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) ReceiveOwnBlock(ci types.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveOwnBlock(ci block.ChainInfo) error { return d.receive(ci) }
 
 // ReceiveGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) ReceiveGossipBlock(ci types.ChainInfo) error { return d.receive(ci) }
+func (d *Dispatcher) ReceiveGossipBlock(ci block.ChainInfo) error { return d.receive(ci) }
 
-func (d *Dispatcher) receive(ci types.ChainInfo) error {
+func (d *Dispatcher) receive(ci block.ChainInfo) error {
 	d.targetMu.Lock()
 	defer d.targetMu.Unlock()
 
@@ -64,7 +64,7 @@ func (d *Dispatcher) receive(ci types.ChainInfo) error {
 // Dispatcher by inspecting incoming hello messages from bootstrap peers
 // and gossipsub block propagations.
 type SyncRequest struct {
-	types.ChainInfo
+	block.ChainInfo
 	// needed by internal container/heap methods for maintaining sort
 	index int
 }

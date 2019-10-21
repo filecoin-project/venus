@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var (
@@ -21,7 +20,7 @@ var (
 type TipSetAndState struct {
 	// root of aggregate state after applying tipset
 	TipSetStateRoot cid.Cid
-	TipSet          types.TipSet
+	TipSet          block.TipSet
 }
 
 type tsasByTipSetID map[string]*TipSetAndState
@@ -76,7 +75,7 @@ func (ti *TipIndex) Put(tsas *TipSetAndState) error {
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipIndex) Get(tsKey types.TipSetKey) (*TipSetAndState, error) {
+func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetAndState, error) {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsas, ok := ti.tsasByID[tsKey.String()]
@@ -87,16 +86,16 @@ func (ti *TipIndex) Get(tsKey types.TipSetKey) (*TipSetAndState, error) {
 }
 
 // GetTipSet returns the tipset from func (ti *TipIndex) Get(tsKey string)
-func (ti *TipIndex) GetTipSet(tsKey types.TipSetKey) (types.TipSet, error) {
+func (ti *TipIndex) GetTipSet(tsKey block.TipSetKey) (block.TipSet, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
-		return types.UndefTipSet, err
+		return block.UndefTipSet, err
 	}
 	return tsas.TipSet, nil
 }
 
 // GetTipSetStateRoot returns the tipsetStateRoot from func (ti *TipIndex) Get(tsKey string).
-func (ti *TipIndex) GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error) {
+func (ti *TipIndex) GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
 		return cid.Cid{}, err
@@ -106,7 +105,7 @@ func (ti *TipIndex) GetTipSetStateRoot(tsKey types.TipSetKey) (cid.Cid, error) {
 
 // Has returns true iff the tipset with the input ID is stored in
 // the TipIndex.
-func (ti *TipIndex) Has(tsKey types.TipSetKey) bool {
+func (ti *TipIndex) Has(tsKey block.TipSetKey) bool {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	_, ok := ti.tsasByID[tsKey.String()]
@@ -115,7 +114,7 @@ func (ti *TipIndex) Has(tsKey types.TipSetKey) bool {
 
 // GetByParentsAndHeight returns the all tipsets and states stored in the TipIndex
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipIndex) GetByParentsAndHeight(pKey types.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*TipSetAndState, error) {
 	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
@@ -133,7 +132,7 @@ func (ti *TipIndex) GetByParentsAndHeight(pKey types.TipSetKey, h uint64) ([]*Ti
 // HasByParentsAndHeight returns true iff there exist tipsets, and states,
 // tracked in the TipIndex such that the parent ID of these tipsets equals the
 // input.
-func (ti *TipIndex) HasByParentsAndHeight(pKey types.TipSetKey, h uint64) bool {
+func (ti *TipIndex) HasByParentsAndHeight(pKey block.TipSetKey, h uint64) bool {
 	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()

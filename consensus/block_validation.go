@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/version"
@@ -27,13 +28,13 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error
+	ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, parentWeight uint64) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
 // syntax.
 type BlockSyntaxValidator interface {
-	ValidateSyntax(ctx context.Context, blk *types.Block) error
+	ValidateSyntax(ctx context.Context, blk *block.Block) error
 }
 
 // MessageSyntaxValidator defines an interface used to validate collections
@@ -61,7 +62,7 @@ func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock, pvt *version
 }
 
 // ValidateSemantic validates a block is correctly derived from its parent.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *types.Block, parents *types.TipSet, parentWeight uint64) error {
+func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, parentWeight uint64) error {
 	pmin, err := parents.MinTimestamp()
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *ty
 
 // ValidateSyntax validates a single block is correctly formed.
 // TODO this is an incomplete implementation #3277
-func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *types.Block) error {
+func (dv *DefaultBlockValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
 	// TODO special handling for genesis block #3121
 	if blk.Height == 0 {
 		return nil

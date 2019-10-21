@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -20,7 +22,7 @@ func TestCollectTipSetsOfHeightAtLeast(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -42,7 +44,7 @@ func TestCollectTipSetsOfHeightAtLeastZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -95,7 +97,7 @@ func TestCollectTipSetsPastHeight(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 15
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(4))
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -117,7 +119,7 @@ func TestCollectTipSetsPastHeightZero(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(0))
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -139,7 +141,7 @@ func TestCollectTipSetsPastHeightTipsetOne(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	stopHeight := types.NewBlockHeight(uint64(25))
 	iterator := chain.IterAncestors(ctx, builder, head)
@@ -185,7 +187,7 @@ func TestCollectAtMostNTipSets(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 25
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 
 	t.Run("happy path", func(t *testing.T) {
 		number := uint(10)
@@ -220,7 +222,7 @@ func TestGetRecentAncestors(t *testing.T) {
 
 	chainLen := 200
 	headBlock := builder.AppendManyBlocksOnBlocks(chainLen)
-	head := types.RequireNewTipSet(t, headBlock)
+	head := th.RequireNewTipSet(t, headBlock)
 
 	epochs := uint64(100)
 	sampleHeight := types.NewBlockHeight(uint64(headBlock.Height + 1)).Sub(types.NewBlockHeight(epochs))
@@ -242,7 +244,7 @@ func TestGetRecentAncestorsTruncates(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 
 	chainLen := 100
-	head := builder.AppendManyOn(chainLen, types.UndefTipSet)
+	head := builder.AppendManyOn(chainLen, block.UndefTipSet)
 	h, err := head.Height()
 	require.NoError(t, err)
 	epochs := uint64(200)

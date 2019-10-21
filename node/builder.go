@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -15,9 +16,9 @@ import (
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
@@ -25,8 +26,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
+	"github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -52,7 +53,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
 	"github.com/filecoin-project/go-filecoin/version"
 	"github.com/filecoin-project/go-filecoin/wallet"
@@ -537,7 +537,7 @@ func (b *Builder) buildFaultSlasher(ctx context.Context) (FaultSlasherSubmodule,
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blockstore) (string, error) {
 	cborStore := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	var genesis types.Block
+	var genesis block.Block
 
 	err := cborStore.Get(ctx, genCid, &genesis)
 	if err != nil {

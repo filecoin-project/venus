@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
@@ -142,7 +143,7 @@ func (api *API) ConfigGet(dottedPath string) (interface{}, error) {
 }
 
 // ChainGetBlock gets a block by CID
-func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*types.Block, error) {
+func (api *API) ChainGetBlock(ctx context.Context, id cid.Cid) (*block.Block, error) {
 	return api.chain.GetBlock(ctx, id)
 }
 
@@ -157,17 +158,17 @@ func (api *API) ChainGetReceipts(ctx context.Context, id cid.Cid) ([]*types.Mess
 }
 
 // ChainHeadKey returns the head tipset key
-func (api *API) ChainHeadKey() types.TipSetKey {
+func (api *API) ChainHeadKey() block.TipSetKey {
 	return api.chain.Head()
 }
 
 // ChainSetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.
-func (api *API) ChainSetHead(ctx context.Context, key types.TipSetKey) error {
+func (api *API) ChainSetHead(ctx context.Context, key block.TipSetKey) error {
 	return api.chain.SetHead(ctx, key)
 }
 
 // ChainTipSet returns the tipset at the given key
-func (api *API) ChainTipSet(key types.TipSetKey) (types.TipSet, error) {
+func (api *API) ChainTipSet(key block.TipSetKey) (block.TipSet, error) {
 	return api.chain.GetTipSet(key)
 }
 
@@ -190,17 +191,17 @@ func (api *API) ChainStatus() chain.Status {
 
 // ChainSyncHandleNewTipSet submits a chain head to the syncer for processing. If the head is trusted
 // the syncer will attempt to sync the new head regardless of length.
-func (api *API) ChainSyncHandleNewTipSet(ctx context.Context, ci *types.ChainInfo, trusted bool) error {
+func (api *API) ChainSyncHandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error {
 	return api.syncer.HandleNewTipSet(ctx, ci, trusted)
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`
-func (api *API) ChainExport(ctx context.Context, head types.TipSetKey, out io.Writer) error {
+func (api *API) ChainExport(ctx context.Context, head block.TipSetKey, out io.Writer) error {
 	return api.chain.ChainExport(ctx, head, out)
 }
 
 // ChainImport imports a chain from `in`.
-func (api *API) ChainImport(ctx context.Context, in io.Reader) (types.TipSetKey, error) {
+func (api *API) ChainImport(ctx context.Context, in io.Reader) (block.TipSetKey, error) {
 	return api.chain.ChainImport(ctx, in)
 }
 
@@ -253,7 +254,7 @@ func (api *API) MessagePreview(ctx context.Context, from, to address.Address, me
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
 	if err != nil {
 		return [][]byte{}, err
@@ -262,7 +263,7 @@ func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, m
 }
 
 // Snapshot returns a interface to the chain state a a particular tipset
-func (api *API) Snapshot(ctx context.Context, baseKey types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensus.ActorStateSnapshot, error) {
 	return api.actorState.Snapshot(ctx, baseKey)
 }
 
@@ -284,7 +285,7 @@ func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMess
 // the case that it appears in a newly mined block. An error is returned if one is
 // encountered or if the context is canceled. Otherwise, it waits forever for the message
 // to appear on chain.
-func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
+func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
 }
 

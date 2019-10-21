@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -24,7 +25,7 @@ type QueuePolicy interface {
 	// - `oldTips` is a list of tipsets that used to be on the main chain but are no longer.
 	// - `newTips` is a list of tipsets that now form the head of the main chain.
 	// Both lists are in descending height order, down to but not including the common ancestor tipset.
-	HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error
+	HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []block.TipSet) error
 }
 
 // PolicyTarget is outbound queue object on which the policy acts.
@@ -54,7 +55,7 @@ func NewMessageQueuePolicy(messages messageProvider, maxAge uint) *DefaultQueueP
 }
 
 // HandleNewHead removes from the queue all messages that have now been mined in new blocks.
-func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []types.TipSet) error {
+func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldTips, newTips []block.TipSet) error {
 	chainHeight, err := reorgHeight(oldTips, newTips)
 	if err != nil {
 		return err
@@ -117,7 +118,7 @@ func (p *DefaultQueuePolicy) HandleNewHead(ctx context.Context, target PolicyTar
 }
 
 // reorgHeight returns height of the new chain given only the tipset diff which may be empty
-func reorgHeight(oldTips, newTips []types.TipSet) (uint64, error) {
+func reorgHeight(oldTips, newTips []block.TipSet) (uint64, error) {
 	if len(newTips) > 0 {
 		return newTips[0].Height()
 	} else if len(oldTips) > 0 { // A pure rewind is unlikely in practice.

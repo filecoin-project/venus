@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/cskr/pubsub"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -16,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/repo"
 	"github.com/filecoin-project/go-filecoin/state"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // NewHeadTopic is the topic used to publish new heads.
@@ -42,8 +42,8 @@ func newSource(cst state.IpldStore) *ipldSource {
 }
 
 // GetBlock retrieves a filecoin block by cid from the IPLD store.
-func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*types.Block, error) {
-	var block types.Block
+func (source *ipldSource) GetBlock(ctx context.Context, c cid.Cid) (*block.Block, error) {
+	var block block.Block
 
 	err := source.cborStore.Get(ctx, c, &block)
 	if err != nil {
@@ -71,7 +71,7 @@ type Store struct {
 	// genesis is the CID of the genesis block.
 	genesis cid.Cid
 	// head is the tipset at the head of the best known chain.
-	head types.TipSet
+	head block.TipSet
 	// Protects head and genesisCid.
 	mu sync.RWMutex
 
@@ -139,7 +139,7 @@ func (store *Store) Load(ctx context.Context) (err error) {
 	// Ensure we only produce 10 log messages regardless of the chain height.
 	logStatusEvery := uint64(startHeight / 10)
 
-	var genesii types.TipSet
+	var genesii block.TipSet
 	// Provide tipsets directly from the block store, not from the tipset index which is
 	// being rebuilt by this traversal.
 	tipsetProvider := TipSetProviderFromBlocks(ctx, store.stateAndBlockSource)
@@ -185,14 +185,14 @@ func (store *Store) Load(ctx context.Context) (err error) {
 }
 
 // loadHead loads the latest known head from disk.
-func (store *Store) loadHead() (types.TipSetKey, error) {
-	var emptyCidSet types.TipSetKey
+func (store *Store) loadHead() (block.TipSetKey, error) {
+	var emptyCidSet block.TipSetKey
 	bb, err := store.ds.Get(headKey)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to read headKey")
 	}
 
-	var cids types.TipSetKey
+	var cids block.TipSetKey
 	err = cbor.DecodeInto(bb, &cids)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
@@ -201,7 +201,7 @@ func (store *Store) loadHead() (types.TipSetKey, error) {
 	return cids, nil
 }
 
-func (store *Store) loadStateRoot(ts types.TipSet) (cid.Cid, error) {
+func (store *Store) loadStateRoot(ts block.TipSet) (cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
 		return cid.Undef, err
@@ -236,12 +236,12 @@ func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState)
 }
 
 // GetTipSet returns the tipset identified by `key`.
-func (store *Store) GetTipSet(key types.TipSetKey) (types.TipSet, error) {
+func (store *Store) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
 	return store.tipIndex.GetTipSet(key)
 }
 
 // GetTipSetState returns the aggregate state of the tipset identified by `key`.
-func (store *Store) GetTipSetState(ctx context.Context, key types.TipSetKey) (state.Tree, error) {
+func (store *Store) GetTipSetState(ctx context.Context, key block.TipSetKey) (state.Tree, error) {
 	stateCid, err := store.tipIndex.GetTipSetStateRoot(key)
 	if err != nil {
 		return nil, err
@@ -262,25 +262,25 @@ func (store *Store) GetGenesisState(ctx context.Context) (state.Tree, error) {
 }
 
 // GetTipSetStateRoot returns the aggregate state root CID of the tipset identified by `key`.
-func (store *Store) GetTipSetStateRoot(key types.TipSetKey) (cid.Cid, error) {
+func (store *Store) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset identified by `key`.
-func (store *Store) HasTipSetAndState(ctx context.Context, key types.TipSetKey) bool {
+func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) bool {
 	return store.tipIndex.Has(key)
 }
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey types.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h uint64) ([]*TipSetAndState, error) {
 	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
 }
 
 // HasTipSetAndStatesWithParentsAndHeight returns true if the default store's tipindex
 // contains any tipset identified by `parentKey`.
-func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey types.TipSetKey, h uint64) bool {
+func (store *Store) HasTipSetAndStatesWithParentsAndHeight(parentKey block.TipSetKey, h uint64) bool {
 	return store.tipIndex.HasByParentsAndHeight(parentKey, h)
 }
 
@@ -291,7 +291,7 @@ func (store *Store) HeadEvents() *pubsub.PubSub {
 }
 
 // SetHead sets the passed in tipset as the new head of this chain.
-func (store *Store) SetHead(ctx context.Context, ts types.TipSet) error {
+func (store *Store) SetHead(ctx context.Context, ts block.TipSet) error {
 	logStore.Debugf("SetHead %s", ts.String())
 
 	// Add logging to debug sporadic test failure.
@@ -315,7 +315,7 @@ func (store *Store) SetHead(ctx context.Context, ts types.TipSet) error {
 	return nil
 }
 
-func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) error {
+func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
@@ -330,7 +330,7 @@ func (store *Store) setHeadPersistent(ctx context.Context, ts types.TipSet) erro
 }
 
 // writeHead writes the given cid set as head to disk.
-func (store *Store) writeHead(ctx context.Context, cids types.TipSetKey) error {
+func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
 	logStore.Debugf("WriteHead %s", cids.String())
 	val, err := cbor.DumpObject(cids)
 	if err != nil {
@@ -362,12 +362,12 @@ func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
 }
 
 // GetHead returns the current head tipset cids.
-func (store *Store) GetHead() types.TipSetKey {
+func (store *Store) GetHead() block.TipSetKey {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
 	if !store.head.Defined() {
-		return types.TipSetKey{}
+		return block.TipSetKey{}
 	}
 
 	return store.head.Key()

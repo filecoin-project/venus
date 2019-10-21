@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
@@ -110,7 +111,7 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *types.Block, blkMessages []*types.SignedMessage, ancestors []types.TipSet) (results []*ApplicationResult, err error) {
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *block.Block, blkMessages []*types.SignedMessage, ancestors []block.TipSet) (results []*ApplicationResult, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessBlock")
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -149,7 +150,7 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts types.TipSet, tsMessages [][]*types.SignedMessage, ancestors []types.TipSet) (response *ProcessTipSetResponse, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, tsMessages [][]*types.SignedMessage, ancestors []block.TipSet) (response *ProcessTipSetResponse, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -283,7 +284,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (result *ApplicationResult, err error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (result *ApplicationResult, err error) {
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
@@ -458,7 +459,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 // should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []types.TipSet) (*types.MessageReceipt, error) {
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (*types.MessageReceipt, error) {
 	gasTracker.ResetForNewMessage(msg.Message)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
@@ -553,7 +554,7 @@ type ApplyMessagesResponse struct {
 // successes, and the permanent and temporary errors raised during application.
 // ApplyMessages will return an error iff a fault message occurs.
 // Precondition: signatures of messages are checked by the caller.
-func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []types.TipSet) (ApplyMessagesResponse, error) {
+func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) (ApplyMessagesResponse, error) {
 	var emptyRet ApplyMessagesResponse
 	var ret ApplyMessagesResponse
 

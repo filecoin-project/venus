@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
@@ -32,7 +33,7 @@ func WaitForChainMessage(ctx context.Context, node *fast.Filecoin, fn MsgSearchF
 			}
 
 			for dec.More() {
-				var blks []types.Block
+				var blks []block.Block
 				err := dec.Decode(&blks)
 				if err != nil {
 					if err == io.EOF {
@@ -50,7 +51,7 @@ func WaitForChainMessage(ctx context.Context, node *fast.Filecoin, fn MsgSearchF
 	}
 }
 
-func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []types.Block, fn MsgSearchFn) (*MsgInfo, error) {
+func findMessageInBlockSlice(ctx context.Context, node *fast.Filecoin, blks []block.Block, fn MsgSearchFn) (*MsgInfo, error) {
 	for _, blk := range blks {
 		msgs, err := node.ShowMessages(ctx, blk.Messages.SecpRoot)
 		if err != nil {

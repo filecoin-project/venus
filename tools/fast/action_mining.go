@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	files "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // MiningOnce runs the `mining once` command against the filecoin process
-func (f *Filecoin) MiningOnce(ctx context.Context) (*types.Block, error) {
-	var out types.Block
+func (f *Filecoin) MiningOnce(ctx context.Context) (*block.Block, error) {
+	var out block.Block
 
 	if err := f.RunCmdJSONWithStdin(ctx, nil, &out, "go-filecoin", "mining", "once"); err != nil {
 		return nil, err

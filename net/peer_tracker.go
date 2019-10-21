@@ -6,13 +6,12 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var logPeerTracker = logging.Logger("peer-tracker")
@@ -28,12 +27,12 @@ type PeerTracker struct {
 	self peer.ID
 
 	// peers maps peer.IDs to info about their chains
-	peers    map[peer.ID]*types.ChainInfo
+	peers    map[peer.ID]*block.ChainInfo
 	trusted  map[peer.ID]struct{}
 	updateFn updatePeerFn
 }
 
-type updatePeerFn func(ctx context.Context, p peer.ID) (*types.ChainInfo, error)
+type updatePeerFn func(ctx context.Context, p peer.ID) (*block.ChainInfo, error)
 
 // NewPeerTracker creates a peer tracker.
 func NewPeerTracker(self peer.ID, trust ...peer.ID) *PeerTracker {
@@ -42,7 +41,7 @@ func NewPeerTracker(self peer.ID, trust ...peer.ID) *PeerTracker {
 		trustedSet[t] = struct{}{}
 	}
 	return &PeerTracker{
-		peers:   make(map[peer.ID]*types.ChainInfo),
+		peers:   make(map[peer.ID]*block.ChainInfo),
 		trusted: trustedSet,
 		self:    self,
 	}
@@ -56,7 +55,7 @@ func (tracker *PeerTracker) SetUpdateFn(f updatePeerFn) {
 
 // SelectHead returns the chain info from trusted peers with the greatest height.
 // An error is returned if no peers are in the tracker.
-func (tracker *PeerTracker) SelectHead() (*types.ChainInfo, error) {
+func (tracker *PeerTracker) SelectHead() (*block.ChainInfo, error) {
 	heads := tracker.listTrusted()
 	if len(heads) == 0 {
 		return nil, errors.New("no peers tracked")
@@ -71,7 +70,7 @@ func (tracker *PeerTracker) UpdateTrusted(ctx context.Context) error {
 }
 
 // Track adds information about a given peer.ID
-func (tracker *PeerTracker) Track(ci *types.ChainInfo) {
+func (tracker *PeerTracker) Track(ci *block.ChainInfo) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
@@ -90,15 +89,15 @@ func (tracker *PeerTracker) Self() peer.ID {
 // The info tracked by the tracker can change arbitrarily after this is called -- there is no
 // guarantee that the peers returned will be tracked when they are used by the caller and no
 // guarantee that the chain info is up to date.
-func (tracker *PeerTracker) List() []*types.ChainInfo {
+func (tracker *PeerTracker) List() []*block.ChainInfo {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	var tracked []*types.ChainInfo
+	var tracked []*block.ChainInfo
 	for _, ci := range tracker.peers {
 		tracked = append(tracked, ci)
 	}
-	out := make([]*types.ChainInfo, len(tracked))
+	out := make([]*block.ChainInfo, len(tracked))
 	copy(out, tracked)
 	return out
 }
@@ -143,17 +142,17 @@ func (tracker *PeerTracker) trustedPeers() []peer.ID {
 // listTrusted returns the chain info of the trusted tracked peers. The info tracked by the tracker can
 // change arbitrarily after this is called -- there is no guarantee that the peers returned will be
 // tracked when they are used by the caller and no guarantee that the chain info is up to date.
-func (tracker *PeerTracker) listTrusted() []*types.ChainInfo {
+func (tracker *PeerTracker) listTrusted() []*block.ChainInfo {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	var tracked []*types.ChainInfo
+	var tracked []*block.ChainInfo
 	for p, ci := range tracker.peers {
 		if _, trusted := tracker.trusted[p]; trusted {
 			tracked = append(tracked, ci)
 		}
 	}
-	out := make([]*types.ChainInfo, len(tracked))
+	out := make([]*block.ChainInfo, len(tracked))
 	copy(out, tracked)
 	return out
 }

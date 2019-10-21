@@ -3,6 +3,7 @@ package consensus
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
@@ -16,9 +17,9 @@ import (
 
 // Abstracts over a store of blockchain state.
 type chainStateChainReader interface {
-	GetHead() types.TipSetKey
-	GetTipSetState(context.Context, types.TipSetKey) (state.Tree, error)
-	GetTipSet(types.TipSetKey) (types.TipSet, error)
+	GetHead() block.TipSetKey
+	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSet(block.TipSetKey) (block.TipSet, error)
 }
 
 // QueryProcessor querys actor state of a particular tipset
@@ -50,7 +51,7 @@ type ActorStateSnapshot interface {
 }
 
 // Snapshot returns a snapshot of tipset state for querying
-func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey types.TipSetKey) (ActorStateSnapshot, error) {
+func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey block.TipSetKey) (ActorStateSnapshot, error) {
 	st, err := cs.chainReader.GetTipSetState(ctx, baseKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load tree for the state root of tipset: %s", baseKey.String())

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +21,7 @@ type FakeProvider struct {
 	*chain.Builder
 	t *testing.T
 
-	head  types.TipSetKey // Provided by GetHead and expected by others
+	head  block.TipSetKey // Provided by GetHead and expected by others
 	addr  address.Address // Expected by GetActorAt
 	actor *actor.Actor    // Provided by GetActorAt(head, tipKey, addr)
 }
@@ -33,12 +34,12 @@ func NewFakeProvider(t *testing.T) *FakeProvider {
 }
 
 // GetHead returns the head tipset key.
-func (p *FakeProvider) GetHead() types.TipSetKey {
+func (p *FakeProvider) GetHead() block.TipSetKey {
 	return p.head
 }
 
 // GetActorAt returns the actor corresponding to (key, addr) if they match those last set.
-func (p *FakeProvider) GetActorAt(ctx context.Context, key types.TipSetKey, addr address.Address) (*actor.Actor, error) {
+func (p *FakeProvider) GetActorAt(ctx context.Context, key block.TipSetKey, addr address.Address) (*actor.Actor, error) {
 	if !key.Equals(p.head) {
 		return nil, errors.Errorf("No such tipset %s, expected %s", key, p.head)
 	}
@@ -49,14 +50,14 @@ func (p *FakeProvider) GetActorAt(ctx context.Context, key types.TipSetKey, addr
 }
 
 // SetHead sets the head tipset
-func (p *FakeProvider) SetHead(head types.TipSetKey) {
+func (p *FakeProvider) SetHead(head block.TipSetKey) {
 	_, e := p.GetTipSet(head)
 	require.NoError(p.t, e)
 	p.head = head
 }
 
 // SetHeadAndActor sets the head tipset, along with the from address and actor to be provided.
-func (p *FakeProvider) SetHeadAndActor(t *testing.T, head types.TipSetKey, addr address.Address, actor *actor.Actor) {
+func (p *FakeProvider) SetHeadAndActor(t *testing.T, head block.TipSetKey, addr address.Address, actor *actor.Actor) {
 	p.SetHead(head)
 	p.addr = addr
 	p.actor = actor
@@ -96,7 +97,7 @@ type NullPolicy struct {
 }
 
 // HandleNewHead does nothing.
-func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldChain, newChain []types.TipSet) error {
+func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldChain, newChain []block.TipSet) error {
 	return nil
 }
 

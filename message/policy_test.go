@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -48,7 +49,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		root := blocks.NewGenesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
-		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
 		assert.NoError(t, err)
 		assert.Equal(t, qm(fromAlice, 100), q.List(alice)[0])
 		assert.Equal(t, qm(fromBob, 200), q.List(bob)[0])
@@ -67,7 +68,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		root := blocks.NewGenesis() // Height = 0
 		b1 := blocks.AppendOn(root, 1)
 
-		err := policy.HandleNewHead(ctx, q, []types.TipSet{b1}, []types.TipSet{})
+		err := policy.HandleNewHead(ctx, q, []block.TipSet{b1}, []block.TipSet{})
 		assert.NoError(t, err)
 		assert.Equal(t, qm(fromAlice, 100), q.List(alice)[0])
 		assert.Equal(t, qm(fromBob, 200), q.List(bob)[0])
@@ -88,7 +89,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0])
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
 
-		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		root := blocks.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(103)
 		})
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
@@ -98,14 +99,14 @@ func TestMessageQueuePolicy(t *testing.T) {
 			)
 		})
 
-		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
 		require.NoError(t, err)
 		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0]) // First message removed successfully
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])   // No change
 
 		// A block with no messages does nothing
 		b2 := blocks.AppendOn(b1, 1)
-		err = policy.HandleNewHead(ctx, q, []types.TipSet{}, []types.TipSet{b2})
+		err = policy.HandleNewHead(ctx, q, []block.TipSet{}, []block.TipSet{b2})
 		require.NoError(t, err)
 		assert.Equal(t, qm(msgs[1], 101), q.List(alice)[0])
 		assert.Equal(t, qm(msgs[3], 100), q.List(bob)[0])
@@ -117,7 +118,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(2),
 			)
 		})
-		err = policy.HandleNewHead(ctx, q, nil, []types.TipSet{b3})
+		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b3})
 		require.NoError(t, err)
 		assert.Equal(t, qm(msgs[2], 102), q.List(alice)[0])
 		assert.Empty(t, q.List(bob)) // None left
@@ -129,7 +130,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 		})
-		err = policy.HandleNewHead(ctx, q, nil, []types.TipSet{b4})
+		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b4})
 		require.NoError(t, err)
 		assert.Empty(t, q.List(alice))
 	})
@@ -150,7 +151,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0])
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
-		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		root := blocks.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(100)
 		})
 
@@ -159,14 +160,14 @@ func TestMessageQueuePolicy(t *testing.T) {
 			b.IncHeight(9)
 		})
 
-		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
 		require.NoError(t, err)
 
 		assert.Equal(t, qm(msgs[0], 100), q.List(alice)[0]) // No change
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0])
 
 		b2 := blocks.AppendOn(b1, 1) // Height b1.Height + 1 = 111
-		err = policy.HandleNewHead(ctx, q, nil, []types.TipSet{b2})
+		err = policy.HandleNewHead(ctx, q, nil, []block.TipSet{b2})
 		require.NoError(t, err)
 		assert.Empty(t, q.List(alice))                    // Alice's messages all expired
 		assert.Equal(t, qm(msgs[3], 200), q.List(bob)[0]) // Bob's remain
@@ -184,7 +185,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 			requireEnqueue(q, mm.NewSignedMessage(alice, 3), 102),
 		}
 
-		root := blocks.BuildOneOn(types.UndefTipSet, func(b *chain.BlockBuilder) {
+		root := blocks.BuildOneOn(block.UndefTipSet, func(b *chain.BlockBuilder) {
 			b.IncHeight(100)
 		})
 
@@ -194,7 +195,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 				types.EmptyReceipts(1),
 			)
 		})
-		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{b1})
+		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{b1})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})
@@ -240,7 +241,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		assert.True(t, bytes.Compare(cid1, cid2) > 0)
 
 		// With blocks ordered [b1, b2], everything is ok.
-		err := policy.HandleNewHead(ctx, q, nil, []types.TipSet{requireTipset(t, b1, b2)})
+		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{requireTipset(t, b1, b2)})
 		require.NoError(t, err)
 		assert.Empty(t, q.List(alice))
 
@@ -248,16 +249,16 @@ func TestMessageQueuePolicy(t *testing.T) {
 		// processing the blocks in canonical (ticket) order.
 		requireEnqueue(q, msgs[0], 200)
 		requireEnqueue(q, msgs[1], 201)
-		b1.Tickets = []types.Ticket{{VRFProof: []byte{1}}}
-		b2.Tickets = []types.Ticket{{VRFProof: []byte{0}}}
-		err = policy.HandleNewHead(ctx, q, []types.TipSet{requireTipset(t, root)}, []types.TipSet{requireTipset(t, b1, b2)})
+		b1.Tickets = []block.Ticket{{VRFProof: []byte{1}}}
+		b2.Tickets = []block.Ticket{{VRFProof: []byte{0}}}
+		err = policy.HandleNewHead(ctx, q, []block.TipSet{requireTipset(t, root)}, []block.TipSet{requireTipset(t, b1, b2)})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})
 }
 
-func requireTipset(t *testing.T, blocks ...*types.Block) types.TipSet {
-	set, err := types.NewTipSet(blocks...)
+func requireTipset(t *testing.T, blocks ...*block.Block) block.TipSet {
+	set, err := block.NewTipSet(blocks...)
 	require.NoError(t, err)
 	return set
 }

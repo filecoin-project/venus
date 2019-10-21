@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -208,7 +209,7 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 
 func requireMakeCommitment(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address, blockHeight int, sectorID uint64) {
 	builder := chain.NewBuilder(t, address.Undef)
-	head := builder.AppendManyOn(blockHeight, types.UndefTipSet)
+	head := builder.AppendManyOn(blockHeight, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), blockHeight)
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)

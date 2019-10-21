@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
@@ -26,10 +27,10 @@ func TestPeerTrackerTracks(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
-	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
-	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(), 0)
-	ci7 := types.NewChainInfo(pid7, types.NewTipSetKey(), 0)
+	ci0 := block.NewChainInfo(pid0, block.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
+	ci1 := block.NewChainInfo(pid1, block.NewTipSetKey(), 0)
+	ci3 := block.NewChainInfo(pid3, block.NewTipSetKey(), 0)
+	ci7 := block.NewChainInfo(pid7, block.NewTipSetKey(), 0)
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -37,9 +38,9 @@ func TestPeerTrackerTracks(t *testing.T) {
 	tracker.Track(ci7)
 
 	tracked := tracker.List()
-	sort.Sort(types.CISlice(tracked))
-	expected := []*types.ChainInfo{ci0, ci1, ci3, ci7}
-	sort.Sort(types.CISlice(expected))
+	sort.Sort(block.CISlice(tracked))
+	expected := []*block.ChainInfo{ci0, ci1, ci3, ci7}
+	sort.Sort(block.CISlice(expected))
 	assert.Equal(t, expected, tracked)
 
 }
@@ -52,10 +53,10 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 	pid2 := th.RequireIntPeerID(t, 2)
 	pid3 := th.RequireIntPeerID(t, 3)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 6)
-	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
-	ci2 := types.NewChainInfo(pid2, types.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
-	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
+	ci0 := block.NewChainInfo(pid0, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 6)
+	ci1 := block.NewChainInfo(pid1, block.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
+	ci2 := block.NewChainInfo(pid2, block.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
+	ci3 := block.NewChainInfo(pid3, block.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
 
 	// trusting pid2 and pid3
 	tracker := net.NewPeerTracker(pid2, pid3)
@@ -81,21 +82,21 @@ func TestPeerTrackerUpdateTrusted(t *testing.T) {
 	// trust pid2 and pid3
 	tracker := net.NewPeerTracker(pid3, pid2)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
-	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
-	ci2 := types.NewChainInfo(pid2, types.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
-	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
+	ci0 := block.NewChainInfo(pid0, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
+	ci1 := block.NewChainInfo(pid1, block.NewTipSetKey(types.CidFromString(t, "somecid1")), 10)
+	ci2 := block.NewChainInfo(pid2, block.NewTipSetKey(types.CidFromString(t, "somecid2")), 7)
+	ci3 := block.NewChainInfo(pid3, block.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
 	tracker.Track(ci2)
 	tracker.Track(ci3)
 
-	updatedHead := types.NewTipSetKey(types.CidFromString(t, "UPDATE"))
+	updatedHead := block.NewTipSetKey(types.CidFromString(t, "UPDATE"))
 	updatedHeight := uint64(100)
 	// update function that changes the tipset and sets height to 100
-	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
-		return &types.ChainInfo{
+	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*block.ChainInfo, error) {
+		return &block.ChainInfo{
 			Head:   updatedHead,
 			Height: updatedHeight,
 			Peer:   p,
@@ -137,10 +138,10 @@ func TestUpdateWithErrors(t *testing.T) {
 	// trust them all
 	tracker := net.NewPeerTracker(self, trusted...)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
-	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
-	ci2 := types.NewChainInfo(pid2, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
-	ci3 := types.NewChainInfo(failPeer, types.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
+	ci0 := block.NewChainInfo(pid0, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
+	ci1 := block.NewChainInfo(pid1, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
+	ci2 := block.NewChainInfo(pid2, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
+	ci3 := block.NewChainInfo(failPeer, block.NewTipSetKey(types.CidFromString(t, "somecid0")), 600)
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -148,7 +149,7 @@ func TestUpdateWithErrors(t *testing.T) {
 	tracker.Track(ci3)
 
 	// fail everything
-	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
+	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*block.ChainInfo, error) {
 		return nil, fmt.Errorf("failed to update peer")
 	})
 
@@ -156,15 +157,15 @@ func TestUpdateWithErrors(t *testing.T) {
 	err := tracker.UpdateTrusted(context.Background())
 	assert.Error(t, err, "all updates failed")
 
-	updatedHead := types.NewTipSetKey(types.CidFromString(t, "UPDATE"))
+	updatedHead := block.NewTipSetKey(types.CidFromString(t, "UPDATE"))
 	updatedHeight := uint64(100)
 
 	// fail to update `failPeer`
-	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*types.ChainInfo, error) {
+	tracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*block.ChainInfo, error) {
 		if p == failPeer {
 			return nil, fmt.Errorf("failed to update peer")
 		}
-		return &types.ChainInfo{
+		return &block.ChainInfo{
 			Head:   updatedHead,
 			Height: updatedHeight,
 			Peer:   p,
@@ -197,10 +198,10 @@ func TestPeerTrackerRemove(t *testing.T) {
 	pid3 := th.RequireIntPeerID(t, 3)
 	pid7 := th.RequireIntPeerID(t, 7)
 
-	ci0 := types.NewChainInfo(pid0, types.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
-	ci1 := types.NewChainInfo(pid1, types.NewTipSetKey(), 0)
-	ci3 := types.NewChainInfo(pid3, types.NewTipSetKey(), 0)
-	ci7 := types.NewChainInfo(pid7, types.NewTipSetKey(), 0)
+	ci0 := block.NewChainInfo(pid0, block.NewTipSetKey(types.CidFromString(t, "somecid")), 6)
+	ci1 := block.NewChainInfo(pid1, block.NewTipSetKey(), 0)
+	ci3 := block.NewChainInfo(pid3, block.NewTipSetKey(), 0)
+	ci7 := block.NewChainInfo(pid7, block.NewTipSetKey(), 0)
 
 	tracker.Track(ci0)
 	tracker.Track(ci1)
@@ -212,7 +213,7 @@ func TestPeerTrackerRemove(t *testing.T) {
 	tracker.Remove(pid7)
 
 	tracked := tracker.List()
-	expected := []*types.ChainInfo{ci0}
+	expected := []*block.ChainInfo{ci0}
 	assert.Equal(t, expected, tracked)
 }
 
@@ -235,8 +236,8 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	bID := b.ID()
 	cID := c.ID()
 
-	aCI := types.NewChainInfo(aID, types.NewTipSetKey(), 0)
-	bCI := types.NewChainInfo(bID, types.NewTipSetKey(), 0)
+	aCI := block.NewChainInfo(aID, block.NewTipSetKey(), 0)
+	bCI := block.NewChainInfo(bID, block.NewTipSetKey(), 0)
 
 	// self is the tracking node
 	// self tracks peers a and b
@@ -253,5 +254,5 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	require.NoError(t, mn.DisconnectPeers(selfID, cID))
 
 	tracked := tracker.List()
-	assert.Equal(t, []*types.ChainInfo{bCI}, tracked)
+	assert.Equal(t, []*block.ChainInfo{bCI}, tracked)
 }

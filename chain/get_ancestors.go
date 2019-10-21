@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -20,7 +21,7 @@ var ErrNoCommonAncestor = errors.New("no common ancestor")
 // the length of the returned list may vary (more null blocks -> shorter length).
 // This is all more complex than necessary, we should just index tipsets by height:
 // https://github.com/filecoin-project/go-filecoin/issues/3025
-func GetRecentAncestors(ctx context.Context, base types.TipSet, provider TipSetProvider, minHeight *types.BlockHeight) (ts []types.TipSet, err error) {
+func GetRecentAncestors(ctx context.Context, base block.TipSet, provider TipSetProvider, minHeight *types.BlockHeight) (ts []block.TipSet, err error) {
 	ctx, span := trace.StartSpan(ctx, "Chain.GetRecentAncestors")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
@@ -30,8 +31,8 @@ func GetRecentAncestors(ctx context.Context, base types.TipSet, provider TipSetP
 
 // CollectTipSetsPastHeight collects all tipsets down to the first tipset with a height less than
 // or equal to the earliest possible proving period start
-func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
-	var ret []types.TipSet
+func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight *types.BlockHeight) ([]block.TipSet, error) {
+	var ret []block.TipSet
 	var err error
 	var h uint64
 	for ; !iterator.Complete(); err = iterator.Next() {
@@ -57,8 +58,8 @@ func CollectTipSetsPastHeight(iterator *TipsetIterator, minHeight *types.BlockHe
 
 // CollectAtMostNTipSets collect N tipsets from the input channel.  If there
 // are fewer than n tipsets in the channel it returns all of them.
-func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]types.TipSet, error) {
-	var ret []types.TipSet
+func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint) ([]block.TipSet, error) {
+	var ret []block.TipSet
 	var err error
 	for i := uint(0); i < n && !iterator.Complete(); i++ {
 		ret = append(ret, iterator.Value())
@@ -71,8 +72,8 @@ func CollectAtMostNTipSets(ctx context.Context, iterator *TipsetIterator, n uint
 
 // CollectTipSetsOfHeightAtLeast collects all tipsets with a height greater
 // than or equal to minHeight from the input tipset.
-func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]types.TipSet, error) {
-	var ret []types.TipSet
+func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator, minHeight *types.BlockHeight) ([]block.TipSet, error) {
+	var ret []block.TipSet
 	var err error
 	var h uint64
 	for ; !iterator.Complete(); err = iterator.Next() {
@@ -94,18 +95,18 @@ func CollectTipSetsOfHeightAtLeast(ctx context.Context, iterator *TipsetIterator
 // FindCommonAncestor returns the common ancestor of the two tipsets pointed to
 // by the input iterators.  If they share no common ancestor ErrNoCommonAncestor
 // will be returned.
-func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, error) {
+func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (block.TipSet, error) {
 	for !rightIter.Complete() && !leftIter.Complete() {
 		left := leftIter.Value()
 		right := rightIter.Value()
 
 		leftHeight, err := left.Height()
 		if err != nil {
-			return types.UndefTipSet, err
+			return block.UndefTipSet, err
 		}
 		rightHeight, err := right.Height()
 		if err != nil {
-			return types.UndefTipSet, err
+			return block.UndefTipSet, err
 		}
 
 		// Found common ancestor.
@@ -118,15 +119,15 @@ func FindCommonAncestor(leftIter, rightIter *TipsetIterator) (types.TipSet, erro
 		// other pointer's tipset.
 		if rightHeight >= leftHeight {
 			if err := rightIter.Next(); err != nil {
-				return types.UndefTipSet, err
+				return block.UndefTipSet, err
 			}
 		}
 
 		if leftHeight >= rightHeight {
 			if err := leftIter.Next(); err != nil {
-				return types.UndefTipSet, err
+				return block.UndefTipSet, err
 			}
 		}
 	}
-	return types.UndefTipSet, ErrNoCommonAncestor
+	return block.UndefTipSet, ErrNoCommonAncestor
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/event"
@@ -21,8 +22,6 @@ import (
 	mh "github.com/multiformats/go-multihash"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var _ host.Host = &FakeHost{}
@@ -140,26 +139,26 @@ func RequireIntPeerID(t *testing.T, i int64) peer.ID {
 // for adding blocks to the source.  It is used to implement an object that
 // behaves like Fetcher but does not go to the network for use in tests.
 type TestFetcher struct {
-	sourceBlocks map[string]*types.Block // sourceBlocks maps block cid strings to blocks.
+	sourceBlocks map[string]*block.Block // sourceBlocks maps block cid strings to blocks.
 }
 
 // NewTestFetcher returns a TestFetcher with no source blocks.
 func NewTestFetcher() *TestFetcher {
 	return &TestFetcher{
-		sourceBlocks: make(map[string]*types.Block),
+		sourceBlocks: make(map[string]*block.Block),
 	}
 }
 
 // AddSourceBlocks adds the input blocks to the fetcher source.
-func (f *TestFetcher) AddSourceBlocks(blocks ...*types.Block) {
+func (f *TestFetcher) AddSourceBlocks(blocks ...*block.Block) {
 	for _, block := range blocks {
 		f.sourceBlocks[block.Cid().String()] = block
 	}
 }
 
 // FetchTipSets fetchs the tipset at `tsKey` from the network using the fetchers `sourceBlocks`.
-func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, from peer.ID, done func(t types.TipSet) (bool, error)) ([]types.TipSet, error) {
-	var out []types.TipSet
+func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t block.TipSet) (bool, error)) ([]block.TipSet, error) {
+	var out []block.TipSet
 	cur := tsKey
 	for {
 		res, err := f.GetBlocks(ctx, cur.ToSlice())
@@ -167,7 +166,7 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, f
 			return nil, err
 		}
 
-		ts, err := types.NewTipSet(res...)
+		ts, err := block.NewTipSet(res...)
 		if err != nil {
 			return nil, err
 		}
@@ -192,8 +191,8 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey types.TipSetKey, f
 }
 
 // GetBlocks returns any blocks in the source with matching cids.
-func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*types.Block, error) {
-	var ret []*types.Block
+func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.Block, error) {
+	var ret []*block.Block
 	for _, c := range cids {
 		if block, ok := f.sourceBlocks[c.String()]; ok {
 			ret = append(ret, block)

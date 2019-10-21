@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	fm := NewFaultSlasher(&sp, &ob, DefaultFaultSlasherGasPrice, DefaultFaultSlasherGasLimit)
 
 	t.Run("with bad tipset", func(t *testing.T) {
-		ts := types.UndefTipSet
+		ts := block.UndefTipSet
 		err := fm.OnNewHeaviestTipSet(ctx, ts)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get tipset height")
@@ -307,15 +308,15 @@ func (tmp *slasherPlumbing) ConfigGet(dottedPath string) (interface{}, error) {
 	return tmp.minerAddr, nil
 }
 
-func (tmp *slasherPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (tmp *slasherPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (tmp *slasherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return tmp.Snapshot(ctx, optFrom, to, method, params)
 }
 
-func (tmp *slasherPlumbing) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
+func (tmp *slasherPlumbing) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	if tmp.workerAddrFail {
 		return address.Undef, errors.New("actor not found")
 	}

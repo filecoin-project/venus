@@ -14,9 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	cbu "github.com/filecoin-project/go-filecoin/cborutil"
 	"github.com/filecoin-project/go-filecoin/metrics"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
@@ -35,14 +35,14 @@ var log = logging.Logger("/fil/hello")
 
 // Message is the data structure of a single message in the hello protocol.
 type Message struct {
-	HeaviestTipSetCids   types.TipSetKey
+	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
 }
 
-type helloCallback func(ci *types.ChainInfo)
+type helloCallback func(ci *block.ChainInfo)
 
-type getTipSetFunc func() (types.TipSet, error)
+type getTipSetFunc func() (block.TipSet, error)
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -92,12 +92,12 @@ func (h *Handler) handleNewStream(s net.Stream) {
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*types.ChainInfo, error) {
+func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*block.ChainInfo, error) {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return nil, ErrBadGenesis
 	}
 
-	return types.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
+	return block.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
 }
 
 func (h *Handler) getOurHelloMessage() (*Message, error) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -186,7 +187,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 }
 
 // DefaultGenesis creates a test network genesis block with default accounts and actors installed.
-func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*types.Block, error) {
+func DefaultGenesis(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 	return consensus.MakeGenesisFunc(consensus.Network(version.TEST))(cst, bs)
 }
 

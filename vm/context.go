@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -33,7 +34,7 @@ type Context struct {
 	storageMap  StorageMap
 	gasTracker  *GasTracker
 	blockHeight *types.BlockHeight
-	ancestors   []types.TipSet
+	ancestors   []block.TipSet
 	actors      ExecutableActorLookup
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
@@ -50,7 +51,7 @@ type NewContextParams struct {
 	StorageMap  StorageMap
 	GasTracker  *GasTracker
 	BlockHeight *types.BlockHeight
-	Ancestors   []types.TipSet
+	Ancestors   []block.TipSet
 	Actors      ExecutableActorLookup
 }
 

@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/types"
-
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -37,12 +36,12 @@ func (s *MockScheduler) IsStarted() bool {
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFunc func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket)
+	WorkFunc func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket)
 }
 
 // Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
-func (w *TestWorker) Mine(ctx context.Context, ts types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket) {
+func (w *TestWorker) Mine(ctx context.Context, ts block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
 	if w.WorkFunc == nil {
 		panic("must set MutableTestWorker's WorkFunc before calling Work")
 	}
@@ -51,7 +50,7 @@ func (w *TestWorker) Mine(ctx context.Context, ts types.TipSet, ticketArray []ty
 
 // NewTestWorkerWithDeps creates a worker that calls the provided input
 // function when Mine() is called.
-func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket)) *TestWorker {
+func NewTestWorkerWithDeps(f func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket)) *TestWorker {
 	return &TestWorker{
 		WorkFunc: f,
 	}
@@ -59,15 +58,15 @@ func NewTestWorkerWithDeps(f func(context.Context, types.TipSet, []types.Ticket,
 
 // MakeEchoMine returns a test worker function that itself returns the first
 // block of the input tipset as output.
-func MakeEchoMine(t *testing.T) func(context.Context, types.TipSet, []types.Ticket, chan<- Output) (bool, types.Ticket) {
-	echoMine := func(c context.Context, ts types.TipSet, ticketArray []types.Ticket, outCh chan<- Output) (bool, types.Ticket) {
+func MakeEchoMine(t *testing.T) func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket) {
+	echoMine := func(c context.Context, ts block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
 		require.True(t, ts.Defined())
 		b := ts.At(0)
 		select {
 		case outCh <- Output{NewBlock: b}:
 		case <-c.Done():
 		}
-		return true, types.Ticket{}
+		return true, block.Ticket{}
 	}
 	return echoMine
 }
@@ -111,6 +110,6 @@ func ReceiveOutCh(ch <-chan Output) int {
 
 // NthTicket returns a ticket with a vdf result equal to a byte slice wrapping
 // the input uint8 value.
-func NthTicket(i uint8) types.Ticket {
-	return types.Ticket{VDFResult: []byte{i}}
+func NthTicket(i uint8) block.Ticket {
+	return block.Ticket{VDFResult: []byte{i}}
 }

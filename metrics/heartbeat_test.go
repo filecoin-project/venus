@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -88,7 +89,7 @@ func TestHeartbeatConnectSuccess(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (types.TipSet, error) {
+		func() (block.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
@@ -117,7 +118,7 @@ func TestHeartbeatConnectFailure(t *testing.T) {
 			ReconnectPeriod: "10s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (types.TipSet, error) {
+		func() (block.TipSet, error) {
 			tipSet := chain.NewBuilder(t, address.Undef).NewGenesis()
 			return tipSet, nil
 		},
@@ -169,7 +170,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 			ReconnectPeriod: "1s",
 			Nickname:        "BobHoblaw",
 		},
-		func() (types.TipSet, error) {
+		func() (block.TipSet, error) {
 			return expTs, nil
 		},
 		metrics.WithMinerAddressGetter(func() address.Address {
@@ -183,11 +184,11 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 	assert.Error(t, runCtx.Err(), context.Canceled.Error())
 }
 
-func mustMakeTipset(t *testing.T, height types.Uint64) types.TipSet {
-	ts, err := types.NewTipSet(&types.Block{
+func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
+	ts, err := block.NewTipSet(&block.Block{
 		Miner:           address.NewForTestGetter()(),
-		Tickets:         []types.Ticket{{VRFProof: []byte{0}}},
-		Parents:         types.TipSetKey{},
+		Tickets:         []block.Ticket{{VRFProof: []byte{0}}},
+		Parents:         block.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
 		MessageReceipts: types.EmptyMessagesCID,

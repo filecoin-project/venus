@@ -1,4 +1,4 @@
-package types_test
+package block_test
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	blk "github.com/filecoin-project/go-filecoin/block"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -22,7 +23,7 @@ func TestTipSetKey(t *testing.T) {
 	c4, _ := cid.Parse("zDPWYqFD4b5HLFuPfhkjJJkfvm4r8KLi1V9e2ahJX6Ab16Ay24pM")
 
 	t.Run("empty", func(t *testing.T) {
-		s := types.NewTipSetKey()
+		s := blk.NewTipSetKey()
 		assert.True(t, s.Empty())
 		assert.Equal(t, 0, s.Len())
 
@@ -32,7 +33,7 @@ func TestTipSetKey(t *testing.T) {
 	})
 
 	t.Run("zero value is empty", func(t *testing.T) {
-		var s types.TipSetKey
+		var s blk.TipSetKey
 		assert.True(t, s.Empty())
 		assert.Equal(t, 0, s.Len())
 
@@ -40,19 +41,19 @@ func TestTipSetKey(t *testing.T) {
 		assert.Equal(t, it.Value(), cid.Undef)
 		assert.False(t, it.Next())
 
-		assert.True(t, s.Equals(types.NewTipSetKey()))
+		assert.True(t, s.Equals(blk.NewTipSetKey()))
 
 		// Bytes must be equal in order to have equivalent CIDs
 		zeroBytes, err := cbor.DumpObject(s)
 		require.NoError(t, err)
-		emptyBytes, err := cbor.DumpObject(types.NewTipSetKey())
+		emptyBytes, err := cbor.DumpObject(blk.NewTipSetKey())
 		require.NoError(t, err)
 		assert.Equal(t, zeroBytes, emptyBytes)
 	})
 
 	t.Run("order invariant", func(t *testing.T) {
-		s1 := types.NewTipSetKey(c1, c2, c3)
-		s2 := types.NewTipSetKey(c3, c2, c1)
+		s1 := blk.NewTipSetKey(c1, c2, c3)
+		s2 := blk.NewTipSetKey(c3, c2, c1)
 
 		assert.True(t, s1.Equals(s2))
 
@@ -75,23 +76,23 @@ func TestTipSetKey(t *testing.T) {
 
 		for _, cs := range cases {
 			cidSet := asSet(cs)
-			key := types.NewTipSetKey(cs...)
+			key := blk.NewTipSetKey(cs...)
 			assert.Equal(t, len(cidSet), key.Len())
 			assert.Equal(t, cidSet, asSet(key.ToSlice()))
-			assert.Equal(t, key, types.NewTipSetKey(asSlice(cidSet)...))
+			assert.Equal(t, key, blk.NewTipSetKey(asSlice(cidSet)...))
 		}
 	})
 
 	t.Run("fails if unexpected duplicates", func(t *testing.T) {
-		_, e := types.NewTipSetKeyFromUnique(c1, c2, c3)
+		_, e := blk.NewTipSetKeyFromUnique(c1, c2, c3)
 		assert.NoError(t, e)
-		_, e = types.NewTipSetKeyFromUnique(c1, c2, c1, c3)
+		_, e = blk.NewTipSetKeyFromUnique(c1, c2, c1, c3)
 		assert.Error(t, e)
 	})
 
 	t.Run("contains", func(t *testing.T) {
-		empty := types.NewTipSetKey()
-		s := types.NewTipSetKey(c1, c2, c3)
+		empty := blk.NewTipSetKey()
+		s := blk.NewTipSetKey(c1, c2, c3)
 
 		assert.False(t, empty.Has(c1))
 		assert.True(t, s.Has(c1))
@@ -100,17 +101,17 @@ func TestTipSetKey(t *testing.T) {
 		assert.False(t, s.Has(c4))
 
 		assert.True(t, s.ContainsAll(empty))
-		assert.True(t, s.ContainsAll(types.NewTipSetKey(c1)))
+		assert.True(t, s.ContainsAll(blk.NewTipSetKey(c1)))
 		assert.True(t, s.ContainsAll(s))
-		assert.False(t, s.ContainsAll(types.NewTipSetKey(c4)))
-		assert.False(t, s.ContainsAll(types.NewTipSetKey(c1, c4)))
+		assert.False(t, s.ContainsAll(blk.NewTipSetKey(c4)))
+		assert.False(t, s.ContainsAll(blk.NewTipSetKey(c1, c4)))
 
 		assert.True(t, empty.ContainsAll(empty))
 		assert.False(t, empty.ContainsAll(s))
 	})
 
 	t.Run("iteration", func(t *testing.T) {
-		s := types.NewTipSetKey(c3, c2, c1)
+		s := blk.NewTipSetKey(c3, c2, c1)
 		it := s.Iter()
 		assert.True(t, c1.Equals(it.Value()))
 		assert.True(t, it.Next())
@@ -127,11 +128,11 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	makeCid := types.NewCidForTestGetter()
-	exp := types.NewTipSetKey(makeCid(), makeCid(), makeCid())
+	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
 	buf, err := cbor.DumpObject(exp)
 	assert.NoError(t, err)
 
-	var act types.TipSetKey
+	var act blk.TipSetKey
 	err = cbor.DecodeInto(buf, &act)
 	assert.NoError(t, err)
 
@@ -143,12 +144,12 @@ func TestTipSetKeyJSONRoundtrip(t *testing.T) {
 	tf.UnitTest(t)
 
 	makeCid := types.NewCidForTestGetter()
-	exp := types.NewTipSetKey(makeCid(), makeCid(), makeCid())
+	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
 
 	buf, err := json.Marshal(exp)
 	assert.NoError(t, err)
 
-	var act types.TipSetKey
+	var act blk.TipSetKey
 	err = json.Unmarshal(buf, &act)
 	assert.NoError(t, err)
 

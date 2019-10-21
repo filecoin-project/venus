@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,11 +22,11 @@ type testPaymentChannelLsPlumbing struct {
 	channels map[string]*paymentbroker.PaymentChannel
 }
 
-func (p *testPaymentChannelLsPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (p *testPaymentChannelLsPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	chnls, err := cbor.DumpObject(p.channels)
 	require.NoError(p.testing, err)
 	return [][]byte{chnls}, nil
@@ -58,11 +59,11 @@ type testPaymentChannelVoucherPlumbing struct {
 	voucher *types.PaymentVoucher
 }
 
-func (p *testPaymentChannelVoucherPlumbing) ChainHeadKey() types.TipSetKey {
-	return types.NewTipSetKey()
+func (p *testPaymentChannelVoucherPlumbing) ChainHeadKey() block.TipSetKey {
+	return block.NewTipSetKey()
 }
 
-func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ types.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	result, err := actor.MarshalStorage(p.voucher)
 	require.NoError(p.testing, err)
 	return [][]byte{result}, nil

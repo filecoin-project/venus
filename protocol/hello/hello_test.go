@@ -12,25 +12,25 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 type mockHelloCallback struct {
 	mock.Mock
 }
 
-func (msb *mockHelloCallback) HelloCallback(ci *types.ChainInfo) {
+func (msb *mockHelloCallback) HelloCallback(ci *block.ChainInfo) {
 	msb.Called(ci.Peer, ci.Head, ci.Height)
 }
 
 type mockHeaviestGetter struct {
-	heaviest types.TipSet
+	heaviest block.TipSet
 }
 
-func (mhg *mockHeaviestGetter) getHeaviestTipSet() (types.TipSet, error) {
+func (mhg *mockHeaviestGetter) getHeaviestTipSet() (block.TipSet, error) {
 	return mhg.heaviest, nil
 }
 
@@ -46,10 +46,10 @@ func TestHelloHandshake(t *testing.T) {
 	a := mn.Hosts()[0]
 	b := mn.Hosts()[1]
 
-	genesisA := &types.Block{}
+	genesisA := &block.Block{}
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
+	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Tickets: []block.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Tickets: []block.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -101,11 +101,11 @@ func TestHelloBadGenesis(t *testing.T) {
 
 	builder := chain.NewBuilder(t, address.Undef)
 
-	genesisA := builder.AppendBlockOn(types.UndefTipSet)
-	genesisB := builder.AppendBlockOn(types.UndefTipSet)
+	genesisA := builder.AppendBlockOn(block.UndefTipSet)
+	genesisB := builder.AppendBlockOn(block.UndefTipSet)
 
-	heavy1 := th.RequireNewTipSet(t, &types.Block{Height: 2, Tickets: []types.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &types.Block{Height: 3, Tickets: []types.Ticket{{VRFProof: []byte{1}}}})
+	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Tickets: []block.Ticket{{VRFProof: []byte{0}}}})
+	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Tickets: []block.Ticket{{VRFProof: []byte{1}}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}

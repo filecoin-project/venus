@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/consensus"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -46,12 +47,12 @@ func (t *FakeWorkerPorcelainAPI) BlockTime() time.Duration {
 }
 
 // MinerGetWorkerAddress returns the worker address set in FakeWorkerPorcelainAPI
-func (t *FakeWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ types.TipSetKey) (address.Address, error) {
+func (t *FakeWorkerPorcelainAPI) MinerGetWorkerAddress(_ context.Context, _ address.Address, _ block.TipSetKey) (address.Address, error) {
 	return t.workerAddr, nil
 }
 
 // Snapshot returns a snapshot object for the given tipset
-func (t *FakeWorkerPorcelainAPI) Snapshot(ctx context.Context, tsk types.TipSetKey) (consensus.ActorStateSnapshot, error) {
+func (t *FakeWorkerPorcelainAPI) Snapshot(ctx context.Context, tsk block.TipSetKey) (consensus.ActorStateSnapshot, error) {
 	return &consensus.FakePowerTableViewSnapshot{
 		MinerPower:    types.NewBytesAmount(1),
 		TotalPower:    types.NewBytesAmount(t.totalPower),

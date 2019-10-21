@@ -1,10 +1,10 @@
-package block_test
+package mining_test
 
 import (
 	"context"
 	"testing"
 
-	bapi "github.com/filecoin-project/go-filecoin/protocol/block"
+	bapi "github.com/filecoin-project/go-filecoin/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/types"
 
@@ -131,7 +131,7 @@ func TestMiningAPI_MiningTogether(t *testing.T) {
 	assert.Equal(t, 1, len(blk.Tickets))
 }
 
-func newAPI(t *testing.T) (bapi.MiningAPI, *node.Node) {
+func newAPI(t *testing.T) (bapi.API, *node.Node) {
 	seed := node.MakeChainSeed(t, node.TestGenCfg)
 	builderOpts := []node.BuilderOpt{}
 

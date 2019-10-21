@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
@@ -65,7 +66,7 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 // w(i) = w(i-1) + (pi)^(P_n) * [V * num_blks + X ]
 // P_n(n) = if n < 3:0 else: n, n is number of null rounds
 // X = log_2(total_storage(pSt))
-func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
+func (c *ChainSelector) NewWeight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (uint64, error) {
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
@@ -120,7 +121,7 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts types.TipSet, pStateID
 
 // Weight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
-func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pStateID cid.Cid) (uint64, error) {
+func (c *ChainSelector) Weight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (uint64, error) {
 	if ts.Len() == 1 && ts.At(0).Cid().Equals(c.genesisCid) {
 		return uint64(0), nil
 	}
@@ -174,7 +175,7 @@ func (c *ChainSelector) Weight(ctx context.Context, ts types.TipSet, pStateID ci
 // concatenation of block cids in the tipset.
 // TODO BLOCK CID CONCAT TIE BREAKER IS NOT IN THE SPEC AND SHOULD BE
 // EVALUATED BEFORE GETTING TO PRODUCTION.
-func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
+func (c *ChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error) {
 	// Select weighting function based on protocol version
 	aWfun, err := c.chooseWeightFunc(a)
 	if err != nil {
@@ -226,7 +227,7 @@ func (c *ChainSelector) IsHeavier(ctx context.Context, a, b types.TipSet, aState
 	return cmp == 1, nil
 }
 
-func (c *ChainSelector) chooseWeightFunc(ts types.TipSet) (func(context.Context, types.TipSet, cid.Cid) (uint64, error), error) {
+func (c *ChainSelector) chooseWeightFunc(ts block.TipSet) (func(context.Context, block.TipSet, cid.Cid) (uint64, error), error) {
 	wFun := c.Weight
 	h, err := ts.Height()
 	if err != nil {

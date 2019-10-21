@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
@@ -18,11 +19,11 @@ const verifyPieceInclusionMethod = "verifyPieceInclusion"
 
 // cpPlumbing is the subset of the plumbing.API that CreatePayments uses.
 type cpPlumbing interface {
-	ChainHeadKey() types.TipSetKey
-	ChainTipSet(key types.TipSetKey) (types.TipSet, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey types.TipSetKey, params ...interface{}) ([][]byte, error)
+	ChainHeadKey() block.TipSetKey
+	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*types.Block, *types.SignedMessage, *types.MessageReceipt) error) error
+	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
 
@@ -140,7 +141,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	}
 
 	// wait for response
-	err = plumbing.MessageWait(ctx, response.ChannelMsgCid, func(block *types.Block, message *types.SignedMessage, receipt *types.MessageReceipt) error {
+	err = plumbing.MessageWait(ctx, response.ChannelMsgCid, func(block *block.Block, message *types.SignedMessage, receipt *types.MessageReceipt) error {
 		if receipt.ExitCode != 0 {
 			return fmt.Errorf("createChannel failed %d", receipt.ExitCode)
 		}
@@ -239,7 +240,7 @@ func ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predi
 	return nil
 }
 
-func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey types.TipSetKey, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
+func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey block.TipSetKey, response *CreatePaymentsReturn, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) error {
 
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
