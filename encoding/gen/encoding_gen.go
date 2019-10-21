@@ -42,7 +42,7 @@ func WriteToFile(fname string, generator TypeEncodingGenerator, pkg string, type
 	if err != nil {
 		return xerrors.Errorf("failed to open file: %w", err)
 	}
-	defer fi.Close()
+	defer func() { _ = fi.Close() }()
 
 	if err := writePackageHeader(fi, pkg); err != nil {
 		return xerrors.Errorf("failed to write header: %w", err)
