@@ -46,7 +46,7 @@ func (generator IpldCborTypeEncodingGenerator) WriteEncodingForType(w io.Writer,
 //
 // Encoding/Decoding impls for {{ .Name }} 
 // 
-	`),  err != nil {
+	`); err != nil {
 		return err
 	}
 
@@ -64,13 +64,7 @@ func (generator IpldCborTypeEncodingGenerator) WriteEncodingForType(w io.Writer,
 func writeEncode(w io.Writer, ti TypeInfo) error {
 	return doTemplate(w, ti, `
 func (p {{ .Name }}) Encode(encoder encoding.Encoder) error {
-	var err error
-
-	if err = encoder.EncodeObject(p); err != nil {
-		return err
-	}
-
-	return nil
+	return encoder.EncodeObject(p)
 }
 	`)
 }
@@ -78,11 +72,7 @@ func (p {{ .Name }}) Encode(encoder encoding.Encoder) error {
 func writeDecode(w io.Writer, ti TypeInfo) error {
 	return doTemplate(w, ti, `
 func (p *{{ .Name }}) Decode(decoder encoding.Decoder) error {
-	if err := decoder.DecodeObject(p); err != nil {
-		return err
-	}
-
-	return nil
+	return decoder.DecodeObject(p)
 }	
 `)
 }
