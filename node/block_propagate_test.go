@@ -108,6 +108,8 @@ func TestChainSync(t *testing.T) {
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
+	connect(t, nodes[0], nodes[1])
+
 	firstBlock := requireMineOnce(ctx, t, nodes[0])
 	secondBlock := requireMineOnce(ctx, t, nodes[0])
 	thirdBlock := requireMineOnce(ctx, t, nodes[0])
@@ -116,16 +118,6 @@ func TestChainSync(t *testing.T) {
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
 
-	// Wait for node[0] to sync mined blocks to ensure there is no
-	// race where node[0] sends genesis to node[1] during hello
-	for i := 0; i < 10; i++ {
-		if nodes[0].Chain.SyncDispatch.ActiveRequests() == 0 {
-			break
-		}
-		time.Sleep(time.Millisecond * 20)
-	}
-
-	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].Chain.ChainReader.GetHead()

@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"errors"
-	"sync"
 
 	logging "github.com/ipfs/go-log"
 
@@ -13,9 +12,9 @@ import (
 
 var log = logging.Logger("sync.dispatch")
 
-var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
-var errBadPop = errors.New("a programmer is not checking targetQueue length before popping")
-var errBadSet = errors.New("a programmer is not correctly maintaining the targetSet")
+var errEmptyPop = errors.New("pop on empty targetQueue")
+
+const productionBufferSize = 5
 
 // syncer is the interface of the logic syncing incoming chains
 type syncer interface {
@@ -25,8 +24,9 @@ type syncer interface {
 // NewDispatcher creates a new syncing dispatcher.
 func NewDispatcher(catchupSyncer syncer) *Dispatcher {
 	return &Dispatcher{
-		targetQ:       NewTargetQueue(),
-		catchupSyncer: catchupSyncer,
+		targetQ:           NewTargetQueue(),
+		catchupSyncer:     catchupSyncer,
+		productionChannel: make(chan *SyncRequest, productionBufferSize),
 	}
 }
 
@@ -36,6 +36,11 @@ type Dispatcher struct {
 	// current best syncing target
 	// targetQ is a priority queue of target tipsets
 	targetQ *TargetQueue
+
+	// productionChannel synchronizes adding sync requests to the dispatcher.
+	// The dispatcher relies on a single reader pulling from this.  Don't add
+	// another reader without care.
+	productionChannel chan *SyncRequest
 
 	// catchupSyncer is used for dispatching sync requests for chain heads
 	// during the CHAIN_CATCHUP mode of operation
@@ -52,10 +57,7 @@ func (d *Dispatcher) ReceiveOwnBlock(ci *block.ChainInfo) error { return d.recei
 func (d *Dispatcher) ReceiveGossipBlock(ci *block.ChainInfo) error { return d.receive(ci) }
 
 func (d *Dispatcher) receive(ci *block.ChainInfo) error {
-	err := d.targetQ.Push(&SyncRequest{ChainInfo: *ci})
-	if err != nil {
-		return err
-	}
+	d.productionChannel <- &SyncRequest{ChainInfo: *ci}
 	return nil
 }
 
@@ -63,27 +65,61 @@ func (d *Dispatcher) receive(ci *block.ChainInfo) error {
 // It reads syncing requests from the target queue and dispatches them to the
 // appropriate syncer.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
-	// Loop on targetQ.Pop()
-	// Pop() should block when there is nothing there
-	// When we get something we should dispatch the request to the appropriate syncer
 	go func() {
 		for {
-			// Pop() blocks until there is something to sync
+			var produced []*SyncRequest
+			// If there's something on the target queue: read from
+			// the production queue without blocking.
+			if d.targetQ.Len() != 0 {
+				select {
+				case first := <-d.productionChannel:
+					produced = append(produced, first)
+					produced = append(produced, d.drainProduced()...)
+				case <-syncingCtx.Done():
+					return
+				default: // go straight to syncing
+				}
+			} else { // If there's nothing on the target queue:
+				// block until we have something from production
+				// queue.
+				select {
+				case first := <-d.productionChannel:
+					produced = append(produced, first)
+					produced = append(produced, d.drainProduced()...)
+				case <-syncingCtx.Done():
+					return
+				}
+			}
+
+			// Sort outstanding requests and handle the next request
+			for _, syncReq := range produced {
+				d.targetQ.Push(syncReq)
+			}
 			syncReq, err := d.targetQ.Pop()
 			if err != nil {
-				log.Errorf("error popping next sync request %s", err)
+				// This is expected: target queue can be empty if
+				// all new requests duplicate an existing one
+				log.Debugf("error popping in sync dispatch: %s", err)
+				continue
 			}
 			err = d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncReq.ChainInfo, true)
 			if err != nil {
-				log.Infof("error running sync request", err)
+				log.Infof("error running sync request %s", err)
 			}
 		}
 	}()
 }
 
-// ActiveRequests informs of the number of sync requests currently enqueued.
-func (d *Dispatcher) ActiveRequests() int {
-	return d.targetQ.Len()
+func (d *Dispatcher) drainProduced() []*SyncRequest {
+	// drain channel. Note this relies on a single reader of the production
+	// channel.
+	n := len(d.productionChannel)
+	var produced []*SyncRequest
+	for i := 0; i < n; i++ {
+		next := <-d.productionChannel
+		produced = append(produced, next)
+	}
+	return produced
 }
 
 // SyncRequest tracks a logical request of the syncing subsystem to run a
@@ -135,95 +171,48 @@ func (rq *rawQueue) Pop() interface{} {
 }
 
 // TargetQueue orders dispatcher syncRequests by the underlying rawQueue's
-// policy. It exposes programmer errors as return values instead of panicing.
-// Errors should only be returned from Push and Pop in the case of programmer
-// error.
+// policy.
 //
-// All methods are threadsafe.  Concurrent pushes and pops are allowed.
-// Pop is a blocking call in the case the queue is empty.
+// It is not threadsafe.
 type TargetQueue struct {
 	q         rawQueue
 	targetSet map[string]struct{}
-
-	// the following fields ensure thread safety
-	// popMu ensures that a single popper will wait for the empty wg
-	popMu sync.Mutex
-	// rawMu ensures a single go-routine accesses rawQueue and
-	rawMu sync.Mutex
-	// empty signals when a queue is empty and no-longer empty
-	empty sync.WaitGroup
 }
 
 // NewTargetQueue returns a new target queue with an initialized rawQueue
 func NewTargetQueue() *TargetQueue {
 	rq := make(rawQueue, 0)
 	heap.Init(&rq)
-	tq := &TargetQueue{
+	return &TargetQueue{
 		q:         rq,
 		targetSet: make(map[string]struct{}),
 	}
-
-	// Important to add to waitgroup directly on struct, waitgroup internals
-	// rely on memory not moving!
-	tq.empty.Add(1)
-	return tq
 }
 
 // Push adds a sync request to the target queue.
-func (tq *TargetQueue) Push(req *SyncRequest) (err error) {
-	tq.rawMu.Lock()
-	defer tq.rawMu.Unlock()
-	defer func() {
-		// This converts heap.Push panics to programmer errors
-		if r := recover(); r != nil {
-			err = errBadPush
-		}
-	}()
+func (tq *TargetQueue) Push(req *SyncRequest) {
 	// If already in queue drop quickly
 	if _, inQ := tq.targetSet[req.ChainInfo.Head.String()]; inQ {
-		return nil
+		return
 	}
 	heap.Push(&tq.q, req)
-	if tq.q.Len() == 1 {
-		// Signal that the queue has gone from empty to non-empty
-		tq.empty.Done()
-	}
 	tq.targetSet[req.ChainInfo.Head.String()] = struct{}{}
 
-	return nil
+	return
 }
 
 // Pop removes and returns the highest priority syncing target.
-func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
-	tq.popMu.Lock()
-	defer tq.popMu.Unlock()
-	// Wait for a non-empty queue
-	tq.empty.Wait()
-	tq.rawMu.Lock()
-	defer tq.rawMu.Unlock()
-	defer func() {
-		// This converts heap.Pop panics to programmer errors
-		if r := recover(); r != nil {
-			req = nil
-			err = errBadPop
-		}
-	}()
-	req, err = heap.Pop(&tq.q).(*SyncRequest), nil
-	if tq.q.Len() == 0 {
-		// Signal that the queue has gone from non-empty to empty
-		tq.empty.Add(1)
+func (tq *TargetQueue) Pop() (*SyncRequest, error) {
+	if tq.Len() == 0 {
+		return nil, errEmptyPop
 	}
+	req := heap.Pop(&tq.q).(*SyncRequest)
 	popKey := req.ChainInfo.Head.String()
-	if _, inQ := tq.targetSet[popKey]; !inQ {
-		return nil, errBadSet
-	}
 	delete(tq.targetSet, popKey)
-	return req, err
+	return req, nil
 }
 
 // Len returns the number of targets in the queue.
 func (tq *TargetQueue) Len() int {
-	tq.rawMu.Lock()
-	defer tq.rawMu.Unlock()
 	return tq.q.Len()
 }

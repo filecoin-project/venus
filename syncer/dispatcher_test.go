@@ -3,7 +3,6 @@ package syncer_test
 import (
 	"context"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -45,13 +44,10 @@ func TestDispatchStartHappy(t *testing.T) {
 		assert.NoError(t, testDispatch.ReceiveHello(ci))
 	}
 
-	assert.Equal(t, len(cis), testDispatch.ActiveRequests())
 	testDispatch.Start(context.Background())
 
-	// poll for no more active requests
-	for testDispatch.ActiveRequests() != 0 {
-		time.Sleep(100 * time.Millisecond)
-	}
+	// wait for the syncer to finish
+	time.Sleep(100 * time.Millisecond)
 
 	// check that the fakeSyncer synced in order
 	expectedOrder := []int{1, 3, 2, 4, 0}
@@ -71,10 +67,10 @@ func TestQueueHappy(t *testing.T) {
 	sR2 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 2))}
 	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
-	requirePush(t, sR2, testQ)
-	requirePush(t, sR47, testQ)
-	requirePush(t, sR0, testQ)
-	requirePush(t, sR1, testQ)
+	testQ.Push(sR2)
+	testQ.Push(sR47)
+	testQ.Push(sR0)
+	testQ.Push(sR1)
 
 	assert.Equal(t, 4, testQ.Len())
 
@@ -100,11 +96,8 @@ func TestQueueDuplicates(t *testing.T) {
 	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
 	sR0dup := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
 
-	err := testQ.Push(sR0)
-	assert.NoError(t, err)
-
-	err = testQ.Push(sR0dup)
-	assert.NoError(t, err)
+	testQ.Push(sR0)
+	testQ.Push(sR0dup)
 
 	// Only one of these makes it onto the queue
 	assert.Equal(t, 1, testQ.Len())
@@ -114,23 +107,22 @@ func TestQueueDuplicates(t *testing.T) {
 	assert.Equal(t, uint64(0), first.ChainInfo.Height)
 
 	// Now if we push the duplicate it goes back on
-	err = testQ.Push(sR0dup)
-	assert.NoError(t, err)
+	testQ.Push(sR0dup)
 	assert.Equal(t, 1, testQ.Len())
 
 	second := requirePop(t, testQ)
 	assert.Equal(t, uint64(0), second.ChainInfo.Height)
 }
 
-func TestQueueEmptyPopBlocks(t *testing.T) {
+func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
 	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
 	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	// Push 2
-	requirePush(t, sR47, testQ)
-	requirePush(t, sR0, testQ)
+	testQ.Push(sR47)
+	testQ.Push(sR0)
 
 	// Pop 3
 	assert.Equal(t, 2, testQ.Len())
@@ -139,18 +131,9 @@ func TestQueueEmptyPopBlocks(t *testing.T) {
 	_ = requirePop(t, testQ)
 	assert.Equal(t, 0, testQ.Len())
 
-	var start, done sync.WaitGroup
-	start.Add(1)
-	done.Add(1)
-	go func() {
-		start.Wait()
-		async := requirePop(t, testQ)
-		assert.Equal(t, uint64(47), async.ChainInfo.Height)
-		done.Done()
-	}()
-	start.Done() // trigger Pop before Push
-	requirePush(t, sR47, testQ)
-	done.Wait() // wait for goroutine checks to pass
+	_, err := testQ.Pop()
+	assert.Error(t, err)
+
 }
 
 // requirePop is a helper requiring that pop does not error
@@ -158,11 +141,6 @@ func requirePop(t *testing.T, q *syncer.TargetQueue) *syncer.SyncRequest {
 	req, err := q.Pop()
 	require.NoError(t, err)
 	return req
-}
-
-// requirePush is a helper requiring that push does not error
-func requirePush(t *testing.T, req *syncer.SyncRequest, q *syncer.TargetQueue) {
-	require.NoError(t, q.Push(req))
 }
 
 // chainInfoFromHeight is a helper that constructs a unique chain info off of
