@@ -2,6 +2,7 @@ package repo
 
 import (
 	"github.com/ipfs/go-datastore"
+	ds "github.com/ipfs/go-datastore"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 
 	"github.com/filecoin-project/go-filecoin/config"
@@ -25,7 +26,7 @@ type Repo interface {
 	ReplaceConfig(cfg *config.Config) error
 
 	// Datastore is a general storage solution for things like blocks.
-	Datastore() Datastore
+	Datastore() ds.Batching
 	Keystore() keystore.Keystore
 
 	// WalletDatastore is a specific storage solution, only used to store sensitive wallet information.

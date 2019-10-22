@@ -61,13 +61,14 @@ func TestGraphsyncFetcher(t *testing.T) {
 	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock, pvt)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
-	keys := types.MustGenerateKeyInfo(1, 42)
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 	rm := types.NewReceiptMaker()
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
+	bob := mm.Addresses()[1]
 
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
 	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
@@ -109,6 +110,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	withMessageBuilder := func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+			[]*types.UnsignedMessage{&mm.NewSignedMessage(bob, 1).Message},
 			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
@@ -765,6 +767,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	withMessageBuilder := func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+			[]*types.UnsignedMessage{},
 			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
@@ -832,15 +835,17 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	ctx := context.Background()
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
-	keys := types.MustGenerateKeyInfo(1, 42)
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
+	bob := mm.Addresses()[1]
 	gen := builder.NewGenesis()
 	i := uint64(0)
 	tipCount := 32
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
+			[]*types.UnsignedMessage{&mm.NewSignedMessage(bob, i).Message},
 			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
 		)
 	})
@@ -915,6 +920,10 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, stored)
 
+		stored, err = bs.Has(ts.At(0).Messages.BLSRoot)
+		require.NoError(t, err)
+		assert.True(t, stored)
+
 		stored, err = bs.Has(ts.At(0).MessageReceipts)
 		require.NoError(t, err)
 		assert.False(t, stored)
@@ -935,6 +944,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
+			[]*types.UnsignedMessage{},
 			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
 		)
 	})

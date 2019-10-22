@@ -63,14 +63,14 @@ func TestMineOnce10Null(t *testing.T) {
 	baseTs, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
 
-	st, pool, _, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, _, _, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	api := th.NewFakeWorkerPorcelainAPI(addr, 10, minerToWorker)
 

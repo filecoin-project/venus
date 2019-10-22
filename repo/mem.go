@@ -59,7 +59,7 @@ func (mr *MemRepo) ReplaceConfig(cfg *config.Config) error {
 }
 
 // Datastore returns the datastore.
-func (mr *MemRepo) Datastore() Datastore {
+func (mr *MemRepo) Datastore() datastore.Batching {
 	return mr.D
 }
 

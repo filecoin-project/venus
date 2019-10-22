@@ -237,6 +237,7 @@ func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
 			messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+			messagesSelector.Insert("bLSRoot", gsf.ssb.Matcher())
 		}))
 		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 	}).Node()
@@ -313,6 +314,7 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 					efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
 						messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+						messagesSelector.Insert("bLSRoot", gsf.ssb.Matcher())
 					}))
 					efsb.Insert("messageReceipts", gsf.ssb.Matcher())
 				}),
@@ -386,6 +388,21 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
 			}
 			if err := gsf.validator.ValidateMessagesSyntax(ctx, messages); err != nil {
+				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
+			}
+			return nil
+		})
+	if err != nil {
+		return block.UndefTipSet, nil, err
+	}
+
+	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
+		func(blk *block.Block) cid.Cid { return blk.Messages.BLSRoot }, func(rawBlock blocks.Block) error {
+			messages, err := types.DecodeMessages(rawBlock.RawData())
+			if err != nil {
+				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
+			}
+			if err := gsf.validator.ValidateUnsignedMessagesSyntax(ctx, messages); err != nil {
 				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
 			}
 			return nil

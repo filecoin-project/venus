@@ -448,7 +448,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, b.Clock, network.PeerTracker)
 
-	messageStore := chain.NewMessageStore(blockstore.cborStore)
+	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 
 	// only the syncer gets the storage which is online connected
 	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chainStore, messageStore, fetcher, chainStatusReporter, b.Clock)

@@ -34,9 +34,10 @@ type Builder struct {
 	stateBuilder StateBuilder
 	seq          uint64 // For unique tickets
 
-	blocks   map[cid.Cid]*block.Block
-	messages map[types.TxMeta][]*types.SignedMessage
-	receipts map[cid.Cid][]*types.MessageReceipt
+	blocks    map[cid.Cid]*block.Block
+	smessages map[cid.Cid][]*types.SignedMessage
+	umessages map[cid.Cid][]*types.UnsignedMessage
+	receipts  map[cid.Cid][]*types.MessageReceipt
 	// Cache of the state root CID computed for each tipset key.
 	tipStateCids map[string]cid.Cid
 }
@@ -66,11 +67,13 @@ func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *
 		stateBuilder: sb,
 		blocks:       make(map[cid.Cid]*block.Block),
 		tipStateCids: make(map[string]cid.Cid),
-		messages:     make(map[types.TxMeta][]*types.SignedMessage),
+		smessages:    make(map[cid.Cid][]*types.SignedMessage),
+		umessages:    make(map[cid.Cid][]*types.UnsignedMessage),
 		receipts:     make(map[cid.Cid][]*types.MessageReceipt),
 	}
 
-	b.messages[types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: types.EmptyMessagesCID}] = []*types.SignedMessage{}
+	b.smessages[types.EmptyMessagesCID] = []*types.SignedMessage{}
+	b.umessages[types.EmptyMessagesCID] = []*types.UnsignedMessage{}
 	b.receipts[types.EmptyMessagesCID] = []*types.MessageReceipt{}
 
 	nullState := types.CidFromString(t, "null")
@@ -195,14 +198,15 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		// Nonce intentionally omitted as it will go away.
 
 		if build != nil {
-			build(&BlockBuilder{b, f.t, f.messages, f.receipts}, i)
+			build(&BlockBuilder{b, f.t, f.smessages, f.umessages, f.receipts}, i)
 		}
 
 		// Compute state root for this block.
 		prevState := f.StateForKey(parent.Key())
-		msgs, ok := f.messages[b.Messages]
+		smsgs, ok := f.smessages[b.Messages.SecpRoot]
+		umsgs, ok := f.umessages[b.Messages.BLSRoot]
 		require.True(f.t, ok)
-		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{}, [][]*types.SignedMessage{msgs})
+		b.StateRoot, err = f.stateBuilder.ComputeState(prevState, [][]*types.UnsignedMessage{umsgs}, [][]*types.SignedMessage{smsgs})
 		require.NoError(f.t, err)
 
 		f.blocks[b.Cid()] = b
@@ -243,7 +247,7 @@ func (f *Builder) ComputeState(tip block.TipSet) cid.Cid {
 func (f *Builder) tipMessages(tip block.TipSet) [][]*types.SignedMessage {
 	var msgs [][]*types.SignedMessage
 	for i := 0; i < tip.Len(); i++ {
-		blkMsgs, ok := f.messages[tip.At(i).Messages]
+		blkMsgs, ok := f.smessages[tip.At(i).Messages.SecpRoot]
 		require.True(f.t, ok)
 		msgs = append(msgs, blkMsgs)
 	}
@@ -265,8 +269,9 @@ type BlockBuilder struct {
 	block *block.Block
 	t     *testing.T
 	// These maps should be set to share data with the builder.
-	messages map[types.TxMeta][]*types.SignedMessage
-	receipts map[cid.Cid][]*types.MessageReceipt
+	smessages map[cid.Cid][]*types.SignedMessage
+	umessages map[cid.Cid][]*types.UnsignedMessage
+	receipts  map[cid.Cid][]*types.MessageReceipt
 }
 
 // SetTicket sets the block's ticket.
@@ -286,11 +291,14 @@ func (bb *BlockBuilder) IncHeight(nullBlocks types.Uint64) {
 }
 
 // AddMessages adds a message & receipt collection to the block.
-func (bb *BlockBuilder) AddMessages(msgs []*types.SignedMessage, rcpts []*types.MessageReceipt) {
-	cM, err := makeCid(msgs)
+func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*types.UnsignedMessage, rcpts []*types.MessageReceipt) {
+	cM, err := makeCid(secpmsgs)
 	require.NoError(bb.t, err)
-	meta := types.TxMeta{SecpRoot: cM, BLSRoot: types.EmptyMessagesCID}
-	bb.messages[meta] = msgs
+	cB, err := makeCid(blsMsgs)
+	require.NoError(bb.t, err)
+	meta := types.TxMeta{SecpRoot: cM, BLSRoot: cB}
+	bb.smessages[cM] = secpmsgs
+	bb.umessages[cB] = blsMsgs
 	cR, err := makeCid(rcpts)
 	require.NoError(bb.t, err)
 	bb.receipts[cR] = rcpts
@@ -493,11 +501,15 @@ func (f *Builder) RequireTipSets(head block.TipSetKey, count int) []block.TipSet
 
 // LoadMessages returns the message collections tracked by the builder.
 func (f *Builder) LoadMessages(ctx context.Context, meta types.TxMeta) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	msgs, ok := f.messages[meta]
+	smsgs, ok := f.smessages[meta.SecpRoot]
 	if !ok {
 		return nil, nil, errors.Errorf("no message for %s", meta.SecpRoot)
 	}
-	return msgs, []*types.UnsignedMessage{}, nil
+	umsgs, ok := f.umessages[meta.BLSRoot]
+	if !ok {
+		return nil, nil, errors.Errorf("no message for %s", meta.BLSRoot)
+	}
+	return smsgs, umsgs, nil
 }
 
 // LoadReceipts returns the message collections tracked by the builder.

@@ -360,6 +360,10 @@ func (mv mockSyntaxValidator) ValidateMessagesSyntax(ctx context.Context, messag
 	return mv.validateMessagesError
 }
 
+func (mv mockSyntaxValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
+	return nil
+}
+
 func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
 	return mv.validateReceiptsError
 }
@@ -385,6 +389,10 @@ func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, 
 	meta := types.TxMeta{SecpRoot: c, BLSRoot: types.EmptyMessagesCID}
 	if messages, _, err := f.LoadMessages(ctx, meta); err == nil {
 		return types.SignedMessageCollection(messages).ToNode(), nil
+	}
+	meta = types.TxMeta{SecpRoot: types.EmptyMessagesCID, BLSRoot: c}
+	if _, messages, err := f.LoadMessages(ctx, meta); err == nil {
+		return types.MessageCollection(messages).ToNode(), nil
 	}
 	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
 		return types.ReceiptCollection(receipts).ToNode(), nil

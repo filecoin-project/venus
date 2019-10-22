@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	ds "github.com/ipfs/go-datastore"
 	badgerds "github.com/ipfs/go-ds-badger"
 	lockfile "github.com/ipfs/go-fs-lock"
 	keystore "github.com/ipfs/go-ipfs-keystore"
@@ -274,7 +275,7 @@ func (r *FSRepo) SnapshotConfig(cfg *config.Config) error {
 }
 
 // Datastore returns the datastore.
-func (r *FSRepo) Datastore() Datastore {
+func (r *FSRepo) Datastore() ds.Batching {
 	return r.ds
 }
 
