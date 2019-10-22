@@ -1,34 +1,34 @@
 package net_test
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"encoding/binary"
-	"errors"	
-	"testing"
-	"time"
+	"errors"
+	"fmt"
 	"io"
 	"reflect"
-	"fmt"
+	"testing"
+	"time"
 
-	"github.com/ipfs/go-graphsync/ipldbridge"	
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"	
-	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"	
-	"github.com/ipfs/go-cid"	
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/ipld/go-ipld-prime/traversal/selector"
-	"github.com/ipld/go-ipld-prime"
+	"github.com/ipfs/go-graphsync/ipldbridge"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipld/go-ipld-prime"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
-	cbor "github.com/ipfs/go-ipld-cbor"	
 
-	"github.com/filecoin-project/go-filecoin/address"	
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-filecoin/chain"	
-	"github.com/filecoin-project/go-filecoin/types"	
-	th "github.com/filecoin-project/go-filecoin/testhelpers"	
+	"github.com/filecoin-project/go-filecoin/chain"
+	th "github.com/filecoin-project/go-filecoin/testhelpers"
+	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // fakeRequest captures the parameters necessary to uniquely
@@ -364,12 +364,18 @@ func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receip
 	return mv.validateReceiptsError
 }
 
-
 // blockAndMessageProvider is any interface that can load blocks, messages, AND
 // message receipts (such as a chain builder)
 type blockAndMessageProvider interface {
 	chain.MessageProvider
 	chain.BlockProvider
+}
+
+func tryBlockNode(ctx context.Context, f chain.BlockProvider, c cid.Cid) (format.Node, error) {
+	if block, err := f.GetBlock(ctx, c); err == nil {
+		return block.ToNode(), nil
+	}
+	return nil, fmt.Errorf("cid could not be resolved through builder")
 }
 
 func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
@@ -395,6 +401,14 @@ type mockGraphsyncLoader func(cid.Cid) (format.Node, error)
 func successLoader(ctx context.Context, provider blockAndMessageProvider) mockGraphsyncLoader {
 	return func(cidToLoad cid.Cid) (format.Node, error) {
 		return tryBlockMessageReceiptNode(ctx, provider, cidToLoad)
+	}
+}
+
+// successHeadersLoader will load any cids returned by the given block
+// provider or error otherwise.
+func successHeadersLoader(ctx context.Context, provider chain.BlockProvider) mockGraphsyncLoader {
+	return func(cidToLoad cid.Cid) (format.Node, error) {
+		return tryBlockNode(ctx, provider, cidToLoad)
 	}
 }
 
