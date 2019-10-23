@@ -4,7 +4,6 @@ import (
 	"context"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -39,15 +38,22 @@ func TestDispatchStartHappy(t *testing.T) {
 		chainInfoFromHeight(t, 2),
 	}
 
-	// receive requests before Start() to test deterministic order
-	for _, ci := range cis {
-		assert.NoError(t, testDispatch.ReceiveHello(ci))
-	}
-
 	testDispatch.Start(context.Background())
 
-	// wait for the syncer to finish
-	time.Sleep(100 * time.Millisecond)
+	// set up a blocking channel and register to unblock after 5 synced
+	wait := make(chan struct{})
+	done := func() {
+		wait <- struct{}{}
+	}
+	testDispatch.RegisterOnProcessedCount(5, done)
+
+	// receive requests before Start() to test deterministic order
+	go func() {
+		for _, ci := range cis {
+			assert.NoError(t, testDispatch.ReceiveHello(ci))
+		}
+	}()
+	<-wait
 
 	// check that the fakeSyncer synced in order
 	expectedOrder := []int{1, 3, 2, 4, 0}
@@ -62,10 +68,10 @@ func TestQueueHappy(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR1 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 1))}
-	sR2 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 2))}
-	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR1 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 1))}
+	sR2 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 2))}
+	sR47 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	testQ.Push(sR2)
 	testQ.Push(sR47)
@@ -93,8 +99,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR0dup := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0dup := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
 
 	testQ.Push(sR0)
 	testQ.Push(sR0dup)
@@ -117,8 +123,8 @@ func TestQueueDuplicates(t *testing.T) {
 func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
-	sR0 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR47 := &syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR47 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	// Push 2
 	testQ.Push(sR47)
@@ -137,7 +143,7 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 }
 
 // requirePop is a helper requiring that pop does not error
-func requirePop(t *testing.T, q *syncer.TargetQueue) *syncer.SyncRequest {
+func requirePop(t *testing.T, q *syncer.TargetQueue) syncer.SyncRequest {
 	req, err := q.Pop()
 	require.NoError(t, err)
 	return req
