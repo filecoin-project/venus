@@ -3,15 +3,12 @@ package net_test
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dss "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-graphsync"
@@ -96,6 +93,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.NoError(t, err)
 		return s
 	}
+
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid2 := th.RequireIntPeerID(t, 2)
 
@@ -720,6 +718,208 @@ func TestGraphsyncFetcher(t *testing.T) {
 	})
 }
 
+func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+	clock := th.NewFakeClock(time.Now())
+	pvt, err := version.ConfigureProtocolVersions(version.TEST)
+	require.NoError(t, err)
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock, pvt)
+	pid0 := th.RequireIntPeerID(t, 0)
+	builder := chain.NewBuilder(t, address.Undef)
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	rm := types.NewReceiptMaker()
+	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applebutter"}, types.DefaultHashFunction, -1)
+	require.NoError(t, err)
+
+	alice := mm.Addresses()[0]
+
+	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+	layer1Selector, err := ssb.Matcher().Selector()
+	require.NoError(t, err)
+
+	recursiveSelector := func(levels int) selector.Selector {
+		s, err := ssb.ExploreRecursive(levels, ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
+			efsb.Insert("parents", ssb.ExploreUnion(
+				ssb.ExploreAll(
+					ssb.Matcher(),
+				),
+				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
+			))
+		})).Selector()
+		require.NoError(t, err)
+		return s
+	}
+
+	doneAt := func(tsKey block.TipSetKey) func(block.TipSet) (bool, error) {
+		return func(ts block.TipSet) (bool, error) {
+			if ts.Key().Equals(tsKey) {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+	withMessageBuilder := func(b *chain.BlockBuilder) {
+		b.AddMessages(
+			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+			[]*types.MessageReceipt{rm.NewReceipt()},
+		)
+	}
+	withMessageEachBuilder := func(b *chain.BlockBuilder, i int) {
+		withMessageBuilder(b)
+	}
+
+	verifyNoMessagesOrReceipts := func(t *testing.T, ts block.TipSet) {
+		for i := 0; i < ts.Len(); i++ {
+			blk := ts.At(i)
+			stored, err := bs.Has(blk.Messages.SecpRoot)
+			require.NoError(t, err)
+			require.False(t, stored)
+			stored, err = bs.Has(blk.MessageReceipts)
+			require.NoError(t, err)
+			require.False(t, stored)
+		}
+	}
+
+	t.Run("happy path returns correct tipsets", func(t *testing.T) {
+		gen := builder.NewGenesis()
+		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
+		height, err := final.Height()
+		require.NoError(t, err)
+		chain0 := block.NewChainInfo(pid0, final.Key(), height)
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		loader := successHeadersLoader(ctx, builder)
+		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
+		mgs.stubResponseWithLoader(pid0, recursiveSelector(1), loader, final.At(0).Cid())
+
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
+		done := doneAt(gen.Key())
+
+		ts, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), pid0, done)
+		require.NoError(t, err, "the request completes successfully")
+		mgs.verifyReceivedRequestCount(4)
+		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
+		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
+		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
+		verifyNoMessagesOrReceipts(t, ts[0])
+		verifyNoMessagesOrReceipts(t, ts[1])
+	})
+
+	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
+		mgs := newMockableGraphsync(ctx, bs, clock, t)
+		blk := requireSimpleValidBlock(t, 3, address.Undef)
+		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
+		key := block.NewTipSetKey(blk.Cid())
+		chain0 := block.NewChainInfo(pid0, key, uint64(blk.Height))
+		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
+		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
+		fetcher := net.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
+
+		done := doneAt(key)
+		ts, err := fetcher.FetchTipSetHeaders(ctx, key, pid0, done)
+		assert.NoError(t, err)
+		require.Equal(t, 1, len(ts))
+		assert.NoError(t, err)
+		assert.Equal(t, key, ts[0].Key())
+	})
+}
+
+func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
+	tf.IntegrationTest(t)
+	ctx := context.Background()
+	// setup a chain
+	builder := chain.NewBuilder(t, address.Undef)
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	alice := mm.Addresses()[0]
+	gen := builder.NewGenesis()
+	i := uint64(0)
+	tipCount := 32
+	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
+		b.AddMessages(
+			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
+			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
+		)
+	})
+
+	// setup network
+	mn := mocknet.New(ctx)
+
+	host1, err := mn.GenPeer()
+	if err != nil {
+		t.Fatal("error generating host")
+	}
+	host2, err := mn.GenPeer()
+	if err != nil {
+		t.Fatal("error generating host")
+	}
+	err = mn.LinkAll()
+	if err != nil {
+		t.Fatal("error linking hosts")
+	}
+
+	gsnet1 := gsnet.NewFromLibp2pHost(host1)
+
+	// setup receiving peer to just record message coming in
+	gsnet2 := gsnet.NewFromLibp2pHost(host2)
+
+	// setup a graphsync fetcher and a graphsync responder
+
+	bridge1 := ipldbridge.NewIPLDBridge()
+	bridge2 := ipldbridge.NewIPLDBridge()
+	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
+	bv := th.NewFakeBlockValidator()
+	clock := th.NewFakeClock(time.Now())
+	pt := net.NewPeerTracker(peer.ID(""))
+	pt.Track(block.NewChainInfo(host2.ID(), block.TipSetKey{}, 0))
+
+	localLoader := gsstoreutil.LoaderForBlockstore(bs)
+	localStorer := gsstoreutil.StorerForBlockstore(bs)
+
+	localGraphsync := graphsync.New(ctx, gsnet1, bridge1, localLoader, localStorer)
+
+	fetcher := net.NewGraphSyncFetcher(ctx, localGraphsync, bs, bv, clock, pt)
+
+	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
+		cid := lnk.(cidlink.Link).Cid
+		node, err := tryBlockNode(ctx, builder, cid)
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewBuffer(node.RawData()), nil
+	}
+	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
+
+	tipsets, err := fetcher.FetchTipSetHeaders(ctx, final.Key(), host2.ID(), func(ts block.TipSet) (bool, error) {
+		if ts.Key().Equals(gen.Key()) {
+			return true, nil
+		}
+		return false, nil
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, tipCount+1, len(tipsets))
+
+	// Check the headers are in the store.
+	// Check that the messages and receipts are NOT in the store.
+	expectedTips := builder.RequireTipSets(final.Key(), tipCount+1)
+	for _, ts := range expectedTips {
+		stored, err := bs.Has(ts.At(0).Cid())
+		require.NoError(t, err)
+		assert.True(t, stored)
+
+		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
+		require.NoError(t, err)
+		assert.False(t, stored)
+
+		stored, err = bs.Has(ts.At(0).MessageReceipts)
+		require.NoError(t, err)
+		assert.False(t, stored)
+	}
+}
+
 func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
@@ -811,398 +1011,4 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}
-}
-
-// blockAndMessageProvider is any interface that can load blocks, messages, AND
-// message receipts (such as a chain builder)
-type blockAndMessageProvider interface {
-	chain.MessageProvider
-	chain.BlockProvider
-}
-
-func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
-	if block, err := f.GetBlock(ctx, c); err == nil {
-		return block.ToNode(), nil
-	}
-	meta := types.TxMeta{SecpRoot: c, BLSRoot: types.EmptyMessagesCID}
-	if messages, _, err := f.LoadMessages(ctx, meta); err == nil {
-		return types.SignedMessageCollection(messages).ToNode(), nil
-	}
-	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
-		return types.ReceiptCollection(receipts).ToNode(), nil
-	}
-	return nil, fmt.Errorf("cid could not be resolved through builder")
-}
-
-// mockGraphsyncLoader is a function that loads cids into ipld.Nodes (or errors),
-// used to construct a mock query result against a CID and a selector
-type mockGraphsyncLoader func(cid.Cid) (format.Node, error)
-
-// successLoader will load any cids returned by the given block and message provider
-// or error otherwise
-func successLoader(ctx context.Context, provider blockAndMessageProvider) mockGraphsyncLoader {
-	return func(cidToLoad cid.Cid) (format.Node, error) {
-		return tryBlockMessageReceiptNode(ctx, provider, cidToLoad)
-	}
-}
-
-// errorOnCidsLoader will override a base loader to error for the specified cids
-// or otherwise return the results from the base loader
-func errorOnCidsLoader(baseLoader mockGraphsyncLoader, errorOnCids ...cid.Cid) mockGraphsyncLoader {
-	return func(cidToLoad cid.Cid) (format.Node, error) {
-		for _, testCid := range errorOnCids {
-			if cidToLoad.Equals(testCid) {
-				return nil, fmt.Errorf("Everything failed")
-			}
-		}
-		return baseLoader(cidToLoad)
-	}
-}
-
-// simple loader loads cids from a simple array of nodes
-func simpleLoader(store []format.Node) mockGraphsyncLoader {
-	cidsToNodes := make(map[cid.Cid]format.Node, len(store))
-	for _, node := range store {
-		cidsToNodes[node.Cid()] = node
-	}
-	return func(cidToLoad cid.Cid) (format.Node, error) {
-		node, has := cidsToNodes[cidToLoad]
-		if !has {
-			return nil, fmt.Errorf("Everything failed")
-		}
-		return node, nil
-	}
-}
-
-// fake request captures the parameters necessary to uniquely
-// identify a graphsync request
-type fakeRequest struct {
-	p        peer.ID
-	root     ipld.Link
-	selector selector.Selector
-}
-
-// fake response represents the necessary data to simulate a graphsync query
-// a graphsync query has:
-// - two return values:
-//   - a channel of ResponseProgress
-//   - a channel of errors
-// - one side effect:
-//   - blocks written to a block store
-// when graphsync is called for a matching request,
-//   -- the responses array is converted to a channel
-//   -- the error array is converted to a channel
-//   -- a blks array is written to mock graphsync block store
-type fakeResponse struct {
-	responses   []graphsync.ResponseProgress
-	errs        []error
-	blks        []format.Node
-	hangupAfter int
-}
-
-const noHangup = -1
-
-// request response just records a request and the respond to send when its
-// made for a stub
-type requestResponse struct {
-	request  fakeRequest
-	response fakeResponse
-}
-
-// hungRequest represents a request that has hung, pending a timeout
-// causing a cancellation, which will in turn close the channels
-type hungRequest struct {
-	ctx          context.Context
-	responseChan chan graphsync.ResponseProgress
-	errChan      chan error
-}
-
-// mockableGraphsync conforms to the graphsync exchange interface needed by
-// the graphsync fetcher but will only send stubbed responses
-type mockableGraphsync struct {
-	clock               th.FakeClock
-	hungRequests        []*hungRequest
-	incomingHungRequest chan *hungRequest
-	requestsToProcess   chan struct{}
-	ctx                 context.Context
-	stubs               []requestResponse
-	expectedRequests    []fakeRequest
-	receivedRequests    []fakeRequest
-	store               bstore.Blockstore
-	t                   *testing.T
-}
-
-func newMockableGraphsync(ctx context.Context, store bstore.Blockstore, clock th.FakeClock, t *testing.T) *mockableGraphsync {
-	mgs := &mockableGraphsync{
-		ctx:                 ctx,
-		incomingHungRequest: make(chan *hungRequest),
-		requestsToProcess:   make(chan struct{}, 1),
-		store:               store,
-		clock:               clock,
-		t:                   t,
-	}
-	go mgs.processHungRequests()
-	return mgs
-}
-
-// processHungRequests handles requests that hangup, by advancing the clock until
-// the fetcher cancels those requests, which then causes the channels to close
-func (mgs *mockableGraphsync) processHungRequests() {
-	for {
-		select {
-		case hungRequest := <-mgs.incomingHungRequest:
-			mgs.hungRequests = append(mgs.hungRequests, hungRequest)
-			select {
-			case mgs.requestsToProcess <- struct{}{}:
-			default:
-			}
-		case <-mgs.requestsToProcess:
-			var newHungRequests []*hungRequest
-			for _, hungRequest := range mgs.hungRequests {
-				select {
-				case <-hungRequest.ctx.Done():
-					close(hungRequest.errChan)
-					close(hungRequest.responseChan)
-				default:
-					newHungRequests = append(newHungRequests, hungRequest)
-				}
-			}
-			mgs.hungRequests = newHungRequests
-			if len(mgs.hungRequests) > 0 {
-				mgs.clock.Advance(15 * time.Second)
-				select {
-				case mgs.requestsToProcess <- struct{}{}:
-				default:
-				}
-			}
-		case <-mgs.ctx.Done():
-			return
-		}
-	}
-}
-
-// expect request will record a given set of requests as "expected", which can
-// then be verified against received requests in verify expectations
-func (mgs *mockableGraphsync) expectRequest(pid peer.ID, s selector.Selector, cids ...cid.Cid) {
-	for _, c := range cids {
-		mgs.expectedRequests = append(mgs.expectedRequests, fakeRequest{pid, cidlink.Link{Cid: c}, s})
-	}
-}
-
-// verifyReceivedRequestCount will fail a test if the expected number of requests were not received
-func (mgs *mockableGraphsync) verifyReceivedRequestCount(n int) {
-	require.Equal(mgs.t, n, len(mgs.receivedRequests), "correct number of graphsync requests were made")
-}
-
-// verifyExpectations will fail a test if all expected requests were not received
-func (mgs *mockableGraphsync) verifyExpectations() {
-	for _, expectedRequest := range mgs.expectedRequests {
-		matchedRequest := false
-		for _, receivedRequest := range mgs.receivedRequests {
-			if reflect.DeepEqual(expectedRequest, receivedRequest) {
-				matchedRequest = true
-				break
-			}
-		}
-		require.True(mgs.t, matchedRequest, "expected request was made for peer %s, cid %s", expectedRequest.p.String(), expectedRequest.root.String())
-	}
-}
-
-// stubResponseWithLoader stubs a response when the mocked graphsync
-// instance is called with the given peer, selector, one of the cids
-// by executing the specified root and selector using the given cid loader
-func (mgs *mockableGraphsync) stubResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, cids ...cid.Cid) {
-	for _, c := range cids {
-		mgs.stubSingleResponseWithLoader(pid, s, loader, noHangup, c)
-	}
-}
-
-// stubResponseWithHangupAfter stubs a response when the mocked graphsync
-// instance is called with the given peer, selector, one of the cids
-// by executing the specified root and selector using the given cid loader
-// however the response will hangup at stop sending on the channel after N
-// responses
-func (mgs *mockableGraphsync) stubResponseWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
-	for _, c := range cids {
-		mgs.stubSingleResponseWithLoader(pid, s, loader, hangup, c)
-	}
-}
-
-var (
-	errHangup = errors.New("Hangup")
-)
-
-// stubResponseWithLoader stubs a response when the mocked graphsync
-// instance is called with the given peer, selector, and cid
-// by executing the specified root and selector using the given cid loader
-func (mgs *mockableGraphsync) stubSingleResponseWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, c cid.Cid) {
-	var blks []format.Node
-	var responses []graphsync.ResponseProgress
-
-	linkLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
-		cid := lnk.(cidlink.Link).Cid
-		node, err := loader(cid)
-		if err != nil {
-			return nil, err
-		}
-		blks = append(blks, node)
-		return bytes.NewBuffer(node.RawData()), nil
-	}
-	root := cidlink.Link{Cid: c}
-	node, err := root.Load(mgs.ctx, ipld.LinkContext{}, ipldfree.NodeBuilder(), linkLoader)
-	if err != nil {
-		mgs.stubs = append(mgs.stubs, requestResponse{
-			fakeRequest{pid, root, s},
-			fakeResponse{errs: []error{err}, hangupAfter: hangup},
-		})
-		return
-	}
-	visited := 0
-	visitor := func(tp ipldbridge.TraversalProgress, n ipld.Node, tr ipldbridge.TraversalReason) error {
-		if hangup != noHangup && visited >= hangup {
-			return errHangup
-		}
-		visited++
-		responses = append(responses, graphsync.ResponseProgress{Node: n, Path: tp.Path, LastBlock: tp.LastBlock})
-		return nil
-	}
-	err = ipldbridge.TraversalProgress{
-		Cfg: &ipldbridge.TraversalConfig{
-			Ctx:        mgs.ctx,
-			LinkLoader: linkLoader,
-		},
-	}.TraverseInformatively(node, s, visitor)
-	if err == errHangup {
-		err = nil
-	}
-	mgs.stubs = append(mgs.stubs, requestResponse{
-		fakeRequest{pid, root, s},
-		fakeResponse{responses, []error{err}, blks, hangup},
-	})
-}
-
-// expectRequestToRespondWithLoader is just a combination of an expectation and a stub --
-// it expects the request to come in and responds with the given loader
-func (mgs *mockableGraphsync) expectRequestToRespondWithLoader(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, cids ...cid.Cid) {
-	mgs.expectRequest(pid, s, cids...)
-	mgs.stubResponseWithLoader(pid, s, loader, cids...)
-}
-
-// expectRequestToRespondWithHangupAfter is just a combination of an expectation and a stub --
-// it expects the request to come in and responds with the given loader, but hangup after
-// the given number of responses
-func (mgs *mockableGraphsync) expectRequestToRespondWithHangupAfter(pid peer.ID, s selector.Selector, loader mockGraphsyncLoader, hangup int, cids ...cid.Cid) {
-	mgs.expectRequest(pid, s, cids...)
-	mgs.stubResponseWithHangupAfter(pid, s, loader, hangup, cids...)
-}
-
-func (mgs *mockableGraphsync) processResponse(ctx context.Context, mr fakeResponse) (<-chan graphsync.ResponseProgress, <-chan error) {
-	for _, block := range mr.blks {
-		requireBlockStorePut(mgs.t, mgs.store, block)
-	}
-
-	errChan := make(chan error, len(mr.errs))
-	for _, err := range mr.errs {
-		errChan <- err
-	}
-	responseChan := make(chan graphsync.ResponseProgress, len(mr.responses))
-	for _, response := range mr.responses {
-		responseChan <- response
-	}
-
-	if mr.hangupAfter == noHangup {
-		close(errChan)
-		close(responseChan)
-	} else {
-		mgs.incomingHungRequest <- &hungRequest{ctx, responseChan, errChan}
-	}
-
-	return responseChan, errChan
-}
-
-func (mgs *mockableGraphsync) Request(ctx context.Context, p peer.ID, root ipld.Link, selectorSpec ipld.Node) (<-chan graphsync.ResponseProgress, <-chan error) {
-	parsed, err := selector.ParseSelector(selectorSpec)
-	if err != nil {
-		return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("invalid selector")}, nil, noHangup})
-	}
-	request := fakeRequest{p, root, parsed}
-	mgs.receivedRequests = append(mgs.receivedRequests, request)
-	for _, stub := range mgs.stubs {
-		if reflect.DeepEqual(stub.request, request) {
-			return mgs.processResponse(ctx, stub.response)
-		}
-	}
-	return mgs.processResponse(ctx, fakeResponse{nil, []error{fmt.Errorf("unexpected request")}, nil, noHangup})
-}
-
-type fakePeerTracker struct {
-	peers []*block.ChainInfo
-}
-
-func newFakePeerTracker(cis ...*block.ChainInfo) *fakePeerTracker {
-	return &fakePeerTracker{
-		peers: cis,
-	}
-}
-
-func (fpt *fakePeerTracker) List() []*block.ChainInfo {
-	return fpt.peers
-}
-
-func (fpt *fakePeerTracker) Self() peer.ID {
-	return peer.ID("")
-}
-
-func requireBlockStorePut(t *testing.T, bs bstore.Blockstore, data format.Node) {
-	err := bs.Put(data)
-	require.NoError(t, err)
-}
-
-func simpleBlock() *block.Block {
-	meta := types.TxMeta{
-		SecpRoot: types.EmptyMessagesCID,
-		BLSRoot:  types.EmptyMessagesCID,
-	}
-	return &block.Block{
-		ParentWeight:    0,
-		Parents:         block.NewTipSetKey(),
-		Height:          0,
-		Messages:        meta,
-		MessageReceipts: types.EmptyReceiptsCID,
-	}
-}
-
-func requireSimpleValidBlock(t *testing.T, nonce uint64, miner address.Address) *block.Block {
-	b := simpleBlock()
-	ticket := block.Ticket{}
-	ticket.VRFProof = block.VRFPi(make([]byte, binary.Size(nonce)))
-	binary.BigEndian.PutUint64(ticket.VRFProof, nonce)
-	b.Tickets = []block.Ticket{ticket}
-	bytes, err := cbor.DumpObject("null")
-	require.NoError(t, err)
-	b.StateRoot, _ = cid.Prefix{
-		Version:  1,
-		Codec:    cid.DagCBOR,
-		MhType:   types.DefaultHashFunction,
-		MhLength: -1,
-	}.Sum(bytes)
-	b.Miner = miner
-	return b
-}
-
-type mockSyntaxValidator struct {
-	validateMessagesError error
-	validateReceiptsError error
-}
-
-func (mv mockSyntaxValidator) ValidateSyntax(ctx context.Context, blk *block.Block) error {
-	return nil
-}
-
-func (mv mockSyntaxValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
-	return mv.validateMessagesError
-}
-
-func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
-	return mv.validateReceiptsError
 }
