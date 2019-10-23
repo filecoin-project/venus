@@ -108,6 +108,8 @@ func TestChainSync(t *testing.T) {
 	StartNodes(t, nodes)
 	defer StopNodes(nodes)
 
+	connect(t, nodes[0], nodes[1])
+
 	firstBlock := requireMineOnce(ctx, t, nodes[0])
 	secondBlock := requireMineOnce(ctx, t, nodes[0])
 	thirdBlock := requireMineOnce(ctx, t, nodes[0])
@@ -116,7 +118,6 @@ func TestChainSync(t *testing.T) {
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, secondBlock))
 	assert.NoError(t, nodes[0].AddNewBlock(ctx, thirdBlock))
 
-	connect(t, nodes[0], nodes[1])
 	equal := false
 	for i := 0; i < 30; i++ {
 		otherHead := nodes[1].Chain.ChainReader.GetHead()

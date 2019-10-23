@@ -2,148 +2,265 @@ package syncer
 
 import (
 	"container/heap"
-	"errors"
-	"sync"
+	"context"
+
+	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/block"
 )
 
-var errBadPush = errors.New("a programmer is pushing the wrong type to a TargetQueue")
-var errBadPop = errors.New("a programmer is not checking targetQueue length before popping")
+var log = logging.Logger("sync.dispatch")
+
+// This is the size of the channel buffer used for receiving targets from
+// producers.
+const incomingBufferSize = 5
+
+// syncer is the interface of the logic syncing incoming chains
+type syncer interface {
+	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
+}
 
 // NewDispatcher creates a new syncing dispatcher.
-func NewDispatcher() *Dispatcher {
-
+func NewDispatcher(catchupSyncer syncer) *Dispatcher {
 	return &Dispatcher{
-		targetSet: make(map[string]struct{}),
-		targetQ:   NewTargetQueue(),
+		workQueue:     NewTargetQueue(),
+		catchupSyncer: catchupSyncer,
+		incoming:      make(chan Target, incomingBufferSize),
+		control:       make(chan interface{}),
+		registeredCb:  func(t Target) {},
 	}
 }
 
-// Dispatcher executes syncing requests
-type Dispatcher struct {
-	// The dispatcher maintains a targeting system for determining the
-	// current best syncing target
-	// targetMu protects the targeting system
-	targetMu sync.Mutex
-	// targetSet tracks all tipsetkeys currently being targeted to prevent
-	// pushing duplicates to the target queue
-	targetSet map[string]struct{}
-	// targetQ is a priority queue of target tipsets
-	targetQ *TargetQueue
+// cbMessage registers a user callback to be fired following every successful
+// sync.
+type cbMessage struct {
+	cb func(Target)
 }
 
-// ReceiveHello handles chain information from bootstrap peers.
-func (d *Dispatcher) ReceiveHello(ci block.ChainInfo) error { return d.receive(ci) }
-
-// ReceiveOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) ReceiveOwnBlock(ci block.ChainInfo) error { return d.receive(ci) }
-
-// ReceiveGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) ReceiveGossipBlock(ci block.ChainInfo) error { return d.receive(ci) }
-
-func (d *Dispatcher) receive(ci block.ChainInfo) error {
-	d.targetMu.Lock()
-	defer d.targetMu.Unlock()
-
-	_, targeting := d.targetSet[ci.Head.String()]
-	if targeting {
-		// already tracking drop quickly
-		return nil
-	}
-	err := d.targetQ.Push(&SyncRequest{ChainInfo: ci})
-	if err != nil {
-		return err
-	}
-	d.targetSet[ci.Head.String()] = struct{}{}
-	return nil
-}
-
-// SyncRequest tracks a logical request of the syncing subsystem to run a
-// syncing job against given inputs. syncRequests are created by the
-// Dispatcher by inspecting incoming hello messages from bootstrap peers
-// and gossipsub block propagations.
-type SyncRequest struct {
-	block.ChainInfo
-	// needed by internal container/heap methods for maintaining sort
-	index int
-}
-
-// rawQueue orders the dispatchers syncRequests by a policy.
-// The current simple policy is to order syncing requests by claimed chain
-// height.
+// Dispatcher receives, sorts and dispatches targets to the syncer to control
+// chain syncing.
 //
-// rawQueue can panic so it shouldn't be used unwrapped
-type rawQueue []*SyncRequest
+// New targets arrive over the incoming channel. The dispatcher then puts them
+// into the workQueue which sorts them by their claimed chain height. The
+// dispatcher pops the highest priority target from the queue and then attempts
+// to sync the target using its internal catchupSyncer.
+//
+// The dispatcher has a simple control channel. It reads this for external
+// controls. Currently there is only one kind of control message.  It registers
+// a callback that the dispatcher will call after every non-erroring sync.
+type Dispatcher struct {
+	// workQueue is a priority queue of target chain heads that should be
+	// synced
+	workQueue *TargetQueue
+	// incoming is the queue of incoming sync targets to the dispatcher.
+	incoming chan Target
+	// catchupSyncer is used for dispatching sync targets for chain heads
+	// during the CHAIN_CATCHUP mode of operation
+	catchupSyncer syncer
 
-// Heavily inspired by https://golang.org/pkg/container/heap/
-func (rq rawQueue) Len() int { return len(rq) }
+	// registeredCb is a callback registered over the control channel.  It
+	// is called after every successful sync.
+	registeredCb func(Target)
+	// control is a queue of control messages not yet processed.
+	control chan interface{}
 
-func (rq rawQueue) Less(i, j int) bool {
-	// We want Pop to give us the highest priority so we use greater than
-	return rq[i].Height > rq[j].Height
+	// syncTargetCount counts the number of successful syncs.
+	syncTargetCount uint64
 }
 
-func (rq rawQueue) Swap(i, j int) {
-	rq[i], rq[j] = rq[j], rq[i]
-	rq[i].index = j
-	rq[j].index = i
-}
+// SendHello handles chain information from bootstrap peers.
+func (d *Dispatcher) SendHello(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-func (rq *rawQueue) Push(x interface{}) {
-	n := len(*rq)
-	syncReq := x.(*SyncRequest)
-	syncReq.index = n
-	*rq = append(*rq, syncReq)
-}
+// SendOwnBlock handles chain info from a node's own mining system
+func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-func (rq *rawQueue) Pop() interface{} {
-	old := *rq
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil  // avoid memory leak
-	item.index = -1 // for safety
-	*rq = old[0 : n-1]
-	return item
-}
+// SendGossipBlock handles chain info from new blocks sent on pubsub
+func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-// TargetQueue orders dispatcher syncRequests by the underlying rawQueue's
-// policy. It exposes programmer errors as return values instead of panicing.
-// Callers should check that length is greater than 0 before popping
-type TargetQueue struct {
-	q rawQueue
-}
-
-// NewTargetQueue returns a new target queue with an initialized rawQueue
-func NewTargetQueue() *TargetQueue {
-	rq := make(rawQueue, 0)
-	heap.Init(&rq)
-	return &TargetQueue{q: rq}
-}
-
-// Push adds a sync request to the target queue.
-func (tq *TargetQueue) Push(req *SyncRequest) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = errBadPush
-		}
-	}()
-	heap.Push(&tq.q, req)
+func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
+	d.incoming <- Target{ChainInfo: *ci}
 	return nil
 }
 
-// Pop removes and returns the highest priority syncing target.
-func (tq *TargetQueue) Pop() (req *SyncRequest, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			req = nil
-			err = errBadPop
+// Start launches the business logic for the syncing subsystem.
+func (d *Dispatcher) Start(syncingCtx context.Context) {
+	go func() {
+		var last *Target
+		for {
+			// Handle shutdown
+			select {
+			case <-syncingCtx.Done():
+				return
+			default:
+			}
+
+			// Handle control signals
+			select {
+			case ctrl := <-d.control:
+				d.processCtrl(ctrl)
+			default:
+			}
+
+			// Handle incoming targets
+			var produced []Target
+			if last != nil {
+				produced = append(produced, *last)
+				last = nil
+			}
+			select {
+			case first := <-d.incoming:
+				produced = append(produced, first)
+				produced = append(produced, d.drainIncoming()...)
+			default:
+			}
+			// Sort new targets by putting on work queue.
+			for _, syncTarget := range produced {
+				d.workQueue.Push(syncTarget)
+			}
+
+			// Check for work to do
+			syncTarget, popped := d.workQueue.Pop()
+			if popped {
+				// Do work
+				err := d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, true)
+				if err != nil {
+					log.Info("sync request could not complete: %s", err)
+				}
+				d.syncTargetCount++
+				d.registeredCb(syncTarget)
+			} else {
+				// No work left, block until something shows up
+				select {
+				case extra := <-d.incoming:
+					last = &extra
+				}
+			}
 		}
 	}()
-	return heap.Pop(&tq.q).(*SyncRequest), nil
+}
+
+func (d *Dispatcher) drainIncoming() []Target {
+	// drainProduced reads all values within the incoming channel buffer at time
+	// of calling without blocking.  It reads at most incomingBufferSize.
+	//
+	// Note: this relies on a single reader of the incoming channel to
+	// avoid blocking.
+	n := len(d.incoming)
+	produced := make([]Target, n)
+	for i := 0; i < n; i++ {
+		produced[i] = <-d.incoming
+	}
+	return produced
+}
+
+// RegisterCallback registers a callback on the dispatcher that
+// will fire after every successful target sync.
+func (d *Dispatcher) RegisterCallback(cb func(Target)) {
+	d.control <- cbMessage{cb: cb}
+}
+
+func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
+	// processCtrl takes a control message, determines its type, and performs the
+	// specified action.
+	//
+	// Using interfaces is overkill for now but is the way to make this
+	// extensible.  (Delete this comment if we add more than one control)
+	switch typedMsg := ctrlMsg.(type) {
+	case cbMessage:
+		d.registeredCb = typedMsg.cb
+	default:
+		// We don't know this type, log and ignore
+		log.Info("dispatcher control can not handle type %T", typedMsg)
+	}
+}
+
+// Target tracks a logical request of the syncing subsystem to run a
+// syncing job against given inputs.
+type Target struct {
+	block.ChainInfo
+}
+
+// TargetQueue orders dispatcher syncRequests by the underlying `targetQueue`'s
+// prioritization policy.
+//
+// It also filters the `targetQueue` so that it always contains targets with
+// unique chain heads.
+//
+// It wraps the `targetQueue` to prevent panics during
+// normal operation.
+type TargetQueue struct {
+	q         targetQueue
+	targetSet map[string]struct{}
+}
+
+// NewTargetQueue returns a new target queue.
+func NewTargetQueue() *TargetQueue {
+	rq := make(targetQueue, 0)
+	heap.Init(&rq)
+	return &TargetQueue{
+		q:         rq,
+		targetSet: make(map[string]struct{}),
+	}
+}
+
+// Push adds a sync target to the target queue.
+func (tq *TargetQueue) Push(t Target) {
+	// If already in queue drop quickly
+	if _, inQ := tq.targetSet[t.ChainInfo.Head.String()]; inQ {
+		return
+	}
+	heap.Push(&tq.q, t)
+	tq.targetSet[t.ChainInfo.Head.String()] = struct{}{}
+
+	return
+}
+
+// Pop removes and returns the highest priority syncing target. If there is
+// nothing in the queue the second argument returns false
+func (tq *TargetQueue) Pop() (Target, bool) {
+	if tq.Len() == 0 {
+		return Target{}, false
+	}
+	req := heap.Pop(&tq.q).(Target)
+	popKey := req.ChainInfo.Head.String()
+	delete(tq.targetSet, popKey)
+	return req, true
 }
 
 // Len returns the number of targets in the queue.
 func (tq *TargetQueue) Len() int {
-	return len(tq.q)
+	return tq.q.Len()
+}
+
+// targetQueue orders targets by a policy.
+//
+// The current simple policy is to order syncing requests by claimed chain
+// height.
+//
+// `targetQueue` can panic so it shouldn't be used unwrapped
+type targetQueue []Target
+
+// Heavily inspired by https://golang.org/pkg/container/heap/
+func (rq targetQueue) Len() int { return len(rq) }
+
+func (rq targetQueue) Less(i, j int) bool {
+	// We want Pop to give us the highest priority so we use greater than
+	return rq[i].Height > rq[j].Height
+}
+
+func (rq targetQueue) Swap(i, j int) {
+	rq[i], rq[j] = rq[j], rq[i]
+}
+
+func (rq *targetQueue) Push(x interface{}) {
+	syncReq := x.(Target)
+	*rq = append(*rq, syncReq)
+}
+
+func (rq *targetQueue) Pop() interface{} {
+	old := *rq
+	n := len(old)
+	item := old[n-1]
+	*rq = old[0 : n-1]
+	return item
 }

@@ -28,8 +28,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
-	trusted := true // This block was mined by us, so we trust it.
-	if err := node.Chain.Syncer.HandleNewTipSet(ctx, block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height)), trusted); err != nil {
+	if err := node.Chain.SyncDispatch.SendOwnBlock(block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
 		return err
 	}
 
@@ -62,10 +61,9 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	trusted := true
-	err = node.Chain.Syncer.HandleNewTipSet(ctx, block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)), trusted)
+	err = node.Chain.SyncDispatch.SendGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
 	if err != nil {
-		return errors.Wrapf(err, "processing block %s from peer %s", blk.Cid(), from)
+		return errors.Wrapf(err, "receive block %s from peer %s", blk.Cid(), from)
 	}
 
 	return nil
