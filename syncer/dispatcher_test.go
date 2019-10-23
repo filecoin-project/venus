@@ -137,15 +137,15 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 	_ = requirePop(t, testQ)
 	assert.Equal(t, 0, testQ.Len())
 
-	_, err := testQ.Pop()
-	assert.Error(t, err)
+	_, popped := testQ.Pop()
+	assert.False(t, popped)
 
 }
 
 // requirePop is a helper requiring that pop does not error
 func requirePop(t *testing.T, q *syncer.TargetQueue) syncer.SyncRequest {
-	req, err := q.Pop()
-	require.NoError(t, err)
+	req, popped := q.Pop()
+	require.True(t, popped)
 	return req
 }
 

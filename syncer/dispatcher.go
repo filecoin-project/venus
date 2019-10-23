@@ -86,61 +86,66 @@ func (d *Dispatcher) receive(ci *block.ChainInfo) error {
 // appropriate syncer.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
+		var last *SyncRequest
 		for {
-			// Begin by firing off any callbacks that are ready
+			// Begin by firing off any callbacks that are ready			
 			d.maybeFireCbs()
-			var produced []SyncRequest
-			// If there's something on the target queue: read from
-			// the production queue without blocking.
-			if d.targetQ.Len() != 0 {
-				select {
-				case first := <-d.production:
-					produced = append(produced, first)
-					produced = append(produced, d.drainProduced()...)
-				case ctrl := <-d.control:
-					d.registerCtrl(ctrl)
-				case <-syncingCtx.Done():
-					return
-				default: // go straight to syncing
-				}
-			} else { // If there's nothing on the target queue:
-				// block until we have something from production
-				// queue.
-				select {
-				case first := <-d.production:
-					produced = append(produced, first)
-					produced = append(produced, d.drainProduced()...)
-				case ctrl := <-d.control:
-					d.registerCtrl(ctrl)
-				case <-syncingCtx.Done():
-					return
-				}
+			// Handle shutdown
+			select {
+			case <-syncingCtx.Done():
+				return				
+			default:
 			}
 
-			// Sort outstanding requests and handle the next request
+			// Handle control signals
+			select {
+			case ctrl := <-d.control:
+				d.receiveCtrl(ctrl)
+			default:
+			}
+
+			// Handle production
+			var produced []SyncRequest
+			if last != nil {
+				produced = append(produced, *last)
+				last = nil
+			}
+			select {
+			case first := <-d.production:
+				produced = append(produced, first)
+				produced = append(produced, d.drainProduced()...)
+			default:
+			}
+			// Sort new requests
 			for _, syncReq := range produced {
 				d.targetQ.Push(syncReq)
 			}
-			syncReq, err := d.targetQ.Pop()
-			if err != nil {
-				// This is expected: target queue can be empty if
-				// all new requests duplicate an existing one
-				log.Debugf("error popping in sync dispatch: %s", err)
-				continue
+
+			// Check for work to do
+			syncReq, popped := d.targetQ.Pop()
+			if popped {
+				// Do work from work queue
+				err := d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncReq.ChainInfo, true)
+				if err != nil {
+					log.Info("sync request could not complete: %s", err)
+				}
+				d.syncReqCount++				
+			} else {
+				// No work left, block until something shows up
+				select {
+				case extra := <-d.production:
+					last = &extra
+				}
 			}
-			err = d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncReq.ChainInfo, true)
-			if err != nil {
-				log.Infof("error running sync request %s", err)
-				return
-			}
-			d.syncReqCount++
 		}
 	}()
 }
 
+// drainProduced reads all values within the production channel buffer at time
+// of calling without blocking.  It reads at most productionBufferSize.
 func (d *Dispatcher) drainProduced() []SyncRequest {
 	// drain channel. Note this relies on a single reader of the production
-	// channel.
+	// channel to avoid blocking.
 	n := len(d.production)
 	var produced []SyncRequest
 	for i := 0; i < n; i++ {
@@ -156,9 +161,9 @@ func (d *Dispatcher) RegisterOnProcessedCount(count uint64, cb func()) {
 	d.control <- onProcessedCountCb{n: count, cb: cb}
 }
 
-// registerCtrl takes a control message, determines its type, and registers
-// the provided callback with the dispatcher.
-func (d *Dispatcher) registerCtrl(i interface{}) {
+// receiveCtrl takes a control message, determines its type, and performs the
+// specified action. 
+func (d *Dispatcher) receiveCtrl(i interface{}) {
 	// Using interfaces is overkill for now but is the way to make this
 	// extensible.  (Delete this comment if we add more than one control)
 	switch msg := i.(type) {
@@ -176,18 +181,10 @@ func (d *Dispatcher) registerCtrl(i interface{}) {
 func (d *Dispatcher) maybeFireCbs() {
 	var removedIdxs []int
 	for i, opcCb := range d.onProcessedCountCbs {
-		if opcCb.start+opcCb.n <= d.syncReqCount {
+		if opcCb.start+opcCb.n == d.syncReqCount {
 			removedIdxs = append(removedIdxs, i)
 			opcCb.cb()
 		}
-	}
-	for _, i := range removedIdxs {
-		// taken from here: https://yourbasic.org/golang/delete-element-slice/
-		// order doesn't matter.
-		n := len(d.onProcessedCountCbs)
-		d.onProcessedCountCbs[i] = d.onProcessedCountCbs[n-1]
-		d.onProcessedCountCbs[n-1] = onProcessedCountCb{}
-		d.onProcessedCountCbs = d.onProcessedCountCbs[:n-1]
 	}
 }
 
@@ -269,15 +266,16 @@ func (tq *TargetQueue) Push(req SyncRequest) {
 	return
 }
 
-// Pop removes and returns the highest priority syncing target.
-func (tq *TargetQueue) Pop() (SyncRequest, error) {
+// Pop removes and returns the highest priority syncing target. If there is 
+// nothing in the queue the second argument returns false
+func (tq *TargetQueue) Pop() (SyncRequest, bool) {
 	if tq.Len() == 0 {
-		return SyncRequest{}, errEmptyPop
+		return SyncRequest{}, false
 	}
 	req := heap.Pop(&tq.q).(SyncRequest)
 	popKey := req.ChainInfo.Head.String()
 	delete(tq.targetSet, popKey)
-	return req, nil
+	return req, true
 }
 
 // Len returns the number of targets in the queue.
