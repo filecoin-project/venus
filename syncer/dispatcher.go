@@ -3,7 +3,6 @@ package syncer
 import (
 	"container/heap"
 	"context"
-	"errors"
 
 	logging "github.com/ipfs/go-log"
 
@@ -12,9 +11,9 @@ import (
 
 var log = logging.Logger("sync.dispatch")
 
-// This is the size of the channel buffer used for receiving sync requests from
+// This is the size of the channel buffer used for receiving targets from
 // producers.
-const productionBufferSize = 5
+const incomingBufferSize = 5
 
 // syncer is the interface of the logic syncing incoming chains
 type syncer interface {
@@ -24,45 +23,59 @@ type syncer interface {
 // NewDispatcher creates a new syncing dispatcher.
 func NewDispatcher(catchupSyncer syncer) *Dispatcher {
 	return &Dispatcher{
-		targetQ:             NewTargetQueue(),
-		catchupSyncer:       catchupSyncer,
-		production:          make(chan SyncRequest, productionBufferSize),
-		control:             make(chan interface{}),
-		onProcessedCountCbs: make([]onProcessedCountCb, 0),
+		workQueue:     NewTargetQueue(),
+		catchupSyncer: catchupSyncer,
+		incoming:      make(chan Target, incomingBufferSize),
+		control:       make(chan interface{}),
+		registeredCb:  func(t Target) {},
 	}
 }
 
-// OnProcessedCountMessage registers a user callback to be fired once the
-// count of messages is processed.
-type onProcessedCountCb struct {
-	cb       func()
-	n, start uint64
+// cbMessage registers a user callback to be fired following every successful
+// sync.
+type cbMessage struct {
+	cb func(Target)
 }
 
-// Dispatcher executes syncing requests
+// Dispatcher receives, sorts and dispatches targets to the syncer to control
+// chain syncing.
+//
+// New targets arrive over the incoming channel. The dispatcher then puts them
+// into the workQueue which sorts them by their claimed chain height. The
+// dispatcher pops the highest priority target from the queue and then attempts
+// to sync the target using its internal catchupSyncer.
+//
+// The dispatcher has a simple control channel. It reads this for external
+// controls. Currently there is only one kind of control message.  It registers
+// a callback that the dispatcher will call after every non-erroring sync.
 type Dispatcher struct {
-	// The following fields handle syncer request dispatch
+	// The following fields handle syncer target dispatch and processing
 	// The dispatcher maintains a targeting system for determining the
 	// current best syncing target
-	// targetQ is a priority queue of target tipsets
-	targetQ *TargetQueue
-	// production synchronizes adding sync requests to the dispatcher.
+	// workQueue is a priority queue of target chain heads that should be
+	// synced
+	workQueue *TargetQueue
+	// incoming is the queue of incoming sync targets to the dispatcher.
 	// The dispatcher relies on a single reader pulling from this.  Don't add
 	// another reader without care.
-	production chan SyncRequest
-	// catchupSyncer is used for dispatching sync requests for chain heads
+	incoming chan Target
+	// catchupSyncer is used for dispatching sync targets for chain heads
 	// during the CHAIN_CATCHUP mode of operation
 	catchupSyncer syncer
 
 	// The following fields allow outside processes to issue commands to
 	// the dispatcher, for example to synchronize with it or inspect state
-	onProcessedCountCbs []onProcessedCountCb
-	control             chan interface{}
+	// registeredCb is a callback registered over the control channel.  It
+	// is caleld after every successful sync.
+	registeredCb func(Target)
+	// control is a queue of control messages not yet processed
+	control chan interface{}
 
 	// The following fields are diagnostics maintained by the dispatcher
-	// syncReqCount tracks the total number of sync requests dispatched to
-	// syncers.  We do not handle overflows.
-	syncReqCount uint64
+	// syncTargetCount tracks the total number of sync targets dispatched
+	// to and processed without error by the syncer.  We do not handle
+	// overflows.
+	syncTargetCount uint64
 }
 
 // ReceiveHello handles chain information from bootstrap peers.
@@ -75,19 +88,17 @@ func (d *Dispatcher) ReceiveOwnBlock(ci *block.ChainInfo) error { return d.recei
 func (d *Dispatcher) ReceiveGossipBlock(ci *block.ChainInfo) error { return d.receive(ci) }
 
 func (d *Dispatcher) receive(ci *block.ChainInfo) error {
-	d.production <- SyncRequest{ChainInfo: *ci}
+	d.incoming <- Target{ChainInfo: *ci}
 	return nil
 }
 
 // Start launches the business logic for the syncing subsystem.
-// It reads syncing requests from the target queue and dispatches them to the
-// appropriate syncer.
+// It reads syncing targets from the incoming queue, sorts them, and dispatches
+// them to the appropriate syncer.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
-		var last *SyncRequest
+		var last *Target
 		for {
-			// Begin by firing off any callbacks that are ready
-			d.maybeFireCbs()
 			// Handle shutdown
 			select {
 			case <-syncingCtx.Done():
@@ -102,36 +113,37 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			default:
 			}
 
-			// Handle production
-			var produced []SyncRequest
+			// Handle incoming targets
+			var produced []Target
 			if last != nil {
 				produced = append(produced, *last)
 				last = nil
 			}
 			select {
-			case first := <-d.production:
+			case first := <-d.incoming:
 				produced = append(produced, first)
-				produced = append(produced, d.drainProduced()...)
+				produced = append(produced, d.drainIncoming()...)
 			default:
 			}
-			// Sort new requests
-			for _, syncReq := range produced {
-				d.targetQ.Push(syncReq)
+			// Sort new targets by putting on work queue.
+			for _, syncTarget := range produced {
+				d.workQueue.Push(syncTarget)
 			}
 
 			// Check for work to do
-			syncReq, popped := d.targetQ.Pop()
+			syncTarget, popped := d.workQueue.Pop()
 			if popped {
-				// Do work from work queue
-				err := d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncReq.ChainInfo, true)
+				// Do work
+				err := d.catchupSyncer.HandleNewTipSet(syncingCtx, &syncTarget.ChainInfo, true)
 				if err != nil {
 					log.Info("sync request could not complete: %s", err)
 				}
-				d.syncReqCount++
+				d.syncTargetCount++
+				d.registeredCb(syncTarget)
 			} else {
 				// No work left, block until something shows up
 				select {
-				case extra := <-d.production:
+				case extra := <-d.incoming:
 					last = &extra
 				}
 			}
@@ -139,24 +151,23 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 	}()
 }
 
-// drainProduced reads all values within the production channel buffer at time
-// of calling without blocking.  It reads at most productionBufferSize.
-func (d *Dispatcher) drainProduced() []SyncRequest {
-	// drain channel. Note this relies on a single reader of the production
+// drainProduced reads all values within the incoming channel buffer at time
+// of calling without blocking.  It reads at most incomingBufferSize.
+func (d *Dispatcher) drainIncoming() []Target {
+	// drain channel. Note this relies on a single reader of the incoming
 	// channel to avoid blocking.
-	n := len(d.production)
-	var produced []SyncRequest
+	n := len(d.incoming)
+	produced := make([]Target, n)
 	for i := 0; i < n; i++ {
-		next := <-d.production
-		produced = append(produced, next)
+		produced[i] = <-d.incoming
 	}
 	return produced
 }
 
-// RegisterOnProcessedCount registers a callback on the dispatcher that
-// will fire after processing the provided number of sync requests.
-func (d *Dispatcher) RegisterOnProcessedCount(count uint64, cb func()) {
-	d.control <- onProcessedCountCb{n: count, cb: cb}
+// RegisterCallback registers a callback on the dispatcher that
+// will fire after every successful target sync.
+func (d *Dispatcher) RegisterCallback(cb func(Target)) {
+	d.control <- cbMessage{cb: cb}
 }
 
 // receiveCtrl takes a control message, determines its type, and performs the
@@ -165,86 +176,36 @@ func (d *Dispatcher) receiveCtrl(i interface{}) {
 	// Using interfaces is overkill for now but is the way to make this
 	// extensible.  (Delete this comment if we add more than one control)
 	switch msg := i.(type) {
-	case onProcessedCountCb:
-		msg.start = d.syncReqCount
-		d.onProcessedCountCbs = append(d.onProcessedCountCbs, msg)
+	case cbMessage:
+		d.registeredCb = msg.cb
 	default:
 		// We don't know this type, log and ignore
 		log.Info("dispatcher control can not handle type %T", msg)
 	}
 }
 
-// maybeFireCbs fires all callbacks registered on the dispatcher that should
-// fire given the dispatcher's state.
-func (d *Dispatcher) maybeFireCbs() {
-	var removedIdxs []int
-	for i, opcCb := range d.onProcessedCountCbs {
-		if opcCb.start+opcCb.n == d.syncReqCount {
-			removedIdxs = append(removedIdxs, i)
-			opcCb.cb()
-		}
-	}
-}
-
-// SyncRequest tracks a logical request of the syncing subsystem to run a
-// syncing job against given inputs. syncRequests are created by the
+// Target tracks a logical request of the syncing subsystem to run a
+// syncing job against given inputs. Targets are created by the
 // Dispatcher by inspecting incoming hello messages from bootstrap peers
 // and gossipsub block propagations.
-type SyncRequest struct {
+type Target struct {
 	block.ChainInfo
-	// needed by internal container/heap methods for maintaining sort
-	index int
 }
 
-// rawQueue orders the dispatchers syncRequests by a policy.
-// The current simple policy is to order syncing requests by claimed chain
-// height.
-//
-// rawQueue can panic so it shouldn't be used unwrapped
-type rawQueue []SyncRequest
-
-// Heavily inspired by https://golang.org/pkg/container/heap/
-func (rq rawQueue) Len() int { return len(rq) }
-
-func (rq rawQueue) Less(i, j int) bool {
-	// We want Pop to give us the highest priority so we use greater than
-	return rq[i].Height > rq[j].Height
-}
-
-func (rq rawQueue) Swap(i, j int) {
-	rq[i], rq[j] = rq[j], rq[i]
-	rq[i].index = j
-	rq[j].index = i
-}
-
-func (rq *rawQueue) Push(x interface{}) {
-	n := len(*rq)
-	syncReq := x.(SyncRequest)
-	syncReq.index = n
-	*rq = append(*rq, syncReq)
-}
-
-func (rq *rawQueue) Pop() interface{} {
-	old := *rq
-	n := len(old)
-	item := old[n-1]
-	item.index = -1 // for safety
-	*rq = old[0 : n-1]
-	return item
-}
-
-// TargetQueue orders dispatcher syncRequests by the underlying rawQueue's
-// policy.
+// TargetQueue orders dispatcher syncRequests by the underlying targetQueue's
+// policy.  It wraps the targetQueue to prevent panics during normal operation.
+// It also filters the targetQueue so that it always contains targets with
+// unique chain heads.
 //
 // It is not threadsafe.
 type TargetQueue struct {
-	q         rawQueue
+	q         targetQueue
 	targetSet map[string]struct{}
 }
 
-// NewTargetQueue returns a new target queue with an initialized rawQueue
+// NewTargetQueue returns a new target queue with an initialized targetQueue
 func NewTargetQueue() *TargetQueue {
-	rq := make(rawQueue, 0)
+	rq := make(targetQueue, 0)
 	heap.Init(&rq)
 	return &TargetQueue{
 		q:         rq,
@@ -253,7 +214,7 @@ func NewTargetQueue() *TargetQueue {
 }
 
 // Push adds a sync request to the target queue.
-func (tq *TargetQueue) Push(req SyncRequest) {
+func (tq *TargetQueue) Push(req Target) {
 	// If already in queue drop quickly
 	if _, inQ := tq.targetSet[req.ChainInfo.Head.String()]; inQ {
 		return
@@ -266,11 +227,11 @@ func (tq *TargetQueue) Push(req SyncRequest) {
 
 // Pop removes and returns the highest priority syncing target. If there is
 // nothing in the queue the second argument returns false
-func (tq *TargetQueue) Pop() (SyncRequest, bool) {
+func (tq *TargetQueue) Pop() (Target, bool) {
 	if tq.Len() == 0 {
-		return SyncRequest{}, false
+		return Target{}, false
 	}
-	req := heap.Pop(&tq.q).(SyncRequest)
+	req := heap.Pop(&tq.q).(Target)
 	popKey := req.ChainInfo.Head.String()
 	delete(tq.targetSet, popKey)
 	return req, true
@@ -279,4 +240,36 @@ func (tq *TargetQueue) Pop() (SyncRequest, bool) {
 // Len returns the number of targets in the queue.
 func (tq *TargetQueue) Len() int {
 	return tq.q.Len()
+}
+
+// targetQueue orders targets by a policy.
+// The current simple policy is to order syncing requests by claimed chain
+// height.
+//
+// targetQueue can panic so it shouldn't be used unwrapped
+type targetQueue []Target
+
+// Heavily inspired by https://golang.org/pkg/container/heap/
+func (rq targetQueue) Len() int { return len(rq) }
+
+func (rq targetQueue) Less(i, j int) bool {
+	// We want Pop to give us the highest priority so we use greater than
+	return rq[i].Height > rq[j].Height
+}
+
+func (rq targetQueue) Swap(i, j int) {
+	rq[i], rq[j] = rq[j], rq[i]
+}
+
+func (rq *targetQueue) Push(x interface{}) {
+	syncReq := x.(Target)
+	*rq = append(*rq, syncReq)
+}
+
+func (rq *targetQueue) Pop() interface{} {
+	old := *rq
+	n := len(old)
+	item := old[n-1]
+	*rq = old[0 : n-1]
+	return item
 }

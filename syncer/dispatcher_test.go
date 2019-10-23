@@ -12,40 +12,41 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/syncer"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/util/moresync"
 )
 
-type fakeSyncer struct {
+type mockSyncer struct {
 	headsCalled []block.TipSetKey
 }
 
-func (fs *fakeSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, t bool) error {
+func (fs *mockSyncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, t bool) error {
 	fs.headsCalled = append(fs.headsCalled, ci.Head)
 	return nil
 }
 
 func TestDispatchStartHappy(t *testing.T) {
 	tf.UnitTest(t)
-	s := &fakeSyncer{
+	s := &mockSyncer{
 		headsCalled: make([]block.TipSetKey, 0),
 	}
 	testDispatch := syncer.NewDispatcher(s)
 
 	cis := []*block.ChainInfo{
-		chainInfoFromHeight(t, 0),
+		// We need to put these in priority order to avoid a race.
+		// If we send 0 before 42, it is possible the dispatcher will
+		// pick up 0 and start processing before it sees 42.
 		chainInfoFromHeight(t, 42),
-		chainInfoFromHeight(t, 3),
 		chainInfoFromHeight(t, 16),
+		chainInfoFromHeight(t, 3),
 		chainInfoFromHeight(t, 2),
+		chainInfoFromHeight(t, 0),
 	}
 
 	testDispatch.Start(context.Background())
 
 	// set up a blocking channel and register to unblock after 5 synced
-	wait := make(chan struct{})
-	done := func() {
-		wait <- struct{}{}
-	}
-	testDispatch.RegisterOnProcessedCount(5, done)
+	allDone := moresync.NewLatch(5)
+	testDispatch.RegisterCallback(func(t syncer.Target) { allDone.Done() })
 
 	// receive requests before Start() to test deterministic order
 	go func() {
@@ -53,13 +54,12 @@ func TestDispatchStartHappy(t *testing.T) {
 			assert.NoError(t, testDispatch.ReceiveHello(ci))
 		}
 	}()
-	<-wait
+	allDone.Wait()
 
-	// check that the fakeSyncer synced in order
-	expectedOrder := []int{1, 3, 2, 4, 0}
-	require.Equal(t, len(expectedOrder), len(s.headsCalled))
+	// check that the mockSyncer synced in order
+	require.Equal(t, 5, len(s.headsCalled))
 	for i := range cis {
-		assert.Equal(t, cis[expectedOrder[i]].Head, s.headsCalled[i])
+		assert.Equal(t, cis[i].Head, s.headsCalled[i])
 	}
 }
 
@@ -68,10 +68,10 @@ func TestQueueHappy(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR1 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 1))}
-	sR2 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 2))}
-	sR47 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR1 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 1))}
+	sR2 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 2))}
+	sR47 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	testQ.Push(sR2)
 	testQ.Push(sR47)
@@ -99,8 +99,8 @@ func TestQueueDuplicates(t *testing.T) {
 	testQ := syncer.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR0dup := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0dup := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
 
 	testQ.Push(sR0)
 	testQ.Push(sR0dup)
@@ -123,8 +123,8 @@ func TestQueueDuplicates(t *testing.T) {
 func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
-	sR0 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR47 := syncer.SyncRequest{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR47 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	// Push 2
 	testQ.Push(sR47)
@@ -143,7 +143,7 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 }
 
 // requirePop is a helper requiring that pop does not error
-func requirePop(t *testing.T, q *syncer.TargetQueue) syncer.SyncRequest {
+func requirePop(t *testing.T, q *syncer.TargetQueue) syncer.Target {
 	req, popped := q.Pop()
 	require.True(t, popped)
 	return req
