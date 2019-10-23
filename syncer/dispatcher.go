@@ -49,32 +49,22 @@ type cbMessage struct {
 // controls. Currently there is only one kind of control message.  It registers
 // a callback that the dispatcher will call after every non-erroring sync.
 type Dispatcher struct {
-	// The following fields handle syncer target dispatch and processing
-	// The dispatcher maintains a targeting system for determining the
-	// current best syncing target
 	// workQueue is a priority queue of target chain heads that should be
 	// synced
 	workQueue *TargetQueue
 	// incoming is the queue of incoming sync targets to the dispatcher.
-	// The dispatcher relies on a single reader pulling from this.  Don't add
-	// another reader without care.
 	incoming chan Target
 	// catchupSyncer is used for dispatching sync targets for chain heads
 	// during the CHAIN_CATCHUP mode of operation
 	catchupSyncer syncer
 
-	// The following fields allow outside processes to issue commands to
-	// the dispatcher, for example to synchronize with it or inspect state
 	// registeredCb is a callback registered over the control channel.  It
-	// is caleld after every successful sync.
+	// is called after every successful sync.
 	registeredCb func(Target)
-	// control is a queue of control messages not yet processed
+	// control is a queue of control messages not yet processed.
 	control chan interface{}
 
-	// The following fields are diagnostics maintained by the dispatcher
-	// syncTargetCount tracks the total number of sync targets dispatched
-	// to and processed without error by the syncer.  We do not handle
-	// overflows.
+	// syncTargetCount counts the number of successful syncs.
 	syncTargetCount uint64
 }
 
@@ -93,8 +83,6 @@ func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 }
 
 // Start launches the business logic for the syncing subsystem.
-// It reads syncing targets from the incoming queue, sorts them, and dispatches
-// them to the appropriate syncer.
 func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
 		var last *Target
@@ -151,11 +139,12 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 	}()
 }
 
-// drainProduced reads all values within the incoming channel buffer at time
-// of calling without blocking.  It reads at most incomingBufferSize.
 func (d *Dispatcher) drainIncoming() []Target {
-	// drain channel. Note this relies on a single reader of the incoming
-	// channel to avoid blocking.
+	// drainProduced reads all values within the incoming channel buffer at time
+	// of calling without blocking.  It reads at most incomingBufferSize.
+	//
+	// Note: this relies on a single reader of the incoming channel to
+	// avoid blocking.
 	n := len(d.incoming)
 	produced := make([]Target, n)
 	for i := 0; i < n; i++ {
@@ -170,9 +159,10 @@ func (d *Dispatcher) RegisterCallback(cb func(Target)) {
 	d.control <- cbMessage{cb: cb}
 }
 
-// processCtrl takes a control message, determines its type, and performs the
-// specified action.
 func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
+	// processCtrl takes a control message, determines its type, and performs the
+	// specified action.
+	//
 	// Using interfaces is overkill for now but is the way to make this
 	// extensible.  (Delete this comment if we add more than one control)
 	switch typedMsg := ctrlMsg.(type) {
@@ -213,7 +203,7 @@ func NewTargetQueue() *TargetQueue {
 	}
 }
 
-// Push adds a sync request to the target queue.
+// Push adds a sync target to the target queue.
 func (tq *TargetQueue) Push(t Target) {
 	// If already in queue drop quickly
 	if _, inQ := tq.targetSet[t.ChainInfo.Head.String()]; inQ {
@@ -243,10 +233,11 @@ func (tq *TargetQueue) Len() int {
 }
 
 // targetQueue orders targets by a policy.
+//
 // The current simple policy is to order syncing requests by claimed chain
 // height.
 //
-// targetQueue can panic so it shouldn't be used unwrapped
+// `targetQueue` can panic so it shouldn't be used unwrapped
 type targetQueue []Target
 
 // Heavily inspired by https://golang.org/pkg/container/heap/
