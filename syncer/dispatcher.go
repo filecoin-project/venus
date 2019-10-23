@@ -12,8 +12,6 @@ import (
 
 var log = logging.Logger("sync.dispatch")
 
-var errEmptyPop = errors.New("pop on empty targetQueue")
-
 // This is the size of the channel buffer used for receiving sync requests from
 // producers.
 const productionBufferSize = 5
@@ -88,12 +86,12 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 	go func() {
 		var last *SyncRequest
 		for {
-			// Begin by firing off any callbacks that are ready			
+			// Begin by firing off any callbacks that are ready
 			d.maybeFireCbs()
 			// Handle shutdown
 			select {
 			case <-syncingCtx.Done():
-				return				
+				return
 			default:
 			}
 
@@ -129,7 +127,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 				if err != nil {
 					log.Info("sync request could not complete: %s", err)
 				}
-				d.syncReqCount++				
+				d.syncReqCount++
 			} else {
 				// No work left, block until something shows up
 				select {
@@ -162,7 +160,7 @@ func (d *Dispatcher) RegisterOnProcessedCount(count uint64, cb func()) {
 }
 
 // receiveCtrl takes a control message, determines its type, and performs the
-// specified action. 
+// specified action.
 func (d *Dispatcher) receiveCtrl(i interface{}) {
 	// Using interfaces is overkill for now but is the way to make this
 	// extensible.  (Delete this comment if we add more than one control)
@@ -266,7 +264,7 @@ func (tq *TargetQueue) Push(req SyncRequest) {
 	return
 }
 
-// Pop removes and returns the highest priority syncing target. If there is 
+// Pop removes and returns the highest priority syncing target. If there is
 // nothing in the queue the second argument returns false
 func (tq *TargetQueue) Pop() (SyncRequest, bool) {
 	if tq.Len() == 0 {
