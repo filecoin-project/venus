@@ -737,7 +737,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	alice := mm.Addresses()[0]
 
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
-	layer1Selector, err := ssb.ExploreAll(ssb.Matcher()).Selector()
+	layer1Selector, err := ssb.Matcher().Selector()
 	require.NoError(t, err)
 
 	recursiveSelector := func(levels int) selector.Selector {
@@ -826,7 +826,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	})
 }
 
-func TestRealWorldGraphsyncFetchNoHeaders(t *testing.T) {
+func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	tf.IntegrationTest(t)
 	ctx := context.Background()
 	// setup a chain

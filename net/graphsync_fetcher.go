@@ -243,9 +243,9 @@ func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
 	return selector
 }
 
-// headerSel is a function that generates a selector for a block header..
+// headerSel is a function that generates a selector for a block header.
 func (gsf *GraphSyncFetcher) headerSel() ipld.Node {
-	return gsf.ssb.ExploreAll(gsf.ssb.Matcher()).Node()
+	return gsf.ssb.Matcher().Node()
 }
 
 // fetchBlocks requests a single set of cids as individual blocks, fetching
