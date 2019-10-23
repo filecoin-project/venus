@@ -51,7 +51,7 @@ func TestDispatchStartHappy(t *testing.T) {
 	// receive requests before Start() to test deterministic order
 	go func() {
 		for _, ci := range cis {
-			assert.NoError(t, testDispatch.ReceiveHello(ci))
+			assert.NoError(t, testDispatch.SendHello(ci))
 		}
 	}()
 	allDone.Wait()

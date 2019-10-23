@@ -157,7 +157,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// Start up 'hello' handshake service
 		helloCallback := func(ci *block.ChainInfo) {
 			node.Network.PeerTracker.Track(ci)
-			err := node.Chain.SyncDispatch.ReceiveHello(ci)
+			err := node.Chain.SyncDispatch.SendHello(ci)
 			if err != nil {
 				log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 				return

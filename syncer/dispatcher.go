@@ -78,16 +78,16 @@ type Dispatcher struct {
 	syncTargetCount uint64
 }
 
-// ReceiveHello handles chain information from bootstrap peers.
-func (d *Dispatcher) ReceiveHello(ci *block.ChainInfo) error { return d.receive(ci) }
+// SendHello handles chain information from bootstrap peers.
+func (d *Dispatcher) SendHello(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-// ReceiveOwnBlock handles chain info from a node's own mining system
-func (d *Dispatcher) ReceiveOwnBlock(ci *block.ChainInfo) error { return d.receive(ci) }
+// SendOwnBlock handles chain info from a node's own mining system
+func (d *Dispatcher) SendOwnBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-// ReceiveGossipBlock handles chain info from new blocks sent on pubsub
-func (d *Dispatcher) ReceiveGossipBlock(ci *block.ChainInfo) error { return d.receive(ci) }
+// SendGossipBlock handles chain info from new blocks sent on pubsub
+func (d *Dispatcher) SendGossipBlock(ci *block.ChainInfo) error { return d.enqueue(ci) }
 
-func (d *Dispatcher) receive(ci *block.ChainInfo) error {
+func (d *Dispatcher) enqueue(ci *block.ChainInfo) error {
 	d.incoming <- Target{ChainInfo: *ci}
 	return nil
 }
@@ -109,7 +109,7 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			// Handle control signals
 			select {
 			case ctrl := <-d.control:
-				d.receiveCtrl(ctrl)
+				d.processCtrl(ctrl)
 			default:
 			}
 
@@ -170,40 +170,40 @@ func (d *Dispatcher) RegisterCallback(cb func(Target)) {
 	d.control <- cbMessage{cb: cb}
 }
 
-// receiveCtrl takes a control message, determines its type, and performs the
+// processCtrl takes a control message, determines its type, and performs the
 // specified action.
-func (d *Dispatcher) receiveCtrl(i interface{}) {
+func (d *Dispatcher) processCtrl(ctrlMsg interface{}) {
 	// Using interfaces is overkill for now but is the way to make this
 	// extensible.  (Delete this comment if we add more than one control)
-	switch msg := i.(type) {
+	switch typedMsg := ctrlMsg.(type) {
 	case cbMessage:
-		d.registeredCb = msg.cb
+		d.registeredCb = typedMsg.cb
 	default:
 		// We don't know this type, log and ignore
-		log.Info("dispatcher control can not handle type %T", msg)
+		log.Info("dispatcher control can not handle type %T", typedMsg)
 	}
 }
 
 // Target tracks a logical request of the syncing subsystem to run a
-// syncing job against given inputs. Targets are created by the
-// Dispatcher by inspecting incoming hello messages from bootstrap peers
-// and gossipsub block propagations.
+// syncing job against given inputs.
 type Target struct {
 	block.ChainInfo
 }
 
-// TargetQueue orders dispatcher syncRequests by the underlying targetQueue's
-// policy.  It wraps the targetQueue to prevent panics during normal operation.
-// It also filters the targetQueue so that it always contains targets with
+// TargetQueue orders dispatcher syncRequests by the underlying `targetQueue`'s
+// prioritization policy.
+//
+// It also filters the `targetQueue` so that it always contains targets with
 // unique chain heads.
 //
-// It is not threadsafe.
+// It wraps the `targetQueue` to prevent panics during
+// normal operation.
 type TargetQueue struct {
 	q         targetQueue
 	targetSet map[string]struct{}
 }
 
-// NewTargetQueue returns a new target queue with an initialized targetQueue
+// NewTargetQueue returns a new target queue.
 func NewTargetQueue() *TargetQueue {
 	rq := make(targetQueue, 0)
 	heap.Init(&rq)
@@ -214,13 +214,13 @@ func NewTargetQueue() *TargetQueue {
 }
 
 // Push adds a sync request to the target queue.
-func (tq *TargetQueue) Push(req Target) {
+func (tq *TargetQueue) Push(t Target) {
 	// If already in queue drop quickly
-	if _, inQ := tq.targetSet[req.ChainInfo.Head.String()]; inQ {
+	if _, inQ := tq.targetSet[t.ChainInfo.Head.String()]; inQ {
 		return
 	}
-	heap.Push(&tq.q, req)
-	tq.targetSet[req.ChainInfo.Head.String()] = struct{}{}
+	heap.Push(&tq.q, t)
+	tq.targetSet[t.ChainInfo.Head.String()] = struct{}{}
 
 	return
 }
