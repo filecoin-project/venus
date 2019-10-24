@@ -218,7 +218,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		require.NoError(f.t, err)
 
 		// add block to cstore
-		_, err := f.cstore.Put(ctx, b)
+		_, err = f.cstore.Put(ctx, b)
 		require.NoError(f.t, err)
 		blocks = append(blocks, b)
 	}
