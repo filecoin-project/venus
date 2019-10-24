@@ -146,7 +146,7 @@ func (dv *DefaultBlockValidator) ValidateMessagesSyntax(ctx context.Context, mes
 	return nil
 }
 
-// ValidateMessagesSyntax validates a set of messages are correctly formed.
+// ValidateUnsignedMessagesSyntax validates a set of messages are correctly formed.
 // TODO: Create a real implementation
 // See: https://github.com/filecoin-project/go-filecoin/issues/3312
 func (dv *DefaultBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {

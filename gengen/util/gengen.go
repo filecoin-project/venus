@@ -157,6 +157,10 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	}
 
 	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
+	if err != nil {
+		return nil, err
+	}
+
 	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 
 	geneblk := &block.Block{

@@ -166,7 +166,7 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 			return nil, errors.Wrapf(err, "could not retrieve %d cid from AMT", i)
 		}
 
-		cids[i] = cid.Cid(c)
+		cids[i] = c
 	}
 
 	return cids, nil

@@ -165,10 +165,10 @@ type carExportBlockstore struct {
 	out io.Writer
 }
 
-func (cs carExportBlockstore) DeleteBlock(c cid.Cid) error         { return cs.DeleteBlock(c) }
-func (cs carExportBlockstore) Has(c cid.Cid) (bool, error)         { return cs.Has(c) }
-func (cs carExportBlockstore) Get(c cid.Cid) (blocks.Block, error) { return cs.Get(c) }
-func (cs carExportBlockstore) GetSize(c cid.Cid) (int, error)      { return cs.GetSize(c) }
+func (cs carExportBlockstore) DeleteBlock(c cid.Cid) error         { return cs.bs.DeleteBlock(c) }
+func (cs carExportBlockstore) Has(c cid.Cid) (bool, error)         { return cs.bs.Has(c) }
+func (cs carExportBlockstore) Get(c cid.Cid) (blocks.Block, error) { return cs.bs.Get(c) }
+func (cs carExportBlockstore) GetSize(c cid.Cid) (int, error)      { return cs.bs.GetSize(c) }
 func (cs carExportBlockstore) Put(b blocks.Block) error {
 	err := carutil.LdWrite(cs.out, b.Cid().Bytes(), b.RawData())
 	if err != nil {
@@ -176,8 +176,8 @@ func (cs carExportBlockstore) Put(b blocks.Block) error {
 	}
 	return cs.bs.Put(b)
 }
-func (cs carExportBlockstore) PutMany(b []blocks.Block) error { return cs.PutMany(b) }
+func (cs carExportBlockstore) PutMany(b []blocks.Block) error { return cs.bs.PutMany(b) }
 func (cs carExportBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return cs.AllKeysChan(ctx)
+	return cs.bs.AllKeysChan(ctx)
 }
-func (cs carExportBlockstore) HashOnRead(enabled bool) { cs.HashOnRead(enabled) }
+func (cs carExportBlockstore) HashOnRead(enabled bool) { cs.bs.HashOnRead(enabled) }

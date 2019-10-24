@@ -79,8 +79,10 @@ func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *
 	}
 
 	ctx := context.Background()
-	b.messages.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
-	b.messages.StoreReceipts(ctx, []*types.MessageReceipt{})
+	_, err := b.messages.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
+	require.NoError(t, err)
+	_, err = b.messages.StoreReceipts(ctx, []*types.MessageReceipt{})
+	require.NoError(t, err)
 
 	nullState := types.CidFromString(t, "null")
 	b.tipStateCids[block.NewTipSetKey().String()] = nullState
@@ -216,7 +218,8 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		require.NoError(f.t, err)
 
 		// add block to cstore
-		f.cstore.Put(ctx, b)
+		_, err := f.cstore.Put(ctx, b)
+		require.NoError(f.t, err)
 		blocks = append(blocks, b)
 	}
 	tip := th.RequireNewTipSet(f.t, blocks...)

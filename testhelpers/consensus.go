@@ -105,7 +105,7 @@ func (fbv *FakeBlockValidator) ValidateMessagesSyntax(ctx context.Context, messa
 	return nil
 }
 
-// ValidateMessagesSyntax does nothing
+// ValidateUnsignedMessagesSyntax does nothing
 func (fbv *FakeBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
 	return nil
 }
