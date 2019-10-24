@@ -7,6 +7,7 @@ import (
 	mrand "math/rand"
 	"strconv"
 
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm"
+	"github.com/whyrusleeping/cbor-gen"
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -154,30 +156,13 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	emptySignedMessagesCid, err := cst.Put(ctx, types.SignedMessageCollection{})
-	if err != nil {
-		return nil, err
-	}
-	emptyMessagesCid, err := cst.Put(ctx, types.MessageCollection{})
-	if err != nil {
-		return nil, err
-	}
+	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
 	emptyBLSSignature := bls.Aggregate([]bls.Signature{})
-	emptyReceiptsCid, err := cst.Put(ctx, types.ReceiptCollection{})
-	if err != nil {
-		return nil, err
-	}
-
-	if !emptySignedMessagesCid.Equals(types.EmptyMessagesCID) ||
-		!emptyMessagesCid.Equals(types.EmptyMessagesCID) ||
-		!emptyReceiptsCid.Equals(types.EmptyReceiptsCID) {
-		return nil, errors.New("bad CID for empty messages/receipts")
-	}
 
 	geneblk := &block.Block{
 		StateRoot:       stateRoot,
-		Messages:        types.TxMeta{SecpRoot: emptySignedMessagesCid, BLSRoot: emptyMessagesCid},
-		MessageReceipts: emptyReceiptsCid,
+		Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
+		MessageReceipts: emptyAMTCid,
 		BLSAggregateSig: emptyBLSSignature[:],
 		Tickets:         []block.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 	}

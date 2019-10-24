@@ -468,6 +468,6 @@ func requireChainWithMessages(t *testing.T, builder *chain.Builder, root block.T
 func msgBuild(t *testing.T, msgSet [][]*types.SignedMessage) func(*chain.BlockBuilder, int) {
 	return func(bb *chain.BlockBuilder, i int) {
 		require.True(t, i <= len(msgSet))
-		bb.AddMessages(msgSet[i], types.EmptyReceipts(len(msgSet[i])))
+		bb.AddMessages(msgSet[i], []*types.UnsignedMessage{}, types.EmptyReceipts(len(msgSet[i])))
 	}
 }

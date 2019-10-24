@@ -163,7 +163,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	}
 	rcts := types.EmptyReceipts(5)
 	ts2 := cb.BuildOneOn(ts1, func(b *chain.BlockBuilder) {
-		b.AddMessages(msgs, rcts)
+		b.AddMessages(msgs, []*types.UnsignedMessage{}, rcts)
 	})
 
 	// export the car file to a buffer
@@ -198,6 +198,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ts2 := cb.BuildOneOn(ts1, func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			msgs,
+			[]*types.UnsignedMessage{},
 			rcts,
 		)
 	})

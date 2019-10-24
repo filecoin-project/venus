@@ -123,7 +123,7 @@ func (ms *MessageStore) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.M
 	}
 
 	// load receipts from cids
-	receipts := make([]*types.MessageReceipt, 0, len(receiptCids))
+	receipts := make([]*types.MessageReceipt, len(receiptCids))
 	for i, c := range receiptCids {
 		receiptBlock, err := ms.bs.Get(c)
 		if err != nil {
@@ -159,14 +159,14 @@ func (ms *MessageStore) loadAMTCids(ctx context.Context, c cid.Cid) ([]cid.Cid, 
 		return []cid.Cid{}, err
 	}
 
-	var cids []cid.Cid
+	cids := make([]cid.Cid, a.Count)
 	for i := uint64(0); i < a.Count; i++ {
 		var c cid.Cid
 		if err := a.Get(i, &c); err != nil {
 			return nil, errors.Wrapf(err, "could not retrieve %d cid from AMT", i)
 		}
 
-		cids = append(cids, cid.Cid(c))
+		cids[i] = cid.Cid(c)
 	}
 
 	return cids, nil

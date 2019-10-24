@@ -7,13 +7,18 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/filecoin-project/go-amt-ipld"
+	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/encoding"
+	"github.com/whyrusleeping/cbor-gen"
 )
 
 // GasUnits represents number of units of gas consumed
@@ -22,16 +27,28 @@ type GasUnits = Uint64
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
 var BlockGasLimit = NewGasUnits(10000000)
 
+// EmptyMessagesCID is the cid of an empty collection of messages.
+var EmptyMessagesCID cid.Cid
+
+// EmptyReceiptsCID is the cid of an empty collection of receipts.
+var EmptyReceiptsCID cid.Cid
+
+func init() {
+	cbor.RegisterCborType(UnsignedMessage{})
+	cbor.RegisterCborType(TxMeta{})
+
+	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(blockstore.NewBlockstore(datastore.NewMapDatastore())), []typegen.CBORMarshaler{})
+	if err != nil {
+		panic("could not create CID for empty AMT")
+	}
+	EmptyMessagesCID = emptyAMTCid
+	EmptyReceiptsCID = emptyAMTCid
+}
+
 var (
 	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
 	ErrInvalidMessageLength = errors.New("invalid message length")
 )
-
-// EmptyMessagesCID is the cid of an empty collection of messages.
-var EmptyMessagesCID = SignedMessageCollection{}.Cid()
-
-// EmptyReceiptsCID is the cid of an empty collection of receipts.
-var EmptyReceiptsCID = ReceiptCollection{}.Cid()
 
 // UnsignedMessage is an exchange of information between two actors modeled
 // as a function call.

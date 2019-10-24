@@ -667,8 +667,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
-	assert.Equal(t, types.SignedMessageCollection{}.Cid(), blk.Messages.SecpRoot)
-	assert.Equal(t, types.ReceiptCollection{}.Cid(), blk.MessageReceipts)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
+	assert.Equal(t, types.EmptyMessagesCID, blk.MessageReceipts)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,
