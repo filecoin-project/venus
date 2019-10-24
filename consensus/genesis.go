@@ -3,11 +3,13 @@ package consensus
 import (
 	"context"
 
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/account"
@@ -194,21 +196,18 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			return nil, err
 		}
 
-		emptyMessagesCid, err := cst.Put(ctx, []types.SignedMessage{})
+		emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
 		if err != nil {
 			return nil, err
 		}
-		emptyReceiptsCid, err := cst.Put(ctx, []types.MessageReceipt{})
-		if err != nil {
-			return nil, err
-		}
-		emptyBLSSig := bls.Aggregate([]bls.Signature{})
+
+		emptyBLSSignature := bls.Aggregate([]bls.Signature{})
 
 		genesis := &block.Block{
 			StateRoot:       c,
-			Messages:        types.TxMeta{SecpRoot: emptyMessagesCid, BLSRoot: emptyMessagesCid},
-			MessageReceipts: emptyReceiptsCid,
-			BLSAggregateSig: emptyBLSSig[:],
+			Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
+			MessageReceipts: emptyAMTCid,
+			BLSAggregateSig: emptyBLSSignature[:],
 			Tickets:         []block.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
 		}
 
