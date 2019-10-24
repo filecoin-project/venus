@@ -241,7 +241,7 @@ func (f *Builder) StateForKey(key block.TipSetKey) cid.Cid {
 	return f.ComputeState(tip)
 }
 
-// GetBlockstoreValue gets data straigt out of the underlying blockstore by cid
+// GetBlockstoreValue gets data straight out of the underlying blockstore by cid
 func (f *Builder) GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	return f.bs.Get(c)
 }
