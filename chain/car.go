@@ -4,14 +4,17 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-filecoin/encoding"
 	blocks "github.com/ipfs/go-block-format"
 	car "github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 
+	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 )
 
@@ -74,7 +77,7 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 
 			if !filter[hdr.Messages.SecpRoot] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(out, hdr.Messages.SecpRoot.Bytes(), types.SignedMessageCollection(secpMsgs).ToNode().RawData()); err != nil {
+				if err := exportAMTSignedMessages(ctx, out, secpMsgs); err != nil {
 					return err
 				}
 				filter[hdr.Messages.SecpRoot] = true
@@ -82,7 +85,7 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 
 			if !filter[hdr.Messages.BLSRoot] {
 				logCar.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(out, hdr.Messages.BLSRoot.Bytes(), types.MessageCollection(blsMsgs).ToNode().RawData()); err != nil {
+				if err := exportAMTUnsignedMessages(ctx, out, blsMsgs); err != nil {
 					return err
 				}
 				filter[hdr.Messages.BLSRoot] = true
@@ -96,7 +99,7 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 
 			if !filter[hdr.MessageReceipts] {
 				logCar.Debugf("writing message-receipt collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(out, hdr.MessageReceipts.Bytes(), types.ReceiptCollection(rect).ToNode().RawData()); err != nil {
+				if err := exportAMTReceipts(ctx, out, rect); err != nil {
 					return err
 				}
 				filter[hdr.MessageReceipts] = true
@@ -104,6 +107,43 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 		}
 	}
 	return nil
+}
+
+func exportAMTSignedMessages(ctx context.Context, out io.Writer, smsgs []*types.SignedMessage) error {
+	ms := carWritingMessageStore(out)
+
+	cids, err := ms.storeSignedMessages(smsgs)
+	if err != nil {
+		return err
+	}
+
+	_, err = ms.storeAMTCids(ctx, cids)
+	return err
+}
+
+func exportAMTUnsignedMessages(ctx context.Context, out io.Writer, umsgs []*types.UnsignedMessage) error {
+	ms := carWritingMessageStore(out)
+
+	cids, err := ms.storeUnsignedMessages(umsgs)
+	if err != nil {
+		return err
+	}
+
+	_, err = ms.storeAMTCids(ctx, cids)
+	return err
+}
+
+func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []*types.MessageReceipt) error {
+	ms := carWritingMessageStore(out)
+
+	_, err := ms.StoreReceipts(ctx, receipts)
+	return err
+}
+
+func carWritingMessageStore(out io.Writer) *MessageStore {
+	d := datastore.NewMapDatastore()
+	bs := blockstore.NewBlockstore(d)
+	return NewMessageStore(carExportBlockstore{bs: bs, out: out})
 }
 
 type carStore interface {
@@ -119,3 +159,25 @@ func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, er
 	headKey := block.NewTipSetKey(header.Roots...)
 	return headKey, nil
 }
+
+type carExportBlockstore struct {
+	bs  blockstore.Blockstore
+	out io.Writer
+}
+
+func (cs carExportBlockstore) DeleteBlock(c cid.Cid) error         { return cs.DeleteBlock(c) }
+func (cs carExportBlockstore) Has(c cid.Cid) (bool, error)         { return cs.Has(c) }
+func (cs carExportBlockstore) Get(c cid.Cid) (blocks.Block, error) { return cs.Get(c) }
+func (cs carExportBlockstore) GetSize(c cid.Cid) (int, error)      { return cs.GetSize(c) }
+func (cs carExportBlockstore) Put(b blocks.Block) error {
+	err := carutil.LdWrite(cs.out, b.Cid().Bytes(), b.RawData())
+	if err != nil {
+		return err
+	}
+	return cs.bs.Put(b)
+}
+func (cs carExportBlockstore) PutMany(b []blocks.Block) error { return cs.PutMany(b) }
+func (cs carExportBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
+	return cs.AllKeysChan(ctx)
+}
+func (cs carExportBlockstore) HashOnRead(enabled bool) { cs.HashOnRead(enabled) }

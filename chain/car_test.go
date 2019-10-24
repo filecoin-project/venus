@@ -6,12 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/block"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -248,6 +251,8 @@ func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bu
 }
 
 func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore blockstore.Blockstore) {
+	as := amt.WrapBlockstore(bstore)
+
 	// walk the blockstore and assert it had all blocks imported
 	cur := start
 	for {
@@ -258,20 +263,57 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			bsSecpMsgs, err := bstore.Get(blk.Messages.SecpRoot)
-			assert.NoError(t, err)
-			_, err = types.DecodeSignedMessages(bsSecpMsgs.RawData())
-			assert.NoError(t, err)
+			secpAMT, err := amt.LoadAMT(as, blk.Messages.SecpRoot)
+			require.NoError(t, err)
 
-			bsBlsMsgs, err := bstore.Get(blk.Messages.BLSRoot)
-			assert.NoError(t, err)
-			_, err = types.DecodeMessages(bsBlsMsgs.RawData())
-			assert.NoError(t, err)
+			var smsg types.SignedMessage
+			var c cid.Cid
+			err = secpAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
+				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+					return err
+				}
 
-			bsRcts, err := bstore.Get(blk.MessageReceipts)
-			assert.NoError(t, err)
-			_, err = types.DecodeReceipts(bsRcts.RawData())
-			assert.NoError(t, err)
+				b, err := bstore.Get(c)
+				if err != nil {
+					return err
+				}
+				return cbornode.DecodeInto(b.RawData(), &smsg)
+			})
+			require.NoError(t, err)
+
+			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot)
+			require.NoError(t, err)
+
+			var umsg types.UnsignedMessage
+			err = blsAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
+				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+					return err
+				}
+
+				b, err := bstore.Get(c)
+				if err != nil {
+					return err
+				}
+				return cbornode.DecodeInto(b.RawData(), &umsg)
+			})
+			require.NoError(t, err)
+
+			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts)
+			require.NoError(t, err)
+
+			var rect types.MessageReceipt
+			err = rectAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
+				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+					return err
+				}
+
+				b, err := bstore.Get(c)
+				if err != nil {
+					return err
+				}
+				return cbornode.DecodeInto(b.RawData(), &rect)
+			})
+			require.NoError(t, err)
 
 			for _, p := range blk.Parents.ToSlice() {
 				parents = append(parents, p)
