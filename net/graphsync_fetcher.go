@@ -491,7 +491,7 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	return tip, nil, nil
 }
 
-// loadAndProcessAMTData processes data loaded from an AMT that is stored in the syncers datastore.
+// loadAndProcessAMTData processes data loaded from an AMT that is stored in the fetcher's datastore.
 func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Cid, processFn func(b blocks.Block) error) error {
 	as := amt.WrapBlockstore(gsf.store)
 
