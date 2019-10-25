@@ -23,18 +23,20 @@ var log = logging.Logger("/fil/hello")
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
 var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
 
-// Message is the data structure of a single message in the hello protocol.
-type Message struct {
+// HelloMessage is the data structure of a single message in the hello protocol.
+type HelloMessage struct {
 	HeaviestTipSetCids   block.TipSetKey
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
 }
 
-// Handler implements the 'Hello' protocol handler. Upon connecting to a new
-// node, we send them a message containing some information about the state of
-// our chain, and receive the same information from them. This is used to
+// HelloProtocolHandler implements the 'Hello' protocol handler.
+//
+// Upon connecting to a new node, we send them a message
+// containing some information about the state of our chain,
+// and receive the same information from them. This is used to
 // initiate a chainsync and detect connections to forks.
-type Handler struct {
+type HelloProtocolHandler struct {
 	host host.Host
 
 	genesis cid.Cid
@@ -58,10 +60,10 @@ func helloProtocolID(networkName string) protocol.ID {
 	return protocol.ID(fmt.Sprintf("/filecoin/hello/%s", networkName))
 }
 
-// NewHandler creates a new instance of the hello protocol `Handler` and registers it to
+// NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func NewHandler(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *Handler {
-	return &Handler{
+func NewHelloProtocolHandler(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *HelloProtocolHandler {
+	return &HelloProtocolHandler{
 		host:              h,
 		genesis:           gen,
 		callBack:          helloCallback,
@@ -71,7 +73,7 @@ func NewHandler(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeavie
 }
 
 // Register registers the handler with the network.
-func (h *Handler) Register() {
+func (h *HelloProtocolHandler) Register() {
 	// register a handle for when a new connection against someone is created
 	h.host.SetStreamHandler(helloProtocolID(h.networkName), h.handleNewStream)
 
@@ -79,7 +81,7 @@ func (h *Handler) Register() {
 	h.host.Network().Notify((*helloProtocolNotifiee)(h))
 }
 
-func (h *Handler) handleNewStream(s net.Stream) {
+func (h *HelloProtocolHandler) handleNewStream(s net.Stream) {
 	defer s.Close() // nolint: errcheck
 	if err := h.sendHello(s); err != nil {
 		log.Debugf("failed to send hello message:%s", err)
@@ -90,7 +92,7 @@ func (h *Handler) handleNewStream(s net.Stream) {
 // ErrBadGenesis is the error returned when a mismatch in genesis blocks happens.
 var ErrBadGenesis = fmt.Errorf("bad genesis block")
 
-func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*block.ChainInfo, error) {
+func (h *HelloProtocolHandler) processHelloMessage(from peer.ID, msg *HelloMessage) (*block.ChainInfo, error) {
 	if !msg.GenesisHash.Equals(h.genesis) {
 		return nil, ErrBadGenesis
 	}
@@ -98,7 +100,7 @@ func (h *Handler) processHelloMessage(from peer.ID, msg *Message) (*block.ChainI
 	return block.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
 }
 
-func (h *Handler) getOurHelloMessage() (*Message, error) {
+func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {
 	heaviest, err := h.getHeaviestTipSet()
 	if err != nil {
 		return nil, err
@@ -108,21 +110,21 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 		return nil, err
 	}
 
-	return &Message{
+	return &HelloMessage{
 		GenesisHash:          h.genesis,
 		HeaviestTipSetCids:   heaviest.Key(),
 		HeaviestTipSetHeight: height,
 	}, nil
 }
 
-func (h *Handler) receiveHello(ctx context.Context, p peer.ID) (*Message, error) {
+func (h *HelloProtocolHandler) receiveHello(ctx context.Context, p peer.ID) (*HelloMessage, error) {
 	s, err := h.host.NewStream(ctx, p, helloProtocolID(h.networkName))
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = s.Close() }()
 
-	var hello Message
+	var hello HelloMessage
 	if err := cbu.NewMsgReader(s).ReadMsg(&hello); err != nil {
 		helloMsgErrCt.Inc(ctx, 1)
 		return nil, err
@@ -131,7 +133,7 @@ func (h *Handler) receiveHello(ctx context.Context, p peer.ID) (*Message, error)
 }
 
 // sendHello send a hello message on stream `s`.
-func (h *Handler) sendHello(s net.Stream) error {
+func (h *HelloProtocolHandler) sendHello(s net.Stream) error {
 	msg, err := h.getOurHelloMessage()
 	if err != nil {
 		return err
@@ -140,12 +142,12 @@ func (h *Handler) sendHello(s net.Stream) error {
 }
 
 // Note: hide `net.Notifyee` impl using a new-type
-type helloProtocolNotifiee Handler
+type helloProtocolNotifiee HelloProtocolHandler
 
 const helloTimeout = time.Second * 10
 
-func (hn *helloProtocolNotifiee) asHandler() *Handler {
-	return (*Handler)(hn)
+func (hn *helloProtocolNotifiee) asHandler() *HelloProtocolHandler {
+	return (*HelloProtocolHandler)(hn)
 }
 
 //

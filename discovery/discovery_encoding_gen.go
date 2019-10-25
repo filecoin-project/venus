@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	encoding.RegisterIpldCborType(Message{})
+	encoding.RegisterIpldCborType(HelloMessage{})
 }
 
 //

@@ -518,7 +518,7 @@ func (b *Builder) buildHelloProtocol(ctx context.Context, network *NetworkSubmod
 	}
 
 	return HelloProtocolSubmodule{
-		Handler: discovery.NewHandler(network.PeerHost, chain.ChainReader.GenesisCid(), helloCallback, porcelain.ChainHead, network.NetworkName),
+		Handler: discovery.NewHelloProtocolHandler(network.PeerHost, chain.ChainReader.GenesisCid(), helloCallback, porcelain.ChainHead, network.NetworkName),
 	}, nil
 }
 

@@ -85,7 +85,7 @@ func main() {
 	}
 
 	if err := gen.WriteToFile(filepath.Join(base, "discovery/discovery_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "discovery",
-		discovery.Message{}, // discovery/hello_protocol.go
+		discovery.HelloMessage{}, // discovery/hello_protocol.go
 	); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
