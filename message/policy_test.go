@@ -204,12 +204,6 @@ func TestMessageQueuePolicy(t *testing.T) {
 	})
 }
 
-func requireTipset(t *testing.T, blocks ...*block.Block) block.TipSet {
-	set, err := block.NewTipSet(blocks...)
-	require.NoError(t, err)
-	return set
-}
-
 func qm(msg *types.SignedMessage, stamp uint64) *message.Queued {
 	return &message.Queued{Msg: msg, Stamp: stamp}
 }
