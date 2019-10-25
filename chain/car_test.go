@@ -6,12 +6,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/block"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipfs-blockstore"
+	"github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -163,7 +166,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	}
 	rcts := types.EmptyReceipts(5)
 	ts2 := cb.BuildOneOn(ts1, func(b *chain.BlockBuilder) {
-		b.AddMessages(msgs, rcts)
+		b.AddMessages(msgs, []*types.UnsignedMessage{}, rcts)
 	})
 
 	// export the car file to a buffer
@@ -198,6 +201,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ts2 := cb.BuildOneOn(ts1, func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			msgs,
+			[]*types.UnsignedMessage{},
 			rcts,
 		)
 	})
@@ -247,6 +251,8 @@ func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bu
 }
 
 func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore blockstore.Blockstore) {
+	as := amt.WrapBlockstore(bstore)
+
 	// walk the blockstore and assert it had all blocks imported
 	cur := start
 	for {
@@ -257,20 +263,23 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 			blk, err := block.DecodeBlock(bsBlk.RawData())
 			assert.NoError(t, err)
 
-			bsSecpMsgs, err := bstore.Get(blk.Messages.SecpRoot)
-			assert.NoError(t, err)
-			_, err = types.DecodeSignedMessages(bsSecpMsgs.RawData())
-			assert.NoError(t, err)
+			secpAMT, err := amt.LoadAMT(as, blk.Messages.SecpRoot)
+			require.NoError(t, err)
 
-			bsBlsMsgs, err := bstore.Get(blk.Messages.BLSRoot)
-			assert.NoError(t, err)
-			_, err = types.DecodeMessages(bsBlsMsgs.RawData())
-			assert.NoError(t, err)
+			var smsg types.SignedMessage
+			requireAMTDecoding(t, bstore, secpAMT, &smsg)
 
-			bsRcts, err := bstore.Get(blk.MessageReceipts)
-			assert.NoError(t, err)
-			_, err = types.DecodeReceipts(bsRcts.RawData())
-			assert.NoError(t, err)
+			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot)
+			require.NoError(t, err)
+
+			var umsg types.UnsignedMessage
+			requireAMTDecoding(t, bstore, blsAMT, &umsg)
+
+			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts)
+			require.NoError(t, err)
+
+			var rect types.MessageReceipt
+			requireAMTDecoding(t, bstore, rectAMT, &rect)
 
 			for _, p := range blk.Parents.ToSlice() {
 				parents = append(parents, p)
@@ -281,4 +290,21 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 		}
 		cur = block.NewTipSetKey(parents...)
 	}
+}
+
+func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
+	err := root.ForEach(func(_ uint64, d *typegen.Deferred) error {
+		var c cid.Cid
+		if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+			return err
+		}
+
+		b, err := bstore.Get(c)
+		if err != nil {
+			return err
+		}
+		return cbornode.DecodeInto(b.RawData(), dest)
+	})
+	require.NoError(t, err)
+
 }

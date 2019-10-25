@@ -17,14 +17,14 @@ import (
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/impl/free"
+	"github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +40,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/version"
 )
 
-const visitsPerBlock = 5
+const visitsPerBlock = 18
 
 type notDecodable struct {
 	Num    int    `json:"num"`
@@ -61,20 +61,29 @@ func TestGraphsyncFetcher(t *testing.T) {
 	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock, pvt)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
-	keys := types.MustGenerateKeyInfo(1, 42)
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 	rm := types.NewReceiptMaker()
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
 	alice := mm.Addresses()[0]
+	bob := mm.Addresses()[1]
 
 	ssb := selectorbuilder.NewSelectorSpecBuilder(ipldfree.NodeBuilder())
+
+	amtSelector := ssb.ExploreIndex(2,
+		ssb.ExploreRecursive(10,
+			ssb.ExploreUnion(
+				ssb.ExploreIndex(1, ssb.ExploreAll(ssb.ExploreRecursiveEdge())),
+				ssb.ExploreIndex(2, ssb.ExploreAll(ssb.Matcher())))))
+
 	layer1Selector, err := ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", ssb.Matcher())
+			messagesSelector.Insert("secpRoot", amtSelector)
+			messagesSelector.Insert("bLSRoot", amtSelector)
 		}))
-		efsb.Insert("messageReceipts", ssb.Matcher())
+		efsb.Insert("messageReceipts", amtSelector)
 	}).Selector()
 	require.NoError(t, err)
 	recursiveSelector := func(levels int) selector.Selector {
@@ -83,9 +92,10 @@ func TestGraphsyncFetcher(t *testing.T) {
 				ssb.ExploreAll(
 					ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 						efsb.Insert("messages", ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-							messagesSelector.Insert("secpRoot", ssb.Matcher())
+							messagesSelector.Insert("secpRoot", amtSelector)
+							messagesSelector.Insert("bLSRoot", amtSelector)
 						}))
-						efsb.Insert("messageReceipts", ssb.Matcher())
+						efsb.Insert("messageReceipts", amtSelector)
 					}),
 				),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
@@ -109,6 +119,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	withMessageBuilder := func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+			[]*types.UnsignedMessage{&mm.NewSignedMessage(bob, 1).Message},
 			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
@@ -119,17 +130,24 @@ func TestGraphsyncFetcher(t *testing.T) {
 	verifyMessagesAndReceiptsFetched := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
-			rawBlock, err := bs.Get(blk.Messages.SecpRoot)
+
+			// use fetcher blockstore to retrieve messages
+			msgStore := chain.NewMessageStore(bs)
+			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
-			messages, err := types.DecodeSignedMessages(rawBlock.RawData())
+
+			// get expected messages from builders block store
+			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
-			expectedMessages, _, err := builder.LoadMessages(ctx, blk.Messages)
+
+			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
+			require.True(t, reflect.DeepEqual(blsMsgs, expectedBLSMsgs))
+
+			// use fetcher blockstore to retrieve receipts
+			receipts, err := msgStore.LoadReceipts(ctx, blk.MessageReceipts)
 			require.NoError(t, err)
-			require.True(t, reflect.DeepEqual(messages, expectedMessages))
-			rawBlock, err = bs.Get(blk.MessageReceipts)
-			require.NoError(t, err)
-			receipts, err := types.DecodeReceipts(rawBlock.RawData())
-			require.NoError(t, err)
+
+			// get expected receipts from builders block store
 			expectedReceipts, err := builder.LoadReceipts(ctx, blk.MessageReceipts)
 			require.NoError(t, err)
 			require.True(t, reflect.DeepEqual(receipts, expectedReceipts))
@@ -488,7 +506,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input should be of type array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -504,7 +522,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 		done := doneAt(key)
 		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) was not a message receipt collection: malformed stream: invalid appearance of map open token; expected start of array", notDecodableBlock.Cid().String()))
+		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input should be of type array", notDecodableBlock.Cid().String()))
 		require.Nil(t, ts)
 	})
 
@@ -765,6 +783,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	withMessageBuilder := func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
+			[]*types.UnsignedMessage{},
 			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
@@ -832,17 +851,27 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	ctx := context.Background()
 	// setup a chain
 	builder := chain.NewBuilder(t, address.Undef)
-	keys := types.MustGenerateKeyInfo(1, 42)
+	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
+	bob := mm.Addresses()[1]
 	gen := builder.NewGenesis()
-	i := uint64(0)
+
+	// count > 64 force multiple layers in amts
+	messageCount := uint64(100)
+
+	secpMessages := make([]*types.SignedMessage, messageCount)
+	blsMessages := make([]*types.UnsignedMessage, messageCount)
+	messageReceipts := make([]*types.MessageReceipt, messageCount)
+	for i := uint64(0); i < messageCount; i++ {
+		secpMessages[i] = mm.NewSignedMessage(alice, i)
+		blsMessages[i] = &mm.NewSignedMessage(bob, i).Message
+		messageReceipts[i] = &types.MessageReceipt{ExitCode: uint8(i)}
+	}
+
 	tipCount := 32
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
-		b.AddMessages(
-			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
-			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
-		)
+		b.AddMessages(secpMessages, blsMessages, messageReceipts)
 	})
 
 	// setup network
@@ -885,11 +914,11 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		node, err := tryBlockNode(ctx, builder, cid)
+		b, err := builder.GetBlockstoreValue(ctx, cid)
 		if err != nil {
 			return nil, err
 		}
-		return bytes.NewBuffer(node.RawData()), nil
+		return bytes.NewBuffer(b.RawData()), nil
 	}
 	graphsync.New(ctx, gsnet2, bridge2, remoteLoader, nil)
 
@@ -915,6 +944,10 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, stored)
 
+		stored, err = bs.Has(ts.At(0).Messages.BLSRoot)
+		require.NoError(t, err)
+		assert.False(t, stored)
+
 		stored, err = bs.Has(ts.At(0).MessageReceipts)
 		require.NoError(t, err)
 		assert.False(t, stored)
@@ -935,6 +968,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
+			[]*types.UnsignedMessage{},
 			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
 		)
 	})
@@ -979,7 +1013,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		node, err := tryBlockMessageReceiptNode(ctx, builder, cid)
+		node, err := tryBlockstoreValue(ctx, builder, cid)
 		if err != nil {
 			return nil, err
 		}

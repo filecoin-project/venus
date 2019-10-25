@@ -38,7 +38,7 @@ func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisIn
 	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
-	messageStore := chain.NewMessageStore(cst)
+	messageStore := chain.NewMessageStore(bs)
 	backend, err := wallet.NewDSBackend(r.WalletDatastore())
 	require.NoError(t, err)
 	wallet := wallet.New(backend)

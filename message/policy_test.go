@@ -94,6 +94,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[0]},
+				[]*types.UnsignedMessage{},
 				types.EmptyReceipts(1),
 			)
 		})
@@ -114,6 +115,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b3 := blocks.BuildOneOn(b2, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[1], msgs[3]},
+				[]*types.UnsignedMessage{},
 				types.EmptyReceipts(2),
 			)
 		})
@@ -126,6 +128,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b4 := blocks.BuildOneOn(b3, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[2]},
+				[]*types.UnsignedMessage{},
 				types.EmptyReceipts(1),
 			)
 		})
@@ -191,6 +194,7 @@ func TestMessageQueuePolicy(t *testing.T) {
 		b1 := blocks.BuildOneOn(root, func(b *chain.BlockBuilder) {
 			b.AddMessages(
 				[]*types.SignedMessage{msgs[1]},
+				[]*types.UnsignedMessage{},
 				types.EmptyReceipts(1),
 			)
 		})

@@ -41,6 +41,7 @@ type BlockSyntaxValidator interface {
 // of messages and receipts syntax
 type MessageSyntaxValidator interface {
 	ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error
+	ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error
 	ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error
 }
 
@@ -142,6 +143,13 @@ func (dv *DefaultBlockValidator) BlockTime() time.Duration {
 // TODO: Create a real implementation
 // See: https://github.com/filecoin-project/go-filecoin/issues/3312
 func (dv *DefaultBlockValidator) ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error {
+	return nil
+}
+
+// ValidateUnsignedMessagesSyntax validates a set of messages are correctly formed.
+// TODO: Create a real implementation
+// See: https://github.com/filecoin-project/go-filecoin/issues/3312
+func (dv *DefaultBlockValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
 	return nil
 }
 

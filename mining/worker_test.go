@@ -56,7 +56,7 @@ func Test_Mine(t *testing.T) {
 	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -67,7 +67,7 @@ func Test_Mine(t *testing.T) {
 	minerAddr := addrs[3]      // addr4 in sharedSetup
 	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	// TODO #3311: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
 	t.Run("Trivial success case", func(t *testing.T) {
@@ -177,7 +177,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *message.Pool, cid.Cid) {
 }
 
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
-	state.Tree, *message.Pool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+	state.Tree, *message.Pool, []address.Address, blockstore.Blockstore) {
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()
@@ -203,7 +203,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 		addr4: minerAct,
 		addr5: minerOwner,
 	})
-	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
+	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
 }
 
 // TODO this test belongs in core, it calls ApplyMessages #3311
@@ -280,7 +280,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -288,7 +288,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		return nil, nil
 	}
 
-	msgStore := chain.NewMessageStore(cst)
+	msgStore := chain.NewMessageStore(bs)
 
 	// assert that first two addresses have different protocols
 	blsAddress := addrs[0]
@@ -397,7 +397,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	ctx := context.Background()
 
 	mockSigner, blockSignerAddr := setupSigner()
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -408,7 +408,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
@@ -455,7 +455,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
@@ -464,7 +464,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		return nil, nil
 	}
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
@@ -560,7 +560,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
@@ -571,7 +571,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	minerAddr := addrs[4]
 	minerOwnerAddr := addrs[3]
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
@@ -625,7 +625,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -633,7 +633,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		return nil, nil
 	}
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
@@ -667,8 +667,8 @@ func TestGenerateWithoutMessages(t *testing.T) {
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
-	assert.Equal(t, types.SignedMessageCollection{}.Cid(), blk.Messages.SecpRoot)
-	assert.Equal(t, types.ReceiptCollection{}.Cid(), blk.MessageReceipts)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
+	assert.Equal(t, types.EmptyMessagesCID, blk.MessageReceipts)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,
@@ -680,13 +680,13 @@ func TestGenerateError(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, cst, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
 
-	messages := chain.NewMessageStore(cst)
+	messages := chain.NewMessageStore(bs)
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 

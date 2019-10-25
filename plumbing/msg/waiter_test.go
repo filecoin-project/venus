@@ -173,7 +173,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 		height, _ = parents.Height()
 		height++
 	}
-	emptyMessagesCid, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{}, []*types.UnsignedMessage{})
+	emptyTxMeta, err := msgStore.StoreMessages(context.Background(), []*types.SignedMessage{}, []*types.UnsignedMessage{})
 	if err != nil {
 		panic(err)
 	}
@@ -190,20 +190,20 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 			child := &block.Block{
 				Height:          types.Uint64(height),
 				Parents:         parents.Key(),
-				Messages:        emptyMessagesCid,
+				Messages:        emptyTxMeta,
 				MessageReceipts: emptyReceiptsCid,
 			}
 			mustPut(store, child)
 			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
-			msgsCid, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
+			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {
 				panic(err)
 			}
 
 			child := &block.Block{
-				Messages:        msgsCid,
+				Messages:        txMeta,
 				Parents:         parents.Key(),
 				Height:          types.Uint64(height),
 				StateRoot:       stateRootCidGetter(), // Differentiate all blocks

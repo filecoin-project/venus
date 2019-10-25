@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/filecoin-project/go-filecoin/chain"
@@ -30,7 +31,8 @@ func TestMessageStoreMessagesHappy(t *testing.T) {
 		mm.NewSignedMessage(bob, 2),
 	}
 
-	ms := chain.NewMessageStore(hamt.NewCborStore())
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	ms := chain.NewMessageStore(bs)
 	msgsCid, err := ms.StoreMessages(ctx, msgs, []*types.UnsignedMessage{})
 	assert.NoError(t, err)
 
@@ -50,7 +52,8 @@ func TestMessageStoreReceiptsHappy(t *testing.T) {
 		mr.NewReceipt(),
 	}
 
-	ms := chain.NewMessageStore(hamt.NewCborStore())
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	ms := chain.NewMessageStore(bs)
 	receiptCids, err := ms.StoreReceipts(ctx, receipts)
 	assert.NoError(t, err)
 

@@ -6,11 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/block"
-	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipld/go-ipld-prime"
 	"github.com/ipld/go-ipld-prime/impl/free"
@@ -18,6 +20,7 @@ import (
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
+	"github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/clock"
 	"github.com/filecoin-project/go-filecoin/consensus"
@@ -31,6 +34,19 @@ const (
 	// -- if no more responses are received for a period greater than this,
 	// we will assume the request has hung-up and cancel it
 	progressTimeout = 10 * time.Second
+
+	// AMT selector recursion. An AMT has arity of 8 so this gives allows
+	// us to retrieve trees with 8^10 (1,073,741,824) elements.
+	amtRecurstionDepth = uint32(10)
+
+	// field index of AMT node in AMT head
+	amtHeadNodeFieldIndex = 2
+
+	// field index of links array AMT node
+	amtNodeLinksFieldIndex = 1
+
+	// field index of values array AMT node
+	amtNodeValuesFieldIndex = 2
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -236,9 +252,10 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+			messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
+			messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 		}))
-		efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+		efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 	}).Node()
 	return selector
 }
@@ -274,6 +291,14 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 	}
 	wg.Wait()
 	return anyError
+}
+
+func (gsf *GraphSyncFetcher) fetchThroughAMTSelector(recursionDepth uint32) selectorbuilder.SelectorSpec {
+	return gsf.ssb.ExploreIndex(amtHeadNodeFieldIndex,
+		gsf.ssb.ExploreRecursive(int(recursionDepth),
+			gsf.ssb.ExploreUnion(
+				gsf.ssb.ExploreIndex(amtNodeLinksFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.ExploreRecursiveEdge())),
+				gsf.ssb.ExploreIndex(amtNodeValuesFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.Matcher())))))
 }
 
 func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) error {
@@ -312,9 +337,10 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 			gsf.ssb.ExploreAll(
 				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 					efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-						messagesSelector.Insert("secpRoot", gsf.ssb.Matcher())
+						messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
+						messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 					}))
-					efsb.Insert("messageReceipts", gsf.ssb.Matcher())
+					efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 				}),
 			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
@@ -381,10 +407,20 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
 		func(blk *block.Block) cid.Cid { return blk.Messages.SecpRoot }, func(rawBlock blocks.Block) error {
-			messages, err := types.DecodeSignedMessages(rawBlock.RawData())
+			messages := []*types.SignedMessage{}
+
+			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
+				var message types.SignedMessage
+				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+					return errors.Wrapf(err, "could not decode secp message (cid %s)", msgBlock.Cid())
+				}
+				messages = append(messages, &message)
+				return nil
+			})
 			if err != nil {
-				return errors.Wrapf(err, "fetched data (cid %s) was not a message collection", rawBlock.Cid().String())
+				return err
 			}
+
 			if err := gsf.validator.ValidateMessagesSyntax(ctx, messages); err != nil {
 				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
 			}
@@ -395,11 +431,46 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.MessageReceipts }, func(rawBlock blocks.Block) error {
-			receipts, err := types.DecodeReceipts(rawBlock.RawData())
+		func(blk *block.Block) cid.Cid { return blk.Messages.BLSRoot }, func(rawBlock blocks.Block) error {
+			messages := []*types.UnsignedMessage{}
+
+			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
+				var message types.UnsignedMessage
+				if err := cbor.DecodeInto(msgBlock.RawData(), &message); err != nil {
+					return errors.Wrapf(err, "could not decode bls message (cid %s)", msgBlock.Cid())
+				}
+				messages = append(messages, &message)
+				return nil
+			})
 			if err != nil {
-				return errors.Wrapf(err, "fetched data (cid %s) was not a message receipt collection", rawBlock.Cid().String())
+				return err
 			}
+
+			if err := gsf.validator.ValidateUnsignedMessagesSyntax(ctx, messages); err != nil {
+				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
+			}
+			return nil
+		})
+	if err != nil {
+		return block.UndefTipSet, nil, err
+	}
+
+	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
+		func(blk *block.Block) cid.Cid { return blk.MessageReceipts }, func(rawBlock blocks.Block) error {
+			receipts := []*types.MessageReceipt{}
+
+			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
+				var receipt types.MessageReceipt
+				if err := cbor.DecodeInto(msgBlock.RawData(), &receipt); err != nil {
+					return errors.Wrapf(err, "could not decode message receipt (cid %s)", msgBlock.Cid())
+				}
+				receipts = append(receipts, &receipt)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+
 			if err := gsf.validator.ValidateReceiptsSyntax(ctx, receipts); err != nil {
 				return errors.Wrapf(err, "invalid receipts for for receipt collection (cid %s)", rawBlock.Cid())
 			}
@@ -418,6 +489,46 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 	}
 
 	return tip, nil, nil
+}
+
+// loadAndProcessAMTData processes data loaded from an AMT that is stored in the fetcher's datastore.
+func (gsf *GraphSyncFetcher) loadAndProcessAMTData(ctx context.Context, c cid.Cid, processFn func(b blocks.Block) error) error {
+	as := amt.WrapBlockstore(gsf.store)
+
+	a, err := amt.LoadAMT(as, c)
+	if err != nil {
+		if err == bstore.ErrNotFound {
+			return err
+		}
+		return errors.Wrapf(err, "fetched data (cid %s) could not be decoded as an AMT", c.String())
+	}
+
+	return a.ForEach(func(index uint64, deferred *typegen.Deferred) error {
+		var c cid.Cid
+		if err := cbor.DecodeInto(deferred.Raw, &c); err != nil {
+			return errors.Wrapf(err, "cid from amt could not be decoded as a Cid (index %d)", index)
+		}
+
+		ok, err := gsf.store.Has(c)
+		if err != nil {
+			return errors.Wrapf(err, "could not retrieve secp message from blockstore (cid %s)", c)
+		}
+
+		if !ok {
+			return bstore.ErrNotFound
+		}
+
+		rawMsg, err := gsf.store.Get(c)
+		if err != nil {
+			return errors.Wrapf(err, "could not retrieve secp message from blockstore (cid %s)", c)
+		}
+
+		if err := processFn(rawMsg); err != nil {
+			return errors.Wrapf(err, "could not decode secp message (cid %s)", c)
+		}
+
+		return nil
+	})
 }
 
 // Loads and validates the block headers for a tipset. Returns the tipset if complete,
@@ -483,6 +594,12 @@ func (gsf *GraphSyncFetcher) loadAndVerifySubComponents(ctx context.Context,
 	for _, rawBlock := range subComponents {
 		err := verifyComponent(rawBlock)
 		if err != nil {
+			// If this is a not found error, this simply means we failed to fetch some information.
+			// Mark this block as incomplete, but don't fail.
+			if err == bstore.ErrNotFound {
+				incomplete[rawBlock.Cid()] = struct{}{}
+				return nil
+			}
 			return err
 		}
 	}

@@ -11,15 +11,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	"github.com/ipfs/go-graphsync/ipldbridge"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
-	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	"github.com/ipld/go-ipld-prime/impl/free"
+	"github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
@@ -360,6 +361,10 @@ func (mv mockSyntaxValidator) ValidateMessagesSyntax(ctx context.Context, messag
 	return mv.validateMessagesError
 }
 
+func (mv mockSyntaxValidator) ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error {
+	return nil
+}
+
 func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error {
 	return mv.validateReceiptsError
 }
@@ -367,27 +372,21 @@ func (mv mockSyntaxValidator) ValidateReceiptsSyntax(ctx context.Context, receip
 // blockAndMessageProvider is any interface that can load blocks, messages, AND
 // message receipts (such as a chain builder)
 type blockAndMessageProvider interface {
-	chain.MessageProvider
-	chain.BlockProvider
+	GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Block, error)
+}
+
+func tryBlockstoreValue(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
+	b, err := f.GetBlockstoreValue(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return cbor.DecodeBlock(b)
 }
 
 func tryBlockNode(ctx context.Context, f chain.BlockProvider, c cid.Cid) (format.Node, error) {
 	if block, err := f.GetBlock(ctx, c); err == nil {
 		return block.ToNode(), nil
-	}
-	return nil, fmt.Errorf("cid could not be resolved through builder")
-}
-
-func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
-	if block, err := f.GetBlock(ctx, c); err == nil {
-		return block.ToNode(), nil
-	}
-	meta := types.TxMeta{SecpRoot: c, BLSRoot: types.EmptyMessagesCID}
-	if messages, _, err := f.LoadMessages(ctx, meta); err == nil {
-		return types.SignedMessageCollection(messages).ToNode(), nil
-	}
-	if receipts, err := f.LoadReceipts(ctx, c); err == nil {
-		return types.ReceiptCollection(receipts).ToNode(), nil
 	}
 	return nil, fmt.Errorf("cid could not be resolved through builder")
 }
@@ -400,7 +399,7 @@ type mockGraphsyncLoader func(cid.Cid) (format.Node, error)
 // or error otherwise
 func successLoader(ctx context.Context, provider blockAndMessageProvider) mockGraphsyncLoader {
 	return func(cidToLoad cid.Cid) (format.Node, error) {
-		return tryBlockMessageReceiptNode(ctx, provider, cidToLoad)
+		return tryBlockstoreValue(ctx, provider, cidToLoad)
 	}
 }
 
