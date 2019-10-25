@@ -77,7 +77,7 @@ func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *
 		tipStateCids: make(map[string]cid.Cid),
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	_, err := b.messages.StoreMessages(ctx, []*types.SignedMessage{}, []*types.UnsignedMessage{})
 	require.NoError(t, err)
 	_, err = b.messages.StoreReceipts(ctx, []*types.MessageReceipt{})
