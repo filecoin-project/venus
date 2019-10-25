@@ -16,7 +16,7 @@ import (
 func TestWhyCborEncodingOutput(t *testing.T) {
 	tf.UnitTest(t)
 
-	var original = &Point{X: 8, Y: 3}
+	var original = &customPoint{X: 8, Y: 3}
 	var encoder = WhyCborEncoder{b: bytes.NewBuffer([]byte{})}
 
 	err := encoder.EncodeObject(original)
@@ -36,15 +36,15 @@ func TestWhyCborDecodingOutput(t *testing.T) {
 	var decoder = &WhyCborDecoder{}
 	decoder.SetBytes(input)
 
-	var output = Point{}
+	var output = customPoint{}
 	err := decoder.DecodeObject(&output)
 	assert.NilError(t, err)
 
-	var expected = Point{X: 8, Y: 3}
+	var expected = customPoint{X: 8, Y: 3}
 	assert.Equal(t, output, expected)
 }
 
-func (t *Point) MarshalCBOR(w io.Writer) error {
+func (t *customPoint) MarshalCBOR(w io.Writer) error {
 	if _, err := w.Write([]byte{130}); err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (t *Point) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *Point) UnmarshalCBOR(br io.Reader) error {
+func (t *customPoint) UnmarshalCBOR(br io.Reader) error {
 
 	maj, extra, err := cbg.CborReadHeader(br)
 	if err != nil {

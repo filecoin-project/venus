@@ -4,11 +4,15 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
+	logging "github.com/ipfs/go-log"
 	"golang.org/x/xerrors"
 )
+
+var log = logging.Logger("encoding.gen")
 
 // TypeEncodingGenerator represents types that generate encoding/decoding impl for other types.
 type TypeEncodingGenerator interface {
@@ -38,6 +42,15 @@ type FieldInfo struct {
 
 // WriteToFile creates a file and outputs all the generated encoding/decoding methods for the given types.
 func WriteToFile(fname string, generator TypeEncodingGenerator, pkg string, types ...interface{}) error {
+	log.Infof("Writing to file %s", fname)
+
+	// create dir if needed
+	err := os.MkdirAll(filepath.Dir(fname), os.ModePerm)
+	if err != nil {
+		return xerrors.Errorf("failed to create dir: %w", err)
+	}
+
+	// create file
 	fi, err := os.Create(fname)
 	if err != nil {
 		return xerrors.Errorf("failed to open file: %w", err)
@@ -55,6 +68,7 @@ func WriteToFile(fname string, generator TypeEncodingGenerator, pkg string, type
 	tis := []TypeInfo{}
 
 	for _, t := range types {
+		log.Debugf("Parsing type %T", t)
 		ti, err := parseTypeInfo(pkg, t)
 		if err != nil {
 			return xerrors.Errorf("failed to parse type info: %w", err)
@@ -97,6 +111,8 @@ func parseTypeInfo(pkg string, i interface{}) (TypeInfo, error) {
 	out := TypeInfo{
 		Name: t.Name(),
 	}
+
+	// TODO: parse other types that are not structs
 
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
