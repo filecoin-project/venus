@@ -11,22 +11,30 @@ import (
 
 var log = logging.Logger("sync.dispatch")
 
-// This is the size of the channel buffer used for receiving targets from
-// producers.
-const incomingBufferSize = 5
+// DefaultInQueueSize is the size of the channel used for receiving targets from producers.
+const DefaultInQueueSize = 5
+
+// DefaultWorkQueueSize is the size of the work queue
+const DefaultWorkQueueSize = 20
 
 // syncer is the interface of the logic syncing incoming chains
 type syncer interface {
 	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
 }
 
-// NewDispatcher creates a new syncing dispatcher.
+// NewDispatcher creates a new syncing dispatcher with default queue sizes.
 func NewDispatcher(catchupSyncer syncer) *Dispatcher {
+	return NewDispatcherWithSizes(catchupSyncer, DefaultWorkQueueSize, DefaultInQueueSize)
+}
+
+// NewDispatcherWithSizes creates a new syncing dispatcher.
+func NewDispatcherWithSizes(catchupSyncer syncer, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
 		workQueue:     NewTargetQueue(),
+		workQueueSize: workQueueSize,
 		catchupSyncer: catchupSyncer,
-		incoming:      make(chan Target, incomingBufferSize),
-		control:       make(chan interface{}),
+		incoming:      make(chan Target, inQueueSize),
+		control:       make(chan interface{}, 1),
 		registeredCb:  func(t Target) {},
 	}
 }
@@ -51,7 +59,8 @@ type cbMessage struct {
 type Dispatcher struct {
 	// workQueue is a priority queue of target chain heads that should be
 	// synced
-	workQueue *TargetQueue
+	workQueue     *TargetQueue
+	workQueueSize int
 	// incoming is the queue of incoming sync targets to the dispatcher.
 	incoming chan Target
 	// catchupSyncer is used for dispatching sync targets for chain heads
@@ -102,19 +111,23 @@ func (d *Dispatcher) Start(syncingCtx context.Context) {
 			}
 
 			// Handle incoming targets
-			var produced []Target
+			var ws []Target
 			if last != nil {
-				produced = append(produced, *last)
+				ws = append(ws, *last)
 				last = nil
 			}
 			select {
 			case first := <-d.incoming:
-				produced = append(produced, first)
-				produced = append(produced, d.drainIncoming()...)
+				ws = append(ws, first)
+				ws = append(ws, d.drainIncoming()...)
 			default:
 			}
-			// Sort new targets by putting on work queue.
-			for _, syncTarget := range produced {
+			for _, syncTarget := range ws {
+				// Drop targets we don't have room for
+				if d.workQueue.Len() >= d.workQueueSize {
+					break
+				}
+				// Sort new targets by putting on work queue.
 				d.workQueue.Push(syncTarget)
 			}
 
@@ -211,7 +224,6 @@ func (tq *TargetQueue) Push(t Target) {
 	}
 	heap.Push(&tq.q, t)
 	tq.targetSet[t.ChainInfo.Head.String()] = struct{}{}
-
 	return
 }
 

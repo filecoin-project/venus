@@ -63,6 +63,40 @@ func TestDispatchStartHappy(t *testing.T) {
 	}
 }
 
+func TestDispatcherDropsWhenFull(t *testing.T) {
+	tf.UnitTest(t)
+	s := &mockSyncer{
+		headsCalled: make([]block.TipSetKey, 0),
+	}
+	testWorkSize := 20
+	testBufferSize := 30
+	testDispatch := syncer.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
+
+	finished := moresync.NewLatch(1)
+	testDispatch.RegisterCallback(func(target syncer.Target) {
+		// Fail if the work that should be dropped gets processed
+		assert.False(t, target.Height == 100)
+		assert.False(t, target.Height == 101)
+		assert.False(t, target.Height == 102)
+		if target.Height == 0 {
+			// 0 has lowest priority of non-dropped
+			finished.Done()
+		}
+	})
+	for j := 0; j < testWorkSize; j++ {
+		ci := chainInfoFromHeight(t, j)
+		assert.NoError(t, testDispatch.SendHello(ci))
+	}
+	// Should be dropped
+	assert.NoError(t, testDispatch.SendHello(chainInfoFromHeight(t, 100)))
+	assert.NoError(t, testDispatch.SendHello(chainInfoFromHeight(t, 101)))
+	assert.NoError(t, testDispatch.SendHello(chainInfoFromHeight(t, 102)))
+
+	testDispatch.Start(context.Background())
+
+	finished.Wait()
+}
+
 func TestQueueHappy(t *testing.T) {
 	tf.UnitTest(t)
 	testQ := syncer.NewTargetQueue()
