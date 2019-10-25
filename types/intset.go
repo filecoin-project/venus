@@ -2,14 +2,15 @@ package types
 
 import (
 	"fmt"
+
 	"github.com/Workiva/go-datastructures/bitarray"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/rleplus"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {
-	cbor.RegisterCborType(intSetAtlasEntry)
+	encoding.RegisterIpldCborType(intSetAtlasEntry)
 }
 
 var intSetAtlasEntry = atlas.BuildEntry(IntSet{}).Transform().

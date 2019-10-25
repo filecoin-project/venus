@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
@@ -13,8 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 // Ask is a result of querying for an ask, it may contain an error
@@ -81,7 +80,7 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 	}
 
 	var asksIds []uint64
-	if err := cbor.DecodeInto(ret[0], &asksIds); err != nil {
+	if err := encoding.Decode(ret[0], &asksIds); err != nil {
 		return err
 	}
 
@@ -136,7 +135,7 @@ func getAskByID(ctx context.Context, plumbing claPlubming, addr address.Address,
 	}
 
 	var ask miner.Ask
-	if err := cbor.DecodeInto(ret[0], &ask); err != nil {
+	if err := encoding.Decode(ret[0], &ask); err != nil {
 		return Ask{}, err
 	}
 

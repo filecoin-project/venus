@@ -5,11 +5,11 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	blocks "github.com/ipfs/go-block-format"
 	car "github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/types"
@@ -35,7 +35,7 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 	}
 
 	// Write the car header
-	chb, err := cbor.DumpObject(car.CarHeader{
+	chb, err := encoding.Encode(car.CarHeader{
 		Roots:   headTS.Key().ToSlice(),
 		Version: 1,
 	})

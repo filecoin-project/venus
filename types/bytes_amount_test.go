@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
@@ -164,10 +163,10 @@ func TestBytesAmountCborMarshaling(t *testing.T) {
 			preEncode := NewBytesAmount(rng.Uint64())
 			postDecode := BytesAmount{}
 
-			out, err := cbor.DumpObject(preEncode)
+			out, err := encoding.Encode(preEncode)
 			assert.NoError(t, err)
 
-			err = cbor.DecodeInto(out, &postDecode)
+			err = encoding.Decode(out, &postDecode)
 			assert.NoError(t, err)
 
 			assert.True(t, preEncode.Equal(&postDecode), "pre: %s post: %s", preEncode.String(), postDecode.String())
@@ -177,10 +176,10 @@ func TestBytesAmountCborMarshaling(t *testing.T) {
 	t.Run("cannot CBOR encode nil as *BytesAmount", func(t *testing.T) {
 		var np *BytesAmount
 
-		out, err := cbor.DumpObject(np)
+		out, err := encoding.Encode(np)
 		assert.NoError(t, err)
 
-		out2, err := cbor.DumpObject(ZeroBytes)
+		out2, err := encoding.Encode(ZeroBytes)
 		assert.NoError(t, err)
 
 		assert.NotEqual(t, out, out2)

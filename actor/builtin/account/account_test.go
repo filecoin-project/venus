@@ -3,11 +3,10 @@ package account
 import (
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -17,11 +16,11 @@ func TestAccountActorCborMarshaling(t *testing.T) {
 
 	t.Run("CBOR decode(encode(Actor)) == identity(Actor)", func(t *testing.T) {
 		preEncode, _ := NewActor(types.NewAttoFILFromFIL(100))
-		out, err := cbor.DumpObject(preEncode)
+		out, err := encoding.Encode(preEncode)
 		require.NoError(t, err)
 
 		var postDecode actor.Actor
-		err = cbor.DecodeInto(out, &postDecode)
+		err = encoding.Decode(out, &postDecode)
 		require.NoError(t, err)
 
 		c1, _ := preEncode.Cid()

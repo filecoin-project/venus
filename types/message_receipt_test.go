@@ -3,8 +3,7 @@ package types
 import (
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,11 +23,11 @@ func TestMessageReceiptMarshal(t *testing.T) {
 	}
 
 	for _, expected := range cases {
-		bytes, err := cbor.DumpObject(expected)
+		bytes, err := encoding.Encode(expected)
 		assert.NoError(t, err)
 
 		var actual MessageReceipt
-		err = cbor.DecodeInto(bytes, &actual)
+		err = encoding.Decode(bytes, &actual)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expected.ExitCode, actual.ExitCode)

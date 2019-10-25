@@ -4,16 +4,12 @@ import (
 	"bytes"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/crypto"
+	"github.com/filecoin-project/go-filecoin/encoding"
 )
-
-func init() {
-	cbor.RegisterCborType(KeyInfo{})
-}
 
 // KeyInfo is a key and its type used for signing.
 type KeyInfo struct {
@@ -25,12 +21,12 @@ type KeyInfo struct {
 
 // Unmarshal decodes raw cbor bytes into KeyInfo.
 func (ki *KeyInfo) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, ki)
+	return encoding.Decode(b, ki)
 }
 
 // Marshal KeyInfo into bytes.
 func (ki *KeyInfo) Marshal() ([]byte, error) {
-	return cbor.DumpObject(ki)
+	return encoding.Encode(ki)
 }
 
 // Key returns the private key of KeyInfo

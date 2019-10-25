@@ -1,12 +1,13 @@
 package strgdls_test
 
 import (
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/plumbing/strgdls"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
@@ -83,7 +84,7 @@ func TestDealStoreRoundTrip(t *testing.T) {
 
 	dealResult := <-(*dealIterator).Next()
 	var retrievedDeal storagedeal.Deal
-	err = cbor.DecodeInto(dealResult.Value, &retrievedDeal)
+	err = encoding.Decode(dealResult.Value, &retrievedDeal)
 	require.NoError(t, err)
 
 	assert.Equal(t, minerAddr, retrievedDeal.Miner)

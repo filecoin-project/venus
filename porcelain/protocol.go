@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-sectorbuilder"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -96,7 +96,7 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
 	}
 
-	if err := cbor.DecodeInto(values[0], &proofsMode); err != nil {
+	if err := encoding.Decode(values[0], &proofsMode); err != nil {
 		return 0, errors.Wrap(err, "could not convert query message result to ProofsMode")
 	}
 

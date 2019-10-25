@@ -9,8 +9,7 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +19,7 @@ import (
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/state"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -938,7 +938,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(t, uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
-		err = cbor.DecodeInto(returnValue[0], &channels)
+		err = encoding.Decode(returnValue[0], &channels)
 		require.NoError(t, err)
 
 		assert.Equal(t, 2, len(channels))
@@ -976,7 +976,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		assert.Equal(t, uint8(0), exitCode)
 
 		channels := make(map[string]*PaymentChannel)
-		err = cbor.DecodeInto(returnValue[0], &channels)
+		err = encoding.Decode(returnValue[0], &channels)
 		require.NoError(t, err)
 
 		assert.Equal(t, 0, len(channels))
@@ -1001,7 +1001,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		voucher := types.PaymentVoucher{}
-		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
+		err = encoding.Decode(res.Receipt.Return[0], &voucher)
 		require.NoError(t, err)
 
 		assert.Equal(t, *sys.channelID, voucher.Channel)
@@ -1056,7 +1056,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		voucher := types.PaymentVoucher{}
-		err = cbor.DecodeInto(res.Receipt.Return[0], &voucher)
+		err = encoding.Decode(res.Receipt.Return[0], &voucher)
 		require.NoError(t, err)
 
 		assert.Equal(t, *sys.channelID, voucher.Channel)
@@ -1239,7 +1239,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	assert.Equal(sys.t, uint8(0), exitCode)
 
 	channels := make(map[string]*PaymentChannel)
-	err = cbor.DecodeInto(returnValue[0], &channels)
+	err = encoding.Decode(returnValue[0], &channels)
 	require.NoError(sys.t, err)
 
 	channel := channels[sys.channelID.KeyString()]

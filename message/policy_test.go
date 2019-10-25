@@ -1,7 +1,6 @@
 package message_test
 
 import (
-	"bytes"
 	"context"
 	"testing"
 
@@ -199,68 +198,6 @@ func TestMessageQueuePolicy(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nonce 1, expected 2")
 	})
-
-	t.Run("removes sequential messages in peer blocks", func(t *testing.T) {
-		blocks := chain.NewBuilder(t, alice)
-		messages := blocks
-		q := message.NewQueue()
-		policy := message.NewMessageQueuePolicy(messages, 10)
-
-		msgs := []*types.SignedMessage{
-			requireEnqueue(q, mm.NewSignedMessage(alice, 1), 100),
-			requireEnqueue(q, mm.NewSignedMessage(alice, 2), 101),
-		}
-
-		root := blocks.BuildOnBlock(nil, func(b *chain.BlockBuilder) {
-			b.IncHeight(100)
-		})
-
-		// Construct two blocks at the same height, each with one message. The canonical
-		// tipset block ordering is given by block ticket, which matches this order.
-		// These blocks are constructed so that their CIDs would order them
-		// in the *opposite* order (blocks used to be ordered by CID).
-		b1 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
-			b.AddMessages(
-				[]*types.SignedMessage{msgs[0]},
-				types.EmptyReceipts(1),
-			)
-			b.SetTicket([]byte{1})
-			b.SetTimestamp(3)
-		})
-		b2 := blocks.BuildOnBlock(root, func(b *chain.BlockBuilder) {
-			b.AddMessages(
-				[]*types.SignedMessage{msgs[1]},
-				types.EmptyReceipts(1),
-			)
-			b.SetTicket([]byte{2})
-			b.SetTimestamp(9) // Tweak if necessary to force CID ordering opposite ticket ordering.
-		})
-
-		cid1 := b1.Cid().Bytes()
-		cid2 := b2.Cid().Bytes()
-		assert.True(t, bytes.Compare(cid1, cid2) > 0)
-
-		// With blocks ordered [b1, b2], everything is ok.
-		err := policy.HandleNewHead(ctx, q, nil, []block.TipSet{requireTipset(t, b1, b2)})
-		require.NoError(t, err)
-		assert.Empty(t, q.List(alice))
-
-		// With blocks ordered [b2, b1], this fails. This demonstrates that the policy is
-		// processing the blocks in canonical (ticket) order.
-		requireEnqueue(q, msgs[0], 200)
-		requireEnqueue(q, msgs[1], 201)
-		b1.Tickets = []block.Ticket{{VRFProof: []byte{1}}}
-		b2.Tickets = []block.Ticket{{VRFProof: []byte{0}}}
-		err = policy.HandleNewHead(ctx, q, []block.TipSet{requireTipset(t, root)}, []block.TipSet{requireTipset(t, b1, b2)})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "nonce 1, expected 2")
-	})
-}
-
-func requireTipset(t *testing.T, blocks ...*block.Block) block.TipSet {
-	set, err := block.NewTipSet(blocks...)
-	require.NoError(t, err)
-	return set
 }
 
 func qm(msg *types.SignedMessage, stamp uint64) *message.Queued {

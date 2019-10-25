@@ -4,23 +4,27 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {
-	cbor.RegisterCborType(uint64AtlasEntry)
+	encoding.RegisterIpldCborType(uint64AtlasEntry)
 }
 
 var uint64AtlasEntry = atlas.BuildEntry(Uint64(0)).Transform().
 	TransformMarshal(atlas.MakeMarshalTransformFunc(
 		func(u Uint64) ([]byte, error) {
-			return leb128.FromUInt64(uint64(u)), nil
+			return encoding.Encode(u)
 		})).
 	TransformUnmarshal(atlas.MakeUnmarshalTransformFunc(
 		func(x []byte) (Uint64, error) {
-			return Uint64(leb128.ToUInt64(x)), nil
+			var aux Uint64
+			if err := encoding.Decode(x, &aux); err != nil {
+				return aux, err
+			}
+			return aux, nil
 		})).
 	Complete()
 
@@ -40,5 +44,20 @@ func (u *Uint64) UnmarshalJSON(b []byte) error {
 	}
 
 	*u = Uint64(val)
+	return nil
+}
+
+// Encode encodes the object on an encoder.
+func (u Uint64) Encode(encoder encoding.Encoder) error {
+	return encoder.EncodeArray(leb128.FromUInt64(uint64(u)))
+}
+
+// Decode decodes the object from an decoder.
+func (u *Uint64) Decode(decoder encoding.Decoder) error {
+	b := make([]byte, 8)
+	if err := decoder.DecodeArray(&b); err != nil {
+		return err
+	}
+	*u = Uint64(leb128.ToUInt64(b))
 	return nil
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"github.com/polydawn/refmt/obj/atlas"
 )
@@ -14,7 +14,7 @@ import (
 func init() {
 	// A TipSetKey serializes as a sorted array of CIDs.
 	// Deserialization will sort the CIDs, if they're not already.
-	cbor.RegisterCborType(atlas.BuildEntry(TipSetKey{}).Transform().
+	encoding.RegisterIpldCborType(atlas.BuildEntry(TipSetKey{}).Transform().
 		TransformMarshal(atlas.MakeMarshalTransformFunc(
 			func(s TipSetKey) ([]cid.Cid, error) {
 				return s.cids, nil

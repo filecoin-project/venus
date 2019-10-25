@@ -10,6 +10,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	vmerrors "github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -22,12 +23,12 @@ const (
 
 // MarshalStorage encodes the passed in data into bytes.
 func MarshalStorage(in interface{}) ([]byte, error) {
-	return cbor.DumpObject(in)
+	return encoding.Encode(in)
 }
 
 // UnmarshalStorage decodes the passed in bytes into the given object.
 func UnmarshalStorage(raw []byte, to interface{}) error {
-	return cbor.DecodeInto(raw, to)
+	return encoding.Decode(raw, to)
 }
 
 // WithState is a helper method that makes dealing with storage serialization
@@ -220,7 +221,7 @@ func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callba
 		var decodedValue interface{}
 		if vt != nil {
 			to := reflect.New(vt).Interface()
-			if err := cbor.DecodeInto(valueAsDeferred.Raw, to); err != nil {
+			if err := encoding.Decode(valueAsDeferred.Raw, to); err != nil {
 				return err
 			}
 			decodedValue = reflect.ValueOf(to).Elem().Interface()

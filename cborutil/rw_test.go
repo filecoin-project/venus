@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	cbor.RegisterCborType(fooTestMessage{})
+	encoding.RegisterIpldCborType(fooTestMessage{})
 }
 
 type fooTestMessage struct {

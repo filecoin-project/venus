@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-leb128"
 )
 
 // ErrInvalidType is returned when processing a zero valued 'Type' (aka Invalid)
@@ -247,7 +247,7 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{[]uint64{}, av.Val}
 		}
 
-		return cbor.DumpObject(arr)
+		return encoding.Encode(arr)
 	case PeerID:
 		pid, ok := av.Val.(peer.ID)
 		if !ok {
@@ -268,7 +268,7 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{map[string]types.Commitments{}, av.Val}
 		}
 
-		return cbor.DumpObject(m)
+		return encoding.Encode(m)
 	case Boolean:
 		v, ok := av.Val.(bool)
 		if !ok {
@@ -306,32 +306,32 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{&types.Predicate{}, av.Val}
 		}
 
-		return cbor.DumpObject(p)
+		return encoding.Encode(p)
 	case Parameters:
 		p, ok := av.Val.([]interface{})
 		if !ok {
 			return nil, &typeError{[]interface{}{}, av.Val}
 		}
 
-		return cbor.DumpObject(p)
+		return encoding.Encode(p)
 	case IntSet:
 		is, ok := av.Val.(types.IntSet)
 		if !ok {
 			return nil, &typeError{types.IntSet{}, av.Val}
 		}
-		return cbor.DumpObject(is)
+		return encoding.Encode(is)
 	case MinerPoStStates:
 		addrs, ok := av.Val.(*map[string]uint64)
 		if !ok {
 			return nil, &typeError{&map[string]uint64{}, av.Val}
 		}
-		return cbor.DumpObject(addrs)
+		return encoding.Encode(addrs)
 	case FaultSet:
 		fs, ok := av.Val.(types.FaultSet)
 		if !ok {
 			return nil, &typeError{types.FaultSet{}, av.Val}
 		}
-		return cbor.DumpObject(fs)
+		return encoding.Encode(fs)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -460,7 +460,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case UintArray:
 		var arr []uint64
-		if err := cbor.DecodeInto(data, &arr); err != nil {
+		if err := encoding.Decode(data, &arr); err != nil {
 			return nil, err
 		}
 		return &Value{
@@ -483,7 +483,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case CommitmentsMap:
 		var m map[string]types.Commitments
-		if err := cbor.DecodeInto(data, &m); err != nil {
+		if err := encoding.Decode(data, &m); err != nil {
 			return nil, err
 		}
 		return &Value{
@@ -516,7 +516,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case Predicate:
 		var predicate *types.Predicate
-		if err := cbor.DecodeInto(data, &predicate); err != nil {
+		if err := encoding.Decode(data, &predicate); err != nil {
 			return nil, err
 		}
 		return &Value{
@@ -525,7 +525,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case Parameters:
 		var parameters []interface{}
-		if err := cbor.DecodeInto(data, &parameters); err != nil {
+		if err := encoding.Decode(data, &parameters); err != nil {
 			return nil, err
 		}
 		return &Value{
@@ -534,7 +534,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case IntSet:
 		var is types.IntSet
-		if err := cbor.DecodeInto(data, &is); err != nil {
+		if err := encoding.Decode(data, &is); err != nil {
 			return nil, err
 		}
 		return &Value{
@@ -543,7 +543,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case MinerPoStStates:
 		var lm *map[string]uint64
-		if err := cbor.DecodeInto(data, &lm); err != nil {
+		if err := encoding.Decode(data, &lm); err != nil {
 			return nil, err
 
 		}
@@ -553,7 +553,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		}, nil
 	case FaultSet:
 		fs := types.NewFaultSet([]uint64{})
-		if err := cbor.DecodeInto(data, &fs); err != nil {
+		if err := encoding.Decode(data, &fs); err != nil {
 			return nil, err
 		}
 		return &Value{

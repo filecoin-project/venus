@@ -2,18 +2,14 @@ package actor
 
 import (
 	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
-
-func init() {
-	cbor.RegisterCborType(FakeActorStorage{})
-}
 
 // FakeActorStorage is storage for our fake actor. It contains a single
 // bit that is set when the actor's methods are invoked.
@@ -83,7 +79,7 @@ func (ma *FakeActor) InitializeState(storage exec.Storage, initializerData inter
 		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
 	}
 
-	stateBytes, err := cbor.DumpObject(st)
+	stateBytes, err := encoding.Encode(st)
 	if err != nil {
 		return err
 	}

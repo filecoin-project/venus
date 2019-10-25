@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -38,10 +39,10 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 	t.Run("Get retrieves from storage", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
 
-		data1, err := cbor.DumpObject("some data an actor might store")
+		data1, err := encoding.Encode("some data an actor might store")
 		require.NoError(t, err)
 
-		data2, err := cbor.DumpObject("some more data")
+		data2, err := encoding.Encode("some more data")
 		require.NoError(t, err)
 
 		id1, err := as.Put(data1)
@@ -63,7 +64,7 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 	t.Run("Get is isolated by address", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
 
-		data1, err := cbor.DumpObject("some data an actor might store")
+		data1, err := encoding.Encode("some data an actor might store")
 		require.NoError(t, err)
 
 		id, err := as.Put(data1)
@@ -81,7 +82,7 @@ func TestGetAndPutWithEmptyStorage(t *testing.T) {
 	t.Run("Storage is consistent when using the same address", func(t *testing.T) {
 		as := vms.NewStorage(address.TestAddress, testActor)
 
-		data1, err := cbor.DumpObject("some data an actor might store")
+		data1, err := encoding.Encode("some data an actor might store")
 		require.NoError(t, err)
 
 		id, err := as.Put(data1)
@@ -106,13 +107,13 @@ func TestGetAndPutWithDataInStorage(t *testing.T) {
 	vms := NewStorageMap(bs)
 
 	tempActorStage := vms.NewStorage(address.TestAddress, testActor)
-	data1, err := cbor.DumpObject("some data an actor might store")
+	data1, err := encoding.Encode("some data an actor might store")
 	require.NoError(t, err)
 
 	id1, err := tempActorStage.Put(data1)
 	require.NoError(t, err)
 
-	data2, err := cbor.DumpObject("some more data")
+	data2, err := encoding.Encode("some more data")
 	require.NoError(t, err)
 
 	id2, err := tempActorStage.Put(data2)

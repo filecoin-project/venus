@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
@@ -487,7 +487,7 @@ func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optF
 			CommR:     [32]byte{1},
 			CommRStar: [32]byte{1},
 		}
-		thing, _ := cbor.DumpObject(commitments)
+		thing, _ := encoding.Encode(commitments)
 		return [][]byte{thing}, nil
 	}
 	return nil, fmt.Errorf("unsupported method: %s", method)
@@ -544,7 +544,7 @@ func (mgop *minerGetAskPlumbing) ChainHeadKey() block.TipSetKey {
 }
 
 func (mgop *minerGetAskPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	out, err := cbor.DumpObject(miner.Ask{
+	out, err := encoding.Encode(miner.Ask{
 		Price:  types.NewAttoFILFromFIL(32),
 		Expiry: types.NewBlockHeight(41),
 		ID:     big.NewInt(4),

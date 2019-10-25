@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/ipfs/go-ipfs-files"
+	files "github.com/ipfs/go-ipfs-files"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/porcelain"
@@ -298,7 +298,7 @@ var paymentsCmd = &cmds.Command{
 				return err
 			}
 			for _, voucher := range vouchers {
-				encodedVoucher, err := voucher.Encode()
+				encodedVoucher, err := voucher.EncodeBase58()
 				if err != nil {
 					return err
 				}

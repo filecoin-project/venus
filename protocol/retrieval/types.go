@@ -2,14 +2,7 @@ package retrieval
 
 import (
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
-
-func init() {
-	cbor.RegisterCborType(RetrievePieceRequest{})
-	cbor.RegisterCborType(RetrievePieceResponse{})
-	cbor.RegisterCborType(RetrievePieceChunk{})
-}
 
 // RetrievePieceStatus communicates a successful (or failed) piece retrieval
 type RetrievePieceStatus int

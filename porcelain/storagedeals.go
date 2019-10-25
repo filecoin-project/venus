@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	errors "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -71,7 +71,7 @@ func DealsLs(ctx context.Context, plumbing dealLsPlumbing) (<-chan *StorageDealL
 				return
 			default:
 				var storageDeal storagedeal.Deal
-				if err := cbor.DecodeInto(entry.Value, &storageDeal); err != nil {
+				if err := encoding.Decode(entry.Value, &storageDeal); err != nil {
 					out <- &StorageDealLsResult{
 						Err: errors.Wrap(err, "failed to unmarshal deals from datastore"),
 					}

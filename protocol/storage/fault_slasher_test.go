@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +26,7 @@ func TestFaultSlasher_OnNewHeaviestTipSet(t *testing.T) {
 	ctx := context.Background()
 	signer, _ := types.NewMockSignersAndKeyInfo(3)
 
-	data, err := cbor.DumpObject(&map[string]uint64{})
+	data, err := encoding.Encode(&map[string]uint64{})
 	require.NoError(t, err)
 	snapshot := makeSnapshot([][]byte{data})
 
@@ -65,7 +65,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 	t.Run("ok with no miners", func(t *testing.T) {
 		height := types.NewBlockHeight(1)
-		data, err := cbor.DumpObject(&map[string]uint64{})
+		data, err := encoding.Encode(&map[string]uint64{})
 		require.NoError(t, err)
 		snapshot := makeSnapshot([][]byte{data})
 
@@ -95,7 +95,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		badMiner2 := getf().String()
 		badMiner3 := getf().String()
 
-		data, err := cbor.DumpObject(&map[string]uint64{
+		data, err := encoding.Encode(&map[string]uint64{
 			badMiner1: miner.PoStStateUnrecoverable,
 			badMiner2: miner.PoStStateUnrecoverable,
 			badMiner3: miner.PoStStateUnrecoverable,
@@ -123,7 +123,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		badMiner1 := getf().String()
 
-		data1, err := cbor.DumpObject(&map[string]uint64{
+		data1, err := encoding.Encode(&map[string]uint64{
 			badMiner1: miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		// A second miner becomes slashable.
 		badMiner2 := getf().String()
-		data2, err := cbor.DumpObject(&map[string]uint64{
+		data2, err := encoding.Encode(&map[string]uint64{
 			badMiner1: miner.PoStStateUnrecoverable,
 			badMiner2: miner.PoStStateUnrecoverable,
 		})
@@ -164,7 +164,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		ownMiner := getf()
 
-		data1, err := cbor.DumpObject(&map[string]uint64{
+		data1, err := encoding.Encode(&map[string]uint64{
 			ownMiner.String(): miner.PoStStateUnrecoverable,
 		})
 		require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		badMiner1 := getf().String()
 		badMiner2 := getf().String()
 
-		data, err := cbor.DumpObject(&map[string]uint64{
+		data, err := encoding.Encode(&map[string]uint64{
 			badMiner1: miner.PoStStateUnrecoverable,
 			badMiner2: miner.PoStStateUnrecoverable,
 		})
@@ -243,7 +243,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 
 		ob := outbox{}
 
-		badBytes, err := cbor.DumpObject("junk")
+		badBytes, err := encoding.Encode("junk")
 		require.NoError(t, err)
 
 		snapshot := func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
@@ -269,7 +269,7 @@ func TestFaultSlasher_Slash(t *testing.T) {
 		getf := address.NewForTestGetter()
 		ownMiner := getf()
 
-		data, err := cbor.DumpObject(&map[string]uint64{})
+		data, err := encoding.Encode(&map[string]uint64{})
 		require.NoError(t, err)
 		snapshot := makeSnapshot([][]byte{data})
 		ob := outbox{}

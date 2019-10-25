@@ -3,9 +3,9 @@ package strgdls
 import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
@@ -35,7 +35,7 @@ func (store *Store) Iterator() (*query.Results, error) {
 // Put puts the deal into the datastore
 func (store *Store) Put(storageDeal *storagedeal.Deal) error {
 	proposalCid := storageDeal.Response.ProposalCid
-	datum, err := cbor.DumpObject(storageDeal)
+	datum, err := encoding.Encode(storageDeal)
 	if err != nil {
 		return errors.Wrap(err, "could not marshal storageDeal")
 	}

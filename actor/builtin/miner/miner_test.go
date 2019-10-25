@@ -7,12 +7,11 @@ import (
 	"math/big"
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
@@ -22,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/state"
@@ -1689,7 +1689,7 @@ func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *Sta
 	}
 
 	minerState := &State{}
-	err = cbor.DecodeInto(data, minerState)
+	err = encoding.Decode(data, minerState)
 	if err != nil {
 		panic(err)
 	}

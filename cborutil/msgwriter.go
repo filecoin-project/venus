@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 )
 
 // MsgWriter is a length delimited cbor message writer
@@ -24,7 +24,7 @@ func NewMsgWriter(w io.Writer) *MsgWriter {
 func (mw *MsgWriter) WriteMsg(i interface{}) error {
 	// TODO: rewrite to be more memory efficient once we hook up the streaming
 	// cbor interfaces
-	data, err := cbor.DumpObject(i)
+	data, err := encoding.Encode(i)
 	if err != nil {
 		return err
 	}

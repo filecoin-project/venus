@@ -3,17 +3,13 @@ package types
 import (
 	"errors"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/multiformats/go-multibase"
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/address"
-)
+	"github.com/multiformats/go-multibase"
 
-func init() {
-	cbor.RegisterCborType(Predicate{})
-	cbor.RegisterCborType(PaymentVoucher{})
-}
+	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
+)
 
 // Predicate is an optional message that is sent to another actor and must return true for the voucher to be valid.
 type Predicate struct {
@@ -60,7 +56,7 @@ func DecodeVoucher(voucherRaw string) (*PaymentVoucher, error) {
 	}
 
 	var voucher PaymentVoucher
-	err = cbor.DecodeInto(cborVoucher, &voucher)
+	err = encoding.Decode(cborVoucher, &voucher)
 	if err != nil {
 		return nil, errors.New("voucher string could not be decoded into voucher")
 	}
@@ -68,9 +64,9 @@ func DecodeVoucher(voucherRaw string) (*PaymentVoucher, error) {
 	return &voucher, nil
 }
 
-// Encode creates a base58, Cbor-encoded string representation
-func (voucher *PaymentVoucher) Encode() (string, error) {
-	cborVoucher, err := cbor.DumpObject(voucher)
+// EncodeBase58 creates a base58, Cbor-encoded string representation
+func (voucher *PaymentVoucher) EncodeBase58() (string, error) {
+	cborVoucher, err := encoding.Encode(voucher)
 	if err != nil {
 		return "", err
 	}

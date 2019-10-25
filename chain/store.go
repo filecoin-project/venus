@@ -7,9 +7,9 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -193,7 +193,7 @@ func (store *Store) loadHead() (block.TipSetKey, error) {
 	}
 
 	var cids block.TipSetKey
-	err = cbor.DecodeInto(bb, &cids)
+	err = encoding.Decode(bb, &cids)
 	if err != nil {
 		return emptyCidSet, errors.Wrap(err, "failed to cast headCids")
 	}
@@ -213,7 +213,7 @@ func (store *Store) loadStateRoot(ts block.TipSet) (cid.Cid, error) {
 	}
 
 	var stateRoot cid.Cid
-	err = cbor.DecodeInto(bb, &stateRoot)
+	err = encoding.Decode(bb, &stateRoot)
 	if err != nil {
 		return cid.Undef, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
 	}
@@ -332,7 +332,7 @@ func (store *Store) setHeadPersistent(ctx context.Context, ts block.TipSet) erro
 // writeHead writes the given cid set as head to disk.
 func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
 	logStore.Debugf("WriteHead %s", cids.String())
-	val, err := cbor.DumpObject(cids)
+	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
 	}
@@ -347,7 +347,7 @@ func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
 		return errors.New("attempting to write state root cid.Undef")
 	}
 
-	val, err := cbor.DumpObject(tsas.TipSetStateRoot)
+	val, err := encoding.Encode(tsas.TipSetStateRoot)
 	if err != nil {
 		return err
 	}

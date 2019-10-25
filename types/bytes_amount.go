@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"github.com/polydawn/refmt/obj/atlas"
 )
@@ -13,7 +13,7 @@ import (
 // NOTE -- All *BytesAmount methods must call ensureBytesAmounts with refs to every user-supplied value before use.
 
 func init() {
-	cbor.RegisterCborType(bytesAmountAtlasEntry)
+	encoding.RegisterIpldCborType(bytesAmountAtlasEntry)
 	ZeroBytes = NewBytesAmount(0)
 }
 

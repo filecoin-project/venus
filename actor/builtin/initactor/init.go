@@ -1,19 +1,15 @@
 package initactor
 
 import (
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
-
-func init() {
-	cbor.RegisterCborType(State{})
-}
 
 // Actor is the builtin actor responsible for network initialization.
 // More details on future responsibilities can be found at https://github.com/filecoin-project/specs/blob/master/actors.md#init-actor.
@@ -52,7 +48,7 @@ func (ia *Actor) InitializeState(storage exec.Storage, networkInterface interfac
 	initStorage := &State{
 		Network: network,
 	}
-	stateBytes, err := cbor.DumpObject(initStorage)
+	stateBytes, err := encoding.Encode(initStorage)
 	if err != nil {
 		return err
 	}

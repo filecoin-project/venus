@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,11 +44,11 @@ func TestTriangleEncoding(t *testing.T) {
 		err = json.Unmarshal(jb, &jsonRoundTrip)
 		require.NoError(t, err)
 
-		ipldNodeOrig, err := cbor.DumpObject(exp)
+		ipldNodeOrig, err := encoding.Encode(exp)
 		assert.NoError(t, err)
 		// NOTICE: skips the intermediate json steps from above.
 		var cborJSONRoundTrip blk.Block
-		err = cbor.DecodeInto(ipldNodeOrig, &cborJSONRoundTrip)
+		err = encoding.Decode(ipldNodeOrig, &cborJSONRoundTrip)
 		assert.NoError(t, err)
 
 		types.AssertHaveSameCid(t, &jsonRoundTrip, &cborJSONRoundTrip)

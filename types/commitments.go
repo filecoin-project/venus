@@ -1,13 +1,5 @@
 package types
 
-import (
-	cbor "github.com/ipfs/go-ipld-cbor"
-)
-
-func init() {
-	cbor.RegisterCborType(Commitments{})
-}
-
 // Commitments is a struct containing the replica and data commitments produced
 // when sealing a sector.
 type Commitments struct {

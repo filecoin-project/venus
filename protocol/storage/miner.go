@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	uio "github.com/ipfs/go-unixfs/io"
@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/util/convert"
 	"github.com/filecoin-project/go-filecoin/util/moresync"
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 var log = logging.Logger("/fil/storage")
@@ -321,7 +321,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedPro
 	}
 
 	var channels map[string]*paymentbroker.PaymentChannel
-	if err := cbor.DecodeInto(ret[0], &channels); err != nil {
+	if err := encoding.Decode(ret[0], &channels); err != nil {
 		return nil, errors.Wrap(err, "Could not decode payment channels for payer")
 	}
 	channel, ok := channels[p.Payment.Channel.KeyString()]

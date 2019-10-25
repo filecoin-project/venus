@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
 )
@@ -44,9 +44,9 @@ func TestTipSetKey(t *testing.T) {
 		assert.True(t, s.Equals(blk.NewTipSetKey()))
 
 		// Bytes must be equal in order to have equivalent CIDs
-		zeroBytes, err := cbor.DumpObject(s)
+		zeroBytes, err := encoding.Encode(s)
 		require.NoError(t, err)
-		emptyBytes, err := cbor.DumpObject(blk.NewTipSetKey())
+		emptyBytes, err := encoding.Encode(blk.NewTipSetKey())
 		require.NoError(t, err)
 		assert.Equal(t, zeroBytes, emptyBytes)
 	})
@@ -129,11 +129,11 @@ func TestTipSetKeyCborRoundtrip(t *testing.T) {
 
 	makeCid := types.NewCidForTestGetter()
 	exp := blk.NewTipSetKey(makeCid(), makeCid(), makeCid())
-	buf, err := cbor.DumpObject(exp)
+	buf, err := encoding.Encode(exp)
 	assert.NoError(t, err)
 
 	var act blk.TipSetKey
-	err = cbor.DecodeInto(buf, &act)
+	err = encoding.Decode(buf, &act)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 3, act.Len())

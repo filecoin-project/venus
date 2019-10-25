@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
+	"github.com/filecoin-project/go-filecoin/encoding"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,10 +13,10 @@ func TestUint64CBor(t *testing.T) {
 	tf.UnitTest(t)
 
 	v := Uint64(64)
-	m, err := cbor.DumpObject(v)
+	m, err := encoding.Encode(v)
 	assert.NoError(t, err)
 	var got Uint64
-	err = cbor.DecodeInto(m, &got)
+	err = encoding.Decode(m, &got)
 	assert.NoError(t, err)
 	assert.Equal(t, v, got)
 }

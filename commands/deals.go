@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -242,7 +242,7 @@ func paymentVouchersResult(vouchers []*types.PaymentVoucher) (pvres []*PaymenVou
 	sorted := types.SortVouchersByValidAt(vouchers)
 
 	for i, voucher := range sorted {
-		encodedVoucher, err := voucher.Encode()
+		encodedVoucher, err := voucher.EncodeBase58()
 		if err != nil {
 			return pvres, err
 		}
