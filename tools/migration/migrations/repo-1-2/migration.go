@@ -8,11 +8,11 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/repo"
 )
 
@@ -199,7 +199,7 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 // writeHeadAsCBOR writes the head. Taken from Store.writeHead, which was called by
 // setHeadPersistent. We don't need mutexes for this
 func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids block.TipSetKey) error {
-	val, err := cbor.DumpObject(cids)
+	val, err := encoding.Encode(cids)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetA
 	if tsas.TipSetStateRoot == cid.Undef {
 		return errors.New("attempting to write state root cid.Undef")
 	}
-	val, err := cbor.DumpObject(tsas.TipSetStateRoot)
+	val, err := encoding.Encode(tsas.TipSetStateRoot)
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func loadChainHead(asCBOR bool, store *migrationChainStore) (block.TipSetKey, er
 
 	var cids block.TipSetKey
 	if asCBOR {
-		err = cbor.DecodeInto(bb, &cids)
+		err = encoding.Decode(bb, &cids)
 
 	} else {
 		err = json.Unmarshal(bb, &cids)
@@ -285,7 +285,7 @@ func loadStateRoot(ts block.TipSet, asCBOR bool, store *migrationChainStore) (ci
 
 	var stateRoot cid.Cid
 	if asCBOR {
-		err = cbor.DecodeInto(bb, &stateRoot)
+		err = encoding.Decode(bb, &stateRoot)
 	} else {
 		err = json.Unmarshal(bb, &stateRoot)
 	}
