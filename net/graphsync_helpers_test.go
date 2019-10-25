@@ -375,7 +375,7 @@ type blockAndMessageProvider interface {
 	GetBlockstoreValue(ctx context.Context, c cid.Cid) (blocks.Block, error)
 }
 
-func tryBlockMessageReceiptNode(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
+func tryBlockstoreValue(ctx context.Context, f blockAndMessageProvider, c cid.Cid) (format.Node, error) {
 	b, err := f.GetBlockstoreValue(ctx, c)
 	if err != nil {
 		return nil, err
@@ -399,7 +399,7 @@ type mockGraphsyncLoader func(cid.Cid) (format.Node, error)
 // or error otherwise
 func successLoader(ctx context.Context, provider blockAndMessageProvider) mockGraphsyncLoader {
 	return func(cidToLoad cid.Cid) (format.Node, error) {
-		return tryBlockMessageReceiptNode(ctx, provider, cidToLoad)
+		return tryBlockstoreValue(ctx, provider, cidToLoad)
 	}
 }
 

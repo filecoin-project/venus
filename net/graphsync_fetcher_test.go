@@ -136,18 +136,18 @@ func TestGraphsyncFetcher(t *testing.T) {
 			secpMsgs, blsMsgs, err := msgStore.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
-			// get messages from builders block store
+			// get expected messages from builders block store
 			expectedSecpMessages, expectedBLSMsgs, err := builder.LoadMessages(ctx, blk.Messages)
 			require.NoError(t, err)
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
 			require.True(t, reflect.DeepEqual(blsMsgs, expectedBLSMsgs))
 
-			// use fetcher blockstore to retrieve messages
+			// use fetcher blockstore to retrieve receipts
 			receipts, err := msgStore.LoadReceipts(ctx, blk.MessageReceipts)
 			require.NoError(t, err)
 
-			// get messages from builders block store
+			// get expected receipts from builders block store
 			expectedReceipts, err := builder.LoadReceipts(ctx, blk.MessageReceipts)
 			require.NoError(t, err)
 			require.True(t, reflect.DeepEqual(receipts, expectedReceipts))
@@ -1013,7 +1013,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	remoteLoader := func(lnk ipld.Link, lnkCtx ipld.LinkContext) (io.Reader, error) {
 		cid := lnk.(cidlink.Link).Cid
-		node, err := tryBlockMessageReceiptNode(ctx, builder, cid)
+		node, err := tryBlockstoreValue(ctx, builder, cid)
 		if err != nil {
 			return nil, err
 		}
