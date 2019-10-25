@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 

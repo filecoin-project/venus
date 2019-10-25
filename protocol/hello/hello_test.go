@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/libp2p/go-libp2p/p2p/net/mock"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -196,10 +196,10 @@ func TestReceiveHello(t *testing.T) {
 	assert.NoError(t, mn.LinkAll())
 	assert.NoError(t, mn.ConnectAllButSelf())
 
-	h2Msg, err := h1.ReceiveHello(ctx, b.ID())
+	h2Msg, err := h1.receiveHello(ctx, b.ID())
 	assert.NoError(t, err)
 
-	h1Msg, err := h2.ReceiveHello(ctx, a.ID())
+	h1Msg, err := h2.receiveHello(ctx, a.ID())
 	assert.NoError(t, err)
 
 	assert.Equal(t, heavy1.Key(), h1Msg.HeaviestTipSetCids)

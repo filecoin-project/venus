@@ -1,17 +1,14 @@
 package net
 
 import (
-	"context"
 	"sort"
 	"sync"
-	"sync/atomic"
 
 	"github.com/filecoin-project/go-filecoin/block"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 )
 
 var logPeerTracker = logging.Logger("peer-tracker")
@@ -27,12 +24,9 @@ type PeerTracker struct {
 	self peer.ID
 
 	// peers maps peer.IDs to info about their chains
-	peers    map[peer.ID]*block.ChainInfo
-	trusted  map[peer.ID]struct{}
-	updateFn updatePeerFn
+	peers   map[peer.ID]*block.ChainInfo
+	trusted map[peer.ID]struct{}
 }
-
-type updatePeerFn func(ctx context.Context, p peer.ID) (*block.ChainInfo, error)
 
 // NewPeerTracker creates a peer tracker.
 func NewPeerTracker(self peer.ID, trust ...peer.ID) *PeerTracker {
@@ -47,12 +41,6 @@ func NewPeerTracker(self peer.ID, trust ...peer.ID) *PeerTracker {
 	}
 }
 
-// SetUpdateFn sets the update function `f` on the peer tracker. This function is a prerequisite
-// to the UpdateTrusted logic.
-func (tracker *PeerTracker) SetUpdateFn(f updatePeerFn) {
-	tracker.updateFn = f
-}
-
 // SelectHead returns the chain info from trusted peers with the greatest height.
 // An error is returned if no peers are in the tracker.
 func (tracker *PeerTracker) SelectHead() (*block.ChainInfo, error) {
@@ -62,11 +50,6 @@ func (tracker *PeerTracker) SelectHead() (*block.ChainInfo, error) {
 	}
 	sort.Slice(heads, func(i, j int) bool { return heads[i].Height > heads[j].Height })
 	return heads[0], nil
-}
-
-// UpdateTrusted updates ChainInfo for all trusted peers.
-func (tracker *PeerTracker) UpdateTrusted(ctx context.Context) error {
-	return tracker.updatePeers(ctx, tracker.trustedPeers()...)
 }
 
 // Track adds information about a given peer.ID
@@ -155,44 +138,4 @@ func (tracker *PeerTracker) listTrusted() []*block.ChainInfo {
 	out := make([]*block.ChainInfo, len(tracked))
 	copy(out, tracked)
 	return out
-}
-
-// updatePeers will run the trackers updateFn on each peer in `ps` in parallel, iff all updates fail
-// is an error is returned, a partial update is considered successful.
-func (tracker *PeerTracker) updatePeers(ctx context.Context, ps ...peer.ID) error {
-	if tracker.updateFn == nil {
-		return errors.New("canot call PeerTracker peer update logic without setting an update function")
-	}
-	if len(ps) == 0 {
-		logPeerTracker.With("error", "no peers to update").Info("update peers aborting")
-		return nil
-	}
-
-	var updateErrs uint64
-	grp, ctx := errgroup.WithContext(ctx)
-	for _, p := range ps {
-		peer := p
-		grp.Go(func() error {
-			ci, err := tracker.updateFn(ctx, peer)
-			if err != nil {
-				atomic.AddUint64(&updateErrs, 1)
-				return errors.Wrapf(err, "failed to update peer=%s", peer.Pretty())
-			}
-			tracker.Track(ci)
-			return nil
-		})
-	}
-	// check if anyone failed to update
-	if err := grp.Wait(); err != nil {
-		// full failure return an error
-		if updateErrs == uint64(len(ps)) {
-			logPeerTracker.With(
-				"error", err,
-			).Errorf("failed to update all %d peers", len(ps))
-			return errors.New("all peers failed to update")
-		}
-		// partial failure
-		logPeerTracker.With("error", err).Infof("failed to update %d of %d peers", updateErrs, len(ps))
-	}
-	return nil
 }

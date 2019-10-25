@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-hamt-ipld"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
@@ -175,15 +174,6 @@ func (node *Node) Start(ctx context.Context) error {
 			node.Chain.ChainSynced.Done()
 		}
 		node.HelloProtocol.HelloSvc = hello.New(node.Host(), node.Chain.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Network.NetworkName)
-
-		// register the update function on the peer tracker now that we have a hello service
-		node.Network.PeerTracker.SetUpdateFn(func(ctx context.Context, p peer.ID) (*block.ChainInfo, error) {
-			hmsg, err := node.HelloProtocol.HelloSvc.ReceiveHello(ctx, p)
-			if err != nil {
-				return nil, err
-			}
-			return block.NewChainInfo(p, hmsg.HeaviestTipSetCids, hmsg.HeaviestTipSetHeight), nil
-		})
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {

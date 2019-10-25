@@ -18,15 +18,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/metrics"
 )
 
+var log = logging.Logger("/fil/hello")
+
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
 var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
-
-// protocol is the libp2p protocol identifier for the hello protocol.
-func helloProtocol(networkName string) protocol.ID {
-	return protocol.ID(fmt.Sprintf("/fil/hello/%s", networkName))
-}
-
-var log = logging.Logger("/fil/hello")
 
 // Message is the data structure of a single message in the hello protocol.
 type Message struct {
@@ -34,10 +29,6 @@ type Message struct {
 	HeaviestTipSetHeight uint64
 	GenesisHash          cid.Cid
 }
-
-type helloCallback func(ci *block.ChainInfo)
-
-type getTipSetFunc func() (block.TipSet, error)
 
 // Handler implements the 'Hello' protocol handler. Upon connecting to a new
 // node, we send them a message containing some information about the state of
@@ -58,20 +49,29 @@ type Handler struct {
 	networkName string
 }
 
-// New creates a new instance of the hello protocol and registers it to
-// the given host, with the provided callbacks.
-func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, net string) *Handler {
+type helloCallback func(ci *block.ChainInfo)
+
+type getTipSetFunc func() (block.TipSet, error)
+
+// protocol is the libp2p protocol identifier for the hello protocol.
+func helloProtocolID(networkName string) protocol.ID {
+	return protocol.ID(fmt.Sprintf("/filecoin/hello/%s", networkName))
+}
+
+// New creates a new instance of the hello protocol `Handler` and registers it to
+// the given `host.Host`.
+func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *Handler {
 	hello := &Handler{
 		host:              h,
 		genesis:           gen,
 		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
-		networkName:       net,
+		networkName:       networkName,
 	}
-	h.SetStreamHandler(helloProtocol(net), hello.handleNewStream)
+	h.SetStreamHandler(helloProtocolID(networkName), hello.handleNewStream)
 
 	// register for connection notifications
-	h.Network().Notify((*helloNotify)(hello))
+	h.Network().Notify((*helloProtocolNotifiee)(hello))
 
 	return hello
 }
@@ -112,9 +112,8 @@ func (h *Handler) getOurHelloMessage() (*Message, error) {
 	}, nil
 }
 
-// ReceiveHello receives a hello message from peer `p` and returns it.
-func (h *Handler) ReceiveHello(ctx context.Context, p peer.ID) (*Message, error) {
-	s, err := h.host.NewStream(ctx, p, helloProtocol(h.networkName))
+func (h *Handler) receiveHello(ctx context.Context, p peer.ID) (*Message, error) {
+	s, err := h.host.NewStream(ctx, p, helloProtocolID(h.networkName))
 	if err != nil {
 		return nil, err
 	}
@@ -137,49 +136,65 @@ func (h *Handler) sendHello(s net.Stream) error {
 	return cbu.NewMsgWriter(s).WriteMsg(&msg)
 }
 
-// New peer connection notifications
-
-type helloNotify Handler
-
-func (hn *helloNotify) hello() *Handler {
-	return (*Handler)(hn)
-}
+// Note: hide `net.Notifyee` impl using a new-type
+type helloProtocolNotifiee Handler
 
 const helloTimeout = time.Second * 10
 
-// Connect is the callback triggered when a connection is made to a libp2p node.
-// Connect will read a hello message from connection `c`, terminate the connection if it fails to
-// validate or pass the message information to its handlers callback function.
-func (hn *helloNotify) Connected(n net.Network, c net.Conn) {
+func (hn *helloProtocolNotifiee) asHandler() *Handler {
+	return (*Handler)(hn)
+}
+
+//
+// `net.Notifyee` impl for `helloNotify`
+//
+
+func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
+	// Connected is invoked when a connection is made to a libp2p node.
+	//
+	// - read `hello.Message` from connection `c` on a new thread.
+	// - process the `hello.Message`.
+	// - notify the local `Node` of the new `block.ChainInfo`.
+	//
+	// Terminate the connection if it fails to:
+	//	   * validate, or
+	//	   * pass the message information to its handlers callback function.
 	go func() {
+		// add timeout
 		ctx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 		defer cancel()
 
 		// receive the hello message
 		from := c.RemotePeer()
-		hello, err := hn.hello().ReceiveHello(ctx, from)
+		hello, err := hn.asHandler().receiveHello(ctx, from)
 		if err != nil {
 			log.Debugf("failed to receive hello handshake from peer %s: %s", from, err)
+			_ = c.Close()
 			return
 		}
 
-		ci, err := hn.hello().processHelloMessage(from, hello)
+		// process the hello message
+		ci, err := hn.asHandler().processHelloMessage(from, hello)
 		switch {
+		// no error
+		case err == nil:
+			// notify the local node of the new `block.ChainInfo`
+			hn.asHandler().callBack(ci)
+		// processing errors
 		case err == ErrBadGenesis:
-			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.hello().genesis, from)
-			genesisErrCt.Inc(context.TODO(), 1)
+			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.asHandler().genesis, from)
+			genesisErrCt.Inc(context.Background(), 1)
 			_ = c.Close()
 			return
-		case err == nil:
-			hn.hello().callBack(ci)
 		default:
+			// Note: we do not know why it failed, but we do not wish to shut down all protocols because of it
 			log.Error(err)
 		}
 	}()
 }
 
-func (hn *helloNotify) Listen(n net.Network, a ma.Multiaddr)      {}
-func (hn *helloNotify) ListenClose(n net.Network, a ma.Multiaddr) {}
-func (hn *helloNotify) Disconnected(n net.Network, c net.Conn)    {}
-func (hn *helloNotify) OpenedStream(n net.Network, s net.Stream)  {}
-func (hn *helloNotify) ClosedStream(n net.Network, s net.Stream)  {}
+func (hn *helloProtocolNotifiee) Listen(n net.Network, a ma.Multiaddr)      { /* empty */ }
+func (hn *helloProtocolNotifiee) ListenClose(n net.Network, a ma.Multiaddr) { /* empty */ }
+func (hn *helloProtocolNotifiee) Disconnected(n net.Network, c net.Conn)    { /* empty */ }
+func (hn *helloProtocolNotifiee) OpenedStream(n net.Network, s net.Stream)  { /* empty */ }
+func (hn *helloProtocolNotifiee) ClosedStream(n net.Network, s net.Stream)  { /* empty */ }
