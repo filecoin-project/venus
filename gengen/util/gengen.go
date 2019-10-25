@@ -156,6 +156,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
+	// define empty cid and ensure empty components exist in blockstore
 	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(bs), []typegen.CBORMarshaler{})
 	if err != nil {
 		return nil, err
