@@ -1,4 +1,4 @@
-package net
+package discovery
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package net
+package discovery
 
 import (
 	"sort"
@@ -101,9 +101,9 @@ func (tracker *PeerTracker) Remove(pid peer.ID) {
 	}
 }
 
-// TrackerRegisterDisconnect registers a tracker remove operation as a libp2p
+// RegisterDisconnect registers a tracker remove operation as a libp2p
 // "Disconnected" network event callback.
-func TrackerRegisterDisconnect(ntwk network.Network, tracker *PeerTracker) {
+func (tracker *PeerTracker) RegisterDisconnect(ntwk network.Network) {
 	notifee := &network.NotifyBundle{}
 	notifee.DisconnectedF = func(network network.Network, conn network.Conn) {
 		pid := conn.RemotePeer()

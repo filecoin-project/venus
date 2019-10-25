@@ -1,4 +1,4 @@
-package net_test
+package discovery_test
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/discovery"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/net"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -20,7 +20,7 @@ import (
 func TestPeerTrackerTracks(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := discovery.NewPeerTracker(peer.ID(""))
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -58,7 +58,7 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 	ci3 := block.NewChainInfo(pid3, block.NewTipSetKey(types.CidFromString(t, "somecid3")), 9)
 
 	// trusting pid2 and pid3
-	tracker := net.NewPeerTracker(pid2, pid3)
+	tracker := discovery.NewPeerTracker(pid2, pid3)
 	tracker.Track(ci0)
 	tracker.Track(ci1)
 	tracker.Track(ci2)
@@ -73,7 +73,7 @@ func TestPeerTrackerSelectHead(t *testing.T) {
 func TestPeerTrackerRemove(t *testing.T) {
 	tf.UnitTest(t)
 
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := discovery.NewPeerTracker(peer.ID(""))
 	pid0 := th.RequireIntPeerID(t, 0)
 	pid1 := th.RequireIntPeerID(t, 1)
 	pid3 := th.RequireIntPeerID(t, 3)
@@ -123,12 +123,12 @@ func TestPeerTrackerNetworkDisconnect(t *testing.T) {
 	// self is the tracking node
 	// self tracks peers a and b
 	// self does not track peer c
-	tracker := net.NewPeerTracker(peer.ID(""))
+	tracker := discovery.NewPeerTracker(peer.ID(""))
 	tracker.Track(aCI)
 	tracker.Track(bCI)
 
 	// register tracker OnDisconnect callback in self's network
-	net.TrackerRegisterDisconnect(self.Network(), tracker)
+	tracker.RegisterDisconnect(self.Network())
 
 	// disconnect from tracked a and untracked c
 	require.NoError(t, mn.DisconnectPeers(selfID, aID))

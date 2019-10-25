@@ -1,4 +1,4 @@
-package net
+package discovery
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-kad-dht"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
