@@ -2,13 +2,7 @@ package types
 
 import (
 	"fmt"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
-
-func init() {
-	cbor.RegisterCborType(FaultSet{})
-}
 
 // FaultSet indicates sectors that have failed PoSt during a proving period
 //

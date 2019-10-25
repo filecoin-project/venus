@@ -3,10 +3,9 @@ package builtin
 import (
 	"testing"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
-
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/vm"
 	"github.com/stretchr/testify/require"
 )
@@ -16,6 +15,6 @@ func RequireReadState(t *testing.T, vms vm.StorageMap, addr address.Address, act
 	chunk, err := vms.NewStorage(addr, act).Get(act.Head) // address arbitrary
 	require.NoError(t, err)
 
-	err = cbor.DecodeInto(chunk, state)
+	err = encoding.Decode(chunk, state)
 	require.NoError(t, err)
 }

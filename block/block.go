@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -11,10 +12,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/address"
 )
-
-func init() {
-	cbor.RegisterCborType(Block{})
-}
 
 // Block is a block in the blockchain.
 type Block struct {
@@ -68,7 +65,7 @@ type Block struct {
 func (b *Block) Cid() cid.Cid {
 	if b.cachedCid == cid.Undef {
 		if b.cachedBytes == nil {
-			bytes, err := cbor.DumpObject(b)
+			bytes, err := encoding.Encode(b)
 			if err != nil {
 				panic(err)
 			}
@@ -114,7 +111,7 @@ func (b *Block) String() string {
 // DecodeBlock decodes raw cbor bytes into a Block.
 func DecodeBlock(b []byte) (*Block, error) {
 	var out Block
-	if err := cbor.DecodeInto(b, &out); err != nil {
+	if err := encoding.Decode(b, &out); err != nil {
 		return nil, err
 	}
 

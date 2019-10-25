@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/block"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -27,7 +27,7 @@ func (p *testPaymentChannelLsPlumbing) ChainHeadKey() block.TipSetKey {
 }
 
 func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	chnls, err := cbor.DumpObject(p.channels)
+	chnls, err := encoding.Encode(p.channels)
 	require.NoError(p.testing, err)
 	return [][]byte{chnls}, nil
 }

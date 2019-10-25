@@ -6,10 +6,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor"
 	. "github.com/filecoin-project/go-filecoin/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
-	"github.com/ipfs/go-ipld-cbor"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func TestInitActorCreateInitActor(t *testing.T) {
 	require.NoError(t, err)
 
 	var initState State
-	err = cbornode.DecodeInto(state, &initState)
+	err = encoding.Decode(state, &initState)
 	require.NoError(t, err)
 
 	assert.Equal(t, "foo", initState.Network)

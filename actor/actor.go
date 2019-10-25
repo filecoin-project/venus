@@ -3,16 +3,14 @@ package actor
 
 import (
 	"fmt"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 )
-
-func init() {
-	cbor.RegisterCborType(Actor{})
-}
 
 // DefaultGasCost is default gas cost for the actor calls.
 const DefaultGasCost = 100
@@ -79,12 +77,12 @@ func (a *Actor) Cid() (cid.Cid, error) {
 
 // Unmarshal a actor from the given bytes.
 func (a *Actor) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, a)
+	return encoding.Decode(b, a)
 }
 
 // Marshal the actor into bytes.
 func (a *Actor) Marshal() ([]byte, error) {
-	return cbor.DumpObject(a)
+	return encoding.Encode(a)
 }
 
 // Format implements fmt.Formatter.

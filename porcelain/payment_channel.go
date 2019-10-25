@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/block"
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/address"
@@ -47,7 +47,7 @@ func PaymentChannelLs(
 		return nil, err
 	}
 
-	if err := cbor.DecodeInto(values[0], &channels); err != nil {
+	if err := encoding.Decode(values[0], &channels); err != nil {
 		return nil, err
 	}
 
@@ -90,7 +90,7 @@ func PaymentChannelVoucher(
 		return nil, err
 	}
 
-	if err = cbor.DecodeInto(values[0], &voucher); err != nil {
+	if err = encoding.Decode(values[0], &voucher); err != nil {
 		return nil, err
 	}
 

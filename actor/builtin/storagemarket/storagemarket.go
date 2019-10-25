@@ -7,13 +7,13 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
@@ -33,8 +33,7 @@ var Errors = map[uint8]error{
 }
 
 func init() {
-	cbor.RegisterCborType(State{})
-	cbor.RegisterCborType(struct{}{})
+	encoding.RegisterIpldCborType(struct{}{})
 }
 
 // Actor implements the filecoin storage market. It is responsible
@@ -68,7 +67,7 @@ func (sma *Actor) InitializeState(storage exec.Storage, proofsModeInterface inte
 		TotalCommittedStorage: types.NewBytesAmount(0),
 		ProofsMode:            proofsMode,
 	}
-	stateBytes, err := cbor.DumpObject(initStorage)
+	stateBytes, err := encoding.Encode(initStorage)
 	if err != nil {
 		return err
 	}

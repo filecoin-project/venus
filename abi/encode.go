@@ -3,7 +3,7 @@ package abi
 import (
 	"fmt"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +25,7 @@ func EncodeValues(vals []*Value) ([]byte, error) {
 		arr = append(arr, data)
 	}
 
-	return cbor.DumpObject(arr)
+	return encoding.Encode(arr)
 }
 
 // DecodeValues decodes an array of abi values from the given buffer, using the
@@ -40,7 +40,7 @@ func DecodeValues(data []byte, types []Type) ([]*Value, error) {
 	}
 
 	var arr [][]byte
-	if err := cbor.DecodeInto(data, &arr); err != nil {
+	if err := encoding.Decode(data, &arr); err != nil {
 		return nil, err
 	}
 

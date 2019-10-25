@@ -3,7 +3,7 @@ package miner
 import (
 	"math/big"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/abi"
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/exec"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/proofs/verification"
@@ -23,9 +24,7 @@ import (
 var log = logging.Logger("miner-actor")
 
 func init() {
-	cbor.RegisterCborType(cbor.BigIntAtlasEntry)
-	cbor.RegisterCborType(State{})
-	cbor.RegisterCborType(Ask{})
+	encoding.RegisterIpldCborType(cbor.BigIntAtlasEntry)
 }
 
 // LargestSectorSizeProvingPeriodBlocks defines the number of blocks in a
@@ -224,7 +223,7 @@ func (ma *Actor) InitializeState(storage exec.Storage, initializerData interface
 		return errors.NewFaultError("Initial state to miner actor is not a miner.State struct")
 	}
 
-	stateBytes, err := cbor.DumpObject(minerState)
+	stateBytes, err := encoding.Encode(minerState)
 	if err != nil {
 		return xerrors.Wrap(err, "failed to cbor marshal object")
 	}
@@ -447,7 +446,7 @@ func (ma *Actor) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, erro
 			return nil, Errors[ErrAskNotFound]
 		}
 
-		out, err := cbor.DumpObject(ask)
+		out, err := encoding.Encode(ask)
 		if err != nil {
 			return nil, err
 		}
@@ -1182,7 +1181,7 @@ func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'getProofsMode' message failed")
 	}
-	if err := cbor.DecodeInto(msgResult[0], &proofsMode); err != nil {
+	if err := encoding.Decode(msgResult[0], &proofsMode); err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "could not unmarshall sector store type")
 	}
 	return proofsMode, nil

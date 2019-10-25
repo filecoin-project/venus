@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -34,9 +34,9 @@ func TestSerializeProposal(t *testing.T) {
 	p.Payment.Vouchers = []*types.PaymentVoucher{voucher}
 	v, _ := cid.Decode("QmcrriCMhjb5ZWzmPNxmP53px47tSPcXBNaMtLdgcKFJYk")
 	p.PieceRef = v
-	chunk, err := cbor.DumpObject(p)
+	chunk, err := encoding.Encode(p)
 	require.NoError(t, err)
 
-	err = cbor.DecodeInto(chunk, &storagedeal.Proposal{})
+	err = encoding.Decode(chunk, &storagedeal.Proposal{})
 	require.NoError(t, err)
 }

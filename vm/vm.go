@@ -5,9 +5,9 @@ package vm
 
 import (
 	"context"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/actor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/filecoin-project/go-filecoin/vm/errors"
 )
@@ -55,7 +55,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 	r, code, err := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
 	if r != nil {
 		var rv [][]byte
-		err = cbor.DecodeInto(r, &rv)
+		err = encoding.Decode(r, &rv)
 		if err != nil {
 			return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
 		}

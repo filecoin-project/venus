@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
@@ -257,7 +257,7 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey block.TipSe
 	}
 
 	var voucher types.PaymentVoucher
-	if err := cbor.DecodeInto(ret[0], &voucher); err != nil {
+	if err := encoding.Decode(ret[0], &voucher); err != nil {
 		return err
 	}
 

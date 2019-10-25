@@ -2,22 +2,11 @@ package storagedeal
 
 import (
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/types"
 )
-
-func init() {
-	cbor.RegisterCborType(PaymentInfo{})
-	cbor.RegisterCborType(Proposal{})
-	cbor.RegisterCborType(SignedProposal{})
-	cbor.RegisterCborType(Response{})
-	cbor.RegisterCborType(SignedResponse{})
-	cbor.RegisterCborType(ProofInfo{})
-	cbor.RegisterCborType(QueryRequest{})
-	cbor.RegisterCborType(Deal{})
-}
 
 // PaymentInfo contains all the payment related information for a storage deal.
 type PaymentInfo struct {
@@ -66,12 +55,12 @@ type Proposal struct {
 
 // Unmarshal a Proposal from bytes.
 func (dp *Proposal) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, dp)
+	return encoding.Decode(b, dp)
 }
 
 // Marshal the Proposal into bytes.
 func (dp *Proposal) Marshal() ([]byte, error) {
-	return cbor.DumpObject(dp)
+	return encoding.Encode(dp)
 }
 
 // NewSignedProposal signs Proposal with address `addr` and returns a SignedProposal.
@@ -124,7 +113,7 @@ type SignedResponse struct {
 
 // Sign signs this response
 func (r *SignedResponse) Sign(signer types.Signer, addr address.Address) error {
-	respBytes, err := cbor.DumpObject(r.Response)
+	respBytes, err := encoding.Encode(r.Response)
 	if err != nil {
 		return err
 	}
@@ -135,7 +124,7 @@ func (r *SignedResponse) Sign(signer types.Signer, addr address.Address) error {
 
 // VerifySignature verifies the signature of this response
 func (r *SignedResponse) VerifySignature(addr address.Address) (bool, error) {
-	respBytes, err := cbor.DumpObject(r.Response)
+	respBytes, err := encoding.Encode(r.Response)
 	if err != nil {
 		return false, err
 	}

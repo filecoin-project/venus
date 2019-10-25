@@ -9,12 +9,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/state"
 	"github.com/filecoin-project/go-filecoin/types"
 
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -65,7 +65,7 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 	}
 
 	if method == "getAsks" {
-		askIDs, _ := cbor.DumpObject([]uint64{0})
+		askIDs, _ := encoding.Encode([]uint64{0})
 		return [][]byte{askIDs}, nil
 	}
 
@@ -74,7 +74,7 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 		ID:     big.NewInt(2),
 		Price:  types.NewAttoFILFromFIL(3),
 	}
-	askBytes, _ := cbor.DumpObject(ask)
+	askBytes, _ := encoding.Encode(ask)
 	return [][]byte{askBytes}, nil
 }
 

@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {
-	cbor.RegisterCborType(blockHeightAtlasEntry)
+	encoding.RegisterIpldCborType(blockHeightAtlasEntry)
 }
 
 var blockHeightAtlasEntry = atlas.BuildEntry(BlockHeight{}).Transform().

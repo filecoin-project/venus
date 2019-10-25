@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -17,10 +18,6 @@ var (
 	// ErrMessageUnsigned is returned when `RecoverAddress` is called on a signedmessage that does not contain a signature
 	ErrMessageUnsigned = errors.New("message does not contain a signature")
 )
-
-func init() {
-	cbor.RegisterCborType(SignedMessage{})
-}
 
 // SignedMessage contains a message and its signature
 // TODO do not export these fields as it increases the chances of producing a
@@ -52,12 +49,12 @@ func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 
 // Unmarshal a SignedMessage from the given bytes.
 func (smsg *SignedMessage) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, smsg)
+	return encoding.Decode(b, smsg)
 }
 
 // Marshal the SignedMessage into bytes.
 func (smsg *SignedMessage) Marshal() ([]byte, error) {
-	return cbor.DumpObject(smsg)
+	return encoding.Encode(smsg)
 }
 
 // Cid returns the canonical CID for the SignedMessage.

@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {
-	cbor.RegisterCborType(attoFILAtlasEntry)
+	encoding.RegisterIpldCborType(attoFILAtlasEntry)
 }
 
 var attoPower = 18

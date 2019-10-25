@@ -4,16 +4,11 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-sectorbuilder"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-filecoin/types"
 )
-
-func init() {
-	cbor.RegisterCborType(PieceInfo{})
-}
 
 // SectorBuilder provides an interface through which user piece-bytes can be
 // written, sealed into sectors, and later unsealed and read.

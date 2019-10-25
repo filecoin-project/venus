@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/net"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
@@ -47,7 +48,7 @@ type notDecodable struct {
 }
 
 func init() {
-	cbor.RegisterCborType(notDecodable{})
+	encoding.RegisterIpldCborType(notDecodable{})
 }
 
 func TestGraphsyncFetcher(t *testing.T) {

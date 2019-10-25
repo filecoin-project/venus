@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
@@ -21,10 +20,6 @@ import (
 
 var genesisErrCt = metrics.NewInt64Counter("hello_genesis_error", "Number of errors encountered in hello protocol due to incorrect genesis block")
 var helloMsgErrCt = metrics.NewInt64Counter("hello_message_error", "Number of errors encountered in hello protocol due to malformed message")
-
-func init() {
-	cbor.RegisterCborType(Message{})
-}
 
 // protocol is the libp2p protocol identifier for the hello protocol.
 func helloProtocol(networkName string) protocol.ID {

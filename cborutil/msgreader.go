@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/filecoin-project/go-filecoin/encoding"
 )
 
 // MaxMessageSize is the maximum message size to read
@@ -47,5 +47,5 @@ func (mr *MsgReader) ReadMsg(i interface{}) error {
 		return err
 	}
 
-	return cbor.DecodeInto(buf, i)
+	return encoding.Decode(buf, i)
 }

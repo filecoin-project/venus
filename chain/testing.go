@@ -8,13 +8,13 @@ import (
 
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/net"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -512,7 +512,7 @@ func (f *Builder) LoadReceipts(ctx context.Context, c cid.Cid) ([]*types.Message
 ///// Internals /////
 
 func makeCid(i interface{}) (cid.Cid, error) {
-	bytes, err := cbor.DumpObject(i)
+	bytes, err := encoding.Encode(i)
 	if err != nil {
 		return cid.Undef, err
 	}

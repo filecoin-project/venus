@@ -7,8 +7,8 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
@@ -362,7 +362,7 @@ func MinerGetAsk(ctx context.Context, plumbing mgaAPI, minerAddr address.Address
 	}
 
 	var ask minerActor.Ask
-	if err := cbor.DecodeInto(ret[0], &ask); err != nil {
+	if err := encoding.Decode(ret[0], &ask); err != nil {
 		return minerActor.Ask{}, err
 	}
 

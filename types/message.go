@@ -13,6 +13,7 @@ import (
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 )
 
 // GasUnits represents number of units of gas consumed
@@ -20,11 +21,6 @@ type GasUnits = Uint64
 
 // BlockGasLimit is the maximum amount of gas that can be used to execute messages in a single block
 var BlockGasLimit = NewGasUnits(10000000)
-
-func init() {
-	cbor.RegisterCborType(UnsignedMessage{})
-	cbor.RegisterCborType(TxMeta{})
-}
 
 var (
 	// ErrInvalidMessageLength is returned when the message length does not match the expected length.
@@ -86,12 +82,12 @@ func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, me
 
 // Unmarshal a message from the given bytes.
 func (msg *UnsignedMessage) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, msg)
+	return encoding.Decode(b, msg)
 }
 
 // Marshal the message into bytes.
 func (msg *UnsignedMessage) Marshal() ([]byte, error) {
-	return cbor.DumpObject(msg)
+	return encoding.Encode(msg)
 }
 
 // ToNode converts the Message to an IPLD node.
@@ -147,7 +143,7 @@ type SignedMessageCollection []*SignedMessage
 // DecodeSignedMessages decodes raw bytes into an array of signed messages
 func DecodeSignedMessages(b []byte) ([]*SignedMessage, error) {
 	var out SignedMessageCollection
-	if err := cbor.DecodeInto(b, &out); err != nil {
+	if err := encoding.Decode(b, &out); err != nil {
 		return nil, err
 	}
 
@@ -180,7 +176,7 @@ type MessageCollection []*UnsignedMessage
 // DecodeMessages decodes raw bytes into an array of metered messages
 func DecodeMessages(b []byte) ([]*UnsignedMessage, error) {
 	var out MessageCollection
-	if err := cbor.DecodeInto(b, &out); err != nil {
+	if err := encoding.Decode(b, &out); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +204,7 @@ type ReceiptCollection []*MessageReceipt
 // DecodeReceipts decodes raw bytes into an array of message receipts
 func DecodeReceipts(b []byte) ([]*MessageReceipt, error) {
 	var out ReceiptCollection
-	if err := cbor.DecodeInto(b, &out); err != nil {
+	if err := encoding.Decode(b, &out); err != nil {
 		return nil, err
 	}
 

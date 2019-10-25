@@ -3,13 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
-
-func init() {
-	cbor.RegisterCborType(MessageReceipt{})
-}
 
 // MessageReceipt represents the result of sending a message.
 type MessageReceipt struct {

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 func init() {
-	cbor.RegisterCborType(dealsAwaitingSeal{})
+	encoding.RegisterIpldCborType(dealsAwaitingSeal{})
 }
 
 // sectorInfo combines sector Metadata from rust proofs with go-filecoin specific data

@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/encoding"
+	"github.com/polydawn/refmt/obj/atlas"
 
 	"github.com/filecoin-project/go-leb128"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
-	"github.com/polydawn/refmt/obj/atlas"
 )
 
 func init() {
-	cbor.RegisterCborType(addressAtlasEntry)
+	encoding.RegisterIpldCborType(addressAtlasEntry)
 }
 
 var addressAtlasEntry = atlas.BuildEntry(Address{}).Transform().
@@ -97,12 +97,12 @@ func (a Address) Empty() bool {
 
 // Unmarshal unmarshals the cbor bytes into the address.
 func (a Address) Unmarshal(b []byte) error {
-	return cbor.DecodeInto(b, &a)
+	return encoding.Decode(b, &a)
 }
 
 // Marshal marshals the address to cbor.
 func (a Address) Marshal() ([]byte, error) {
-	return cbor.DumpObject(a)
+	return encoding.Encode(a)
 }
 
 // UnmarshalJSON implements the json unmarshal interface.

@@ -20,3 +20,6 @@ tools/prerelease-tool/prerelease-tool
 **/*.h
 **/*.a
 **/*.pc
+
+// IDE (vscode)
+.vscode

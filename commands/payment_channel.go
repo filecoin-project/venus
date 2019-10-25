@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/filecoin-project/go-filecoin/types"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 var paymentChannelCmd = &cmds.Command{
@@ -217,7 +217,7 @@ var voucherCmd = &cmds.Command{
 			return err
 		}
 
-		v, err := voucher.Encode()
+		v, err := voucher.EncodeBase58()
 		if err != nil {
 			return err
 		}

@@ -6,11 +6,11 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/actor"
 	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/encoding"
 )
 
 const (
@@ -165,7 +165,7 @@ func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, w
 	for _, p := range nd.Pointers {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
+			if err := encoding.Decode(kv.Value.Raw, &a); err != nil {
 				return err
 			}
 
@@ -243,7 +243,7 @@ func (t *tree) getActorsFromPointers(ctx context.Context, out chan<- GetAllActor
 	for _, p := range ps {
 		for _, kv := range p.KVs {
 			var a actor.Actor
-			if err := cbor.DecodeInto(kv.Value.Raw, &a); err != nil {
+			if err := encoding.Decode(kv.Value.Raw, &a); err != nil {
 				panic(err) // uhm, ignoring errors is bad
 			}
 

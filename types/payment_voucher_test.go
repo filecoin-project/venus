@@ -30,7 +30,7 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 		Condition: condition,
 	}
 
-	rawPaymentVoucher, err := paymentVoucher.Encode()
+	rawPaymentVoucher, err := paymentVoucher.EncodeBase58()
 	require.NoError(t, err)
 	decodedPaymentVoucher, err := DecodeVoucher(rawPaymentVoucher)
 	require.NoError(t, err)
