@@ -241,8 +241,8 @@ func (ms *MessageStore) storeAMTCids(ctx context.Context, cids []cid.Cid) (cid.C
 
 	cidMarshallers := make([]cbg.CBORMarshaler, len(cids))
 	for i, c := range cids {
-		oc := cbg.CborCid(c)
-		cidMarshallers[i] = &oc
+		cidMarshaller := cbg.CborCid(c)
+		cidMarshallers[i] = &cidMarshaller
 	}
 	return amt.FromArray(as, cidMarshallers)
 }
