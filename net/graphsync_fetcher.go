@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/block"
-	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -34,6 +34,19 @@ const (
 	// -- if no more responses are received for a period greater than this,
 	// we will assume the request has hung-up and cancel it
 	progressTimeout = 10 * time.Second
+
+	// AMT selector recursion. An AMT has arity of 8 so this gives allows
+	// us to retrieve trees with 8^10 (1,073,741,824) elements.
+	amtRecurstionDepth = uint32(10)
+
+	// field index of AMT node in AMT head
+	amtHeadNodeFieldIndex = 2
+
+	// field index of links array AMT node
+	amtNodeLinksFieldIndex = 1
+
+	// field index of values array AMT node
+	amtNodeValuesFieldIndex = 2
 )
 
 // Fetcher defines an interface that may be used to fetch data from the network.
@@ -239,10 +252,10 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-			messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(10))
-			messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(10))
+			messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
+			messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 		}))
-		efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(10))
+		efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 	}).Node()
 	return selector
 }
@@ -281,11 +294,11 @@ func (gsf *GraphSyncFetcher) fetchBlocks(ctx context.Context, selGen func() ipld
 }
 
 func (gsf *GraphSyncFetcher) fetchThroughAMTSelector(recursionDepth uint32) selectorbuilder.SelectorSpec {
-	return gsf.ssb.ExploreIndex(2,
-		gsf.ssb.ExploreRecursive(10,
+	return gsf.ssb.ExploreIndex(amtHeadNodeFieldIndex,
+		gsf.ssb.ExploreRecursive(int(recursionDepth),
 			gsf.ssb.ExploreUnion(
-				gsf.ssb.ExploreIndex(1, gsf.ssb.ExploreAll(gsf.ssb.ExploreRecursiveEdge())),
-				gsf.ssb.ExploreIndex(2, gsf.ssb.ExploreAll(gsf.ssb.Matcher())))))
+				gsf.ssb.ExploreIndex(amtNodeLinksFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.ExploreRecursiveEdge())),
+				gsf.ssb.ExploreIndex(amtNodeValuesFieldIndex, gsf.ssb.ExploreAll(gsf.ssb.Matcher())))))
 }
 
 func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.ResponseProgress, errChan <-chan error, cancelFunc func()) error {
@@ -324,10 +337,10 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 			gsf.ssb.ExploreAll(
 				gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 					efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
-						messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(10))
-						messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(10))
+						messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
+						messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 					}))
-					efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(10))
+					efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 				}),
 			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
