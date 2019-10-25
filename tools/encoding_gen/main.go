@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/discovery"
 	"github.com/filecoin-project/go-filecoin/encoding/gen"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/types"
@@ -84,8 +84,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := gen.WriteToFile(filepath.Join(base, "protocol/hello/hello_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "hello",
-		hello.Message{}, // protocol/hello/hello.go
+	if err := gen.WriteToFile(filepath.Join(base, "discovery/discovery_encoding_gen.go"), gen.IpldCborTypeEncodingGenerator{}, "discovery",
+		discovery.Message{}, // discovery/hello_protocol.go
 	); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

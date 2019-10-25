@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/paths"
 	"github.com/filecoin-project/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/proofs/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/protocol/hello"
 	mining_protocol "github.com/filecoin-project/go-filecoin/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/protocol/retrieval"
 	"github.com/filecoin-project/go-filecoin/protocol/storage"
@@ -151,29 +150,10 @@ func (node *Node) Start(ctx context.Context) error {
 		node.Chain.SyncDispatch.Start(context.Background())
 
 		// Register peer tracker disconnect function with network.
-		net.TrackerRegisterDisconnect(node.Network.host.Network(), node.Network.PeerTracker)
+		node.Network.PeerTracker.RegisterDisconnect(node.Network.host.Network())
 
-		// Start up 'hello' handshake service
-		helloCallback := func(ci *block.ChainInfo) {
-			node.Network.PeerTracker.Track(ci)
-			err := node.Chain.SyncDispatch.SendHello(ci)
-			if err != nil {
-				log.Errorf("error receiving chain info from hello %s: %s", ci, err)
-				return
-			}
-			// For now, consider the initial bootstrap done after the syncer has (synchronously)
-			// processed the chain up to the head reported by the first peer to respond to hello.
-			// This is an interim sequence until a secure network bootstrap is implemented:
-			// https://github.com/filecoin-project/go-filecoin/issues/2674.
-			// For now, we trust that the first node to respond will be a configured bootstrap node
-			// and that we trust that node to inform us of the chain head.
-			// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
-			// sync done until it's caught up enough that it will accept blocks from pubsub.
-			// This might require additional rounds of hello.
-			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			node.Chain.ChainSynced.Done()
-		}
-		node.HelloProtocol.HelloSvc = hello.New(node.Host(), node.Chain.ChainReader.GenesisCid(), helloCallback, node.PorcelainAPI.ChainHead, node.Network.NetworkName)
+		// Register the "hello" protocol with the network
+		node.HelloProtocol.Handler.Register()
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {

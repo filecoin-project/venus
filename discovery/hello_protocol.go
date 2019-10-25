@@ -1,4 +1,4 @@
-package hello
+package discovery
 
 import (
 	"context"
@@ -58,22 +58,25 @@ func helloProtocolID(networkName string) protocol.ID {
 	return protocol.ID(fmt.Sprintf("/filecoin/hello/%s", networkName))
 }
 
-// New creates a new instance of the hello protocol `Handler` and registers it to
+// NewHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func New(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *Handler {
-	hello := &Handler{
+func NewHandler(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *Handler {
+	return &Handler{
 		host:              h,
 		genesis:           gen,
 		callBack:          helloCallback,
 		getHeaviestTipSet: getHeaviestTipSet,
 		networkName:       networkName,
 	}
-	h.SetStreamHandler(helloProtocolID(networkName), hello.handleNewStream)
+}
+
+// Register registers the handler with the network.
+func (h *Handler) Register() {
+	// register a handle for when a new connection against someone is created
+	h.host.SetStreamHandler(helloProtocolID(h.networkName), h.handleNewStream)
 
 	// register for connection notifications
-	h.Network().Notify((*helloProtocolNotifiee)(hello))
-
-	return hello
+	h.host.Network().Notify((*helloProtocolNotifiee)(h))
 }
 
 func (h *Handler) handleNewStream(s net.Stream) {

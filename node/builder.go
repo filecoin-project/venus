@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/block"
+	"github.com/filecoin-project/go-filecoin/discovery"
 	"github.com/ipfs/go-bitswap"
 	bsnet "github.com/ipfs/go-bitswap/network"
 	bserv "github.com/ipfs/go-blockservice"
@@ -16,9 +17,9 @@ import (
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
-	"github.com/ipfs/go-ipld-cbor"
+	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p"
 	autonatsvc "github.com/libp2p/go-libp2p-autonat-svc"
@@ -26,8 +27,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	p2pmetrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
-	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	libp2pps "github.com/libp2p/go-libp2p-pubsub"
 	rhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -242,10 +243,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.SectorStorage")
 	}
-	nd.HelloProtocol, err = b.buildHelloProtocol(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.HelloProtocol")
-	}
 
 	nd.StorageProtocol, err = b.buildStorageProtocol(ctx)
 	if err != nil {
@@ -279,6 +276,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		SectorBuilder: nd.SectorBuilder,
 		Wallet:        nd.Wallet.Wallet,
 	}))
+
+	nd.HelloProtocol, err = b.buildHelloProtocol(ctx, &nd.Network, &nd.Chain, nd.PorcelainAPI)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.HelloProtocol")
+	}
 
 	return nd, nil
 }
@@ -338,10 +340,10 @@ func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConf
 	}
 
 	// create a bootstrapper
-	bootstrapper := net.NewBootstrapper(bpi, peerHost, peerHost.Network(), router, minPeerThreshold, period)
+	bootstrapper := discovery.NewBootstrapper(bpi, peerHost, peerHost.Network(), router, minPeerThreshold, period)
 
 	// set up peer tracking
-	peerTracker := net.NewPeerTracker(peerHost.ID())
+	peerTracker := discovery.NewPeerTracker(peerHost.ID())
 
 	// Set up libp2p network
 	// TODO: PubSub requires strict message signing, disabled for now
@@ -493,9 +495,30 @@ func (b *Builder) buildSectorStorage(ctx context.Context) (SectorBuilderSubmodul
 	}, nil
 }
 
-func (b *Builder) buildHelloProtocol(ctx context.Context) (HelloProtocolSubmodule, error) {
+func (b *Builder) buildHelloProtocol(ctx context.Context, network *NetworkSubmodule, chain *ChainSubmodule, porcelain *porcelain.API) (HelloProtocolSubmodule, error) {
+	// Start up 'hello' handshake service
+	helloCallback := func(ci *block.ChainInfo) {
+		network.PeerTracker.Track(ci)
+		err := chain.SyncDispatch.SendHello(ci)
+		if err != nil {
+			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
+			return
+		}
+		// For now, consider the initial bootstrap done after the syncer has (synchronously)
+		// processed the chain up to the head reported by the first peer to respond to hello.
+		// This is an interim sequence until a secure network bootstrap is implemented:
+		// https://github.com/filecoin-project/go-filecoin/issues/2674.
+		// For now, we trust that the first node to respond will be a configured bootstrap node
+		// and that we trust that node to inform us of the chain head.
+		// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
+		// sync done until it's caught up enough that it will accept blocks from pubsub.
+		// This might require additional rounds of hello.
+		// See https://github.com/filecoin-project/go-filecoin/issues/1105
+		chain.ChainSynced.Done()
+	}
+
 	return HelloProtocolSubmodule{
-		// HelloSvc: nil,
+		Handler: discovery.NewHandler(network.PeerHost, chain.ChainReader.GenesisCid(), helloCallback, porcelain.ChainHead, network.NetworkName),
 	}, nil
 }
 

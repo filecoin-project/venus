@@ -1,8 +1,8 @@
 package node
 
-import "github.com/filecoin-project/go-filecoin/protocol/hello"
+import "github.com/filecoin-project/go-filecoin/discovery"
 
 // HelloProtocolSubmodule enhances the `Node` with "Hello" protocol capabilities.
 type HelloProtocolSubmodule struct {
-	HelloSvc *hello.Handler
+	Handler *discovery.Handler
 }

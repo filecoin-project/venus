@@ -17,14 +17,14 @@ import (
 	gsstoreutil "github.com/ipfs/go-graphsync/storeutil"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/ipfs/go-ipld-format"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/impl/free"
-	"github.com/ipld/go-ipld-prime/linking/cid"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p/p2p/net/mock"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/block"
 	"github.com/filecoin-project/go-filecoin/chain"
 	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/discovery"
 	"github.com/filecoin-project/go-filecoin/encoding"
 	"github.com/filecoin-project/go-filecoin/net"
 	th "github.com/filecoin-project/go-filecoin/testhelpers"
@@ -902,7 +903,7 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
 	clock := th.NewFakeClock(time.Now())
-	pt := net.NewPeerTracker(peer.ID(""))
+	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), block.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
@@ -1001,7 +1002,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	bv := th.NewFakeBlockValidator()
 	clock := th.NewFakeClock(time.Now())
-	pt := net.NewPeerTracker(peer.ID(""))
+	pt := discovery.NewPeerTracker(peer.ID(""))
 	pt.Track(block.NewChainInfo(host2.ID(), block.TipSetKey{}, 0))
 
 	localLoader := gsstoreutil.LoaderForBlockstore(bs)
