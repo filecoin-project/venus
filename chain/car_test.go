@@ -267,53 +267,19 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 			require.NoError(t, err)
 
 			var smsg types.SignedMessage
-			var c cid.Cid
-			err = secpAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
-				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
-					return err
-				}
-
-				b, err := bstore.Get(c)
-				if err != nil {
-					return err
-				}
-				return cbornode.DecodeInto(b.RawData(), &smsg)
-			})
-			require.NoError(t, err)
+			requireAMTDecoding(t, bstore, secpAMT, &smsg)
 
 			blsAMT, err := amt.LoadAMT(as, blk.Messages.BLSRoot)
 			require.NoError(t, err)
 
 			var umsg types.UnsignedMessage
-			err = blsAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
-				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
-					return err
-				}
-
-				b, err := bstore.Get(c)
-				if err != nil {
-					return err
-				}
-				return cbornode.DecodeInto(b.RawData(), &umsg)
-			})
-			require.NoError(t, err)
+			requireAMTDecoding(t, bstore, blsAMT, &umsg)
 
 			rectAMT, err := amt.LoadAMT(as, blk.MessageReceipts)
 			require.NoError(t, err)
 
 			var rect types.MessageReceipt
-			err = rectAMT.ForEach(func(_ uint64, d *typegen.Deferred) error {
-				if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
-					return err
-				}
-
-				b, err := bstore.Get(c)
-				if err != nil {
-					return err
-				}
-				return cbornode.DecodeInto(b.RawData(), &rect)
-			})
-			require.NoError(t, err)
+			requireAMTDecoding(t, bstore, rectAMT, &rect)
 
 			for _, p := range blk.Parents.ToSlice() {
 				parents = append(parents, p)
@@ -324,4 +290,21 @@ func validateBlockstoreImport(t *testing.T, start, stop block.TipSetKey, bstore 
 		}
 		cur = block.NewTipSetKey(parents...)
 	}
+}
+
+func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Root, dest interface{}) {
+	err := root.ForEach(func(_ uint64, d *typegen.Deferred) error {
+		var c cid.Cid
+		if err := cbornode.DecodeInto(d.Raw, &c); err != nil {
+			return err
+		}
+
+		b, err := bstore.Get(c)
+		if err != nil {
+			return err
+		}
+		return cbornode.DecodeInto(b.RawData(), dest)
+	})
+	require.NoError(t, err)
+
 }
