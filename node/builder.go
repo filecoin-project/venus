@@ -471,6 +471,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 		ChainSynced: moresync.NewLatch(1),
 		Fetcher:     fetcher,
 		State:       chainState,
+		Syncer:      chainSyncer,
 		validator:   blkValid,
 		processor:   processor,
 	}, nil
