@@ -4,13 +4,10 @@ import (
 	"context"
 	"io"
 
-	blocks "github.com/ipfs/go-block-format"
-	car "github.com/ipfs/go-car"
+	"github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 
 	"github.com/filecoin-project/go-filecoin/block"
@@ -141,9 +138,7 @@ func exportAMTReceipts(ctx context.Context, out io.Writer, receipts []*types.Mes
 }
 
 func carWritingMessageStore(out io.Writer) *MessageStore {
-	d := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(d)
-	return NewMessageStore(carExportBlockstore{bs: bs, out: out})
+	return NewMessageStore(carExportBlockstore{out: out})
 }
 
 type carStore interface {
@@ -160,24 +155,20 @@ func Import(ctx context.Context, cs carStore, in io.Reader) (block.TipSetKey, er
 	return headKey, nil
 }
 
+// carExportBlockstore allows a structure that would normally put blocks in a block store to output to a car file instead.
 type carExportBlockstore struct {
-	bs  blockstore.Blockstore
 	out io.Writer
 }
 
-func (cs carExportBlockstore) DeleteBlock(c cid.Cid) error         { return cs.bs.DeleteBlock(c) }
-func (cs carExportBlockstore) Has(c cid.Cid) (bool, error)         { return cs.bs.Has(c) }
-func (cs carExportBlockstore) Get(c cid.Cid) (blocks.Block, error) { return cs.bs.Get(c) }
-func (cs carExportBlockstore) GetSize(c cid.Cid) (int, error)      { return cs.bs.GetSize(c) }
+func (cs carExportBlockstore) DeleteBlock(c cid.Cid) error         { panic("not implement") }
+func (cs carExportBlockstore) Has(c cid.Cid) (bool, error)         { panic("not implement") }
+func (cs carExportBlockstore) Get(c cid.Cid) (blocks.Block, error) { panic("not implement") }
+func (cs carExportBlockstore) GetSize(c cid.Cid) (int, error)      { panic("not implement") }
 func (cs carExportBlockstore) Put(b blocks.Block) error {
-	err := carutil.LdWrite(cs.out, b.Cid().Bytes(), b.RawData())
-	if err != nil {
-		return err
-	}
-	return cs.bs.Put(b)
+	return carutil.LdWrite(cs.out, b.Cid().Bytes(), b.RawData())
 }
-func (cs carExportBlockstore) PutMany(b []blocks.Block) error { return cs.bs.PutMany(b) }
+func (cs carExportBlockstore) PutMany(b []blocks.Block) error { panic("not implement") }
 func (cs carExportBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	return cs.bs.AllKeysChan(ctx)
+	panic("not implement")
 }
-func (cs carExportBlockstore) HashOnRead(enabled bool) { cs.bs.HashOnRead(enabled) }
+func (cs carExportBlockstore) HashOnRead(enabled bool) { panic("not implement") }

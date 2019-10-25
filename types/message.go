@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	"github.com/filecoin-project/go-amt-ipld"
-	"github.com/filecoin-project/go-filecoin/address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -34,9 +33,6 @@ var EmptyMessagesCID cid.Cid
 var EmptyReceiptsCID cid.Cid
 
 func init() {
-	cbor.RegisterCborType(UnsignedMessage{})
-	cbor.RegisterCborType(TxMeta{})
-
 	emptyAMTCid, err := amt.FromArray(amt.WrapBlockstore(blockstore.NewBlockstore(datastore.NewMapDatastore())), []typegen.CBORMarshaler{})
 	if err != nil {
 		panic("could not create CID for empty AMT")
