@@ -56,7 +56,7 @@ func Test_Mine(t *testing.T) {
 	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -177,7 +177,7 @@ func sharedSetupInitial() (*hamt.CborIpldStore, *message.Pool, cid.Cid) {
 }
 
 func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
-	state.Tree, *message.Pool, []address.Address, *hamt.CborIpldStore, blockstore.Blockstore) {
+	state.Tree, *message.Pool, []address.Address, blockstore.Blockstore) {
 
 	cst, pool, fakeActorCodeCid := sharedSetupInitial()
 	vms := th.VMStorage()
@@ -203,7 +203,7 @@ func sharedSetup(t *testing.T, mockSigner types.MockSigner) (
 		addr4: minerAct,
 		addr5: minerOwner,
 	})
-	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, cst, bs
+	return st, pool, []address.Address{addr1, addr2, addr3, addr4, addr5}, bs
 }
 
 // TODO this test belongs in core, it calls ApplyMessages #3311
@@ -280,7 +280,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSignerVal)
+	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -397,7 +397,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	ctx := context.Background()
 
 	mockSigner, blockSignerAddr := setupSigner()
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -455,7 +455,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	ctx := context.Background()
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
@@ -560,7 +560,7 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
@@ -625,7 +625,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
@@ -680,7 +680,7 @@ func TestGenerateError(t *testing.T) {
 	mockSigner, blockSignerAddr := setupSigner()
 	newCid := types.NewCidForTestGetter()
 
-	st, pool, addrs, _, bs := sharedSetup(t, mockSigner)
+	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil

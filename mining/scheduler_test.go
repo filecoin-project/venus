@@ -63,7 +63,7 @@ func TestMineOnce10Null(t *testing.T) {
 	baseTs, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
 
-	st, pool, _, _, bs := sharedSetup(t, mockSigner)
+	st, pool, _, bs := sharedSetup(t, mockSigner)
 	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
 		return st, nil
 	}
