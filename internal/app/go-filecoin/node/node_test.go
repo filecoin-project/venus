@@ -94,8 +94,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require.NoError(t, err)
 		nd, err := node.New(ctx, opts...)
 		require.NoError(t, err)
-		nd.Network.Bootstrapper.MinPeerThreshold = 2
-		nd.Network.Bootstrapper.Period = 10 * time.Millisecond
+		nd.Discovery.Bootstrapper.MinPeerThreshold = 2
+		nd.Discovery.Bootstrapper.Period = 10 * time.Millisecond
 		assert.NoError(t, nd.Start(ctx))
 		defer nd.Stop(ctx)
 

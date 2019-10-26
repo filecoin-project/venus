@@ -42,7 +42,7 @@ type HelloProtocolHandler struct {
 	genesis cid.Cid
 
 	// callBack is called when new peers tell us about their chain
-	callBack helloCallback
+	peerDiscovered helloCallback
 
 	//  is used to retrieve the current heaviest tipset
 	// for filling out our hello messages.
@@ -62,18 +62,20 @@ func helloProtocolID(networkName string) protocol.ID {
 
 // NewHelloProtocolHandler creates a new instance of the hello protocol `Handler` and registers it to
 // the given `host.Host`.
-func NewHelloProtocolHandler(h host.Host, gen cid.Cid, helloCallback helloCallback, getHeaviestTipSet getTipSetFunc, networkName string) *HelloProtocolHandler {
+func NewHelloProtocolHandler(h host.Host, gen cid.Cid, networkName string) *HelloProtocolHandler {
 	return &HelloProtocolHandler{
-		host:              h,
-		genesis:           gen,
-		callBack:          helloCallback,
-		getHeaviestTipSet: getHeaviestTipSet,
-		networkName:       networkName,
+		host:        h,
+		genesis:     gen,
+		networkName: networkName,
 	}
 }
 
 // Register registers the handler with the network.
-func (h *HelloProtocolHandler) Register() {
+func (h *HelloProtocolHandler) Register(peerDiscoveredCallback helloCallback, getHeaviestTipSet getTipSetFunc) {
+	// register callbacks
+	h.peerDiscovered = peerDiscoveredCallback
+	h.getHeaviestTipSet = getHeaviestTipSet
+
 	// register a handle for when a new connection against someone is created
 	h.host.SetStreamHandler(helloProtocolID(h.networkName), h.handleNewStream)
 
@@ -184,7 +186,7 @@ func (hn *helloProtocolNotifiee) Connected(n net.Network, c net.Conn) {
 		// no error
 		case err == nil:
 			// notify the local node of the new `block.ChainInfo`
-			hn.asHandler().callBack(ci)
+			hn.asHandler().peerDiscovered(ci)
 		// processing errors
 		case err == ErrBadGenesis:
 			log.Debugf("genesis cid: %s does not match: %s, disconnecting from peer: %s", &hello.GenesisHash, hn.asHandler().genesis, from)

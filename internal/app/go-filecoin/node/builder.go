@@ -199,9 +199,14 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Blockstore")
 	}
 
-	nd.Network, err = b.buildNetwork(ctx, nd.Repo.Config().Bootstrap, &nd.Blockstore)
+	nd.Network, err = b.buildNetwork(ctx, &nd.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Network")
+	}
+
+	nd.Discovery, err = b.buildDiscovery(ctx, nd.Repo.Config().Bootstrap, &nd.Network)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Discovery")
 	}
 
 	nd.VersionTable, err = version.ConfigureProtocolVersions(nd.Network.NetworkName)
@@ -214,7 +219,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.Chain, err = b.buildChain(ctx, &nd.Blockstore, &nd.Network, nd.VersionTable)
+	nd.Chain, err = b.buildChain(ctx, &nd.Blockstore, &nd.Network, &nd.Discovery, nd.VersionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
@@ -277,15 +282,10 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		Wallet:        nd.Wallet.Wallet,
 	}))
 
-	nd.HelloProtocol, err = b.buildHelloProtocol(ctx, &nd.Network, &nd.Chain, nd.PorcelainAPI)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.HelloProtocol")
-	}
-
 	return nd, nil
 }
 
-func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConfig, blockstore *BlockstoreSubmodule) (NetworkSubmodule, error) {
+func (b *Builder) buildNetwork(ctx context.Context, blockstore *BlockstoreSubmodule) (NetworkSubmodule, error) {
 	bandwidthTracker := p2pmetrics.NewBandwidthCounter()
 	b.Libp2pOpts = append(b.Libp2pOpts, libp2p.BandwidthReporter(bandwidthTracker))
 
@@ -293,21 +293,6 @@ func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConf
 	if err != nil {
 		return NetworkSubmodule{}, err
 	}
-
-	periodStr := config.Period
-	period, err := time.ParseDuration(periodStr)
-	if err != nil {
-		return NetworkSubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
-	}
-
-	// bootstrapper maintains connections to some subset of addresses
-	ba := config.Addresses
-	bpi, err := net.PeerAddrsToAddrInfo(ba)
-	if err != nil {
-		return NetworkSubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
-	}
-
-	minPeerThreshold := config.MinPeerThreshold
 
 	// set up host
 	var peerHost host.Host
@@ -339,12 +324,6 @@ func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConf
 		peerHost = rhost.Wrap(noopLibP2PHost{}, router)
 	}
 
-	// create a bootstrapper
-	bootstrapper := discovery.NewBootstrapper(bpi, peerHost, peerHost.Network(), router, minPeerThreshold, period)
-
-	// set up peer tracking
-	peerTracker := discovery.NewPeerTracker(peerHost.ID())
-
 	// Set up libp2p network
 	// TODO: PubSub requires strict message signing, disabled for now
 	// reference issue: #3124
@@ -366,15 +345,13 @@ func (b *Builder) buildNetwork(ctx context.Context, config *config.BootstrapConf
 
 	// build the network submdule
 	return NetworkSubmodule{
-		NetworkName:  networkName,
-		host:         peerHost,
-		PeerHost:     peerHost,
-		Bootstrapper: bootstrapper,
-		PeerTracker:  peerTracker,
-		Router:       router,
-		fsub:         fsub,
-		bitswap:      bswap,
-		Network:      network,
+		NetworkName: networkName,
+		host:        peerHost,
+		PeerHost:    peerHost,
+		Router:      router,
+		fsub:        fsub,
+		bitswap:     bswap,
+		Network:     network,
 	}, nil
 }
 
@@ -414,7 +391,7 @@ func (b *Builder) buildBlockservice(ctx context.Context, blockstore *BlockstoreS
 	}, nil
 }
 
-func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, pvt *version.ProtocolVersionTable) (ChainSubmodule, error) {
+func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, pvt *version.ProtocolVersionTable) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
 	chainStore := chain.NewStore(b.Repo.ChainDatastore(), blockstore.cborStore, &state.TreeStateLoader{}, chainStatusReporter, b.genCid)
@@ -448,7 +425,7 @@ func (b *Builder) buildChain(ctx context.Context, blockstore *BlockstoreSubmodul
 	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, b.Clock, network.PeerTracker)
+	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, b.Clock, discovery.PeerTracker)
 
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
 
@@ -495,30 +472,32 @@ func (b *Builder) buildSectorStorage(ctx context.Context) (SectorBuilderSubmodul
 	}, nil
 }
 
-func (b *Builder) buildHelloProtocol(ctx context.Context, network *NetworkSubmodule, chain *ChainSubmodule, porcelain *porcelain.API) (HelloProtocolSubmodule, error) {
-	// Start up 'hello' handshake service
-	helloCallback := func(ci *block.ChainInfo) {
-		network.PeerTracker.Track(ci)
-		err := chain.SyncDispatch.SendHello(ci)
-		if err != nil {
-			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
-			return
-		}
-		// For now, consider the initial bootstrap done after the syncer has (synchronously)
-		// processed the chain up to the head reported by the first peer to respond to hello.
-		// This is an interim sequence until a secure network bootstrap is implemented:
-		// https://github.com/filecoin-project/go-filecoin/issues/2674.
-		// For now, we trust that the first node to respond will be a configured bootstrap node
-		// and that we trust that node to inform us of the chain head.
-		// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
-		// sync done until it's caught up enough that it will accept blocks from pubsub.
-		// This might require additional rounds of hello.
-		// See https://github.com/filecoin-project/go-filecoin/issues/1105
-		chain.ChainSynced.Done()
+func (b *Builder) buildDiscovery(ctx context.Context, config *config.BootstrapConfig, network *NetworkSubmodule) (DiscoverySubmodule, error) {
+	periodStr := config.Period
+	period, err := time.ParseDuration(periodStr)
+	if err != nil {
+		return DiscoverySubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
 	}
 
-	return HelloProtocolSubmodule{
-		Handler: discovery.NewHelloProtocolHandler(network.PeerHost, chain.ChainReader.GenesisCid(), helloCallback, porcelain.ChainHead, network.NetworkName),
+	// bootstrapper maintains connections to some subset of addresses
+	ba := config.Addresses
+	bpi, err := net.PeerAddrsToAddrInfo(ba)
+	if err != nil {
+		return DiscoverySubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
+	}
+
+	minPeerThreshold := config.MinPeerThreshold
+
+	// create a bootstrapper
+	bootstrapper := discovery.NewBootstrapper(bpi, network.PeerHost, network.PeerHost.Network(), network.Router, minPeerThreshold, period)
+
+	// set up peer tracking
+	peerTracker := discovery.NewPeerTracker(network.PeerHost.ID())
+
+	return DiscoverySubmodule{
+		Bootstrapper: bootstrapper,
+		PeerTracker:  peerTracker,
+		HelloHandler: discovery.NewHelloProtocolHandler(network.PeerHost, b.genCid, network.NetworkName),
 	}, nil
 }
 

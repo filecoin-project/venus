@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -17,11 +16,6 @@ type NetworkSubmodule struct {
 
 	// TODO: do we need a second host? (see: https://github.com/filecoin-project/go-filecoin/issues/3477)
 	PeerHost host.Host
-
-	Bootstrapper *discovery.Bootstrapper
-
-	// PeerTracker maintains a list of peers good for fetching.
-	PeerTracker *discovery.PeerTracker
 
 	// Router is a router from IPFS
 	Router routing.Routing
