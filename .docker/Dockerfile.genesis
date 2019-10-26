@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y ca-certificates file sudo clang
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 
 # This docker file is a modified version of
-# https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
+# https://github.com/ipfs/go-ipfs/blob/master/.docker/Dockerfile
 # Thanks Lars :)
 
 ENV SRC_DIR /go/src/github.com/filecoin-project/go-filecoin
