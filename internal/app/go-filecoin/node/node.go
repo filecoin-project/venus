@@ -143,43 +143,14 @@ func (node *Node) Start(ctx context.Context) error {
 	go node.handleNewChainHeads(syncCtx, head)
 
 	if !node.OfflineMode {
-		// Start bootstrapper.
-		node.Discovery.Bootstrapper.Start(context.Background())
 
 		// Start syncing dispatch
 		node.Chain.SyncDispatch.Start(context.Background())
 
-		// Register peer tracker disconnect function with network.
-		node.Discovery.PeerTracker.RegisterDisconnect(node.Network.host.Network())
-
-		// Start up 'hello' handshake service
-		peerDiscoveredCallback := func(ci *block.ChainInfo) {
-			node.Discovery.PeerTracker.Track(ci)
-			err := node.Chain.SyncDispatch.SendHello(ci)
-			if err != nil {
-				log.Errorf("error receiving chain info from hello %s: %s", ci, err)
-				return
-			}
-			// For now, consider the initial bootstrap done after the syncer has (synchronously)
-			// processed the chain up to the head reported by the first peer to respond to hello.
-			// This is an interim sequence until a secure network bootstrap is implemented:
-			// https://github.com/filecoin-project/go-filecoin/issues/2674.
-			// For now, we trust that the first node to respond will be a configured bootstrap node
-			// and that we trust that node to inform us of the chain head.
-			// TODO: when the syncer rejects too-far-ahead blocks received over pubsub, don't consider
-			// sync done until it's caught up enough that it will accept blocks from pubsub.
-			// This might require additional rounds of hello.
-			// See https://github.com/filecoin-project/go-filecoin/issues/1105
-			node.Chain.ChainSynced.Done()
+		// Start node discovery
+		if err := node.Discovery.Start(node); err != nil {
+			return err
 		}
-
-		// chain head callback
-		chainHeadCallback := func() (block.TipSet, error) {
-			return node.Chain.State.GetTipSet(node.Chain.State.Head())
-		}
-
-		// Register the "hello" protocol with the network
-		node.Discovery.HelloHandler.Register(peerDiscoveredCallback, chainHeadCallback)
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
