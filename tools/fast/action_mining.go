@@ -6,9 +6,9 @@ import (
 
 	"github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
 // MiningOnce runs the `mining once` command against the filecoin process

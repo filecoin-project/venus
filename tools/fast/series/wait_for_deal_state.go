@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

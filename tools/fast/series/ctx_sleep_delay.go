@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/consensus"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 )
 
 type ctxSleepDelayKey struct{}

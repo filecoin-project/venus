@@ -3,12 +3,12 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

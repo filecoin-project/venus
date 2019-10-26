@@ -17,7 +17,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 
 	"github.com/ipfs/iptb/testbed/interfaces"
 	"github.com/ipfs/iptb/util"

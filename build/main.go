@@ -13,7 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/util/version"
+	"github.com/filecoin-project/go-filecoin/build/internal/helpers"
+	"github.com/filecoin-project/go-filecoin/build/internal/version"
 )
 
 var lineBreak = "\n"
@@ -167,9 +168,7 @@ func forceBuildFC() {
 	log.Println("Force building go-filecoin...")
 
 	runCmd(cmd([]string{
-		"go", "build",
-		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha()),
-		"-a", "-v", "-o", "go-filecoin", ".",
+		"bash", "-c", fmt.Sprintf("go build %s -a -v -o go-filecoin .", flags()),
 	}...))
 }
 
@@ -243,13 +242,18 @@ func generateGenesis() {
 	}...))
 }
 
+func flags() string {
+	return fmt.Sprintf("-ldflags=github.com/filecoin-project/go-filecoin=\"%s\"", strings.Join([]string{
+		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitRoot=%s", helpers.GetGitRoot()),
+		fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/build/flags.GitCommit=%s", getCommitSha()),
+	}, " "))
+}
+
 func buildFilecoin() {
 	log.Println("Building go-filecoin...")
 
 	runCmd(cmd([]string{
-		"go", "build",
-		"-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha()),
-		"-v", "-o", "go-filecoin", ".",
+		"bash", "-c", fmt.Sprintf("go build %s -v -o go-filecoin .", flags()),
 	}...))
 }
 
@@ -286,7 +290,9 @@ func buildPrereleaseTool() {
 func install() {
 	log.Println("Installing...")
 
-	runCmd(cmd("go", "install", "-ldflags", fmt.Sprintf("-X github.com/filecoin-project/go-filecoin/flags.Commit=%s", getCommitSha())))
+	runCmd(cmd(
+		"bash", "-c", fmt.Sprintf("go install %s", flags()),
+	))
 }
 
 // test executes tests and passes along all additional arguments to `go test`.
@@ -300,8 +306,10 @@ func test(userArgs ...string) {
 	}
 
 	begin := time.Now()
-	runCmd(cmd(fmt.Sprintf("go test %s %s",
-		strings.Replace(packages, "\n", " ", -1), strings.Join(userArgs, " "))))
+	runCmd(cmd(
+		"bash", "-c", fmt.Sprintf("go test %s %s",
+			strings.Replace(packages, "\n", " ", -1),
+			strings.Join(userArgs, " "))))
 	end := time.Now()
 	log.Printf("Tests finished in %.1f seconds\n", end.Sub(begin).Seconds())
 }

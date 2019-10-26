@@ -6,7 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 )
 
 // ChainHead runs the chain head command against the filecoin process.

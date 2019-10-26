@@ -7,7 +7,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
 // Migration is the interface to all repo migration versions.

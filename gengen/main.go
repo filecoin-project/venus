@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/gengen/util"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func writeKey(ki *types.KeyInfo, name string, jsonout bool) error {

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/config"
-	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
 // AssertLogged asserts that a given string is contained in the given log file.

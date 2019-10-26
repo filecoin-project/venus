@@ -7,9 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 )
 
 // MinerCreate runs the `miner create` command against the filecoin process

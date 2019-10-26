@@ -7,8 +7,8 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/peer"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // ActionOption is used to pass optional arguments to actions.

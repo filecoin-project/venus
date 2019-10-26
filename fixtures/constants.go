@@ -10,8 +10,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/build/project"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // The file used to build these addresses can be found in:
@@ -43,7 +43,7 @@ type detailsStruct struct {
 }
 
 func init() {
-	root := th.ProjectRoot()
+	root := project.Root()
 
 	detailspath := filepath.Join(root, "fixtures/test/gen.json")
 	detailsFile, err := os.Open(detailspath)
@@ -89,7 +89,7 @@ func init() {
 
 // KeyFilePaths returns the paths to the wallets of the testaddresses
 func KeyFilePaths() []string {
-	root := th.ProjectRoot()
+	root := project.Root()
 	folder := filepath.Join(root, "fixtures/test")
 
 	res := make([]string, len(testKeys))

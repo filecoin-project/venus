@@ -12,9 +12,9 @@ import (
 	"github.com/ipfs/go-ipfs-exchange-offline"
 
 	. "github.com/filecoin-project/go-filecoin/gengen/util"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/types"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"github.com/stretchr/testify/assert"
 )
