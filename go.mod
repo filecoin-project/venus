@@ -107,6 +107,6 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-replace github.com/filecoin-project/go-bls-sigs => ./go-bls-sigs
+replace github.com/filecoin-project/go-bls-sigs => ./vendors/go-bls-sigs
 
-replace github.com/filecoin-project/go-sectorbuilder => ./go-sectorbuilder
+replace github.com/filecoin-project/go-sectorbuilder => ./vendors/go-sectorbuilder
