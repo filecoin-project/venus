@@ -14,8 +14,8 @@ fixtures/live
 !fixtures/live/.gitkeep
 
 // Tools 
-gengen/gengen
-gengen/gensetup
+tools/gengen/gengen
+tools/gengen/gensetup
 tools/fast/bin/localnet
 tools/faucet/faucet
 tools/aggregator/aggregator

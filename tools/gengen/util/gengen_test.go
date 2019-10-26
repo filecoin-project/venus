@@ -11,10 +11,10 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-exchange-offline"
 
-	. "github.com/filecoin-project/go-filecoin/gengen/util"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	. "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 
 	"github.com/stretchr/testify/assert"
 )

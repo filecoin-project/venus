@@ -6,7 +6,7 @@ genesis block.
 ### Example
 
 ```
-go-filecon $ ./gengen/gengen --keypath fixtures --out-car fixtures/genesis.car --out-json fixtures/gen.json --config fixtures/setup.json
+go-filecon $ ./tools/gengen/gengen --keypath fixtures --out-car fixtures/genesis.car --out-json fixtures/gen.json --config fixtures/setup.json
 ```
 
 ### Building
@@ -21,7 +21,7 @@ go build -o gengen main.go
 ### Usage
 
 ```
-Usage of ./gengen:
+Usage of ./tools/gengen:
   -config string
     	reads configuration from this json file, instead of stdin
   -json
