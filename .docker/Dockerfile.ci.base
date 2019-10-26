@@ -4,7 +4,7 @@ MAINTAINER Filecoin Dev Team
 RUN apt-get update && apt-get install -y ca-certificates file sudo git build-essential wget
 
 # This docker file is a modified version of
-# https://github.com/ipfs/go-ipfs/blob/master/Dockerfile
+# https://github.com/ipfs/go-ipfs/blob/master/.docker/Dockerfile
 # Thanks Lars :)
 
 # Get su-exec, a very minimal tool for dropping privileges,
