@@ -307,8 +307,9 @@ func test(userArgs ...string) {
 
 	begin := time.Now()
 	runCmd(cmd(
-		"bash", "-c", fmt.Sprintf("go test %s %s",
+		"bash", "-c", fmt.Sprintf("go test %s %s %s",
 			strings.Replace(packages, "\n", " ", -1),
+			flags(),
 			strings.Join(userArgs, " "))))
 	end := time.Now()
 	log.Printf("Tests finished in %.1f seconds\n", end.Sub(begin).Seconds())
