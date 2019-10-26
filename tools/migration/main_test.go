@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/build/project"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/tools/migration/internal"
 )
 
@@ -77,7 +77,7 @@ func TestOptions(t *testing.T) {
 }
 
 func requireGetMigrationBinary(t *testing.T) string {
-	root := testhelpers.ProjectRoot()
+	root := project.Root()
 
 	bin := filepath.Join(root, "tools/migration/go-filecoin-migrate")
 	_, err := os.Stat(bin)

@@ -2,8 +2,8 @@ package fast
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )

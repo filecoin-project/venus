@@ -306,7 +306,7 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/filecoin-project/go-filecoin/testhelpers"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 ```

@@ -6,8 +6,8 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/abi"
-	"github.com/filecoin-project/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/abi"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

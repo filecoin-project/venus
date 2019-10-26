@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-files"

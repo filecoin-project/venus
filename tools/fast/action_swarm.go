@@ -6,7 +6,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/go-filecoin/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 )
 
 // SwarmConnect runs the `swarm connect` command against the filecoin process

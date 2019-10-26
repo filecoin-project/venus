@@ -7,7 +7,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 )
 
 // RetrievalClientRetrievePiece runs the retrieval-client retrieve-piece commands against the filecoin process.

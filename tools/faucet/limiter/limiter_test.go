@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
 )
 

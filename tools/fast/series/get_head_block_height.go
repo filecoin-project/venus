@@ -3,8 +3,8 @@ package series
 import (
 	"context"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 // GetHeadBlockHeight will inspect the chain head and return the height

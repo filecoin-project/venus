@@ -6,7 +6,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )
 
 // DealsList runs the `deals list` command against the filecoin process

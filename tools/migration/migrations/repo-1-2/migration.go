@@ -10,10 +10,10 @@ import (
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/block"
-	"github.com/filecoin-project/go-filecoin/chain"
-	"github.com/filecoin-project/go-filecoin/encoding"
-	"github.com/filecoin-project/go-filecoin/repo"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 )
 
 // This migration was written for a prior development state in order to demonstrate migration

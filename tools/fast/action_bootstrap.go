@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )
 
 // BootstrapLs runs the `bootstrap ls` command against the filecoin process.

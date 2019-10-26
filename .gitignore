@@ -1,21 +1,28 @@
 go-filecoin
+!cmd/go-filecoin 
+!internal/app/go-filecoin 
+
 .task
+.idea
 *.coverprofile
 *.out
 *.so
-.idea
-gengen/gengen
-gengen/gensetup
+
 fixtures/test
 !fixtures/test/.gitkeep
 fixtures/live
 !fixtures/live/.gitkeep
+
+// Tools 
+gengen/gengen
+gengen/gensetup
 tools/fast/bin/localnet
 tools/faucet/faucet
 tools/aggregator/aggregator
 tools/genesis-file-server/genesis-file-server
 tools/migration/go-filecoin-migrate
 tools/prerelease-tool/prerelease-tool
+
 **/paramcache
 **/*.h
 **/*.a
@@ -23,3 +30,4 @@ tools/prerelease-tool/prerelease-tool
 
 // IDE (vscode)
 .vscode
+debug.test

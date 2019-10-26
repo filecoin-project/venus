@@ -5,10 +5,10 @@ import (
 
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/actor/builtin/paymentbroker"
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
-	"github.com/filecoin-project/go-filecoin/types"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // PaychCreate runs the `paych create` command against the filecoin process.

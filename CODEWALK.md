@@ -649,11 +649,11 @@ Stats are exported for consumption via [Prometheus](https://prometheus.io/) and 
 #### Metrics
 
 go-filecoin can be configured to collect and export metrics to Prometheus via the `MetricsConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/internal/pkg/config#ObservabilityConfig) package.
 To view metrics from your filecoin node using the default configuration options set the `prometheusEnabled` value to `true`, start the filecoin daemon, then visit `localhost:9400/metrics` in your web-browser. 
 
 #### Tracing
 
 go-filecoin can be configured to collect and export traces to Jaeger via the `TraceConfig`.
-The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/config#ObservabilityConfig) package.
+The details of this can be found inside the [`config/`](https://godoc.org/github.com/filecoin-project/go-filecoin/internal/pkg/config#ObservabilityConfig) package.
 To collect traces from your filecoin node using the default configuration options set the `jaegerTracingEnabled` value to `true`, start the filecoin daemon, then follow the [Jaeger Getting](https://www.jaegertracing.io/docs/1.11/getting-started/#all-in-one) started guide.

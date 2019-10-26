@@ -5,8 +5,8 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/address"
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 )
 
 // MessageSend runs the `message send` command against the filecoin process.

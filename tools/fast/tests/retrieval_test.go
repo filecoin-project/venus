@@ -15,14 +15,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/protocol/storage/storagedeal"
-	th "github.com/filecoin-project/go-filecoin/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/environment"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	localplugin "github.com/filecoin-project/go-filecoin/tools/iptb-plugins/filecoin/local"
-	"github.com/filecoin-project/go-filecoin/types"
 )
 
 func init() {

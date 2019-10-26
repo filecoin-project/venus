@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/commands"
+	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )
 
 // ID runs the `id` command against the filecoin process
