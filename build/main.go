@@ -216,7 +216,7 @@ func generateGenesis() {
 	}
 
 	runCmd(cmd([]string{
-		"./gengen/gengen",
+		"./tools/gengen/gengen",
 		"--keypath", liveFixtures,
 		"--out-car", filepath.Join(liveFixtures, "genesis.car"),
 		"--out-json", filepath.Join(liveFixtures, "gen.json"),
@@ -233,7 +233,7 @@ func generateGenesis() {
 	}
 
 	runCmd(cmd([]string{
-		"./gengen/gengen",
+		"./tools/gengen/gengen",
 		"--keypath", testFixtures,
 		"--out-car", filepath.Join(testFixtures, "genesis.car"),
 		"--out-json", filepath.Join(testFixtures, "gen.json"),
@@ -260,7 +260,7 @@ func buildFilecoin() {
 func buildGengen() {
 	log.Println("Building gengen utils...")
 
-	runCmd(cmd([]string{"go", "build", "-o", "./gengen/gengen", "./gengen"}...))
+	runCmd(cmd([]string{"go", "build", "-o", "./tools/gengen/gengen", "./tools/gengen"}...))
 }
 
 func buildFaucet() {

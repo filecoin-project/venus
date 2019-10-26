@@ -21,7 +21,7 @@ import (
 // rebuild using
 // TODO: move to build script
 // https://github.com/filecoin-project/go-filecoin/issues/921
-// cat ./fixtures/setup.json | ./gengen/gengen --json --keypath fixtures > fixtures/genesis.car 2> fixtures/gen.json
+// cat ./fixtures/setup.json | ./tools/gengen/gengen --json --keypath fixtures > fixtures/genesis.car 2> fixtures/gen.json
 
 // TestAddresses is a list of pregenerated addresses.
 var TestAddresses []string

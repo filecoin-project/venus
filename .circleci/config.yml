@@ -229,7 +229,7 @@ jobs:
           root: "."
           paths:
             - "bundle/"
-            - "gengen/gengen"
+            - "tools/gengen/gengen"
             - "fixtures"
             - "go-filecoin"
             - "tools"
