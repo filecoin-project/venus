@@ -2,7 +2,7 @@
 
 set -Eeo pipefail
 
-subm_dir="go-sectorbuilder"
+subm_dir="vendors/go-sectorbuilder"
 
 git submodule update --init --recursive $subm_dir
 

@@ -806,16 +806,16 @@ commands:
     steps:
       - run:
           name: generate go-sectorbuilder checksum (used as key for Groth parameters)
-          command: git rev-parse @:./go-sectorbuilder > /tmp/go-sectorbuilder-checksum.txt
+          command: git rev-parse @:./vendors/go-sectorbuilder > /tmp/go-sectorbuilder-checksum.txt
       - run:
           name: generate rust-fil-proofs checksum
-          command: git rev-parse @:./go-sectorbuilder > /tmp/rust-submodules-checksums.txt
+          command: git rev-parse @:./vendors/go-sectorbuilder > /tmp/rust-submodules-checksums.txt
       - run:
           name: append go-sectorbuilder checksum
-          command: git --git-dir=./go-sectorbuilder/.git rev-parse @:rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
+          command: git --git-dir=./vendors/go-sectorbuilder/.git rev-parse @:rust-fil-sector-builder >> /tmp/rust-submodules-checksums.txt
       - run:
-          name: append go-bls-sigs checksum
-          command: git --git-dir=./go-bls-sigs/.git rev-parse @:bls-signatures >> /tmp/rust-submodules-checksums.txt
+          name: append vendors/go-bls-sigs checksum
+          command: git --git-dir=./vendors/go-bls-sigs/.git rev-parse @:bls-signatures >> /tmp/rust-submodules-checksums.txt
   trigger_infra_build:
     parameters:
       branch:

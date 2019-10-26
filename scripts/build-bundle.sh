@@ -12,7 +12,7 @@ cp ../go-filecoin filecoin/
 chmod +x filecoin/go-filecoin
 
 # proof params data
-cp ../go-sectorbuilder/paramcache filecoin/
+cp ../vendors/go-sectorbuilder/paramcache filecoin/
 chmod +x filecoin/paramcache
 
 tar -zcvf "filecoin-$RELEASE_TAG-`uname`.tar.gz" filecoin
