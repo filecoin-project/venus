@@ -2,7 +2,7 @@
 
 set -Eeo pipefail
 
-subm_dir="go-bls-sigs"
+subm_dir="vendors/go-bls-sigs"
 
 git submodule update --init --recursive $subm_dir
 
