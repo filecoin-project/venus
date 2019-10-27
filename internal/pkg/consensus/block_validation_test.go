@@ -131,7 +131,7 @@ func TestBlockValidSyntax(t *testing.T) {
 		Timestamp: validTs,
 		StateRoot: validSt,
 		Miner:     validAd,
-		Tickets:   []block.Ticket{validTi},
+		Ticket:    validTi,
 		Height:    1,
 	}
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
@@ -158,9 +158,9 @@ func TestBlockValidSyntax(t *testing.T) {
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 	// invalidate ticket
-	blk.Tickets = []block.Ticket{}
+	blk.Ticket = block.Ticket{}
 	require.Error(t, validator.ValidateSyntax(ctx, blk))
-	blk.Tickets = []block.Ticket{validTi}
+	blk.Ticket = validTi
 	require.NoError(t, validator.ValidateSyntax(ctx, blk))
 
 }

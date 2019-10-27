@@ -31,18 +31,12 @@ import (
 )
 
 type mockTicketGen struct {
-	ticketGen     bool
-	timeNotarized bool
+	ticketGen bool
 }
 
 func (mtg *mockTicketGen) NextTicket(ticket block.Ticket, genAddr address.Address, signer types.Signer) (block.Ticket, error) {
 	mtg.ticketGen = true
 	return consensus.MakeFakeTicketForTest(), nil
-}
-
-func (mtg *mockTicketGen) NotarizeTime(ticket *block.Ticket) error {
-	mtg.timeNotarized = true
-	return nil
 }
 
 func Test_Mine(t *testing.T) {
@@ -53,7 +47,7 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
+	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -94,11 +88,10 @@ func Test_Mine(t *testing.T) {
 			Clock:         clock.NewSystemClock(),
 		})
 
-		go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
+		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
 		assert.True(t, testTicketGen.ticketGen)
-		assert.True(t, testTicketGen.timeNotarized)
 		cancel()
 	})
 
@@ -126,11 +119,10 @@ func Test_Mine(t *testing.T) {
 		})
 		outCh := make(chan mining.Output)
 
-		go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
+		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
 		assert.True(t, testTicketGen.ticketGen)
-		assert.True(t, testTicketGen.timeNotarized)
 		cancel()
 
 	})
@@ -159,11 +151,10 @@ func Test_Mine(t *testing.T) {
 		})
 		input := block.TipSet{}
 		outCh := make(chan mining.Output)
-		go worker.Mine(ctx, input, []block.Ticket{}, outCh)
+		go worker.Mine(ctx, input, 0, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "bad input tipset with no blocks sent to Mine()")
 		assert.False(t, testTicketGen.ticketGen)
-		assert.False(t, testTicketGen.timeNotarized)
 		cancel()
 	})
 }
@@ -277,7 +268,7 @@ func TestApplyBLSMessages(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Tickets: []block.Ticket{{VRFProof: []byte{0}}}}
+	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -332,7 +323,7 @@ func TestApplyBLSMessages(t *testing.T) {
 	})
 
 	outCh := make(chan mining.Output)
-	go worker.Mine(ctx, tipSet, []block.Ticket{}, outCh)
+	go worker.Mine(ctx, tipSet, 0, outCh)
 	r := <-outCh
 	require.NoError(t, r.Err)
 	block := r.NewBlock
@@ -437,7 +428,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	baseTipset := builder.AppendOn(parentTipset, 2)
 	assert.Equal(t, 2, baseTipset.Len())
 
-	blk, err := worker.Generate(ctx, baseTipset, []block.Ticket{{VRFProof: []byte{2}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, baseTipset, block.Ticket{VRFProof: []byte{2}}, consensus.MakeFakeElectionProofForTest(), 0)
 
 	assert.NoError(t, err)
 
@@ -445,7 +436,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
-	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Tickets[0])
+	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Ticket)
 }
 
 // After calling Generate, do the new block and new state of the message pool conform to our expectations?
@@ -534,7 +525,7 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		StateRoot:     stateRoot,
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	// This is the temporary failure + the good message,
@@ -602,15 +593,15 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	tArr := []block.Ticket{mining.NthTicket(1), mining.NthTicket(3), mining.NthTicket(3), mining.NthTicket(7)}
-	blk, err := worker.Generate(ctx, baseTipSet, tArr, consensus.MakeFakeElectionProofForTest(), 0)
+	ticket := mining.NthTicket(7)
+	blk, err := worker.Generate(ctx, baseTipSet, ticket, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+1, blk.Height)
 	assert.Equal(t, minerAddr, blk.Miner)
-	assert.Equal(t, tArr, blk.Tickets)
+	assert.Equal(t, ticket, blk.Ticket)
 
-	blk, err = worker.Generate(ctx, baseTipSet, []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 1)
+	blk, err = worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeElectionProofForTest(), 1)
 	assert.NoError(t, err)
 
 	assert.Equal(t, h+2, blk.Height)
@@ -662,7 +653,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		StateRoot:     newCid(),
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
-	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, th.RequireNewTipSet(t, &baseBlock), block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.NoError(t, err)
 
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
@@ -722,7 +713,7 @@ func TestGenerateError(t *testing.T) {
 		ElectionProof: consensus.MakeFakeElectionProofForTest(),
 	}
 	baseTipSet := th.RequireNewTipSet(t, &baseBlock)
-	blk, err := worker.Generate(ctx, baseTipSet, []block.Ticket{{VRFProof: []byte{0}}}, consensus.MakeFakeElectionProofForTest(), 0)
+	blk, err := worker.Generate(ctx, baseTipSet, block.Ticket{VRFProof: []byte{0}}, consensus.MakeFakeElectionProofForTest(), 0)
 	assert.Error(t, err, "boom")
 	assert.Nil(t, blk)
 

@@ -43,7 +43,7 @@ func TestMineOnce(t *testing.T) {
 }
 
 // TestMineOnce10Null calls mine once off of a base tipset with a ticket that
-// will win after 10 rounds and verifies that the output has 10 tickets and a
+// will win after 10 rounds and verifies that the output has 1 ticket and a
 // +10 height.
 func TestMineOnce10Null(t *testing.T) {
 	tf.IntegrationTest(t)
@@ -58,7 +58,7 @@ func TestMineOnce10Null(t *testing.T) {
 	baseBlock := &block.Block{
 		StateRoot: types.CidFromString(t, "somecid"),
 		Height:    0,
-		Tickets:   []block.Ticket{baseTicket},
+		Ticket:    baseTicket,
 	}
 	baseTs, err := block.NewTipSet(baseBlock)
 	require.NoError(t, err)
@@ -98,8 +98,8 @@ func TestMineOnce10Null(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, result.Err)
 	block := result.NewBlock
-	assert.Equal(t, uint64(10), uint64(block.Height))
-	assert.Equal(t, 10, len(block.Tickets))
+	assert.Equal(t, uint64(10+1), uint64(block.Height))
+	assert.NotEqual(t, baseBlock.Ticket, block.Ticket)
 }
 
 func TestSchedulerPassesValue(t *testing.T) {
@@ -108,11 +108,11 @@ func TestSchedulerPassesValue(t *testing.T) {
 	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	checkValsMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	checkValsMine := func(c context.Context, inTS block.TipSet, nilBlockCount uint64, outCh chan<- Output) bool {
 		assert.Equal(t, ctx, c) // individual run ctx splits off from mining ctx
 		assert.Equal(t, inTS, ts)
 		outCh <- Output{}
-		return true, block.Ticket{}
+		return true
 	}
 	var head block.TipSet
 	headFunc := func() (block.TipSet, error) {
@@ -131,9 +131,9 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 
 	ctx := context.Background()
 
-	nothingMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	nothingMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
 		outCh <- Output{}
-		return false, block.Ticket{}
+		return false
 	}
 	nilHeadFunc := func() (block.TipSet, error) {
 		return block.UndefTipSet, nil
@@ -146,26 +146,24 @@ func TestSchedulerErrorsOnUnsetHead(t *testing.T) {
 	doneWg.Wait()
 }
 
-// If head is the same append the previous ticket to the the ticket array,
-// otherwise use an empty ticket array.
-func TestSchedulerUpdatesTicketArray(t *testing.T) {
+// If head is the same increment the nullblkcount, otherwise make it 0.
+func TestSchedulerUpdatesNullBlkCount(t *testing.T) {
 	tf.UnitTest(t)
 
 	ts := newTestUtils(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
-	ts2 := th.RequireNewTipSet(t, blk2)
+	//	blk2 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 1}
 
-	expectedTArr := []block.Ticket{}
-	checkTArrMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	checkNullBlocks := uint64(0)
+	checkTArrMine := func(c context.Context, inTS block.TipSet, nBC uint64, outCh chan<- Output) bool {
 		select {
 		case <-ctx.Done():
-			return false, block.Ticket{}
+			return false
 		default:
 		}
-		assert.Equal(t, expectedTArr, tArr)
+		assert.Equal(t, checkNullBlocks, nBC)
 		outCh <- Output{}
-		return false, NthTicket(uint8(len(tArr)))
+		return false
 	}
 	var head block.TipSet
 	headFunc := func() (block.TipSet, error) {
@@ -177,16 +175,9 @@ func TestSchedulerUpdatesTicketArray(t *testing.T) {
 	outCh, _ := scheduler.Start(ctx)
 	<-outCh
 	// setting checkNullBlocks races with the mining delay timer.
-	expectedTArr = []block.Ticket{NthTicket(0)}
+	checkNullBlocks = uint64(1)
 	<-outCh
-	expectedTArr = []block.Ticket{NthTicket(0), NthTicket(1)}
-	<-outCh
-	expectedTArr = []block.Ticket{NthTicket(0), NthTicket(1), NthTicket(2)}
-	<-outCh
-	expectedTArr = []block.Ticket{NthTicket(0), NthTicket(1), NthTicket(2), NthTicket(3)}
-	<-outCh
-	head = ts2
-	expectedTArr = []block.Ticket{}
+	checkNullBlocks = uint64(2)
 	<-outCh
 	cancel()
 }
@@ -210,10 +201,10 @@ func TestSchedulerPassesManyValues(t *testing.T) {
 		return head, nil
 	}
 
-	checkValsMine := func(c context.Context, ts block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	checkValsMine := func(c context.Context, ts block.TipSet, nbc uint64, outCh chan<- Output) bool {
 		assert.Equal(t, ts, checkTS)
 		outCh <- Output{}
-		return false, block.Ticket{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -246,10 +237,10 @@ func TestSchedulerCollect(t *testing.T) {
 	headFunc := func() (block.TipSet, error) {
 		return head, nil
 	}
-	checkValsMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	checkValsMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
 		assert.Equal(t, inTS, ts3)
 		outCh <- Output{}
-		return false, block.Ticket{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -263,38 +254,6 @@ func TestSchedulerCollect(t *testing.T) {
 	cancel()
 }
 
-// This test is no longer meaningful without mocking ticket generation winning.
-// We need some way to make sure that the block being mined is still the block
-// received during collect.  TODO: isWinningTicket faking and reimplementing
-// in this new paradigm
-/*
-func TestCannotInterruptMiner(t *testing.T) {
-	assert, require, ts1 := newTestUtils(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	blk1 := ts1.ToSlice()[0]
-	blk2 := &block.Block{StateRoot: types.SomeCid(), Height: 0}
-	ts2 := consensus.RequireNewTipSet(require, blk2)
-	blockingMine := func(c context.Context, ts block.TipSet, tArr []block.Ticket, outCh chan<- Output) {
-		time.Sleep(th.BlockTimeTest)
-		assert.Equal(ts, ts1)
-		outCh <- Output{NewBlock: blk1}
-	}
-	var head block.TipSet
-	headFunc := func() block.TipSet {
-		return head
-	}
-	worker := NewTestWorkerWithDeps(blockingMine)
-	scheduler := NewScheduler(worker, MineDelayTest)
-	inCh, outCh, _ := scheduler.Start(ctx)
-	inCh <- NewInput(ts1)
-	// Wait until well after the mining delay, and send a new input.
-	time.Sleep(4 * MineDelayTest)
-	inCh <- NewInput(ts2)
-	out := <-outCh
-	assert.Equal(out.NewBlock, blk1)
-	cancel()
-}*/
-
 func TestSchedulerCancelMiningCtx(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -306,14 +265,14 @@ func TestSchedulerCancelMiningCtx(t *testing.T) {
 	headFunc := func() (block.TipSet, error) {
 		return head, nil
 	}
-	shouldCancelMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	shouldCancelMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
 		mineTimer := time.NewTimer(th.BlockTimeTest)
 		select {
 		case <-mineTimer.C:
 			t.Fatal("should not take whole time")
 		case <-c.Done():
 		}
-		return false, block.Ticket{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(shouldCancelMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)
@@ -339,10 +298,10 @@ func TestSchedulerMultiRoundWithCollect(t *testing.T) {
 	blk3 := &block.Block{StateRoot: types.CidFromString(t, "somecid"), Height: 2}
 	ts3 := th.RequireNewTipSet(t, blk3)
 
-	checkValsMine := func(c context.Context, inTS block.TipSet, tArr []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+	checkValsMine := func(c context.Context, inTS block.TipSet, nbc uint64, outCh chan<- Output) bool {
 		assert.Equal(t, inTS, checkTS)
 		outCh <- Output{}
-		return false, block.Ticket{}
+		return false
 	}
 	worker := NewTestWorkerWithDeps(checkValsMine)
 	scheduler := NewScheduler(worker, MineDelayTest, headFunc)

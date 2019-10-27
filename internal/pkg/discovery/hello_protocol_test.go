@@ -49,8 +49,8 @@ func TestHelloHandshake(t *testing.T) {
 
 	genesisA := &block.Block{}
 
-	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Tickets: []block.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Tickets: []block.Ticket{{VRFProof: []byte{1}}}})
+	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
@@ -105,8 +105,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	genesisA := builder.AppendBlockOn(block.UndefTipSet)
 	genesisB := builder.AppendBlockOn(block.UndefTipSet)
 
-	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Tickets: []block.Ticket{{VRFProof: []byte{0}}}})
-	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Tickets: []block.Ticket{{VRFProof: []byte{1}}}})
+	heavy1 := th.RequireNewTipSet(t, &block.Block{Height: 2, Ticket: block.Ticket{VRFProof: []byte{0}}})
+	heavy2 := th.RequireNewTipSet(t, &block.Block{Height: 3, Ticket: block.Ticket{VRFProof: []byte{1}}})
 
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}

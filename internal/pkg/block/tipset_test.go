@@ -32,7 +32,7 @@ func init() {
 
 func block(t *testing.T, ticket []byte, height int, parentCid cid.Cid, parentWeight, timestamp uint64, msg string) *blk.Block {
 	return &blk.Block{
-		Tickets:         []blk.Ticket{{VRFProof: ticket}},
+		Ticket:          blk.Ticket{VRFProof: ticket},
 		Parents:         blk.NewTipSetKey(parentCid),
 		ParentWeight:    types.Uint64(parentWeight),
 		Height:          types.Uint64(42 + uint64(height)),
@@ -107,13 +107,13 @@ func TestTipSet(t *testing.T) {
 
 	t.Run("min ticket", func(t *testing.T) {
 		tsTicket, _ := RequireNewTipSet(t, b1).MinTicket()
-		assert.Equal(t, b1.Tickets[0], tsTicket)
+		assert.Equal(t, b1.Ticket, tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b2).MinTicket()
-		assert.Equal(t, b2.Tickets[0], tsTicket)
+		assert.Equal(t, b2.Ticket, tsTicket)
 
 		tsTicket, _ = RequireNewTipSet(t, b3, b2, b1).MinTicket()
-		assert.Equal(t, b1.Tickets[0], tsTicket)
+		assert.Equal(t, b1.Ticket, tsTicket)
 	})
 
 	t.Run("min timestamp", func(t *testing.T) {
@@ -187,14 +187,6 @@ func TestTipSet(t *testing.T) {
 		assert.False(t, ts.Defined())
 	})
 
-	t.Run("mismatched ticket arrays fails new tipset", func(t *testing.T) {
-		b1, b2, b3 = makeTestBlocks(t)
-		b1.Tickets = append(b1.Tickets, b2.Tickets[0])
-		ts, err := blk.NewTipSet(b1, b2, b3)
-		assert.Error(t, err)
-		assert.False(t, ts.Defined())
-	})
-
 	t.Run("mismatched parent weight fails new tipset", func(t *testing.T) {
 		b1, b2, b3 = makeTestBlocks(t)
 		b1.ParentWeight = types.Uint64(3000)
@@ -207,15 +199,15 @@ func TestTipSet(t *testing.T) {
 // TestTipSetMinTicket checks that MinTicket is the minimum of the last of the
 // tickets of the tipset, even when other tickets are smaller.
 func TestTipSetMinTicket(t *testing.T) {
-	tickets1 := []blk.Ticket{{VRFProof: []byte{0x0}}, {VRFProof: []byte{0x3}}}
-	tickets2 := []blk.Ticket{{VRFProof: []byte{0x2}}, {VRFProof: []byte{0x4}}}
-	tickets3 := []blk.Ticket{{VRFProof: []byte{0x1}}, {VRFProof: []byte{0x5}}}
+	ticket1 := blk.Ticket{VRFProof: []byte{0x3}}
+	ticket2 := blk.Ticket{VRFProof: []byte{0x4}}
+	ticket3 := blk.Ticket{VRFProof: []byte{0x5}}
 	expMinTicket := blk.Ticket{VRFProof: []byte{0x3}}
 
 	b1, b2, b3 := makeTestBlocks(t)
-	b1.Tickets = tickets1
-	b2.Tickets = tickets2
-	b3.Tickets = tickets3
+	b1.Ticket = ticket1
+	b2.Ticket = ticket2
+	b3.Ticket = ticket3
 
 	ts := RequireNewTipSet(t, b1, b2, b3)
 	minTicket, err := ts.MinTicket()

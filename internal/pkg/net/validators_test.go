@@ -90,7 +90,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Timestamp: types.Uint64(now.Add(time.Second * 60).Unix()), // invalid timestamp, 60 seconds in future
 		StateRoot: types.NewCidForTestGetter()(),
 		Miner:     miner,
-		Tickets:   []block.Ticket{{VRFProof: []byte{0}}},
+		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}
 	// publish the invalid block
 	err = fsub1.Publish(btv.Topic(network), invalidBlk.ToNode().RawData())
@@ -105,7 +105,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Timestamp: types.Uint64(now.Unix()), // valid because it was publish "now".
 		StateRoot: types.NewCidForTestGetter()(),
 		Miner:     miner,
-		Tickets:   []block.Ticket{{VRFProof: []byte{0}}},
+		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}
 	// publish the invalid block
 	err = fsub1.Publish(btv.Topic(network), validBlk.ToNode().RawData())

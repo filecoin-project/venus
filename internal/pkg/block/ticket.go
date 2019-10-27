@@ -10,12 +10,6 @@ import (
 type Ticket struct {
 	// A proof output by running a VRF on the VDFResult of the parent ticket
 	VRFProof VRFPi
-
-	// Data derived by running a VDF on VRFProof
-	VDFResult VDFY
-
-	// A proof of delay during computation of VDFResult
-	VDFProof VDFPi
 }
 
 // SortKey returns the canonical byte ordering of the ticket
@@ -25,14 +19,8 @@ func (t Ticket) SortKey() []byte {
 
 // String returns the string representation of the VDFResult of the ticket
 func (t Ticket) String() string {
-	return fmt.Sprintf("%x", t.VDFResult)
+	return fmt.Sprintf("%x", t.VRFProof)
 }
 
 // VRFPi is the proof output from running a VRF.
 type VRFPi []byte
-
-// VDFPi is proof that a VDF operation was applied on input X to get output Y.
-type VDFPi []byte
-
-// VDFY is the output of running a VDF operation on some input X.
-type VDFY []byte

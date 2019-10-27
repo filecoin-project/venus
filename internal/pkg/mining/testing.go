@@ -36,21 +36,21 @@ func (s *MockScheduler) IsStarted() bool {
 // TestWorker is a worker with a customizable work function to facilitate
 // easy testing.
 type TestWorker struct {
-	WorkFunc func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket)
+	WorkFunc func(context.Context, block.TipSet, uint64, chan<- Output) bool
 }
 
 // Mine is the TestWorker's Work function.  It simply calls the WorkFunc
 // field.
-func (w *TestWorker) Mine(ctx context.Context, ts block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+func (w *TestWorker) Mine(ctx context.Context, ts block.TipSet, nullBlockCount uint64, outCh chan<- Output) bool {
 	if w.WorkFunc == nil {
 		panic("must set MutableTestWorker's WorkFunc before calling Work")
 	}
-	return w.WorkFunc(ctx, ts, ticketArray, outCh)
+	return w.WorkFunc(ctx, ts, nullBlockCount, outCh)
 }
 
 // NewTestWorkerWithDeps creates a worker that calls the provided input
 // function when Mine() is called.
-func NewTestWorkerWithDeps(f func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket)) *TestWorker {
+func NewTestWorkerWithDeps(f func(context.Context, block.TipSet, uint64, chan<- Output) bool) *TestWorker {
 	return &TestWorker{
 		WorkFunc: f,
 	}
@@ -58,15 +58,15 @@ func NewTestWorkerWithDeps(f func(context.Context, block.TipSet, []block.Ticket,
 
 // MakeEchoMine returns a test worker function that itself returns the first
 // block of the input tipset as output.
-func MakeEchoMine(t *testing.T) func(context.Context, block.TipSet, []block.Ticket, chan<- Output) (bool, block.Ticket) {
-	echoMine := func(c context.Context, ts block.TipSet, ticketArray []block.Ticket, outCh chan<- Output) (bool, block.Ticket) {
+func MakeEchoMine(t *testing.T) func(context.Context, block.TipSet, uint64, chan<- Output) bool {
+	echoMine := func(c context.Context, ts block.TipSet, nullBlockCount uint64, outCh chan<- Output) bool {
 		require.True(t, ts.Defined())
 		b := ts.At(0)
 		select {
 		case outCh <- Output{NewBlock: b}:
 		case <-c.Done():
 		}
-		return true, block.Ticket{}
+		return true
 	}
 	return echoMine
 }
@@ -108,8 +108,8 @@ func ReceiveOutCh(ch <-chan Output) int {
 	}
 }
 
-// NthTicket returns a ticket with a vdf result equal to a byte slice wrapping
+// NthTicket returns a ticket with a vrf proof equal to a byte slice wrapping
 // the input uint8 value.
 func NthTicket(i uint8) block.Ticket {
-	return block.Ticket{VDFResult: []byte{i}}
+	return block.Ticket{VRFProof: []byte{i}}
 }

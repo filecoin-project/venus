@@ -23,12 +23,6 @@ import (
 const (
 	// newECV is the constant V defined in the EC spec.
 	newECV uint64 = 2
-
-	// pi is the multiplicand in the null penalty term
-	pi float64 = 0.87
-
-	// nullThresh is the min number of null rounds before the penalty kicks in
-	nullThresh = 3
 )
 
 // Parameters used by the deprecated weight function before the alphanet upgrade
@@ -63,8 +57,7 @@ func NewChainSelector(cs *hamt.CborIpldStore, actorState SnapshotGenerator, gCid
 // NewWeight returns the EC weight of this TipSet in uint64 encoded fixed point
 // representation.
 //
-// w(i) = w(i-1) + (pi)^(P_n) * [V * num_blks + X ]
-// P_n(n) = if n < 3:0 else: n, n is number of null rounds
+// w(i) = w(i-1) + V * num_blks + X
 // X = log_2(total_storage(pSt))
 func (c *ChainSelector) NewWeight(ctx context.Context, ts block.TipSet, pStateID cid.Cid) (uint64, error) {
 	if ts.Len() > 0 && ts.At(0).Cid().Equals(c.genesisCid) {
@@ -102,19 +95,7 @@ func (c *ChainSelector) NewWeight(ctx context.Context, ts block.TipSet, pStateID
 	roughLogTotalBytes := new(big.Float).SetInt64(int64(totalBytes.BigInt().BitLen()))
 	innerTerm.Add(innerTerm, roughLogTotalBytes)
 
-	// Attenuate weight by the number of tickets
-	numTickets := len(ts.At(0).Tickets)
-	P := new(big.Float).SetInt64(int64(1))
-	if numTickets >= nullThresh {
-		bigPI := new(big.Float).SetFloat64(pi)
-		// P = pi^numNull
-		for i := 0; i < numTickets; i++ {
-			P.Mul(P, bigPI)
-		}
-	}
-	update := new(big.Float)
-	update.Mul(innerTerm, P)
-	w.Add(w, update)
+	w.Add(w, innerTerm)
 
 	return types.BigToFixed(w)
 }

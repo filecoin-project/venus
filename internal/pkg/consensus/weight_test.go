@@ -29,10 +29,10 @@ func TestNewWeight(t *testing.T) {
 	// We only care about total power for the weight function
 	// Total is 16, so bitlen is 5
 	as := consensus.NewFakeActorStateStore(types.NewBytesAmount(1), types.NewBytesAmount(16), make(map[address.Address]address.Address))
-	tickets := []block.Ticket{consensus.MakeFakeTicketForTest()}
+	ticket := consensus.MakeFakeTicketForTest()
 	toWeigh := th.RequireNewTipSet(t, &block.Block{
 		ParentWeight: 0,
-		Tickets:      tickets,
+		Ticket:       ticket,
 	})
 	sel := consensus.NewChainSelector(cst, as, types.CidFromString(t, "genesisCid"), pvt)
 
@@ -72,7 +72,7 @@ func TestNewWeight(t *testing.T) {
 		require.NoError(t, err)
 		toWeighWithParent := th.RequireNewTipSet(t, &block.Block{
 			ParentWeight: types.Uint64(parentWeight),
-			Tickets:      tickets,
+			Ticket:       ticket,
 		})
 
 		// 49 + 1[2*1 + 5] = 56
@@ -85,17 +85,17 @@ func TestNewWeight(t *testing.T) {
 		toWeighThreeBlock := th.RequireNewTipSet(t,
 			&block.Block{
 				ParentWeight: 0,
-				Tickets:      tickets,
+				Ticket:       ticket,
 				Timestamp:    types.Uint64(0),
 			},
 			&block.Block{
 				ParentWeight: 0,
-				Tickets:      tickets,
+				Ticket:       ticket,
 				Timestamp:    types.Uint64(1),
 			},
 			&block.Block{
 				ParentWeight: 0,
-				Tickets:      tickets,
+				Ticket:       ticket,
 				Timestamp:    types.Uint64(2),
 			},
 		)
@@ -103,48 +103,6 @@ func TestNewWeight(t *testing.T) {
 		fixWeight, err := sel.NewWeight(ctx, toWeighThreeBlock, fakeRoot)
 		assert.NoError(t, err)
 		assertEqualInt(t, 11, fixWeight)
-	})
-
-	t.Run("few null", func(t *testing.T) {
-		twoTickets := []block.Ticket{
-			consensus.MakeFakeTicketForTest(),
-			consensus.MakeFakeTicketForTest(),
-		}
-
-		toWeighTwoTickets := th.RequireNewTipSet(t, &block.Block{
-			ParentWeight: 0,
-			Tickets:      twoTickets,
-		})
-
-		// 0 + 1[2*1 + 5] = 7
-		fixWeight, err := sel.NewWeight(ctx, toWeighTwoTickets, fakeRoot)
-		assert.NoError(t, err)
-		assertEqualInt(t, 7, fixWeight)
-	})
-
-	t.Run("many null", func(t *testing.T) {
-		fifteenTickets := []block.Ticket{}
-		expected := 1.0
-		for i := 0; i < 15; i++ {
-			fifteenTickets = append(fifteenTickets, consensus.MakeFakeTicketForTest())
-			// consensus.pi = 0.87, expected = (pi^pn)(0.87)^15
-			expected *= 0.87
-		}
-		toWeighFifteenNull := th.RequireNewTipSet(t, &block.Block{
-			ParentWeight: 0,
-			Tickets:      fifteenTickets,
-		})
-
-		// innerTerm = [2*1 + 5] = 7. expected = expected * innerterm
-		expected *= 7
-		bigExpected := big.NewFloat(expected)
-		fixExpected, err := types.BigToFixed(bigExpected) // do fixed point rounding for cmp
-		require.NoError(t, err)
-
-		// 0 + ((0.87)^15)[2*1 + 5]
-		fixWeight, err := sel.NewWeight(ctx, toWeighFifteenNull, fakeRoot)
-		assert.NoError(t, err)
-		assert.Equal(t, fixExpected, fixWeight)
 	})
 }
 

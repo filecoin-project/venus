@@ -126,12 +126,12 @@ func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 type FakeElectionMachine struct{}
 
 // RunElection returns a fake election proof.
-func (fem *FakeElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer) (block.VRFPi, error) {
+func (fem *FakeElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
 	return MakeFakeElectionProofForTest(), nil
 }
 
 // IsElectionWinner always returns true
-func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fem *FakeElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return true, nil
 }
 
@@ -141,11 +141,6 @@ type FakeTicketMachine struct{}
 // NextTicket returns a fake ticket
 func (ftm *FakeTicketMachine) NextTicket(parent block.Ticket, signerAddr address.Address, signer types.Signer) (block.Ticket, error) {
 	return MakeFakeTicketForTest(), nil
-}
-
-// NotarizeTime does nothing
-func (ftm *FakeTicketMachine) NotarizeTime(ticket *block.Ticket) error {
-	return nil
 }
 
 // IsValidTicket always returns true
@@ -165,7 +160,7 @@ func (ftv *FailingTicketValidator) IsValidTicket(parent, ticket block.Ticket, si
 type FailingElectionValidator struct{}
 
 // IsElectionWinner always returns false
-func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+func (fev *FailingElectionValidator) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
 	return false, nil
 }
 
@@ -174,8 +169,7 @@ func MakeFakeTicketForTest() block.Ticket {
 	val := make([]byte, 65)
 	val[0] = 200
 	return block.Ticket{
-		VRFProof:  block.VRFPi(val[:]),
-		VDFResult: block.VDFY(val[:]),
+		VRFProof: block.VRFPi(val[:]),
 	}
 }
 
@@ -189,7 +183,7 @@ func MakeFakeElectionProofForTest() []byte {
 // SeedFirstWinnerInNRounds returns a ticket that when mined upon for N rounds
 // by a miner that has `minerPower` out of a system-wide `totalPower` and keyinfo
 // `ki` will produce a ticket that gives a winning election proof in exactly `n`
-// rounds.  There are no winning tickets in between the seed and the Nth ticket.
+// rounds.  No wins before n rounds are up.
 //
 // Note that this is a deterministic function of the inputs as we return the
 // first ticket that seeds a winner in `n` rounds given the inputs starting from
@@ -211,30 +205,64 @@ func SeedFirstWinnerInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower
 	ctx := context.Background()
 
 	curr := MakeFakeTicketForTest()
-	tickets := []block.Ticket{curr}
 
 	for {
-		proof, err := em.RunElection(curr, wAddr, signer)
+		// does it win at n rounds?
+		proof, err := em.RunElection(curr, wAddr, signer, uint64(n))
 		require.NoError(t, err)
 
-		wins, err := em.IsElectionWinner(ctx, ptv, curr, proof, wAddr, wAddr)
+		wins, err := em.IsElectionWinner(ctx, ptv, curr, uint64(n), proof, wAddr, wAddr)
 		require.NoError(t, err)
 		if wins {
-			// We have enough tickets, we're done
-			if len(tickets) >= n+1 {
-				return tickets[len(tickets)-1-n]
+			// does it have no wins before n rounds?
+			if losesAllRounds(t, n-1, curr, wAddr, signer, ptv, em) {
+				return curr
 			}
-
-			// We won too early, reset memory
-			tickets = []block.Ticket{}
 		}
 
-		// make a new ticket off the chain
+		// make a new ticket off the previous
 		curr, err = tm.NextTicket(curr, wAddr, signer)
 		require.NoError(t, err)
-		require.NoError(t, tm.NotarizeTime(&curr))
-
-		tickets = append(tickets, curr)
 	}
+}
 
+func losesAllRounds(t *testing.T, n int, ticket block.Ticket, wAddr address.Address, signer types.Signer, ptv PowerTableView, em ElectionMachine) bool {
+	for i := 0; i < n; i++ {
+		losesAtRound(t, i, ticket, wAddr, signer, ptv, em)
+
+	}
+	return true
+}
+
+func losesAtRound(t *testing.T, n int, ticket block.Ticket, wAddr address.Address, signer types.Signer, ptv PowerTableView, em ElectionMachine) bool {
+	proof, err := em.RunElection(ticket, wAddr, signer, uint64(n))
+	require.NoError(t, err)
+
+	wins, err := em.IsElectionWinner(context.Background(), ptv, ticket, uint64(n), proof, wAddr, wAddr)
+	require.NoError(t, err)
+	return !wins
+}
+
+// SeedLoserInNRounds returns a ticket that loses with a null block count of N.
+func SeedLoserInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, totalPower uint64) block.Ticket {
+	signer := types.NewMockSigner([]types.KeyInfo{*ki})
+	wAddr, err := ki.Address()
+	require.NoError(t, err)
+	minerToWorker := make(map[address.Address]address.Address)
+	minerToWorker[wAddr] = wAddr
+	ptv := NewFakePowerTableView(types.NewBytesAmount(minerPower), types.NewBytesAmount(totalPower), minerToWorker)
+	em := ElectionMachine{}
+	tm := TicketMachine{}
+
+	curr := MakeFakeTicketForTest()
+
+	for {
+		if losesAtRound(t, n, curr, wAddr, signer, ptv, em) {
+			return curr
+		}
+
+		// make a new ticket off the previous
+		curr, err = tm.NextTicket(curr, wAddr, signer)
+		require.NoError(t, err)
+	}
 }

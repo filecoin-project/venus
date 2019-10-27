@@ -42,7 +42,6 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 
 	first := blocks[0]
 	height := first.Height
-	numTickets := len(first.Tickets)
 	parents := first.Parents
 	weight := first.ParentWeight
 	cids := make([]cid.Cid, len(blocks))
@@ -53,18 +52,11 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 			if blk.Height != height {
 				return UndefTipSet, errors.Errorf("Inconsistent block heights %d and %d", height, blk.Height)
 			}
-			if len(blk.Tickets) != numTickets {
-				return UndefTipSet, errors.Errorf("Inconsistent ticket array length %d and %d", numTickets, len(blk.Tickets))
-			}
 			if !blk.Parents.Equals(parents) {
 				return UndefTipSet, errors.Errorf("Inconsistent block parents %s and %s", parents.String(), blk.Parents.String())
 			}
 			if blk.ParentWeight != weight {
 				return UndefTipSet, errors.Errorf("Inconsistent block parent weights %d and %d", weight, blk.ParentWeight)
-			}
-
-			if len(blk.Tickets) == 0 {
-				return UndefTipSet, errors.Errorf("Uncomparible block %s with empty ticket array", blk.Cid().String())
 			}
 		}
 		sorted[i] = blk
@@ -73,7 +65,7 @@ func NewTipSet(blocks ...*Block) (TipSet, error) {
 
 	// Sort blocks by last ticket ticket.
 	sort.Slice(sorted, func(i, j int) bool {
-		cmp := bytes.Compare(sorted[i].Tickets[numTickets-1].SortKey(), sorted[j].Tickets[numTickets-1].SortKey())
+		cmp := bytes.Compare(sorted[i].Ticket.SortKey(), sorted[j].Ticket.SortKey())
 		if cmp == 0 {
 			// Break ticket ties with the block CIDs, which are distinct.
 			cmp = bytes.Compare(sorted[i].Cid().Bytes(), sorted[j].Cid().Bytes())
@@ -123,8 +115,7 @@ func (ts TipSet) MinTicket() (Ticket, error) {
 	if len(ts.blocks) == 0 {
 		return Ticket{}, errUndefTipSet
 	}
-	numTickets := len(ts.blocks[0].Tickets)
-	return ts.blocks[0].Tickets[numTickets-1], nil
+	return ts.blocks[0].Ticket, nil
 }
 
 // MinTimestamp returns the smallest timestamp of all blocks in the tipset.

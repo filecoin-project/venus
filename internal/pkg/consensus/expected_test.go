@@ -224,28 +224,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
-		assert.Contains(t, err.Error(), "position 0")
-	})
-
-	t.Run("fails when ticket array length inconsistent with block height", func(t *testing.T) {
-		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-
-		stateTree, err := state.LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-		vms := vm.NewStorageMap(bstore)
-
-		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
-		// change ticket array length but not height
-		blocks[0].Tickets = append(blocks[0].Tickets, consensus.MakeFakeTicketForTest())
-		tipSet := th.RequireNewTipSet(t, blocks[0])
-
-		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
-
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, 0, blocks[0].StateRoot)
-		assert.Error(t, err)
 	})
 
 	t.Run("returns nil + mining error when signature is invalid", func(t *testing.T) {

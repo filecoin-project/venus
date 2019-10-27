@@ -4,33 +4,6 @@ package mining
 // these TipSets.  The scheduler is ultimately responsible for informing the
 // rest of the system about new blocks mined by the Worker.  This is the
 // interface to implement if you want to explore an alternate mining strategy.
-//
-// The default Scheduler implementation, timingScheduler, is an attempt to
-// prevent miners from getting interrupted by attackers strategically releasing
-// better base tipsets midway through a proving period. Such attacks are bad
-// because they causes miners to waste work.  Note that the term 'base tipset',
-// or 'mining base' is used to denote the tipset that the miner uses as the
-// parent of the block it attempts to generate during mining.
-//
-// The timingScheduler operates in two states, 'collect', where the scheduler
-// listens for new heaviest tipsets to use as the best mining base, and 'ignore',
-// where mining proceeds uninterrupted.  The scheduler enters the 'collect' state
-// each time a new heaviest tipset arrives with a greater height.  The
-// scheduler finishes the collect state after the mining delay time, a protocol
-// parameter, has passed.  The scheduler then enters the 'ignore' state.  Here
-// the scheduler mines, ignoring all inputs with the most recent and lower
-// heights.  'ignore' concludes when the scheduler receives an input tipset,
-// possibly the tipset consisting of the block the miner just mined, with
-// a greater height, and transitions back to collect.  It is in miners'
-// best interest to wait for the collection period so that they can wait to
-// work on a base tipset made up of all blocks mined at the new height.
-//
-// The current approach is limited. It does not prevent wasted work from all
-// strategic block witholding attacks.  This is also going to be effected by
-// current unknowns surrounding the specifics of the mining protocol (i.e. how
-// do VDFs and PoSTs fit into mining, and what is the lookback parameter for
-// challenge sampling.  For more details see:
-// https://gist.github.com/whyrusleeping/4c05fd902f7123bdd1c729e3fffed797
 
 import (
 	"context"
@@ -93,8 +66,7 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 	s.isStarted = true
 	go func() {
 		defer doneWg.Done()
-		ticketArray := []block.Ticket{}
-		var newTicket block.Ticket
+		nullBlkCount := uint64(0)
 		var prevBase block.TipSet
 		var prevWon bool
 		for {
@@ -119,11 +91,10 @@ func (s *timingScheduler) Start(miningCtx context.Context) (<-chan Output, *sync
 			}
 
 			// Determine how many null blocks we should mine with.
-			ticketArray = nextTicketArray(ticketArray, prevBase.Key(), base.Key())
+			nullBlkCount = nextNullBlkCount(nullBlkCount, prevBase, base)
 
 			// Mine synchronously! Ignore all new tipsets.
-			prevWon, newTicket = s.worker.Mine(miningCtx, base, ticketArray, outCh)
-			ticketArray = append(ticketArray, newTicket)
+			prevWon = s.worker.Mine(miningCtx, base, nullBlkCount, outCh)
 			prevBase = base
 		}
 	}()
@@ -146,25 +117,13 @@ func (s *timingScheduler) IsStarted() bool {
 	return s.isStarted
 }
 
-// nextTicketArray outputs the next ticket array for use in mining on top of
-// the current base tipset, curBase, given the previous base, prevBase and the
-// exisiting ticket array.
-func nextTicketArray(prevTicketArray []block.Ticket, prevBase, curBase block.TipSetKey) []block.Ticket {
-	// We haven't mined before, start with empty ticket array.
-	if prevBase.Empty() {
-		return []block.Ticket{}
-	}
-	// We mined on a different base last time.  We need to throw away all
-	// tickets from mining on the previous base and start fresh.
-	if !prevBase.Equals(curBase) {
-		return []block.Ticket{}
+func nextNullBlkCount(prevNullBlkCount uint64, prevBase, currBase block.TipSet) uint64 {
+	if !prevBase.Defined() || !prevBase.Key().Equals(currBase.Key()) {
+		return 0
 	}
 
-	// prevBase.Equals(curBase)
-	// We mined a null block last round and the ticket was added to
-	// prevTicketArray.  We are mining on the same base this round, so keep
-	// adding to the previous ticket array.
-	return prevTicketArray
+	return prevNullBlkCount + 1
+
 }
 
 // NewScheduler returns a new timingScheduler to schedule mining work on the

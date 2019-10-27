@@ -187,7 +187,7 @@ func TestHeartbeatRunSuccess(t *testing.T) {
 func mustMakeTipset(t *testing.T, height types.Uint64) block.TipSet {
 	ts, err := block.NewTipSet(&block.Block{
 		Miner:           address.NewForTestGetter()(),
-		Tickets:         []block.Ticket{{VRFProof: []byte{0}}},
+		Ticket:          block.Ticket{VRFProof: []byte{0}},
 		Parents:         block.TipSetKey{},
 		ParentWeight:    0,
 		Height:          height,
