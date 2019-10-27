@@ -142,7 +142,7 @@ func newAPI(t *testing.T) (bapi.API, *node.Node) {
 	return bapi.New(
 		nd.MiningAddress,
 		nd.AddNewBlock,
-		nd.Chain.ChainReader,
+		nd.Chain().ChainReader,
 		nd.IsMining,
 		bt,
 		nd.SetupMining,

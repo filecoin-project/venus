@@ -21,18 +21,18 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 	// Put block in storage wired to an exchange so this node and other
 	// nodes can fetch it.
 	log.Debugf("putting block in bitswap exchange: %s", b.Cid().String())
-	blkCid, err := node.Blockstore.cborStore.Put(ctx, b)
+	blkCid, err := node.Blockstore.CborStore.Put(ctx, b)
 	if err != nil {
 		return errors.Wrap(err, "could not add new block to online storage")
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
-	if err := node.Chain.SyncDispatch.SendOwnBlock(block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
+	if err := node.chain.SyncDispatch.SendOwnBlock(block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
 		return err
 	}
 
-	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.Network.NetworkName), b.ToNode().RawData())
+	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.network.NetworkName), b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
@@ -61,7 +61,7 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	err = node.Chain.SyncDispatch.SendGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
+	err = node.chain.SyncDispatch.SendGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
 	if err != nil {
 		return errors.Wrapf(err, "receive block %s from peer %s", blk.Cid(), from)
 	}

@@ -26,7 +26,7 @@ func OptionsFromRepo(r repo.Repo) ([]BuilderOpt, error) {
 	}
 
 	dsopt := func(c *Builder) error {
-		c.Repo = r
+		c.repo = r
 		return nil
 	}
 

@@ -126,7 +126,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(t, nd.Start(ctx))
 
-	assert.NotEqual(t, 0, nd.Chain.ChainReader.GetHead().Len())
+	assert.NotEqual(t, 0, nd.Chain().ChainReader.GetHead().Len())
 	nd.Stop(ctx)
 }
 
@@ -237,7 +237,7 @@ func repoConfig() node.BuilderOpt {
 	defaultCfg := config.NewDefaultConfig()
 	return func(c *node.Builder) error {
 		// overwrite value set with th.GetFreePort()
-		c.Repo.Config().API.Address = defaultCfg.API.Address
+		c.Repo().Config().API.Address = defaultCfg.API.Address
 		return nil
 	}
 }
