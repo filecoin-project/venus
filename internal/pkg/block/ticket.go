@@ -17,7 +17,7 @@ func (t Ticket) SortKey() []byte {
 	return t.VRFProof
 }
 
-// String returns the string representation of the VDFResult of the ticket
+// String returns the string representation of the VRFProof of the ticket
 func (t Ticket) String() string {
 	return fmt.Sprintf("%x", t.VRFProof)
 }
