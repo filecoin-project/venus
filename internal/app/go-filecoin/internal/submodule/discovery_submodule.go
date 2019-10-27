@@ -26,22 +26,26 @@ type DiscoverySubmodule struct {
 	HelloHandler *discovery.HelloProtocolHandler
 }
 
+type discoveryConfig interface {
+	GenesisCid() cid.Cid
+}
+
 // NewDiscoverySubmodule creates a new discovery submodule.
-func NewDiscoverySubmodule(ctx context.Context, genesisCid cid.Cid, config *config.BootstrapConfig, network *NetworkSubmodule) (DiscoverySubmodule, error) {
-	periodStr := config.Period
+func NewDiscoverySubmodule(ctx context.Context, config discoveryConfig, bsConfig *config.BootstrapConfig, network *NetworkSubmodule) (DiscoverySubmodule, error) {
+	periodStr := bsConfig.Period
 	period, err := time.ParseDuration(periodStr)
 	if err != nil {
 		return DiscoverySubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap period %s", periodStr)
 	}
 
 	// bootstrapper maintains connections to some subset of addresses
-	ba := config.Addresses
+	ba := bsConfig.Addresses
 	bpi, err := net.PeerAddrsToAddrInfo(ba)
 	if err != nil {
 		return DiscoverySubmodule{}, errors.Wrapf(err, "couldn't parse bootstrap addresses [%s]", ba)
 	}
 
-	minPeerThreshold := config.MinPeerThreshold
+	minPeerThreshold := bsConfig.MinPeerThreshold
 
 	// create a bootstrapper
 	bootstrapper := discovery.NewBootstrapper(bpi, network.PeerHost, network.PeerHost.Network(), network.Router, minPeerThreshold, period)
@@ -52,17 +56,17 @@ func NewDiscoverySubmodule(ctx context.Context, genesisCid cid.Cid, config *conf
 	return DiscoverySubmodule{
 		Bootstrapper: bootstrapper,
 		PeerTracker:  peerTracker,
-		HelloHandler: discovery.NewHelloProtocolHandler(network.PeerHost, genesisCid, network.NetworkName),
+		HelloHandler: discovery.NewHelloProtocolHandler(network.PeerHost, config.GenesisCid(), network.NetworkName),
 	}, nil
 }
 
-type chainNode interface {
+type discoveryNode interface {
 	Network() NetworkSubmodule
 	Chain() ChainSubmodule
 }
 
 // Start starts the discovery submodule for a node.
-func (m *DiscoverySubmodule) Start(node chainNode) error {
+func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Start bootstrapper.
 	m.Bootstrapper.Start(context.Background())
 

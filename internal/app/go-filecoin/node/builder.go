@@ -169,7 +169,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Network")
 	}
 
-	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, b.genCid, nd.Repo.Config().Bootstrap, &nd.network)
+	nd.Discovery, err = submodule.NewDiscoverySubmodule(ctx, (*builder)(b), b.repo.Config().Bootstrap, &nd.network)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Discovery")
 	}
