@@ -48,7 +48,7 @@ func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		wonElection, _ = worker.Mine(ctx, headTipSet, []block.Ticket{}, out)
+		wonElection = worker.Mine(ctx, headTipSet, 0, out)
 		wg.Done()
 	}()
 	next := <-out

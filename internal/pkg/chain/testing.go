@@ -189,7 +189,7 @@ func (f *Builder) Build(parent block.TipSet, width int, build func(b *BlockBuild
 		f.seq++
 
 		b := &block.Block{
-			Tickets:         []block.Ticket{ticket},
+			Ticket:          ticket,
 			Miner:           f.minerAddress,
 			ParentWeight:    types.Uint64(parentWeight),
 			Parents:         parent.Key(),
@@ -288,7 +288,7 @@ type BlockBuilder struct {
 
 // SetTicket sets the block's ticket.
 func (bb *BlockBuilder) SetTicket(raw []byte) {
-	bb.block.Tickets = []block.Ticket{{VRFProof: block.VRFPi(raw)}}
+	bb.block.Ticket = block.Ticket{VRFProof: block.VRFPi(raw)}
 }
 
 // SetTimestamp sets the block's timestamp.

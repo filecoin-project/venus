@@ -18,8 +18,8 @@ type Block struct {
 	// Miner is the address of the miner actor that mined this block.
 	Miner address.Address `json:"miner"`
 
-	// Tickets is the array of tickets submitted with this block.
-	Tickets []Ticket `json:"tickets"`
+	// Ticket is the ticket submitted with this block.
+	Ticket Ticket `json:"ticket"`
 
 	// Parents is the set of parents this block was based on. Typically one,
 	// but can be several in the case where there were multiple winning ticket-
@@ -138,7 +138,7 @@ func (b *Block) Equals(other *Block) bool {
 func (b *Block) SignatureData() []byte {
 	tmp := &Block{
 		Miner:           b.Miner,
-		Tickets:         b.Tickets, // deep copy needed??
+		Ticket:          b.Ticket,  // deep copy needed??
 		Parents:         b.Parents, // deep copy needed??
 		ParentWeight:    b.ParentWeight,
 		Height:          b.Height,

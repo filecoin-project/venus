@@ -208,7 +208,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
 			MessageReceipts: emptyAMTCid,
 			BLSAggregateSig: emptyBLSSignature[:],
-			Tickets:         []block.Ticket{{VRFProof: []byte{0xec}, VDFResult: []byte{0xec}}},
+			Ticket:          block.Ticket{VRFProof: []byte{0xec}},
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {

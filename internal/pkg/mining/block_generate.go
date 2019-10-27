@@ -20,7 +20,7 @@ import (
 // Generate returns a new block created from the messages in the pool.
 func (w *DefaultWorker) Generate(ctx context.Context,
 	baseTipSet block.TipSet,
-	tickets []block.Ticket,
+	ticket block.Ticket,
 	electionProof block.VRFPi,
 	nullBlockCount uint64) (*block.Block, error) {
 
@@ -117,7 +117,7 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		ParentWeight:    types.Uint64(weight),
 		ElectionProof:   electionProof,
 		StateRoot:       newStateTreeCid,
-		Tickets:         tickets,
+		Ticket:          ticket,
 		Timestamp:       types.Uint64(w.clock.Now().Unix()),
 		BLSAggregateSig: blsAggregateSig,
 	}

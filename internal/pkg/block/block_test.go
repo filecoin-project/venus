@@ -64,7 +64,7 @@ func TestTriangleEncoding(t *testing.T) {
 
 		b := &blk.Block{
 			Miner:           newAddress(),
-			Tickets:         []blk.Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
+			Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 			Height:          types.Uint64(2),
 			Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
 			MessageReceipts: types.CidFromString(t, "somecid"),
@@ -128,7 +128,7 @@ func TestDecodeBlock(t *testing.T) {
 
 		before := &blk.Block{
 			Miner:           addrGetter(),
-			Tickets:         []blk.Ticket{{VRFProof: []uint8{}}},
+			Ticket:          blk.Ticket{VRFProof: []uint8{}},
 			Parents:         blk.NewTipSetKey(c1),
 			Height:          2,
 			Messages:        types.TxMeta{SecpRoot: cM, BLSRoot: types.EmptyMessagesCID},
@@ -228,7 +228,7 @@ func TestSignatureData(t *testing.T) {
 
 	b := &blk.Block{
 		Miner:           newAddress(),
-		Tickets:         []blk.Ticket{{VRFProof: []byte{0x01, 0x02, 0x03}}},
+		Ticket:          blk.Ticket{VRFProof: []byte{0x01, 0x02, 0x03}},
 		Height:          types.Uint64(2),
 		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "somecid"), BLSRoot: types.EmptyMessagesCID},
 		MessageReceipts: types.CidFromString(t, "somecid"),
@@ -242,7 +242,7 @@ func TestSignatureData(t *testing.T) {
 
 	diff := &blk.Block{
 		Miner:           newAddress(),
-		Tickets:         []blk.Ticket{{VRFProof: []byte{0x03, 0x01, 0x02}}},
+		Ticket:          blk.Ticket{VRFProof: []byte{0x03, 0x01, 0x02}},
 		Height:          types.Uint64(3),
 		Messages:        types.TxMeta{SecpRoot: types.CidFromString(t, "someothercid"), BLSRoot: types.EmptyMessagesCID},
 		MessageReceipts: types.CidFromString(t, "someothercid"),
@@ -283,10 +283,10 @@ func TestSignatureData(t *testing.T) {
 	func() {
 		before := b.SignatureData()
 
-		cpy := b.Tickets
-		defer func() { b.Tickets = cpy }()
+		cpy := b.Ticket
+		defer func() { b.Ticket = cpy }()
 
-		b.Tickets = diff.Tickets
+		b.Ticket = diff.Ticket
 		after := b.SignatureData()
 		assert.False(t, bytes.Equal(before, after))
 	}()

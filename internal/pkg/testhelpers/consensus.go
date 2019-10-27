@@ -26,7 +26,7 @@ func NewValidTestBlockFromTipSet(baseTipSet block.TipSet, stateRootCid cid.Cid, 
 
 	b := &block.Block{
 		Miner:           minerAddr,
-		Tickets:         []block.Ticket{ticket},
+		Ticket:          ticket,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(10000 * height),
 		Height:          types.Uint64(height),

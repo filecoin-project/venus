@@ -2,7 +2,6 @@ package consensus_test
 
 import (
 	"context"
-	"encoding/hex"
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -15,50 +14,96 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-func TestIsElectionWinner(t *testing.T) {
-	cases := []struct {
-		ticket        []byte
-		electionProof []byte
-		myPower       uint64
-		totalPower    uint64
-		wins          bool
-	}{
-		// Good proof with proper sig and enough power
-		{
-			ticket:        requireDecodeHex(t, "0ba5272600ac4123c39ae01b4fc574aa430f156710a9a912f24dda2b5aa9e7741f2f3a0fdc129c519ca35f208b419ec9ada9903e1bb26d048a39950cf434902801"),
-			electionProof: requireDecodeHex(t, "030196349ea47653a062c6b00e7cd8074eb8a23ede5b7f95de3ccd2dde62cf3174220b867d72366486a55cd1943dee28d6b78533df6dd2ef9b56158dd1317a2a01"),
-			myPower:       1,
-			totalPower:    42,
-			wins:          true,
-		},
-		// Bad proof with proper sig but not enough power
-		{
-			ticket:        requireDecodeHex(t, "f13dda9840314b7ece70d8c4e3350ce5e42a09989ca3f7d70470d4085fd8cba54aa8d9dcce53595560f1c76018af210eeacebfb0c1dec9eca3f03f9185f4a27f01"),
-			electionProof: requireDecodeHex(t, "d944206748d1d5a554031d43b629c7bef111f6c9c864692ce35e8bcf38e118cd5495bdea99e21cfeab3486252fef3d2e93e7183f8a837029e7af8a1fa0509b7501"),
-			myPower:       1,
-			totalPower:    42,
-			wins:          false,
-		},
-		// Bad proof with enough power and improper sig
-		{
-			ticket:        requireDecodeHex(t, "0ba5272600ac4123c39ae01b4fc574aa430f156710a9a912f24dda2b5aa9e7741f2f3a0fdc129c519ca35f208b419ec9ada9903e1bb26d048a39950cf434902801"),
-			electionProof: requireDecodeHex(t, "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-			myPower:       1,
-			totalPower:    3,
-			wins:          false,
-		},
-		// Totally bogus proof with no power or good sig
-		{
-			ticket:        requireDecodeHex(t, "0ba5272600ac4123c39ae01b4fc574aa430f156710a9a912f24dda2b5aa9e7741f2f3a0fdc129c519ca35f208b419ec9ada9903e1bb26d048a39950cf434902801"),
-			electionProof: requireDecodeHex(t, "FFFF000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-			myPower:       1,
-			totalPower:    42,
-			wins:          false,
-		},
+type electionCase struct {
+	ticket        block.Ticket
+	electionProof []byte
+	nonce         uint64
+	myPower       uint64
+	totalPower    uint64
+	wins          bool
+}
+
+func makeCases(t *testing.T, ki *types.KeyInfo, signer types.Signer) []electionCase {
+	// makeCases creates specific election test cases
+	//
+	// 1. A correctly generated proof with enough power
+	// 2. A correctly generated proof without enough power
+	// 3. An incorrectly generated proof with enough power
+	// 4. An incorrectly generated proof without enough power
+	em := &consensus.ElectionMachine{}
+
+	minerPower1 := uint64(1)
+	totalPower1 := uint64(42)
+	nonce1 := uint64(0)
+	t1 := consensus.SeedFirstWinnerInNRounds(t, int(nonce1), ki, minerPower1, totalPower1)
+	ep1, err := em.RunElection(t1, requireAddress(t, ki), signer, nonce1)
+	require.NoError(t, err)
+	case1 := electionCase{
+		ticket:        t1,
+		electionProof: ep1,
+		nonce:         nonce1,
+		myPower:       minerPower1,
+		totalPower:    totalPower1,
+		wins:          true,
 	}
 
-	_, kis := types.NewMockSignersAndKeyInfo(2)
-	minerAddress := requireAddress(t, &kis[1]) // Test cases were signed with second key info
+	minerPower2 := uint64(1)
+	totalPower2 := uint64(42)
+	nonce2 := uint64(0)
+	t2 := consensus.SeedLoserInNRounds(t, int(nonce2), ki, minerPower2, totalPower2)
+	ep2, err := em.RunElection(t1, requireAddress(t, ki), signer, nonce2)
+	require.NoError(t, err)
+	case2 := electionCase{
+		ticket:        t2,
+		electionProof: ep2,
+		nonce:         nonce2,
+		myPower:       minerPower2,
+		totalPower:    totalPower2,
+		wins:          false,
+	}
+
+	minerPower3 := uint64(1)
+	totalPower3 := uint64(3)
+	nonce3 := uint64(0)
+	t3 := consensus.SeedFirstWinnerInNRounds(t, int(nonce3), ki, minerPower3, totalPower3)
+	ep3, err := em.RunElection(t3, requireAddress(t, ki), signer, nonce3)
+	require.NoError(t, err)
+	ep3[len(ep3)-1] ^= 0xFF // flip bits
+	case3 := electionCase{
+		ticket:        t3,
+		electionProof: ep3,
+		nonce:         nonce3,
+		myPower:       minerPower3,
+		totalPower:    totalPower3,
+		wins:          false,
+	}
+
+	minerPower4 := uint64(1)
+	totalPower4 := uint64(3)
+	nonce4 := uint64(0)
+	t4 := consensus.SeedLoserInNRounds(t, int(nonce4), ki, minerPower4, totalPower4)
+	ep4, err := em.RunElection(t4, requireAddress(t, ki), signer, nonce4)
+	require.NoError(t, err)
+	ep4[0] = 0xFF           // This proof only wins with > 1/2 total power in the system
+	ep4[len(ep4)-1] ^= 0xFF // ensure ep4 has changed
+	case4 := electionCase{
+		ticket:        t4,
+		electionProof: ep4,
+		nonce:         nonce4,
+		myPower:       minerPower4,
+		totalPower:    totalPower4,
+		wins:          false,
+	}
+
+	return []electionCase{case1, case2, case3, case4}
+}
+
+func TestIsElectionWinner(t *testing.T) {
+	tf.UnitTest(t)
+
+	signer, kis := types.NewMockSignersAndKeyInfo(1)
+	minerAddress := requireAddress(t, &kis[0])
+	cases := makeCases(t, &kis[0], signer)
 
 	ctx := context.Background()
 
@@ -66,7 +111,7 @@ func TestIsElectionWinner(t *testing.T) {
 		minerToWorker := map[address.Address]address.Address{minerAddress: minerAddress}
 		for _, c := range cases {
 			ptv := consensus.NewFakePowerTableView(types.NewBytesAmount(c.myPower), types.NewBytesAmount(c.totalPower), minerToWorker)
-			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv, block.Ticket{VDFResult: c.ticket[:]}, c.electionProof, minerAddress, minerAddress)
+			r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv, c.ticket, c.nonce, c.electionProof, minerAddress, minerAddress)
 			assert.NoError(t, err)
 			assert.Equal(t, c.wins, r, "%+v", c)
 		}
@@ -74,16 +119,18 @@ func TestIsElectionWinner(t *testing.T) {
 
 	t.Run("IsElectionWinner returns false + error when we fail to get total power", func(t *testing.T) {
 		ptv1 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{MinerPower: types.NewBytesAmount(cases[0].myPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, block.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv1, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
+		require.Error(t, err)
 		assert.Equal(t, err.Error(), "Couldn't get totalPower: something went wrong with the total power")
 
 	})
 
 	t.Run("IsWinningTicket returns false + error when we fail to get miner power", func(t *testing.T) {
 		ptv2 := consensus.NewPowerTableView(&consensus.FakePowerTableViewSnapshot{TotalPower: types.NewBytesAmount(cases[0].totalPower)})
-		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, block.Ticket{VDFResult: cases[0].ticket[:]}, cases[0].electionProof, minerAddress, minerAddress)
+		r, err := consensus.ElectionMachine{}.IsElectionWinner(ctx, ptv2, cases[0].ticket, cases[0].nonce, cases[0].electionProof, minerAddress, minerAddress)
 		assert.False(t, r)
+		require.Error(t, err)
 		assert.Equal(t, err.Error(), "Couldn't get minerPower: something went wrong with the miner power")
 	})
 }
@@ -92,7 +139,7 @@ func TestRunElection(t *testing.T) {
 	signer, kis := types.NewMockSignersAndKeyInfo(1)
 	electionAddr := requireAddress(t, &kis[0])
 
-	electionProof, err := consensus.ElectionMachine{}.RunElection(consensus.MakeFakeTicketForTest(), electionAddr, signer)
+	electionProof, err := consensus.ElectionMachine{}.RunElection(consensus.MakeFakeTicketForTest(), electionAddr, signer, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 65, len(electionProof))
 }
@@ -155,9 +202,6 @@ func requireValidTicket(t *testing.T, parent block.Ticket, signer types.Signer, 
 	ticket, err := tm.NextTicket(parent, signerAddr, signer)
 	require.NoError(t, err)
 
-	err = tm.NotarizeTime(&ticket)
-	assert.NoError(t, err)
-
 	valid := tm.IsValidTicket(parent, ticket, signerAddr)
 	require.True(t, valid)
 	return ticket
@@ -174,10 +218,10 @@ func TestNextTicketFailsWithInvalidSigner(t *testing.T) {
 }
 
 func TestElectionFailsWithInvalidSigner(t *testing.T) {
-	parent := block.Ticket{VDFResult: block.VDFY{0xbb}}
+	parent := block.Ticket{VRFProof: block.VRFPi{0xbb}}
 	signer, _ := types.NewMockSignersAndKeyInfo(1)
 	badAddress := address.TestAddress
-	ep, err := consensus.ElectionMachine{}.RunElection(parent, badAddress, signer)
+	ep, err := consensus.ElectionMachine{}.RunElection(parent, badAddress, signer, 0)
 	assert.Error(t, err)
 	assert.Equal(t, block.VRFPi{}, ep)
 }
@@ -186,11 +230,4 @@ func requireAddress(t *testing.T, ki *types.KeyInfo) address.Address {
 	addr, err := ki.Address()
 	require.NoError(t, err)
 	return addr
-}
-
-func requireDecodeHex(t *testing.T, hexStr string) []byte {
-	b, err := hex.DecodeString(hexStr)
-	require.NoError(t, err)
-
-	return b
 }
