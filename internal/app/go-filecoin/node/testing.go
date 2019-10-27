@@ -272,7 +272,7 @@ func GenNode(t *testing.T, tno *TestNodeOptions) *Node {
 
 	// enables or disables libp2p
 	localCfgOpts = append(localCfgOpts, func(c *Builder) error {
-		c.OfflineMode = tno.OfflineMode
+		c.offlineMode = tno.OfflineMode
 		return nil
 	})
 

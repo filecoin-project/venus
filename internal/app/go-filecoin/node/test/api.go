@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/node"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 )
 
 // NodeAPI wraps an in-process Node to provide a command API server and client for testing.

@@ -94,8 +94,8 @@ func TestConnectsToBootstrapNodes(t *testing.T) {
 		require.NoError(t, err)
 		nd, err := node.New(ctx, opts...)
 		require.NoError(t, err)
-		nd.Network.Bootstrapper.MinPeerThreshold = 2
-		nd.Network.Bootstrapper.Period = 10 * time.Millisecond
+		nd.Discovery.Bootstrapper.MinPeerThreshold = 2
+		nd.Discovery.Bootstrapper.Period = 10 * time.Millisecond
 		assert.NoError(t, nd.Start(ctx))
 		defer nd.Stop(ctx)
 
@@ -126,7 +126,7 @@ func TestNodeInit(t *testing.T) {
 
 	assert.NoError(t, nd.Start(ctx))
 
-	assert.NotEqual(t, 0, nd.Chain.ChainReader.GetHead().Len())
+	assert.NotEqual(t, 0, nd.Chain().ChainReader.GetHead().Len())
 	nd.Stop(ctx)
 }
 
@@ -237,7 +237,7 @@ func repoConfig() node.BuilderOpt {
 	defaultCfg := config.NewDefaultConfig()
 	return func(c *node.Builder) error {
 		// overwrite value set with th.GetFreePort()
-		c.Repo.Config().API.Address = defaultCfg.API.Address
+		c.Repo().Config().API.Address = defaultCfg.API.Address
 		return nil
 	}
 }

@@ -32,8 +32,8 @@ func connect(t *testing.T, nd1, nd2 *Node) {
 }
 
 func requireMineOnce(ctx context.Context, t *testing.T, minerNode *Node) *block.Block {
-	head := minerNode.Chain.ChainReader.GetHead()
-	headTipSet, err := minerNode.Chain.ChainReader.GetTipSet(head)
+	head := minerNode.chain.ChainReader.GetHead()
+	headTipSet, err := minerNode.chain.ChainReader.GetTipSet(head)
 	require.NoError(t, err)
 	baseTS := headTipSet
 	require.NotNil(t, baseTS)
@@ -86,7 +86,7 @@ func TestBlockPropsManyNodes(t *testing.T) {
 	equal := false
 	for i := 0; i < 30; i++ {
 		for j := 1; j < numNodes; j++ {
-			otherHead := nodes[j].Chain.ChainReader.GetHead()
+			otherHead := nodes[j].chain.ChainReader.GetHead()
 			assert.NotNil(t, otherHead)
 			equal = otherHead.ToSlice()[0].Equals(nextBlk.Cid())
 			if equal {
@@ -120,7 +120,7 @@ func TestChainSync(t *testing.T) {
 
 	equal := false
 	for i := 0; i < 30; i++ {
-		otherHead := nodes[1].Chain.ChainReader.GetHead()
+		otherHead := nodes[1].chain.ChainReader.GetHead()
 		assert.NotNil(t, otherHead)
 		equal = otherHead.ToSlice()[0].Equals(thirdBlock.Cid())
 		if equal {

@@ -1,8 +1,13 @@
-package node
+package submodule
 
 import (
+	"context"
+
+	bserv "github.com/ipfs/go-blockservice"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 )
 
 // BlockstoreSubmodule enhances the `Node` with local key/value storing capabilities.
@@ -16,5 +21,22 @@ type BlockstoreSubmodule struct {
 	Blockstore bstore.Blockstore
 
 	// cborStore is a wrapper for a `hamt.CborIpldStore` that works on the local IPLD-Cbor objects stored in `Blockstore`.
-	cborStore *hamt.CborIpldStore
+	CborStore *hamt.CborIpldStore
+}
+
+type blockstoreRepo interface {
+	Datastore() ds.Batching
+}
+
+// NewBlockstoreSubmodule creates a new block store submodule.
+func NewBlockstoreSubmodule(ctx context.Context, repo blockstoreRepo) (BlockstoreSubmodule, error) {
+	// set up block store
+	bs := bstore.NewBlockstore(repo.Datastore())
+	// setup a ipldCbor on top of the local store
+	ipldCborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+
+	return BlockstoreSubmodule{
+		Blockstore: bs,
+		CborStore:  &ipldCborStore,
+	}, nil
 }

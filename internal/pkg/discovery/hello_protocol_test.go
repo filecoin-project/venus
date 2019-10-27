@@ -55,8 +55,8 @@ func TestHelloHandshake(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "").Register()
-	discovery.NewHelloProtocolHandler(b, genesisA.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "").Register()
+	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, genesisA.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
@@ -111,8 +111,8 @@ func TestHelloBadGenesis(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "").Register()
-	discovery.NewHelloProtocolHandler(b, genesisB.Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "").Register()
+	discovery.NewHelloProtocolHandler(a, genesisA.Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, genesisB.Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
 	msc2.On("HelloCallback", mock.Anything, mock.Anything, mock.Anything).Return()
@@ -150,8 +150,8 @@ func TestHelloMultiBlock(t *testing.T) {
 	msc1, msc2 := new(mockHelloCallback), new(mockHelloCallback)
 	hg1, hg2 := &mockHeaviestGetter{heavy1}, &mockHeaviestGetter{heavy2}
 
-	discovery.NewHelloProtocolHandler(a, genesisTipset.At(0).Cid(), msc1.HelloCallback, hg1.getHeaviestTipSet, "").Register()
-	discovery.NewHelloProtocolHandler(b, genesisTipset.At(0).Cid(), msc2.HelloCallback, hg2.getHeaviestTipSet, "").Register()
+	discovery.NewHelloProtocolHandler(a, genesisTipset.At(0).Cid(), "").Register(msc1.HelloCallback, hg1.getHeaviestTipSet)
+	discovery.NewHelloProtocolHandler(b, genesisTipset.At(0).Cid(), "").Register(msc2.HelloCallback, hg2.getHeaviestTipSet)
 
 	msc1.On("HelloCallback", b.ID(), heavy2.Key(), uint64(3)).Return()
 	msc2.On("HelloCallback", a.ID(), heavy1.Key(), uint64(2)).Return()
