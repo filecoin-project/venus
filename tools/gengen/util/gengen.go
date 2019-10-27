@@ -169,7 +169,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		Messages:        types.TxMeta{SecpRoot: emptyAMTCid, BLSRoot: emptyAMTCid},
 		MessageReceipts: emptyAMTCid,
 		BLSAggregateSig: emptyBLSSignature[:],
-		Ticket:         block.Ticket{VRFProof: []byte{0xec}},
+		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
 	}
 
 	c, err := cst.Put(ctx, geneblk)
