@@ -146,33 +146,11 @@ func (node *Node) Start(ctx context.Context) error {
 
 	if !node.OfflineMode {
 
-		// Start syncing dispatch
-		node.syncer.SyncDispatch.Start(context.Background())
-
-		// Start node discovery
-		if err := node.Discovery.Start(node); err != nil {
-			return err
+		// Subscribe to block pubsub topic to learn about new chain heads.
+		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.network.NetworkName), node.processBlock)
+		if err != nil {
+			log.Error(err)
 		}
-
-		// Subscribe to block pubsub after the initial sync completes.
-		go func() {
-			node.syncer.ChainSynced.Wait()
-
-			// Log some information about the synced chain
-			if ts, err := node.chain.ChainReader.GetTipSet(node.chain.ChainReader.GetHead()); err == nil {
-				if height, err := ts.Height(); err == nil {
-					log.Infof("initial chain sync complete! chain head height %d, tipset key %s, blocks %s\n", height, ts.Key(), ts.String())
-				}
-			}
-
-			if syncCtx.Err() == nil {
-				// Subscribe to block pubsub topic to learn about new chain heads.
-				node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.network.NetworkName), node.processBlock)
-				if err != nil {
-					log.Error(err)
-				}
-			}
-		}()
 
 		// Subscribe to the message pubsub topic to learn about messages to mine into blocks.
 		// TODO: defer this subscription until after mining (block production) is started:
@@ -184,10 +162,18 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		// Start heartbeats.
 		if err := node.setupHeartbeatServices(ctx); err != nil {
 			return errors.Wrap(err, "failed to start heartbeat services")
 		}
+
+		// Start node discovery
+		if err := node.Discovery.Start(node); err != nil {
+			return err
+		}
+
+		// Start syncing dispatch
+		node.syncer.SyncDispatch.Start(syncCtx)
+
 	}
 
 	return nil

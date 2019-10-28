@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
@@ -46,6 +45,7 @@ type nodeChainSelector interface {
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
+// SyncerSubmodule enhances the node with chain syncing capabilities
 type SyncerSubmodule struct {
 	BlockSub      pubsub.Subscription
 	ChainSelector nodeChainSelector
@@ -56,10 +56,6 @@ type SyncerSubmodule struct {
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
 
-	// ChainSynced is a latch that releases when a nodes chain reaches a caught-up state.
-	// It serves as a barrier to be released when the initial chain sync has completed.
-	// Services which depend on a more-or-less synced chain can wait for this before starting up.
-	ChainSynced *moresync.Latch
 	// Fetcher is the interface for fetching data from nodes.
 	Fetcher net.Fetcher
 
@@ -101,8 +97,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 		ChainSelector: nodeChainSelector,
 		SyncDispatch:  syncerDispatcher,
 		// cancelChainSync: nil,
-		ChainSynced: moresync.NewLatch(1),
-		Fetcher:     fetcher,
-		validator:   blkValid,
+		Fetcher:   fetcher,
+		validator: blkValid,
 	}, nil
 }
