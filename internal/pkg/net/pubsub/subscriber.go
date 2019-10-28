@@ -15,8 +15,13 @@ type Subscriber struct {
 // Message defines the common interface for go-filecoin message consumers.
 // It's a subset of the go-libp2p-pubsub/pubsub.go Message type.
 type Message interface {
-	GetFrom() peer.ID
+	GetSource() peer.ID
+	GetSender() peer.ID
 	GetData() []byte
+}
+
+type message struct {
+	inner *libp2p.Message
 }
 
 // Subscription is a handle to a pubsub subscription.
@@ -48,5 +53,23 @@ type subscriptionWrapper struct {
 
 // Next wraps pubsub.Subscription.Next, implicitly adapting *pubsub.Message to the Message interface.
 func (w subscriptionWrapper) Next(ctx context.Context) (Message, error) {
-	return w.Subscription.Next(ctx)
+	msg, err := w.Subscription.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return message{
+		inner: msg,
+	}, nil
+}
+
+func (m message) GetSender() peer.ID {
+	return m.inner.ReceivedFrom
+}
+
+func (m message) GetSource() peer.ID {
+	return m.inner.GetFrom()
+}
+
+func (m message) GetData() []byte {
+	return m.inner.GetData()
 }

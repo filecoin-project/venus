@@ -28,32 +28,34 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
 
-	if err := node.syncer.SyncDispatch.SendOwnBlock(block.NewChainInfo(node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
+	if err := node.syncer.SyncDispatch.SendOwnBlock(block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
 		return err
 	}
 
 	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.network.NetworkName), b.ToNode().RawData())
 }
 
-func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (err error) {
-	from := pubSubMsg.GetFrom()
-	// Ignore messages from self
-	if from == node.Host().ID() {
+func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {
+	sender := msg.GetSender()
+	source := msg.GetSource()
+
+	// ignore messages from self
+	if sender == node.Host().ID() || source == node.Host().ID() {
 		return nil
 	}
 
 	ctx, span := trace.StartSpan(ctx, "Node.processBlock")
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	blk, err := block.DecodeBlock(pubSubMsg.GetData())
+	blk, err := block.DecodeBlock(msg.GetData())
 	if err != nil {
-		return errors.Wrapf(err, "bad block data from peer %s", from)
+		return errors.Wrapf(err, "bad block data from source: %s, sender: %s", source, sender)
 	}
 
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 
-	log.Infof("Received new block %s from peer %s", blk.Cid(), from)
-	log.Debugf("Received new block %s from peer %s", blk, from)
+	log.Infof("Received new block %s from peer %s", blk.Cid(), sender)
+	log.Debugf("Received new block sender: %s source: %s, %s", sender, source, blk)
 
 	// The block we went to all that effort decoding is dropped on the floor!
 	// Don't be too quick to change that, though: the syncer re-fetching the block
@@ -61,9 +63,9 @@ func (node *Node) processBlock(ctx context.Context, pubSubMsg pubsub.Message) (e
 	// See https://github.com/filecoin-project/go-filecoin/issues/2962
 	// TODO Implement principled trusting of ChainInfo's
 	// to address in #2674
-	err = node.syncer.SyncDispatch.SendGossipBlock(block.NewChainInfo(from, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
+	err = node.syncer.SyncDispatch.SendGossipBlock(block.NewChainInfo(source, sender, block.NewTipSetKey(blk.Cid()), uint64(blk.Height)))
 	if err != nil {
-		return errors.Wrapf(err, "receive block %s from peer %s", blk.Cid(), from)
+		return errors.Wrapf(err, "failed to notify syncer of new block, block: %s", blk.Cid())
 	}
 
 	return nil
