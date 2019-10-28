@@ -12,6 +12,8 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 )
 
 var logBootstrap = logging.Logger("net.bootstrap")
@@ -52,6 +54,7 @@ type Bootstrapper struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	dhtBootStarted bool
+	filecoinPeers  *moresync.Latch
 }
 
 // NewBootstrapper returns a new Bootstrapper that will attempt to keep connected
@@ -66,6 +69,8 @@ func NewBootstrapper(bootstrapPeers []peer.AddrInfo, h host.Host, d inet.Dialer,
 		h: h,
 		d: d,
 		r: r,
+
+		filecoinPeers: moresync.NewLatch(uint(minPeer)),
 	}
 	b.Bootstrap = b.bootstrap
 	return b
@@ -95,6 +100,18 @@ func (b *Bootstrapper) Stop() {
 	if b.cancel != nil {
 		b.cancel()
 	}
+}
+
+// PeerDiscovered signals to the bootstrapper that a filecoin peer has been
+// discovered.
+func (b *Bootstrapper) PeerDiscovered() {
+	b.filecoinPeers.Done()
+}
+
+// Ready blocks until the bootstrapper meets the required security conditions:
+// https://filecoin-project.github.io/specs/#chainsync-fsm-bootstrap
+func (b *Bootstrapper) Ready() {
+	b.filecoinPeers.Wait()
 }
 
 // bootstrap does the actual work. If the number of connected peers

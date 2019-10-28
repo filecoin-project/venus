@@ -76,3 +76,12 @@ func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, 
 		StatusReporter: chainStatusReporter,
 	}, nil
 }
+
+type chainNode interface {
+	Chain() ChainSubmodule
+}
+
+// Start loads the chain from disk.
+func (c *ChainSubmodule) Start(ctx context.Context, node chainNode) error {
+	return node.Chain().ChainReader.Load(ctx)
+}

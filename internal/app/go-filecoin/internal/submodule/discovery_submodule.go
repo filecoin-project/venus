@@ -66,7 +66,8 @@ type discoveryNode interface {
 	Syncer() SyncerSubmodule
 }
 
-// Start starts the discovery submodule for a node.
+// Start starts the discovery submodule for a node.  It blocks until bootstrap
+// satisfies the configured security conditions.
 func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Start bootstrapper.
 	m.Bootstrapper.Start(context.Background())
@@ -77,6 +78,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Start up 'hello' handshake service
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {
 		m.PeerTracker.Track(ci)
+		m.Bootstrapper.PeerDiscovered()
 		err := node.Syncer().SyncDispatch.SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
@@ -91,6 +93,9 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 
 	// Register the "hello" protocol with the network
 	m.HelloHandler.Register(peerDiscoveredCallback, chainHeadCallback)
+
+	// Wait for bootstrap to be sufficient connected
+	m.Bootstrapper.Ready()
 
 	return nil
 }

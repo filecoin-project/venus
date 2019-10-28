@@ -113,8 +113,8 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
-	var err error
-	if err = node.chain.ChainReader.Load(ctx); err != nil {
+	err := node.chain.Start(ctx, node)
+	if err != nil {
 		return err
 	}
 
