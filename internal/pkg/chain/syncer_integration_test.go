@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -58,8 +58,8 @@ func TestLoadFork(t *testing.T) {
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -105,11 +105,11 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
 
-	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
+	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", newRight.Key(), heightFromTip(t, newRight)), true)
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
 }
 
 // Power table weight comparisons impact syncer's selection.
@@ -163,10 +163,10 @@ func TestSyncerWeighsPower(t *testing.T) {
 	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid(), pvt), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head1.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head1.Key(), store.GetHead())
 	// sync fork 2
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head2.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head2.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head2.Key(), store.GetHead())
 }
 

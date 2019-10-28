@@ -8,19 +8,19 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
 	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/impl/free"
-	"github.com/ipld/go-ipld-prime/linking/cid"
+	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	selectorbuilder "github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -642,9 +642,9 @@ func (pri *requestPeerFinder) CurrentPeer() peer.ID {
 func (pri *requestPeerFinder) FindNextPeer() error {
 	chains := pri.peerTracker.List()
 	for _, chain := range chains {
-		if _, tried := pri.triedPeers[chain.Peer]; !tried {
-			pri.triedPeers[chain.Peer] = struct{}{}
-			pri.currentPeer = chain.Peer
+		if _, tried := pri.triedPeers[chain.Sender]; !tried {
+			pri.triedPeers[chain.Sender] = struct{}{}
+			pri.currentPeer = chain.Sender
 			return nil
 		}
 	}

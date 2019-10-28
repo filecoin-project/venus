@@ -99,7 +99,8 @@ func (h *HelloProtocolHandler) processHelloMessage(from peer.ID, msg *HelloMessa
 		return nil, ErrBadGenesis
 	}
 
-	return block.NewChainInfo(from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
+	// Note: both the sender and the source are the sender for the hello messages
+	return block.NewChainInfo(from, from, msg.HeaviestTipSetCids, msg.HeaviestTipSetHeight), nil
 }
 
 func (h *HelloProtocolHandler) getOurHelloMessage() (*HelloMessage, error) {

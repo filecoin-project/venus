@@ -13,7 +13,7 @@ func (node *Node) processMessage(ctx context.Context, pubSubMsg pubsub.Message) 
 		return err
 	}
 
-	log.Debugf("Received new message %s from peer %s", unmarshaled, pubSubMsg.GetFrom())
+	log.Debugf("Received new message %s from peer %s", unmarshaled, pubSubMsg.GetSender())
 
 	_, err = node.Messaging.Inbox.Add(ctx, unmarshaled)
 	return err

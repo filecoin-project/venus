@@ -57,13 +57,13 @@ require (
 	github.com/jbenet/goprocess v0.1.3
 	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/libp2p/go-libp2p v0.4.0
+	github.com/libp2p/go-libp2p v0.4.1-0.20191006140250-5f60501a04d5
 	github.com/libp2p/go-libp2p-autonat-svc v0.1.0
 	github.com/libp2p/go-libp2p-circuit v0.1.3
-	github.com/libp2p/go-libp2p-core v0.2.3
+	github.com/libp2p/go-libp2p-core v0.2.4-0.20191022172111-a5bf2487c11d
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
-	github.com/libp2p/go-libp2p-pubsub v0.1.0
+	github.com/libp2p/go-libp2p-pubsub v0.1.2-0.20191018084750-aa9a8756d47b
 	github.com/libp2p/go-libp2p-swarm v0.2.2
 	github.com/libp2p/go-stream-muxer v0.0.1
 	github.com/magiconair/properties v1.8.1
