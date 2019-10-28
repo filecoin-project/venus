@@ -9,7 +9,7 @@ import (
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/ipfs/go-ipfs-exchange-interface"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -273,6 +273,11 @@ func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensu
 // message to go on chain. Note that no default from address is provided.
 func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
+}
+
+//SignedMessageSend sends a siged message.
+func (api *API) SignedMessageSend(ctx context.Context, msg string) (cid.Cid, error) {
+	return api.outbox.SignedSend(ctx, msg, true)
 }
 
 // MessageFind returns a message and receipt from the blockchain, if it exists.

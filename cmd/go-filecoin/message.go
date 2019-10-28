@@ -11,7 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
@@ -28,9 +29,10 @@ var msgCmd = &cmds.Command{
 		Tagline: "Send and monitor messages",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"send":   msgSendCmd,
-		"status": msgStatusCmd,
-		"wait":   msgWaitCmd,
+		"send":       msgSendCmd,
+		"sendsigned": signedMsgSendCmd,
+		"status":     msgStatusCmd,
+		"wait":       msgWaitCmd,
 	},
 }
 
@@ -112,6 +114,46 @@ var msgSendCmd = &cmds.Command{
 			gasPrice,
 			gasLimit,
 			method,
+		)
+		if err != nil {
+			return err
+		}
+
+		return re.Emit(&MessageSendResult{
+			Cid:     c,
+			GasUsed: types.NewGasUnits(0),
+			Preview: false,
+		})
+	},
+	Type: &MessageSendResult{},
+	Encoders: cmds.EncoderMap{
+		cmds.Text: cmds.MakeTypedEncoder(func(req *cmds.Request, w io.Writer, res *MessageSendResult) error {
+			if res.Preview {
+				output := strconv.FormatUint(uint64(res.GasUsed), 10)
+				_, err := w.Write([]byte(output))
+				return err
+			}
+			return PrintString(w, res.Cid)
+		}),
+	},
+}
+
+var signedMsgSendCmd = &cmds.Command{
+	Helptext: cmdkit.HelpText{
+		Tagline: "Send a signed message", // This feels too generic...
+	},
+	Arguments: []cmdkit.Argument{
+		//cmdkit.StringArg("target", true, false, "Address of the actor to send the message to"),
+		cmdkit.StringArg("message", true, false, "Signed Json message"),
+	},
+	Options: []cmdkit.Option{},
+
+	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
+		msg := req.Arguments[0]
+
+		c, err := GetPorcelainAPI(env).SignedMessageSend(
+			req.Context,
+			msg,
 		)
 		if err != nil {
 			return err
