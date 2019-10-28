@@ -498,7 +498,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticVa
 
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: genStateRoot, TipSet: genesis}))
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
@@ -516,7 +516,7 @@ type syncStoreReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, uint64) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain store.
@@ -545,7 +545,7 @@ func verifyHead(t *testing.T, store syncStoreReader, head block.TipSet) {
 	assert.Equal(t, head, headTipSet)
 }
 
-func containsTipSet(tsasSlice []*chain.TipSetAndState, ts block.TipSet) bool {
+func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts block.TipSet) bool {
 	for _, tsas := range tsasSlice {
 		if tsas.TipSet.String() == ts.String() { //bingo
 			return true

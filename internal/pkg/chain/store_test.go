@@ -34,15 +34,15 @@ func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
 func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.Store, head block.TipSetKey, source *chain.Builder, count int) {
 	tss := source.RequireTipSets(head, count)
 	for _, ts := range tss {
-		tsas := &chain.TipSetAndState{
+		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
 			TipSetStateRoot: ts.At(0).StateRoot,
 		}
-		require.NoError(t, chainStore.PutTipSetAndState(ctx, tsas))
+		require.NoError(t, chainStore.PutTipSetMetadata(ctx, tsas))
 	}
 }
 
-func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey block.TipSetKey, h uint64) []*chain.TipSetAndState {
+func requireGetTsasByParentAndHeight(t *testing.T, chain *chain.Store, pKey block.TipSetKey, h uint64) []*chain.TipSetMetadata {
 	tsasSlice, err := chain.GetTipSetAndStatesByParentsAndHeight(pKey, h)
 	require.NoError(t, err)
 	return tsasSlice
@@ -72,11 +72,11 @@ func TestPutTipSet(t *testing.T) {
 	r := repo.NewInMemoryRepo()
 	cs := newChainStore(r, genTS.At(0).Cid())
 
-	genTsas := &chain.TipSetAndState{
+	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
 		TipSetStateRoot: genTS.At(0).StateRoot,
 	}
-	err := cs.PutTipSetAndState(ctx, genTsas)
+	err := cs.PutTipSetMetadata(ctx, genTsas)
 	assert.NoError(t, err)
 }
 
@@ -155,7 +155,7 @@ func TestGetTipSetState(t *testing.T) {
 	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          testTs,
 		TipSetStateRoot: root,
 	}))
@@ -232,11 +232,11 @@ func TestGetMultipleByParent(t *testing.T) {
 	// Add extra children to the genesis tipset
 	otherLink1 := builder.AppendOn(genTS, 1)
 	otherRoot1 := types.CidFromString(t, "otherState")
-	newChildTsas := &chain.TipSetAndState{
+	newChildTsas := &chain.TipSetMetadata{
 		TipSet:          otherLink1,
 		TipSetStateRoot: otherRoot1,
 	}
-	require.NoError(t, cs.PutTipSetAndState(ctx, newChildTsas))
+	require.NoError(t, cs.PutTipSetMetadata(ctx, newChildTsas))
 	gotNew1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), uint64(1))
 	require.Equal(t, 2, len(gotNew1))
 	for _, tsas := range gotNew1 {

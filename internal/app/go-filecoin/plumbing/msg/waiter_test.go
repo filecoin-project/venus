@@ -67,7 +67,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	chainWithMsgs := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
-	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	}))
@@ -94,7 +94,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
-	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
 	}))
