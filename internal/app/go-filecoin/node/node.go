@@ -171,9 +171,7 @@ func (node *Node) Start(ctx context.Context) error {
 			return err
 		}
 
-		// Start syncing dispatch
-		node.syncer.SyncDispatch.Start(syncCtx)
-
+		node.syncer.Start(syncCtx, node)
 	}
 
 	return nil

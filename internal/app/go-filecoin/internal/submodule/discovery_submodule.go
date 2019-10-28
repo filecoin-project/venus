@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -17,7 +18,8 @@ var log = logging.Logger("node") // nolint: deadcode
 
 // DiscoverySubmodule enhances the `Node` with peer discovery capabilities.
 type DiscoverySubmodule struct {
-	Bootstrapper *discovery.Bootstrapper
+	Bootstrapper   *discovery.Bootstrapper
+	BootstrapReady *moresync.Latch
 
 	// PeerTracker maintains a list of peers.
 	PeerTracker *discovery.PeerTracker
@@ -54,9 +56,10 @@ func NewDiscoverySubmodule(ctx context.Context, config discoveryConfig, bsConfig
 	peerTracker := discovery.NewPeerTracker(network.PeerHost.ID())
 
 	return DiscoverySubmodule{
-		Bootstrapper: bootstrapper,
-		PeerTracker:  peerTracker,
-		HelloHandler: discovery.NewHelloProtocolHandler(network.PeerHost, config.GenesisCid(), network.NetworkName),
+		Bootstrapper:   bootstrapper,
+		BootstrapReady: moresync.NewLatch(uint(minPeerThreshold)),
+		PeerTracker:    peerTracker,
+		HelloHandler:   discovery.NewHelloProtocolHandler(network.PeerHost, config.GenesisCid(), network.NetworkName),
 	}, nil
 }
 
@@ -78,7 +81,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Start up 'hello' handshake service
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {
 		m.PeerTracker.Track(ci)
-		m.Bootstrapper.PeerDiscovered()
+		m.BootstrapReady.Done()
 		err := node.Syncer().SyncDispatch.SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
@@ -95,7 +98,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	m.HelloHandler.Register(peerDiscoveredCallback, chainHeadCallback)
 
 	// Wait for bootstrap to be sufficient connected
-	m.Bootstrapper.Ready()
+	m.BootstrapReady.Wait()
 
 	return nil
 }

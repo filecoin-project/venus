@@ -21,6 +21,23 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
+// SyncerSubmodule enhances the node with chain syncing capabilities
+type SyncerSubmodule struct {
+	BlockSub      pubsub.Subscription
+	ChainSelector nodeChainSelector
+	Consensus     consensus.Protocol
+	Syncer        nodeChainSyncer
+	SyncDispatch  nodeSyncDispatcher
+
+	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
+	CancelChainSync context.CancelFunc
+
+	// Fetcher is the interface for fetching data from nodes.
+	Fetcher net.Fetcher
+
+	validator consensus.BlockValidator
+}
+
 type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
@@ -43,23 +60,6 @@ type nodeChainSelector interface {
 	NewWeight(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
-}
-
-// SyncerSubmodule enhances the node with chain syncing capabilities
-type SyncerSubmodule struct {
-	BlockSub      pubsub.Subscription
-	ChainSelector nodeChainSelector
-	Consensus     consensus.Protocol
-	Syncer        nodeChainSyncer
-	SyncDispatch  nodeSyncDispatcher
-
-	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
-	CancelChainSync context.CancelFunc
-
-	// Fetcher is the interface for fetching data from nodes.
-	Fetcher net.Fetcher
-
-	validator consensus.BlockValidator
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
@@ -87,7 +87,6 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
 
 	// only the syncer gets the storage which is online connected
-	// xxx: need chain store, not just chain reader
 	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, chn.StatusReporter, config.Clock())
 	syncerDispatcher := syncer.NewDispatcher(chainSyncer)
 
@@ -100,4 +99,13 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 		Fetcher:   fetcher,
 		validator: blkValid,
 	}, nil
+}
+
+type syncerNode interface {
+	Syncer() SyncerSubmodule
+}
+
+// Start starts the syncer submodule for a node.
+func (s *SyncerSubmodule) Start(ctx context.Context, node syncerNode) {
+	node.Syncer().SyncDispatch.Start(ctx)
 }

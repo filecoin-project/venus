@@ -102,18 +102,6 @@ func (b *Bootstrapper) Stop() {
 	}
 }
 
-// PeerDiscovered signals to the bootstrapper that a filecoin peer has been
-// discovered.
-func (b *Bootstrapper) PeerDiscovered() {
-	b.filecoinPeers.Done()
-}
-
-// Ready blocks until the bootstrapper meets the required security conditions:
-// https://filecoin-project.github.io/specs/#chainsync-fsm-bootstrap
-func (b *Bootstrapper) Ready() {
-	b.filecoinPeers.Wait()
-}
-
 // bootstrap does the actual work. If the number of connected peers
 // has fallen below b.MinPeerThreshold it will attempt to connect to
 // a random subset of its bootstrap peers.
