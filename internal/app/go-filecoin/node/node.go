@@ -76,6 +76,7 @@ type Node struct {
 	//
 
 	chain         submodule.ChainSubmodule
+	syncer        submodule.SyncerSubmodule
 	BlockMining   submodule.BlockMiningSubmodule
 	SectorStorage submodule.SectorBuilderSubmodule
 
@@ -134,7 +135,7 @@ func (node *Node) Start(ctx context.Context) error {
 	node.RetrievalProtocol.RetrievalMiner = retrieval.NewMiner(node)
 
 	var syncCtx context.Context
-	syncCtx, node.chain.CancelChainSync = context.WithCancel(context.Background())
+	syncCtx, node.syncer.CancelChainSync = context.WithCancel(context.Background())
 
 	// Wire up propagation of new chain heads from the chain store to other components.
 	head, err := node.PorcelainAPI.ChainHead()
@@ -146,7 +147,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if !node.OfflineMode {
 
 		// Start syncing dispatch
-		node.chain.SyncDispatch.Start(context.Background())
+		node.syncer.SyncDispatch.Start(context.Background())
 
 		// Start node discovery
 		if err := node.Discovery.Start(node); err != nil {
@@ -155,7 +156,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 		// Subscribe to block pubsub after the initial sync completes.
 		go func() {
-			node.chain.ChainSynced.Wait()
+			node.syncer.ChainSynced.Wait()
 
 			// Log some information about the synced chain
 			if ts, err := node.chain.ChainReader.GetTipSet(node.chain.ChainReader.GetHead()); err == nil {
@@ -166,7 +167,7 @@ func (node *Node) Start(ctx context.Context) error {
 
 			if syncCtx.Err() == nil {
 				// Subscribe to block pubsub topic to learn about new chain heads.
-				node.chain.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.network.NetworkName), node.processBlock)
+				node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.network.NetworkName), node.processBlock)
 				if err != nil {
 					log.Error(err)
 				}
@@ -317,13 +318,13 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet
 }
 
 func (node *Node) cancelSubscriptions() {
-	if node.chain.CancelChainSync != nil {
-		node.chain.CancelChainSync()
+	if node.syncer.CancelChainSync != nil {
+		node.syncer.CancelChainSync()
 	}
 
-	if node.chain.BlockSub != nil {
-		node.chain.BlockSub.Cancel()
-		node.chain.BlockSub = nil
+	if node.syncer.BlockSub != nil {
+		node.syncer.BlockSub.Cancel()
+		node.syncer.BlockSub = nil
 	}
 
 	if node.Messaging.MessageSub != nil {
@@ -773,9 +774,9 @@ func (node *Node) getWeight(ctx context.Context, ts block.TipSet) (uint64, error
 		return 0, err
 	}
 	if v >= version.Protocol1 {
-		wFun = node.chain.ChainSelector.NewWeight
+		wFun = node.syncer.ChainSelector.NewWeight
 	} else {
-		wFun = node.chain.ChainSelector.Weight
+		wFun = node.syncer.ChainSelector.Weight
 	}
 
 	parent, err := ts.Parents()
@@ -831,6 +832,11 @@ func (node *Node) IsMining() bool {
 // Chain returns the chain submodule.
 func (node *Node) Chain() submodule.ChainSubmodule {
 	return node.chain
+}
+
+// Syncer returns the syncer submodule.
+func (node *Node) Syncer() submodule.SyncerSubmodule {
+	return node.syncer
 }
 
 // Network returns the network submodule.

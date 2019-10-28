@@ -63,6 +63,7 @@ func NewDiscoverySubmodule(ctx context.Context, config discoveryConfig, bsConfig
 type discoveryNode interface {
 	Network() NetworkSubmodule
 	Chain() ChainSubmodule
+	Syncer() SyncerSubmodule
 }
 
 // Start starts the discovery submodule for a node.
@@ -76,7 +77,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	// Start up 'hello' handshake service
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {
 		m.PeerTracker.Track(ci)
-		err := node.Chain().SyncDispatch.SendHello(ci)
+		err := node.Syncer().SyncDispatch.SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 			return
@@ -91,7 +92,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 		// sync done until it's caught up enough that it will accept blocks from pubsub.
 		// This might require additional rounds of hello.
 		// See https://github.com/filecoin-project/go-filecoin/issues/1105
-		node.Chain().ChainSynced.Done()
+		node.Syncer().ChainSynced.Done()
 	}
 
 	// chain head callback
