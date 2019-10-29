@@ -195,12 +195,11 @@ func (smc *Client) ProposeDeal(ctx context.Context, miner address.Address, data 
 	proposal.Payment.Payer = fromAddress
 
 	// create payment information
-	totalCost := price.MulBigInt(big.NewInt(int64(pieceSize * duration)))
-	if totalCost.GreaterThan(types.ZeroAttoFIL) {
+	if totalPrice.GreaterThan(types.ZeroAttoFIL) {
 		cpResp, err := smc.api.CreatePayments(ctx, porcelain.CreatePaymentsParams{
 			From:            fromAddress,
 			To:              minerOwner,
-			Value:           totalCost,
+			Value:           totalPrice,
 			Duration:        duration,
 			MinerAddress:    miner,
 			CommP:           pieceCommitmentResponse.CommP,

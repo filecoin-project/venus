@@ -20,7 +20,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
 func TestBlockTopicValidator(t *testing.T) {
@@ -64,10 +63,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 	blocktime := time.Second * 1
 
 	// setup a block validator and a topic validator
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)
-
-	bv := consensus.NewDefaultBlockValidator(blocktime, mclock, pvt)
+	bv := consensus.NewDefaultBlockValidator(blocktime, mclock)
 	btv := net.NewBlockTopicValidator(bv)
 
 	// setup a floodsub instance on the host and register the topic validator

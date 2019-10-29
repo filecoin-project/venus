@@ -10,9 +10,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
-	"github.com/ipfs/go-ipfs-files"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
+	files "github.com/ipfs/go-ipfs-files"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
@@ -121,7 +121,7 @@ var storeStatusCmd = &cmds.Command{
 		Tagline: "Show status of chain sync operation.",
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-		syncStatus := GetPorcelainAPI(env).ChainStatus()
+		syncStatus := GetPorcelainAPI(env).SyncerStatus()
 		if err := re.Emit(syncStatus); err != nil {
 			return err
 		}
@@ -168,11 +168,12 @@ var storeSyncCmd = &cmds.Command{
 
 		syncKey := block.NewTipSetKey(syncCids...)
 		ci := &block.ChainInfo{
-			Peer:   syncPid,
+			Source: syncPid,
+			Sender: syncPid,
 			Height: 0, // only checked when trusted is false.
 			Head:   syncKey,
 		}
-		return GetPorcelainAPI(env).ChainSyncHandleNewTipSet(req.Context, ci, true)
+		return GetPorcelainAPI(env).ChainSyncHandleNewTipSet(ci)
 	},
 }
 

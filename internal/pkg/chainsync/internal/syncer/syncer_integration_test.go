@@ -1,4 +1,4 @@
-package chain_test
+package syncer_test
 
 import (
 	"context"
@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -20,7 +22,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,22 +45,22 @@ func TestLoadFork(t *testing.T) {
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	store := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{genStateRoot, genesis}))
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: genStateRoot, TipSet: genesis}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	syncer := chain.NewSyncer(eval, sel, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	s := syncer.NewSyncer(eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -79,7 +80,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, sel, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	offlineSyncer := syncer.NewSyncer(eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -105,11 +106,11 @@ func TestLoadFork(t *testing.T) {
 	// without getting old blocks from network. i.e. the store index has been trimmed
 	// of non-heaviest chain blocks.
 
-	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", newRight.Key(), heightFromTip(t, newRight)), true)
+	err = offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", newRight.Key(), heightFromTip(t, newRight)), true)
 	assert.Error(t, err)
 
 	// The left chain is ok without any fetching though.
-	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, offlineSyncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
 }
 
 // Power table weight comparisons impact syncer's selection.
@@ -119,9 +120,7 @@ func TestLoadFork(t *testing.T) {
 func TestSyncerWeighsPower(t *testing.T) {
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)
-	isb := newIntegrationStateBuilder(t, cst, pvt)
+	isb := newIntegrationStateBuilder(t, cst)
 	builder := chain.NewBuilderWithState(t, address.Undef, isb)
 
 	// Construct genesis with readable state tree root
@@ -158,15 +157,15 @@ func TestSyncerWeighsPower(t *testing.T) {
 	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{gen.At(0).StateRoot, gen}))
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen}))
 	require.NoError(t, store.SetHead(ctx, gen))
-	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid(), pvt), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := syncer.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head1.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head1.Key(), store.GetHead())
 	// sync fork 2
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", head2.Key(), heightFromTip(t, head1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head2.Key(), heightFromTip(t, head1)), true))
 	assert.Equal(t, head2.Key(), store.GetHead())
 }
 
@@ -186,10 +185,9 @@ type integrationStateBuilder struct {
 	c512 cid.Cid
 	cGen cid.Cid
 	cst  *hamt.CborIpldStore
-	pvt  *version.ProtocolVersionTable
 }
 
-func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore, pvt *version.ProtocolVersionTable) *integrationStateBuilder {
+func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrationStateBuilder {
 	return &integrationStateBuilder{
 		t:    t,
 		c512: cid.Undef,
@@ -230,8 +228,8 @@ func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uin
 		return uint64(0), nil
 	}
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
-	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen, isb.pvt)
-	return sel.NewWeight(context.Background(), tip, pstate)
+	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
+	return sel.Weight(context.Background(), tip, pstate)
 }
 
 // integrationStateEvaluator returns the parent state root.  If there are multiple

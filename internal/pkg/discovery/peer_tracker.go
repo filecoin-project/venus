@@ -57,9 +57,9 @@ func (tracker *PeerTracker) Track(ci *block.ChainInfo) {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
 
-	_, tracking := tracker.peers[ci.Peer]
-	_, trusted := tracker.trusted[ci.Peer]
-	tracker.peers[ci.Peer] = ci
+	_, tracking := tracker.peers[ci.Sender]
+	_, trusted := tracker.trusted[ci.Sender]
+	tracker.peers[ci.Sender] = ci
 	logPeerTracker.Infow("Track peer", "chainInfo", ci, "new", !tracking, "count", len(tracker.peers), "trusted", trusted)
 }
 

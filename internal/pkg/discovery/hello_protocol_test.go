@@ -24,7 +24,7 @@ type mockHelloCallback struct {
 }
 
 func (msb *mockHelloCallback) HelloCallback(ci *block.ChainInfo) {
-	msb.Called(ci.Peer, ci.Head, ci.Height)
+	msb.Called(ci.Sender, ci.Head, ci.Height)
 }
 
 type mockHeaviestGetter struct {

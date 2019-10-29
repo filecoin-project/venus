@@ -184,9 +184,14 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Blockservice")
 	}
 
-	nd.chain, err = submodule.NewChainSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, nd.VersionTable)
+	nd.chain, err = submodule.NewChainSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
+	}
+
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}
 
 	nd.Wallet, err = submodule.NewWalletSubmodule(ctx, b.repo)
@@ -232,11 +237,11 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:       nd.network.Bitswap,
 		Chain:         nd.chain.State,
-		Sync:          cst.NewChainSyncProvider(nd.chain.Syncer),
+		Sync:          cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:        cfg.NewConfig(b.repo),
 		DAG:           dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
 		Deals:         strgdls.New(b.repo.DealsDatastore()),
-		Expected:      nd.chain.Consensus,
+		Expected:      nd.syncer.Consensus,
 		MsgPool:       nd.Messaging.MsgPool,
 		MsgPreviewer:  msg.NewPreviewer(nd.chain.ChainReader, nd.Blockstore.CborStore, nd.Blockstore.Blockstore, nd.chain.Processor),
 		ActState:      nd.chain.ActorState,
