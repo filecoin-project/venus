@@ -103,11 +103,14 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
 	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
+		msg, found, err := w.receiptForTipset(ctx, iterator.Value(), msgCid)
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
 		}
-		return w.receiptForTipset(ctx, iterator.Value(), msgCid)
+		if found {
+			return msg, true, nil
+		}
 	}
 	return nil, false, nil
 }
