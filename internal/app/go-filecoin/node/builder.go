@@ -237,7 +237,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:       nd.network.Bitswap,
 		Chain:         nd.chain.State,
-		Sync:          cst.NewChainSyncProvider(nd.syncer.Syncer),
+		Sync:          cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:        cfg.NewConfig(b.repo),
 		DAG:           dag.NewDAG(merkledag.NewDAGService(nd.Blockservice.Blockservice)),
 		Deals:         strgdls.New(b.repo.DealsDatastore()),

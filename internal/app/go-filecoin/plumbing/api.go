@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
-	"github.com/ipfs/go-ipfs-exchange-interface"
+	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -184,15 +185,14 @@ func (api *API) ChainSampleRandomness(ctx context.Context, sampleHeight *types.B
 	return api.chain.SampleRandomness(ctx, sampleHeight)
 }
 
-// ChainStatus returns the current status of the active or last active chain sync operation.
-func (api *API) ChainStatus() chain.Status {
+// SyncerStatus returns the current status of the active or last active chain sync operation.
+func (api *API) SyncerStatus() status.Status {
 	return api.syncer.Status()
 }
 
-// ChainSyncHandleNewTipSet submits a chain head to the syncer for processing. If the head is trusted
-// the syncer will attempt to sync the new head regardless of length.
-func (api *API) ChainSyncHandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error {
-	return api.syncer.HandleNewTipSet(ctx, ci, trusted)
+// ChainSyncHandleNewTipSet submits a chain head to the syncer for processing.
+func (api *API) ChainSyncHandleNewTipSet(ci *block.ChainInfo) error {
+	return api.syncer.HandleNewTipSet(ci)
 }
 
 // ChainExport exports the chain from `head` up to and including the genesis block to `out`

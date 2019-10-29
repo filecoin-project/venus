@@ -1,12 +1,15 @@
-package chain
+package syncer
 
 import (
 	"context"
 	"sync"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
@@ -14,60 +17,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
-
-var reorgCnt *metrics.Int64Counter
-
-func init() {
-	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
-}
-
-// UntrustedChainHeightLimit is the maximum number of blocks ahead of the current consensus
-// chain height to accept if syncing without trust.
-var UntrustedChainHeightLimit = 600
-var (
-	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
-	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
-	// ErrNewChainTooLong is returned when processing a fork that split off from the main chain too many blocks ago.
-	ErrNewChainTooLong = errors.New("input chain forked from best chain too far in the past")
-	// ErrUnexpectedStoreState indicates that the syncer's chain store is violating expected invariants.
-	ErrUnexpectedStoreState = errors.New("the chain store is in an unexpected state")
-)
-
-var syncOneTimer *metrics.Float64Timer
-
-func init() {
-	syncOneTimer = metrics.NewTimerMs("syncer/sync_one", "Duration of single tipset validation in milliseconds")
-}
-
-var logSyncer = logging.Logger("chain.syncer")
-
-type syncerChainReaderWriter interface {
-	GetHead() block.TipSetKey
-	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
-	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
-	PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error
-	SetHead(ctx context.Context, s block.TipSet) error
-	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h uint64) bool
-	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*TipSetAndState, error)
-}
-
-type syncChainSelector interface {
-	// IsHeavier returns true if tipset a is heavier than tipset b and false if
-	// tipset b is heavier than tipset a.
-	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
-	// Weight returns the weight of a tipset
-	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
-}
-
-type syncStateEvaluator interface {
-	// RunStateTransition returns the state root CID resulting from applying the input ts to the
-	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
-}
 
 // Syncer updates its chain.Store according to the methods of its
 // consensus.Protocol.  It uses a bad tipset cache and a limit on new
@@ -94,30 +45,92 @@ type Syncer struct {
 	mu sync.Mutex
 	// fetcher is the networked block fetching service for fetching blocks
 	// and messages.
-	fetcher net.Fetcher
-	// badTipSetCache is used to filter out collections of invalid blocks.
-	badTipSets *badTipSetCache
+	fetcher Fetcher
+	// BadTipSetCache is used to filter out collections of invalid blocks.
+	badTipSets *BadTipSetCache
 
 	// Evaluates tipset messages and stores the resulting states.
-	stateEvaluator syncStateEvaluator
+	stateEvaluator SemanticValidator
 	// Selects the heaviest of two chains
-	chainSelector syncChainSelector
+	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
-	chainStore syncerChainReaderWriter
+	chainStore ChainReaderWriter
 	// Provides message collections given cids
-	messageProvider MessageProvider
+	messageProvider chain.MessageProvider
 
 	clock clock.Clock
 
 	// Reporter is used by the syncer to update the current status of the chain.
-	reporter Reporter
+	reporter status.Reporter
 }
 
+// Fetcher defines an interface that may be used to fetch data from the network.
+type Fetcher interface {
+	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
+	// this includes the provided `ts`. The TipSet that evaluates to true when
+	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
+	FetchTipSets(context.Context, block.TipSetKey, peer.ID, func(block.TipSet) (bool, error)) ([]block.TipSet, error)
+}
+
+// ChainReaderWriter reads and writes the chain store.
+type ChainReaderWriter interface {
+	GetHead() block.TipSetKey
+	GetTipSet(tsKey block.TipSetKey) (block.TipSet, error)
+	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+	HasTipSetAndState(ctx context.Context, tsKey block.TipSetKey) bool
+	PutTipSetAndState(ctx context.Context, tsas *chain.TipSetAndState) error
+	SetHead(ctx context.Context, s block.TipSet) error
+	HasTipSetAndStatesWithParentsAndHeight(pTsKey block.TipSetKey, h uint64) bool
+	GetTipSetAndStatesByParentsAndHeight(pTsKey block.TipSetKey, h uint64) ([]*chain.TipSetAndState, error)
+}
+
+// ChainSelector chooses the heaviest between chains.
+type ChainSelector interface {
+	// IsHeavier returns true if tipset a is heavier than tipset b and false if
+	// tipset b is heavier than tipset a.
+	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
+	// Weight returns the weight of a tipset after the upgrade to version 1
+	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
+}
+
+// SemanticValidator does semantic validation on fullblocks.
+type SemanticValidator interface {
+	// RunStateTransition returns the state root CID resulting from applying the input ts to the
+	// prior `stateRoot`.  It returns an error if the transition is invalid.
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
+}
+
+var reorgCnt *metrics.Int64Counter
+
+func init() {
+	reorgCnt = metrics.NewInt64Counter("chain/reorg_count", "The number of reorgs that have occurred.")
+}
+
+// UntrustedChainHeightLimit is the maximum number of blocks ahead of the current consensus
+// chain height to accept if syncing without trust.
+var UntrustedChainHeightLimit = 600
+var (
+	// ErrChainHasBadTipSet is returned when the syncer traverses a chain with a cached bad tipset.
+	ErrChainHasBadTipSet = errors.New("input chain contains a cached bad tipset")
+	// ErrNewChainTooLong is returned when processing a fork that split off from the main chain too many blocks ago.
+	ErrNewChainTooLong = errors.New("input chain forked from best chain too far in the past")
+	// ErrUnexpectedStoreState indicates that the syncer's chain store is violating expected invariants.
+	ErrUnexpectedStoreState = errors.New("the chain store is in an unexpected state")
+)
+
+var syncOneTimer *metrics.Float64Timer
+
+func init() {
+	syncOneTimer = metrics.NewTimerMs("syncer/sync_one", "Duration of single tipset validation in milliseconds")
+}
+
+var logSyncer = logging.Logger("chainsync.syncer")
+
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e syncStateEvaluator, cs syncChainSelector, s syncerChainReaderWriter, m MessageProvider, f net.Fetcher, sr Reporter, c clock.Clock) *Syncer {
+func NewSyncer(e SemanticValidator, cs ChainSelector, s ChainReaderWriter, m chain.MessageProvider, f Fetcher, sr status.Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
-		badTipSets: &badTipSetCache{
+		badTipSets: &BadTipSetCache{
 			bad: make(map[string]struct{}),
 		},
 		stateEvaluator:  e,
@@ -160,7 +173,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 		return err
 	}
 	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
-	ancestors, err := GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
+	ancestors, err := chain.GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err
 	}
@@ -197,7 +210,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	if err != nil {
 		return err
 	}
-	err = syncer.chainStore.PutTipSetAndState(ctx, &TipSetAndState{
+	err = syncer.chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
 		TipSet:          next,
 		TipSetStateRoot: root,
 	})
@@ -285,9 +298,9 @@ func (syncer *Syncer) ancestorsFromStore(ts block.TipSet) (block.TipSet, block.T
 }
 
 func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead block.TipSet) {
-	curHeadIter := IterAncestors(ctx, syncer.chainStore, curHead)
-	newHeadIter := IterAncestors(ctx, syncer.chainStore, newHead)
-	commonAncestor, err := FindCommonAncestor(curHeadIter, newHeadIter)
+	curHeadIter := chain.IterAncestors(ctx, syncer.chainStore, curHead)
+	newHeadIter := chain.IterAncestors(ctx, syncer.chainStore, newHead)
+	commonAncestor, err := chain.FindCommonAncestor(curHeadIter, newHeadIter)
 	if err != nil {
 		// Should never get here because reorgs should always have a
 		// common ancestor..
@@ -295,10 +308,10 @@ func (syncer *Syncer) logReorg(ctx context.Context, curHead, newHead block.TipSe
 		return
 	}
 
-	reorg := IsReorg(curHead, newHead, commonAncestor)
+	reorg := chain.IsReorg(curHead, newHead, commonAncestor)
 	if reorg {
 		reorgCnt.Inc(ctx, 1)
-		dropped, added, err := ReorgDiff(curHead, newHead, commonAncestor)
+		dropped, added, err := chain.ReorgDiff(curHead, newHead, commonAncestor)
 		if err == nil {
 			logSyncer.With(
 				"currentHead", curHead,
@@ -406,16 +419,16 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 		return err
 	}
 
-	syncer.reporter.UpdateStatus(syncingStarted(syncer.clock.Now().Unix()), syncHead(ci.Head), syncHeight(ci.Height), syncTrusted(trusted), syncComplete(false))
-	defer syncer.reporter.UpdateStatus(syncComplete(true))
+	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.SyncHeight(ci.Height), status.SyncTrusted(trusted), status.SyncComplete(false))
+	defer syncer.reporter.UpdateStatus(status.SyncComplete(true))
 
 	// If we do not trust the peer head check finality
 	if !trusted && ExceedsUntrustedChainLength(curHeight, ci.Height) {
 		return ErrNewChainTooLong
 	}
 
-	syncer.reporter.UpdateStatus(syncFetchComplete(false))
-	chain, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
+	syncer.reporter.UpdateStatus(status.SyncFetchComplete(false))
+	tipsets, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
@@ -426,24 +439,24 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 		}
 
 		// update status with latest fetched head and height
-		syncer.reporter.UpdateStatus(fetchHead(t.Key()), fetchHeight(height))
+		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
-	syncer.reporter.UpdateStatus(syncFetchComplete(true))
+	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	if err != nil {
 		return err
 	}
 	// Fetcher returns chain in Traversal order, reverse it to height order
-	Reverse(chain)
+	chain.Reverse(tipsets)
 
-	parent, grandParent, err := syncer.ancestorsFromStore(chain[0])
+	parent, grandParent, err := syncer.ancestorsFromStore(tipsets[0])
 	if err != nil {
 		return err
 	}
 
 	// Try adding the tipsets of the chain to the store, checking for new
 	// heaviest tipsets.
-	for i, ts := range chain {
+	for i, ts := range tipsets {
 		// TODO: this "i==0" leaks EC specifics into syncer abstraction
 		// for the sake of efficiency, consider plugging up this leak.
 		var wts block.TipSet
@@ -460,13 +473,13 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 				}
 			}
 		}
-		// If the chain has length greater than 1, then we need to sync each tipset
+		// If the tipsets has length greater than 1, then we need to sync each tipset
 		// in the chain in order to process the chain fully, including the non-widened
 		// first tipset.
 		// If the chan has length == 1, we can avoid processing the non-widened tipset
 		// as a performance optimization, because this tipset cannot be heavier
 		// than the widened first tipset.
-		if !wts.Defined() || len(chain) > 1 {
+		if !wts.Defined() || len(tipsets) > 1 {
 			err = syncer.syncOne(ctx, grandParent, parent, ts)
 			if err != nil {
 				// While `syncOne` can indeed fail for reasons other than consensus,
@@ -474,12 +487,12 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 				// have access to the chain. If syncOne fails for non-consensus reasons,
 				// there is no assumption that the running node's data is valid at all,
 				// so we don't really lose anything with this simplification.
-				syncer.badTipSets.AddChain(chain[i:])
+				syncer.badTipSets.AddChain(tipsets[i:])
 				return err
 			}
 		}
 		if i%500 == 0 {
-			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(chain), ci.Head.String())
+			logSyncer.Infof("processing block %d of %v for chain with head at %v", i, len(tipsets), ci.Head.String())
 		}
 		grandParent = parent
 		parent = ts
@@ -487,8 +500,8 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 	return nil
 }
 
-// Status returns the current chain status.
-func (syncer *Syncer) Status() Status {
+// Status returns the current syncer status.
+func (syncer *Syncer) Status() status.Status {
 	return syncer.reporter.Status()
 }
 

@@ -1,4 +1,4 @@
-package net_test
+package fetcher_test
 
 import (
 	"bytes"

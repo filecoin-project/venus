@@ -12,47 +12,29 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/fetcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/syncer"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
 type SyncerSubmodule struct {
-	BlockSub      pubsub.Subscription
-	ChainSelector nodeChainSelector
-	Consensus     consensus.Protocol
-	Syncer        nodeChainSyncer
-	SyncDispatch  nodeSyncDispatcher
+	BlockSub         pubsub.Subscription
+	ChainSelector    nodeChainSelector
+	Consensus        consensus.Protocol
+	ChainSyncManager *chainsync.Manager
 
 	// cancelChainSync cancels the context for chain sync subscriptions and handlers.
 	CancelChainSync context.CancelFunc
-
-	// Fetcher is the interface for fetching data from nodes.
-	Fetcher net.Fetcher
-
-	validator consensus.BlockValidator
 }
 
 type syncerConfig interface {
 	GenesisCid() cid.Cid
 	BlockTime() time.Duration
 	Clock() clock.Clock
-}
-
-type nodeChainSyncer interface {
-	HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error
-	Status() chain.Status
-}
-
-type nodeSyncDispatcher interface {
-	SendHello(*block.ChainInfo) error
-	SendOwnBlock(*block.ChainInfo) error
-	SendGossipBlock(*block.ChainInfo) error
-	Start(context.Context)
 }
 
 type nodeChainSelector interface {
@@ -82,28 +64,23 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
-	fetcher := net.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
+	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
 
-	// only the syncer gets the storage which is online connected
-	chainSyncer := chain.NewSyncer(nodeConsensus, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, chn.StatusReporter, config.Clock())
-	syncerDispatcher := syncer.NewDispatcher(chainSyncer)
+	chainSyncManager := chainsync.NewManager(nodeConsensus, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
 
 	return SyncerSubmodule{
 		// BlockSub: nil,
-		Consensus:     nodeConsensus,
-		ChainSelector: nodeChainSelector,
-		SyncDispatch:  syncerDispatcher,
+		Consensus:        nodeConsensus,
+		ChainSelector:    nodeChainSelector,
+		ChainSyncManager: &chainSyncManager,
 		// cancelChainSync: nil,
-		Fetcher:   fetcher,
-		validator: blkValid,
 	}, nil
 }
 
 type syncerNode interface {
-	Syncer() SyncerSubmodule
 }
 
 // Start starts the syncer submodule for a node.
-func (s *SyncerSubmodule) Start(ctx context.Context, node syncerNode) {
-	node.Syncer().SyncDispatch.Start(ctx)
+func (s *SyncerSubmodule) Start(ctx context.Context, _node syncerNode) {
+	s.ChainSyncManager.Start(ctx)
 }

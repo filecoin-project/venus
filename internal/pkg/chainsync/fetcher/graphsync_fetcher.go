@@ -1,4 +1,4 @@
-package net
+package fetcher
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -27,7 +28,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
-var logGraphsyncFetcher = logging.Logger("net.graphsync_fetcher")
+var logGraphsyncFetcher = logging.Logger("chainsync.fetcher.graphsync")
 
 const (
 	// Timeout for a single graphsync request getting "stuck"
@@ -49,16 +50,8 @@ const (
 	amtNodeValuesFieldIndex = 2
 )
 
-// Fetcher defines an interface that may be used to fetch data from the network.
-type Fetcher interface {
-	// FetchTipSets will only fetch TipSets that evaluate to `false` when passed to `done`,
-	// this includes the provided `ts`. The TipSet that evaluates to true when
-	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
-	FetchTipSets(context.Context, block.TipSetKey, peer.ID, func(block.TipSet) (bool, error)) ([]block.TipSet, error)
-}
-
 // interface conformance check
-var _ Fetcher = (*GraphSyncFetcher)(nil)
+var _ syncer.Fetcher = (*GraphSyncFetcher)(nil)
 
 // GraphExchange is an interface wrapper to Graphsync so it can be stubbed in
 // unit testing

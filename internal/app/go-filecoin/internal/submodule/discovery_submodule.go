@@ -82,7 +82,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {
 		m.PeerTracker.Track(ci)
 		m.BootstrapReady.Done()
-		err := node.Syncer().SyncDispatch.SendHello(ci)
+		err := node.Syncer().ChainSyncManager.BlockProposer().SendHello(ci)
 		if err != nil {
 			log.Errorf("error receiving chain info from hello %s: %s", ci, err)
 			return
