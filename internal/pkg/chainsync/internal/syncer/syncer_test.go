@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -185,30 +187,6 @@ func TestAcceptHeavierFork(t *testing.T) {
 	verifyTip(t, store, fork2, builder.StateForKey(fork2.Key()))
 	verifyTip(t, store, fork3, builder.StateForKey(fork3.Key()))
 	verifyHead(t, store, fork3)
-}
-
-func TestFarFutureTipsets(t *testing.T) {
-	tf.UnitTest(t)
-	ctx := context.Background()
-
-	t.Run("accepts when syncing", func(t *testing.T) {
-		builder, store, _ := setup(ctx, t)
-		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(syncer.UntrustedChainHeightLimit+1, genesis)
-
-		syncer := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
-		assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", farHead.Key(), heightFromTip(t, farHead)), true))
-	})
-
-	t.Run("rejects when caught up", func(t *testing.T) {
-		builder, store, _ := setup(ctx, t)
-		genesis := builder.RequireTipSet(store.GetHead())
-		farHead := builder.AppendManyOn(syncer.UntrustedChainHeightLimit+1, genesis)
-
-		syncer := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
-		err := syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", farHead.Key(), heightFromTip(t, farHead)), false)
-		assert.Error(t, err)
-	})
 }
 
 func TestNoUncessesaryFetch(t *testing.T) {
@@ -392,6 +370,63 @@ func TestBlockNotLinkedRejected(t *testing.T) {
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", b1.Key(), heightFromTip(t, b1)), true))
 }
 
+type poisonValidator struct {
+	headerFailureTS uint64
+	fullFailureTS   uint64
+	t               *testing.T
+}
+
+func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poisonValidator {
+	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
+}
+
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, _ cid.Cid) (cid.Cid, error) {
+	stamp, err := ts.MinTimestamp()
+	require.NoError(pv.t, err)
+
+	if pv.fullFailureTS == uint64(stamp) {
+		return cid.Undef, errors.New("run state transition fails on poison timestamp")
+	}
+	return cid.Undef, nil
+}
+
+func (pv *poisonValidator) ValidateSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
+	if pv.headerFailureTS == uint64(header.Timestamp) {
+		return errors.New("val semantic fails on poison timestamp")
+	}
+	return nil
+}
+
+func TestSemanticallyBadTipSetFails(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	eval := newPoisonValidator(t, 98, 99)
+	builder, store, syncer := setupWithValidator(ctx, t, eval)
+	genesis := builder.RequireTipSet(store.GetHead())
+
+	// Build a chain with messages that will fail semantic header validation
+	kis := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, kis)
+	alice := mm.Addresses()[0]
+	m1 := mm.NewSignedMessage(alice, 0)
+	m2 := mm.NewSignedMessage(alice, 1)
+	m3 := mm.NewSignedMessage(alice, 3)
+
+	link1 := builder.BuildOneOn(genesis, func(bb *chain.BlockBuilder) {
+		bb.AddMessages(
+			[]*types.SignedMessage{m1, m2, m3},
+			[]*types.UnsignedMessage{},
+			[]*types.MessageReceipt{},
+		)
+		bb.SetTimestamp(98) // poison header val
+	})
+
+	// Set up a fresh builder without any of this data
+	err := syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", link1.Key(), heightFromTip(t, link1)), true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "val semantic fails")
+}
+
 func TestSyncerStatus(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
@@ -451,6 +486,11 @@ func TestSyncerStatus(t *testing.T) {
 // Initializes a chain builder, store and syncer.
 // The chain builder has a single genesis block, which is set as the head of the store.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *syncer.Syncer) {
+	eval := &chain.FakeStateEvaluator{}
+	return setupWithValidator(ctx, t, eval)
+}
+
+func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticValidator) (*chain.Builder, *chain.Store, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
@@ -463,9 +503,8 @@ func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *sy
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
-	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	syncer := syncer.NewSyncer(eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := syncer.NewSyncer(val, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }

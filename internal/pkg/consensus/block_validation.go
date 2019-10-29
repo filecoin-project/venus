@@ -27,7 +27,7 @@ type SyntaxValidator interface {
 // BlockSemanticValidator defines an interface used to validate a blocks
 // semantics.
 type BlockSemanticValidator interface {
-	ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, parentWeight uint64) error
+	ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error
 }
 
 // BlockSyntaxValidator defines an interface used to validate a blocks
@@ -59,8 +59,9 @@ func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock) *DefaultBloc
 	}
 }
 
-// ValidateSemantic validates a block is correctly derived from its parent.
-func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, parentWeight uint64) error {
+// ValidateSemantic checks validation conditions on a header that can be
+// checked given only the parent header.
+func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
 	pmin, err := parents.MinTimestamp()
 	if err != nil {
 		return err
@@ -69,10 +70,6 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *bl
 	ph, err := parents.Height()
 	if err != nil {
 		return err
-	}
-
-	if uint64(child.ParentWeight) != parentWeight {
-		return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
 	}
 
 	if uint64(child.Height) <= ph {

@@ -91,7 +91,7 @@ func NewFakeBlockValidator() *FakeBlockValidator {
 }
 
 // ValidateSemantic does nothing.
-func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents *block.TipSet, _ uint64) error {
+func (fbv *FakeBlockValidator) ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error {
 	return nil
 }
 

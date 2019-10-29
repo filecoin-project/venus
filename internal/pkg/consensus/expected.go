@@ -146,18 +146,12 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	for i := 0; i < ts.Len(); i++ {
-		if err := c.BlockValidator.ValidateSemantic(ctx, ts.At(i), &ancestors[0], parentWeight); err != nil {
-			return cid.Undef, err
-		}
-	}
-
 	priorState, err := c.loadStateTree(ctx, priorStateID)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if err := c.validateMining(ctx, priorState, ts, ancestors[0], blsMessages, secpMessages); err != nil {
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0], blsMessages, secpMessages, parentWeight); err != nil {
 		return cid.Undef, err
 	}
 
@@ -184,7 +178,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 //      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.TipSet, parentTs block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage) error {
+func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.TipSet, parentTs block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, parentWeight uint64) error {
 	prevTicket, err := parentTs.MinTicket()
 	if err != nil {
 		return errors.Wrap(err, "failed to read parent min ticket")
@@ -199,6 +193,9 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 
+		if uint64(blk.ParentWeight) != parentWeight {
+			return errors.Errorf("block %s has invalid parent weight %d", blk.Cid().String(), parentWeight)
+		}
 		workerAddr, err := pwrTableView.WorkerAddr(ctx, blk.Miner)
 		if err != nil {
 			return errors.Wrap(err, "failed to read worker address of block miner")

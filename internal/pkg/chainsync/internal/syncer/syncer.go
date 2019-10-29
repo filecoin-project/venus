@@ -50,7 +50,7 @@ type Syncer struct {
 	badTipSets *BadTipSetCache
 
 	// Evaluates tipset messages and stores the resulting states.
-	stateEvaluator SemanticValidator
+	validator SemanticValidator
 	// Selects the heaviest of two chains
 	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
@@ -70,6 +70,10 @@ type Fetcher interface {
 	// this includes the provided `ts`. The TipSet that evaluates to true when
 	// passed to `done` will be in the returned slice. The returns slice of TipSets is in Traversal order.
 	FetchTipSets(context.Context, block.TipSetKey, peer.ID, func(block.TipSet) (bool, error)) ([]block.TipSet, error)
+
+	// FetchTipSetHeaders will fetch only the headers of tipset blocks.
+	// Returned slice in reversal order
+	FetchTipSetHeaders(context.Context, block.TipSetKey, peer.ID, func(block.TipSet) (bool, error)) ([]block.TipSet, error)
 }
 
 // ChainReaderWriter reads and writes the chain store.
@@ -98,6 +102,9 @@ type SemanticValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, error)
+	// ValidateSemantic validates conditions on a block header that can be
+	// checked with the parent header but not parent state.
+	ValidateSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
 }
 
 var reorgCnt *metrics.Int64Counter
@@ -133,13 +140,45 @@ func NewSyncer(e SemanticValidator, cs ChainSelector, s ChainReaderWriter, m cha
 		badTipSets: &BadTipSetCache{
 			bad: make(map[string]struct{}),
 		},
-		stateEvaluator:  e,
+		validator:       e,
 		chainSelector:   cs,
 		chainStore:      s,
 		messageProvider: m,
 		clock:           c,
 		reporter:        sr,
 	}
+}
+
+// fetchAndValidateHeaders fetches headers and runs semantic block validation
+// on the chain of fetched headers
+func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.ChainInfo) ([]block.TipSet, error) {
+	headers, err := syncer.fetcher.FetchTipSetHeaders(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
+		parents, err := t.Parents()
+		if err != nil {
+			return true, err
+		}
+		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Fetcher returns chain in Traversal order, reverse it to height order
+	chain.Reverse(headers)
+
+	parent, _, err := syncer.ancestorsFromStore(headers[0])
+	if err != nil {
+		return nil, err
+	}
+	for i, ts := range headers {
+		for i := 0; i < ts.Len(); i++ {
+			err = syncer.validator.ValidateSemantic(ctx, ts.At(i), parent)
+			if err != nil {
+				return nil, err
+			}
+		}
+		parent = headers[i]
+	}
+	return headers, nil
 }
 
 // syncOne syncs a single tipset with the chain store. syncOne calculates the
@@ -206,7 +245,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, err := syncer.stateEvaluator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, nextReceipts, ancestors, parentWeight, stateRoot)
+	root, err := syncer.validator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, nextReceipts, ancestors, parentWeight, stateRoot)
 	if err != nil {
 		return err
 	}
@@ -410,25 +449,17 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 		return nil
 	}
 
-	curHead, err := syncer.chainStore.GetTipSet(syncer.chainStore.GetHead())
-	if err != nil {
-		return err
-	}
-	curHeight, err := curHead.Height()
-	if err != nil {
-		return err
-	}
-
 	syncer.reporter.UpdateStatus(status.SyncingStarted(syncer.clock.Now().Unix()), status.SyncHead(ci.Head), status.SyncHeight(ci.Height), status.SyncTrusted(trusted), status.SyncComplete(false))
 	defer syncer.reporter.UpdateStatus(status.SyncComplete(true))
+	syncer.reporter.UpdateStatus(status.SyncFetchComplete(false))
 
-	// If we do not trust the peer head check finality
-	if !trusted && ExceedsUntrustedChainLength(curHeight, ci.Height) {
-		return ErrNewChainTooLong
+	tipsets, err := syncer.fetchAndValidateHeaders(ctx, ci)
+	if err != nil {
+		return err
 	}
 
-	syncer.reporter.UpdateStatus(status.SyncFetchComplete(false))
-	tipsets, err := syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
+	// Once headers check out, fetch messages
+	_, err = syncer.fetcher.FetchTipSets(ctx, ci.Head, ci.Sender, func(t block.TipSet) (bool, error) {
 		parents, err := t.Parents()
 		if err != nil {
 			return true, err
@@ -442,12 +473,14 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 		syncer.reporter.UpdateStatus(status.FetchHead(t.Key()), status.FetchHeight(height))
 		return syncer.chainStore.HasTipSetAndState(ctx, parents), nil
 	})
+	if err != nil {
+		return err
+	}
+
 	syncer.reporter.UpdateStatus(status.SyncFetchComplete(true))
 	if err != nil {
 		return err
 	}
-	// Fetcher returns chain in Traversal order, reverse it to height order
-	chain.Reverse(tipsets)
 
 	parent, grandParent, err := syncer.ancestorsFromStore(tipsets[0])
 	if err != nil {
@@ -503,11 +536,4 @@ func (syncer *Syncer) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, 
 // Status returns the current syncer status.
 func (syncer *Syncer) Status() status.Status {
 	return syncer.reporter.Status()
-}
-
-// ExceedsUntrustedChainLength returns true if the delta between curHeight and newHeight
-// exceeds the maximum number of blocks to accept if syncing without trust, false otherwise.
-func ExceedsUntrustedChainLength(curHeight, newHeight uint64) bool {
-	maxChainLength := curHeight + uint64(UntrustedChainHeightLimit)
-	return newHeight > maxChainLength
 }

@@ -390,6 +390,11 @@ func (e *FakeStateEvaluator) RunStateTransition(ctx context.Context, tip block.T
 	return e.ComputeState(stateID, blsMessages, secpMessages)
 }
 
+// ValidateSemantic is a stub that always returns no error
+func (e *FakeStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
+	return nil
+}
+
 ///// Chain selector /////
 
 // FakeChainSelector is a syncChainSelector that delegates to the FakeStateBuilder
@@ -475,6 +480,11 @@ func (f *Builder) FetchTipSets(ctx context.Context, key block.TipSetKey, from pe
 		}
 	}
 	return tips, nil
+}
+
+// FetchTipSetHeaders fetchs the tipset at `tsKey` from the fetchers blockStore backed by the Builder.
+func (f *Builder) FetchTipSetHeaders(ctx context.Context, key block.TipSetKey, from peer.ID, done func(t block.TipSet) (bool, error)) ([]block.TipSet, error) {
+	return f.FetchTipSets(ctx, key, from, done)
 }
 
 // GetTipSetStateRoot returns the state root that was computed for a tipset.
