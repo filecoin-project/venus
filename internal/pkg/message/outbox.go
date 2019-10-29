@@ -112,6 +112,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 
 	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, gasPrice, gasLimit)
 	signed, err := types.NewSignedMessage(*rawMsg, ob.signer)
+
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}
@@ -121,16 +122,35 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrap(err, "invalid message")
 	}
 
+	return sendSignedMsg(ctx, ob, signed, bcast)
+}
+
+// SignedSend send a signed message, retaining it in the outbound message queue.
+// If bcast is true, the publisher broadcasts the message to the network at the current block height.
+func (ob *Outbox) SignedSend(ctx context.Context, signed *types.SignedMessage, bcast bool) (out cid.Cid, err error) {
+	defer func() {
+		if err != nil {
+			msgSendErrCt.Inc(ctx, 1)
+		}
+	}()
+
+	return sendSignedMsg(ctx, ob, signed, bcast)
+}
+
+// sendSignedMsg add signed message in pool and return cid
+func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage, bcast bool) (out cid.Cid, err error) {
+	head := ob.chains.GetHead()
+
 	height, err := tipsetHeight(ob.chains, head)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to get block height")
 	}
 
-	// Add to the local message queue at the last possible moment before
-	// calling Publish.
+	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
 	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
 		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
 	}
+
 	err = ob.publisher.Publish(ctx, signed, height, bcast)
 	if err != nil {
 		return cid.Undef, err

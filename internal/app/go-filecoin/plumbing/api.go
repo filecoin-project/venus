@@ -275,6 +275,11 @@ func (api *API) MessageSend(ctx context.Context, from, to address.Address, value
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 
+//SignedMessageSend sends a siged message.
+func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+	return api.outbox.SignedSend(ctx, smsg, true)
+}
+
 // MessageFind returns a message and receipt from the blockchain, if it exists.
 func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMessage, bool, error) {
 	return api.msgWaiter.Find(ctx, msgCid)
