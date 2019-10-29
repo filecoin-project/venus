@@ -253,7 +253,7 @@ func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.
 	seen := cid.NewSet()
 	for _, l := range dagNd.Links() {
 		if err := dag.Walk(ctx, csc.getLinks, l.Cid, seen.Visit); err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
 		}
 	}
 	return csc.state, nil
@@ -263,7 +263,7 @@ func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.
 func (csc *chainStateCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
 	nd, err := csc.dagserv.Get(ctx, c)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
 	}
 	csc.addState(nd)
 	return nd.Links(), nil
