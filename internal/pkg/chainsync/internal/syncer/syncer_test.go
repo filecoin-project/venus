@@ -482,6 +482,31 @@ func TestSyncerStatus(t *testing.T) {
 	assert.Equal(t, true, s2.SyncingComplete)
 }
 
+func TestStoresMessageReceipts(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder, store, syncer := setup(ctx, t)
+	genesis := builder.RequireTipSet(store.GetHead())
+
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	alice := mm.Addresses()[0]
+	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
+		b.AddMessages([]*types.SignedMessage{},
+			[]*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))},
+			[]*types.MessageReceipt{}) // let syncer handle the receipts (this is going away)
+	})
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), t1.Key(), heightFromTip(t, t1)), true))
+
+	receiptsCid, err := store.GetTipSetReceiptsRoot(t1.Key())
+	require.NoError(t, err)
+
+	receipts, err := builder.LoadReceipts(ctx, receiptsCid)
+	require.NoError(t, err)
+
+	assert.Len(t, receipts, 4)
+}
+
 ///// Set-up /////
 
 // Initializes a chain builder, store and syncer.

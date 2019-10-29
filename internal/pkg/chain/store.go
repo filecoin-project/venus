@@ -277,6 +277,11 @@ func (store *Store) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
+// GetTipSetReceiptsRoot returns the root CID of the message receipts for the tipset identified by `key`.
+func (store *Store) GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetReceipts(key)
+}
+
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset identified by `key`.
 func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) bool {

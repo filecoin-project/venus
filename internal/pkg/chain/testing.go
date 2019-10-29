@@ -337,6 +337,8 @@ type FakeStateBuilder struct {
 // This differs from the true state transition function in that messages that are duplicated
 // between blocks in the tipset are not ignored.
 func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error) {
+	receipts := []*types.MessageReceipt{}
+
 	// Accumulate the cids of the previous state and of all messages in the tipset.
 	inputs := []cid.Cid{prev}
 	for _, blockMessages := range blsMessages {
@@ -346,6 +348,11 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 				return cid.Undef, []*types.MessageReceipt{}, err
 			}
 			inputs = append(inputs, mCId)
+			receipts = append(receipts, &types.MessageReceipt{
+				ExitCode:   0,
+				Return:     [][]byte{mCId.Bytes()},
+				GasAttoFIL: types.NewGasPrice(3),
+			})
 		}
 	}
 	for _, blockMessages := range secpMessages {
@@ -355,19 +362,24 @@ func (FakeStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.Unsign
 				return cid.Undef, []*types.MessageReceipt{}, err
 			}
 			inputs = append(inputs, mCId)
+			receipts = append(receipts, &types.MessageReceipt{
+				ExitCode:   0,
+				Return:     [][]byte{mCId.Bytes()},
+				GasAttoFIL: types.NewGasPrice(3),
+			})
 		}
 	}
 
 	if len(inputs) == 1 {
 		// If there are no messages, the state doesn't change!
-		return prev, []*types.MessageReceipt{}, nil
+		return prev, receipts, nil
 	}
 
 	root, err := makeCid(inputs)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
-	return root, []*types.MessageReceipt{}, nil
+	return root, receipts, nil
 }
 
 // Weigh computes a tipset's weight as its parent weight plus one for each block in the tipset.
