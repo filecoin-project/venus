@@ -59,8 +59,8 @@ type syncChainSelector interface {
 	// IsHeavier returns true if tipset a is heavier than tipset b and false if
 	// tipset b is heavier than tipset a.
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
-	// NewWeight returns the weight of a tipset after the upgrade to version 1
-	NewWeight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
+	// Weight returns the weight of a tipset
+	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
 }
 
 type syncStateEvaluator interface {
@@ -250,13 +250,13 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 // from disk just like aggregate state roots.
 func (syncer *Syncer) calculateParentWeight(ctx context.Context, parent, grandParent block.TipSet) (uint64, error) {
 	if grandParent.Equals(block.UndefTipSet) {
-		return syncer.chainSelector.NewWeight(ctx, parent, cid.Undef)
+		return syncer.chainSelector.Weight(ctx, parent, cid.Undef)
 	}
 	gpStRoot, err := syncer.chainStore.GetTipSetStateRoot(grandParent.Key())
 	if err != nil {
 		return 0, err
 	}
-	return syncer.chainSelector.NewWeight(ctx, parent, gpStRoot)
+	return syncer.chainSelector.Weight(ctx, parent, gpStRoot)
 }
 
 // ancestorsFromStore returns the parent and grandparent tipsets of `ts`

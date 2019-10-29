@@ -38,7 +38,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
 const visitsPerBlock = 18
@@ -57,9 +56,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	clock := th.NewFakeClock(time.Now())
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock, pvt)
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(2, 42)
@@ -743,9 +740,7 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	ctx := context.Background()
 	bs := bstore.NewBlockstore(dss.MutexWrap(datastore.NewMapDatastore()))
 	clock := th.NewFakeClock(time.Now())
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)
-	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock, pvt)
+	bv := consensus.NewDefaultBlockValidator(5*time.Millisecond, clock)
 	pid0 := th.RequireIntPeerID(t, 0)
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)

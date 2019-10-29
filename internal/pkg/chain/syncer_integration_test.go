@@ -20,7 +20,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,9 +118,7 @@ func TestLoadFork(t *testing.T) {
 func TestSyncerWeighsPower(t *testing.T) {
 	cst := hamt.NewCborStore()
 	ctx := context.Background()
-	pvt, err := version.ConfigureProtocolVersions(version.TEST)
-	require.NoError(t, err)
-	isb := newIntegrationStateBuilder(t, cst, pvt)
+	isb := newIntegrationStateBuilder(t, cst)
 	builder := chain.NewBuilderWithState(t, address.Undef, isb)
 
 	// Construct genesis with readable state tree root
@@ -160,7 +157,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{gen.At(0).StateRoot, gen}))
 	require.NoError(t, store.SetHead(ctx, gen))
-	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid(), pvt), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))
@@ -186,10 +183,9 @@ type integrationStateBuilder struct {
 	c512 cid.Cid
 	cGen cid.Cid
 	cst  *hamt.CborIpldStore
-	pvt  *version.ProtocolVersionTable
 }
 
-func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore, pvt *version.ProtocolVersionTable) *integrationStateBuilder {
+func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrationStateBuilder {
 	return &integrationStateBuilder{
 		t:    t,
 		c512: cid.Undef,
@@ -230,8 +226,8 @@ func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uin
 		return uint64(0), nil
 	}
 	as := newForkSnapshotGen(isb.t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
-	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen, isb.pvt)
-	return sel.NewWeight(context.Background(), tip, pstate)
+	sel := consensus.NewChainSelector(isb.cst, as, isb.cGen)
+	return sel.Weight(context.Background(), tip, pstate)
 }
 
 // integrationStateEvaluator returns the parent state root.  If there are multiple
