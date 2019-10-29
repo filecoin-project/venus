@@ -160,7 +160,6 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "processing empty tipset")
 	}
 	bh := types.NewBlockHeight(h)
-	msgFilter := make(map[string]struct{})
 
 	var res ProcessTipSetResponse
 	res.Failures = make(map[cid.Cid]struct{})
@@ -169,6 +168,8 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	// TODO: this can be made slightly more efficient by reusing the validation
 	// transition of the first validated block (change would reach here and
 	// consensus functions).
+	dedupedMessages, err := DeduppedMessages(tsMessages)
+
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		// find miner's owner address
@@ -177,22 +178,7 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 			return &ProcessTipSetResponse{}, err
 		}
 
-		// filter out duplicates within TipSet
-		var msgs []*types.SignedMessage
-		for _, msg := range tsMessages[i] {
-			mCid, err := msg.Cid()
-			if err != nil {
-				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
-			}
-			if _, ok := msgFilter[mCid.String()]; ok {
-				continue
-			}
-			msgs = append(msgs, msg)
-			// filter all messages that we attempted to apply
-			// TODO is there ever a reason to try a duplicate failed message again within the same tipset?
-			msgFilter[mCid.String()] = struct{}{}
-		}
-		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, msgs, minerOwnerAddr, bh, ancestors)
+		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, dedupedMessages[i], minerOwnerAddr, bh, ancestors)
 		if err != nil {
 			return &ProcessTipSetResponse{}, err
 		}
@@ -221,6 +207,29 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	}
 
 	return &res, nil
+}
+
+// DeduppedMessages removes all messages that have the same cid
+func DeduppedMessages(tsMessages [][]*types.SignedMessage) ([][]*types.SignedMessage, error) {
+	allMessages := make([][]*types.SignedMessage, len(tsMessages))
+	msgFilter := make(map[cid.Cid]struct{})
+
+	for i, blkMessages := range tsMessages {
+		allMessages[i] = []*types.SignedMessage{}
+		for _, msg := range blkMessages {
+			mCid, err := msg.Cid()
+			if err != nil {
+				return nil, err
+			}
+
+			_, ok := msgFilter[mCid]
+			if !ok {
+				allMessages[i] = append(allMessages[i], msg)
+				msgFilter[mCid] = struct{}{}
+			}
+		}
+	}
+	return allMessages, nil
 }
 
 // ApplyMessage attempts to apply a message to a state tree. It is the

@@ -35,6 +35,7 @@ type ChainSubmodule struct {
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(ctx context.Context, tsKey block.TipSetKey) (state.Tree, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
+	GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *ps.PubSub
 	Load(context.Context) error
 	Stop()
