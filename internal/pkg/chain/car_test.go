@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-amt-ipld"
@@ -25,10 +26,10 @@ import (
 func TestChainImportExportGenesis(t *testing.T) {
 	tf.UnitTest(t)
 
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 
 	// export the car file to a carW
-	mustExportToBuffer(ctx, t, gene, cb, carW)
+	mustExportToBuffer(ctx, t, gene, cb, stpFn, carW)
 
 	// import the car file from the carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -40,12 +41,12 @@ func TestChainImportExportGenesis(t *testing.T) {
 
 func TestChainImportExportSingleTip(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one
 	headTS := cb.AppendOn(gene, 1)
 
 	// export the car file to carW
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -57,12 +58,12 @@ func TestChainImportExportSingleTip(t *testing.T) {
 
 func TestChainImportExportWideTip(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one, two wide
 	headTS := cb.AppendOn(gene, 2)
 
 	// export the car file to a carW
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -74,13 +75,13 @@ func TestChainImportExportWideTip(t *testing.T) {
 
 func TestChainImportExportMultiTip(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one
 	headTS := cb.AppendOn(gene, 1)
 	headTS = cb.AppendOn(headTS, 1)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -92,14 +93,14 @@ func TestChainImportExportMultiTip(t *testing.T) {
 
 func TestChainImportExportMultiWideTip(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one
 	headTS := cb.AppendOn(gene, 1)
 	// extend by one, two wide.
 	headTS = cb.AppendOn(headTS, 2)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -111,14 +112,14 @@ func TestChainImportExportMultiWideTip(t *testing.T) {
 
 func TestChainImportExportMultiWideBaseTip(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one, two wide
 	headTS := cb.AppendOn(gene, 2)
 	// extend by one
 	headTS = cb.AppendOn(headTS, 1)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -130,14 +131,14 @@ func TestChainImportExportMultiWideBaseTip(t *testing.T) {
 
 func TestChainImportExportMultiWideTips(t *testing.T) {
 	tf.UnitTest(t)
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 	// extend the head by one, two wide
 	headTS := cb.AppendOn(gene, 2)
 	// extend by one, two wide
 	headTS = cb.AppendOn(headTS, 2)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -150,7 +151,7 @@ func TestChainImportExportMultiWideTips(t *testing.T) {
 func TestChainImportExportMessages(t *testing.T) {
 	tf.UnitTest(t)
 
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
@@ -170,7 +171,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	})
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, ts2, cb, carW)
+	mustExportToBuffer(ctx, t, ts2, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -183,7 +184,7 @@ func TestChainImportExportMessages(t *testing.T) {
 func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	tf.UnitTest(t)
 
-	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
+	ctx, gene, cb, carW, carR, bstore, stpFn := setupDeps(t)
 
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
@@ -209,7 +210,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ts3 := cb.AppendOn(ts2, 3)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, ts3, cb, carW)
+	mustExportToBuffer(ctx, t, ts3, cb, stpFn, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -219,8 +220,8 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	validateBlockstoreImport(t, ts3.Key(), gene.Key(), bstore)
 }
 
-func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, carW *bufio.Writer) {
-	err := chain.Export(ctx, head, cb, cb, carW)
+func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, stateTreePersistFn func(c cid.Cid) error, carW *bufio.Writer) {
+	err := chain.Export(ctx, head, cb, cb, stateTreePersistFn, carW)
 	assert.NoError(t, err)
 	require.NoError(t, carW.Flush())
 }
@@ -231,7 +232,7 @@ func mustImportFromBuffer(ctx context.Context, t *testing.T, bstore blockstore.B
 	return importedKey
 }
 
-func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bufio.Writer, *bufio.Reader, blockstore.Blockstore) {
+func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bufio.Writer, *bufio.Reader, blockstore.Blockstore, chain.CarStateTreePersistFunc) {
 	// context for operations
 	ctx := context.Background()
 
@@ -243,10 +244,17 @@ func setupDeps(t *testing.T) (context.Context, block.TipSet, *chain.Builder, *bu
 	carW := bufio.NewWriter(&buf)
 	carR := bufio.NewReader(&buf)
 
+	stpFn := func(c cid.Cid) error {
+		if !c.Equals(gene.ToSlice()[0].StateRoot) {
+			return fmt.Errorf("%s is not genesis state root %s", c, gene.ToSlice()[0].StateRoot)
+		}
+		return nil
+	}
+
 	// a store to import the car file to and validate from.
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	return ctx, gene, cb, carW, carR, bstore
+	return ctx, gene, cb, carW, carR, bstore, stpFn
 
 }
 

@@ -64,7 +64,7 @@ func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, 
 	}
 	actorState := consensus.NewActorStateStore(chainStore, blockstore.CborStore, blockstore.Blockstore, processor)
 	messageStore := chain.NewMessageStore(blockstore.Blockstore)
-	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.CborStore, builtin.DefaultActors)
+	chainState := cst.NewChainStateReadWriter(chainStore, messageStore, blockstore.Blockstore, builtin.DefaultActors)
 
 	return ChainSubmodule{
 		ChainReader:  chainStore,
