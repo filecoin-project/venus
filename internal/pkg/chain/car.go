@@ -4,14 +4,16 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-car"
 	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
+
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var logCar = logging.Logger("chain/car")
@@ -23,10 +25,12 @@ type carMessageReader interface {
 	MessageProvider
 }
 
-type CarStateTreePersistFunc func(c cid.Cid) error
+type carStateReader interface {
+	ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error)
+}
 
 // Export will export a chain (all blocks and their messages) to the writer `out`.
-func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, stpFn CarStateTreePersistFunc, out io.Writer) error {
+func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carMessageReader, sr carStateReader, out io.Writer) error {
 	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
 	filter := make(map[cid.Cid]bool)
 
@@ -104,9 +108,15 @@ func Export(ctx context.Context, headTS block.TipSet, cr carChainReader, mr carM
 			}
 
 			if hdr.Height == 0 {
-				logCar.Debugf("writigin state tree: %s", hdr.StateRoot)
-				if err := stpFn(hdr.StateRoot); err != nil {
+				logCar.Debugf("writing state tree: %s", hdr.StateRoot)
+				stateRoots, err := sr.ChainStateTree(ctx, hdr.StateRoot)
+				if err != nil {
 					return err
+				}
+				for _, r := range stateRoots {
+					if err := carutil.LdWrite(out, r.Cid().Bytes(), r.RawData()); err != nil {
+						return err
+					}
 				}
 			}
 		}

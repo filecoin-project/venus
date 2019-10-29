@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
-	carutil "github.com/ipfs/go-car/util"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -41,7 +40,7 @@ type chainReadWriter interface {
 // ChainWriter providing write access to the chain head.
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
-	bstore          blockstore.Blockstore // Provides chain blocks and state trees.
+	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          builtin.Actors
 }
@@ -207,9 +206,8 @@ func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head block.Tip
 	if err != nil {
 		return err
 	}
-	stp := newCarStateTreeExporter(chn.bstore, out)
 	logStore.Infof("starting CAR file export: %s", head.String())
-	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, stp.PersistStateTree, out); err != nil {
+	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, chn, out); err != nil {
 		return err
 	}
 	logStore.Infof("exported CAR file with head: %s", head.String())
@@ -227,50 +225,51 @@ func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) 
 	return headKey, nil
 }
 
-func newCarStateTreeExporter(bs blockstore.Blockstore, out io.Writer) *carStateTreeExporter {
+// ChainStateTree returns the state tree as a slice of IPLD nodes at the passed stateroot cid `c`.
+func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error) {
+	return newChainStateCollector(chn.bstore).collectState(ctx, c)
+}
+
+func newChainStateCollector(bs blockstore.Blockstore) *chainStateCollector {
 	offl := offline.Exchange(bs)
 	blkserv := bserv.New(bs, offl)
 	dserv := dag.NewDAGService(blkserv)
-	return &carStateTreeExporter{
-		bstore:  bs,
+	return &chainStateCollector{
 		dagserv: dserv,
-		out:     out,
 	}
 }
 
-type carStateTreeExporter struct {
-	bstore  blockstore.Blockstore
-	dagserv format.DAGService
-	out     io.Writer
+type chainStateCollector struct {
+	dagserv format.DAGService // Provides access to state tree.
+	state   []format.Node
 }
 
-// PersistStateTree persist the state tree at `c` to the store.
-func (ce *carStateTreeExporter) PersistStateTree(c cid.Cid) error {
-	dagNd, err := ce.dagserv.Get(context.TODO(), c)
+func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
+	dagNd, err := csc.dagserv.Get(ctx, stateRoot)
 	if err != nil {
-		return errors.Wrapf(err, "failed to load stateroot from dagservice %s", c.String())
+		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
 	}
-	if err := carutil.LdWrite(ce.out, dagNd.Cid().Bytes(), dagNd.RawData()); err != nil {
-		return err
-	}
+	csc.addState(dagNd)
 	seen := cid.NewSet()
 	for _, l := range dagNd.Links() {
-		if err := dag.Walk(context.TODO(), ce.enumGetLinks, l.Cid, seen.Visit); err != nil {
-			return err
+		if err := dag.Walk(ctx, csc.getLinks, l.Cid, seen.Visit); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return csc.state, nil
+
 }
 
-func (ce *carStateTreeExporter) enumGetLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
-	nd, err := ce.dagserv.Get(ctx, c)
+func (csc *chainStateCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	nd, err := csc.dagserv.Get(ctx, c)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := carutil.LdWrite(ce.out, nd.Cid().Bytes(), nd.RawData()); err != nil {
-		return nil, err
-	}
-
+	csc.addState(nd)
 	return nd.Links(), nil
+
+}
+
+func (csc *chainStateCollector) addState(nd format.Node) {
+	csc.state = append(csc.state, nd)
 }
