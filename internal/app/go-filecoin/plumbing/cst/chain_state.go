@@ -14,12 +14,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var logStore = logging.Logger("plumbing/chain_store")

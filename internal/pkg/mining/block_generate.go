@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Generate returns a new block created from the messages in the pool.

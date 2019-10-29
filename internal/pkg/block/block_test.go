@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	blk "github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 func TestTriangleEncoding(t *testing.T) {

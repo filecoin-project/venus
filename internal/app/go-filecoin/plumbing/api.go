@@ -30,11 +30,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 )
 

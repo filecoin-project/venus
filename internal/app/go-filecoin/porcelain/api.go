@@ -13,10 +13,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // API is the porcelain implementation, a set of convenience calls written on the

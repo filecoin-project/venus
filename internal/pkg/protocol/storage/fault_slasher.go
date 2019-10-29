@@ -8,9 +8,9 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // DefaultFaultSlasherGasPrice is the default gas price to be used when sending messages

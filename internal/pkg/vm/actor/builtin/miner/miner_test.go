@@ -18,18 +18,18 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
+	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 func TestAskFunctions(t *testing.T) {

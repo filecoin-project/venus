@@ -14,9 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
 	"github.com/filecoin-project/go-filecoin/tools/fast/series"

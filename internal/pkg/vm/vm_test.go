@@ -9,11 +9,11 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	xerrors "github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"

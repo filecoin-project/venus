@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
+	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 )
 
 func TestSectorSet(t *testing.T) {

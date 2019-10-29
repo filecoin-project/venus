@@ -1,8 +1,8 @@
 package wallet
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // Backend is the interface to represent different storage backends

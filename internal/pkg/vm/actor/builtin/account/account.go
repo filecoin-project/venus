@@ -3,9 +3,9 @@ package account
 import (
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Actor is the builtin actor responsible for individual accounts.

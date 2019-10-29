@@ -29,13 +29,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 

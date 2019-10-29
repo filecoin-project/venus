@@ -11,8 +11,8 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Error represents a storage related error

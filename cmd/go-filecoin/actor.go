@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
@@ -13,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmdkit"

@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/wallet"
 	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )

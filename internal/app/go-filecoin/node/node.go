@@ -33,11 +33,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("node") // nolint: deadcode
