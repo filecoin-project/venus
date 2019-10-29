@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/ipfs/go-block-format"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
 	ds "github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
@@ -49,7 +48,6 @@ type Builder struct {
 
 var _ BlockProvider = (*Builder)(nil)
 var _ TipSetProvider = (*Builder)(nil)
-var _ net.Fetcher = (*Builder)(nil)
 var _ MessageProvider = (*Builder)(nil)
 
 // NewBuilder builds a new chain faker with default fake state building.

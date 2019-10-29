@@ -1,4 +1,4 @@
-package chain_test
+package syncer_test
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -43,22 +45,22 @@ func TestLoadFork(t *testing.T) {
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	store := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{genStateRoot, genesis}))
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: genStateRoot, TipSet: genesis}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	syncer := chain.NewSyncer(eval, sel, store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	s := syncer.NewSyncer(eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
 	right := builder.AppendManyOn(3, base)
 
 	// Sync the two branches, which stores all blocks in the underlying stores.
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), true))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", left.Key(), heightFromTip(t, left)), true))
+	assert.NoError(t, s.HandleNewTipSet(ctx, block.NewChainInfo("", "", right.Key(), heightFromTip(t, right)), true))
 	verifyHead(t, store, left)
 
 	// The syncer/store assume that the fetcher populates the underlying block store such that
@@ -78,7 +80,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := chain.NewSyncer(eval, sel, newStore, builder, fakeFetcher, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	offlineSyncer := syncer.NewSyncer(eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -155,9 +157,9 @@ func TestSyncerWeighsPower(t *testing.T) {
 	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{gen.At(0).StateRoot, gen}))
+	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen}))
 	require.NoError(t, store.SetHead(ctx, gen))
-	syncer := chain.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, chain.NewStatusReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := syncer.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))

@@ -62,6 +62,7 @@ require (
 	github.com/libp2p/go-libp2p-circuit v0.1.3
 	github.com/libp2p/go-libp2p-core v0.2.4-0.20191022172111-a5bf2487c11d
 	github.com/libp2p/go-libp2p-kad-dht v0.1.1
+	github.com/libp2p/go-libp2p-peer v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.1.3
 	github.com/libp2p/go-libp2p-pubsub v0.1.2-0.20191018084750-aa9a8756d47b
 	github.com/libp2p/go-libp2p-swarm v0.2.2

@@ -1,15 +1,14 @@
 package cst
 
 import (
-	"context"
-
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 )
 
 type chainSync interface {
-	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
-	Status() chain.Status
+	BlockProposer() chainsync.BlockProposer
+	Status() status.Status
 }
 
 // ChainSyncProvider provides access to chain sync operations and their status.
@@ -26,7 +25,7 @@ func NewChainSyncProvider(chainSyncer chainSync) *ChainSyncProvider {
 
 // Status returns the chains current status, this includes whether or not the syncer is currently
 // running, the chain being synced, and the time it started processing said chain.
-func (chs *ChainSyncProvider) Status() chain.Status {
+func (chs *ChainSyncProvider) Status() status.Status {
 	return chs.sync.Status()
 }
 
@@ -34,6 +33,6 @@ func (chs *ChainSyncProvider) Status() chain.Status {
 // represent a valid extension. It limits the length of new chains it will
 // attempt to validate and caches invalid blocks it has encountered to
 // help prevent DOS.
-func (chs *ChainSyncProvider) HandleNewTipSet(ctx context.Context, ci *block.ChainInfo, trusted bool) error {
-	return chs.sync.HandleNewTipSet(ctx, ci, trusted)
+func (chs *ChainSyncProvider) HandleNewTipSet(ci *block.ChainInfo) error {
+	return chs.sync.BlockProposer().SendOwnBlock(ci)
 }

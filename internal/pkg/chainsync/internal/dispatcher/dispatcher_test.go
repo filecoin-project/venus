@@ -1,4 +1,4 @@
-package syncer_test
+package dispatcher_test
 
 import (
 	"context"
@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/dispatcher"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/syncer"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 )
@@ -29,7 +29,7 @@ func TestDispatchStartHappy(t *testing.T) {
 	s := &mockSyncer{
 		headsCalled: make([]block.TipSetKey, 0),
 	}
-	testDispatch := syncer.NewDispatcher(s)
+	testDispatch := dispatcher.NewDispatcher(s)
 
 	cis := []*block.ChainInfo{
 		// We need to put these in priority order to avoid a race.
@@ -46,7 +46,7 @@ func TestDispatchStartHappy(t *testing.T) {
 
 	// set up a blocking channel and register to unblock after 5 synced
 	allDone := moresync.NewLatch(5)
-	testDispatch.RegisterCallback(func(t syncer.Target) { allDone.Done() })
+	testDispatch.RegisterCallback(func(t dispatcher.Target) { allDone.Done() })
 
 	// receive requests before Start() to test deterministic order
 	go func() {
@@ -70,10 +70,10 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 	}
 	testWorkSize := 20
 	testBufferSize := 30
-	testDispatch := syncer.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
+	testDispatch := dispatcher.NewDispatcherWithSizes(s, testWorkSize, testBufferSize)
 
 	finished := moresync.NewLatch(1)
-	testDispatch.RegisterCallback(func(target syncer.Target) {
+	testDispatch.RegisterCallback(func(target dispatcher.Target) {
 		// Fail if the work that should be dropped gets processed
 		assert.False(t, target.Height == 100)
 		assert.False(t, target.Height == 101)
@@ -99,13 +99,13 @@ func TestDispatcherDropsWhenFull(t *testing.T) {
 
 func TestQueueHappy(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := syncer.NewTargetQueue()
+	testQ := dispatcher.NewTargetQueue()
 
 	// Add syncRequests out of order
-	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR1 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 1))}
-	sR2 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 2))}
-	sR47 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	sR0 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR1 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 1))}
+	sR2 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 2))}
+	sR47 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	testQ.Push(sR2)
 	testQ.Push(sR47)
@@ -130,11 +130,11 @@ func TestQueueHappy(t *testing.T) {
 
 func TestQueueDuplicates(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := syncer.NewTargetQueue()
+	testQ := dispatcher.NewTargetQueue()
 
 	// Add syncRequests with same height
-	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR0dup := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR0dup := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
 
 	testQ.Push(sR0)
 	testQ.Push(sR0dup)
@@ -156,9 +156,9 @@ func TestQueueDuplicates(t *testing.T) {
 
 func TestQueueEmptyPopErrors(t *testing.T) {
 	tf.UnitTest(t)
-	testQ := syncer.NewTargetQueue()
-	sR0 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
-	sR47 := syncer.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
+	testQ := dispatcher.NewTargetQueue()
+	sR0 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 0))}
+	sR47 := dispatcher.Target{ChainInfo: *(chainInfoFromHeight(t, 47))}
 
 	// Push 2
 	testQ.Push(sR47)
@@ -177,7 +177,7 @@ func TestQueueEmptyPopErrors(t *testing.T) {
 }
 
 // requirePop is a helper requiring that pop does not error
-func requirePop(t *testing.T, q *syncer.TargetQueue) syncer.Target {
+func requirePop(t *testing.T, q *dispatcher.TargetQueue) dispatcher.Target {
 	req, popped := q.Pop()
 	require.True(t, popped)
 	return req

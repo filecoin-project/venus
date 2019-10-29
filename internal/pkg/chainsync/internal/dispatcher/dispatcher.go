@@ -1,4 +1,4 @@
-package syncer
+package dispatcher
 
 import (
 	"container/heap"
@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 )
 
-var log = logging.Logger("sync.dispatch")
+var log = logging.Logger("chainsync.dispatcher")
 
 // DefaultInQueueSize is the size of the channel used for receiving targets from producers.
 const DefaultInQueueSize = 5
@@ -17,18 +17,18 @@ const DefaultInQueueSize = 5
 // DefaultWorkQueueSize is the size of the work queue
 const DefaultWorkQueueSize = 20
 
-// syncer is the interface of the logic syncing incoming chains
-type syncer interface {
+// catchupSyncer is the interface of the logic syncing incoming chains
+type catchupSyncer interface {
 	HandleNewTipSet(context.Context, *block.ChainInfo, bool) error
 }
 
 // NewDispatcher creates a new syncing dispatcher with default queue sizes.
-func NewDispatcher(catchupSyncer syncer) *Dispatcher {
+func NewDispatcher(catchupSyncer catchupSyncer) *Dispatcher {
 	return NewDispatcherWithSizes(catchupSyncer, DefaultWorkQueueSize, DefaultInQueueSize)
 }
 
 // NewDispatcherWithSizes creates a new syncing dispatcher.
-func NewDispatcherWithSizes(catchupSyncer syncer, workQueueSize, inQueueSize int) *Dispatcher {
+func NewDispatcherWithSizes(catchupSyncer catchupSyncer, workQueueSize, inQueueSize int) *Dispatcher {
 	return &Dispatcher{
 		workQueue:     NewTargetQueue(),
 		workQueueSize: workQueueSize,
@@ -45,7 +45,7 @@ type cbMessage struct {
 	cb func(Target)
 }
 
-// Dispatcher receives, sorts and dispatches targets to the syncer to control
+// Dispatcher receives, sorts and dispatches targets to the catchupSyncer to control
 // chain syncing.
 //
 // New targets arrive over the incoming channel. The dispatcher then puts them
@@ -65,7 +65,7 @@ type Dispatcher struct {
 	incoming chan Target
 	// catchupSyncer is used for dispatching sync targets for chain heads
 	// during the CHAIN_CATCHUP mode of operation
-	catchupSyncer syncer
+	catchupSyncer catchupSyncer
 
 	// registeredCb is a callback registered over the control channel.  It
 	// is called after every successful sync.
