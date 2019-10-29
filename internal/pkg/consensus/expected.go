@@ -16,13 +16,13 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 var (

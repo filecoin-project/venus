@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"

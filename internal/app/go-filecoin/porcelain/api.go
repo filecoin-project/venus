@@ -12,10 +12,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 

@@ -10,8 +10,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/exec"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // MakeTypedExport finds the correct method on the given actor and returns it.

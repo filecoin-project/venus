@@ -3,12 +3,12 @@ package actor
 import (
 	cid "github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/exec"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // FakeActorStorage is storage for our fake actor. It contains a single

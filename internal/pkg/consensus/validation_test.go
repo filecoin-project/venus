@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 

@@ -3,8 +3,8 @@ package miner
 import (
 	"strconv"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Note that this type's interface is a bit of a placeholder.  We expect to

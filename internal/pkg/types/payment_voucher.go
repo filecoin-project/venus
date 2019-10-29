@@ -7,8 +7,8 @@ import (
 
 	"github.com/multiformats/go-multibase"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 )
 
 // Predicate is an optional message that is sent to another actor and must return true for the voucher to be valid.

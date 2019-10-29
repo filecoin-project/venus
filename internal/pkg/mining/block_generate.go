@@ -13,8 +13,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Generate returns a new block created from the messages in the pool.

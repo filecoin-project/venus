@@ -12,9 +12,9 @@ import (
 	"github.com/ipfs/go-cid"
 	dag "github.com/ipfs/go-merkledag"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	sb "github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/stretchr/testify/require"
 )

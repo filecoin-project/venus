@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin"
 	cid "github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need

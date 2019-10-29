@@ -10,16 +10,16 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
 
+	sbtesting "github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	sbtesting "github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder/testing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/require"

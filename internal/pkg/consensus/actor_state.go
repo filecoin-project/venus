@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // Abstracts over a store of blockchain state.

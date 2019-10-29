@@ -19,8 +19,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
