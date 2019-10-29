@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
 // SyncerSubmodule enhances the node with chain syncing capabilities
@@ -57,16 +56,15 @@ type nodeSyncDispatcher interface {
 }
 
 type nodeChainSelector interface {
-	NewWeight(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	Weight(context.Context, block.TipSet, cid.Cid) (uint64, error)
 	IsHeavier(ctx context.Context, a, b block.TipSet, aStateID, bStateID cid.Cid) (bool, error)
 }
 
 // NewSyncerSubmodule creates a new chain submodule.
-func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule, pvt *version.ProtocolVersionTable) (SyncerSubmodule, error) {
+func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo, blockstore *BlockstoreSubmodule, network *NetworkSubmodule, discovery *DiscoverySubmodule, chn *ChainSubmodule) (SyncerSubmodule, error) {
 	// setup block validation
 	// TODO when #2961 is resolved do the needful here.
-	blkValid := consensus.NewDefaultBlockValidator(config.BlockTime(), config.Clock(), pvt)
+	blkValid := consensus.NewDefaultBlockValidator(config.BlockTime(), config.Clock())
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
@@ -76,7 +74,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 
 	// set up consensus
 	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, blkValid, chn.ActorState, config.GenesisCid(), config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{})
-	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid(), pvt)
+	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
 
 	// setup fecher
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)

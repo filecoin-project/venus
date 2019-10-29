@@ -189,7 +189,7 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.Chain")
 	}
 
-	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain, nd.VersionTable)
+	nd.syncer, err = submodule.NewSyncerSubmodule(ctx, (*builder)(b), b.repo, &nd.Blockstore, &nd.network, &nd.Discovery, &nd.chain)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build node.Syncer")
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/clock"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )
 
 // BlockValidator defines an interface used to validate a blocks syntax and
@@ -49,16 +48,14 @@ type MessageSyntaxValidator interface {
 type DefaultBlockValidator struct {
 	clock.Clock
 	blockTime time.Duration
-	pvt       *version.ProtocolVersionTable
 }
 
 // NewDefaultBlockValidator returns a new DefaultBlockValidator. It uses `blkTime`
 // to validate blocks and uses the DefaultBlockValidationClock.
-func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock, pvt *version.ProtocolVersionTable) *DefaultBlockValidator {
+func NewDefaultBlockValidator(blkTime time.Duration, c clock.Clock) *DefaultBlockValidator {
 	return &DefaultBlockValidator{
 		Clock:     c,
 		blockTime: blkTime,
-		pvt:       pvt,
 	}
 }
 
@@ -74,21 +71,8 @@ func (dv *DefaultBlockValidator) ValidateSemantic(ctx context.Context, child *bl
 		return err
 	}
 
-	parentVersion, err := dv.pvt.VersionAt(types.NewBlockHeight(ph))
-	if err != nil {
-		return err
-	}
-	// Protocol version 1 upgrade introduces validation of the weight field
-	// on the header.  During protocol version 0 validators do not validate
-	// that the parent weight written to the header actually corresponds to
-	// the weight measured by the validators.  Introducing this check
-	// prevents a validator from writing arbitrary parent weight values
-	// into a header and trivially generating the heaviest chain.
-	if parentVersion >= version.Protocol1 {
-		// Protocol Version 1 upgrade
-		if uint64(child.ParentWeight) != parentWeight {
-			return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
-		}
+	if uint64(child.ParentWeight) != parentWeight {
+		return fmt.Errorf("block %s has invalid parent weight %d", child.Cid().String(), parentWeight)
 	}
 
 	if uint64(child.Height) <= ph {

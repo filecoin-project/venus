@@ -412,8 +412,8 @@ func (e *FakeChainSelector) IsHeavier(ctx context.Context, a, b block.TipSet, aS
 	return aw > bw, nil
 }
 
-// NewWeight delegates to the statebuilder
-func (e *FakeChainSelector) NewWeight(ctx context.Context, ts block.TipSet, stID cid.Cid) (uint64, error) {
+// Weight delegates to the statebuilder
+func (e *FakeChainSelector) Weight(ctx context.Context, ts block.TipSet, stID cid.Cid) (uint64, error) {
 	return e.Weigh(ts, stID)
 }
 
