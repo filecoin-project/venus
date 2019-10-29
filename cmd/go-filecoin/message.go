@@ -141,6 +141,9 @@ var signedMsgSendCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Send a signed message", // This feels too generic...
 	},
+	Arguments: []cmdkit.Argument{
+		cmdkit.StringArg("message", true, false, "Signed Json message"),
+	},
 	Options: []cmdkit.Option{},
 
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
