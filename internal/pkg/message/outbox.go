@@ -2,7 +2,6 @@ package message
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -122,27 +121,12 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrap(err, "invalid message")
 	}
 
-	height, err := tipsetHeight(ob.chains, head)
-	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to get block height")
-	}
-
-	// Add to the local message queue at the last possible moment before
-	// calling Publish.
-	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
-	}
-	err = ob.publisher.Publish(ctx, signed, height, bcast)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return signed.Cid()
+	return ob.SignedSend(ctx, signed,bcast)
 }
 
 // Send a signed message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
-func (ob *Outbox) SignedSend(ctx context.Context, message string, bcast bool) (out cid.Cid, err error) {
+func (ob *Outbox) SignedSend(ctx context.Context, signed *types.SignedMessage, bcast bool) (out cid.Cid, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -150,15 +134,6 @@ func (ob *Outbox) SignedSend(ctx context.Context, message string, bcast bool) (o
 	}()
 
 	head := ob.chains.GetHead()
-
-	m := types.SignedMessage{}
-
-	b := []byte(message)
-	err = json.Unmarshal(b, &m)
-	if err != nil {
-		return
-	}
-	signed := &m
 
 	height, err := tipsetHeight(ob.chains, head)
 	if err != nil {

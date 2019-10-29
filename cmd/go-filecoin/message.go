@@ -141,18 +141,23 @@ var signedMsgSendCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
 		Tagline: "Send a signed message", // This feels too generic...
 	},
-	Arguments: []cmdkit.Argument{
-		//cmdkit.StringArg("target", true, false, "Address of the actor to send the message to"),
-		cmdkit.StringArg("message", true, false, "Signed Json message"),
-	},
 	Options: []cmdkit.Option{},
 
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		msg := req.Arguments[0]
 
+		m := types.SignedMessage{}
+
+		bmsg := []byte(msg)
+		err := json.Unmarshal(bmsg, &m)
+		if err != nil {
+			return err
+		}
+		signed := &m
+
 		c, err := GetPorcelainAPI(env).SignedMessageSend(
 			req.Context,
-			msg,
+			signed,
 		)
 		if err != nil {
 			return err
