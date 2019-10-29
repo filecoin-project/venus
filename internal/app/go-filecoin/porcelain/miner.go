@@ -12,13 +12,13 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/abi"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
+	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.

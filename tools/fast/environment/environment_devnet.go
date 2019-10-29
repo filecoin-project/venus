@@ -17,7 +17,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	iptb "github.com/ipfs/iptb/testbed"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

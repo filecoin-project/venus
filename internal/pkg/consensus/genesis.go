@@ -11,16 +11,16 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/paymentbroker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.

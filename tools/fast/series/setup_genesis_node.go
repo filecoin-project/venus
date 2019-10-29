@@ -6,7 +6,7 @@ import (
 
 	"github.com/ipfs/go-ipfs-files"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

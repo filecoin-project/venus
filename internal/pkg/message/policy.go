@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	logging "github.com/ipfs/go-log"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
