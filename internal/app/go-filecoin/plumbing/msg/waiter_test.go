@@ -70,6 +70,7 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  types.EmptyReceiptsCID,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -97,6 +98,7 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  types.EmptyReceiptsCID,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 

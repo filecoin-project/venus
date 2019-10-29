@@ -114,7 +114,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -135,7 +135,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
 		assert.EqualError(t, err, "block author did not win election")
 	})
 
@@ -164,7 +164,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
@@ -198,7 +198,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secp message signature invalid")
 	})
@@ -221,7 +221,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 	})
@@ -243,7 +243,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		assert.EqualError(t, err, "block signature invalid")
 	})
 
@@ -262,7 +262,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
 
-		_, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, invalidParentWeight, blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, invalidParentWeight, blocks[0].StateRoot)
 		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
 }

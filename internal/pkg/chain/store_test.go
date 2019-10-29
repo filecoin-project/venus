@@ -37,6 +37,7 @@ func requirePutTestChain(ctx context.Context, t *testing.T, chainStore *chain.St
 		tsas := &chain.TipSetMetadata{
 			TipSet:          ts,
 			TipSetStateRoot: ts.At(0).StateRoot,
+			TipSetReceipts:  types.EmptyReceiptsCID,
 		}
 		require.NoError(t, chainStore.PutTipSetMetadata(ctx, tsas))
 	}
@@ -75,6 +76,7 @@ func TestPutTipSet(t *testing.T) {
 	genTsas := &chain.TipSetMetadata{
 		TipSet:          genTS,
 		TipSetStateRoot: genTS.At(0).StateRoot,
+		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	err := cs.PutTipSetMetadata(ctx, genTsas)
 	assert.NoError(t, err)
@@ -158,6 +160,7 @@ func TestGetTipSetState(t *testing.T) {
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          testTs,
 		TipSetStateRoot: root,
+		TipSetReceipts:  types.EmptyReceiptsCID,
 	}))
 
 	// verify output of GetTipSetState
@@ -235,6 +238,7 @@ func TestGetMultipleByParent(t *testing.T) {
 	newChildTsas := &chain.TipSetMetadata{
 		TipSet:          otherLink1,
 		TipSetStateRoot: otherRoot1,
+		TipSetReceipts:  types.EmptyReceiptsCID,
 	}
 	require.NoError(t, cs.PutTipSetMetadata(ctx, newChildTsas))
 	gotNew1 := requireGetTsasByParentAndHeight(t, cs, genTS.Key(), uint64(1))

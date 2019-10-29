@@ -19,6 +19,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
+func init() {
+	encoding.RegisterIpldCborType(tsState{})
+}
+
 // NewHeadTopic is the topic used to publish new heads.
 const NewHeadTopic = "new-head"
 
@@ -35,9 +39,9 @@ type ipldSource struct {
 	cborStore state.IpldStore
 }
 
-type tsMetadata struct {
-	stateRoot cid.Cid
-	receipts  cid.Cid
+type tsState struct {
+	StateRoot cid.Cid
+	Reciepts  cid.Cid
 }
 
 func newSource(cst state.IpldStore) *ipldSource {
@@ -218,13 +222,13 @@ func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid,
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
-	var metadata tsMetadata
+	var metadata tsState
 	err = encoding.Decode(bb, &metadata)
 	if err != nil {
 		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
 
-	return metadata.stateRoot, metadata.receipts, nil
+	return metadata.StateRoot, metadata.Reciepts, nil
 }
 
 // PutTipSetMetadata persists the blocks of a tipset and the tipset index.
@@ -358,9 +362,9 @@ func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
 		return errors.New("attempting to write receipts cid.Undef")
 	}
 
-	metadata := tsMetadata{
-		stateRoot: tsm.TipSetStateRoot,
-		receipts:  tsm.TipSetReceipts,
+	metadata := tsState{
+		StateRoot: tsm.TipSetStateRoot,
+		Reciepts:  tsm.TipSetReceipts,
 	}
 	val, err := encoding.Encode(metadata)
 	if err != nil {
