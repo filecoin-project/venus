@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/journal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 

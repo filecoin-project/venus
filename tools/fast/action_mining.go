@@ -8,7 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // MiningOnce runs the `mining once` command against the filecoin process

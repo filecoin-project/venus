@@ -33,9 +33,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 )

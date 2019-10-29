@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // NewHeadTopic is the topic used to publish new heads.

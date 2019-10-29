@@ -18,10 +18,10 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 

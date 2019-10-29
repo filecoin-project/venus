@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/spooky/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Init initializes a DefaultSycner in the given repo.
