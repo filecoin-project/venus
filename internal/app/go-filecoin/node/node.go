@@ -104,7 +104,7 @@ func (node *Node) Start(ctx context.Context) error {
 		return errors.Wrap(err, "failed to setup metrics")
 	}
 
-	if err := metrics.RegisterJaeger(node.network.PeerHost.ID().Pretty(), node.Repo.Config().Observability.Tracing); err != nil {
+	if err := metrics.RegisterJaeger(node.network.Host.ID().Pretty(), node.Repo.Config().Observability.Tracing); err != nil {
 		return errors.Wrap(err, "failed to setup tracing")
 	}
 
@@ -664,11 +664,11 @@ func (node *Node) setupProtocols() error {
 	node.BlockMining.BlockMiningAPI = &blockMiningAPI
 
 	// set up retrieval client and api
-	retapi := retrieval.NewAPI(retrieval.NewClient(node.network.PeerHost, node.PorcelainAPI))
+	retapi := retrieval.NewAPI(retrieval.NewClient(node.network.Host, node.PorcelainAPI))
 	node.RetrievalProtocol.RetrievalAPI = &retapi
 
 	// set up storage client and api
-	smc := storage.NewClient(node.network.PeerHost, node.PorcelainAPI)
+	smc := storage.NewClient(node.network.Host, node.PorcelainAPI)
 	smcAPI := storage.NewAPI(smc)
 	node.StorageProtocol.StorageAPI = &smcAPI
 	return nil
@@ -750,7 +750,7 @@ func (node *Node) getAncestors(ctx context.Context, ts block.TipSet, newBlockHei
 
 // Host returns the nodes host.
 func (node *Node) Host() host.Host {
-	return node.network.PeerHost
+	return node.network.Host
 }
 
 // SectorBuilder returns the nodes sectorBuilder.
