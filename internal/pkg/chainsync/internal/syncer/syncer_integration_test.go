@@ -247,6 +247,10 @@ func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts blo
 	return ts.At(0).StateRoot, nil
 }
 
+func (n *integrationStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {
+	return nil
+}
+
 // forkSnapshotGen reads power from fake state tree root cids.  It reads
 // power of `forkPower` from cid `forkRoot` and `defaultPower` from all others.
 type forkSnapshotGen struct {

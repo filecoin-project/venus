@@ -32,13 +32,13 @@ func TestBlockValidSemantic(t *testing.T) {
 		c := &block.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		p := &block.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents, 0))
+		require.NoError(t, validator.ValidateSemantic(ctx, c, parents))
 
 		// invalidate parent by matching child height
 		p = &block.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
 		parents = consensus.RequireNewTipSet(require.New(t), p)
 
-		err := validator.ValidateSemantic(ctx, c, &parents, 0)
+		err := validator.ValidateSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid height")
 
@@ -49,11 +49,11 @@ func TestBlockValidSemantic(t *testing.T) {
 		c := &block.Block{Height: 2, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
 		p := &block.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		require.NoError(t, validator.ValidateSemantic(ctx, c, &parents, 0))
+		require.NoError(t, validator.ValidateSemantic(ctx, c, parents))
 
 		// fails with invalid timestamp
 		c = &block.Block{Height: 2, Timestamp: types.Uint64(ts.Unix())}
-		err := validator.ValidateSemantic(ctx, c, &parents, 0)
+		err := validator.ValidateSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
@@ -64,34 +64,21 @@ func TestBlockValidSemantic(t *testing.T) {
 		c := &block.Block{Height: 3, Timestamp: types.Uint64(ts.Add(2 * blockTime).Unix())}
 		p := &block.Block{Height: 1, Timestamp: types.Uint64(ts.Unix())}
 		parents := consensus.RequireNewTipSet(require.New(t), p)
-		err := validator.ValidateSemantic(ctx, c, &parents, 0)
+		err := validator.ValidateSemantic(ctx, c, parents)
 		require.NoError(t, err)
 
 		// fail when nul block calc is off by one blocktime
 		c = &block.Block{Height: 3, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
-		err = validator.ValidateSemantic(ctx, c, &parents, 0)
+		err = validator.ValidateSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
 		// fail with same timestamp as parent
 		c = &block.Block{Height: 3, Timestamp: types.Uint64(ts.Unix())}
-		err = validator.ValidateSemantic(ctx, c, &parents, 0)
+		err = validator.ValidateSemantic(ctx, c, parents)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "too far")
 
-	})
-
-	t.Run("reject block mined with invalid parent weight", func(t *testing.T) {
-		h := 300
-		c := &block.Block{Height: types.Uint64(h) + 50, ParentWeight: 5000, Timestamp: types.Uint64(ts.Add(blockTime).Unix())}
-		p := &block.Block{Height: types.Uint64(h) + 49, Timestamp: types.Uint64(ts.Unix())}
-		parents := consensus.RequireNewTipSet(require.New(t), p)
-
-		// validator expects parent weight different from 5000
-		pwExpectedByValidator := uint64(30)
-		err := validator.ValidateSemantic(ctx, c, &parents, pwExpectedByValidator)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
 }
 

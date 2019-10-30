@@ -190,6 +190,11 @@ func (f *TestFetcher) FetchTipSets(ctx context.Context, tsKey block.TipSetKey, f
 	return out, nil
 }
 
+// FetchTipSetHeaders fetches the tipset at `tsKey` but not messages
+func (f *TestFetcher) FetchTipSetHeaders(ctx context.Context, tsKey block.TipSetKey, from peer.ID, done func(t block.TipSet) (bool, error)) ([]block.TipSet, error) {
+	return f.FetchTipSets(ctx, tsKey, from, done)
+}
+
 // GetBlocks returns any blocks in the source with matching cids.
 func (f *TestFetcher) GetBlocks(ctx context.Context, cids []cid.Cid) ([]*block.Block, error) {
 	var ret []*block.Block
