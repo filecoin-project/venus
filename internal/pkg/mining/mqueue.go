@@ -5,8 +5,8 @@ import (
 	"container/heap"
 	"sort"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // MessageQueue is a priority queue of messages from different actors. Messages are ordered

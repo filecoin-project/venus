@@ -6,9 +6,9 @@ package vm
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 

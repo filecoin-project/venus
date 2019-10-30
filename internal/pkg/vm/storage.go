@@ -12,11 +12,11 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 // ErrNotFound is returned by storage when no chunk in storage matches a requested Cid

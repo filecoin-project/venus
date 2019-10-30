@@ -5,11 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/paymentbroker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding/gen"
@@ -17,6 +12,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	logging "github.com/ipfs/go-log"
 )
 

@@ -14,8 +14,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Parameters used by the weighting funcion

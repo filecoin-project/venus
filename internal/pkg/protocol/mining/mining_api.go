@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/pkg/errors"
 )
 

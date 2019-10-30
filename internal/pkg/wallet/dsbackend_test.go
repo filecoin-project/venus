@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
