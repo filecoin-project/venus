@@ -496,7 +496,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 			[]*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))},
 			[]*types.MessageReceipt{}) // let syncer handle the receipts (this is going away)
 	})
-	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), t1.Key(), heightFromTip(t, t1)), true))
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), true))
 
 	receiptsCid, err := store.GetTipSetReceiptsRoot(t1.Key())
 	require.NoError(t, err)
@@ -524,7 +524,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticVa
 
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
-	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}}))
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but

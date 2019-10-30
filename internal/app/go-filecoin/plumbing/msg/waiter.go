@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
