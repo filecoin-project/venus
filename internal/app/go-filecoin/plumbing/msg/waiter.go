@@ -102,7 +102,7 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 // if now block with the given CID exists in the chain.
 func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
-	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
+	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); err == nil && !iterator.Complete(); err = iterator.Next() {
 		msg, found, err := w.receiptForTipset(ctx, iterator.Value(), msgCid)
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
@@ -112,7 +112,7 @@ func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Ci
 			return msg, true, nil
 		}
 	}
-	return nil, false, nil
+	return nil, false, err
 }
 
 // waitForMessage looks for a message CID in a channel of tipsets and returns

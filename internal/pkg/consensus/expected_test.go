@@ -112,9 +112,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, emptyMessages := emptyMessages(len(blocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		assert.NoError(t, err)
 	})
 
@@ -133,9 +133,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := th.RequireNewTipSet(t, blocks...)
 
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, emptyMessages := emptyMessages(len(blocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
 		assert.EqualError(t, err, "block author did not win election")
 	})
 
@@ -153,7 +153,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		_, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		_, emptyMessages := emptyMessages(len(blocks))
 
 		// Create BLS messages but do not update signature
 		blsKey := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
@@ -164,7 +164,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "block BLS signature does not validate")
 	})
@@ -183,7 +183,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		emptyBLSMessages, _, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, _ := emptyMessages(len(blocks))
 
 		// Create secp message with invalid signature
 		keys := types.MustGenerateKeyInfo(1, 42)
@@ -198,7 +198,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		}
 		secpMessages[0] = append(secpMessages[0], smsg)
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, secpMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "secp message signature invalid")
 	})
@@ -219,9 +219,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		tipSet := th.RequireNewTipSet(t, blocks...)
 
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, emptyMessages := emptyMessages(len(blocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), genesisBlock.StateRoot)
 		require.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid ticket")
 	})
@@ -241,9 +241,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, emptyMessages := emptyMessages(len(blocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
 		assert.EqualError(t, err, "block signature invalid")
 	})
 
@@ -260,23 +260,21 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		invalidParentWeight := uint64(6)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), th.NewFakeBlockValidator(), as, genesisBlock.Cid(), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
-		emptyBLSMessages, emptyMessages, emptyReceipts := emptyMessagesAndReceipts(len(blocks))
+		emptyBLSMessages, emptyMessages := emptyMessages(len(blocks))
 
-		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, emptyReceipts, []block.TipSet{pTipSet}, invalidParentWeight, blocks[0].StateRoot)
+		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, invalidParentWeight, blocks[0].StateRoot)
 		assert.Contains(t, err.Error(), "invalid parent weight")
 	})
 }
 
-func emptyMessagesAndReceipts(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.SignedMessage, [][]*types.MessageReceipt) {
+func emptyMessages(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.SignedMessage) {
 	var emptyBLSMessages [][]*types.UnsignedMessage
 	var emptyMessages [][]*types.SignedMessage
-	var emptyReceipts [][]*types.MessageReceipt
 	for i := 0; i < numBlocks; i++ {
 		emptyBLSMessages = append(emptyBLSMessages, []*types.UnsignedMessage{})
 		emptyMessages = append(emptyMessages, []*types.SignedMessage{})
-		emptyReceipts = append(emptyReceipts, []*types.MessageReceipt{})
 	}
-	return emptyBLSMessages, emptyMessages, emptyReceipts
+	return emptyBLSMessages, emptyMessages
 }
 
 func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {

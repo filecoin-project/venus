@@ -238,7 +238,7 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Equals(n.c512) {
 			return n.c512, []*types.MessageReceipt{}, nil

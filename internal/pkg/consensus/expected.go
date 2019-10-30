@@ -141,7 +141,7 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
@@ -157,7 +157,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 
 	vms := vm.NewStorageMap(c.bstore)
 	var st state.Tree
-	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, tsReceipts, ancestors)
+	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, ancestors)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -248,7 +248,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
 	var cpySt state.Tree
 	var results []*ApplicationResult
 
@@ -270,10 +270,6 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		results, err = c.processor.ProcessBlock(ctx, cpySt, vms, blk, msgs, ancestors)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error validating block state")
-		}
-		// TODO: check that receipts actually match
-		if len(results) != len(tsReceipts[i]) {
-			return nil, nil, errors.Errorf("found invalid message receipts: %v %v", results, blk.MessageReceipts)
 		}
 
 		outCid, err := cpySt.Flush(ctx)

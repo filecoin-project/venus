@@ -107,7 +107,7 @@ type ChainSelector interface {
 type SemanticValidator interface {
 	// RunStateTransition returns the state root CID resulting from applying the input ts to the
 	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
 	// ValidateSemantic validates conditions on a block header that can be
 	// checked with the parent header but not parent state.
 	ValidateSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
@@ -226,21 +226,15 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	// Gather tipset messages
 	var nextSecpMessages [][]*types.SignedMessage
 	var nextBlsMessages [][]*types.UnsignedMessage
-	var nextReceipts [][]*types.MessageReceipt
 	for i := 0; i < next.Len(); i++ {
 		blk := next.At(i)
 		secpMsgs, blsMsgs, err := syncer.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
 			return errors.Wrapf(err, "syncing tip %s failed loading message list %s for block %s", next.Key(), blk.Messages, blk.Cid())
 		}
-		rcpts, err := syncer.messageProvider.LoadReceipts(ctx, blk.MessageReceipts)
-		if err != nil {
-			return errors.Wrapf(err, "syncing tip %s failed loading receipts list %s for block %s", next.Key(), blk.MessageReceipts, blk.Cid())
-		}
 
 		nextBlsMessages = append(nextBlsMessages, blsMsgs)
 		nextSecpMessages = append(nextSecpMessages, secpMsgs)
-		nextReceipts = append(nextReceipts, rcpts)
 	}
 
 	// Gather validated parent weight
@@ -251,7 +245,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, receipts, err := syncer.validator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, nextReceipts, ancestors, parentWeight, stateRoot)
+	root, receipts, err := syncer.validator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, ancestors, parentWeight, stateRoot)
 	if err != nil {
 		return err
 	}
