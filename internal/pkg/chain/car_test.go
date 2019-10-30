@@ -12,6 +12,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipld-cbor"
+	format "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/whyrusleeping/cbor-gen"
@@ -28,7 +29,7 @@ func TestChainImportExportGenesis(t *testing.T) {
 	ctx, gene, cb, carW, carR, bstore := setupDeps(t)
 
 	// export the car file to a carW
-	mustExportToBuffer(ctx, t, gene, cb, carW)
+	mustExportToBuffer(ctx, t, gene, cb, &mockStateReader{}, carW)
 
 	// import the car file from the carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -45,7 +46,7 @@ func TestChainImportExportSingleTip(t *testing.T) {
 	headTS := cb.AppendOn(gene, 1)
 
 	// export the car file to carW
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -62,7 +63,7 @@ func TestChainImportExportWideTip(t *testing.T) {
 	headTS := cb.AppendOn(gene, 2)
 
 	// export the car file to a carW
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from carR
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -80,7 +81,7 @@ func TestChainImportExportMultiTip(t *testing.T) {
 	headTS = cb.AppendOn(headTS, 1)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -99,7 +100,7 @@ func TestChainImportExportMultiWideTip(t *testing.T) {
 	headTS = cb.AppendOn(headTS, 2)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -118,7 +119,7 @@ func TestChainImportExportMultiWideBaseTip(t *testing.T) {
 	headTS = cb.AppendOn(headTS, 1)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -137,7 +138,7 @@ func TestChainImportExportMultiWideTips(t *testing.T) {
 	headTS = cb.AppendOn(headTS, 2)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, headTS, cb, carW)
+	mustExportToBuffer(ctx, t, headTS, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -170,7 +171,7 @@ func TestChainImportExportMessages(t *testing.T) {
 	})
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, ts2, cb, carW)
+	mustExportToBuffer(ctx, t, ts2, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -209,7 +210,7 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	ts3 := cb.AppendOn(ts2, 3)
 
 	// export the car file to a buffer
-	mustExportToBuffer(ctx, t, ts3, cb, carW)
+	mustExportToBuffer(ctx, t, ts3, cb, &mockStateReader{}, carW)
 
 	// import the car file from the buffer
 	importedKey := mustImportFromBuffer(ctx, t, bstore, carR)
@@ -219,8 +220,8 @@ func TestChainImportExportMultiTipSetWithMessages(t *testing.T) {
 	validateBlockstoreImport(t, ts3.Key(), gene.Key(), bstore)
 }
 
-func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, carW *bufio.Writer) {
-	err := chain.Export(ctx, head, cb, cb, carW)
+func mustExportToBuffer(ctx context.Context, t *testing.T, head block.TipSet, cb *chain.Builder, msr *mockStateReader, carW *bufio.Writer) {
+	err := chain.Export(ctx, head, cb, cb, msr, carW)
 	assert.NoError(t, err)
 	require.NoError(t, carW.Flush())
 }
@@ -307,4 +308,10 @@ func requireAMTDecoding(t *testing.T, bstore blockstore.Blockstore, root *amt.Ro
 	})
 	require.NoError(t, err)
 
+}
+
+type mockStateReader struct{}
+
+func (mr *mockStateReader) ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error) {
+	return nil, nil
 }

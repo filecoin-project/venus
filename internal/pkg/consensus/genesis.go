@@ -191,6 +191,10 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			}
 		}
 
+		if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
+			return nil, err
+		}
+
 		c, err := st.Flush(ctx)
 		if err != nil {
 			return nil, err

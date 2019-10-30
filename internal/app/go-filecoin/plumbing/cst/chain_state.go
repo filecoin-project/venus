@@ -7,9 +7,13 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	blocks "github.com/ipfs/go-block-format"
+	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-hamt-ipld"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
+	dag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -36,21 +40,21 @@ type chainReadWriter interface {
 // ChainWriter providing write access to the chain head.
 type ChainStateReadWriter struct {
 	readWriter      chainReadWriter
-	cst             *hamt.CborIpldStore // Provides chain blocks and state trees.
+	bstore          blockstore.Blockstore // Provides chain blocks.
 	messageProvider chain.MessageProvider
 	actors          builtin.Actors
 }
 
 type carStore struct {
-	store *hamt.CborIpldStore
+	store blockstore.Blockstore
 }
 
-func newCarStore(cst *hamt.CborIpldStore) *carStore {
-	return &carStore{cst}
+func newCarStore(bs blockstore.Blockstore) *carStore {
+	return &carStore{bs}
 }
 
 func (cs *carStore) Put(b blocks.Block) error {
-	return cs.store.Blocks.AddBlock(b)
+	return cs.store.Put(b)
 }
 
 var (
@@ -64,10 +68,10 @@ var (
 )
 
 // NewChainStateReadWriter returns a new ChainStateReadWriter.
-func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, cst *hamt.CborIpldStore, ba builtin.Actors) *ChainStateReadWriter {
+func NewChainStateReadWriter(crw chainReadWriter, messages chain.MessageProvider, bs blockstore.Blockstore, ba builtin.Actors) *ChainStateReadWriter {
 	return &ChainStateReadWriter{
 		readWriter:      crw,
-		cst:             cst,
+		bstore:          bs,
 		messageProvider: messages,
 		actors:          ba,
 	}
@@ -94,9 +98,11 @@ func (chn *ChainStateReadWriter) Ls(ctx context.Context) (*chain.TipsetIterator,
 
 // GetBlock gets a block by CID
 func (chn *ChainStateReadWriter) GetBlock(ctx context.Context, id cid.Cid) (*block.Block, error) {
-	var out block.Block
-	err := chn.cst.Get(ctx, id, &out)
-	return &out, err
+	bsblk, err := chn.bstore.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	return block.DecodeBlock(bsblk.RawData())
 }
 
 // GetMessages gets a message collection by CID.
@@ -201,7 +207,7 @@ func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head block.Tip
 		return err
 	}
 	logStore.Infof("starting CAR file export: %s", head.String())
-	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, out); err != nil {
+	if err := chain.Export(ctx, headTS, chn.readWriter, chn.messageProvider, chn, out); err != nil {
 		return err
 	}
 	logStore.Infof("exported CAR file with head: %s", head.String())
@@ -211,10 +217,61 @@ func (chn *ChainStateReadWriter) ChainExport(ctx context.Context, head block.Tip
 // ChainImport imports a chain from `in`.
 func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) (block.TipSetKey, error) {
 	logStore.Info("starting CAR file import")
-	headKey, err := chain.Import(ctx, newCarStore(chn.cst), in)
+	headKey, err := chain.Import(ctx, newCarStore(chn.bstore), in)
 	if err != nil {
 		return block.UndefTipSet.Key(), err
 	}
 	logStore.Infof("imported CAR file with head: %s", headKey)
 	return headKey, nil
+}
+
+// ChainStateTree returns the state tree as a slice of IPLD nodes at the passed stateroot cid `c`.
+func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error) {
+	return newChainStateCollector(chn.bstore).collectState(ctx, c)
+}
+
+func newChainStateCollector(bs blockstore.Blockstore) *chainStateCollector {
+	offl := offline.Exchange(bs)
+	blkserv := bserv.New(bs, offl)
+	dserv := dag.NewDAGService(blkserv)
+	return &chainStateCollector{
+		dagserv: dserv,
+	}
+}
+
+type chainStateCollector struct {
+	dagserv format.DAGService // Provides access to state tree.
+	state   []format.Node
+}
+
+// collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
+// Calling this method does not have any side effects.
+func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
+	dagNd, err := csc.dagserv.Get(ctx, stateRoot)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
+	}
+	csc.addState(dagNd)
+	seen := cid.NewSet()
+	for _, l := range dagNd.Links() {
+		if err := dag.Walk(ctx, csc.getLinks, l.Cid, seen.Visit); err != nil {
+			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
+		}
+	}
+	return csc.state, nil
+
+}
+
+func (csc *chainStateCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	nd, err := csc.dagserv.Get(ctx, c)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
+	}
+	csc.addState(nd)
+	return nd.Links(), nil
+
+}
+
+func (csc *chainStateCollector) addState(nd format.Node) {
+	csc.state = append(csc.state, nd)
 }
