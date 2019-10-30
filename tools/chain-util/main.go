@@ -1,8 +1,9 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
-	"path/filepath"
 
 	logging "github.com/ipfs/go-log"
 	cli "gopkg.in/urfave/cli.v2"
@@ -13,12 +14,11 @@ import (
 var log = logging.Logger("chain-util")
 
 func init() {
-	logging.SetAllLoggers(logging.LevelDebug)
+	logging.SetAllLoggers(logging.LevelWarn)
 }
 
 const (
 	repoFlag = "repo"
-	headFlag = "head"
 	outFlag  = "out"
 )
 
@@ -30,10 +30,6 @@ var exportCmd = &cli.Command{
 			Name:  repoFlag,
 			Usage: "the repo where go-filecoin was initialized",
 		},
-		&cli.StringSliceFlag{
-			Name:  headFlag,
-			Usage: "the CID to be used as the root of the export",
-		},
 		&cli.PathFlag{
 			Name:  outFlag,
 			Usage: "the file to export the chain to",
@@ -44,11 +40,14 @@ var exportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		chainOut, err := export.NewChainExporter(filepath.Join(cfg.repoPath, "badger/"), cfg.outFile)
+		chainOut, err := export.NewChainExporter(cfg.repoPath, cfg.outFile)
 		if err != nil {
 			return err
 		}
-		return chainOut.Export(cfg.headKey)
+		if err := chainOut.Export(context.Background()); err == nil {
+			fmt.Printf("Exported chain with head: %s to: %s", chainOut.Head, cfg.outFile.Name())
+		}
+		return err
 	},
 }
 

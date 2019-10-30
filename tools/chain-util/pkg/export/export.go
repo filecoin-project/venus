@@ -3,29 +3,24 @@ package export
 import (
 	"context"
 	"io"
+	"path/filepath"
 
 	bserv "github.com/ipfs/go-blockservice"
-	car "github.com/ipfs/go-car"
-	carutil "github.com/ipfs/go-car/util"
 	cid "github.com/ipfs/go-cid"
 	badgerds "github.com/ipfs/go-ds-badger"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	dag "github.com/ipfs/go-merkledag"
 	errors "github.com/pkg/errors"
 
-	block "github.com/filecoin-project/go-filecoin/block"
-	types "github.com/filecoin-project/go-filecoin/types"
+	block "github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	chain "github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	encoding "github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 )
 
 var log = logging.Logger("chain-util/export")
-
-func init() {
-	logging.SetAllLoggers(logging.LevelInfo)
-}
 
 // NewChainExporter returns a ChainExporter.
 func NewChainExporter(repoPath string, out io.Writer) (*ChainExporter, error) {
@@ -33,19 +28,34 @@ func NewChainExporter(repoPath string, out io.Writer) (*ChainExporter, error) {
 	badgerOpt := &badgerds.DefaultOptions
 	badgerOpt.ReadOnly = true
 
-	log.Infof("opening chain datastore: %s", repoPath)
-	ds, err := badgerds.NewDatastore(repoPath, badgerOpt)
+	log.Infof("opening filecoin datastore: %s", repoPath)
+	badgerPath := filepath.Join(repoPath, "badger/")
+	log.Infof("opening badger datastore: %s", badgerPath)
+	badgerDS, err := badgerds.NewDatastore(badgerPath, badgerOpt)
+	if err != nil {
+		return nil, err
+	}
+	bstore := blockstore.NewBlockstore(badgerDS)
+	offl := offline.Exchange(bstore)
+	blkserv := bserv.New(bstore, offl)
+	dserv := dag.NewDAGService(blkserv)
+
+	chainPath := filepath.Join(repoPath, "chain/")
+	log.Infof("opening chain datastore: %s", chainPath)
+	chainDS, err := badgerds.NewDatastore(chainPath, badgerOpt)
 	if err != nil {
 		return nil, err
 	}
 
-	bstore := blockstore.NewBlockstore(ds)
-	offl := offline.Exchange(bstore)
-	blkserv := bserv.New(bstore, offl)
-	dserv := dag.NewDAGService(blkserv)
+	headTS, err := getDatastoreHeadTipSet(chainDS, bstore)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ChainExporter{
 		bstore:  bstore,
 		dagserv: dserv,
+		Head:    headTS,
 		out:     out,
 	}, nil
 }
@@ -56,103 +66,20 @@ type ChainExporter struct {
 	bstore blockstore.Blockstore
 	// Makes traversal easier
 	dagserv format.DAGService
+	// the Head of the chain being exported
+	Head block.TipSet
 	// Where the chain data is exported to
 	out io.Writer
 }
 
 // Export will export a chain (all blocks and their messages) to the writer `out`.
-func (ce *ChainExporter) Export(headKey block.TipSetKey) error {
-	// ensure we don't duplicate writes to the car file. // e.g. only write EmptyMessageCID once.
-	filter := make(map[cid.Cid]bool)
-
-	// fail if headTS isn't in the store.
-	headTS, err := ce.LoadTipSet(headKey)
-	if err != nil {
-		return err
-	}
-
-	// Write the car header
-	chb, err := cbor.DumpObject(car.CarHeader{
-		Roots:   headKey.ToSlice(),
-		Version: 1,
-	})
-	if err != nil {
-		return err
-	}
-
-	log.Infof("car file chain head: %s", headKey)
-	if err := carutil.LdWrite(ce.out, chb); err != nil {
-		return err
-	}
-
-	iter := NewIterator(headTS, ce)
-	// accumulate TipSets in descending order.
-	for ; !iter.Complete(); err = iter.Next() {
-		if err != nil {
-			return err
-		}
-		tip := iter.Value()
-		// write blocks
-		for i := 0; i < tip.Len(); i++ {
-			hdr := tip.At(i)
-			log.Debugf("writing block: %s", hdr.Cid())
-
-			if !filter[hdr.Cid()] {
-				if err := carutil.LdWrite(ce.out, hdr.Cid().Bytes(), hdr.ToNode().RawData()); err != nil {
-					return err
-				}
-				filter[hdr.Cid()] = true
-			}
-
-			secpMsgs, blsMsgs, err := ce.LoadMessages(hdr.Messages.SecpRoot, hdr.Messages.BLSRoot)
-			if err != nil {
-				return err
-			}
-
-			if !filter[hdr.Messages.SecpRoot] {
-				log.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(ce.out, hdr.Messages.SecpRoot.Bytes(), types.SignedMessageCollection(secpMsgs).ToNode().RawData()); err != nil {
-					return err
-				}
-				filter[hdr.Messages.SecpRoot] = true
-			}
-
-			if !filter[hdr.Messages.BLSRoot] {
-				log.Debugf("writing message collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(ce.out, hdr.Messages.BLSRoot.Bytes(), types.MessageCollection(blsMsgs).ToNode().RawData()); err != nil {
-					return err
-				}
-				filter[hdr.Messages.BLSRoot] = true
-			}
-
-			if !filter[hdr.MessageReceipts] {
-				// TODO(#3473) we can remove MessageReceipts from the exported file once addressed.
-				rect, err := ce.LoadReceipts(hdr.MessageReceipts)
-				if err != nil {
-					return err
-				}
-
-				log.Debugf("writing message-receipt collection: %s", hdr.Messages)
-				if err := carutil.LdWrite(ce.out, hdr.MessageReceipts.Bytes(), types.ReceiptCollection(rect).ToNode().RawData()); err != nil {
-					return err
-				}
-				filter[hdr.MessageReceipts] = true
-			}
-
-			if hdr.Height == 0 {
-				log.Debugf("writing StateRoot: %s", hdr.StateRoot)
-				if err := ce.PersistStateTree(hdr.StateRoot); err != nil {
-					return err
-				}
-			}
-
-		}
-	}
-	return nil
+func (ce *ChainExporter) Export(ctx context.Context) error {
+	msgStore := chain.NewMessageStore(ce.bstore)
+	return chain.Export(ctx, ce.Head, ce, msgStore, ce, ce.out)
 }
 
 // LoadTipSet loads all the TipSet for a given TipSetKey.
-func (ce *ChainExporter) LoadTipSet(key block.TipSetKey) (block.TipSet, error) {
+func (ce *ChainExporter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
 	var blks []*block.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {
 		bsBlk, err := ce.bstore.Get(it.Value())
@@ -168,105 +95,79 @@ func (ce *ChainExporter) LoadTipSet(key block.TipSetKey) (block.TipSet, error) {
 	return block.NewTipSet(blks...)
 }
 
-// LoadMessages loads secp and bls messages from the store.
-func (ce *ChainExporter) LoadMessages(secpCid, blsCid cid.Cid) ([]*types.SignedMessage, []*types.UnsignedMessage, error) {
-	blk, err := ce.bstore.Get(secpCid)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to load secp blocks %s", blsCid.String())
-	}
-	secp, err := types.DecodeSignedMessages(blk.RawData())
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to decode secp blocks %s", blsCid.String())
-	}
-	blk, err = ce.bstore.Get(blsCid)
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to load bls blocks %s", blsCid.String())
-	}
-	bls, err := types.DecodeMessages(blk.RawData())
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to decode bls blocks %s", blsCid.String())
-	}
-	return secp, bls, nil
+// ChainStateTree returns the state tree as a slice of IPLD nodes at the passed stateroot cid `c`.
+func (ce *ChainExporter) ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error) {
+	return newChainStateCollector(ce.dagserv).collectState(ctx, c)
 }
 
-// LoadReceipts loads messages receipts from the store.
-func (ce *ChainExporter) LoadReceipts(c cid.Cid) ([]*types.MessageReceipt, error) {
-	blk, err := ce.bstore.Get(c)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load receipts %s", c.String())
+func newChainStateCollector(dserv format.DAGService) *chainStateCollector {
+	return &chainStateCollector{
+		dagserv: dserv,
 	}
-	out, err := types.DecodeReceipts(blk.RawData())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to decode receipts %s", c.String())
-	}
-	return out, nil
 }
 
-// PersistStateTree persist the state tree at `c` to the store.
-func (ce *ChainExporter) PersistStateTree(c cid.Cid) error {
-	dagNd, err := ce.dagserv.Get(context.TODO(), c)
+type chainStateCollector struct {
+	dagserv format.DAGService // Provides access to state tree.
+	state   []format.Node
+}
+
+// collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
+// Calling this method does not have any side effects.
+func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
+	dagNd, err := csc.dagserv.Get(ctx, stateRoot)
 	if err != nil {
-		return errors.Wrapf(err, "failed to load stateroot from dagservice %s", c.String())
+		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
 	}
-	if err := carutil.LdWrite(ce.out, dagNd.Cid().Bytes(), dagNd.RawData()); err != nil {
-		return err
-	}
+	csc.addState(dagNd)
 	seen := cid.NewSet()
 	for _, l := range dagNd.Links() {
-		if err := dag.Walk(context.TODO(), ce.enumGetLinks, l.Cid, seen.Visit); err != nil {
-			return err
+		if err := dag.Walk(ctx, csc.getLinks, l.Cid, seen.Visit); err != nil {
+			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
 		}
 	}
-	return nil
+	return csc.state, nil
+
 }
 
-func (ce *ChainExporter) enumGetLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
-	nd, err := ce.dagserv.Get(ctx, c)
+func (csc *chainStateCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	nd, err := csc.dagserv.Get(ctx, c)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
 	}
-
-	if err := carutil.LdWrite(ce.out, nd.Cid().Bytes(), nd.RawData()); err != nil {
-		return nil, err
-	}
-
+	csc.addState(nd)
 	return nd.Links(), nil
+
 }
 
-// NewIterator returns a ChainIterator.
-func NewIterator(start block.TipSet, loader TipSetLoader) *ChainIterator {
-	return &ChainIterator{loader, start}
+func (csc *chainStateCollector) addState(nd format.Node) {
+	csc.state = append(csc.state, nd)
 }
 
-// ChainIterator is an iterator over a collection of TipSets
-type ChainIterator struct {
-	store TipSetLoader
-	value block.TipSet
-}
-
-// Value returns the iterator's current value, if not Complete().
-func (it *ChainIterator) Value() block.TipSet {
-	return it.value
-}
-
-// Complete tests whether the iterator is exhausted.
-func (it *ChainIterator) Complete() bool {
-	return !it.value.Defined()
-}
-
-// Next advances the iterator to the next value.
-func (it *ChainIterator) Next() error {
-	parentKey, err := it.value.Parents()
-	// Parents is empty (without error) for the genesis tipset.
-	if err != nil || parentKey.Len() == 0 {
-		it.value = block.UndefTipSet
-	} else {
-		it.value, err = it.store.LoadTipSet(parentKey)
+func getDatastoreHeadTipSet(ds *badgerds.Datastore, bs blockstore.Blockstore) (block.TipSet, error) {
+	bb, err := ds.Get(chain.HeadKey)
+	if err != nil {
+		return block.UndefTipSet, errors.Wrap(err, "failed to read HeadKey")
 	}
-	return err
-}
-
-// TipSetLoader defines an interface for loading TipSets (accepted by the ChainIterator).
-type TipSetLoader interface {
-	LoadTipSet(key block.TipSetKey) (block.TipSet, error)
+	var cids block.TipSetKey
+	err = encoding.Decode(bb, &cids)
+	if err != nil {
+		return block.UndefTipSet, errors.Wrap(err, "failed to cast headCids")
+	}
+	var blks []*block.Block
+	for _, c := range cids.ToSlice() {
+		bsBlk, err := bs.Get(c)
+		if err != nil {
+			return block.UndefTipSet, errors.Wrapf(err, "failed to read key %s from blockstore", c)
+		}
+		blk, err := block.DecodeBlock(bsBlk.RawData())
+		if err != nil {
+			return block.UndefTipSet, errors.Wrapf(err, "failed to decode block %s", c)
+		}
+		blks = append(blks, blk)
+	}
+	headTS, err := block.NewTipSet(blks...)
+	if err != nil {
+		return block.UndefTipSet, errors.Wrap(err, "failed to create Head tipset from headkey")
+	}
+	return headTS, nil
 }
