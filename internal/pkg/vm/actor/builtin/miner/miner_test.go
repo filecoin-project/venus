@@ -1323,7 +1323,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		assert.Equal(t, uint8(ErrMinerNotSlashable), res.Receipt.ExitCode)
 
 		// assert miner not slashed
-		assertSlashStatus(t, st, vms, minerAddr, 2*types.OneKiBSectorSize.Uint64(), nil, types.NewIntSet())
+		assertSlashStatus(t, st, vms, minerAddr, 2*types.OneKiBSectorSize.Uint64(), types.NewBlockHeight(0), types.NewIntSet())
 	})
 
 	t.Run("slashing after generation attack time succeeds", func(t *testing.T) {
@@ -1465,7 +1465,7 @@ func TestVerifyPIP(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
 			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
-			provingPeriodEnd: types.NewBlockHeight(0),
+			provingPeriodEnd: types.NewBlockHeight(100),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
 				VerifyPieceInclusionProofError: errors.New("wombat"),
@@ -1488,7 +1488,7 @@ func TestVerifyPIP(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
 			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
-			provingPeriodEnd: types.NewBlockHeight(0),
+			provingPeriodEnd: types.NewBlockHeight(100),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: false,
 			},
@@ -1511,7 +1511,7 @@ func TestVerifyPIP(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
 			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
-			provingPeriodEnd: types.NewBlockHeight(0),
+			provingPeriodEnd: types.NewBlockHeight(100),
 			verifier: &verification.FakeVerifier{
 				VerifyPieceInclusionProofValid: true,
 			},

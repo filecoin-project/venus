@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"reflect"
 
-	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
 func init() {
@@ -155,19 +155,24 @@ func NewActor() *actor.Actor {
 // NewState creates a miner state struct
 func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) *State {
 	return &State{
-		Owner:             owner,
-		Worker:            worker,
-		PeerID:            pid,
-		SectorCommitments: NewSectorSet(),
-		NextDoneSet:       types.EmptyIntSet(),
-		CurrentFaultSet:   types.EmptyIntSet(),
-		NextFaultSet:      types.EmptyIntSet(),
-		ProvingSet:        types.EmptyIntSet(),
-		Power:             types.NewBytesAmount(0),
-		NextAskID:         big.NewInt(0),
-		SectorSize:        sectorSize,
-		SlashedSet:        types.EmptyIntSet(),
-		ActiveCollateral:  types.ZeroAttoFIL,
+		Owner:                 owner,
+		Worker:                worker,
+		PeerID:                pid,
+		ActiveCollateral:      types.ZeroAttoFIL,
+		Asks:                  []*Ask{},
+		NextAskID:             big.NewInt(0),
+		SectorCommitments:     NewSectorSet(),
+		CurrentFaultSet:       types.EmptyIntSet(),
+		NextFaultSet:          types.EmptyIntSet(),
+		NextDoneSet:           types.EmptyIntSet(),
+		ProvingSet:            types.EmptyIntSet(),
+		LastUsedSectorID:      0,
+		ProvingPeriodEnd:      types.NewBlockHeight(0),
+		Power:                 types.NewBytesAmount(0),
+		SectorSize:            sectorSize,
+		SlashedSet:            types.EmptyIntSet(),
+		SlashedAt:             types.NewBlockHeight(0),
+		OwedStorageCollateral: types.ZeroAttoFIL,
 	}
 }
 
@@ -778,7 +783,7 @@ func (*Impl) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *t
 			return nil, errors.NewRevertError("sector not committed")
 		}
 
-		if state.ProvingPeriodEnd == nil {
+		if state.ProvingPeriodEnd.IsZero() {
 			return nil, errors.NewRevertError("miner not active")
 		}
 
@@ -1146,7 +1151,7 @@ func (*Impl) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// You can only be slashed once for missing your PoSt.
-		if state.SlashedAt != nil {
+		if !state.SlashedAt.IsZero() {
 			return nil, errors.NewCodedRevertError(ErrMinerAlreadySlashed, "miner already slashed")
 		}
 
@@ -1322,7 +1327,7 @@ func latePoStFee(pledgeCollateral types.AttoFIL, provingPeriodEnd *types.BlockHe
 
 // calculates proving period start from the proving period end and the proving period duration
 func provingWindowStart(state State) *types.BlockHeight {
-	if state.ProvingPeriodEnd == nil {
+	if state.ProvingPeriodEnd.IsZero() {
 		return types.NewBlockHeight(0)
 	}
 	return state.ProvingPeriodEnd.Sub(types.NewBlockHeight(PoStChallengeWindowBlocks))
