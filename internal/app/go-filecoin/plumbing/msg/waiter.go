@@ -228,14 +228,14 @@ func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts block
 		return nil, err
 	}
 
-	var tsMessages [][]*types.SignedMessage
+	var tsMessages [][]*types.UnsignedMessage
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
 			return nil, err
 		}
-		tsMessages = append(tsMessages, secpMsgs)
+		tsMessages = append(tsMessages, types.UnwrapSigned(secpMsgs))
 	}
 
 	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)

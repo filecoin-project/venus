@@ -86,13 +86,11 @@ func NewFakePowerTableView(minerPower *types.BytesAmount, totalPower *types.Byte
 	return NewPowerTableView(tq)
 }
 
-// FakeSignedMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type FakeSignedMessageValidator struct{}
-
-var _ SignedMessageValidator = (*FakeSignedMessageValidator)(nil)
+// FakeMessageValidator is a validator that doesn't validate to simplify message creation in tests.
+type FakeMessageValidator struct{}
 
 // Validate always returns nil
-func (tsmv *FakeSignedMessageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
+func (tsmv *FakeMessageValidator) Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error {
 	return nil
 }
 
@@ -108,7 +106,7 @@ func (tbr *FakeBlockRewarder) BlockReward(ctx context.Context, st state.Tree, mi
 }
 
 // GasReward is a noop
-func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
+func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	// do nothing to keep state root the same
 	return nil
 }
@@ -116,9 +114,9 @@ func (tbr *FakeBlockRewarder) GasReward(ctx context.Context, st state.Tree, mine
 // NewFakeProcessor creates a processor with a test validator and test rewarder
 func NewFakeProcessor(actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		signedMessageValidator: &FakeSignedMessageValidator{},
-		blockRewarder:          &FakeBlockRewarder{},
-		actors:                 actors,
+		validator:     &FakeMessageValidator{},
+		blockRewarder: &FakeBlockRewarder{},
+		actors:        actors,
 	}
 }
 

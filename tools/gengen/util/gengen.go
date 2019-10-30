@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/whyrusleeping/cbor-gen"
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -31,7 +30,7 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/pkg/errors"
+	"github.com/whyrusleeping/cbor-gen"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -345,38 +344,22 @@ func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, f
 	// this should never fail due to lack of gas since gas doesn't have meaning here
 	gasLimit := types.BlockGasLimit
 	msg := types.NewMeteredMessage(from, to, 0, value, method, pdata, types.NewGasPrice(0), gasLimit)
-	smsg, err := types.NewSignedMessage(*msg, &signer{})
-	if err != nil {
-		return nil, err
-	}
 
 	// create new processor that doesn't reward and doesn't validate
-	applier := consensus.NewConfiguredProcessor(&messageValidator{}, &blockRewarder{}, builtin.DefaultActors)
+	applier := consensus.NewConfiguredProcessor(&consensus.FakeMessageValidator{}, &blockRewarder{}, builtin.DefaultActors)
 
-	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.SignedMessage{smsg}, address.Undef, types.NewBlockHeight(0), nil)
+	res, err := applier.ApplyMessagesAndPayRewards(ctx, st, vms, []*types.UnsignedMessage{msg}, address.Undef, types.NewBlockHeight(0), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(res.Results) == 0 {
-		return nil, errors.New("GenGen message did not produce a result")
+	if res[0].Failure != nil {
+		return nil, res[0].Failure
 	}
-
-	if res.Results[0].ExecutionError != nil {
-		return nil, res.Results[0].ExecutionError
+	if res[0].ExecutionError != nil {
+		return nil, res[0].ExecutionError
 	}
-
-	return res.Results[0].Receipt.Return, nil
-}
-
-// GenGenMessageValidator is a validator that doesn't validate to simplify message creation in tests.
-type messageValidator struct{}
-
-var _ consensus.SignedMessageValidator = (*messageValidator)(nil)
-
-// Validate always returns nil
-func (ggmv *messageValidator) Validate(ctx context.Context, msg *types.SignedMessage, fromActor *actor.Actor) error {
-	return nil
+	return res[0].Receipt.Return, nil
 }
 
 // blockRewarder is a rewarder that doesn't actually add any rewards to simplify state tracking in tests
@@ -390,7 +373,7 @@ func (gbr *blockRewarder) BlockReward(ctx context.Context, st state.Tree, minerA
 }
 
 // GasReward is a noop
-func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, minerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error {
+func (gbr *blockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	return nil
 }
 

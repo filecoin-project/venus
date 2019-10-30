@@ -41,6 +41,7 @@ type BlockSyntaxValidator interface {
 type MessageSyntaxValidator interface {
 	ValidateMessagesSyntax(ctx context.Context, messages []*types.SignedMessage) error
 	ValidateUnsignedMessagesSyntax(ctx context.Context, messages []*types.UnsignedMessage) error
+	// TODO: Remove receipt validation when they're no longer fetched, #3489
 	ValidateReceiptsSyntax(ctx context.Context, receipts []*types.MessageReceipt) error
 }
 

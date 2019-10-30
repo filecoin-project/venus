@@ -67,7 +67,7 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) (consensus.ApplyMessagesResponse, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) ([]*consensus.ApplyMessageResult, error)
 }
 
 type workerPorcelainAPI interface {

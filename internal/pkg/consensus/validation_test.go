@@ -87,6 +87,7 @@ func TestMessageValidator(t *testing.T) {
 
 func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	tf.UnitTest(t)
+	ctx := context.Background()
 
 	// create bls address
 	pubKey := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
@@ -97,15 +98,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
-	ctx := context.Background()
-	t.Run("default validator ignores bls signatures", func(t *testing.T) {
-		validator := consensus.NewDefaultMessageValidator()
-
-		err := validator.Validate(ctx, unsigned, actor)
-		assert.NoError(t, err)
-	})
-
-	t.Run("ingestion validator does not ignore bls signature", func(t *testing.T) {
+	t.Run("ingestion validator does not ignore missing signature", func(t *testing.T) {
 		api := NewMockIngestionValidatorAPI()
 		api.ActorAddr = from
 		api.Actor = actor
@@ -152,19 +145,36 @@ func TestIngestionValidator(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("Validates extreme nonce gaps", func(t *testing.T) {
-		msg := newMessage(t, alice, bob, 100, 5, 1, 0)
+		msg, err := types.NewSignedMessage(*newMessage(t, alice, bob, 100, 5, 1, 0), signer)
+		require.NoError(t, err)
 		assert.NoError(t, validator.Validate(ctx, msg))
 
 		highNonce := uint64(act.Nonce + mpoolCfg.MaxNonceGap + 10)
-		msg = newMessage(t, alice, bob, highNonce, 5, 1, 0)
-		err := validator.Validate(ctx, msg)
+		msg, err = types.NewSignedMessage(*newMessage(t, alice, bob, highNonce, 5, 1, 0), signer)
+		require.NoError(t, err)
+		err = validator.Validate(ctx, msg)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "too much greater than actor nonce")
 	})
 
 	t.Run("Actor not found is not an error", func(t *testing.T) {
-		msg := newMessage(t, bob, alice, 0, 0, 1, 0)
+		msg, err := types.NewSignedMessage(*newMessage(t, bob, alice, 0, 0, 1, 0), signer)
+		require.NoError(t, err)
 		assert.NoError(t, validator.Validate(ctx, msg))
+	})
+
+	t.Run("ingestion validator does not ignore missing signature", func(t *testing.T) {
+		// create bls address
+		pubKey := bls.PrivateKeyPublicKey(bls.PrivateKeyGenerate())
+		from, err := address.NewBLSAddress(pubKey[:])
+		require.NoError(t, err)
+
+		msg := newMessage(t, from, addresses[1], 0, 0, 1, 300)
+		unsigned := &types.SignedMessage{Message: *msg}
+
+		err = validator.Validate(ctx, unsigned)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature")
 	})
 }
 
@@ -176,10 +186,10 @@ func newActor(t *testing.T, balanceAF int, nonce uint64) *actor.Actor {
 }
 
 func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF int,
-	gasPrice int64, gasLimit uint64) *types.SignedMessage {
+	gasPrice int64, gasLimit uint64) *types.UnsignedMessage {
 	val, ok := types.NewAttoFILFromString(fmt.Sprintf("%d", valueAF), 10)
 	require.True(t, ok, "invalid attofil")
-	msg := types.NewMeteredMessage(
+	return types.NewMeteredMessage(
 		from,
 		to,
 		nonce,
@@ -189,9 +199,6 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 		types.NewGasPrice(gasPrice),
 		types.NewGasUnits(gasLimit),
 	)
-	signed, err := types.NewSignedMessage(*msg, signer)
-	require.NoError(t, err)
-	return signed
 }
 
 func attoFil(v int) types.AttoFIL {

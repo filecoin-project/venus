@@ -220,40 +220,30 @@ func TestApplyMessagesForSuccessTempAndPermFailures(t *testing.T) {
 	// If a given message's category changes in the future, it needs to be replaced here in tests by another so we fully
 	// exercise the categorization.
 	// addr2 doesn't correspond to an extant account, so this will trigger errAccountNotFound -- a temporary failure.
-	msg1 := types.NewMeteredMessage(addr2, addr1, 0, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
-	require.NoError(t, err)
+	msg0 := types.NewMeteredMessage(addr2, addr1, 0, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
 
 	// This is actually okay and should result in a receipt
-	msg2 := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
-	require.NoError(t, err)
+	msg1 := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
 
 	// The following two are sending to self -- errSelfSend, a permanent error.
-	msg3 := types.NewMeteredMessage(addr1, addr1, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg3, err := types.NewSignedMessage(*msg3, &mockSigner)
-	require.NoError(t, err)
+	msg2 := types.NewMeteredMessage(addr1, addr1, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg3 := types.NewMeteredMessage(addr2, addr2, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
 
-	msg4 := types.NewMeteredMessage(addr2, addr2, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg4, err := types.NewSignedMessage(*msg4, &mockSigner)
-	require.NoError(t, err)
-
-	messages := []*types.SignedMessage{smsg1, smsg2, smsg3, smsg4}
+	messages := []*types.UnsignedMessage{msg0, msg1, msg2, msg3}
 
 	res, err := consensus.NewDefaultProcessor().ApplyMessagesAndPayRewards(ctx, st, vms, messages, addr1, types.NewBlockHeight(0), nil)
+	assert.NoError(t, err)
 	require.NotNil(t, res)
 
-	assert.Len(t, res.PermanentFailures, 2)
-	assert.Contains(t, res.PermanentFailures, smsg3)
-	assert.Contains(t, res.PermanentFailures, smsg4)
+	assert.Error(t, res[0].Failure)
+	assert.False(t, res[0].FailureIsPermanent)
 
-	assert.Len(t, res.TemporaryFailures, 1)
-	assert.Contains(t, res.TemporaryFailures, smsg1)
+	assert.Nil(t, res[1].Failure)
 
-	assert.Len(t, res.Results, 1)
-	assert.Contains(t, res.SuccessfulMessages, smsg2)
-
-	assert.NoError(t, err)
+	assert.Error(t, res[2].Failure)
+	assert.True(t, res[2].FailureIsPermanent)
+	assert.Error(t, res[3].Failure)
+	assert.True(t, res[3].FailureIsPermanent)
 }
 
 func TestApplyBLSMessages(t *testing.T) {

@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/ipfs/go-ipfs-blockstore"
@@ -16,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -41,8 +41,6 @@ func init() {
 var (
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
-	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
-	ErrInvalidBase = errors.New("block does not connect to a known good chain")
 	// ErrUnorderedTipSets is returned when weight and minticket are the same between two tipsets.
 	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
 )
@@ -64,10 +62,10 @@ const AncestorRoundsNeeded = miner.LargestSectorSizeProvingPeriodBlocks + miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessBlock processes all messages in a block.
-	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *block.Block, []*types.SignedMessage, []block.TipSet) ([]*ApplicationResult, error)
+	ProcessBlock(context.Context, state.Tree, vm.StorageMap, *block.Block, []*types.UnsignedMessage, []block.TipSet) ([]*ApplicationResult, error)
 
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.SignedMessage, []block.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -162,7 +160,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
-	st, err := c.runMessages(ctx, priorState, vms, ts, blsMessages, secpMessages, tsReceipts, ancestors)
+	st, err := c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap2(secpMessages), tsReceipts, ancestors)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -246,7 +244,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet) (state.Tree, error) {
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, tsReceipts [][]*types.MessageReceipt, ancestors []block.TipSet) (state.Tree, error) {
 	var cpySt state.Tree
 
 	// TODO: don't process messages twice
@@ -262,8 +260,8 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 			return nil, errors.Wrap(err, "error validating block state")
 		}
 
-		// wrap bls messages and combine to process bls messages first
-		msgs := append(wrapMessages(blsMessages[i]), secpMessages[i]...)
+		// Combine messages to process BLS first.
+		msgs := append(blsMessages[i], secpMessages[i]...)
 		receipts, err := c.processor.ProcessBlock(ctx, cpySt, vms, blk, msgs, ancestors)
 		if err != nil {
 			return nil, errors.Wrap(err, "error validating block state")
@@ -289,7 +287,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	// NOTE: It is possible to optimize further by applying block validation
 	// in sorted order to reuse first block transitions as the starting state
 	// for the tipSetProcessor.
-	allMessages := combineMessages(blsMessages, secpMessages)
+	allMessages := append(blsMessages, secpMessages...)
 	_, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "error validating tipset")
@@ -324,21 +322,11 @@ func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessag
 	return nil
 }
 
-func combineMessages(blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) [][]*types.SignedMessage {
-	messages := [][]*types.SignedMessage{}
-	for _, msgs := range blsMessages {
-		messages = append(messages, wrapMessages(msgs))
+// Unwraps nested slices of signed messages.
+func unwrap2(smsgs [][]*types.SignedMessage) [][]*types.UnsignedMessage {
+	unsigned := make([][]*types.UnsignedMessage, len(smsgs))
+	for i, inner := range smsgs {
+		unsigned[i] = types.UnwrapSigned(inner)
 	}
-	for _, msgs := range secpMessages {
-		messages = append(messages, msgs)
-	}
-	return messages
-}
-
-func wrapMessages(blsMessages []*types.UnsignedMessage) []*types.SignedMessage {
-	signed := []*types.SignedMessage{}
-	for _, msg := range blsMessages {
-		signed = append(signed, &types.SignedMessage{Message: *msg})
-	}
-	return signed
+	return unsigned
 }
