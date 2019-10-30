@@ -90,6 +90,9 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 	}
 
 	chainMsg, found, err = w.waitForMessage(ctx, ch, msgCid)
+	if err != nil {
+		return err
+	}
 	if found {
 		return cb(chainMsg.Block, chainMsg.Message, chainMsg.Receipt)
 	}
@@ -148,8 +151,14 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 	}
 }
 
-func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
-	tsMessages := make([][]*types.SignedMessage, ts.Len())
+func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, targetMsg cid.Cid) (*ChainMessage, bool, error) {
+	// The targetMsg might be the CID of either a signed SECP message or an unsigned
+	// BLS message.
+	// This accumulates the CIDs of the messages as they appear on chain (signed or unsigned)
+	// but then unwraps them all, obtaining the CID of the unwrapped SECP message body if
+	// applicable. This unwrapped message CID is then used to find the target message in the
+	// unwrapped de-duplicated tipset messages, and thence the corresponding receipt by index.
+	tsMessages := make([][]*types.UnsignedMessage, ts.Len())
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
 		secpMsgs, blsMsgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
@@ -157,46 +166,49 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, msgCid c
 			return nil, false, err
 		}
 
-		cids := make([]cid.Cid, len(blsMsgs)+len(secpMsgs))
-		blkMsgs := make([]*types.SignedMessage, len(blsMsgs)+len(secpMsgs))
+		originalCids := make([]cid.Cid, len(blsMsgs)+len(secpMsgs))
+		unwrappedMsgs := make([]*types.UnsignedMessage, len(blsMsgs)+len(secpMsgs))
+		wrappedMsgs := make([]*types.SignedMessage, len(blsMsgs)+len(secpMsgs))
 		for j, msg := range blsMsgs {
 			c, err := msg.Cid()
 			if err != nil {
 				return nil, false, err
 			}
-			cids[j] = c
-			blkMsgs[j] = &types.SignedMessage{Message: *msg}
+			originalCids[j] = c
+			unwrappedMsgs[j] = msg
+			wrappedMsgs[j] = &types.SignedMessage{Message: *msg}
 		}
 		for j, msg := range secpMsgs {
 			c, err := msg.Cid()
 			if err != nil {
 				return nil, false, err
 			}
-			cids[len(blsMsgs)+j] = c
-			blkMsgs[len(blsMsgs)+j] = msg
+			originalCids[len(blsMsgs)+j] = c
+			unwrappedMsgs[len(blsMsgs)+j] = &msg.Message // Unwrap
+			wrappedMsgs[len(blsMsgs)+j] = msg
 		}
-		tsMessages[i] = blkMsgs
+		tsMessages[i] = unwrappedMsgs
 
-		for i, msg := range blkMsgs {
-			if cids[i].Equals(msgCid) {
-				// wrapped cid might be different from given cid
-				wrappedCid, err := msg.Cid()
+		for k, uwmsg := range unwrappedMsgs {
+			if originalCids[k].Equals(targetMsg) {
+				// Take CID of the unwrapped message, which might be different from the original.
+				unwrappedTarget, err := uwmsg.Cid()
 				if err != nil {
 					return nil, false, err
 				}
 
-				recpt, err := w.receiptByIndex(ctx, ts.Key(), wrappedCid, tsMessages)
+				recpt, err := w.receiptByIndex(ctx, ts.Key(), unwrappedTarget, tsMessages)
 				if err != nil {
 					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 				}
-				return &ChainMessage{msg, blk, recpt}, true, nil
+				return &ChainMessage{wrappedMsgs[k], blk, recpt}, true, nil
 			}
 		}
 	}
 	return nil, false, nil
 }
 
-func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.SignedMessage) (*types.MessageReceipt, error) {
+func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.UnsignedMessage) (*types.MessageReceipt, error) {
 	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
 	if err != nil {
 		return nil, err

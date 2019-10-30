@@ -8,10 +8,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -60,15 +60,14 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "get base tip set ancestors")
 	}
 
+	// Construct list of message candidates for inclusion.
+	// These messages will be processed, and those that fail excluded from the block.
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
-	secpMessages, blsMessages := divideMessages(mq.Drain())
-
-	// bls messages are processed first
-	messages := append(blsMessages, secpMessages...)
-
+	candidateMsgs := orderMessageCandidates(mq.Drain())
 	vms := vm.NewStorageMap(w.blockstore)
-	res, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, messages, w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
+	results, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, types.UnwrapSigned(candidateMsgs),
+		w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
 	if err != nil {
 		return nil, errors.Wrap(err, "generate apply messages")
 	}
@@ -82,24 +81,46 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "generate flush vm storage map")
 	}
 
-	// By default no receipts/messages is serialized as the zero length
-	// slice, not the nil slice.
-	receipts := []*types.MessageReceipt{}
-	for _, r := range res.Results {
-		receipts = append(receipts, r.Receipt)
+	var receipts []*types.MessageReceipt
+	var blsAccepted []*types.SignedMessage
+	var secpAccepted []*types.SignedMessage
+
+	// Align the results with the candidate signed messages to accumulate the messages lists
+	// to include in the block, and handle failed messages.
+	for i, r := range results {
+		msg := candidateMsgs[i]
+		if r.Failure == nil {
+			receipts = append(receipts, r.Receipt)
+			if msg.Message.From.Protocol() == address.BLS {
+				blsAccepted = append(blsAccepted, msg)
+			} else {
+				secpAccepted = append(secpAccepted, msg)
+			}
+		} else if r.FailureIsPermanent {
+			// Remove message that can never succeed from the message pool now.
+			// There might be better places to do this, such as wherever successful messages are removed
+			// from the pool, or by posting the failure to an event bus to be handled async.
+			log.Infof("permanent ApplyMessage failure, [%s] (%s)", msg, r.Failure)
+			mc, err := msg.Cid()
+			if err == nil {
+				w.messageSource.Remove(mc)
+			} else {
+				log.Warnf("failed to get CID from message", err)
+			}
+		} else {
+			// This message might succeed in the future, so leave it in the pool for now.
+			log.Infof("temporary ApplyMessage failure, [%s] (%s)", msg, r.Failure)
+		}
 	}
 
-	// split mined messages into secp and bls
-	minedSecpMessages, minedBLSMessages := divideMessages(res.SuccessfulMessages)
-
-	// create an aggregage signature for messages
-	unwrappedBLSMessages, blsAggregateSig, err := aggregateBLS(minedBLSMessages)
+	// Create an aggregage signature for messages
+	unwrappedBLSMessages, blsAggregateSig, err := aggregateBLS(blsAccepted)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not aggregate bls messages")
 	}
 
 	// Persist messages to ipld storage
-	txMeta, err := w.messageStore.StoreMessages(ctx, minedSecpMessages, unwrappedBLSMessages)
+	txMeta, err := w.messageStore.StoreMessages(ctx, secpAccepted, unwrappedBLSMessages)
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
@@ -130,27 +151,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "failed to sign block")
 	}
 
-	for i, msg := range res.PermanentFailures {
-		// We will not be able to apply this message in the future because the error was permanent.
-		// Therefore, we will remove it from the MessagePool now.
-		// There might be better places to do this, such as wherever successful messages are removed
-		// from the pool, or by posting the failure to an event bus to be handled async.
-		log.Infof("permanent ApplyMessage failure, [%s] (%s)", msg, res.PermanentErrors[i])
-		mc, err := msg.Cid()
-		if err == nil {
-			w.messageSource.Remove(mc)
-		} else {
-			log.Warnf("failed to get CID from message", err)
-		}
-	}
-
-	for i, msg := range res.TemporaryFailures {
-		// We might be able to apply this message in the future because the error was temporary.
-		// Therefore, we will leave it in the MessagePool for now.
-
-		log.Infof("temporary ApplyMessage failure, [%s] (%s)", msg, res.TemporaryErrors[i])
-	}
-
 	return next, nil
 }
 
@@ -174,9 +174,11 @@ func aggregateBLS(blsMessages []*types.SignedMessage) ([]*types.UnsignedMessage,
 	return unwrappedMsgs, blsAggregateSig[:], nil
 }
 
-func divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []*types.SignedMessage) {
-	secpMessages := []*types.SignedMessage{}
+// When a block is validated, BLS messages are processed first, so for simplicity all BLS
+// messages are considered first here too.
+func orderMessageCandidates(messages []*types.SignedMessage) []*types.SignedMessage {
 	blsMessages := []*types.SignedMessage{}
+	secpMessages := []*types.SignedMessage{}
 
 	for _, m := range messages {
 		if m.Message.From.Protocol() == address.BLS {
@@ -185,5 +187,5 @@ func divideMessages(messages []*types.SignedMessage) ([]*types.SignedMessage, []
 			secpMessages = append(secpMessages, m)
 		}
 	}
-	return secpMessages, blsMessages
+	return append(blsMessages, secpMessages...)
 }
