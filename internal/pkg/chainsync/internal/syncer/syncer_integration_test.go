@@ -134,11 +134,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 			mm := types.NewMessageMaker(t, keys)
 			addr := mm.Addresses()[0]
 			bb.AddMessages(
-				[]*types.SignedMessage{
-					mm.NewSignedMessage(addr, 1),
-				},
+				[]*types.SignedMessage{mm.NewSignedMessage(addr, 1)},
 				[]*types.UnsignedMessage{},
-				types.EmptyReceipts(1),
 			)
 		}
 	})

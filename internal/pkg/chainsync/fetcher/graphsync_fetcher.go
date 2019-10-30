@@ -240,15 +240,13 @@ func (gsf *GraphSyncFetcher) fetchRemainingTipsets(ctx context.Context, starting
 	return out, nil
 }
 
-// fullBlockSel is a function that generates a selector for a block, messages
-// and receipts.
+// fullBlockSel is a function that generates a selector for a block and its messages.
 func (gsf *GraphSyncFetcher) fullBlockSel() ipld.Node {
 	selector := gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
 		efsb.Insert("messages", gsf.ssb.ExploreFields(func(messagesSelector selectorbuilder.ExploreFieldsSpecBuilder) {
 			messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 			messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 		}))
-		efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 	}).Node()
 	return selector
 }
@@ -318,11 +316,11 @@ func (gsf *GraphSyncFetcher) consumeResponse(requestChan <-chan graphsync.Respon
 }
 
 // recFullBlockSel  generates a selector for a chain of full blocks including
-// messages and receipts.
+// messages.
 func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 	// recursive selector to fetch n sets of parent blocks
 	// starting from block matching base cid:
-	//   - fetch all parent blocks, with messages/receipts
+	//   - fetch all parent blocks, with messages
 	//   - with exactly the first parent block, repeat again for its parents
 	//   - continue up to recursion depth
 	selector := gsf.ssb.ExploreRecursive(recursionDepth, gsf.ssb.ExploreFields(func(efsb selectorbuilder.ExploreFieldsSpecBuilder) {
@@ -333,7 +331,6 @@ func (gsf *GraphSyncFetcher) recFullBlockSel(recursionDepth int) ipld.Node {
 						messagesSelector.Insert("secpRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 						messagesSelector.Insert("bLSRoot", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 					}))
-					efsb.Insert("messageReceipts", gsf.fetchThroughAMTSelector(amtRecurstionDepth))
 				}),
 			),
 			gsf.ssb.ExploreIndex(0, gsf.ssb.ExploreRecursiveEdge()),
@@ -387,9 +384,9 @@ func (gsf *GraphSyncFetcher) loadAndVerifyHeader(ctx context.Context, key block.
 }
 
 // Loads the IPLD blocks for all blocks in a tipset, and checks for the presence of the
-// message and receipt list structures in the store.
+// message list structures in the store.
 // Returns the tipset if complete. Otherwise it returns UndefTipSet and the CIDs of
-// all blocks missing either their header, messages or receipts.
+// all blocks missing either their header or messages.
 func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key block.TipSetKey) (block.TipSet, []cid.Cid, error) {
 	// Load the block headers that exist.
 	incomplete := make(map[cid.Cid]struct{})
@@ -441,31 +438,6 @@ func (gsf *GraphSyncFetcher) loadAndVerifyFullBlock(ctx context.Context, key blo
 
 			if err := gsf.validator.ValidateUnsignedMessagesSyntax(ctx, messages); err != nil {
 				return errors.Wrapf(err, "invalid messages for for message collection (cid %s)", rawBlock.Cid())
-			}
-			return nil
-		})
-	if err != nil {
-		return block.UndefTipSet, nil, err
-	}
-
-	err = gsf.loadAndVerifySubComponents(ctx, tip, incomplete,
-		func(blk *block.Block) cid.Cid { return blk.MessageReceipts }, func(rawBlock blocks.Block) error {
-			receipts := []*types.MessageReceipt{}
-
-			err := gsf.loadAndProcessAMTData(ctx, rawBlock.Cid(), func(msgBlock blocks.Block) error {
-				var receipt types.MessageReceipt
-				if err := cbor.DecodeInto(msgBlock.RawData(), &receipt); err != nil {
-					return errors.Wrapf(err, "could not decode message receipt (cid %s)", msgBlock.Cid())
-				}
-				receipts = append(receipts, &receipt)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-
-			if err := gsf.validator.ValidateReceiptsSyntax(ctx, receipts); err != nil {
-				return errors.Wrapf(err, "invalid receipts for for receipt collection (cid %s)", rawBlock.Cid())
 			}
 			return nil
 		})

@@ -492,9 +492,7 @@ func TestStoresMessageReceipts(t *testing.T) {
 	mm := types.NewMessageMaker(t, keys)
 	alice := mm.Addresses()[0]
 	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
-		b.AddMessages([]*types.SignedMessage{},
-			[]*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))},
-			[]*types.MessageReceipt{}) // let syncer handle the receipts (this is going away)
+		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})
 	})
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), true))
 

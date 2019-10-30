@@ -61,7 +61,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(2, 42)
 	mm := types.NewMessageMaker(t, keys)
-	rm := types.NewReceiptMaker()
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applesauce"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -81,7 +80,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 			messagesSelector.Insert("secpRoot", amtSelector)
 			messagesSelector.Insert("bLSRoot", amtSelector)
 		}))
-		efsb.Insert("messageReceipts", amtSelector)
 	}).Selector()
 	require.NoError(t, err)
 	recursiveSelector := func(levels int) selector.Selector {
@@ -93,7 +91,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 							messagesSelector.Insert("secpRoot", amtSelector)
 							messagesSelector.Insert("bLSRoot", amtSelector)
 						}))
-						efsb.Insert("messageReceipts", amtSelector)
 					}),
 				),
 				ssb.ExploreIndex(0, ssb.ExploreRecursiveEdge()),
@@ -118,14 +115,13 @@ func TestGraphsyncFetcher(t *testing.T) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
 			[]*types.UnsignedMessage{&mm.NewSignedMessage(bob, 1).Message},
-			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
 	withMessageEachBuilder := func(b *chain.BlockBuilder, i int) {
 		withMessageBuilder(b)
 	}
 
-	verifyMessagesAndReceiptsFetched := func(t *testing.T, ts block.TipSet) {
+	verifyMessagesFetched := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
 
@@ -140,15 +136,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 			require.True(t, reflect.DeepEqual(secpMsgs, expectedSecpMessages))
 			require.True(t, reflect.DeepEqual(blsMsgs, expectedBLSMsgs))
-
-			// use fetcher blockstore to retrieve receipts
-			receipts, err := msgStore.LoadReceipts(ctx, blk.MessageReceipts)
-			require.NoError(t, err)
-
-			// get expected receipts from builders block store
-			expectedReceipts, err := builder.LoadReceipts(ctx, blk.MessageReceipts)
-			require.NoError(t, err)
-			require.True(t, reflect.DeepEqual(receipts, expectedReceipts))
 		}
 	}
 
@@ -249,56 +236,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
 		require.Nil(t, ts)
 	})
-
-	t.Run("requests fails because blocks are present but are missing message receipts", func(t *testing.T) {
-		gen := builder.NewGenesis()
-		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, clock, t)
-		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts)
-		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesReceiptsLoader, final.Key().ToSlice()...)
-
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
-
-		done := doneAt(gen.Key())
-		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
-		mgs.verifyReceivedRequestCount(3)
-		mgs.verifyExpectations()
-		require.EqualError(t, err, fmt.Sprintf("fetching tipset: %s: Unable to find any untried peers", final.Key().String()))
-		require.Nil(t, ts)
-	})
-
-	t.Run("blocks missing message receipts but recovers through fall back", func(t *testing.T) {
-		gen := builder.NewGenesis()
-		final := builder.BuildOn(gen, 3, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		chain1 := block.NewChainInfo(pid1, pid1, final.Key(), height)
-		chain2 := block.NewChainInfo(pid2, pid2, final.Key(), height)
-
-		mgs := newMockableGraphsync(ctx, bs, clock, t)
-		errorOnMessagesLoader := errorOnCidsLoader(loader, final.At(1).Messages.SecpRoot, final.At(2).Messages.SecpRoot)
-		errorOnMessagesReceiptsLoader := errorOnCidsLoader(loader, final.At(1).MessageReceipts, final.At(2).MessageReceipts)
-		mgs.expectRequestToRespondWithLoader(pid0, layer1Selector, errorOnMessagesLoader, final.Key().ToSlice()...)
-		mgs.expectRequestToRespondWithLoader(pid1, layer1Selector, errorOnMessagesReceiptsLoader, final.At(1).Cid(), final.At(2).Cid())
-		mgs.expectRequestToRespondWithLoader(pid2, layer1Selector, loader, final.At(1).Cid(), final.At(2).Cid())
-		mgs.expectRequestToRespondWithLoader(pid2, recursiveSelector(1), loader, final.At(0).Cid())
-
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0, chain1, chain2))
-		done := doneAt(gen.Key())
-
-		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
-		require.NoError(t, err, "the request completes successfully")
-		mgs.verifyReceivedRequestCount(8)
-		mgs.verifyExpectations()
-		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
-		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
-		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
-	})
-
 	t.Run("partial response fail during recursive fetch recovers at fail point", func(t *testing.T) {
 		gen := builder.NewGenesis()
 		final := builder.BuildManyOn(5, gen, withMessageBuilder)
@@ -455,7 +392,7 @@ func TestGraphsyncFetcher(t *testing.T) {
 
 			require.Equal(t, i, len(ts), "the right number of tipsets is returned")
 			lastTs := ts[len(ts)-1]
-			verifyMessagesAndReceiptsFetched(t, lastTs)
+			verifyMessagesFetched(t, lastTs)
 
 			nextKey, err = tipset.Parents()
 			require.NoError(t, err)
@@ -498,23 +435,9 @@ func TestGraphsyncFetcher(t *testing.T) {
 		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
-		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
-		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
-
-		done := doneAt(key)
-		ts, err := fetcher.FetchTipSets(ctx, key, pid0, done)
-		require.EqualError(t, err, fmt.Sprintf("fetched data (cid %s) could not be decoded as an AMT: cbor input should be of type array", notDecodableBlock.Cid().String()))
-		require.Nil(t, ts)
-	})
-
-	t.Run("blocks present but receipts don't decode", func(t *testing.T) {
-		mgs := newMockableGraphsync(ctx, bs, clock, t)
-		blk := requireSimpleValidBlock(t, 3, address.Undef)
-		blk.MessageReceipts = notDecodableBlock.Cid()
-		key := block.NewTipSetKey(blk.Cid())
-		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
-		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, types.SignedMessageCollection{}.ToNode()})
+		nd, err := (&types.SignedMessage{}).ToNode()
+		require.NoError(t, err)
+		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
@@ -542,26 +465,6 @@ func TestGraphsyncFetcher(t *testing.T) {
 		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
 		require.Nil(t, ts)
 		require.Error(t, err, "invalid messages for for message collection (cid %s)", final.At(0).Messages.String())
-	})
-
-	t.Run("receipts don't validate", func(t *testing.T) {
-		gen := builder.NewGenesis()
-		final := builder.BuildOn(gen, 1, withMessageEachBuilder)
-		height, err := final.Height()
-		require.NoError(t, err)
-		chain0 := block.NewChainInfo(pid0, pid0, final.Key(), height)
-		mgs := newMockableGraphsync(ctx, bs, clock, t)
-		mgs.stubResponseWithLoader(pid0, layer1Selector, loader, final.Key().ToSlice()...)
-
-		errorMv := mockSyntaxValidator{
-			validateReceiptsError: fmt.Errorf("Everything Failed"),
-		}
-		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, errorMv, clock, newFakePeerTracker(chain0))
-		done := doneAt(gen.Key())
-
-		ts, err := fetcher.FetchTipSets(ctx, final.Key(), pid0, done)
-		require.Nil(t, ts)
-		require.Error(t, err, "invalid receipts for for receipt collection (cid %s)", final.At(0).MessageReceipts.String())
 	})
 
 	t.Run("hangup occurs during first layer fetch but recovers through fallback", func(t *testing.T) {
@@ -745,7 +648,6 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 	builder := chain.NewBuilder(t, address.Undef)
 	keys := types.MustGenerateKeyInfo(1, 42)
 	mm := types.NewMessageMaker(t, keys)
-	rm := types.NewReceiptMaker()
 	notDecodableBlock, err := cbor.WrapObject(notDecodable{5, "applebutter"}, types.DefaultHashFunction, -1)
 	require.NoError(t, err)
 
@@ -780,20 +682,16 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, 1)},
 			[]*types.UnsignedMessage{},
-			[]*types.MessageReceipt{rm.NewReceipt()},
 		)
 	}
 	withMessageEachBuilder := func(b *chain.BlockBuilder, i int) {
 		withMessageBuilder(b)
 	}
 
-	verifyNoMessagesOrReceipts := func(t *testing.T, ts block.TipSet) {
+	verifyNoMessages := func(t *testing.T, ts block.TipSet) {
 		for i := 0; i < ts.Len(); i++ {
 			blk := ts.At(i)
 			stored, err := bs.Has(blk.Messages.SecpRoot)
-			require.NoError(t, err)
-			require.False(t, stored)
-			stored, err = bs.Has(blk.MessageReceipts)
 			require.NoError(t, err)
 			require.False(t, stored)
 		}
@@ -819,8 +717,8 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		require.Equal(t, 2, len(ts), "the right number of tipsets is returned")
 		require.True(t, final.Key().Equals(ts[0].Key()), "the initial tipset is correct")
 		require.True(t, gen.Key().Equals(ts[1].Key()), "the remaining tipsets are correct")
-		verifyNoMessagesOrReceipts(t, ts[0])
-		verifyNoMessagesOrReceipts(t, ts[1])
+		verifyNoMessages(t, ts[0])
+		verifyNoMessages(t, ts[1])
 	})
 
 	t.Run("fetch succeeds when messages don't decode", func(t *testing.T) {
@@ -829,7 +727,9 @@ func TestHeadersOnlyGraphsyncFetch(t *testing.T) {
 		blk.Messages = types.TxMeta{SecpRoot: notDecodableBlock.Cid(), BLSRoot: types.EmptyMessagesCID}
 		key := block.NewTipSetKey(blk.Cid())
 		chain0 := block.NewChainInfo(pid0, pid0, key, uint64(blk.Height))
-		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, types.ReceiptCollection{}.ToNode()})
+		nd, err := (&types.SignedMessage{}).ToNode()
+		require.NoError(t, err)
+		notDecodableLoader := simpleLoader([]format.Node{blk.ToNode(), notDecodableBlock, nd})
 		mgs.stubResponseWithLoader(pid0, layer1Selector, notDecodableLoader, blk.Cid())
 		fetcher := fetcher.NewGraphSyncFetcher(ctx, mgs, bs, bv, clock, newFakePeerTracker(chain0))
 
@@ -858,16 +758,14 @@ func TestRealWorldGraphsyncFetchOnlyHeaders(t *testing.T) {
 
 	secpMessages := make([]*types.SignedMessage, messageCount)
 	blsMessages := make([]*types.UnsignedMessage, messageCount)
-	messageReceipts := make([]*types.MessageReceipt, messageCount)
 	for i := uint64(0); i < messageCount; i++ {
 		secpMessages[i] = mm.NewSignedMessage(alice, i)
 		blsMessages[i] = &mm.NewSignedMessage(bob, i).Message
-		messageReceipts[i] = &types.MessageReceipt{ExitCode: uint8(i)}
 	}
 
 	tipCount := 32
 	final := builder.BuildManyOn(tipCount, gen, func(b *chain.BlockBuilder) {
-		b.AddMessages(secpMessages, blsMessages, messageReceipts)
+		b.AddMessages(secpMessages, blsMessages)
 	})
 
 	// setup network
@@ -965,7 +863,6 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		b.AddMessages(
 			[]*types.SignedMessage{mm.NewSignedMessage(alice, i)},
 			[]*types.UnsignedMessage{},
-			[]*types.MessageReceipt{{ExitCode: uint8(i)}},
 		)
 	})
 
@@ -1027,7 +924,7 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 
 	require.Equal(t, tipCount+1, len(tipsets))
 
-	// Check the headers, messages, and receipt structures are in the store.
+	// Check the headers and messages structures are in the store.
 	expectedTips := builder.RequireTipSets(final.Key(), tipCount+1)
 	for _, ts := range expectedTips {
 		stored, err := bs.Has(ts.At(0).Cid())
@@ -1035,10 +932,6 @@ func TestRealWorldGraphsyncFetchAcrossNetwork(t *testing.T) {
 		assert.True(t, stored)
 
 		stored, err = bs.Has(ts.At(0).Messages.SecpRoot)
-		require.NoError(t, err)
-		assert.True(t, stored)
-
-		stored, err = bs.Has(ts.At(0).MessageReceipts)
 		require.NoError(t, err)
 		assert.True(t, stored)
 	}

@@ -301,17 +301,13 @@ func (bb *BlockBuilder) IncHeight(nullBlocks types.Uint64) {
 }
 
 // AddMessages adds a message & receipt collection to the block.
-func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*types.UnsignedMessage, rcpts []*types.MessageReceipt) {
+func (bb *BlockBuilder) AddMessages(secpmsgs []*types.SignedMessage, blsMsgs []*types.UnsignedMessage) {
 	ctx := context.Background()
 
 	meta, err := bb.messages.StoreMessages(ctx, secpmsgs, blsMsgs)
 	require.NoError(bb.t, err)
 
-	cR, err := bb.messages.StoreReceipts(ctx, rcpts)
-	require.NoError(bb.t, err)
-
 	bb.block.Messages = meta
-	bb.block.MessageReceipts = cR
 }
 
 // SetStateRoot sets the block's state root.

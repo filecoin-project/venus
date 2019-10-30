@@ -211,34 +211,6 @@ func (mC MessageCollection) ToNode() ipld.Node {
 	return obj
 }
 
-// ReceiptCollection tracks a group of receipts and assigns it a cid.
-type ReceiptCollection []*MessageReceipt
-
-// DecodeReceipts decodes raw bytes into an array of message receipts
-func DecodeReceipts(b []byte) ([]*MessageReceipt, error) {
-	var out ReceiptCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*MessageReceipt(out), nil
-}
-
-// Cid returns the cid of the receipt collection.
-func (rC ReceiptCollection) Cid() cid.Cid {
-	return rC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (rC ReceiptCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(rC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))

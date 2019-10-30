@@ -68,7 +68,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 
 		// Receive the message in a block.
 		left := provider.BuildOneOn(root, func(b *chain.BlockBuilder) {
-			b.AddMessages([]*types.SignedMessage{msg1}, []*types.UnsignedMessage{}, types.EmptyReceipts(1))
+			b.AddMessages([]*types.SignedMessage{msg1}, []*types.UnsignedMessage{})
 		})
 		require.NoError(t, handler.HandleNewHead(ctx, left))
 		assert.Equal(t, 0, len(outbox.Queue().List(sender))) // Gone from queue.
