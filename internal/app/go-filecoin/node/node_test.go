@@ -163,12 +163,6 @@ func TestNodeStartMining(t *testing.T) {
 		err := minerNode.StartMining(ctx)
 		assert.Error(t, err, "node is already mining")
 	})
-
-	t.Run("MiningStart sets storage fault slasher", func(t *testing.T) {
-		assert.NoError(t, minerNode.StartMining(ctx))
-		defer minerNode.StopMining(ctx)
-		assert.NotNil(t, minerNode.FaultSlasher.StorageFaultSlasher)
-	})
 }
 
 func TestOptionWithError(t *testing.T) {

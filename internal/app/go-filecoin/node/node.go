@@ -95,12 +95,6 @@ type Node struct {
 	VersionTable      *version.ProtocolVersionTable
 	StorageProtocol   submodule.StorageProtocolSubmodule
 	RetrievalProtocol submodule.RetrievalProtocolSubmodule
-
-	//
-	// Additional services
-	//
-
-	FaultSlasher submodule.FaultSlasherSubmodule
 }
 
 // Start boots up the node.
@@ -290,11 +284,6 @@ func (node *Node) handleNewChainHeads(ctx context.Context, prevHead block.TipSet
 					log.Error(err)
 				}
 			}
-			if node.FaultSlasher.StorageFaultSlasher != nil {
-				if err := node.FaultSlasher.StorageFaultSlasher.OnNewHeaviestTipSet(ctx, newHead); err != nil {
-					log.Error(err)
-				}
-			}
 		case <-ctx.Done():
 			return
 		}
@@ -402,7 +391,7 @@ func (node *Node) SetupMining(ctx context.Context) error {
 
 	// ensure we have a storage miner
 	if node.StorageProtocol.StorageMiner == nil {
-		storageMiner, _, err := initStorageMinerForNode(ctx, node)
+		storageMiner, err := initStorageMinerForNode(ctx, node)
 		if err != nil {
 			return errors.Wrap(err, "failed to initialize storage miner")
 		}
@@ -451,13 +440,6 @@ func (node *Node) StartMining(ctx context.Context) error {
 	node.BlockMining.AddNewlyMinedBlock = node.addNewlyMinedBlock
 	node.BlockMining.MiningDoneWg.Add(1)
 	go node.handleNewMiningOutput(miningCtx, outCh)
-
-	// initialize the storage fault slasher
-	node.FaultSlasher.StorageFaultSlasher = storage.NewFaultSlasher(
-		node.PorcelainAPI,
-		node.Messaging.Outbox,
-		storage.DefaultFaultSlasherGasPrice,
-		storage.DefaultFaultSlasherGasLimit)
 
 	// loop, turning sealing-results into commitSector messages to be included
 	// in the chain
@@ -593,27 +575,21 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 	return sb, nil
 }
 
-// initStorageMinerForNode initializes the storage miner, returning the miner, the miner owner address (to be
-// passed to storage fault slasher) and any error
-func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, address.Address, error) {
+// initStorageMinerForNode initializes the storage miner.
+func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, error) {
 	minerAddr, err := node.MiningAddress()
 	if err != nil {
-		return nil, address.Undef, errors.Wrap(err, "failed to get node's mining address")
+		return nil, errors.Wrap(err, "failed to get node's mining address")
 	}
 
 	ownerAddress, err := node.PorcelainAPI.MinerGetOwnerAddress(ctx, minerAddr)
 	if err != nil {
-		return nil, address.Undef, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
-	}
-
-	workerAddress, err := node.PorcelainAPI.MinerGetWorkerAddress(ctx, minerAddr, node.chain.ChainReader.GetHead())
-	if err != nil {
-		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's worker address")
+		return nil, errors.Wrap(err, "no mining owner available, skipping storage miner setup")
 	}
 
 	sectorSize, err := node.PorcelainAPI.MinerGetSectorSize(ctx, minerAddr)
 	if err != nil {
-		return nil, address.Undef, errors.Wrap(err, "failed to fetch miner's sector size")
+		return nil, errors.Wrap(err, "failed to fetch miner's sector size")
 	}
 
 	prover := storage.NewProver(minerAddr, sectorSize, node.PorcelainAPI, node.PorcelainAPI)
@@ -627,10 +603,10 @@ func initStorageMinerForNode(ctx context.Context, node *Node) (*storage.Miner, a
 		node.Repo.DealsDatastore(),
 		node.PorcelainAPI)
 	if err != nil {
-		return nil, address.Undef, errors.Wrap(err, "failed to instantiate storage miner")
+		return nil, errors.Wrap(err, "failed to instantiate storage miner")
 	}
 
-	return miner, workerAddress, nil
+	return miner, nil
 }
 
 // StopMining stops mining on new blocks.
