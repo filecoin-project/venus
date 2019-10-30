@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-hamt-ipld"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/pkg/errors"
 
@@ -103,4 +104,26 @@ func NextNonce(actor *Actor) (uint64, error) {
 		return 0, errors.New("next nonce only defined for account or empty actors")
 	}
 	return uint64(actor.Nonce), nil
+}
+
+// InitBuiltinActorCodeObjs writes all builtin actor code objects to `cst`. This method should be called when initializing a genesis
+// block to ensure all IPLD links referenced by the state tree exist.
+func InitBuiltinActorCodeObjs(cst *hamt.CborIpldStore) error {
+	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
+		return err
+	}
+	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
+		return err
+	}
+	if err := cst.Blocks.AddBlock(types.BootstrapMinerActorCodeObj); err != nil {
+		return err
+	}
+	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
+		return err
+	}
+	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
+		return err
+	}
+	return cst.Blocks.AddBlock(types.InitActorCodeObj)
+
 }
