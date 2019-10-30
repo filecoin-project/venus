@@ -244,6 +244,8 @@ type chainStateCollector struct {
 	state   []format.Node
 }
 
+// collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
+// Calling this method does not have any side effects.
 func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
 	dagNd, err := csc.dagserv.Get(ctx, stateRoot)
 	if err != nil {

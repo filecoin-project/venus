@@ -127,22 +127,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	if err := cst.Blocks.AddBlock(types.StorageMarketActorCodeObj); err != nil {
-		return nil, err
-	}
-	if err := cst.Blocks.AddBlock(types.MinerActorCodeObj); err != nil {
-		return nil, err
-	}
-	if err := cst.Blocks.AddBlock(types.BootstrapMinerActorCodeObj); err != nil {
-		return nil, err
-	}
-	if err := cst.Blocks.AddBlock(types.AccountActorCodeObj); err != nil {
-		return nil, err
-	}
-	if err := cst.Blocks.AddBlock(types.PaymentBrokerActorCodeObj); err != nil {
-		return nil, err
-	}
-	if err := cst.Blocks.AddBlock(types.InitActorCodeObj); err != nil {
+	if err := actor.InitBuiltinActorCodeObjs(cst); err != nil {
 		return nil, err
 	}
 
