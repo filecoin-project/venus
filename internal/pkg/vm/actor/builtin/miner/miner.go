@@ -481,7 +481,6 @@ func (*Impl) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int) (*
 }
 
 // GetAsks returns all the asks for this miner.
-// TODO: this isnt a great function signature, it returns the asks in a serialized array (Consider doing this some other way).
 func (*Impl) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
