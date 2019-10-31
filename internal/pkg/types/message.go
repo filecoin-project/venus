@@ -150,67 +150,6 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
-// SignedMessageCollection tracks a group of messages and assigns it a cid.
-type SignedMessageCollection []*SignedMessage
-
-// DecodeSignedMessages decodes raw bytes into an array of signed messages
-func DecodeSignedMessages(b []byte) ([]*SignedMessage, error) {
-	var out SignedMessageCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*SignedMessage(out), nil
-}
-
-// TODO #3078 the panics here and in types.Block should go away.  We need to
-// keep them in order to use the ipld cborstore with the default hash function
-// because we need to implement hamt.cidProvider which doesn't handle errors.
-// We can clean all this up when we can use our own CborIpldStore with the hamt.
-
-// Cid returns the cid of the message collection.
-func (mC SignedMessageCollection) Cid() cid.Cid {
-	return mC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (mC SignedMessageCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
-// MessageCollection tracks a group of messages and assigns it a cid.
-type MessageCollection []*UnsignedMessage
-
-// DecodeMessages decodes raw bytes into an array of metered messages
-func DecodeMessages(b []byte) ([]*UnsignedMessage, error) {
-	var out MessageCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*UnsignedMessage(out), nil
-}
-
-// Cid returns the cid of the message collection.
-func (mC MessageCollection) Cid() cid.Cid {
-	return mC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (mC MessageCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
