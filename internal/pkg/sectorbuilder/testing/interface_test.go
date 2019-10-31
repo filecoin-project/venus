@@ -197,6 +197,11 @@ func TestSectorBuilder(t *testing.T) {
 		sectorID, err := h.SectorBuilder.AddPiece(context.Background(), ref, size, reader)
 		require.NoError(t, err)
 
+		meta, err := h.SectorBuilder.GetAllStagedSectors()
+		require.NoError(t, err)
+		require.Equal(t, 1, len(meta))
+		require.Equal(t, sectorID, meta[0].SectorID)
+
 		// Sealing can take 180+ seconds on an i7 MacBook Pro. We are sealing
 		// but one sector in this test.
 		timeout := time.After(MaxTimeToSealASector)
@@ -228,6 +233,12 @@ func TestSectorBuilder(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, hex.EncodeToString(inputBytes), hex.EncodeToString(outputBytes))
+
+		// ensure that all previously-staged sectors no longer appear in the
+		// sector builder's staged sectors list
+		meta2, err2 := h.SectorBuilder.GetAllStagedSectors()
+		require.NoError(t, err2)
+		require.Equal(t, 0, len(meta2))
 	})
 
 	t.Run("sector builder resumes polling for staged sectors even after a restart", func(t *testing.T) {
