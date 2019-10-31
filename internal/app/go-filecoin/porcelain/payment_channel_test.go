@@ -26,7 +26,7 @@ func (p *testPaymentChannelLsPlumbing) ChainHeadKey() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
-func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (p *testPaymentChannelLsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	chnls, err := encoding.Encode(p.channels)
 	require.NoError(p.testing, err)
 	return [][]byte{chnls}, nil
@@ -63,7 +63,7 @@ func (p *testPaymentChannelVoucherPlumbing) ChainHeadKey() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
-func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (p *testPaymentChannelVoucherPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	result, err := actor.MarshalStorage(p.voucher)
 	require.NoError(p.testing, err)
 	return [][]byte{result}, nil
@@ -80,6 +80,8 @@ func (p *testPaymentChannelVoucherPlumbing) WalletDefaultAddress() (address.Addr
 func TestPaymentChannelVoucher(t *testing.T) {
 	tf.UnitTest(t)
 
+	someMethodID := types.MethodID(8263621)
+
 	t.Run("succeeds", func(t *testing.T) {
 		expectedVoucher := &types.PaymentVoucher{
 			Channel:   *types.NewChannelID(5),
@@ -90,7 +92,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			Signature: []byte{},
 			Condition: &types.Predicate{
 				To:     address.Undef,
-				Method: "someMethod",
+				Method: someMethodID,
 				Params: []interface{}{"params"},
 			},
 		}
@@ -110,7 +112,7 @@ func TestPaymentChannelVoucher(t *testing.T) {
 			types.NewBlockHeight(0),
 			&types.Predicate{
 				To:     address.Undef,
-				Method: "someMethod",
+				Method: someMethodID,
 				Params: []interface{}{"params"},
 			},
 		)

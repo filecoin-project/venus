@@ -11,18 +11,19 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
-const verifyPieceInclusionMethod = "verifyPieceInclusion"
+const verifyPieceInclusionMethod = miner.VerifyPieceInclusion
 
 // cpPlumbing is the subset of the plumbing.API that CreatePayments uses.
 type cpPlumbing interface {
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
@@ -133,7 +134,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 		config.Value,
 		config.GasPrice,
 		config.GasLimit,
-		"createChannel",
+		paymentbroker.CreateChannel,
 		config.To,
 		&config.ChannelExpiry)
 	if err != nil {
@@ -245,7 +246,7 @@ func createPayment(ctx context.Context, plumbing cpPlumbing, baseKey block.TipSe
 	ret, err := plumbing.MessageQuery(ctx,
 		response.From,
 		address.PaymentBrokerAddress,
-		"voucher",
+		paymentbroker.Voucher,
 		baseKey,
 		response.Channel,
 		amount,

@@ -41,15 +41,15 @@ func TestInitActorCreateInitActor(t *testing.T) {
 func TestInitActorGetNetwork(t *testing.T) {
 	tf.UnitTest(t)
 
-	initExecActor := &Actor{}
 	state := &State{
 		Network: "bar",
 	}
 
-	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, "getAddress", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, GetNetwork, []byte{})
 	vmctx := th.NewFakeVMContext(msg, state)
 
-	network, code, err := initExecActor.GetNetwork(vmctx)
+	actor := &Impl{}
+	network, code, err := actor.GetNetwork(vmctx)
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), code)
 

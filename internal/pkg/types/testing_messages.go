@@ -53,7 +53,7 @@ func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *
 		to,
 		nonce,
 		ZeroAttoFIL,
-		"method"+fmt.Sprintf("%d", seq),
+		MethodID(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasPrice,
 		mm.DefaultGasUnits)

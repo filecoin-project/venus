@@ -2,7 +2,6 @@ package message_test
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -40,7 +39,7 @@ func TestOutbox(t *testing.T) {
 		ob := message.NewOutbox(w, message.FakeValidator{RejectMessages: true}, queue, publisher,
 			message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
 
-		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), bcast, "")
+		cid, err := ob.Send(context.Background(), sender, sender, types.NewAttoFILFromFIL(2), types.NewGasPrice(0), types.NewGasUnits(0), bcast, types.InvalidMethodID)
 		assert.Errorf(t, err, "for testing")
 		assert.False(t, cid.Defined())
 	})
@@ -71,7 +70,7 @@ func TestOutbox(t *testing.T) {
 		}{{true, actr.Nonce, 1000}, {false, actr.Nonce + 1, 1000}}
 
 		for _, test := range testCases {
-			_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), test.bcast, "")
+			_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), test.bcast, types.InvalidMethodID)
 			require.NoError(t, err)
 			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
 			assert.NotNil(t, publisher.Message)
@@ -107,7 +106,7 @@ func TestOutbox(t *testing.T) {
 		addTwentyMessages := func(batch int) {
 			defer wg.Done()
 			for i := 0; i < msgCount; i++ {
-				method := fmt.Sprintf("%d-%d", batch, i)
+				method := types.MethodID(batch*10000 + i)
 				_, err := s.Send(ctx, sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), bcast, method, []byte{})
 				require.NoError(t, err)
 			}
@@ -152,7 +151,7 @@ func TestOutbox(t *testing.T) {
 
 		ob := message.NewOutbox(w, message.FakeValidator{}, queue, publisher, message.NullPolicy{}, provider, provider, newOutboxTestJournal(t))
 
-		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), true, "")
+		_, err := ob.Send(context.Background(), sender, toAddr, types.ZeroAttoFIL, types.NewGasPrice(0), types.NewGasUnits(0), true, types.InvalidMethodID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account or empty")
 	})

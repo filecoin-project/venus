@@ -17,7 +17,7 @@ type Predicate struct {
 	To address.Address `json:"to"`
 
 	// Method is the actor method this predicate will call.
-	Method string `json:"method"`
+	Method MethodID `json:"method"`
 
 	// Params are the parameters (or a subset of the parameters) used to call the actor method.
 	// They must all be individually abi encodable.

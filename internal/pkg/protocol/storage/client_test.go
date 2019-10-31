@@ -317,6 +317,8 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 		Vouchers:             make([]*types.PaymentVoucher, 10),
 	}
 
+	conditionMethod := types.MethodID(28273)
+
 	for i := 0; i < 10; i++ {
 		resp.Vouchers[i] = &types.PaymentVoucher{
 			Channel: *ctp.channelID,
@@ -326,7 +328,7 @@ func (ctp *clientTestAPI) CreatePayments(ctx context.Context, config porcelain.C
 			ValidAt: *types.NewBlockHeight(ctp.blockHeight).Add(types.NewBlockHeight(uint64(i+1) * VoucherInterval)),
 			Condition: &types.Predicate{
 				To:     config.MinerAddress,
-				Method: "conditionMethod",
+				Method: conditionMethod,
 				Params: []interface{}{config.CommP[:]},
 			},
 		}
@@ -431,6 +433,6 @@ func (ctp *clientTestAPI) DealPut(storageDeal *storagedeal.Deal) error {
 	return nil
 }
 
-func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (ctp *clientTestAPI) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{{byte(types.TestProofsMode)}}, nil
 }

@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -474,7 +475,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 						types.ZeroAttoFIL,
 						gasPrice,
 						gasUnits,
-						"commitSector",
+						miner.CommitSector,
 						val.SectorID,
 						val.CommD[:],
 						val.CommR[:],

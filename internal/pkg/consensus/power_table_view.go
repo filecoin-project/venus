@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -27,7 +29,7 @@ func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.StorageMarketAddress, "getTotalStorage")
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.StorageMarketAddress, storagemarket.GetTotalStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +39,7 @@ func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, "getPower")
+	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, miner.GetPower)
 	if err != nil {
 		return nil, err
 	}
@@ -47,13 +49,13 @@ func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*type
 
 // WorkerAddr returns the address of the miner worker given the miner address.
 func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (address.Address, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, "getWorker")
+	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, miner.GetWorker)
 	if err != nil {
 		return address.Undef, err
 	}
 
 	if len(rets) == 0 {
-		return address.Undef, errors.Errorf("invalid nil return value from getWorker")
+		return address.Undef, errors.Errorf("invalid nil return value from GetWorker")
 	}
 
 	addrValue, err := abi.Deserialize(rets[0], abi.Address)
@@ -62,7 +64,7 @@ func (v PowerTableView) WorkerAddr(ctx context.Context, mAddr address.Address) (
 	}
 	a, ok := addrValue.Val.(address.Address)
 	if !ok {
-		return address.Undef, errors.Errorf("invalid address bytes returned from getWorker")
+		return address.Undef, errors.Errorf("invalid address bytes returned from GetWorker")
 	}
 	return a, nil
 }

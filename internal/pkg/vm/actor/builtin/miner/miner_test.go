@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
@@ -44,13 +45,13 @@ func TestAskFunctions(t *testing.T) {
 
 	// make an ask, and then make sure it all looks good
 	pdata := actor.MustConvertParams(types.NewAttoFILFromFIL(5), big.NewInt(1500))
-	msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "addAsk", pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, AddAsk, pdata)
 
 	_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 	assert.NoError(t, err)
 
 	pdata = actor.MustConvertParams(big.NewInt(0))
-	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, GetAsk, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(t, err)
 
@@ -69,20 +70,20 @@ func TestAskFunctions(t *testing.T) {
 
 	// Look for an ask that doesn't exist
 	pdata = actor.MustConvertParams(big.NewInt(3453))
-	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 2, types.ZeroAttoFIL, GetAsk, pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(2))
 	assert.NoError(t, err)
 	assert.Equal(t, Errors[ErrAskNotFound], result.ExecutionError)
 
 	// make another ask!
 	pdata = actor.MustConvertParams(types.NewAttoFILFromFIL(110), big.NewInt(200))
-	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 3, types.ZeroAttoFIL, "addAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 3, types.ZeroAttoFIL, AddAsk, pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(3))
 	assert.NoError(t, err)
 	assert.Equal(t, big.NewInt(1), big.NewInt(0).SetBytes(result.Receipt.Return[0]))
 
 	pdata = actor.MustConvertParams(big.NewInt(1))
-	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 4, types.ZeroAttoFIL, "getAsk", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 4, types.ZeroAttoFIL, GetAsk, pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 
@@ -92,7 +93,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.Equal(t, types.NewBlockHeight(203), ask2.Expiry)
 	assert.Equal(t, uint64(1), ask2.ID.Uint64())
 
-	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 5, types.ZeroAttoFIL, "getAsks", nil)
+	msg = types.NewUnsignedMessage(address.TestAddress, minerAddr, 5, types.ZeroAttoFIL, GetAsks, nil)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(4))
 	assert.NoError(t, err)
 	assert.NoError(t, result.ExecutionError)
@@ -114,26 +115,27 @@ func TestChangeWorker(t *testing.T) {
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 		// retrieve worker before changing it
-		result := callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess(GetWorker, ctx, t, st, vms, address.TestAddress, minerAddr)
 		addr := mustDeserializeAddress(t, result)
 
 		assert.Equal(t, address.TestAddress, addr)
 
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
-		msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+
+		msg := types.NewUnsignedMessage(address.TestAddress, minerAddr, 1, types.ZeroAttoFIL, ChangeWorker, pdata)
 
 		_, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 		assert.NoError(t, err)
 
 		// retrieve worker
-		result = callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result = callQueryMethodSuccess(GetWorker, ctx, t, st, vms, address.TestAddress, minerAddr)
 		addr = mustDeserializeAddress(t, result)
 
 		assert.Equal(t, address.TestAddress2, addr)
 
 		// ensure owner is not also changed
-		result = callQueryMethodSuccess("getOwner", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result = callQueryMethodSuccess(GetOwner, ctx, t, st, vms, address.TestAddress, minerAddr)
 		addr = mustDeserializeAddress(t, result)
 
 		assert.Equal(t, address.TestAddress, addr)
@@ -145,7 +147,7 @@ func TestChangeWorker(t *testing.T) {
 		// change worker
 		pdata := actor.MustConvertParams(address.TestAddress2)
 		badActor := address.TestAddress2
-		msg := types.NewUnsignedMessage(badActor, minerAddr, 1, types.ZeroAttoFIL, "changeWorker", pdata)
+		msg := types.NewUnsignedMessage(badActor, minerAddr, 1, types.ZeroAttoFIL, ChangeWorker, pdata)
 
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(1))
 		assert.NoError(t, err)
@@ -162,7 +164,7 @@ func TestChangeWorker(t *testing.T) {
 		pdata := actor.MustConvertParams(address.TestAddress2)
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "changeWorker", pdata, gasPrice, gasLimit)
+		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, ChangeWorker, pdata, gasPrice, gasLimit)
 
 		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, mockSigner.Addresses[0])
 		assert.NoError(t, err)
@@ -184,7 +186,7 @@ func TestGetWorker(t *testing.T) {
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 	// retrieve worker
-	result := callQueryMethodSuccess("getWorker", ctx, t, st, vms, address.TestAddress, minerAddr)
+	result := callQueryMethodSuccess(GetWorker, ctx, t, st, vms, address.TestAddress, minerAddr)
 
 	addrValue, err := abi.Deserialize(result[0], abi.Address)
 	require.NoError(t, err)
@@ -206,7 +208,7 @@ func TestGetOwner(t *testing.T) {
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 	// retrieve key
-	result := callQueryMethodSuccess("getOwner", ctx, t, st, vms, address.TestAddress, minerAddr)
+	result := callQueryMethodSuccess(GetOwner, ctx, t, st, vms, address.TestAddress, minerAddr)
 
 	addrValue, err := abi.Deserialize(result[0], abi.Address)
 	require.NoError(t, err)
@@ -228,7 +230,7 @@ func TestGetActiveCollateral(t *testing.T) {
 	minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
 	// Check 0 collateral
-	result := callQueryMethodSuccess("getActiveCollateral", ctx, t, st, vms, address.TestAddress, minerAddr)
+	result := callQueryMethodSuccess(GetActiveCollateral, ctx, t, st, vms, address.TestAddress, minerAddr)
 	attoFILValue, err := abi.Deserialize(result[0], abi.AttoFIL)
 	require.NoError(t, err)
 
@@ -242,13 +244,13 @@ func TestGetActiveCollateral(t *testing.T) {
 	commRStar := th.MakeCommitment()
 	commD := th.MakeCommitment()
 
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(0), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, CommitSector, nil, uint64(0), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	// Check updated collateral
-	result = callQueryMethodSuccess("getActiveCollateral", ctx, t, st, vms, address.TestAddress, minerAddr)
+	result = callQueryMethodSuccess(GetActiveCollateral, ctx, t, st, vms, address.TestAddress, minerAddr)
 	attoFILValue, err = abi.Deserialize(result[0], abi.AttoFIL)
 	require.NoError(t, err)
 
@@ -288,7 +290,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, origPid)
 
 		// retrieve peer ID
-		resultA := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
+		resultA := callQueryMethodSuccess(GetPeerID, ctx, t, st, vms, address.TestAddress, minerAddr)
 		pid, err := peer.IDFromBytes(resultA[0])
 		require.NoError(t, err)
 
@@ -299,7 +301,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 		updatePeerIdSuccess(t, st, vms, address.TestAddress, minerAddr, newPid)
 
 		// retrieve peer ID
-		resultB := callQueryMethodSuccess("getPeerID", ctx, t, st, vms, address.TestAddress, minerAddr)
+		resultB := callQueryMethodSuccess(GetPeerID, ctx, t, st, vms, address.TestAddress, minerAddr)
 		pid, err = peer.IDFromBytes(resultB[0])
 		require.NoError(t, err)
 
@@ -321,7 +323,7 @@ func TestPeerIdGetterAndSetter(t *testing.T) {
 			minerAddr,
 			th.RequireGetNonce(t, st, address.TestAddress2),
 			types.NewAttoFILFromFIL(0),
-			"updatePeerID",
+			UpdatePeerID,
 			actor.MustConvertParams(th.RequireRandomPeerID(t)))
 
 		applyMsgResult, err := th.ApplyTestMessage(st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
@@ -343,7 +345,7 @@ func TestMinerGetPower(t *testing.T) {
 		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve power (trivial result for no proven sectors)
-		result := callQueryMethodSuccess("getPower", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess(GetPower, ctx, t, st, vms, address.TestAddress, minerAddr)
 		require.True(t, types.ZeroBytes.Equal(types.NewBytesAmountFromBytes(result[0])))
 	})
 }
@@ -360,7 +362,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		minerAddr := th.CreateTestMinerWith(types.NewAttoFILFromFIL(240), t, st, vms, address.TestAddress, th.RequireRandomPeerID(t), 0)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess(GetProvingWindow, ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
@@ -390,13 +392,13 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		commD := th.MakeCommitment()
 
 		blockHeight := uint64(42)
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, blockHeight, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, blockHeight, CommitSector, nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// retrieve proving period
-		result := callQueryMethodSuccess("getProvingWindow", ctx, t, st, vms, address.TestAddress, minerAddr)
+		result := callQueryMethodSuccess(GetProvingWindow, ctx, t, st, vms, address.TestAddress, minerAddr)
 		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
 		require.NoError(t, err)
 
@@ -424,7 +426,7 @@ func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAdd
 		minerAddr,
 		th.RequireGetNonce(t, st, fromAddr),
 		types.NewAttoFILFromFIL(0),
-		"updatePeerID",
+		UpdatePeerID,
 		actor.MustConvertParams(newPid))
 
 	applyMsgResult, err := th.ApplyTestMessage(st, vms, updatePeerIdMsg, types.NewBlockHeight(0))
@@ -433,7 +435,7 @@ func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAdd
 	require.Equal(t, uint8(0), applyMsgResult.Receipt.ExitCode)
 }
 
-func callQueryMethodSuccess(method string,
+func callQueryMethodSuccess(method types.MethodID,
 	ctx context.Context,
 	t *testing.T, st state.Tree,
 	vms vm.StorageMap,
@@ -463,7 +465,7 @@ func TestMinerCommitSector(t *testing.T) {
 		commD := th.MakeCommitment()
 
 		f := func(sectorId uint64) (*consensus.ApplicationResult, error) {
-			return th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(sectorId), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+			return th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, CommitSector, nil, uint64(sectorId), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		}
 
 		// these commitments should exhaust miner's FIL
@@ -492,13 +494,13 @@ func TestMinerCommitSector(t *testing.T) {
 		commRStar := th.MakeCommitment()
 		commD := th.MakeCommitment()
 
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, CommitSector, nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 		require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period matches
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "getProvingWindow", nil)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, GetProvingWindow, nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 
@@ -509,7 +511,7 @@ func TestMinerCommitSector(t *testing.T) {
 		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[1]))
 
 		// fail because commR already exists
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, "commitSector", nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, CommitSector, nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 		require.EqualError(t, res.ExecutionError, "sector already committed at this ID")
 		require.Equal(t, uint8(0x23), res.Receipt.ExitCode)
@@ -535,7 +537,7 @@ func (mal *minerActorLiason) requireHeightNotPast(blockHeight uint64) {
 
 func (mal *minerActorLiason) requireCommit(blockHeight, sectorID uint64) {
 	mal.requireHeightNotPast(blockHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "commitSector", mal.ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, CommitSector, mal.ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(mal.t, err)
 	require.NoError(mal.t, res.ExecutionError)
 	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
@@ -543,7 +545,7 @@ func (mal *minerActorLiason) requireCommit(blockHeight, sectorID uint64) {
 
 func (mal *minerActorLiason) requirePoSt(blockHeight uint64, done types.IntSet, faults types.FaultSet) {
 	mal.requireHeightNotPast(blockHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, th.MakeRandomPoStProofForTest(), faults, done)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, SubmitPoSt, mal.ancestors, th.MakeRandomPoStProofForTest(), faults, done)
 	assert.NoError(mal.t, err)
 	assert.NoError(mal.t, res.ExecutionError)
 	assert.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
@@ -562,7 +564,7 @@ func (mal *minerActorLiason) requireReadState() State {
 
 func (mal *minerActorLiason) requirePower(queryHeight uint64) *types.BytesAmount {
 	mal.requireHeightNotPast(queryHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, "getPower", mal.ancestors)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, GetPower, mal.ancestors)
 	require.NoError(mal.t, err)
 	require.NoError(mal.t, res.ExecutionError)
 	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
@@ -572,7 +574,7 @@ func (mal *minerActorLiason) requirePower(queryHeight uint64) *types.BytesAmount
 
 func (mal *minerActorLiason) requireTotalStorage(queryHeight uint64) *types.BytesAmount {
 	mal.requireHeightNotPast(queryHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, address.StorageMarketAddress, 0, queryHeight, "getTotalStorage", mal.ancestors)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, address.StorageMarketAddress, 0, queryHeight, storagemarket.GetTotalStorage, mal.ancestors)
 	require.NoError(mal.t, err)
 	require.NoError(mal.t, res.ExecutionError)
 	require.Equal(mal.t, uint8(0), res.Receipt.ExitCode)
@@ -582,14 +584,14 @@ func (mal *minerActorLiason) requireTotalStorage(queryHeight uint64) *types.Byte
 
 func (mal *minerActorLiason) assertPoStFail(blockHeight uint64, done types.IntSet, exitCode uint8) {
 	mal.requireHeightNotPast(blockHeight)
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, "submitPoSt", mal.ancestors, th.MakeRandomPoStProofForTest(), types.EmptyFaultSet(), done)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, blockHeight, SubmitPoSt, mal.ancestors, th.MakeRandomPoStProofForTest(), types.EmptyFaultSet(), done)
 	assert.NoError(mal.t, err)
 	assert.Error(mal.t, res.ExecutionError)
 	assert.Equal(mal.t, exitCode, res.Receipt.ExitCode)
 }
 
 func (mal *minerActorLiason) assertPoStStateAtHeight(expected int64, queryHeight uint64) {
-	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, "getPoStState", mal.ancestors)
+	res, err := th.CreateAndApplyTestMessage(mal.t, mal.st, mal.vms, mal.minerAddr, 0, queryHeight, GetPoStState, mal.ancestors)
 	assert.NoError(mal.t, err)
 	require.NotNil(mal.t, res)
 
@@ -744,7 +746,7 @@ func TestMinerSubmitPoStPowerUpdates(t *testing.T) {
 func TestMinerSubmitPoStVerification(t *testing.T) {
 	tf.UnitTest(t)
 
-	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", nil)
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, SubmitPoSt, nil)
 	comm1 := th.MakeCommitments()
 	comm2 := th.MakeCommitments()
 	comm3 := th.MakeCommitments()
@@ -765,7 +767,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
-		miner := Actor{Bootstrap: false}
+		miner := Impl(Actor{Bootstrap: false})
 
 		testProof := th.MakeRandomPoStProofForTest()
 		_, err := miner.SubmitPoSt(vmctx, testProof, types.EmptyFaultSet(), types.EmptyIntSet())
@@ -799,7 +801,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		vmctx := th.NewFakeVMContext(message, minerState)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
-		miner := Actor{Bootstrap: false}
+		miner := Impl(Actor{Bootstrap: false})
 
 		testProof := th.MakeRandomPoStProofForTest()
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.EmptyFaultSet(), types.NewIntSet())
@@ -823,7 +825,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
-		miner := Actor{Bootstrap: false}
+		miner := Impl(Actor{Bootstrap: false})
 
 		testProof := th.MakeRandomPoStProofForTest()
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.EmptyFaultSet(), types.NewIntSet())
@@ -847,7 +849,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
-		miner := Actor{Bootstrap: false}
+		miner := Impl(Actor{Bootstrap: false})
 
 		testProof := th.MakeRandomPoStProofForTest()
 		code, err := miner.SubmitPoSt(vmctx, testProof, types.EmptyFaultSet(), types.NewIntSet())
@@ -1046,26 +1048,26 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	lastPossibleSubmission := secondProvingPeriodStart + 2*LargestSectorSizeProvingPeriodBlocks - 1
 
 	// add a sector
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, CommitSector, ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	// add another sector
-	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, CommitSector, ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 	t.Run("on-time PoSt succeeds", func(t *testing.T) {
 		// submit post
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+5, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
 
 		// check that the proving period is now the next one
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, "getProvingWindow", ancestors)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, GetProvingWindow, ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))
@@ -1073,24 +1075,24 @@ func TestMinerSubmitPoSt(t *testing.T) {
 
 	t.Run("after proving period grace period PoSt is rejected", func(t *testing.T) {
 		// Rejected one block late
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.Error(t, res.ExecutionError)
 	})
 
 	t.Run("late submission charged fee", func(t *testing.T) {
 		// Rejected on the deadline with message value not carrying sufficient fees
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.Error(t, res.ExecutionError)
 
 		// Accepted on the deadline with a fee
 		// Must calculate fee before submitting the PoSt, since submission will reset the proving period.
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "calculateLateFee", ancestors, lastPossibleSubmission)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, CalculateLateFee, ancestors, lastPossibleSubmission)
 		fee := types.NewAttoFILFromBytes(res.Receipt.Return[0])
 		require.False(t, fee.IsZero())
 
-		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 1, lastPossibleSubmission, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -1108,7 +1110,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	t.Run("computes seed randomness at correct chain height when post is on time", func(t *testing.T) {
 		var actualSampleHeight *types.BlockHeight
 
-		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, SubmitPoSt, []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1124,7 +1126,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		// block time that isn't late
 		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd - PoStChallengeWindowBlocks + 30)
 
-		miner := Actor{}
+		miner := Impl(Actor{})
 		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
 		require.NoError(t, err)
 		require.Equal(t, uint8(0), code)
@@ -1137,7 +1139,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	t.Run("computes seed randomness at correct chain height when post is late", func(t *testing.T) {
 		var actualSampleHeight *types.BlockHeight
 
-		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, SubmitPoSt, []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1153,7 +1155,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		// block time that is late
 		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks + 30)
 
-		miner := Actor{}
+		miner := Impl(Actor{})
 		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
 		require.NoError(t, err)
 		require.Equal(t, uint8(0), code)
@@ -1164,7 +1166,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 	})
 
 	t.Run("provides informative error when PoSt attempts to sample chain height before it is ready", func(t *testing.T) {
-		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "submitPoSt", []byte{})
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, SubmitPoSt, []byte{})
 
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
@@ -1179,7 +1181,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		// block time before proving window
 		vmctx.BlockHeightValue = types.NewBlockHeight(secondProvingPeriodEnd + LargestSectorSizeProvingPeriodBlocks - PoStChallengeWindowBlocks - 25)
 
-		miner := Actor{}
+		miner := Impl(Actor{})
 		code, err := miner.SubmitPoSt(vmctx, []byte{}, types.EmptyFaultSet(), types.EmptyIntSet())
 		require.Error(t, err)
 		require.NotEqual(t, uint8(0), code)
@@ -1200,7 +1202,7 @@ func TestAddFaults(t *testing.T) {
 	provingPeriodEnd := provingPeriodStart + LargestSectorSizeProvingPeriodBlocks
 	provingWindowStart := provingPeriodEnd - PoStChallengeWindowBlocks
 
-	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "addFaults", []byte{})
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, AddFaults, []byte{})
 
 	cases := []struct {
 		bh              uint64
@@ -1226,7 +1228,7 @@ func TestAddFaults(t *testing.T) {
 		vmctx := th.NewFakeVMContext(message, minerState)
 		vmctx.BlockHeightValue = types.NewBlockHeight(tc.bh)
 
-		miner := Actor{}
+		miner := Impl(Actor{})
 		code, err := miner.AddFaults(vmctx, types.NewFaultSet(tc.faults))
 		require.NoError(t, err)
 		require.Equal(t, uint8(0), code)
@@ -1266,19 +1268,19 @@ func TestActorSlashStorageFault(t *testing.T) {
 		faultsDefault := types.EmptyFaultSet()
 
 		// add a sector
-		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, "commitSector", ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight, CommitSector, ancestors, uint64(1), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 
 		// add another sector (not in proving set yet)
-		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, "commitSector", ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+1, CommitSector, ancestors, uint64(2), th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 		require.NoError(t, err)
 
 		// submit post (first sector only)
-		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, secondProvingPeriodStart, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		require.NoError(t, err)
 
 		// submit post (both sectors
-		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart, "submitPoSt", ancestors, proof, faultsDefault, doneDefault)
+		_, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, thirdProvingPeriodStart, SubmitPoSt, ancestors, proof, faultsDefault, doneDefault)
 		assert.NoError(t, err)
 
 		return st, vms, minerAddr
@@ -1291,7 +1293,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		// change worker
 		gasPrice, _ := types.NewAttoFILFromFILString(".00001")
 		gasLimit := types.NewGasUnits(10)
-		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, "slashStorageFault", []byte{}, gasPrice, gasLimit)
+		msg := types.NewMeteredMessage(mockSigner.Addresses[0], minerAddr, 0, types.ZeroAttoFIL, SlashStorageFault, []byte{}, gasPrice, gasLimit)
 
 		result, err := th.ApplyTestMessageWithGas(builtin.DefaultActors, st, vms, msg, types.NewBlockHeight(1), &mockSigner, mockSigner.Addresses[0])
 		require.NoError(t, err)
@@ -1306,7 +1308,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		st, vms := th.RequireCreateStorages(ctx, t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
 
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, "slashStorageFault", nil)
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission+1, SlashStorageFault, nil)
 		require.NoError(t, err)
 		assert.Contains(t, res.ExecutionError.Error(), "miner is inactive")
 		assert.Equal(t, uint8(ErrMinerNotSlashable), res.Receipt.ExitCode)
@@ -1315,7 +1317,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	t.Run("slashing too early fails", func(t *testing.T) {
 		st, vms, minerAddr := createMinerWithPower(t)
 
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, "slashStorageFault", nil)
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, lastPossibleSubmission, SlashStorageFault, nil)
 		require.NoError(t, err)
 		assert.Contains(t, res.ExecutionError.Error(), "miner not yet tardy")
 		assert.Equal(t, uint8(ErrMinerNotSlashable), res.Receipt.ExitCode)
@@ -1331,7 +1333,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 		oldTotalStoragePower := th.GetTotalPower(t, st, vms)
 
 		slashTime := lastPossibleSubmission + 1
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, "slashStorageFault", nil)
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, SlashStorageFault, nil)
 		require.NoError(t, err)
 		require.NoError(t, res.ExecutionError)
 		assert.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -1357,10 +1359,10 @@ func TestActorSlashStorageFault(t *testing.T) {
 		st, vms, minerAddr := createMinerWithPower(t)
 
 		slashTime := lastPossibleSubmission + 1
-		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, "slashStorageFault", nil)
+		_, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime, SlashStorageFault, nil)
 		require.NoError(t, err)
 
-		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime+1, "slashStorageFault", nil)
+		res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, slashTime+1, SlashStorageFault, nil)
 		require.NoError(t, err)
 		assert.Contains(t, res.ExecutionError.Error(), "miner already slashed")
 		assert.Equal(t, uint8(ErrMinerAlreadySlashed), res.Receipt.ExitCode)
@@ -1394,7 +1396,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is invalid if miner hasn't committed sector", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:   "verifyPieceInclusion",
+			message:   VerifyPieceInclusion,
 			sectorSet: NewSectorSet(),
 		}).build()
 
@@ -1408,7 +1410,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is invalid if miner isn't proving anything", func(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
-		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, VerifyPieceInclusion, msgParams)
 
 		comm1 := th.MakeCommitments()
 		comm2 := th.MakeCommitments()
@@ -1421,7 +1423,7 @@ func TestVerifyPIP(t *testing.T) {
 		minerState.SectorCommitments = commitments
 
 		vmctx := th.NewFakeVMContext(message, minerState)
-		miner := Actor{}
+		miner := Impl(Actor{})
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
 
@@ -1431,7 +1433,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is invalid if miner is tardy/slashable", func(t *testing.T) {
 		msgParams := actor.MustConvertParams(commP, pieceSize, firstSectorID, pip)
-		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "verifyPieceInclusion", msgParams)
+		message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, VerifyPieceInclusion, msgParams)
 
 		comm1 := th.MakeCommitments()
 		comm2 := th.MakeCommitments()
@@ -1451,7 +1453,7 @@ func TestVerifyPIP(t *testing.T) {
 
 		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(LatePoStGracePeriod(minerState.SectorSize)).Add(types.NewBlockHeight(1))
-		miner := Actor{}
+		miner := Impl(Actor{})
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
 
@@ -1461,7 +1463,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("verifier errors are propagated to caller", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:          "verifyPieceInclusion",
+			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
 			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
@@ -1484,7 +1486,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("verifier rejecting the proof produces an error, too", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:          "verifyPieceInclusion",
+			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
 			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
@@ -1507,7 +1509,7 @@ func TestVerifyPIP(t *testing.T) {
 
 	t.Run("PIP is valid if the miner is currently active and has the sector committed", func(t *testing.T) {
 		vmctx, verifier, minerActor := (&minerEnvBuilder{
-			message:          "verifyPieceInclusion",
+			message:          VerifyPieceInclusion,
 			sectorSet:        sectorSetWithOneCommitment,
 			provingPeriodEnd: types.NewBlockHeight(0),
 			verifier: &verification.FakeVerifier{
@@ -1622,7 +1624,7 @@ func TestMinerGetPoStState(t *testing.T) {
 func TestGetProvingSetCommitments(t *testing.T) {
 	tf.UnitTest(t)
 
-	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, "getProvingSetCommitments", nil)
+	message := types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, GetProvingSetCommitments, nil)
 	comm1 := th.MakeCommitments()
 	comm2 := th.MakeCommitments()
 	comm3 := th.MakeCommitments()
@@ -1640,7 +1642,7 @@ func TestGetProvingSetCommitments(t *testing.T) {
 		minerState.ProvingSet = types.NewIntSet(1, 2)
 
 		vmctx := th.NewFakeVMContext(message, minerState)
-		miner := Actor{}
+		miner := Impl(Actor{})
 
 		commitments, code, err := miner.GetProvingSetCommitments(vmctx)
 		require.NoError(t, err)
@@ -1658,7 +1660,7 @@ func TestGetProvingSetCommitments(t *testing.T) {
 		minerState.ProvingSet = types.NewIntSet(4) // sector commitments has no sector 4
 
 		vmctx := th.NewFakeVMContext(message, minerState)
-		miner := Actor{}
+		miner := Impl(Actor{})
 
 		_, code, err := miner.GetProvingSetCommitments(vmctx)
 		require.Error(t, err)
@@ -1699,13 +1701,13 @@ func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *Sta
 
 type minerEnvBuilder struct {
 	provingPeriodEnd *types.BlockHeight
-	message          string
+	message          types.MethodID
 	sectorSet        SectorSet
 	sectorSize       *types.BytesAmount
 	verifier         *verification.FakeVerifier
 }
 
-func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Actor) {
+func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Impl) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd
@@ -1724,5 +1726,6 @@ func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *
 
 	vmctx := th.NewFakeVMContextWithVerifier(types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
 
-	return vmctx, b.verifier, &Actor{}
+	actor := Impl(Actor{})
+	return vmctx, b.verifier, &actor
 }

@@ -170,7 +170,7 @@ func NewSignedMessageForTestGetter(ms MockSigner) func() *SignedMessage {
 			newAddr,
 			0,
 			ZeroAttoFIL,
-			s,
+			InvalidMethodID,
 			[]byte("params"),
 			NewGasPrice(0),
 			NewGasUnits(0))
@@ -230,7 +230,7 @@ func NewMessageForTestGetter() func() *UnsignedMessage {
 			to,
 			0,
 			ZeroAttoFIL,
-			s,
+			MethodID(10000+i),
 			nil)
 	}
 }

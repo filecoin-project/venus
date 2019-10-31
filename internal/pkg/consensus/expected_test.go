@@ -161,7 +161,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		blsMessages := make([][]*types.UnsignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
 		blsMessages[0] = append(blsMessages[0], msg)
 
 		_, _, err = exp.RunStateTransition(ctx, tipSet, blsMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(blocks[0].ParentWeight), blocks[0].StateRoot)
@@ -191,7 +191,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		require.NoError(t, err)
 
 		secpMessages := make([][]*types.SignedMessage, tipSet.Len())
-		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), "", []byte{})
+		msg := types.NewUnsignedMessage(blsAddr, address.TestAddress2, 0, types.NewAttoFILFromFIL(0), types.InvalidMethodID, []byte{})
 		smsg := &types.SignedMessage{
 			Message:   *msg,
 			Signature: []byte("not a signature"),
