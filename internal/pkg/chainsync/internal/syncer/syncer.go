@@ -56,7 +56,9 @@ type Syncer struct {
 	badTipSets *BadTipSetCache
 
 	// Evaluates tipset messages and stores the resulting states.
-	validator SemanticValidator
+	fullValidator FullBlockValidator
+	// Validates headers
+	headerValidator HeaderValidator
 	// Selects the heaviest of two chains
 	chainSelector ChainSelector
 	// Provides and stores validated tipsets and their state roots.
@@ -103,14 +105,18 @@ type ChainSelector interface {
 	Weight(ctx context.Context, ts block.TipSet, stRoot cid.Cid) (uint64, error)
 }
 
-// SemanticValidator does semantic validation on fullblocks.
-type SemanticValidator interface {
-	// RunStateTransition returns the state root CID resulting from applying the input ts to the
-	// prior `stateRoot`.  It returns an error if the transition is invalid.
-	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
+// HeaderValidator does semanitc validation on headers
+type HeaderValidator interface {
 	// ValidateSemantic validates conditions on a block header that can be
 	// checked with the parent header but not parent state.
 	ValidateSemantic(ctx context.Context, header *block.Block, parents block.TipSet) error
+}
+
+// FullBlockValidator does semantic validation on fullblocks.
+type FullBlockValidator interface {
+	// RunStateTransition returns the state root CID resulting from applying the input ts to the
+	// prior `stateRoot`.  It returns an error if the transition is invalid.
+	RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
 }
 
 var reorgCnt *metrics.Int64Counter
@@ -140,13 +146,14 @@ func init() {
 var logSyncer = logging.Logger("chainsync.syncer")
 
 // NewSyncer constructs a Syncer ready for use.
-func NewSyncer(e SemanticValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock) *Syncer {
+func NewSyncer(fv FullBlockValidator, hv HeaderValidator, cs ChainSelector, s ChainReaderWriter, m messageStore, f Fetcher, sr status.Reporter, c clock.Clock) *Syncer {
 	return &Syncer{
 		fetcher: f,
 		badTipSets: &BadTipSetCache{
 			bad: make(map[string]struct{}),
 		},
-		validator:       e,
+		fullValidator:   fv,
+		headerValidator: hv,
 		chainSelector:   cs,
 		chainStore:      s,
 		messageProvider: m,
@@ -177,7 +184,7 @@ func (syncer *Syncer) fetchAndValidateHeaders(ctx context.Context, ci *block.Cha
 	}
 	for i, ts := range headers {
 		for i := 0; i < ts.Len(); i++ {
-			err = syncer.validator.ValidateSemantic(ctx, ts.At(i), parent)
+			err = syncer.headerValidator.ValidateSemantic(ctx, ts.At(i), parent)
 			if err != nil {
 				return nil, err
 			}
@@ -217,7 +224,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 	if err != nil {
 		return err
 	}
-	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
+	ancestorHeight := types.NewBlockHeight(h).Sub(types.NewBlockHeight(uint64(consensus.AncestorRoundsNeeded)))
 	ancestors, err := chain.GetRecentAncestors(ctx, parent, syncer.chainStore, ancestorHeight)
 	if err != nil {
 		return err
@@ -245,7 +252,7 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 
 	// Run a state transition to validate the tipset and compute
 	// a new state to add to the store.
-	root, receipts, err := syncer.validator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, ancestors, parentWeight, stateRoot)
+	root, receipts, err := syncer.fullValidator.RunStateTransition(ctx, next, nextBlsMessages, nextSecpMessages, ancestors, parentWeight, stateRoot)
 	if err != nil {
 		return err
 	}

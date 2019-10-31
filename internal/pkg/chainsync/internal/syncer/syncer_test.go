@@ -201,7 +201,7 @@ func TestNoUncessesaryFetch(t *testing.T) {
 	// A new syncer unable to fetch blocks from the network can handle a tipset that's already
 	// in the store and linked to genesis.
 	emptyFetcher := chain.NewBuilder(t, address.Undef)
-	newSyncer := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	newSyncer := syncer.NewSyncer(&chain.FakeStateEvaluator{}, &chain.FakeStateEvaluator{}, &chain.FakeChainSelector{}, store, builder, emptyFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 	assert.NoError(t, newSyncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", head.Key(), heightFromTip(t, head)), true))
 }
 
@@ -401,7 +401,7 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 	tf.UnitTest(t)
 	ctx := context.Background()
 	eval := newPoisonValidator(t, 98, 99)
-	builder, store, syncer := setupWithValidator(ctx, t, eval)
+	builder, store, syncer := setupWithValidator(ctx, t, eval, eval)
 	genesis := builder.RequireTipSet(store.GetHead())
 
 	// Build a chain with messages that will fail semantic header validation
@@ -509,10 +509,10 @@ func TestStoresMessageReceipts(t *testing.T) {
 // The chain builder has a single genesis block, which is set as the head of the store.
 func setup(ctx context.Context, t *testing.T) (*chain.Builder, *chain.Store, *syncer.Syncer) {
 	eval := &chain.FakeStateEvaluator{}
-	return setupWithValidator(ctx, t, eval)
+	return setupWithValidator(ctx, t, eval, eval)
 }
 
-func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticValidator) (*chain.Builder, *chain.Store, *syncer.Syncer) {
+func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBlockValidator, headerVal syncer.HeaderValidator) (*chain.Builder, *chain.Store, *syncer.Syncer) {
 	builder := chain.NewBuilder(t, address.Undef)
 	genesis := builder.NewGenesis()
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
@@ -526,7 +526,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticVa
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	sel := &chain.FakeChainSelector{}
-	syncer := syncer.NewSyncer(val, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	syncer := syncer.NewSyncer(fullVal, headerVal, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	return builder, store, syncer
 }

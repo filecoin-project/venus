@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	cid "github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -17,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-// NewValidTestBlockFromTipSet creates a block for when proofs & power table don't need
-// to be correct
-func NewValidTestBlockFromTipSet(baseTipSet block.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) (*block.Block, error) {
+// RequireSignedTestBlockFromTipSet creates a block with a valid signature by
+// the passed in miner work and a Miner field set to the minerAddr.
+func RequireSignedTestBlockFromTipSet(t *testing.T, baseTipSet block.TipSet, stateRootCid cid.Cid, height uint64, minerAddr address.Address, minerWorker address.Address, signer types.Signer) *block.Block {
 	electionProof := consensus.MakeFakeElectionProofForTest()
 	ticket := consensus.MakeFakeTicketForTest()
 	emptyBLSSig := (*bls.Aggregate([]bls.Signature{}))[:]
@@ -35,12 +36,10 @@ func NewValidTestBlockFromTipSet(baseTipSet block.TipSet, stateRootCid cid.Cid, 
 		BLSAggregateSig: emptyBLSSig,
 	}
 	sig, err := signer.SignBytes(b.SignatureData(), minerWorker)
-	if err != nil {
-		return nil, err
-	}
+	require.NoError(t, err)
 	b.BlockSig = sig
 
-	return b, nil
+	return b
 }
 
 // MakeRandomPoStProofForTest creates a random proof.

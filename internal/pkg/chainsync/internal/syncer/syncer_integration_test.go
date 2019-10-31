@@ -52,7 +52,7 @@ func TestLoadFork(t *testing.T) {
 	// *not* as the store, to which the syncer must ensure to put blocks.
 	eval := &chain.FakeStateEvaluator{}
 	sel := &chain.FakeChainSelector{}
-	s := syncer.NewSyncer(eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	s := syncer.NewSyncer(eval, eval, sel, store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	base := builder.AppendManyOn(3, genesis)
 	left := builder.AppendManyOn(4, base)
@@ -80,7 +80,7 @@ func TestLoadFork(t *testing.T) {
 	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
-	offlineSyncer := syncer.NewSyncer(eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	offlineSyncer := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	assert.True(t, newStore.HasTipSetAndState(ctx, left.Key()))
 	assert.False(t, newStore.HasTipSetAndState(ctx, right.Key()))
@@ -156,7 +156,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
 	require.NoError(t, store.SetHead(ctx, gen))
-	syncer := syncer.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
+	eval := &integrationStateEvaluator{c512: isb.c512}
+	syncer := syncer.NewSyncer(eval, eval, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
 	// sync fork 1
 	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo("", "", head1.Key(), heightFromTip(t, head1)), true))

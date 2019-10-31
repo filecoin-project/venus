@@ -268,3 +268,49 @@ func SeedLoserInNRounds(t *testing.T, n int, ki *types.KeyInfo, minerPower, tota
 		require.NoError(t, err)
 	}
 }
+
+// MockTicketMachine allows a test to set a function to be called upon ticket
+// generation and validation
+type MockTicketMachine struct {
+	fn func(block.Ticket)
+}
+
+// NewMockTicketMachine creates a mock given a callback
+func NewMockTicketMachine(f func(block.Ticket)) *MockTicketMachine {
+	return &MockTicketMachine{fn: f}
+}
+
+// NextTicket calls the registered callback and returns a fake ticket
+func (mtm *MockTicketMachine) NextTicket(ticket block.Ticket, genAddr address.Address, signer types.Signer) (block.Ticket, error) {
+	mtm.fn(ticket)
+	return MakeFakeTicketForTest(), nil
+}
+
+// IsValidTicket calls the registered callback and returns true
+func (mtm *MockTicketMachine) IsValidTicket(parent, ticket block.Ticket, signerAddr address.Address) bool {
+	mtm.fn(ticket)
+	return true
+}
+
+// MockElectionMachine allows a test to set a function to be called upon
+// election running and validation
+type MockElectionMachine struct {
+	fn func(block.Ticket)
+}
+
+// NewMockElectionMachine creates a mock given a callback
+func NewMockElectionMachine(f func(block.Ticket)) *MockElectionMachine {
+	return &MockElectionMachine{fn: f}
+}
+
+// RunElection calls the registered callback and returns a fake proof
+func (mem *MockElectionMachine) RunElection(ticket block.Ticket, candidateAddr address.Address, signer types.Signer, nullCount uint64) (block.VRFPi, error) {
+	mem.fn(ticket)
+	return MakeFakeElectionProofForTest(), nil
+}
+
+// IsElectionWinner calls the registered callback and returns true
+func (mem *MockElectionMachine) IsElectionWinner(ctx context.Context, ptv PowerTableView, ticket block.Ticket, nullCount uint64, electionProof block.VRFPi, signerAddr, minerAddr address.Address) (bool, error) {
+	mem.fn(ticket)
+	return true, nil
+}

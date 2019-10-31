@@ -55,7 +55,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	}
 
 	// set up consensus
-	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, blkValid, chn.ActorState, config.GenesisCid(), config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{})
+	nodeConsensus := consensus.NewExpected(blockstore.CborStore, blockstore.Blockstore, chn.Processor, chn.ActorState, config.BlockTime(), consensus.ElectionMachine{}, consensus.TicketMachine{})
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
 
 	// setup fecher
@@ -66,7 +66,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	gsync := graphsync.New(ctx, graphsyncNetwork, bridge, loader, storer)
 	fetcher := fetcher.NewGraphSyncFetcher(ctx, gsync, blockstore.Blockstore, blkValid, config.Clock(), discovery.PeerTracker)
 
-	chainSyncManager := chainsync.NewManager(nodeConsensus, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
+	chainSyncManager := chainsync.NewManager(nodeConsensus, blkValid, nodeChainSelector, chn.ChainReader, chn.MessageStore, fetcher, config.Clock())
 
 	return SyncerSubmodule{
 		// BlockSub: nil,

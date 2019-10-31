@@ -29,12 +29,6 @@ type Protocol interface {
 	// prior `stateID`.  It returns an error if the transition is invalid.
 	RunStateTransition(ctx context.Context, ts block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error)
 
-	// ValidateSyntax validates a single block is correctly formed.
-	ValidateSyntax(ctx context.Context, b *block.Block) error
-
-	// ValidateSemantic validates a block is correctly derived from its parent.
-	ValidateSemantic(ctx context.Context, child *block.Block, parents block.TipSet) error
-
 	// BlockTime returns the block time used by the consensus protocol.
 	BlockTime() time.Duration
 }
