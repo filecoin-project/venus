@@ -357,9 +357,9 @@ type Impl Actor
 
 var log = logging.Logger("actor.miner")
 
-// XXX: import cycle, need cleanup
-var XXX_storagemarket_UpdateStorage = types.MethodID(1 + 32)
-var XXX_storagemarket_GetProofsMode = types.MethodID(3 + 32)
+// Dragons: import cycle between actors, we need to separate the definitions from the impls
+var Storagemarket_UpdateStorage = types.MethodID(1 + 32)
+var Storagemarket_GetProofsMode = types.MethodID(3 + 32)
 
 // LargestSectorSizeProvingPeriodBlocks defines the number of blocks in a
 // proving period for a miner configured to use the largest sector size
@@ -1100,7 +1100,7 @@ func (a *Impl) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults 
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-			_, ret, err := ctx.Send(address.StorageMarketAddress, XXX_storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
+			_, ret, err := ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 			if err != nil {
 				return nil, err
 			}
@@ -1163,7 +1163,7 @@ func (*Impl) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-		_, ret, err := ctx.Send(address.StorageMarketAddress, XXX_storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		_, ret, err := ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 		if err != nil {
 			return nil, err
 		}
@@ -1261,7 +1261,7 @@ func getPoStChallengeSeed(ctx exec.VMContext, state State, sampleAt *types.Block
 // GetProofsMode returns the genesis block-configured proofs mode.
 func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.Send(address.StorageMarketAddress, XXX_storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	msgResult, _, err := ctx.Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
 	}
