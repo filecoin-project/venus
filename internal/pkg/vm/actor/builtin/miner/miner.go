@@ -121,8 +121,9 @@ type Ask struct {
 	ID     *big.Int
 }
 
+// Actor methods
 const (
-	AddAsk types.MethodID = iota
+	AddAsk types.MethodID = iota + 32
 	GetOwner
 	CommitSector
 	GetWorker
@@ -357,8 +358,8 @@ type Impl Actor
 var log = logging.Logger("actor.miner")
 
 // XXX: import cycle, need cleanup
-var XXX_storagemarket_UpdateStorage = types.MethodID(1)
-var XXX_storagemarket_GetProofsMode = types.MethodID(3)
+var XXX_storagemarket_UpdateStorage = types.MethodID(1 + 32)
+var XXX_storagemarket_GetProofsMode = types.MethodID(3 + 32)
 
 // LargestSectorSizeProvingPeriodBlocks defines the number of blocks in a
 // proving period for a miner configured to use the largest sector size

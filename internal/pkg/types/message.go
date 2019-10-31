@@ -182,6 +182,7 @@ func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
 }
 
+// String returns a readable string.
 func (id MethodID) String() string {
-	return fmt.Sprintf("%T(%v)", id, (uint64)(id))
+	return fmt.Sprintf("%v", (uint64)(id))
 }

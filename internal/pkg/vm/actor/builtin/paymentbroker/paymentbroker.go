@@ -51,8 +51,9 @@ type PaymentChannel struct {
 	Redeemed bool `json:"redeemed"`
 }
 
+// Actor methods
 const (
-	Cancel types.MethodID = iota
+	Cancel types.MethodID = iota + 32
 	Close
 	CreateChannel
 	Extend

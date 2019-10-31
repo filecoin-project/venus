@@ -22,8 +22,9 @@ type State struct {
 	Network string
 }
 
+// Actor methods
 const (
-	GetNetwork types.MethodID = iota
+	GetNetwork types.MethodID = iota + 32
 )
 
 // NewActor returns a init actor.

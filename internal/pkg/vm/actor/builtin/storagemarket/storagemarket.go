@@ -42,8 +42,9 @@ type State struct {
 	ProofsMode types.ProofsMode
 }
 
+// Actor methods
 const (
-	CreateStorageMiner types.MethodID = iota
+	CreateStorageMiner types.MethodID = iota + 32
 	UpdateStorage
 	GetTotalStorage
 	GetProofsMode
