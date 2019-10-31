@@ -826,23 +826,6 @@ func TestGenerateError(t *testing.T) {
 	assert.Len(t, pool.Pending(), 1) // No messages are removed from the pool.
 }
 
-type stateTreeForTest struct {
-	state.Tree
-	TestFlush func(ctx context.Context) (cid.Cid, error)
-}
-
-func wrapStateTreeForTest(st state.Tree) *stateTreeForTest {
-	stt := stateTreeForTest{
-		st,
-		st.Flush,
-	}
-	return &stt
-}
-
-func (st *stateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
-	return st.TestFlush(ctx)
-}
-
 func getWeightTest(_ context.Context, ts block.TipSet) (uint64, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
