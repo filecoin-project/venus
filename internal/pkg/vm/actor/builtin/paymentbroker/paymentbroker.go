@@ -655,7 +655,7 @@ func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channe
 
 	// transfer funds to sender
 	updateAmount := amt.Sub(channel.AmountRedeemed)
-	_, _, err := ctx.Send(ctx.Message().From, types.InvalidMethodID, updateAmount, nil)
+	_, _, err := ctx.Send(ctx.Message().From, types.SendMethodID, updateAmount, nil)
 	if err != nil {
 		return err
 	}
@@ -679,7 +679,7 @@ func reclaim(ctx context.Context, vmctx exec.VMContext, byChannelID exec.Lookup,
 	}
 
 	// send funds
-	_, _, err = vmctx.Send(payer, types.InvalidMethodID, amt, nil)
+	_, _, err = vmctx.Send(payer, types.SendMethodID, amt, nil)
 	if err != nil {
 		return errors.RevertErrorWrap(err, "could not send update funds")
 	}

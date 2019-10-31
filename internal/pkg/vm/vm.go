@@ -36,10 +36,16 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 		}
 	}
 
-	if vmCtx.message.Method == types.InvalidMethodID {
+	if vmCtx.message.Method == types.SendMethodID {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution
 		return nil, 0, nil
+	}
+
+	if vmCtx.message.Method == types.InvalidMethodID {
+		// your test should not be getting here..
+		// Note: this method is not materialized in production but could occur on tests
+		panic("trying to execute fake method on the actual VM, fix test")
 	}
 
 	// TODO: use chain height based protocol version here (#3360)

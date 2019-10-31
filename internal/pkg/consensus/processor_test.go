@@ -8,7 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -66,7 +66,7 @@ func TestProcessBlockSuccess(t *testing.T) {
 		fromAddr:               fromAct,
 	})
 
-	msg := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
 	require.NoError(t, err)
 
@@ -126,7 +126,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	require.NoError(t, err)
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
-	msg1 := types.NewMeteredMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg1 := types.NewMeteredMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
 	require.NoError(t, err)
 	msgs1 := []*types.SignedMessage{smsg1}
@@ -139,7 +139,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Ticket:    block.Ticket{VRFProof: []byte{0x1}},
 	}
 
-	msg2 := types.NewMeteredMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), types.InvalidMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg2 := types.NewMeteredMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
 	require.NoError(t, err)
 	msgs2 := []*types.SignedMessage{smsg2}
@@ -199,7 +199,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 	require.NoError(t, err)
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
-	msg1 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), types.InvalidMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg1 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
 	require.NoError(t, err)
 	msgs1 := []*types.SignedMessage{smsg1}
@@ -210,7 +210,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		Miner:     minerAddr,
 	}
 
-	msg2 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), types.InvalidMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg2 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
 	require.NoError(t, err)
 	msgs2 := []*types.SignedMessage{smsg2}
@@ -424,7 +424,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr1: act1,
 			addr2: act2,
 		})
-		msg := types.NewMeteredMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), types.InvalidMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
+		msg := types.NewMeteredMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -449,7 +449,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr1: act1,
 			addr2: act2,
 		})
-		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -460,7 +460,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 	t.Run("errors when specifying a gas limit in excess of balance", func(t *testing.T) {
 		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
-		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -479,7 +479,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		err := st.SetActor(ctx, addr1, act1)
 		require.NoError(t, err)
 
-		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.InvalidMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -498,7 +498,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{addr2: act2})
 
-		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.InvalidMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -527,7 +527,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		someval, ok := types.NewAttoFILFromString("-500", 10)
 		require.True(t, ok)
 
-		msg := types.NewMeteredMessage(addr1, addr2, 0, someval, types.InvalidMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, someval, types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -538,7 +538,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 	t.Run("errors when attempting to send to self", func(t *testing.T) {
 		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
-		msg := types.NewMeteredMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(0))
+		msg := types.NewMeteredMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(0))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -550,7 +550,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 	t.Run("errors when specifying a gas limit in excess of balance", func(t *testing.T) {
 		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
-		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.InvalidMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
+		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 		smsg, err := types.NewSignedMessage(*msg, mockSigner)
 		require.NoError(t, err)
 
@@ -676,14 +676,14 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	})
 
 	// send 500 from addr1 to addr2
-	msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), types.InvalidMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, mockSigner)
 	require.NoError(t, err)
 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 	require.NoError(t, err)
 
 	// send 250 along from addr2 to addr3
-	msg = types.NewMeteredMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), types.InvalidMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
+	msg = types.NewMeteredMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 	smsg, err = types.NewSignedMessage(*msg, mockSigner)
 	require.NoError(t, err)
 	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)

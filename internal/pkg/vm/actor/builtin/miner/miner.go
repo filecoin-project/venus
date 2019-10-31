@@ -1017,7 +1017,7 @@ func (a *Impl) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults 
 		// Refund any overpayment of fees to the owner.
 		if messageValue.GreaterThan(feeRequired) {
 			overpayment := messageValue.Sub(feeRequired)
-			_, _, err := ctx.Send(sender, types.InvalidMethodID, overpayment, []interface{}{})
+			_, _, err := ctx.Send(sender, types.SendMethodID, overpayment, []interface{}{})
 			if err != nil {
 				return nil, errors.NewRevertErrorf("Failed to refund overpayment of %s to %s", overpayment, sender)
 			}
@@ -1231,7 +1231,7 @@ func (a *Impl) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (
 //
 
 func (*Impl) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
-	_, _, err := ctx.Send(address.BurntFundsAddress, types.InvalidMethodID, amount, []interface{}{})
+	_, _, err := ctx.Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
 

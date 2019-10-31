@@ -83,7 +83,7 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		methodID := types.InvalidMethodID
+		methodID := types.SendMethodID
 		methodInput, ok := req.Options["method"].(uint)
 		if ok {
 			methodID = types.MethodID(methodInput)

@@ -5,7 +5,7 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
+	commands "github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
@@ -22,7 +22,7 @@ func (f *Filecoin) MessageSend(ctx context.Context, target address.Address, meth
 
 	args = append(args, target.String())
 
-	if method != types.InvalidMethodID {
+	if method != types.SendMethodID {
 		args = append(args, method.String())
 	}
 

@@ -171,7 +171,7 @@ func (*impl) createStorageMiner(vmctx exec.VMContext, sectorSize *types.BytesAmo
 			return nil, err
 		}
 
-		_, _, err = vmctx.Send(addr, types.InvalidMethodID, vmctx.Message().Value, nil)
+		_, _, err = vmctx.Send(addr, types.SendMethodID, vmctx.Message().Value, nil)
 		if err != nil {
 			return nil, err
 		}

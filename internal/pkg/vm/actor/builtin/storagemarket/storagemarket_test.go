@@ -70,7 +70,7 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
 	require.NoError(t, err)
 
-	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), types.InvalidMethodID, []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), types.SendMethodID, []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)

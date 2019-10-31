@@ -24,7 +24,7 @@ func TestMessageMarshal(t *testing.T) {
 		addrGetter(),
 		42,
 		NewAttoFILFromFIL(17777),
-		InvalidMethodID,
+		SendMethodID,
 		[]byte("foobar"),
 		NewAttoFILFromFIL(3),
 		NewGasUnits(4),
@@ -63,7 +63,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		InvalidMethodID,
+		SendMethodID,
 		nil,
 	)
 
@@ -72,7 +72,7 @@ func TestMessageCid(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(4004),
-		InvalidMethodID,
+		SendMethodID,
 		nil,
 	)
 
@@ -94,7 +94,7 @@ func TestMessageString(t *testing.T) {
 		addrGetter(),
 		0,
 		NewAttoFILFromFIL(999),
-		InvalidMethodID,
+		SendMethodID,
 		nil,
 	)
 

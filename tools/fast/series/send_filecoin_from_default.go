@@ -22,7 +22,7 @@ func SendFilecoinFromDefault(ctx context.Context, node *fast.Filecoin, addr addr
 		return cid.Undef, err
 	}
 
-	mcid, err := node.MessageSend(ctx, addr, types.InvalidMethodID, fast.AOValue(value), fast.AOFromAddr(walletAddr), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
+	mcid, err := node.MessageSend(ctx, addr, types.SendMethodID, fast.AOValue(value), fast.AOFromAddr(walletAddr), fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 	if err != nil {
 		return cid.Undef, err
 	}

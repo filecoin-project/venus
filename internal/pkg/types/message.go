@@ -23,8 +23,13 @@ import (
 // MethodID is an identifier of a method (in an actor).
 type MethodID UVarint
 
-// InvalidMethodID is the value of an invalid method id.
-var InvalidMethodID = MethodID(99999999999)
+const (
+	// InvalidMethodID is the value of an invalid method id.
+	// Note: this is not in the spec
+	InvalidMethodID = MethodID(0xFFFFFFFFFFFFFFFF)
+	// SendMethodID is the method ID for sending money to an actor.
+	SendMethodID = MethodID(0)
+)
 
 // GasUnits represents number of units of gas consumed
 type GasUnits = Uint64

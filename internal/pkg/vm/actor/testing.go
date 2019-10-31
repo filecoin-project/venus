@@ -194,13 +194,13 @@ func (*impl) NonZeroExitCode(ctx exec.VMContext) (uint8, error) {
 
 // NestedBalance sends 100 to the given address.
 func (*impl) NestedBalance(ctx exec.VMContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, types.InvalidMethodID, types.NewAttoFILFromFIL(100), nil)
+	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // SendTokens sends 100 to the given address.
 func (*impl) SendTokens(ctx exec.VMContext, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, types.InvalidMethodID, types.NewAttoFILFromFIL(100), nil)
+	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 

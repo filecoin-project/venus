@@ -166,7 +166,7 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
 func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*exec.FunctionSignature, error) {
-	if method == types.InvalidMethodID {
+	if method == types.SendMethodID {
 		return nil, ErrNoMethod
 	}
 
