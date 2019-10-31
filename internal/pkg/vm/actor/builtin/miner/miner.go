@@ -1254,8 +1254,6 @@ func getPoStChallengeSeed(ctx exec.VMContext, state State, sampleAt *types.Block
 	return seed, nil
 }
 
-// XXX: consider moving this out of this file
-
 //
 // Exported free functions.
 //
