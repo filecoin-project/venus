@@ -24,7 +24,7 @@ type previewerChainReader interface {
 
 type messagePreviewer interface {
 	// PreviewQueryMethod estimates the amount of gas that will be used by a method
-	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
+	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
 }
 
 // Previewer calculates the amount of Gas needed for a command
@@ -45,7 +45,7 @@ func NewPreviewer(chainReader previewerChainReader, cst *hamt.CborIpldStore, bs 
 }
 
 // Preview sends a read-only message to an actor.
-func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "failed to encode message params")

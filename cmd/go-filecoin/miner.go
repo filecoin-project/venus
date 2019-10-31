@@ -15,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -47,7 +48,7 @@ var minerCreateCmd = &cmds.Command{
 		Tagline: "Create a new file miner with <collateral> FIL",
 		ShortDescription: `Issues a new message to the network to create the miner, then waits for the
 message to be mined as this is required to return the address of the new miner.
-Collateral will be committed at the rate of 0.001FIL per sector. When the 
+Collateral will be committed at the rate of 0.001FIL per sector. When the
 miner's collateral drops below 0.001FIL, the miner will not be able to commit
 additional sectors.`,
 	},
@@ -322,7 +323,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				minerAddr,
-				"updatePeerID",
+				miner.UpdatePeerID,
 				newPid,
 			)
 			if err != nil {
@@ -343,7 +344,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			types.ZeroAttoFIL,
 			gasPrice,
 			gasLimit,
-			"updatePeerID",
+			miner.UpdatePeerID,
 			newPid,
 		)
 		if err != nil {

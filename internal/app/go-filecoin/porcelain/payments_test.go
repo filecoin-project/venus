@@ -13,6 +13,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -29,9 +30,9 @@ type paymentsTestPlumbing struct {
 	height uint64
 	msgCid cid.Cid
 
-	messageSend  func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
+	messageSend  func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
 	messageWait  func(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
-	messageQuery func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	messageQuery func(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error)
 }
 
 func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
@@ -43,7 +44,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	return &paymentsTestPlumbing{
 		msgCid: msgCid,
 		height: startingBlock,
-		messageSend: func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+		messageSend: func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 			payer = from
 			target = params[0].(address.Address)
 			return msgCid, nil
@@ -55,7 +56,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 				GasAttoFIL: types.NewAttoFILFromFIL(9),
 			})
 		},
-		messageQuery: func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+		messageQuery: func(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
 			voucher := &types.PaymentVoucher{
 				Channel:   *channelID,
 				Payer:     payer,
@@ -73,7 +74,7 @@ func newTestCreatePaymentsPlumbing() *paymentsTestPlumbing {
 	}
 }
 
-func (ptp *paymentsTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (ptp *paymentsTestPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 	return ptp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 }
 
@@ -81,7 +82,7 @@ func (ptp *paymentsTestPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid
 	return ptp.messageWait(ctx, msgCid, cb)
 }
 
-func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (ptp *paymentsTestPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return ptp.messageQuery(ctx, optFrom, to, method, params...)
 }
 
@@ -156,7 +157,7 @@ func TestCreatePayments(t *testing.T) {
 			// assert all vouchers other than the last have a valid condition
 			assert.NotNil(t, voucher.Condition)
 			assert.Equal(t, config.MinerAddress, voucher.Condition.To)
-			assert.Equal(t, "verifyPieceInclusion", voucher.Condition.Method)
+			assert.Equal(t, miner.VerifyPieceInclusion, voucher.Condition.Method)
 			assert.Equal(t, config.CommP[:], voucher.Condition.Params[0])
 
 			// voucher signature should be what is returned by SignBytes
@@ -249,7 +250,7 @@ func TestCreatePayments(t *testing.T) {
 
 	t.Run("Errors creating channel are surfaced", func(t *testing.T) {
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 			return cid.Cid{}, errors.New("Error in MessageSend")
 		}
 
@@ -288,7 +289,7 @@ func TestCreatePayments(t *testing.T) {
 
 	t.Run("Errors in creating vouchers are surfaced", func(t *testing.T) {
 		plumbing := newTestCreatePaymentsPlumbing()
-		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+		plumbing.messageQuery = func(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
 			return nil, errors.New("Errors in MessageQuery")
 		}
 
@@ -307,7 +308,7 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 	makeValidCondition := func() *types.Predicate {
 		condition := &types.Predicate{
 			To:     address.TestAddress,
-			Method: "verifyPieceInclusion",
+			Method: miner.VerifyPieceInclusion,
 			Params: []interface{}{
 				commP,
 				pieceSize,
@@ -336,7 +337,7 @@ func TestValidateStoragePaymentCondition(t *testing.T) {
 
 	t.Run("Condition invalid when given wrong method", func(t *testing.T) {
 		condition := makeValidCondition()
-		condition.Method = "notARealMethod"
+		condition.Method = types.MethodID(217292)
 
 		err := ValidatePaymentVoucherCondition(context.Background(), condition, address.TestAddress, commP, pieceSize)
 		require.Error(t, err)

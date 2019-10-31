@@ -113,7 +113,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *exec.FunctionSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 
@@ -247,14 +247,14 @@ func (api *API) MessagePoolRemove(cid cid.Cid) {
 
 // MessagePreview previews the Gas cost of a message by running it locally on the client and
 // recording the amount of Gas used.
-func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+func (api *API) MessagePreview(ctx context.Context, from, to address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
 	return api.msgPreviewer.Preview(ctx, from, to, method, params...)
 }
 
 // MessageQuery calls an actor's method using the most recent chain state. It is read-only,
 // it does not change any state. It is use to interrogate actor state. The from address
 // is optional; if not provided, an address will be chosen from the node's wallet.
-func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (api *API) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	snapshot, err := api.actorState.Snapshot(ctx, baseKey)
 	if err != nil {
 		return [][]byte{}, err
@@ -271,7 +271,7 @@ func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensu
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
 // message to go on chain. Note that no default from address is provided.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 

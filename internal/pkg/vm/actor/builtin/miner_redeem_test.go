@@ -79,7 +79,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	channelID := establishChannel(st, vms, payer, target, 0, types.NewAttoFILFromFIL(1000), types.NewBlockHeight(20000))
 
 	makeCondition := func() *types.Predicate {
-		return &types.Predicate{To: minerAddr, Method: "verifyPieceInclusion", Params: []interface{}{commP, pieceSize}}
+		return &types.Predicate{To: minerAddr, Method: miner.VerifyPieceInclusion, Params: []interface{}{commP, pieceSize}}
 	}
 
 	makeAndSignVoucher := func(condition *types.Predicate) []byte {
@@ -93,7 +93,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	makeRedeemMsg := func(condition *types.Predicate, sectorID uint64, pip []byte, signature []byte) *types.UnsignedMessage {
 		suppliedParams := []interface{}{sectorID, pip}
 		pdata := abi.MustConvertParams(payer, channelID, amt, types.NewBlockHeight(0), condition, signature, suppliedParams)
-		return types.NewUnsignedMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+		return types.NewUnsignedMessage(target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), paymentbroker.Redeem, pdata)
 	}
 
 	t.Run("Voucher with piece inclusion condition and correct proof succeeds", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 		condition := makeCondition()
 		signature := makeAndSignVoucher(condition)
 
-		condition.Method = "unsignedConditionMethod"
+		condition.Method = types.MethodID(8272782)
 
 		msg := makeRedeemMsg(condition, sectorID, pip, signature)
 		appResult, err := th.ApplyTestMessage(st, vms, msg, blockHeight)
@@ -221,7 +221,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 
 func establishChannel(st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
-	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
+	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, paymentbroker.CreateChannel, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)

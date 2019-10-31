@@ -8,6 +8,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-sectorbuilder"
 	"github.com/pkg/errors"
@@ -32,10 +34,10 @@ func (tppp *testProtocolParamsPlumbing) ChainHeadKey() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
-func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	if method == "getProofsMode" {
+func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+	if method == storagemarket.GetProofsMode {
 		return [][]byte{{byte(types.TestProofsMode)}}, nil
-	} else if method == "getNetwork" {
+	} else if method == initactor.GetNetwork {
 		return [][]byte{[]byte("protocolTest")}, nil
 	}
 	return [][]byte{}, errors.Errorf("call to unknown method %s", method)

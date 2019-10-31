@@ -10,15 +10,21 @@ import (
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 )
+
+// MethodID is an identifier of a method (in an actor).
+type MethodID UVarint
+
+// InvalidMethodID is the value of an invalid method id.
+var InvalidMethodID = MethodID(99999999999)
 
 // GasUnits represents number of units of gas consumed
 type GasUnits = Uint64
@@ -59,8 +65,8 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	Method string `json:"method"`
-	Params []byte `json:"params"`
+	Method MethodID `json:"method"`
+	Params []byte   `json:"params"`
 
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
@@ -68,7 +74,7 @@ type UnsignedMessage struct {
 }
 
 // NewUnsignedMessage creates a new message.
-func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte) *UnsignedMessage {
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -80,7 +86,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -169,4 +175,8 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
+}
+
+func (id MethodID) String() string {
+	return fmt.Sprintf("%T(%v)", id, (uint64)(id))
 }

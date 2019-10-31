@@ -42,8 +42,10 @@ func TestVMContextStorage(t *testing.T) {
 	assert.NoError(t, err)
 	toAddr := addrGetter()
 
+	helloID := types.MethodID(82723)
+
 	assert.NoError(t, st.SetActor(ctx, toAddr, toActor))
-	msg := types.NewUnsignedMessage(addrGetter(), toAddr, 0, types.ZeroAttoFIL, "hello", nil)
+	msg := types.NewUnsignedMessage(addrGetter(), toAddr, 0, types.ZeroAttoFIL, helloID, nil)
 
 	to, err := cstate.GetActor(ctx, toAddr)
 	assert.NoError(t, err)
@@ -58,7 +60,7 @@ func TestVMContextStorage(t *testing.T) {
 	}
 	vmCtx := NewVMContext(vmCtxParams)
 
-	node, err := cbor.WrapObject([]byte("hello"), types.DefaultHashFunction, -1)
+	node, err := cbor.WrapObject(helloID, types.DefaultHashFunction, -1)
 	assert.NoError(t, err)
 
 	cid, err := vmCtx.Storage().Put(node.RawData())
@@ -104,6 +106,8 @@ func TestVMContextSendFailures(t *testing.T) {
 		Actors:      &mockStateTree,
 	}
 
+	fooID := types.MethodID(8272)
+
 	t.Run("failure to convert to ABI values results in fault error", func(t *testing.T) {
 		var calls []string
 		deps := &deps{
@@ -116,7 +120,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -140,7 +144,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -169,7 +173,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(to, "foo", types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.Send(to, fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -199,7 +203,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 1, int(code))
@@ -233,7 +237,7 @@ func TestVMContextSendFailures(t *testing.T) {
 		ctx := NewVMContext(vmCtxParams)
 		ctx.deps = deps
 
-		_, code, err := ctx.Send(newAddress(), "foo", types.ZeroAttoFIL, []interface{}{})
+		_, code, err := ctx.Send(newAddress(), fooID, types.ZeroAttoFIL, []interface{}{})
 
 		assert.Error(t, err)
 		assert.Equal(t, 123, int(code))

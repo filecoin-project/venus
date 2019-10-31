@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -95,7 +96,7 @@ type testRedeemPlumbing struct {
 
 	ResultingFromAddr       address.Address
 	ResultingActorAddr      address.Address
-	ResultingMethod         string
+	ResultingMethod         types.MethodID
 	ResultingVoucherPayer   address.Address
 	ResultingVoucherChannel *types.ChannelID
 	ResultingVoucherAmount  types.AttoFIL
@@ -126,7 +127,7 @@ func (trp *testRedeemPlumbing) DealGet(_ context.Context, c cid.Cid) (*storagede
 	return deal, nil
 }
 
-func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr address.Address, actorAddr address.Address, method string, params ...interface{}) (types.GasUnits, error) {
+func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr address.Address, actorAddr address.Address, method types.MethodID, params ...interface{}) (types.GasUnits, error) {
 	trp.ResultingFromAddr = fromAddr
 	trp.ResultingActorAddr = actorAddr
 	trp.ResultingMethod = method
@@ -137,7 +138,7 @@ func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr addres
 	return trp.gasPrice, nil
 }
 
-func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 	trp.ResultingFromAddr = fromAddr
 	trp.ResultingActorAddr = actorAddr
 	trp.ResultingMethod = method
@@ -194,7 +195,7 @@ func TestDealRedeem(t *testing.T) {
 
 	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
 	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
-	assert.Equal(t, "redeem", plumbing.ResultingMethod)
+	assert.Equal(t, paymentbroker.Redeem, plumbing.ResultingMethod)
 	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
 	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)
 	assert.Equal(t, types.NewAttoFILFromFIL(2), plumbing.ResultingVoucherAmount)
@@ -248,7 +249,7 @@ func TestDealRedeemPreview(t *testing.T) {
 
 	assert.Equal(t, fromAddr, plumbing.ResultingFromAddr)
 	assert.Equal(t, address.PaymentBrokerAddress, plumbing.ResultingActorAddr)
-	assert.Equal(t, "redeem", plumbing.ResultingMethod)
+	assert.Equal(t, paymentbroker.Redeem, plumbing.ResultingMethod)
 	assert.Equal(t, payerAddr, plumbing.ResultingVoucherPayer)
 	assert.Equal(t, channelID, plumbing.ResultingVoucherChannel)
 	assert.Equal(t, types.NewAttoFILFromFIL(2), plumbing.ResultingVoucherAmount)

@@ -36,7 +36,7 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 		}
 	}
 
-	if vmCtx.message.Method == "" {
+	if vmCtx.message.Method == types.InvalidMethodID {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution
 		return nil, 0, nil
@@ -48,11 +48,12 @@ func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, 
 		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
 	}
 
-	if !toExecutable.Exports().Has(vmCtx.message.Method) {
+	exportedFn, ok := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)
+	if !ok {
 		return nil, 1, errors.Errors[errors.ErrMissingExport]
 	}
 
-	r, code, err := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)(vmCtx)
+	r, code, err := exportedFn(vmCtx)
 	if r != nil {
 		var rv [][]byte
 		err = encoding.Decode(r, &rv)

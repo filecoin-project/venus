@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestPaymentBrokerCreateChannel(t *testing.T) {
 	_, st, vms := requireGenesis(ctx, t, target)
 
 	pdata := abi.MustConvertParams(target, big.NewInt(10))
-	msg := types.NewUnsignedMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), "createChannel", pdata)
+	msg := types.NewUnsignedMessage(payer, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(1000), CreateChannel, pdata)
 
 	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
@@ -103,12 +104,14 @@ func TestPaymentBrokerUpdate(t *testing.T) {
 	assert.Equal(t, sys.target, channel.Target)
 }
 
+const ParamsNotZeroID = types.MethodID(272398)
+
 func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 	tf.UnitTest(t)
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "paramsNotZero"
+	method := ParamsNotZeroID
 	addrParam := addrGetter()
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{addrParam, sectorIdParam}
@@ -126,7 +129,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
@@ -140,7 +143,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		badParams := []interface{}{badAddressParam, sectorIdParam}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -155,7 +158,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		badToAddress := addrGetter()
 
 		condition := &types.Predicate{To: badToAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -167,10 +170,10 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
-		badMethod := "nonexistentMethod"
+		badMethod := types.MethodID(8278272)
 
 		condition := &types.Predicate{To: toAddress, Method: badMethod, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -185,7 +188,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		badParams := []interface{}{}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: badParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -200,7 +203,7 @@ func TestPaymentBrokerRedeemWithCondition(t *testing.T) {
 		badRedeemerParams := []interface{}{}
 
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, badRedeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, badRedeemerParams...)
 
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
@@ -214,7 +217,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "paramsNotZero"
+	method := ParamsNotZeroID
 	addrParam := addrGetter()
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{addrParam, sectorIdParam}
@@ -232,7 +235,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 		// Successfully redeem the payment channel
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -253,7 +256,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 		// Successfully redeem the payment channel
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -274,7 +277,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 		// Successfully redeem the payment channel with condition
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -286,7 +289,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		assert.Equal(t, method, channel.Condition.Method)
 
 		// Successfully redeem the payment channel again without condition
-		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, Redeem, 0, nil, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -302,7 +305,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 
 		// Successfully redeem the payment channel with no condition
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, nil, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -312,7 +315,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		assert.Nil(t, channel.Condition)
 
 		// Successfully redeem the payment channel again with a condition
-		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -333,7 +336,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
 
 		// Successfully redeem the payment channel with condition
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -347,7 +350,7 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 		// Successfully redeem the payment channel again with new redeemer params
 		newBlockHeightParam := types.NewBlockHeight(52)
 		newRedeemerParams := []interface{}{newBlockHeightParam}
-		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition, newRedeemerParams...)
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, Redeem, 0, condition, newRedeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
@@ -368,20 +371,20 @@ func TestPaymentBrokerRedeemSetsConditionAndRedeemed(t *testing.T) {
 
 		// Redeem without params expects an invalid condition error
 		condition := &types.Predicate{To: toAddress, Method: method}
-		appResult, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		appResult, err := sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, Redeem, 0, condition)
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.EqualValues(t, errors.CodeError(appResult.ExecutionError), ErrConditionInvalid)
 
 		// Successfully redeem the payment channel with params
 		condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-		appResult, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+		appResult, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 
 		// Redeem again without params and expect no error
 		condition = &types.Predicate{To: toAddress, Method: method}
-		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, "redeem", 0, condition)
+		appResult, err = sys.applySignatureMessage(sys.target, 200, types.NewBlockHeight(0), 0, Redeem, 0, condition)
 		assert.NoError(t, err)
 		assert.NoError(t, appResult.ExecutionError)
 	})
@@ -394,7 +397,7 @@ func TestPaymentBrokerRedeemReversesCancellations(t *testing.T) {
 
 	// Cancel the payment channel
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err := sys.ApplyMessage(msg, 100)
 	require.NoError(t, result.ExecutionError)
 	require.NoError(t, err)
@@ -505,7 +508,7 @@ func TestPaymentBrokerUpdateErrorsBeforeValidAt(t *testing.T) {
 
 	sys := setup(t)
 
-	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "redeem")
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, Redeem)
 	require.NoError(t, err)
 
 	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
@@ -518,7 +521,7 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 	sys := setup(t)
 
 	// Redeem at block height == validAt != 0.
-	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 4, 4, "redeem")
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 4, 4, Redeem)
 	require.NoError(t, err)
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
@@ -535,7 +538,7 @@ func TestPaymentBrokerUpdateSuccessWithValidAt(t *testing.T) {
 	assert.Equal(t, sys.target, channel.Target)
 
 	// Redeem after block height == validAt.
-	result, err = sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 200, 0, 4, 6, "redeem")
+	result, err = sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 200, 0, 4, 6, Redeem)
 	require.NoError(t, err)
 
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
@@ -584,7 +587,7 @@ func TestPaymentBrokerCloseErrorsBeforeValidAt(t *testing.T) {
 
 	sys := setup(t)
 
-	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, "close")
+	result, err := sys.ApplySignatureMessageWithValidAtAndBlockHeight(sys.target, 100, 0, 8, 3, Close)
 	require.NoError(t, err)
 
 	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
@@ -605,7 +608,7 @@ func TestPaymentBrokerCloseInvalidSig(t *testing.T) {
 
 	var condition *types.Predicate
 	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
-	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "close", pdata)
+	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Close, pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
 	require.NoError(t, err)
@@ -621,9 +624,9 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
-		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{addrGetter(), uint64(6)}}
+		condition := &types.Predicate{To: toAddress, Method: ParamsNotZeroID, Params: []interface{}{addrGetter(), uint64(6)}}
 
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Close, 0, condition, types.NewBlockHeight(43))
 		require.NoError(t, err)
 		require.NoError(t, appResult.ExecutionError)
 	})
@@ -632,9 +635,9 @@ func TestPaymentBrokerCloseWithCondition(t *testing.T) {
 		sys := setup(t)
 		require.NoError(t, sys.st.SetActor(context.TODO(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
-		condition := &types.Predicate{To: toAddress, Method: "paramsNotZero", Params: []interface{}{address.Undef, uint64(6)}}
+		condition := &types.Predicate{To: toAddress, Method: ParamsNotZeroID, Params: []interface{}{address.Undef, uint64(6)}}
 
-		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "close", 0, condition, types.NewBlockHeight(43))
+		appResult, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Close, 0, condition, types.NewBlockHeight(43))
 		require.NoError(t, err)
 		require.Error(t, appResult.ExecutionError)
 		require.Contains(t, appResult.ExecutionError.Error(), "failed to validate voucher condition: got undefined address")
@@ -646,7 +649,7 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "paramsNotZero"
+	method := ParamsNotZeroID
 	addrParam := addrGetter()
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{addrParam, sectorIdParam}
@@ -658,19 +661,19 @@ func TestPaymentBrokerCloseChecksCachedConditions(t *testing.T) {
 
 	// Close without params and expect a panic
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err := sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, "close", 0, condition)
+	result, err := sys.applySignatureMessage(sys.target, 100, sys.defaultValidAt, 0, Close, 0, condition)
 	require.NoError(t, err)
 	require.Error(t, result.ExecutionError)
 	require.EqualValues(t, errors.CodeError(result.ExecutionError), ErrConditionInvalid)
 
 	// Successfully redeem the payment channel with params
 	condition = &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	result, err = sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
 	// Close again without params and expect no error
-	result, err = sys.applySignatureMessage(sys.target, 200, sys.defaultValidAt, 0, "close", 0, condition)
+	result, err = sys.applySignatureMessage(sys.target, 200, sys.defaultValidAt, 0, Close, 0, condition)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 }
@@ -689,7 +692,7 @@ func TestPaymentBrokerRedeemInvalidSig(t *testing.T) {
 
 	var condition *types.Predicate
 	pdata := abi.MustConvertParams(sys.payer, sys.channelID, amt, sys.defaultValidAt, condition, signature, []interface{}{})
-	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), "redeem", pdata)
+	msg := types.NewUnsignedMessage(sys.target, address.PaymentBrokerAddress, 0, types.NewAttoFILFromFIL(0), Redeem, pdata)
 	res, err := sys.ApplyMessage(msg, 0)
 	require.EqualError(t, res.ExecutionError, Errors[ErrInvalidSignature].Error())
 	require.NoError(t, err)
@@ -704,7 +707,7 @@ func TestPaymentBrokerReclaim(t *testing.T) {
 	payerBalancePriorToClose := payer.Balance
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
 	// block height is after Eol
 	res, err := sys.ApplyMessage(msg, 20001)
 	require.NoError(t, err)
@@ -726,14 +729,14 @@ func TestPaymentBrokerReclaimFailsBeforeChannelEol(t *testing.T) {
 	sys := setup(t)
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), "reclaim", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(0), Reclaim, pdata)
 	// block height is before Eol
 	result, err := sys.ApplyMessage(msg, 0)
 	require.NoError(t, err)
 
 	// fails
 	assert.NotEqual(t, uint8(0), result.Receipt.ExitCode)
-	assert.Contains(t, result.ExecutionError.Error(), "reclaim")
+	assert.Contains(t, result.ExecutionError.Error(), "reclaimed")
 	assert.Contains(t, result.ExecutionError.Error(), "eol")
 }
 
@@ -744,7 +747,7 @@ func TestPaymentBrokerExtend(t *testing.T) {
 
 	// extend channel
 	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(30000))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, result.ExecutionError)
@@ -779,7 +782,7 @@ func TestPaymentBrokerExtendFailsWithNonExistentChannel(t *testing.T) {
 
 	// extend channel
 	pdata := abi.MustConvertParams(types.NewChannelID(383), types.NewBlockHeight(30000))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, err)
@@ -794,7 +797,7 @@ func TestPaymentBrokerExtendRefusesToShortenTheEol(t *testing.T) {
 
 	// extend channel setting block height to 5 (<10)
 	pdata := abi.MustConvertParams(sys.channelID, types.NewBlockHeight(5))
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "extend", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Extend, pdata)
 
 	result, err := sys.ApplyMessage(msg, 9)
 	require.NoError(t, err)
@@ -809,7 +812,7 @@ func TestPaymentBrokerCancel(t *testing.T) {
 	sys := setup(t)
 
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 
 	result, err := sys.ApplyMessage(msg, 100)
 	require.NoError(t, result.ExecutionError)
@@ -828,7 +831,7 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "paramsNotZero"
+	method := ParamsNotZeroID
 	addrParam := addrGetter()
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{addrParam, sectorIdParam}
@@ -840,13 +843,13 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeem(t *testing.T) {
 
 	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
 	// Attempts to Cancel and expects failure
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
@@ -863,13 +866,13 @@ func TestPaymentBrokerCancelFailsAfterSuccessfulRedeemWithNilCondtion(t *testing
 	require.NoError(t, sys.st.SetActor(context.Background(), toAddress, actor.NewActor(pbTestActorCid, types.ZeroAttoFIL)))
 
 	// Successfully redeem the payment channel with params
-	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, nil)
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, nil)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
 	// Attempts to Cancel and expects failure
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	result, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 	assert.Error(t, result.ExecutionError)
@@ -881,7 +884,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 
 	addrGetter := address.NewForTestGetter()
 	toAddress := addrGetter()
-	method := "paramsNotZero"
+	method := ParamsNotZeroID
 	sectorIdParam := uint64(6)
 	payerParams := []interface{}{toAddress, sectorIdParam}
 	blockHeightParam := types.NewBlockHeight(43)
@@ -892,7 +895,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 
 	// Successfully redeem the payment channel with params
 	condition := &types.Predicate{To: toAddress, Method: method, Params: payerParams}
-	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, "redeem", 0, condition, redeemerParams...)
+	result, err := sys.applySignatureMessage(sys.target, 100, types.NewBlockHeight(0), 0, Redeem, 0, condition, redeemerParams...)
 	require.NoError(t, err)
 	require.NoError(t, result.ExecutionError)
 
@@ -907,7 +910,7 @@ func TestPaymentBrokerCancelSucceedsAfterSuccessfulRedeemButFailedConditions(t *
 
 	// Attempt to Cancel and expects success
 	pdata := abi.MustConvertParams(sys.channelID)
-	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), "cancel", pdata)
+	msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.NewAttoFILFromFIL(1000), Cancel, pdata)
 	_, err = sys.ApplyMessage(msg, 100)
 	assert.NoError(t, err)
 }
@@ -933,7 +936,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -971,7 +974,7 @@ func TestPaymentBrokerLs(t *testing.T) {
 		args, err := abi.ToEncodedValues(payer)
 		require.NoError(t, err)
 
-		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", args, payer, types.NewBlockHeight(9))
+		returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, args, payer, types.NewBlockHeight(9))
 		require.NoError(t, err)
 		assert.Equal(t, uint8(0), exitCode)
 
@@ -994,7 +997,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
+		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1018,7 +1021,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
-		_, exitCode, err := sys.CallQueryMethod("voucher", 9, notChannelID, voucherAmount, sys.defaultValidAt, nilCondition)
+		_, exitCode, err := sys.CallQueryMethod(Voucher, 9, notChannelID, voucherAmount, sys.defaultValidAt, nilCondition)
 		assert.NotEqual(t, uint8(0), exitCode)
 		assert.Contains(t, fmt.Sprintf("%v", err), "unknown")
 	})
@@ -1030,7 +1033,7 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 		voucherAmount := types.NewAttoFILFromFIL(2000)
 		args := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, nilCondition)
 
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", args)
+		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, args)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NotEqual(t, uint8(0), res.Receipt.ExitCode)
@@ -1042,14 +1045,14 @@ func TestNewPaymentBrokerVoucher(t *testing.T) {
 
 		condition := &types.Predicate{
 			To:     address.NewForTestGetter()(),
-			Method: "someMethod",
+			Method: types.MethodID(8263621),
 			Params: []interface{}{"encoded params"},
 		}
 
 		// create voucher
 		voucherAmount := types.NewAttoFILFromFIL(100)
 		pdata := abi.MustConvertParams(sys.channelID, voucherAmount, sys.defaultValidAt, condition)
-		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, "voucher", pdata)
+		msg := types.NewUnsignedMessage(sys.payer, address.PaymentBrokerAddress, 1, types.ZeroAttoFIL, Voucher, pdata)
 		res, err := sys.ApplyMessage(msg, 9)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
@@ -1073,7 +1076,7 @@ func TestSignVoucher(t *testing.T) {
 	blockHeight := types.NewBlockHeight(393)
 	condition := &types.Predicate{
 		To:     address.NewForTestGetter()(),
-		Method: "someMethod",
+		Method: types.MethodID(8263621),
 		Params: []interface{}{"encoded params"},
 	}
 	var nilCondition *types.Predicate
@@ -1103,7 +1106,7 @@ func TestSignVoucher(t *testing.T) {
 
 func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
-	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, "createChannel", pdata)
+	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, CreateChannel, pdata)
 	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
 	if err != nil {
 		panic(err)
@@ -1193,7 +1196,7 @@ func (sys *system) Signature(amt types.AttoFIL, validAt *types.BlockHeight, cond
 	return ([]byte)(sig), nil
 }
 
-func (sys *system) CallQueryMethod(method string, height uint64, params ...interface{}) ([][]byte, uint8, error) {
+func (sys *system) CallQueryMethod(method types.MethodID, height uint64, params ...interface{}) ([][]byte, uint8, error) {
 	sys.t.Helper()
 
 	args := abi.MustConvertParams(params...)
@@ -1204,25 +1207,25 @@ func (sys *system) CallQueryMethod(method string, height uint64, params ...inter
 func (sys *system) ApplyRedeemMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", 0, nil)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, Redeem, 0, nil)
 }
 
 func (sys *system) ApplyRedeemMessageWithBlockHeight(target address.Address, amtInt uint64, nonce uint64, height uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "redeem", height, nil)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, Redeem, height, nil)
 }
 
 func (sys *system) ApplyCloseMessage(target address.Address, amtInt uint64, nonce uint64) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, "close", 0, nil)
+	return sys.applySignatureMessage(target, amtInt, sys.defaultValidAt, nonce, Close, 0, nil)
 }
 
-func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method string) (*consensus.ApplicationResult, error) {
+func (sys *system) ApplySignatureMessageWithValidAtAndBlockHeight(target address.Address, amtInt uint64, nonce uint64, validAt uint64, height uint64, method types.MethodID) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
-	if method != "redeem" && method != "close" {
+	if method != Redeem && method != Close {
 		sys.t.Fatalf("method %s is not a signature method", method)
 	}
 
@@ -1234,7 +1237,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 	args, err := abi.ToEncodedValues(sys.payer)
 	require.NoError(sys.t, err)
 
-	returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, "ls", args, sys.payer, types.NewBlockHeight(9))
+	returnValue, exitCode, err := consensus.NewDefaultProcessor().CallQueryMethod(sys.ctx, sys.st, sys.vms, address.PaymentBrokerAddress, Ls, args, sys.payer, types.NewBlockHeight(9))
 	require.NoError(sys.t, err)
 	assert.Equal(sys.t, uint8(0), exitCode)
 
@@ -1249,7 +1252,7 @@ func (sys *system) retrieveChannel(paymentBroker *actor.Actor) *PaymentChannel {
 
 // applySignatureMessage signs voucher parameters and then creates a redeem or close message with all
 // the voucher parameters and the signature, sends it to the payment broker, and returns the result
-func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method string, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
+func (sys *system) applySignatureMessage(target address.Address, amtInt uint64, validAt *types.BlockHeight, nonce uint64, method types.MethodID, height uint64, condition *types.Predicate, suppliedParams ...interface{}) (*consensus.ApplicationResult, error) {
 	sys.t.Helper()
 
 	amt := types.NewAttoFILFromFIL(amtInt)
@@ -1270,7 +1273,7 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := abi.MustConvertParams(payer)
-	values, ec, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, "ls", pdata, payer, types.NewBlockHeight(0))
+	values, ec, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, address.PaymentBrokerAddress, Ls, pdata, payer, types.NewBlockHeight(0))
 	require.Zero(t, ec)
 	require.NoError(t, err)
 
@@ -1287,13 +1290,16 @@ type PBTestActor struct{}
 
 var _ exec.ExecutableActor = (*PBTestActor)(nil)
 
-// Exports returns the list of fake actor exported functions.
-func (ma *PBTestActor) Exports() exec.Exports {
-	return exec.Exports{
-		"paramsNotZero": &exec.FunctionSignature{
+// Method returns method definition for a given method id.
+func (ma *PBTestActor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+	switch id {
+	case ParamsNotZeroID:
+		return reflect.ValueOf(ma.ParamsNotZero), &exec.FunctionSignature{
 			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
 			Return: nil,
-		},
+		}, true
+	default:
+		return nil, nil, false
 	}
 }
 

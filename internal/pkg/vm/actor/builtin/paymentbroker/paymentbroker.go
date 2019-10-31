@@ -2,10 +2,12 @@ package paymentbroker
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -13,6 +15,134 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
+
+// Actor provides a mechanism for off chain payments.
+// It allows the creation of payment channels that hold funds for a target account
+// and permits that account to withdraw funds only with a voucher signed by the
+// channel's creator.
+type Actor struct{}
+
+// PaymentChannel records the intent to pay funds to a target account.
+type PaymentChannel struct {
+	// Target is the address of the account to which funds will be transferred
+	Target address.Address `json:"target"`
+
+	// Amount is the total amount of FIL that has been transferred to the channel from the payer
+	Amount types.AttoFIL `json:"amount"`
+
+	// AmountRedeemed is the amount of FIL already transferred to the target
+	AmountRedeemed types.AttoFIL `json:"amount_redeemed"`
+
+	// AgreedEol is the expiration for the payment channel agreed upon by the
+	// payer and payee upon initialization or extension
+	AgreedEol *types.BlockHeight `json:"agreed_eol"`
+
+	// Condition are the set of conditions for redeeming or closing the payment
+	// channel
+	Condition *types.Predicate `json:"condition"`
+
+	// Eol is the actual expiration for the payment channel which can differ from
+	// AgreedEol when the payment channel is in dispute
+	Eol *types.BlockHeight `json:"eol"`
+
+	// Redeemed is a flag indicating whether or not Redeem has been called on the
+	// payment channel yet. This is necessary because AmountRedeemed can still be
+	// zero in the event of a zero-value voucher
+	Redeemed bool `json:"redeemed"`
+}
+
+const (
+	Cancel types.MethodID = iota
+	Close
+	CreateChannel
+	Extend
+	Ls
+	Reclaim
+	Redeem
+	Voucher
+)
+
+// NewActor returns a new payment broker actor.
+func NewActor() *actor.Actor {
+	return actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
+}
+
+//
+// ExecutableActor impl for Actor
+//
+
+var _ exec.ExecutableActor = (*Actor)(nil)
+
+var signatures = exec.Exports{
+	Cancel: &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID},
+		Return: nil,
+	},
+	Close: &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
+		Return: nil,
+	},
+	CreateChannel: &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.BlockHeight},
+		Return: []abi.Type{abi.ChannelID},
+	},
+	Extend: &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID, abi.BlockHeight},
+		Return: nil,
+	},
+	Ls: &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address},
+		Return: []abi.Type{abi.Bytes},
+	},
+	Reclaim: &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID},
+		Return: nil,
+	},
+	Redeem: &exec.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
+		Return: nil,
+	},
+	Voucher: &exec.FunctionSignature{
+		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate},
+		Return: []abi.Type{abi.Bytes},
+	},
+}
+
+// Method returns method definition for a given method id.
+func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+	switch id {
+	case Cancel:
+		return reflect.ValueOf((*impl)(a).cancel), signatures[Cancel], true
+	case Close:
+		return reflect.ValueOf((*impl)(a).close), signatures[Close], true
+	case CreateChannel:
+		return reflect.ValueOf((*impl)(a).createChannel), signatures[CreateChannel], true
+	case Extend:
+		return reflect.ValueOf((*impl)(a).extend), signatures[Extend], true
+	case Ls:
+		return reflect.ValueOf((*impl)(a).ls), signatures[Ls], true
+	case Reclaim:
+		return reflect.ValueOf((*impl)(a).reclaim), signatures[Reclaim], true
+	case Redeem:
+		return reflect.ValueOf((*impl)(a).redeem), signatures[Redeem], true
+	case Voucher:
+		return reflect.ValueOf((*impl)(a).voucher), signatures[Voucher], true
+	default:
+		return nil, nil, false
+	}
+}
+
+// InitializeState stores the actor's initial data structure.
+func (*Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+	// pb's default state is an empty lookup, so this method is a no-op
+	return nil
+}
+
+//
+// vm methods for actor
+//
+
+type impl Actor
 
 const (
 	// ErrNonAccountActor indicates an non-account actor attempted to create a payment channel.
@@ -55,7 +185,7 @@ var Errors = map[uint8]error{
 	ErrNonAccountActor:          errors.NewCodedRevertError(ErrNonAccountActor, "Only account actors may create payment channels"),
 	ErrDuplicateChannel:         errors.NewCodedRevertError(ErrDuplicateChannel, "Duplicate create channel attempt"),
 	ErrEolTooLow:                errors.NewCodedRevertError(ErrEolTooLow, "payment channel eol may not be decreased"),
-	ErrReclaimBeforeEol:         errors.NewCodedRevertError(ErrReclaimBeforeEol, "payment channel may not reclaimed before eol"),
+	ErrReclaimBeforeEol:         errors.NewCodedRevertError(ErrReclaimBeforeEol, "payment channel may not be reclaimed before eol"),
 	ErrInsufficientChannelFunds: errors.NewCodedRevertError(ErrInsufficientChannelFunds, "voucher amount exceeds amount in channel"),
 	ErrUnknownChannel:           errors.NewCodedRevertError(ErrUnknownChannel, "payment channel is unknown"),
 	ErrWrongTarget:              errors.NewCodedRevertError(ErrWrongTarget, "attempt to redeem channel from wrong target account"),
@@ -64,98 +194,10 @@ var Errors = map[uint8]error{
 	ErrInvalidSignature:         errors.NewCodedRevertErrorf(ErrInvalidSignature, "signature failed to validate"),
 }
 
-// PaymentChannel records the intent to pay funds to a target account.
-type PaymentChannel struct {
-	// Target is the address of the account to which funds will be transferred
-	Target address.Address `json:"target"`
-
-	// Amount is the total amount of FIL that has been transferred to the channel from the payer
-	Amount types.AttoFIL `json:"amount"`
-
-	// AmountRedeemed is the amount of FIL already transferred to the target
-	AmountRedeemed types.AttoFIL `json:"amount_redeemed"`
-
-	// AgreedEol is the expiration for the payment channel agreed upon by the
-	// payer and payee upon initialization or extension
-	AgreedEol *types.BlockHeight `json:"agreed_eol"`
-
-	// Condition are the set of conditions for redeeming or closing the payment
-	// channel
-	Condition *types.Predicate `json:"condition"`
-
-	// Eol is the actual expiration for the payment channel which can differ from
-	// AgreedEol when the payment channel is in dispute
-	Eol *types.BlockHeight `json:"eol"`
-
-	// Redeemed is a flag indicating whether or not Redeem has been called on the
-	// payment channel yet. This is necessary because AmountRedeemed can still be
-	// zero in the event of a zero-value voucher
-	Redeemed bool `json:"redeemed"`
-}
-
-// Actor provides a mechanism for off chain payments.
-// It allows the creation of payment channels that hold funds for a target account
-// and permits that account to withdraw funds only with a voucher signed by the
-// channel's creator.
-type Actor struct{}
-
-// NewActor returns a new payment broker actor.
-func NewActor() *actor.Actor {
-	return actor.NewActor(types.PaymentBrokerActorCodeCid, types.ZeroAttoFIL)
-}
-
-// InitializeState stores the actor's initial data structure.
-func (pb *Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
-	// pb's default state is an empty lookup, so this method is a no-op
-	return nil
-}
-
-// Exports returns the actor's exports.
-func (pb *Actor) Exports() exec.Exports {
-	return paymentBrokerExports
-}
-
-var _ exec.ExecutableActor = (*Actor)(nil)
-
-var paymentBrokerExports = exec.Exports{
-	"cancel": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID},
-		Return: nil,
-	},
-	"close": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
-		Return: nil,
-	},
-	"createChannel": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.BlockHeight},
-		Return: []abi.Type{abi.ChannelID},
-	},
-	"extend": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.BlockHeight},
-		Return: nil,
-	},
-	"ls": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address},
-		Return: []abi.Type{abi.Bytes},
-	},
-	"reclaim": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID},
-		Return: nil,
-	},
-	"redeem": &exec.FunctionSignature{
-		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
-		Return: nil,
-	},
-	"voucher": &exec.FunctionSignature{
-		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate},
-		Return: []abi.Type{abi.Bytes},
-	},
-}
-
 // CreateChannel creates a new payment channel from the caller to the target.
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
-func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
+func (*impl) createChannel(vmctx exec.VMContext, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -222,7 +264,7 @@ func (pb *Actor) CreateChannel(vmctx exec.VMContext, target address.Address, eol
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
+func (*impl) redeem(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -280,7 +322,7 @@ func (pb *Actor) Redeem(vmctx exec.VMContext, payer address.Address, chid *types
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
+func (*impl) close(vmctx exec.VMContext, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -332,7 +374,7 @@ func (pb *Actor) Close(vmctx exec.VMContext, payer address.Address, chid *types.
 
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channel's lifespan.
-func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
+func (*impl) extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -384,7 +426,7 @@ func (pb *Actor) Extend(vmctx exec.VMContext, chid *types.ChannelID, eol *types.
 // successfully redeemed a voucher or if the target has successfully redeemed
 // the channel with a conditional voucher and the condition is no longer valid
 // due to changes in chain state.
-func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
+func (*impl) cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -445,7 +487,7 @@ func (pb *Actor) Cancel(vmctx exec.VMContext, chid *types.ChannelID) (uint8, err
 
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
-func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
+func (*impl) reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -492,7 +534,7 @@ func (pb *Actor) Reclaim(vmctx exec.VMContext, chid *types.ChannelID) (uint8, er
 // If a condition is provided, attempts to redeem or close with the voucher will
 // first send a message based on the condition and require a successful response
 // for funds to be transferred.
-func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
+func (*impl) voucher(vmctx exec.VMContext, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -548,7 +590,7 @@ func (pb *Actor) Voucher(vmctx exec.VMContext, chid *types.ChannelID, amount typ
 
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
-func (pb *Actor) Ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8, error) {
+func (*impl) ls(vmctx exec.VMContext, payer address.Address) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -613,7 +655,7 @@ func validateAndUpdateChannel(ctx exec.VMContext, target address.Address, channe
 
 	// transfer funds to sender
 	updateAmount := amt.Sub(channel.AmountRedeemed)
-	_, _, err := ctx.Send(ctx.Message().From, "", updateAmount, nil)
+	_, _, err := ctx.Send(ctx.Message().From, types.InvalidMethodID, updateAmount, nil)
 	if err != nil {
 		return err
 	}
@@ -637,7 +679,7 @@ func reclaim(ctx context.Context, vmctx exec.VMContext, byChannelID exec.Lookup,
 	}
 
 	// send funds
-	_, _, err = vmctx.Send(payer, "", amt, nil)
+	_, _, err = vmctx.Send(payer, types.InvalidMethodID, amt, nil)
 	if err != nil {
 		return errors.RevertErrorWrap(err, "could not send update funds")
 	}
@@ -674,9 +716,16 @@ func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL
 	data := append(channelID.Bytes(), separator)
 	data = append(data, amount.Bytes()...)
 	data = append(data, separator)
+
 	if condition != nil {
 		data = append(data, condition.To.Bytes()...)
-		data = append(data, []byte(condition.Method)...)
+
+		encodedMethod, err := encoding.Encode(condition.Method)
+		if err != nil {
+			return data, err
+		}
+		data = append(data, encodedMethod...)
+
 		encodedParams, err := abi.ToEncodedValues(condition.Params...)
 		if err != nil {
 			return []byte{}, err

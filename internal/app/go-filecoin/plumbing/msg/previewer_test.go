@@ -51,7 +51,7 @@ func TestPreview(t *testing.T) {
 		deps := requireCommonDepsWithGifAndBlockstore(t, testGen, r, bs)
 
 		previewer := NewPreviewer(deps.chainStore, deps.cst, deps.blockstore, processor)
-		returnValue, err := previewer.Preview(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
+		returnValue, err := previewer.Preview(ctx, fromAddr, fakeActorAddr, actor.HasReturnValueID)
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)
 		assert.Equal(t, types.NewGasUnits(100), returnValue)

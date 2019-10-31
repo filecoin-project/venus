@@ -110,7 +110,7 @@ func TestSignMessageOk(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
@@ -125,7 +125,7 @@ func TestBadFrom(t *testing.T) {
 	addr2, err := fs.NewAddress(address.SECP256K1)
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
 	// Can't use NewSignedMessage constructor as it always signs with msg.From.
 	bmsg, err := msg.Marshal()
 	require.NoError(t, err)
@@ -144,7 +144,7 @@ func TestSignedMessageBadSignature(t *testing.T) {
 	tf.UnitTest(t)
 
 	fs, addr := requireSignerAddr(t)
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 
@@ -158,7 +158,7 @@ func TestSignedMessageCorrupted(t *testing.T) {
 
 	fs, addr := requireSignerAddr(t)
 
-	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, "", nil, types.NewGasPrice(0), types.NewGasUnits(0))
+	msg := types.NewMeteredMessage(addr, addr, 1, types.ZeroAttoFIL, types.InvalidMethodID, nil, types.NewGasPrice(0), types.NewGasUnits(0))
 	smsg, err := types.NewSignedMessage(*msg, fs)
 	require.NoError(t, err)
 

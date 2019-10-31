@@ -82,7 +82,7 @@ func makeMessage(t *testing.T, signer MockSigner, nonce uint64) *SignedMessage {
 		newAddr,
 		nonce,
 		NewAttoFILFromFIL(2),
-		"method",
+		MethodID(2352),
 		[]byte("params"),
 		NewGasPrice(1000),
 		NewGasUnits(100))

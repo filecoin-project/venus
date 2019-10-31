@@ -25,7 +25,7 @@ type chainStateChainReader interface {
 // QueryProcessor querys actor state of a particular tipset
 type QueryProcessor interface {
 	// CallQueryMethod calls a method on an actor in the given state tree.
-	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
+	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
 }
 
 // ActorStateStore knows how to send read-only messages for querying actor state.
@@ -47,7 +47,7 @@ func NewActorStateStore(chainReader chainStateChainReader, cst *hamt.CborIpldSto
 
 // ActorStateSnapshot permits queries to chain state at a particular tip set.
 type ActorStateSnapshot interface {
-	Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error)
+	Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error)
 }
 
 // Snapshot returns a snapshot of tipset state for querying
@@ -92,7 +92,7 @@ func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHe
 }
 
 // Query sends a read-only message against the state of the snapshot.
-func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Address, method string, params ...interface{}) ([][]byte, error) {
+func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Address, method types.MethodID, params ...interface{}) ([][]byte, error) {
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode message params")

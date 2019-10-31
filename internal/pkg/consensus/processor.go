@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -299,10 +301,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	tagMethod := msg.Message.Method
-	if tagMethod == "" {
-		tagMethod = "sendFIL"
-	}
+	tagMethod := fmt.Sprintf("%s", msg.Message.Method)
 	ctx, err = tag.New(ctx, tag.Insert(msgMethodKey, tagMethod))
 	if err != nil {
 		log.Debugf("failed to insert tag for message method: %s", err.Error())
@@ -387,7 +386,7 @@ var (
 // CallQueryMethod calls a method on an actor in the given state tree. It does
 // not make any changes to the state/blockchain and is useful for interrogating
 // actor state. Block height bh is optional; some methods will ignore it.
-func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
+func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error) {
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return nil, 1, errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
@@ -426,7 +425,7 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 
 // PreviewQueryMethod estimates the amount of gas that will be used by a method
 // call. It accepts all the same arguments as CallQueryMethod.
-func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method string, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
+func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error) {
 	toActor, err := st.GetActor(ctx, to)
 	if err != nil {
 		return types.NewGasUnits(0), errors.ApplyErrorPermanentWrapf(err, "failed to get To actor")
@@ -677,7 +676,7 @@ func isPermanentError(err error) bool {
 
 // minerOwnerAddress finds the address of the owner of the given miner
 func (p *DefaultProcessor) minerOwnerAddress(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address) (address.Address, error) {
-	ret, code, err := p.CallQueryMethod(ctx, st, vms, minerAddr, "getOwner", []byte{}, address.Undef, types.NewBlockHeight(0))
+	ret, code, err := p.CallQueryMethod(ctx, st, vms, minerAddr, miner.GetOwner, []byte{}, address.Undef, types.NewBlockHeight(0))
 	if err != nil {
 		return address.Undef, errors.FaultErrorWrap(err, "could not get miner owner")
 	}
