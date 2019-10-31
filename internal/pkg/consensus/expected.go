@@ -42,8 +42,12 @@ func init() {
 var (
 	// ErrStateRootMismatch is returned when the computed state root doesn't match the expected result.
 	ErrStateRootMismatch = errors.New("blocks state root does not match computed result")
+	// ErrInvalidBase is returned when the chain doesn't connect back to a known good block.
+	ErrInvalidBase = errors.New("block does not connect to a known good chain")
 	// ErrUnorderedTipSets is returned when weight and minticket are the same between two tipsets.
 	ErrUnorderedTipSets = errors.New("trying to order two identical tipsets")
+	// ErrReceiptRootMismatch is returned when the block's receipt root doesn't match the receipt root computed for the parent tipset.
+	ErrReceiptRootMismatch = errors.New("blocks receipt root does not match parent tip set")
 )
 
 // DefaultBlockTime is the estimated proving period time.
@@ -137,12 +141,12 @@ func (c *Expected) BlockTime() time.Duration {
 // RunStateTransition applies the messages in a tipset to a state, and persists that new state.
 // It errors if the tipset was not mined according to the EC rules, or if any of the messages
 // in the tipset results in an error.
-func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, priorStateID cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
+func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage, ancestors []block.TipSet, parentWeight uint64, parentStateRoot cid.Cid, parentReceiptRoot cid.Cid) (root cid.Cid, receipts []*types.MessageReceipt, err error) {
 	ctx, span := trace.StartSpan(ctx, "Expected.RunStateTransition")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
-	priorState, err := c.loadStateTree(ctx, priorStateID)
+	priorState, err := c.loadStateTree(ctx, parentStateRoot)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -153,7 +157,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 
 	vms := vm.NewStorageMap(c.bstore)
 	var st state.Tree
-	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), ancestors)
+	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), parentReceiptRoot, ancestors)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -248,46 +252,24 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 // An error is returned if individual blocks contain messages that do not
 // lead to successful state transitions.  An error is also returned if the node
 // faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
-	var cpySt state.Tree
-	var results []*ApplicationResult
-
-	// TODO: don't process messages twice
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		cpyCid, err := st.Flush(ctx)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error validating block state")
-		}
-		// state copied so changes don't propagate between block validations
-		cpySt, err = c.loadStateTree(ctx, cpyCid)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error validating block state")
-		}
-
-		// Combine messages to process BLS first.
-		msgs := append(blsMessages[i], secpMessages[i]...)
-		results, err = c.processor.ProcessBlock(ctx, cpySt, vms, blk, msgs, ancestors)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error validating block state")
-		}
-
-		outCid, err := cpySt.Flush(ctx)
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "error validating block state")
-		}
-
-		if !outCid.Equals(blk.StateRoot) {
-			return nil, nil, ErrStateRootMismatch
-		}
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, parentReceipts cid.Cid, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
+	parentStateRoot, err := st.Flush(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error getting parent state root")
 	}
 
-	if ts.Len() <= 1 { // block validation state == aggregate parent state
-		receipts := make([]*types.MessageReceipt, len(results))
-		for i, res := range results {
-			receipts[i] = res.Receipt
+	for i := 0; i < ts.Len(); i++ {
+		blk := ts.At(i)
+
+		// confirm block state root matches parent state root
+		if !parentStateRoot.Equals(blk.StateRoot) {
+			return nil, nil, ErrStateRootMismatch
 		}
-		return cpySt, receipts, nil
+
+		// confirm block receipts match parent receipts
+		if !parentReceipts.Equals(blk.MessageReceipts) {
+			return nil, nil, ErrReceiptRootMismatch
+		}
 	}
 
 	// multiblock tipsets require reapplying messages to get aggregate state
@@ -301,7 +283,7 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 	}
 
 	receipts := make([]*types.MessageReceipt, len(resp.Results))
-	for i, res := range results {
+	for i, res := range resp.Results {
 		receipts[i] = res.Receipt
 	}
 

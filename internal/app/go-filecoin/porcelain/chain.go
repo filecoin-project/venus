@@ -22,7 +22,6 @@ func ChainHead(plumbing chainHeadPlumbing) (block.TipSet, error) {
 type fullBlockPlumbing interface {
 	ChainGetBlock(context.Context, cid.Cid) (*block.Block, error)
 	ChainGetMessages(context.Context, types.TxMeta) ([]*types.SignedMessage, error)
-	ChainGetReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
 }
 
 // GetFullBlock returns a full block: header, messages, receipts.
@@ -36,11 +35,6 @@ func GetFullBlock(ctx context.Context, plumbing fullBlockPlumbing, id cid.Cid) (
 	}
 
 	out.Messages, err = plumbing.ChainGetMessages(ctx, out.Header.Messages)
-	if err != nil {
-		return nil, err
-	}
-
-	out.Receipts, err = plumbing.ChainGetReceipts(ctx, out.Header.MessageReceipts)
 	if err != nil {
 		return nil, err
 	}

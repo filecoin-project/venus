@@ -124,7 +124,7 @@ func TestBlockDaemon(t *testing.T) {
 		assert.Equal(t, 0, len(receipts))
 	})
 
-	t.Run("show messages and show receipts", func(t *testing.T) {
+	t.Run("show messages", func(t *testing.T) {
 		d := th.NewDaemon(
 			t,
 			th.DefaultAddress(fixtures.TestAddresses[0]),
@@ -170,23 +170,15 @@ func TestBlockDaemon(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(blockGetLine), &blockGetBlock))
 
 		assert.Equal(t, 3, len(blockGetBlock.Messages))
-		assert.Equal(t, 3, len(blockGetBlock.Receipts))
 
 		fromAddr, err := address.NewFromString(from)
 		require.NoError(t, err)
 		assert.Equal(t, fromAddr, blockGetBlock.Messages[0].Message.From)
-		assert.Equal(t, uint8(0), blockGetBlock.Receipts[0].ExitCode)
 
 		// Full block matches show messages
 		messagesGetLine := th.RunSuccessFirstLine(d, "show", "messages", blockGetBlock.Header.Messages.SecpRoot.String(), "--enc", "json")
 		var messages []*types.SignedMessage
 		require.NoError(t, json.Unmarshal([]byte(messagesGetLine), &messages))
 		assert.Equal(t, blockGetBlock.Messages, messages)
-
-		// Full block matches show receipts
-		receiptsGetLine := th.RunSuccessFirstLine(d, "show", "receipts", blockGetBlock.Header.MessageReceipts.String(), "--enc", "json")
-		var receipts []*types.MessageReceipt
-		require.NoError(t, json.Unmarshal([]byte(receiptsGetLine), &receipts))
-		assert.Equal(t, blockGetBlock.Receipts, receipts)
 	})
 }

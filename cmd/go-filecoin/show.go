@@ -37,7 +37,6 @@ all other block properties will be included as well.`,
 	},
 	Options: []cmdkit.Option{
 		cmdkit.BoolOption("messages", "m", "show messages in block"),
-		cmdkit.BoolOption("receipts", "r", "show receipts in block"),
 	},
 	Run: func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 		cid, err := cid.Decode(req.Arguments[0])
@@ -65,14 +64,12 @@ Miner:  %s
 Weight: %s
 Height: %s
 Messages:  %s
-Receipts:  %s
 Timestamp:  %s
 `,
 				block.Header.Miner,
 				wStr,
 				strconv.FormatUint(uint64(block.Header.Height), 10),
 				block.Header.Messages.String(),
-				block.Header.MessageReceipts.String(),
 				strconv.FormatUint(uint64(block.Header.Timestamp), 10),
 			)
 			if err != nil {
@@ -82,13 +79,6 @@ Timestamp:  %s
 			showMessages, _ := req.Options["messages"].(bool)
 			if showMessages == true {
 				_, err = fmt.Fprintf(w, `Messages:  %s`+"\n", block.Messages)
-			}
-			if err != nil {
-				return err
-			}
-			showReceipts, _ := req.Options["receipts"].(bool)
-			if showReceipts == true {
-				_, err = fmt.Fprintf(w, `Receipts: %s`+"\n", block.Receipts)
 			}
 			return err
 		}),

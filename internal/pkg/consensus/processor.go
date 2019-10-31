@@ -173,6 +173,10 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	}
 	bh := types.NewBlockHeight(h)
 
+	var res ProcessTipSetResponse
+	res.Failures = make(map[cid.Cid]struct{})
+	res.Successes = make(map[cid.Cid]struct{})
+
 	dedupedMessages, err := DeduppedMessages(tsMessages)
 
 	for blkIdx := 0; blkIdx < ts.Len(); blkIdx++ {
@@ -226,12 +230,6 @@ func DeduppedMessages(tsMessages [][]*types.UnsignedMessage) ([][]*types.Unsigne
 		}
 	}
 	return allMessages, nil
-}
-
-// DeduppedUnwrappedMessages unwraps and removes all messages that have the same cid
-func DeduppedUnwrappedMessages(msgs [][]*types.SignedMessage) ([][]*types.UnsignedMessage, error) {
-	unwrapped := unwrap(msgs)
-	return DeduppedMessages(unwrapped)
 }
 
 // ApplyMessage attempts to apply a message to a state tree. It is the
