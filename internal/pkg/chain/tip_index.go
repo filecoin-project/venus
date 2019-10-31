@@ -14,7 +14,7 @@ var (
 	ErrNotFound = errors.New("Key not found in tipindex")
 )
 
-// TipSetMetadata (tsas) is the type stored at the leaves of the TipIndex.  It contains
+// TipSetMetadata is the type stored at the leaves of the TipIndex.  It contains
 // a tipset pointing to blocks, the root cid of the chain's state after
 // applying the messages in this tipset to it's parent state, and the cid of the receipts
 // for these messages.
@@ -29,7 +29,7 @@ type TipSetMetadata struct {
 	TipSetReceipts cid.Cid
 }
 
-type tsasByTipSetID map[string]*TipSetMetadata
+type tsmByTipSetID map[string]*TipSetMetadata
 
 // TipIndex tracks tipsets and their states by tipset block ids and parent
 // block ids.  All methods are threadsafe as shared data is guarded by a
@@ -37,15 +37,15 @@ type tsasByTipSetID map[string]*TipSetMetadata
 type TipIndex struct {
 	mu sync.Mutex
 	// tsasByParents allows lookup of all TipSetAndStates with the same parent IDs.
-	tsasByParentsAndHeight map[string]tsasByTipSetID
+	tsasByParentsAndHeight map[string]tsmByTipSetID
 	// tsasByID allows lookup of recorded TipSetAndStates by TipSet ID.
-	tsasByID tsasByTipSetID
+	tsasByID tsmByTipSetID
 }
 
 // NewTipIndex is the TipIndex constructor.
 func NewTipIndex() *TipIndex {
 	return &TipIndex{
-		tsasByParentsAndHeight: make(map[string]tsasByTipSetID),
+		tsasByParentsAndHeight: make(map[string]tsmByTipSetID),
 		tsasByID:               make(map[string]*TipSetMetadata),
 	}
 }
@@ -109,8 +109,8 @@ func (ti *TipIndex) GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error) {
 	return tsas.TipSetStateRoot, nil
 }
 
-// GetTipSetReceipts returns the tipsetReceipts from func (ti *TipIndex) Get(tsKey string).
-func (ti *TipIndex) GetTipSetReceipts(tsKey block.TipSetKey) (cid.Cid, error) {
+// GetTipSetReceiptsRoot returns the tipsetReceipts from func (ti *TipIndex) Get(tsKey string).
+func (ti *TipIndex) GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error) {
 	tsas, err := ti.Get(tsKey)
 	if err != nil {
 		return cid.Cid{}, err

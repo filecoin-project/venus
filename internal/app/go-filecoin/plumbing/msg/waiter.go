@@ -180,12 +180,12 @@ func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, msgCid c
 		for i, msg := range blkMsgs {
 			if cids[i].Equals(msgCid) {
 				// wrapped cid might be different from given cid
-				targetCid, err := msg.Cid()
+				wrappedCid, err := msg.Cid()
 				if err != nil {
 					return nil, false, err
 				}
 
-				recpt, err := w.receiptByIndex(ctx, ts.Key(), targetCid, tsMessages)
+				recpt, err := w.receiptByIndex(ctx, ts.Key(), wrappedCid, tsMessages)
 				if err != nil {
 					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
 				}
