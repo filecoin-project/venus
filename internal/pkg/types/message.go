@@ -21,7 +21,7 @@ import (
 )
 
 // MethodID is an identifier of a method (in an actor).
-type MethodID UVarint
+type MethodID Uint64
 
 const (
 	// InvalidMethodID is the value of an invalid method id.
