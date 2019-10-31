@@ -133,7 +133,14 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case block.TipSet:
-				return w.receiptForTipset(ctx, raw, msgCid)
+				msg, found, err := w.receiptForTipset(ctx, raw, msgCid)
+				if err != nil {
+					return nil, false, err
+				}
+				if found {
+					return msg, found, nil
+				}
+				// otherwise continue waiting
 			default:
 				return nil, false, fmt.Errorf("unexpected type in channel: %T", raw)
 			}
