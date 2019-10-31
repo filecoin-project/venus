@@ -5,10 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -16,7 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -381,14 +380,14 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, _ cid.Cid) (cid.Cid, error) {
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	stamp, err := ts.MinTimestamp()
 	require.NoError(pv.t, err)
 
 	if pv.fullFailureTS == uint64(stamp) {
-		return cid.Undef, errors.New("run state transition fails on poison timestamp")
+		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")
 	}
-	return cid.Undef, nil
+	return cid.Undef, nil, nil
 }
 
 func (pv *poisonValidator) ValidateSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
@@ -417,7 +416,6 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 		bb.AddMessages(
 			[]*types.SignedMessage{m1, m2, m3},
 			[]*types.UnsignedMessage{},
-			[]*types.MessageReceipt{},
 		)
 		bb.SetTimestamp(98) // poison header val
 	})
