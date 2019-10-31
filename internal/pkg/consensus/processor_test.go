@@ -42,59 +42,6 @@ func requireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[addres
 	return c, tree
 }
 
-func TestProcessBlockSuccess(t *testing.T) {
-	tf.UnitTest(t)
-
-	newAddress := address.NewForTestGetter()
-	ctx := context.Background()
-	cst := hamt.NewCborStore()
-	mockSigner, _ := types.NewMockSignersAndKeyInfo(1)
-
-	startingNetworkBalance := uint64(10000000)
-
-	toAddr := newAddress()
-	minerAddr := newAddress()
-	minerOwnerAddr := newAddress()
-	fromAddr := mockSigner.Addresses[0] // fromAddr needs to be known by signer
-	fromAct := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000))
-	vms := th.VMStorage()
-	minerActor := th.RequireNewMinerActor(t, vms, minerAddr, minerOwnerAddr, 10, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
-	stCid, st := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
-		address.NetworkAddress: th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(startingNetworkBalance)),
-		minerAddr:              minerActor,
-		minerOwnerAddr:         th.RequireNewAccountActor(t, types.ZeroAttoFIL),
-		fromAddr:               fromAct,
-	})
-
-	msg := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-
-	msgs := []*types.UnsignedMessage{msg}
-	blk := &block.Block{
-		Height:    20,
-		StateRoot: stCid,
-		Miner:     minerAddr,
-	}
-	results, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, msgs, nil)
-	assert.NoError(t, err)
-	assert.Len(t, results, 1)
-
-	gotStCid, err := st.Flush(ctx)
-	assert.NoError(t, err)
-	expAct1, expAct2 := th.RequireNewAccountActor(t, types.NewAttoFILFromFIL(10000-550)), th.RequireNewEmptyActor(types.NewAttoFILFromFIL(550))
-	expAct1.IncNonce()
-	blockRewardAmount := NewDefaultBlockRewarder().BlockRewardAmount()
-	expectedNetworkBalance := types.NewAttoFILFromFIL(startingNetworkBalance).Sub(blockRewardAmount)
-	expStCid, _ := th.RequireMakeStateTree(t, cst, map[address.Address]*actor.Actor{
-		address.NetworkAddress: th.RequireNewAccountActor(t, expectedNetworkBalance),
-		minerAddr:              minerActor,
-		minerOwnerAddr:         th.RequireNewAccountActor(t, blockRewardAmount),
-		fromAddr:               expAct1,
-		toAddr:                 expAct2,
-	})
-
-	assert.True(t, expStCid.Equals(gotStCid))
-}
-
 func TestProcessTipSetSuccess(t *testing.T) {
 	tf.UnitTest(t)
 
@@ -263,9 +210,9 @@ func TestProcessBlockReward(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 	}
-	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, []*types.UnsignedMessage{}, nil)
+	ret, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), [][]*types.UnsignedMessage{{}}, nil)
 	require.NoError(t, err)
-	assert.Nil(t, ret)
+	assert.Nil(t, ret.Results)
 
 	minerOwnerActor, err := st.GetActor(ctx, minerOwnerAddr)
 	require.NoError(t, err)
@@ -305,8 +252,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
 
-	msgs := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr, toAddr, 0, types.ZeroAttoFIL,
-		actor.ReturnRevertErrorID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
+	msgs := [][]*types.UnsignedMessage{{types.NewMeteredMessage(fromAddr, toAddr, 0, types.ZeroAttoFIL,
+		actor.ReturnRevertErrorID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}}
 	blk := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -316,15 +263,15 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
 	processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
-	results, err := processor.ProcessBlock(ctx, st, vms, blk, msgs, nil)
+	res, err := processor.ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), msgs, nil)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(t, err)
 
 	// 2. That the VM error is faithfully recorded.
-	assert.Len(t, results, 1)
-	assert.Len(t, results[0].Receipt.Return, 0)
-	assert.Contains(t, results[0].ExecutionError.Error(), "boom")
+	assert.Len(t, res.Results, 1)
+	assert.Len(t, res.Results[0].Receipt.Return, 0)
+	assert.Contains(t, res.Results[0].ExecutionError.Error(), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := th.RequireNewEmptyActor(types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)

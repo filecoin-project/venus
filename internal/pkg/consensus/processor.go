@@ -92,62 +92,6 @@ func NewConfiguredProcessor(validator MessageValidator, rewarder BlockRewarder, 
 	}
 }
 
-// ProcessBlock is the entrypoint for validating the state transitions
-// of the messages in a block. When we receive a new block from the
-// network ProcessBlock applies the block's messages to the beginning
-// state tree ensuring that all transitions are valid, accumulating
-// changes in the state tree, and returning the message receipts.
-//
-// ProcessBlock returns an error if the block contains a message, the
-// application of which would result in an invalid state transition (eg, a
-// message to transfer value from an unknown account). ProcessBlock
-// can return one of three kinds of errors (see ApplyMessage: fault
-// error, permanent error, temporary error). For the purposes of
-// block validation the caller probably doesn't care if the error
-// was temporary or permanent; either way the block has a bad
-// message and should be thrown out. Caller should always differentiate
-// a fault error as it signals something Very Bad has happened
-// (eg, disk corruption).
-//
-// To be clear about intent: if ProcessBlock returns an ApplyError
-// it is signaling that the message should not have been included
-// in the block. If no error is returned this means that the
-// message was applied, BUT SUCCESSFUL APPLICATION DOES NOT
-// NECESSARILY MEAN THE IMPLIED CALL SUCCEEDED OR SENDER INTENT
-// WAS REALIZED. It just means that the transition if any was
-// valid. For example, a message that errors out in the VM
-// will in many cases be successfully applied even though an
-// error was thrown causing any state changes to be rolled back.
-// See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *block.Block, blkMessages []*types.UnsignedMessage, ancestors []block.TipSet) (results []*ApplicationResult, err error) {
-	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessBlock")
-	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
-	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	pbsw := pbTimer.Start(ctx)
-	defer pbsw.Stop(ctx)
-
-	// find miner's owner address
-	minerOwnerAddr, err := p.minerOwnerAddress(ctx, st, vms, blk.Miner)
-	if err != nil {
-		return nil, err
-	}
-
-	bh := types.NewBlockHeight(uint64(blk.Height))
-	res, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, r := range res {
-		if r.Failure != nil {
-			return nil, r.Failure
-		}
-		results = append(results, &r.ApplicationResult)
-	}
-	return results, nil
-}
-
 // ProcessTipSet computes the state transition specified by the messages in all
 // blocks in a TipSet.  It is similar to ProcessBlock with a few key differences.
 // Most importantly ProcessTipSet relies on the precondition that each input block
