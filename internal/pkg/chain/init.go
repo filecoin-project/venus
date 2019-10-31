@@ -30,11 +30,12 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Cbor
 	chainStore := NewStore(r.ChainDatastore(), cst, &state.TreeStateLoader{}, NewStatusReporter(), genesis.Cid())
 
 	// Persist the genesis tipset to the repo.
-	genTsas := &TipSetAndState{
+	genTsas := &TipSetMetadata{
 		TipSet:          genTipSet,
 		TipSetStateRoot: genesis.StateRoot,
+		TipSetReceipts:  genesis.MessageReceipts,
 	}
-	if err = chainStore.PutTipSetAndState(ctx, genTsas); err != nil {
+	if err = chainStore.PutTipSetMetadata(ctx, genTsas); err != nil {
 		return nil, errors.Wrap(err, "failed to put genesis block in chain store")
 	}
 	if err = chainStore.SetHead(ctx, genTipSet); err != nil {

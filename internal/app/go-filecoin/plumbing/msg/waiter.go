@@ -15,7 +15,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -26,6 +25,7 @@ type waiterChainReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetState(context.Context, block.TipSetKey) (state.Tree, error)
+	GetTipSetReceiptsRoot(block.TipSetKey) (cid.Cid, error)
 	HeadEvents() *pubsub.PubSub
 }
 
@@ -101,33 +101,17 @@ func (w *Waiter) Wait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block,
 // if now block with the given CID exists in the chain.
 func (w *Waiter) findMessage(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
 	var err error
-	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); !iterator.Complete(); err = iterator.Next() {
+	for iterator := chain.IterAncestors(ctx, w.chainReader, ts); err == nil && !iterator.Complete(); err = iterator.Next() {
+		msg, found, err := w.receiptForTipset(ctx, iterator.Value(), msgCid)
 		if err != nil {
 			log.Errorf("Waiter.Wait: %s", err)
 			return nil, false, err
 		}
-		for i := 0; i < iterator.Value().Len(); i++ {
-			blk := iterator.Value().At(i)
-			secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
-			if err != nil {
-				return nil, false, err
-			}
-			for _, msg := range secpMsgs {
-				c, err := msg.Cid()
-				if err != nil {
-					return nil, false, err
-				}
-				if c.Equals(msgCid) {
-					recpt, err := w.receiptFromTipSet(ctx, msgCid, iterator.Value())
-					if err != nil {
-						return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-					}
-					return &ChainMessage{msg, blk, recpt}, true, nil
-				}
-			}
+		if found {
+			return msg, true, nil
 		}
 	}
-	return nil, false, nil
+	return nil, false, err
 }
 
 // waitForMessage looks for a message CID in a channel of tipsets and returns
@@ -149,26 +133,14 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 				log.Errorf("Waiter.Wait: %s", e)
 				return nil, false, e
 			case block.TipSet:
-				for i := 0; i < raw.Len(); i++ {
-					blk := raw.At(i)
-					secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
-					if err != nil {
-						return nil, false, err
-					}
-					for _, msg := range secpMsgs {
-						c, err := msg.Cid()
-						if err != nil {
-							return nil, false, err
-						}
-						if c.Equals(msgCid) {
-							recpt, err := w.receiptFromTipSet(ctx, msgCid, raw)
-							if err != nil {
-								return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
-							}
-							return &ChainMessage{msg, blk, recpt}, true, nil
-						}
-					}
+				msg, found, err := w.receiptForTipset(ctx, raw, msgCid)
+				if err != nil {
+					return nil, false, err
 				}
+				if found {
+					return msg, found, nil
+				}
+				// otherwise continue waiting
 			default:
 				return nil, false, fmt.Errorf("unexpected type in channel: %T", raw)
 			}
@@ -176,122 +148,86 @@ func (w *Waiter) waitForMessage(ctx context.Context, ch <-chan interface{}, msgC
 	}
 }
 
-// receiptFromTipSet finds the receipt for the message with msgCid in the
-// input tipset.  This can differ from the message's receipt as stored in its
-// parent block in the case that the message is in conflict with another
-// message of the tipset.
-func (w *Waiter) receiptFromTipSet(ctx context.Context, msgCid cid.Cid, ts block.TipSet) (*types.MessageReceipt, error) {
-	// Receipts always match block if tipset has only 1 member.
-	var rcpt *types.MessageReceipt
-	if ts.Len() == 1 {
-		b := ts.At(0)
-		// TODO #3194: this should return an error if a receipt doesn't exist.
-		// Right now doing so breaks tests because our test helpers
-		// don't correctly apply messages when making test chains.
-		//
-		j, err := w.msgIndexOfTipSet(ctx, msgCid, ts, make(map[cid.Cid]struct{}))
-		if err != nil {
-			return nil, err
-		}
-
-		receipts, err := w.messageProvider.LoadReceipts(ctx, b.MessageReceipts)
-		if err != nil {
-			return nil, err
-		}
-		if j < len(receipts) {
-			rcpt = receipts[j]
-		}
-		return rcpt, nil
-	}
-
-	// Apply all the tipset's messages to determine the correct receipts.
-	ids, err := ts.Parents()
-	if err != nil {
-		return nil, err
-	}
-	st, err := w.chainReader.GetTipSetState(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	tsHeight, err := ts.Height()
-	if err != nil {
-		return nil, err
-	}
-	ancestorHeight := types.NewBlockHeight(tsHeight).Sub(types.NewBlockHeight(consensus.AncestorRoundsNeeded))
-	parentTs, err := w.chainReader.GetTipSet(ids)
-	if err != nil {
-		return nil, err
-	}
-	ancestors, err := chain.GetRecentAncestors(ctx, parentTs, w.chainReader, ancestorHeight)
-	if err != nil {
-		return nil, err
-	}
-
-	var tsMessages [][]*types.SignedMessage
+func (w *Waiter) receiptForTipset(ctx context.Context, ts block.TipSet, msgCid cid.Cid) (*ChainMessage, bool, error) {
+	tsMessages := make([][]*types.SignedMessage, ts.Len())
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
-		secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
+		secpMsgs, blsMsgs, err := w.messageProvider.LoadMessages(ctx, blk.Messages)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		tsMessages = append(tsMessages, secpMsgs)
-	}
 
-	res, err := consensus.NewDefaultProcessor().ProcessTipSet(ctx, st, vm.NewStorageMap(w.bs), ts, tsMessages, ancestors)
-	if err != nil {
-		return nil, err
-	}
-
-	// If this is a failing conflict message there is no application receipt.
-	_, failed := res.Failures[msgCid]
-	if failed {
-		return nil, nil
-	}
-
-	j, err := w.msgIndexOfTipSet(ctx, msgCid, ts, res.Failures)
-	if err != nil {
-		return nil, err
-	}
-	// TODO #3194: out of bounds receipt index should return an error.
-	if j < len(res.Results) {
-		rcpt = res.Results[j].Receipt
-	}
-	return rcpt, nil
-}
-
-// msgIndexOfTipSet returns the order in which msgCid appears in the canonical
-// message ordering of the given tipset, or an error if it is not in the
-// tipset.
-// TODO: find a better home for this method
-func (w *Waiter) msgIndexOfTipSet(ctx context.Context, msgCid cid.Cid, ts block.TipSet, fails map[cid.Cid]struct{}) (int, error) {
-	duplicates := make(map[cid.Cid]struct{})
-	var msgCnt int
-	for i := 0; i < ts.Len(); i++ {
-		secpMsgs, _, err := w.messageProvider.LoadMessages(ctx, ts.At(i).Messages)
-		if err != nil {
-			return -1, err
-		}
-		for _, msg := range secpMsgs {
+		cids := make([]cid.Cid, len(blsMsgs)+len(secpMsgs))
+		blkMsgs := make([]*types.SignedMessage, len(blsMsgs)+len(secpMsgs))
+		for j, msg := range blsMsgs {
 			c, err := msg.Cid()
 			if err != nil {
-				return -1, err
+				return nil, false, err
 			}
-			_, failed := fails[c]
-			if failed {
-				continue
+			cids[j] = c
+			blkMsgs[j] = &types.SignedMessage{Message: *msg}
+		}
+		for j, msg := range secpMsgs {
+			c, err := msg.Cid()
+			if err != nil {
+				return nil, false, err
 			}
-			_, isDup := duplicates[c]
-			if isDup {
-				continue
+			cids[len(blsMsgs)+j] = c
+			blkMsgs[len(blsMsgs)+j] = msg
+		}
+		tsMessages[i] = blkMsgs
+
+		for i, msg := range blkMsgs {
+			if cids[i].Equals(msgCid) {
+				// wrapped cid might be different from given cid
+				wrappedCid, err := msg.Cid()
+				if err != nil {
+					return nil, false, err
+				}
+
+				recpt, err := w.receiptByIndex(ctx, ts.Key(), wrappedCid, tsMessages)
+				if err != nil {
+					return nil, false, errors.Wrap(err, "error retrieving receipt from tipset")
+				}
+				return &ChainMessage{msg, blk, recpt}, true, nil
 			}
-			duplicates[c] = struct{}{}
-			if c.Equals(msgCid) {
-				return msgCnt, nil
-			}
-			msgCnt++
 		}
 	}
+	return nil, false, nil
+}
 
-	return -1, fmt.Errorf("message cid %s not in tipset", msgCid.String())
+func (w *Waiter) receiptByIndex(ctx context.Context, tsKey block.TipSetKey, targetCid cid.Cid, messages [][]*types.SignedMessage) (*types.MessageReceipt, error) {
+	receiptCid, err := w.chainReader.GetTipSetReceiptsRoot(tsKey)
+	if err != nil {
+		return nil, err
+	}
+
+	receipts, err := w.messageProvider.LoadReceipts(ctx, receiptCid)
+	if err != nil {
+		return nil, err
+	}
+
+	deduped, err := consensus.DeduppedMessages(messages)
+	if err != nil {
+		return nil, err
+	}
+
+	receiptIndex := 0
+	for _, blkMessages := range deduped {
+		for _, msg := range blkMessages {
+			msgCid, err := msg.Cid()
+			if err != nil {
+				return nil, err
+			}
+
+			if msgCid.Equals(targetCid) {
+				if receiptIndex >= len(receipts) {
+					return nil, errors.Errorf("could not find message receipt at index %d", receiptIndex)
+				}
+				return receipts[receiptIndex], nil
+			}
+			receiptIndex++
+		}
+	}
+	return nil, errors.Errorf("could not find message cid %s in dedupped messages", targetCid.String())
 }

@@ -14,16 +14,22 @@ var (
 	ErrNotFound = errors.New("Key not found in tipindex")
 )
 
-// TipSetAndState (tsas) is the type stored at the leaves of the TipIndex.  It contains
-// a tipset pointing to blocks and the root cid of the chain's state after
-// applying the messages in this tipset to it's parent state.
-type TipSetAndState struct {
-	// root of aggregate state after applying tipset
+// TipSetMetadata is the type stored at the leaves of the TipIndex.  It contains
+// a tipset pointing to blocks, the root cid of the chain's state after
+// applying the messages in this tipset to it's parent state, and the cid of the receipts
+// for these messages.
+type TipSetMetadata struct {
+	// TipSetStateRoot is the root of aggregate state after applying tipset
 	TipSetStateRoot cid.Cid
-	TipSet          block.TipSet
+
+	// TipSet is the set of blocks that forms the tip set
+	TipSet block.TipSet
+
+	// TipSetReceipts receipts from all message contained within this tipset
+	TipSetReceipts cid.Cid
 }
 
-type tsasByTipSetID map[string]*TipSetAndState
+type tsmByTipSetID map[string]*TipSetMetadata
 
 // TipIndex tracks tipsets and their states by tipset block ids and parent
 // block ids.  All methods are threadsafe as shared data is guarded by a
@@ -31,23 +37,23 @@ type tsasByTipSetID map[string]*TipSetAndState
 type TipIndex struct {
 	mu sync.Mutex
 	// tsasByParents allows lookup of all TipSetAndStates with the same parent IDs.
-	tsasByParentsAndHeight map[string]tsasByTipSetID
+	tsasByParentsAndHeight map[string]tsmByTipSetID
 	// tsasByID allows lookup of recorded TipSetAndStates by TipSet ID.
-	tsasByID tsasByTipSetID
+	tsasByID tsmByTipSetID
 }
 
 // NewTipIndex is the TipIndex constructor.
 func NewTipIndex() *TipIndex {
 	return &TipIndex{
-		tsasByParentsAndHeight: make(map[string]tsasByTipSetID),
-		tsasByID:               make(map[string]*TipSetAndState),
+		tsasByParentsAndHeight: make(map[string]tsmByTipSetID),
+		tsasByID:               make(map[string]*TipSetMetadata),
 	}
 }
 
 // Put adds an entry to both of TipIndex's internal indexes.
-// After this call the input TipSetAndState can be looked up by the ID of
+// After this call the input TipSetMetadata can be looked up by the ID of
 // the tipset, or the tipset's parent.
-func (ti *TipIndex) Put(tsas *TipSetAndState) error {
+func (ti *TipIndex) Put(tsas *TipSetMetadata) error {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsKey := tsas.TipSet.String()
@@ -67,7 +73,7 @@ func (ti *TipIndex) Put(tsas *TipSetAndState) error {
 	key := makeKey(pKey, h)
 	tsasByID, ok := ti.tsasByParentsAndHeight[key]
 	if !ok {
-		tsasByID = make(map[string]*TipSetAndState)
+		tsasByID = make(map[string]*TipSetMetadata)
 		ti.tsasByParentsAndHeight[key] = tsasByID
 	}
 	tsasByID[tsKey] = tsas
@@ -75,7 +81,7 @@ func (ti *TipIndex) Put(tsas *TipSetAndState) error {
 }
 
 // Get returns the tipset given by the input ID and its state.
-func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetAndState, error) {
+func (ti *TipIndex) Get(tsKey block.TipSetKey) (*TipSetMetadata, error) {
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
 	tsas, ok := ti.tsasByID[tsKey.String()]
@@ -103,6 +109,15 @@ func (ti *TipIndex) GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error) {
 	return tsas.TipSetStateRoot, nil
 }
 
+// GetTipSetReceiptsRoot returns the tipsetReceipts from func (ti *TipIndex) Get(tsKey string).
+func (ti *TipIndex) GetTipSetReceiptsRoot(tsKey block.TipSetKey) (cid.Cid, error) {
+	tsas, err := ti.Get(tsKey)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+	return tsas.TipSetReceipts, nil
+}
+
 // Has returns true iff the tipset with the input ID is stored in
 // the TipIndex.
 func (ti *TipIndex) Has(tsKey block.TipSetKey) bool {
@@ -114,7 +129,7 @@ func (ti *TipIndex) Has(tsKey block.TipSetKey) bool {
 
 // GetByParentsAndHeight returns the all tipsets and states stored in the TipIndex
 // such that the parent ID of these tipsets equals the input.
-func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*TipSetMetadata, error) {
 	key := makeKey(pKey.String(), h)
 	ti.mu.Lock()
 	defer ti.mu.Unlock()
@@ -122,7 +137,7 @@ func (ti *TipIndex) GetByParentsAndHeight(pKey block.TipSetKey, h uint64) ([]*Ti
 	if !ok {
 		return nil, ErrNotFound
 	}
-	var ret []*TipSetAndState
+	var ret []*TipSetMetadata
 	for _, tsas := range tsasByID {
 		ret = append(ret, tsas)
 	}

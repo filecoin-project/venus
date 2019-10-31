@@ -25,7 +25,7 @@ type Manager struct {
 }
 
 // NewManager creates a new chain sync manager.
-func NewManager(e syncer.SemanticValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m chain.MessageProvider, f syncer.Fetcher, c clock.Clock) Manager {
+func NewManager(e syncer.SemanticValidator, cs syncer.ChainSelector, s syncer.ChainReaderWriter, m *chain.MessageStore, f syncer.Fetcher, c clock.Clock) Manager {
 	syncer := syncer.NewSyncer(e, cs, s, m, f, status.NewReporter(), c)
 	dispatcher := dispatcher.NewDispatcher(syncer)
 	return Manager{

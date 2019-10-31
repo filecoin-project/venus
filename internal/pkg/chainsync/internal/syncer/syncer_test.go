@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -15,7 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/internal/syncer"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -380,14 +380,14 @@ func newPoisonValidator(t *testing.T, headerFailure, fullFailure uint64) *poison
 	return &poisonValidator{headerFailureTS: headerFailure, fullFailureTS: fullFailure}
 }
 
-func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, _ cid.Cid) (cid.Cid, error) {
+func (pv *poisonValidator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, _ cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	stamp, err := ts.MinTimestamp()
 	require.NoError(pv.t, err)
 
 	if pv.fullFailureTS == uint64(stamp) {
-		return cid.Undef, errors.New("run state transition fails on poison timestamp")
+		return cid.Undef, nil, errors.New("run state transition fails on poison timestamp")
 	}
-	return cid.Undef, nil
+	return cid.Undef, nil, nil
 }
 
 func (pv *poisonValidator) ValidateSemantic(_ context.Context, header *block.Block, _ block.TipSet) error {
@@ -416,7 +416,6 @@ func TestSemanticallyBadTipSetFails(t *testing.T) {
 		bb.AddMessages(
 			[]*types.SignedMessage{m1, m2, m3},
 			[]*types.UnsignedMessage{},
-			[]*types.MessageReceipt{},
 		)
 		bb.SetTimestamp(98) // poison header val
 	})
@@ -481,6 +480,29 @@ func TestSyncerStatus(t *testing.T) {
 	assert.Equal(t, true, s2.SyncingComplete)
 }
 
+func TestStoresMessageReceipts(t *testing.T) {
+	tf.UnitTest(t)
+	ctx := context.Background()
+	builder, store, syncer := setup(ctx, t)
+	genesis := builder.RequireTipSet(store.GetHead())
+
+	keys := types.MustGenerateKeyInfo(1, 42)
+	mm := types.NewMessageMaker(t, keys)
+	alice := mm.Addresses()[0]
+	t1 := builder.Build(genesis, 4, func(b *chain.BlockBuilder, i int) {
+		b.AddMessages([]*types.SignedMessage{}, []*types.UnsignedMessage{mm.NewUnsignedMessage(alice, uint64(i))})
+	})
+	assert.NoError(t, syncer.HandleNewTipSet(ctx, block.NewChainInfo(peer.ID(""), "", t1.Key(), heightFromTip(t, t1)), true))
+
+	receiptsCid, err := store.GetTipSetReceiptsRoot(t1.Key())
+	require.NoError(t, err)
+
+	receipts, err := builder.LoadReceipts(ctx, receiptsCid)
+	require.NoError(t, err)
+
+	assert.Len(t, receipts, 4)
+}
+
 ///// Set-up /////
 
 // Initializes a chain builder, store and syncer.
@@ -498,7 +520,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, val syncer.SemanticVa
 
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: genStateRoot, TipSet: genesis}))
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
@@ -516,7 +538,7 @@ type syncStoreReader interface {
 	GetHead() block.TipSetKey
 	GetTipSet(block.TipSetKey) (block.TipSet, error)
 	GetTipSetStateRoot(tsKey block.TipSetKey) (cid.Cid, error)
-	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, uint64) ([]*chain.TipSetAndState, error)
+	GetTipSetAndStatesByParentsAndHeight(block.TipSetKey, uint64) ([]*chain.TipSetMetadata, error)
 }
 
 // Verifies that a tipset and associated state root are stored in the chain store.
@@ -545,7 +567,7 @@ func verifyHead(t *testing.T, store syncStoreReader, head block.TipSet) {
 	assert.Equal(t, head, headTipSet)
 }
 
-func containsTipSet(tsasSlice []*chain.TipSetAndState, ts block.TipSet) bool {
+func containsTipSet(tsasSlice []*chain.TipSetMetadata, ts block.TipSet) bool {
 	for _, tsas := range tsasSlice {
 		if tsas.TipSet.String() == ts.String() { //bingo
 			return true

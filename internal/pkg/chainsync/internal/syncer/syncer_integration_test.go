@@ -45,7 +45,7 @@ func TestLoadFork(t *testing.T) {
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
 	store := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: genStateRoot, TipSet: genesis}))
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
 	// Note: the chain builder is passed as the fetcher, from which blocks may be requested, but
@@ -134,11 +134,8 @@ func TestSyncerWeighsPower(t *testing.T) {
 			mm := types.NewMessageMaker(t, keys)
 			addr := mm.Addresses()[0]
 			bb.AddMessages(
-				[]*types.SignedMessage{
-					mm.NewSignedMessage(addr, 1),
-				},
+				[]*types.SignedMessage{mm.NewSignedMessage(addr, 1)},
 				[]*types.UnsignedMessage{},
-				types.EmptyReceipts(1),
 			)
 		}
 	})
@@ -157,7 +154,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
 	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
-	require.NoError(t, store.PutTipSetAndState(ctx, &chain.TipSetAndState{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen}))
+	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	syncer := syncer.NewSyncer(&integrationStateEvaluator{c512: isb.c512}, consensus.NewChainSelector(cst, as, gen.At(0).Cid()), store, builder, builder, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
 
@@ -196,13 +193,13 @@ func newIntegrationStateBuilder(t *testing.T, cst *hamt.CborIpldStore) *integrat
 	}
 }
 
-func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, error) {
+func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.SignedMessage) (cid.Cid, []*types.MessageReceipt, error) {
 	// setup genesis with a state we can fetch from cborstor
 	if prev.Equals(types.CidFromString(isb.t, "null")) {
 		treeGen := state.TreeFromString(isb.t, "1Power", isb.cst)
 		genRoot, err := treeGen.Flush(context.Background())
 		require.NoError(isb.t, err)
-		return genRoot, nil
+		return genRoot, []*types.MessageReceipt{}, nil
 	}
 	// Setup fork with state we associate with more power.
 	// This fork is distiguished by a block with a single secp message.
@@ -211,9 +208,9 @@ func (isb *integrationStateBuilder) ComputeState(prev cid.Cid, blsMessages [][]*
 		forkRoot, err := treeFork.Flush(context.Background())
 		require.NoError(isb.t, err)
 		isb.c512 = forkRoot
-		return forkRoot, nil
+		return forkRoot, []*types.MessageReceipt{}, nil
 	}
-	return prev, nil
+	return prev, []*types.MessageReceipt{}, nil
 }
 
 func (isb *integrationStateBuilder) Weigh(tip block.TipSet, pstate cid.Cid) (uint64, error) {
@@ -238,13 +235,13 @@ type integrationStateEvaluator struct {
 	c512 cid.Cid
 }
 
-func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ [][]*types.MessageReceipt, _ []block.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, error) {
+func (n *integrationStateEvaluator) RunStateTransition(_ context.Context, ts block.TipSet, _ [][]*types.UnsignedMessage, _ [][]*types.SignedMessage, _ []block.TipSet, _ uint64, stateID cid.Cid) (cid.Cid, []*types.MessageReceipt, error) {
 	for i := 0; i < ts.Len(); i++ {
 		if ts.At(i).StateRoot.Equals(n.c512) {
-			return n.c512, nil
+			return n.c512, []*types.MessageReceipt{}, nil
 		}
 	}
-	return ts.At(0).StateRoot, nil
+	return ts.At(0).StateRoot, []*types.MessageReceipt{}, nil
 }
 
 func (n *integrationStateEvaluator) ValidateSemantic(_ context.Context, _ *block.Block, _ block.TipSet) error {

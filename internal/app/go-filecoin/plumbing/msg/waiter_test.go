@@ -67,9 +67,10 @@ func testWaitExisting(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore
 	chainWithMsgs := newChainWithMessages(cst, msgStore, headTipSet, smsgsSet{smsgs{m1, m2}})
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
-	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -94,9 +95,10 @@ func testWaitNew(ctx context.Context, t *testing.T, cst *hamt.CborIpldStore, cha
 
 	ts := chainWithMsgs[len(chainWithMsgs)-1]
 	require.Equal(t, 1, ts.Len())
-	require.NoError(t, chainStore.PutTipSetAndState(ctx, &chain.TipSetAndState{
+	require.NoError(t, chainStore.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
 		TipSet:          ts,
 		TipSetStateRoot: ts.ToSlice()[0].StateRoot,
+		TipSetReceipts:  ts.ToSlice()[0].MessageReceipts,
 	}))
 	require.NoError(t, chainStore.SetHead(ctx, ts))
 
@@ -184,6 +186,7 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 
 	for _, tsMsgs := range msgSets {
 		var blocks []*block.Block
+		receipts := []*types.MessageReceipt{}
 		// If a message set does not contain a slice of messages then
 		// add a tipset with no messages and a single block to the chain
 		if len(tsMsgs) == 0 {
@@ -197,21 +200,36 @@ func newChainWithMessages(store *hamt.CborIpldStore, msgStore *chain.MessageStor
 			blocks = append(blocks, child)
 		}
 		for _, msgs := range tsMsgs {
+			for _, msg := range msgs {
+				c, err := msg.Cid()
+				if err != nil {
+					panic(err)
+				}
+				receipts = append(receipts, &types.MessageReceipt{ExitCode: 0, Return: [][]byte{c.Bytes()}, GasAttoFIL: types.ZeroAttoFIL})
+			}
 			txMeta, err := msgStore.StoreMessages(context.Background(), msgs, []*types.UnsignedMessage{})
 			if err != nil {
 				panic(err)
 			}
 
 			child := &block.Block{
-				Messages:        txMeta,
-				Parents:         parents.Key(),
-				Height:          types.Uint64(height),
-				StateRoot:       stateRootCidGetter(), // Differentiate all blocks
-				MessageReceipts: emptyReceiptsCid,
+				Messages:  txMeta,
+				Parents:   parents.Key(),
+				Height:    types.Uint64(height),
+				StateRoot: stateRootCidGetter(), // Differentiate all blocks
 			}
-			mustPut(store, child)
 			blocks = append(blocks, child)
 		}
+		receiptCid, err := msgStore.StoreReceipts(context.TODO(), receipts)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, blk := range blocks {
+			blk.MessageReceipts = receiptCid
+			mustPut(store, blk)
+		}
+
 		ts, err := block.NewTipSet(blocks...)
 		if err != nil {
 			panic(err)
