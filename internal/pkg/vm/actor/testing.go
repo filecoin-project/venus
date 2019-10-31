@@ -24,7 +24,7 @@ var _ exec.ExecutableActor = (*FakeActor)(nil)
 
 // FakeActor method IDs.
 const (
-	HasReturnValueID types.MethodID = iota
+	HasReturnValueID types.MethodID = iota + 32
 	ChargeGasAndRevertErrorID
 	ReturnRevertErrorID
 	goodCallID

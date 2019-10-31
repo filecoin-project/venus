@@ -72,7 +72,7 @@ type MockActor struct {
 }
 
 const (
-	One types.MethodID = iota + 1
+	One types.MethodID = iota + 32
 	Two
 	Three
 	Four
