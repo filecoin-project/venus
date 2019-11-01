@@ -17,8 +17,8 @@ const (
 	ErrDanglingPointer = 34
 	// ErrStaleHead indicates that an actor attempted to commit over a stale chunk
 	ErrStaleHead = 35
-	// Dragons: this guy is not following the same pattern, it is missing from the Errors map below
 	// ErrInsufficientGas indicates that an actor did not have sufficient gas to run a message
+	// Dragons: this guy is not following the same pattern, it is missing from the Errors map below
 	ErrInsufficientGas = 36
 )
 

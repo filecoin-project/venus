@@ -1,6 +1,6 @@
 // Package external is a temporary package that will only live while we are cleaning up vm into vm2
 //
-// All the calls into this should either not depend on this, or we should find a propper package for each.
+// All the calls into this should either not depend on this, or we should find a proper package for each.
 package external
 
 import (
