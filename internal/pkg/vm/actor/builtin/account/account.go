@@ -23,11 +23,6 @@ func NewActor(balance types.AttoFIL) (*actor.Actor, error) {
 	return actor.NewActor(types.AccountActorCodeCid, balance), nil
 }
 
-// IsAccount tests whether an actor is an account actor.
-func IsAccount(a *actor.Actor) bool {
-	return types.AccountActorCodeCid.Equals(a.Code)
-}
-
 // UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
 func UpgradeActor(a *actor.Actor) error {
 	if !a.Empty() {

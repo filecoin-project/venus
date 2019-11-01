@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 )
 
 // Abstracts over a store of blockchain state.
@@ -24,7 +24,7 @@ type previewerChainReader interface {
 
 type messagePreviewer interface {
 	// PreviewQueryMethod estimates the amount of gas that will be used by a method
-	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
+	PreviewQueryMethod(ctx context.Context, st state.Tree, vms vm2.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) (types.GasUnits, error)
 }
 
 // Previewer calculates the amount of Gas needed for a command
@@ -64,7 +64,7 @@ func (p *Previewer) Preview(ctx context.Context, optFrom, to address.Address, me
 		return types.NewGasUnits(0), errors.Wrap(err, "failed to get head tipset height")
 	}
 
-	vms := vm.NewStorageMap(p.bs)
+	vms := vm2.NewStorageMap(p.bs)
 	usedGas, err := p.processor.PreviewQueryMethod(ctx, st, vms, to, method, encodedParams, optFrom, types.NewBlockHeight(h))
 	if err != nil {
 		return types.NewGasUnits(0), errors.Wrap(err, "query method returned an error")

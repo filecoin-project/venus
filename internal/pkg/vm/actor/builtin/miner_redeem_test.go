@@ -14,12 +14,12 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
 	"github.com/filecoin-project/go-sectorbuilder"
 
 	"github.com/stretchr/testify/require"
@@ -177,7 +177,7 @@ func TestVerifyPieceInclusionInRedeem(t *testing.T) {
 	})
 }
 
-func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, provingPeriodEnd *types.BlockHeight) error {
+func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms storagemap.StorageMap, minerAddr address.Address, sectorID uint64, commD []byte, provingPeriodEnd *types.BlockHeight) error {
 	minerActor := miner.NewActor()
 	storage := vms.NewStorage(minerAddr, minerActor)
 
@@ -198,11 +198,11 @@ func createStorageMinerWithCommitment(ctx context.Context, st state.Tree, vms vm
 	return st.SetActor(ctx, minerAddr, minerActor)
 }
 
-func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
+func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, storagemap.StorageMap) {
 	require := require.New(t)
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
 	blk, err := th.DefaultGenesis(cst, bs)
@@ -219,7 +219,7 @@ func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...addres
 	return cst, st, vms
 }
 
-func establishChannel(st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func establishChannel(st state.Tree, vms storagemap.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
 	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, paymentbroker.CreateChannel, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))

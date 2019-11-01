@@ -11,8 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )
 
 // MakeTypedExport finds the correct method on the given actor and returns it.
@@ -30,7 +30,7 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 	t := fn.Type()
 
 	badImpl := func() {
-		params := []string{"vm2.Runtime"}
+		params := []string{"runtime.Runtime"}
 		for _, p := range signature.Params {
 			params = append(params, p.String())
 		}
@@ -73,7 +73,7 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 		badImpl()
 	}
 
-	return func(ctx vm2.Runtime) ([]byte, uint8, error) {
+	return func(ctx runtime.Runtime) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")

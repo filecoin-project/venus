@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -77,7 +77,7 @@ func TestLoadLookup(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
@@ -100,7 +100,7 @@ func TestLoadLookup(t *testing.T) {
 
 	t.Run("Fetch chunk by cid", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
-		vms = vm.NewStorageMap(bs)
+		vms = storagemap.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
@@ -115,7 +115,7 @@ func TestLoadLookup(t *testing.T) {
 
 	t.Run("Get errs for missing key", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
-		vms = vm.NewStorageMap(bs)
+		vms = storagemap.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
@@ -132,7 +132,7 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
@@ -140,7 +140,7 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 
 	_, err := LoadLookup(ctx, storage, c)
 	require.Error(t, err)
-	assert.Equal(t, vm.ErrNotFound, err)
+	assert.Equal(t, storagemap.ErrNotFound, err)
 }
 
 func TestSetKeyValue(t *testing.T) {
@@ -148,7 +148,7 @@ func TestSetKeyValue(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 

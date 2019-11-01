@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
@@ -113,7 +113,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 	}
 
 	st := state.NewEmptyStateTree(cst)
-	storageMap := vm.NewStorageMap(bs)
+	storageMap := vm2.NewStorageMap(bs)
 
 	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode, cfg.Network); err != nil {
 		return nil, err
@@ -224,7 +224,7 @@ func setupPrealloc(st state.Tree, keys []*types.KeyInfo, prealloc []string) erro
 	return st.SetActor(context.Background(), address.NetworkAddress, netact)
 }
 
-func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
+func setupMiners(st state.Tree, sm vm2.StorageMap, keys []*types.KeyInfo, miners []*CreateStorageMinerConfig, pnrg io.Reader) ([]RenderedMinerInfo, error) {
 	var minfos []RenderedMinerInfo
 	ctx := context.Background()
 
@@ -341,7 +341,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 // applyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
 // This is a shortcut to allow gengen to use built-in actor functionality to alter the genesis block's state.
 // Outside genesis, direct execution of actor code is a really bad idea.
-func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value types.AttoFIL, method types.MethodID, params ...interface{}) ([][]byte, error) {
+func applyMessageDirect(ctx context.Context, st state.Tree, vms vm2.StorageMap, from, to address.Address, value types.AttoFIL, method types.MethodID, params ...interface{}) ([][]byte, error) {
 	pdata := actor.MustConvertParams(params...)
 	// this should never fail due to lack of gas since gas doesn't have meaning here
 	gasLimit := types.BlockGasLimit

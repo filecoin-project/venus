@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -19,6 +18,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/vmcontext"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -147,14 +148,14 @@ func (*impl) six(ctx vm2.Runtime) (uint8, error) {
 func makeCtx(method types.MethodID) vm2.Runtime {
 	addrGetter := address.NewForTestGetter()
 
-	vmCtxParams := vm.NewContextParams{
+	vmCtxParams := vmcontext.NewContextParams{
 		Message:     types.NewUnsignedMessage(addrGetter(), addrGetter(), 0, types.ZeroAttoFIL, method, nil),
-		GasTracker:  vm.NewGasTracker(),
+		GasTracker:  gastracker.NewGasTracker(),
 		BlockHeight: types.NewBlockHeight(0),
 		Actors:      builtin.DefaultActors,
 	}
 
-	return vm.NewVMContext(vmCtxParams)
+	return vmcontext.NewVMContext(vmCtxParams)
 }
 
 func TestMakeTypedExportSuccess(t *testing.T) {
@@ -267,7 +268,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) (uint8, error), but got: func() (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func() (uint8, error)",
 			Method: One,
 		},
 		{
@@ -278,7 +279,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
+			Error:  "MakeTypedExport must receive a function with signature: func (runtime.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
 			Method: Three,
 		},
 		{
@@ -289,7 +290,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes},
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
 			Method: Two,
 		},
 		{
@@ -300,7 +301,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 					Return: []abi.Type{abi.Bytes, abi.Bytes},
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (runtime.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
 			Method: Two,
 		},
 	}

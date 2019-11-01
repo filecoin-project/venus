@@ -10,10 +10,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )
 
 // FakeActorStorage is storage for our fake actor. It contains a single
@@ -93,7 +93,7 @@ var signatures = dispatch.Exports{
 }
 
 // InitializeState stores this actors
-func (a *FakeActor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
+func (a *FakeActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
 	st, ok := initializerData.(*FakeActorStorage)
 	if !ok {
 		return errors.NewFaultError("Initial state to fake actor is not a FakeActorStorage struct")
@@ -147,7 +147,7 @@ func (a *FakeActor) Method(id types.MethodID) (dispatch.Method, *external.Functi
 type impl FakeActor
 
 // HasReturnValue is a dummy method that does nothing.
-func (*impl) HasReturnValue(ctx vm2.Runtime) (address.Address, uint8, error) {
+func (*impl) HasReturnValue(ctx runtime.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return address.Undef, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -156,7 +156,7 @@ func (*impl) HasReturnValue(ctx vm2.Runtime) (address.Address, uint8, error) {
 }
 
 // ChargeGasAndRevertError simply charges gas and returns a revert error
-func (*impl) ChargeGasAndRevertError(ctx vm2.Runtime) (uint8, error) {
+func (*impl) ChargeGasAndRevertError(ctx runtime.Runtime) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		panic("Unexpected error charging gas")
 	}
@@ -165,7 +165,7 @@ func (*impl) ChargeGasAndRevertError(ctx vm2.Runtime) (uint8, error) {
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
 // revert error.
-func (*impl) ReturnRevertError(ctx vm2.Runtime) (uint8, error) {
+func (*impl) ReturnRevertError(ctx runtime.Runtime) (uint8, error) {
 	fastore := &FakeActorStorage{}
 	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
@@ -178,7 +178,7 @@ func (*impl) ReturnRevertError(ctx vm2.Runtime) (uint8, error) {
 }
 
 // GoodCall sets a bit inside fakeActor's storage.
-func (*impl) GoodCall(ctx vm2.Runtime) (uint8, error) {
+func (*impl) GoodCall(ctx runtime.Runtime) (uint8, error) {
 	fastore := &FakeActorStorage{}
 	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
@@ -191,31 +191,31 @@ func (*impl) GoodCall(ctx vm2.Runtime) (uint8, error) {
 }
 
 // NonZeroExitCode returns a nonzero exit code but no error.
-func (*impl) NonZeroExitCode(ctx vm2.Runtime) (uint8, error) {
+func (*impl) NonZeroExitCode(ctx runtime.Runtime) (uint8, error) {
 	return 42, nil
 }
 
 // NestedBalance sends 100 to the given address.
-func (*impl) NestedBalance(ctx vm2.Runtime, target address.Address) (uint8, error) {
+func (*impl) NestedBalance(ctx runtime.Runtime, target address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // SendTokens sends 100 to the given address.
-func (*impl) SendTokens(ctx vm2.Runtime, target address.Address) (uint8, error) {
+func (*impl) SendTokens(ctx runtime.Runtime, target address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // CallSendTokens tells the target to invoke SendTokens to send tokens to the
 // to address (that is, it calls target.SendTokens(to)).
-func (*impl) CallSendTokens(ctx vm2.Runtime, target address.Address, to address.Address) (uint8, error) {
+func (*impl) CallSendTokens(ctx runtime.Runtime, target address.Address, to address.Address) (uint8, error) {
 	_, code, err := ctx.Send(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
 	return code, err
 }
 
 // AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
-func (*impl) AttemptMultiSpend1(ctx vm2.Runtime, self, target address.Address) (uint8, error) {
+func (*impl) AttemptMultiSpend1(ctx runtime.Runtime, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
 	_, code, err := ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
@@ -230,7 +230,7 @@ func (*impl) AttemptMultiSpend1(ctx vm2.Runtime, self, target address.Address) (
 }
 
 // AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
-func (a *impl) AttemptMultiSpend2(ctx vm2.Runtime, self, target address.Address) (uint8, error) {
+func (a *impl) AttemptMultiSpend2(ctx runtime.Runtime, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
 	_, code, err := ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
@@ -245,7 +245,7 @@ func (a *impl) AttemptMultiSpend2(ctx vm2.Runtime, self, target address.Address)
 }
 
 // RunsAnotherMessage sends a message
-func (*impl) RunsAnotherMessage(ctx vm2.Runtime, target address.Address) (uint8, error) {
+func (*impl) RunsAnotherMessage(ctx runtime.Runtime, target address.Address) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -255,7 +255,7 @@ func (*impl) RunsAnotherMessage(ctx vm2.Runtime, target address.Address) (uint8,
 
 // BlockLimitTestMethod is designed to be used with block gas limit tests. It consumes 1/4 of the
 // block gas limit per run. Please ensure message.gasLimit >= 1/4 of block limit or it will panic.
-func (*impl) BlockLimitTestMethod(ctx vm2.Runtime) (uint8, error) {
+func (*impl) BlockLimitTestMethod(ctx runtime.Runtime) (uint8, error) {
 	if err := ctx.Charge(types.BlockGasLimit / 4); err != nil {
 		panic("designed for block limit testing, ensure msg limit is adequate")
 	}

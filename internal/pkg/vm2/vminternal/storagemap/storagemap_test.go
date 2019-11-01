@@ -1,4 +1,4 @@
-package vm
+package storagemap
 
 import (
 	"testing"
@@ -333,39 +333,5 @@ func TestValidationAndPruning(t *testing.T) {
 		// Attempt to commit before adding linked memory
 		err = stage.Commit(cid, stage.Head())
 		assert.Equal(t, vminternal.Errors[vminternal.ErrDanglingPointer], err)
-	})
-
-	t.Run("Prune removes unlinked chunks from stage", func(t *testing.T) {
-		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-
-		testActor := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
-		storage := NewStorageMap(bs)
-		stage := storage.NewStorage(address.TestAddress, testActor)
-
-		// put both values into stage
-		cid1, err := stage.Put(memory2.RawData())
-		require.NoError(t, err)
-
-		memory3, err := cbor.WrapObject([]byte("Memory chunk 3"), types.DefaultHashFunction, -1)
-		require.NoError(t, err)
-
-		cid2, err := stage.Put(memory3.RawData())
-		require.NoError(t, err)
-
-		// only commit the second change
-		assert.NoError(t, stage.Commit(cid2, stage.Head()))
-
-		// Prune the stage
-		err = stage.Prune()
-		require.NoError(t, err)
-
-		// retrieve cid from stage
-		_, err = stage.Get(cid1)
-		require.Error(t, err)
-		assert.Equal(t, ErrNotFound, err)
-
-		chunk, err := stage.Get(cid2)
-		require.NoError(t, err)
-		assert.Equal(t, memory3.RawData(), chunk)
 	})
 }

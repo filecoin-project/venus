@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
@@ -61,25 +60,25 @@ func RequireNewAccountActor(t *testing.T, value types.AttoFIL) *actor.Actor {
 
 // RequireNewMinerActor creates a new miner actor with the given owner, pledge, and collateral,
 // and requires that its steps succeed.
-func RequireNewMinerActor(t *testing.T, vms vm.StorageMap, addr address.Address, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) *actor.Actor {
+func RequireNewMinerActor(t *testing.T, vms vm2.StorageMap, addr address.Address, owner address.Address, pledge uint64, pid peer.ID, coll types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(types.MinerActorCodeCid, coll)
 	storage := vms.NewStorage(addr, act)
 	initializerData := miner.NewState(owner, owner, pid, types.OneKiBSectorSize)
 	err := (&miner.Actor{}).InitializeState(storage, initializerData)
 	require.NoError(t, err)
-	require.NoError(t, storage.Flush())
+	require.NoError(t, vms.Flush())
 	return act
 }
 
 // RequireNewFakeActor instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActor(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
+func RequireNewFakeActor(t *testing.T, vms vm2.StorageMap, addr address.Address, codeCid cid.Cid) *actor.Actor {
 	return RequireNewFakeActorWithTokens(t, vms, addr, codeCid, types.NewAttoFILFromFIL(100))
 }
 
 // RequireNewFakeActorWithTokens instantiates and returns a new fake actor and requires
 // that its steps succeed.
-func RequireNewFakeActorWithTokens(t *testing.T, vms vm.StorageMap, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
+func RequireNewFakeActorWithTokens(t *testing.T, vms vm2.StorageMap, addr address.Address, codeCid cid.Cid, amt types.AttoFIL) *actor.Actor {
 	act := actor.NewActor(codeCid, amt)
 	store := vms.NewStorage(addr, act)
 	err := (&actor.FakeActor{}).InitializeState(store, &actor.FakeActorStorage{})
@@ -114,14 +113,14 @@ func (v *MockMessagePoolValidator) Validate(ctx context.Context, msg *types.Sign
 }
 
 // VMStorage creates a new storage object backed by an in memory datastore
-func VMStorage() vm.StorageMap {
-	return vm.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
+func VMStorage() vm2.StorageMap {
+	return vm2.NewStorageMap(blockstore.NewBlockstore(datastore.NewMapDatastore()))
 }
 
 // CreateTestMiner creates a new test miner with the given peerID and miner
 // owner address within the state tree defined by st and vms with 100 FIL as
 // collateral.
-func CreateTestMiner(t *testing.T, st state.Tree, vms vm.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
+func CreateTestMiner(t *testing.T, st state.Tree, vms vm2.StorageMap, minerOwnerAddr address.Address, pid peer.ID) address.Address {
 	return CreateTestMinerWith(types.NewAttoFILFromFIL(100), t, st, vms, minerOwnerAddr, pid, 0)
 }
 
@@ -131,7 +130,7 @@ func CreateTestMinerWith(
 	collateral types.AttoFIL,
 	t *testing.T,
 	stateTree state.Tree,
-	vms vm.StorageMap,
+	vms vm2.StorageMap,
 	minerOwnerAddr address.Address,
 	pid peer.ID,
 	height uint64,
@@ -150,7 +149,7 @@ func CreateTestMinerWith(
 }
 
 // GetTotalPower get total miner power from storage market
-func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesAmount {
+func GetTotalPower(t *testing.T, st state.Tree, vms vm2.StorageMap) *types.BytesAmount {
 	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, storagemarket.GetTotalStorage, nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
@@ -172,7 +171,7 @@ func RequireGetNonce(t *testing.T, st state.Tree, a address.Address) uint64 {
 }
 
 // RequireCreateStorages creates an empty state tree and storage map.
-func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.StorageMap) {
+func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm2.StorageMap) {
 	cst := hamt.NewCborStore()
 	d := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(d)
@@ -182,7 +181,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm.St
 	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
-	vms := vm.NewStorageMap(bs)
+	vms := vm2.NewStorageMap(bs)
 
 	return st, vms
 }

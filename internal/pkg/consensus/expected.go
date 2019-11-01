@@ -20,10 +20,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 )
 
 var (
@@ -71,7 +71,7 @@ var AncestorRoundsNeeded = max(miner.LargestSectorSizeProvingPeriodBlocks+miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm2.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) (*ProcessTipSetResponse, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -152,7 +152,7 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
 
-	vms := vm.NewStorageMap(c.bstore)
+	vms := vm2.NewStorageMap(c.bstore)
 	var st state.Tree
 	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), ancestors)
 	if err != nil {

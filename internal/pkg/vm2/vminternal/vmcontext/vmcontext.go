@@ -1,4 +1,4 @@
-package vm
+package vmcontext
 
 import (
 	"bytes"
@@ -8,17 +8,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
@@ -26,15 +28,15 @@ type ExecutableActorLookup interface {
 	GetActorCode(code cid.Cid, version uint64) (dispatch.ExecutableActor, error)
 }
 
-// Context is the only thing exposed to an actor while executing.
-// All methods on the Context are ABI methods exposed to actors.
-type Context struct {
+// VMContext is the only thing exposed to an actor while executing.
+// All methods on the VMContext are ABI methods exposed to actors.
+type VMContext struct {
 	from        *actor.Actor
 	to          *actor.Actor
 	message     *types.UnsignedMessage
 	state       *state.CachedTree
-	storageMap  StorageMap
-	gasTracker  *GasTracker
+	storageMap  storagemap.StorageMap
+	gasTracker  *gastracker.GasTracker
 	blockHeight *types.BlockHeight
 	ancestors   []block.TipSet
 	actors      ExecutableActorLookup
@@ -42,24 +44,22 @@ type Context struct {
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
-var _ vm2.Runtime = (*Context)(nil)
-
 // NewContextParams is passed to NewVMContext to construct a new context.
 type NewContextParams struct {
 	From        *actor.Actor
 	To          *actor.Actor
 	Message     *types.UnsignedMessage
 	State       *state.CachedTree
-	StorageMap  StorageMap
-	GasTracker  *GasTracker
+	StorageMap  storagemap.StorageMap
+	GasTracker  *gastracker.GasTracker
 	BlockHeight *types.BlockHeight
 	Ancestors   []block.TipSet
 	Actors      ExecutableActorLookup
 }
 
 // NewVMContext returns an initialized context.
-func NewVMContext(params NewContextParams) *Context {
-	return &Context{
+func NewVMContext(params NewContextParams) *VMContext {
+	return &VMContext{
 		from:        params.From,
 		to:          params.To,
 		message:     params.Message,
@@ -73,46 +73,47 @@ func NewVMContext(params NewContextParams) *Context {
 	}
 }
 
-var _ vm2.Runtime = (*Context)(nil)
+var _ runtime.Runtime = (*VMContext)(nil)
 
 // Storage returns an implementation of the storage module for this context.
-func (ctx *Context) Storage() vm2.Storage {
+func (ctx *VMContext) Storage() runtime.Storage {
 	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
 }
 
 // Message retrieves the message associated with this context.
-func (ctx *Context) Message() *types.UnsignedMessage {
+func (ctx *VMContext) Message() *types.UnsignedMessage {
 	return ctx.message
 }
 
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
-func (ctx *Context) Charge(cost types.GasUnits) error {
+func (ctx *VMContext) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
 }
 
 // GasUnits retrieves the gas cost so far
-func (ctx *Context) GasUnits() types.GasUnits {
+func (ctx *VMContext) GasUnits() types.GasUnits {
 	return ctx.gasTracker.GasConsumedByMessage()
 }
 
 // BlockHeight returns the block height of the block currently being processed
-func (ctx *Context) BlockHeight() *types.BlockHeight {
+func (ctx *VMContext) BlockHeight() *types.BlockHeight {
 	return ctx.blockHeight
 }
 
 // MyBalance returns the balance of the associated actor.
-func (ctx *Context) MyBalance() types.AttoFIL {
+func (ctx *VMContext) MyBalance() types.AttoFIL {
 	return ctx.to.Balance
 }
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.
-func (ctx *Context) IsFromAccountActor() bool {
-	return account.IsAccount(ctx.from)
+func (ctx *VMContext) IsFromAccountActor() bool {
+	// Dragons: leave as is or get a global method on actor.Actor to check if its some Cid?
+	return types.AccountActorCodeCid.Equals(ctx.from.Code)
 }
 
 // Send sends a message to another actor.
 // This method assumes to be called from inside the `to` actor.
-func (ctx *Context) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
@@ -167,7 +168,7 @@ func (ctx *Context) Send(to address.Address, method types.MethodID, value types.
 // way that ethereum does.  Note that this will not work if we allow the
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
-func (ctx *Context) AddressForNewActor() (address.Address, error) {
+func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
 	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
 }
 
@@ -187,7 +188,7 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializerData interface{}) error {
+func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid, initializerData interface{}) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -224,12 +225,12 @@ func (ctx *Context) CreateNewActor(addr address.Address, code cid.Cid, initializ
 
 // SampleChainRandomness samples randomness from a block's ancestors at the
 // given height.
-func (ctx *Context) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
+func (ctx *VMContext) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
 	return sampling.SampleChainRandomness(sampleHeight, ctx.ancestors)
 }
 
 // Verifier returns an interface to the proof verification code
-func (ctx *Context) Verifier() verification.Verifier {
+func (ctx *VMContext) Verifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 
@@ -251,6 +252,78 @@ func makeDeps(st *state.CachedTree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
-	Send             func(context.Context, *Context) ([][]byte, uint8, error)
+	Send             func(context.Context, *VMContext) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
+}
+
+// Send executes a message pass inside the VM. If error is set it
+// will always satisfy either ShouldRevert() or IsFault().
+// Dragons: shouldn't this be taking the runtime?
+func Send(ctx context.Context, vmCtx *VMContext) ([][]byte, uint8, error) {
+	return send(ctx, Transfer, vmCtx)
+}
+
+// TransferFn is the money transfer function.
+type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
+
+// send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
+func send(ctx context.Context, transfer TransferFn, vmCtx *VMContext) ([][]byte, uint8, error) {
+	if !vmCtx.message.Value.Equal(types.ZeroAttoFIL) {
+		if err := transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
+			if errors.ShouldRevert(err) {
+				return nil, err.(*errors.RevertError).Code(), err
+			}
+			return nil, 1, err
+		}
+	}
+
+	if vmCtx.message.Method == types.SendMethodID {
+		// if only tokens are transferred there is no need for a method
+		// this means we can shortcircuit execution
+		return nil, 0, nil
+	}
+
+	if vmCtx.message.Method == types.InvalidMethodID {
+		// your test should not be getting here..
+		// Note: this method is not materialized in production but could occur on tests
+		panic("trying to execute fake method on the actual VM, fix test")
+	}
+
+	// TODO: use chain height based protocol version here (#3360)
+	toExecutable, err := vmCtx.actors.GetActorCode(vmCtx.to.Code, 0)
+	if err != nil {
+		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
+	}
+
+	exportedFn, ok := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)
+	if !ok {
+		return nil, 1, errors.Errors[errors.ErrMissingExport]
+	}
+
+	r, code, err := exportedFn(vmCtx)
+	if r != nil {
+		var rv [][]byte
+		err = encoding.Decode(r, &rv)
+		if err != nil {
+			return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
+		}
+		return rv, code, err
+	}
+	return nil, code, err
+}
+
+// Transfer transfers the given value between two actors.
+func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
+	if value.IsNegative() {
+		return errors.Errors[errors.ErrCannotTransferNegativeValue]
+	}
+
+	if fromActor.Balance.LessThan(value) {
+		return errors.Errors[errors.ErrInsufficientBalance]
+	}
+
+	fromActor.Balance = fromActor.Balance.Sub(value)
+	toActor.Balance = toActor.Balance.Add(value)
+
+	return nil
 }

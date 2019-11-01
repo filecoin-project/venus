@@ -21,7 +21,6 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -32,6 +31,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/vmcontext"
 )
 
 func TestAskFunctions(t *testing.T) {
@@ -421,7 +423,7 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 	})
 }
 
-func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
+func updatePeerIdSuccess(t *testing.T, st state.Tree, vms storagemap.StorageMap, fromAddr address.Address, minerAddr address.Address, newPid peer.ID) {
 	updatePeerIdMsg := types.NewUnsignedMessage(
 		fromAddr,
 		minerAddr,
@@ -439,7 +441,7 @@ func updatePeerIdSuccess(t *testing.T, st state.Tree, vms vm.StorageMap, fromAdd
 func callQueryMethodSuccess(method types.MethodID,
 	ctx context.Context,
 	t *testing.T, st state.Tree,
-	vms vm.StorageMap,
+	vms storagemap.StorageMap,
 	fromAddr address.Address,
 	minerAddr address.Address) [][]byte {
 	res, code, err := consensus.NewDefaultProcessor().CallQueryMethod(ctx, st, vms, minerAddr, method, []byte{}, fromAddr, nil)
@@ -524,7 +526,7 @@ func TestMinerCommitSector(t *testing.T) {
 // related to a particular miner actor.
 type minerActorLiason struct {
 	st            state.Tree
-	vms           vm.StorageMap
+	vms           storagemap.StorageMap
 	ancestors     []block.TipSet
 	minerAddr     address.Address
 	t             *testing.T
@@ -602,7 +604,7 @@ func (mal *minerActorLiason) assertPoStStateAtHeight(expected int64, queryHeight
 	assert.Equal(mal.t, big.NewInt(expected), ret.Val)
 }
 
-func newMinerActorLiason(t *testing.T, st state.Tree, vms vm.StorageMap, ancestors []block.TipSet, minerAddr address.Address) *minerActorLiason {
+func newMinerActorLiason(t *testing.T, st state.Tree, vms storagemap.StorageMap, ancestors []block.TipSet, minerAddr address.Address) *minerActorLiason {
 	return &minerActorLiason{
 		t:             t,
 		st:            st,
@@ -1256,7 +1258,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 
 	// CreateTestMiner creates a new test miner with the given peerID and miner
 	// owner address and a given number of committed sectors
-	createMinerWithPower := func(t *testing.T) (state.Tree, vm.StorageMap, address.Address) {
+	createMinerWithPower := func(t *testing.T) (state.Tree, storagemap.StorageMap, address.Address) {
 		ctx := context.Background()
 		st, vms := th.RequireCreateStorages(ctx, t)
 		minerAddr := th.CreateTestMiner(t, st, vms, address.TestAddress, th.RequireRandomPeerID(t))
@@ -1370,7 +1372,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 	})
 }
 
-func assertSlashStatus(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address, power uint64,
+func assertSlashStatus(t *testing.T, st state.Tree, vms storagemap.StorageMap, minerAddr address.Address, power uint64,
 	slashedAt *types.BlockHeight, slashed types.IntSet) {
 	minerState := mustGetMinerState(st, vms, minerAddr)
 
@@ -1534,11 +1536,11 @@ func TestGetProofsMode(t *testing.T) {
 	ctx := context.Background()
 	st, vms := th.RequireCreateStorages(ctx, t)
 
-	gasTracker := vm.NewGasTracker()
+	gasTracker := gastracker.NewGasTracker()
 	gasTracker.MsgGasLimit = 99999
 
 	t.Run("in TestMode", func(t *testing.T) {
-		vmCtx := vm.NewVMContext(vm.NewContextParams{
+		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
 			Message:     &types.UnsignedMessage{},
@@ -1558,7 +1560,7 @@ func TestGetProofsMode(t *testing.T) {
 	})
 
 	t.Run("in LiveMode", func(t *testing.T) {
-		vmCtx := vm.NewVMContext(vm.NewContextParams{
+		vmCtx := vmcontext.NewVMContext(vmcontext.NewContextParams{
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
 			Message:     &types.UnsignedMessage{},
@@ -1682,7 +1684,7 @@ func mustDeserializeAddress(t *testing.T, result [][]byte) address.Address {
 }
 
 // mustGetMinerState returns the block of actor state represented by the head of the actor with the given address
-func mustGetMinerState(st state.Tree, vms vm.StorageMap, a address.Address) *State {
+func mustGetMinerState(st state.Tree, vms storagemap.StorageMap, a address.Address) *State {
 	actor := state.MustGetActor(st, a)
 
 	storage := vms.NewStorage(a, actor)

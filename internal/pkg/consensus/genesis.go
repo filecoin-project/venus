@@ -12,7 +12,6 @@ import (
 	"github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
@@ -21,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -135,7 +135,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
 		st := state.NewEmptyStateTree(cst)
-		storageMap := vm.NewStorageMap(bs)
+		storageMap := vm2.NewStorageMap(bs)
 
 		genCfg := NewEmptyConfig()
 		for _, opt := range opts {
@@ -229,7 +229,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 }
 
 // SetupDefaultActors inits the builtin actors that are required to run filecoin.
-func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.StorageMap, storeType types.ProofsMode, network string) error {
+func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm2.StorageMap, storeType types.ProofsMode, network string) error {
 	for addr, val := range defaultAccounts {
 		a, err := account.NewActor(val)
 		if err != nil {
