@@ -20,7 +20,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 )
 
@@ -182,9 +183,9 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 // ExecutableActor impl for Actor
 //
 
-var _ vminternal.ExecutableActor = (*Actor)(nil)
+var _ dispatch.ExecutableActor = (*Actor)(nil)
 
-var signatures = vminternal.Exports{
+var signatures = dispatch.Exports{
 	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
 	AddAsk: &external.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
@@ -284,7 +285,7 @@ var signatures = vminternal.Exports{
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case AddAsk:
 		return reflect.ValueOf((*Impl)(a).AddAsk), signatures[AddAsk], true

@@ -8,7 +8,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -22,7 +23,7 @@ type FakeActorStorage struct{ Changed bool }
 // FakeActor is a fake actor for use in tests.
 type FakeActor struct{}
 
-var _ vminternal.ExecutableActor = (*FakeActor)(nil)
+var _ dispatch.ExecutableActor = (*FakeActor)(nil)
 
 // FakeActor method IDs.
 const (
@@ -40,7 +41,7 @@ const (
 	BlockLimitTestMethodID
 )
 
-var signatures = vminternal.Exports{
+var signatures = dispatch.Exports{
 	HasReturnValueID: &external.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
@@ -112,7 +113,7 @@ func (a *FakeActor) InitializeState(storage vm2.Storage, initializerData interfa
 }
 
 // Method returns method definition for a given method id.
-func (a *FakeActor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (a *FakeActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case HasReturnValueID:
 		return reflect.ValueOf((*impl)(a).HasReturnValue), signatures[HasReturnValueID], true

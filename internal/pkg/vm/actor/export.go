@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 )
 
 // MakeTypedExport finds the correct method on the given actor and returns it.
@@ -21,7 +21,7 @@ import (
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 // TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func MakeTypedExport(actor vminternal.ExecutableActor, method types.MethodID) (vminternal.ExportedFunc, bool) {
+func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dispatch.ExportedFunc, bool) {
 	fn, signature, ok := actor.Method(method)
 	if !ok {
 		return nil, false

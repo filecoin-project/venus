@@ -13,7 +13,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -62,9 +63,9 @@ func NewActor() *actor.Actor {
 // ExecutableActor impl for Actor
 //
 
-var _ vminternal.ExecutableActor = (*Actor)(nil)
+var _ dispatch.ExecutableActor = (*Actor)(nil)
 
-var signatures = vminternal.Exports{
+var signatures = dispatch.Exports{
 	CreateStorageMiner: &external.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
@@ -88,7 +89,7 @@ var signatures = vminternal.Exports{
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case CreateStorageMiner:
 		return reflect.ValueOf((*impl)(a).createStorageMiner), signatures[CreateStorageMiner], true

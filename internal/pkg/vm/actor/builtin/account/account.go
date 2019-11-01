@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
@@ -42,13 +42,13 @@ func UpgradeActor(a *actor.Actor) error {
 //
 
 // Ensure AccountActor is an ExecutableActor at compile time.
-var _ vminternal.ExecutableActor = (*Actor)(nil)
+var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 // signatures are the publicly (externally callable) methods of the AccountActor.
-var signatures = vminternal.Exports{}
+var signatures = dispatch.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	return nil, nil, false
 }
 

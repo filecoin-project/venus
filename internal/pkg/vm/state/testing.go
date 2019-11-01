@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
@@ -47,7 +47,7 @@ type MockStateTree struct {
 	mock.Mock
 
 	NoMocks       bool
-	BuiltinActors map[cid.Cid]vminternal.ExecutableActor
+	BuiltinActors map[cid.Cid]dispatch.ExecutableActor
 }
 
 // GetActorStorage implements Tree interface
@@ -110,7 +110,7 @@ func (m *MockStateTree) Debug() {
 }
 
 // GetActorCode implements StateTree.GetActorCode
-func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (vminternal.ExecutableActor, error) {
+func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.ExecutableActor, error) {
 	a, ok := m.BuiltinActors[c]
 	if !ok {
 		return nil, fmt.Errorf("unknown actor: %v", c.String())

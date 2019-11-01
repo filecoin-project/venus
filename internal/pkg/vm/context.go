@@ -17,13 +17,13 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
 type ExecutableActorLookup interface {
-	GetActorCode(code cid.Cid, version uint64) (vminternal.ExecutableActor, error)
+	GetActorCode(code cid.Cid, version uint64) (dispatch.ExecutableActor, error)
 }
 
 // Context is the only thing exposed to an actor while executing.

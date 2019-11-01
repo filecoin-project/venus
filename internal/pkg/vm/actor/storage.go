@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storage"
 )
 
 const (
@@ -103,7 +103,7 @@ func SetKeyValue(ctx context.Context, storage vm2.Storage, id cid.Cid, key strin
 
 // WithLookup allows one to read and write to a hamt-ipld node from storage via a callback function.
 // This function commits the lookup before returning.
-func WithLookup(ctx context.Context, storage vm2.Storage, id cid.Cid, f func(vminternal.Lookup) error) (cid.Cid, error) {
+func WithLookup(ctx context.Context, storage vm2.Storage, id cid.Cid, f func(storage.Lookup) error) (cid.Cid, error) {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return cid.Undef, err
@@ -118,7 +118,7 @@ func WithLookup(ctx context.Context, storage vm2.Storage, id cid.Cid, f func(vmi
 
 // WithLookupForReading allows one to read from a hamt-ipld node from storage via a callback function.
 // Unlike WithLookup, this function will not attempt to commit.
-func WithLookupForReading(ctx context.Context, storage vm2.Storage, id cid.Cid, f func(vminternal.Lookup) error) error {
+func WithLookupForReading(ctx context.Context, storage vm2.Storage, id cid.Cid, f func(storage.Lookup) error) error {
 	lookup, err := LoadLookup(ctx, storage, id)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func WithLookupForReading(ctx context.Context, storage vm2.Storage, id cid.Cid, 
 
 // LoadLookup loads hamt-ipld node from storage if the cid exists, or creates a new one if it is nil.
 // The lookup provides access to a HAMT/CHAMP tree stored in storage.
-func LoadLookup(ctx context.Context, storage vm2.Storage, cid cid.Cid) (vminternal.Lookup, error) {
+func LoadLookup(ctx context.Context, storage vm2.Storage, cid cid.Cid) (storage.Lookup, error) {
 	cborStore := &hamt.CborIpldStore{
 		Blocks: &storageAsBlocks{s: storage},
 		Atlas:  &cbor.CborAtlas,
@@ -170,13 +170,13 @@ func (sab *storageAsBlocks) AddBlock(b block.Block) error {
 	return err
 }
 
-// lookup implements vminternal.Lookup and provides structured key-value storage for actors
+// lookup implements storage.Lookup and provides structured key-value storage for actors
 type lookup struct {
 	n *hamt.Node
 	s vm2.Storage
 }
 
-var _ vminternal.Lookup = (*lookup)(nil)
+var _ storage.Lookup = (*lookup)(nil)
 
 // Find retrieves a value by key
 // If the return value is not primitive, you will need to load the lookup using the LoadTypedLookup
@@ -210,7 +210,7 @@ func (l *lookup) IsEmpty() bool {
 }
 
 // ForEachValue iterates all the values in a lookup
-func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callback vminternal.ValueCallbackFunc) error {
+func (l *lookup) ForEachValue(ctx context.Context, valueType interface{}, callback storage.ValueCallbackFunc) error {
 	var vt reflect.Type
 	if valueType != nil {
 		vt = reflect.TypeOf(valueType)

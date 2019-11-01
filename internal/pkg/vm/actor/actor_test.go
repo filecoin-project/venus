@@ -11,7 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -70,7 +70,7 @@ func requireCid(t *testing.T, data string) cid.Cid {
 }
 
 type MockActor struct {
-	signatures vminternal.Exports
+	signatures dispatch.Exports
 }
 
 const (
@@ -82,16 +82,16 @@ const (
 	Six
 )
 
-func NewMockActor(list vminternal.Exports) *MockActor {
+func NewMockActor(list dispatch.Exports) *MockActor {
 	return &MockActor{
 		signatures: list,
 	}
 }
 
-var _ vminternal.ExecutableActor = (*MockActor)(nil)
+var _ dispatch.ExecutableActor = (*MockActor)(nil)
 
 // Method returns method definition for a given method id.
-func (a *MockActor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (a *MockActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	signature, ok := a.signatures[id]
 	if !ok {
 		return nil, nil, false

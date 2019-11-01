@@ -14,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storage"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 )
 
@@ -74,9 +76,9 @@ func NewActor() *actor.Actor {
 // ExecutableActor impl for Actor
 //
 
-var _ vminternal.ExecutableActor = (*Actor)(nil)
+var _ dispatch.ExecutableActor = (*Actor)(nil)
 
-var signatures = vminternal.Exports{
+var signatures = dispatch.Exports{
 	Cancel: &external.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
@@ -112,7 +114,7 @@ var signatures = vminternal.Exports{
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case Cancel:
 		return reflect.ValueOf((*impl)(a).cancel), signatures[Cancel], true
@@ -211,11 +213,11 @@ func (*impl) createChannel(vmctx vm2.Runtime, target address.Address, eol *types
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	payerAddress := vmctx.Message().From
 	channelID := types.NewChannelID(uint64(vmctx.Message().CallSeqNum))
 
-	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		// check to see if payment channel is duplicate
 		err := byChannelID.Find(ctx, channelID.KeyString(), nil)
 		if err != hamt.ErrNotFound { // we expect to not find the payment channel
@@ -279,9 +281,9 @@ func (*impl) redeem(vmctx vm2.Runtime, payer address.Address, chid *types.Channe
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 
-	err := withPayerChannels(ctx, storage, payer, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payer, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -337,9 +339,9 @@ func (*impl) close(vmctx vm2.Runtime, payer address.Address, chid *types.Channel
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 
-	err := withPayerChannels(ctx, storage, payer, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payer, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -383,10 +385,10 @@ func (*impl) extend(vmctx vm2.Runtime, chid *types.ChannelID, eol *types.BlockHe
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	payerAddress := vmctx.Message().From
 
-	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -435,10 +437,10 @@ func (*impl) cancel(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	payerAddress := vmctx.Message().From
 
-	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -496,10 +498,10 @@ func (*impl) reclaim(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	payerAddress := vmctx.Message().From
 
-	err := withPayerChannels(ctx, storage, payerAddress, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannels(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -543,11 +545,11 @@ func (*impl) voucher(vmctx vm2.Runtime, chid *types.ChannelID, amount types.Atto
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	payerAddress := vmctx.Message().From
 	var voucher types.PaymentVoucher
 
-	err := withPayerChannelsForReading(ctx, storage, payerAddress, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannelsForReading(ctx, st, payerAddress, func(byChannelID storage.Lookup) error {
 		var channel PaymentChannel
 		err := byChannelID.Find(ctx, chid.KeyString(), &channel)
 		if err != nil {
@@ -599,10 +601,10 @@ func (*impl) ls(vmctx vm2.Runtime, payer address.Address) ([]byte, uint8, error)
 	}
 
 	ctx := context.Background()
-	storage := vmctx.Storage()
+	st := vmctx.Storage()
 	channels := map[string]*PaymentChannel{}
 
-	err := withPayerChannelsForReading(ctx, storage, payer, func(byChannelID vminternal.Lookup) error {
+	err := withPayerChannelsForReading(ctx, st, payer, func(byChannelID storage.Lookup) error {
 		return byChannelID.ForEachValue(ctx, &PaymentChannel{}, func(k string, value interface{}) error {
 			pc, ok := value.(*PaymentChannel)
 			if !ok {
@@ -669,7 +671,7 @@ func validateAndUpdateChannel(ctx vm2.Runtime, target address.Address, channel *
 	return nil
 }
 
-func reclaim(ctx context.Context, vmctx vm2.Runtime, byChannelID vminternal.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx context.Context, vmctx vm2.Runtime, byChannelID storage.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
@@ -738,9 +740,9 @@ func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL
 	return append(data, validAt.Bytes()...), nil
 }
 
-func withPayerChannels(ctx context.Context, storage vm2.Storage, payer address.Address, f func(vminternal.Lookup) error) error {
-	stateCid, err := actor.WithLookup(ctx, storage, storage.Head(), func(byPayer vminternal.Lookup) error {
-		byChannelLookup, err := findByChannelLookup(ctx, storage, byPayer, payer)
+func withPayerChannels(ctx context.Context, st vm2.Storage, payer address.Address, f func(storage.Lookup) error) error {
+	stateCid, err := actor.WithLookup(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err
 		}
@@ -769,12 +771,12 @@ func withPayerChannels(ctx context.Context, storage vm2.Storage, payer address.A
 		return err
 	}
 
-	return storage.Commit(stateCid, storage.Head())
+	return st.Commit(stateCid, st.Head())
 }
 
-func withPayerChannelsForReading(ctx context.Context, storage vm2.Storage, payer address.Address, f func(vminternal.Lookup) error) error {
-	return actor.WithLookupForReading(ctx, storage, storage.Head(), func(byPayer vminternal.Lookup) error {
-		byChannelLookup, err := findByChannelLookup(ctx, storage, byPayer, payer)
+func withPayerChannelsForReading(ctx context.Context, st vm2.Storage, payer address.Address, f func(storage.Lookup) error) error {
+	return actor.WithLookupForReading(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
+		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
 			return err
 		}
@@ -784,7 +786,7 @@ func withPayerChannelsForReading(ctx context.Context, storage vm2.Storage, payer
 	})
 }
 
-func findByChannelLookup(ctx context.Context, storage vm2.Storage, byPayer vminternal.Lookup, payer address.Address) (vminternal.Lookup, error) {
+func findByChannelLookup(ctx context.Context, storage vm2.Storage, byPayer storage.Lookup, payer address.Address) (storage.Lookup, error) {
 	var byChannelCID cid.Cid
 	err := byPayer.Find(ctx, payer.String(), &byChannelCID)
 	if err != nil {

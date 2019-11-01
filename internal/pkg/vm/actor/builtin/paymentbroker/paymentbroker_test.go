@@ -27,7 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -1290,10 +1290,10 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 // PBTestActor is a fake actor for use in tests.
 type PBTestActor struct{}
 
-var _ vminternal.ExecutableActor = (*PBTestActor)(nil)
+var _ dispatch.ExecutableActor = (*PBTestActor)(nil)
 
 // Method returns method definition for a given method id.
-func (ma *PBTestActor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
+func (ma *PBTestActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case ParamsNotZeroID:
 		return reflect.ValueOf(ma.ParamsNotZero), &external.FunctionSignature{
