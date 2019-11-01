@@ -78,7 +78,7 @@ func (ce *ChainExporter) Export(ctx context.Context) error {
 	return chain.Export(ctx, ce.Head, ce, msgStore, ce, ce.out)
 }
 
-// LoadTipSet loads all the TipSet for a given TipSetKey.
+// GetTipSet gets all the TipSet for a given TipSetKey from the ChainExporter blockstore.
 func (ce *ChainExporter) GetTipSet(key block.TipSetKey) (block.TipSet, error) {
 	var blks []*block.Block
 	for it := key.Iter(); !it.Complete(); it.Next() {

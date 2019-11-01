@@ -31,6 +31,7 @@ var GenesisKey = datastore.NewKey("/consensus/genesisCid")
 
 var logStore = logging.Logger("chain.store")
 
+// HeadKey is the key at which the head tipset cid's are written in the datastore.
 var HeadKey = datastore.NewKey("/chain/heaviestTipSet")
 
 // ipldStore defines an interface for interacting with a hamt.CborIpldStore.
