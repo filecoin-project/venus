@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/stretchr/testify/assert"
@@ -88,7 +88,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{}}
+		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]dispatch.ExecutableActor{}}
 		tree := state.NewCachedStateTree(stateTree)
 		vmCtxParams := NewContextParams{
 			From:        actor1,
@@ -115,7 +115,7 @@ func TestSendErrorHandling(t *testing.T) {
 
 		deps := sendDeps{}
 
-		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]exec.ExecutableActor{
+		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]dispatch.ExecutableActor{
 			actor2.Code: &actor.FakeActor{},
 		}}
 		tree := state.NewCachedStateTree(stateTree)

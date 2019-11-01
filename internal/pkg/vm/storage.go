@@ -16,7 +16,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 )
 
 // ErrNotFound is returned by storage when no chunk in storage matches a requested Cid
@@ -93,7 +94,7 @@ type Storage struct {
 	blockstore blockstore.Blockstore
 }
 
-var _ exec.Storage = (*Storage)(nil)
+var _ vm2.Storage = (*Storage)(nil)
 
 // NewStorage creates a datastore backed storage object for the given actor
 func NewStorage(bs blockstore.Blockstore, act *actor.Actor) Storage {
@@ -128,7 +129,7 @@ func (s Storage) Put(v interface{}) (cid.Cid, error) {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
-		return cid.Undef, exec.Errors[exec.ErrDecode]
+		return cid.Undef, vminternal.Errors[vminternal.ErrDecode]
 	}
 
 	c := nd.Cid()
@@ -162,14 +163,14 @@ func (s Storage) Get(cid cid.Cid) ([]byte, error) {
 func (s Storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
 	// commit to initialize actor only permitted if Head and expected id are nil
 	if oldCid.Defined() && s.actor.Head.Defined() && !oldCid.Equals(s.actor.Head) {
-		return exec.Errors[exec.ErrStaleHead]
+		return vminternal.Errors[vminternal.ErrStaleHead]
 	} else if oldCid != s.actor.Head { // covers case where only one cid is nil
-		return exec.Errors[exec.ErrStaleHead]
+		return vminternal.Errors[vminternal.ErrStaleHead]
 	}
 
 	// validate completeness by traversing graph to find ids
 	if _, err := s.liveDescendantIds(newCid); err != nil {
-		return exec.Errors[exec.ErrDanglingPointer]
+		return vminternal.Errors[vminternal.ErrDanglingPointer]
 	}
 
 	s.actor.Head = newCid

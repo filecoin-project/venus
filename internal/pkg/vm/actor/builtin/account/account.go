@@ -5,7 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 )
 
 // Actor is the builtin actor responsible for individual accounts.
@@ -40,17 +42,17 @@ func UpgradeActor(a *actor.Actor) error {
 //
 
 // Ensure AccountActor is an ExecutableActor at compile time.
-var _ exec.ExecutableActor = (*Actor)(nil)
+var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 // signatures are the publicly (externally callable) methods of the AccountActor.
-var signatures = exec.Exports{}
+var signatures = dispatch.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
 	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(_ exec.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ vm2.Storage, _ interface{}) error {
 	return nil
 }

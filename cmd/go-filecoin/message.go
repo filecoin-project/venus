@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -20,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 var msgCmd = &cmds.Command{
@@ -190,7 +190,7 @@ var signedMsgSendCmd = &cmds.Command{
 type WaitResult struct {
 	Message   *types.SignedMessage
 	Receipt   *types.MessageReceipt
-	Signature *exec.FunctionSignature
+	Signature *external.FunctionSignature
 }
 
 var msgWaitCmd = &cmds.Command{

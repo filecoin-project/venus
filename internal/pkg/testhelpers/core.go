@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -23,7 +24,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/stretchr/testify/require"
 )
@@ -196,7 +196,7 @@ type testStorage struct {
 	state interface{}
 }
 
-var _ exec.Storage = &testStorage{}
+var _ vm2.Storage = &testStorage{}
 
 // Put satisfies the Storage interface
 func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
@@ -227,7 +227,7 @@ func (ts testStorage) Head() cid.Cid {
 // FakeVMContext creates the scaffold for faking out the vm context for direct calls to actors
 type FakeVMContext struct {
 	MessageValue            *types.UnsignedMessage
-	StorageValue            exec.Storage
+	StorageValue            vm2.Storage
 	BalanceValue            types.AttoFIL
 	BlockHeightValue        *types.BlockHeight
 	VerifierValue           verification.Verifier
@@ -240,7 +240,7 @@ type FakeVMContext struct {
 	ActorCreator            func(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 }
 
-var _ exec.VMContext = &FakeVMContext{}
+var _ vm2.Runtime = &FakeVMContext{}
 
 // NewFakeVMContext fakes the state machine infrastructure so actor methods can be called directly
 func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVMContext {
@@ -286,7 +286,7 @@ func (tc *FakeVMContext) Message() *types.UnsignedMessage {
 }
 
 // Storage provides and interface to actor state
-func (tc *FakeVMContext) Storage() exec.Storage {
+func (tc *FakeVMContext) Storage() vm2.Storage {
 	return tc.StorageValue
 }
 

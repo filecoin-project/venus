@@ -36,7 +36,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -82,7 +82,7 @@ type Miner struct {
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
 type minerPorcelain interface {
-	ActorGetSignature(context.Context, address.Address, types.MethodID) (*exec.FunctionSignature, error)
+	ActorGetSignature(context.Context, address.Address, types.MethodID) (*external.FunctionSignature, error)
 
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(block.TipSetKey) (block.TipSet, error)

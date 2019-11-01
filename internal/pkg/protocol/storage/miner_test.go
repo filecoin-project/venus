@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 const (
@@ -635,7 +635,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 	}
 }
 
-func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *exec.FunctionSignature, err error) {
+func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *external.FunctionSignature, err error) {
 	ea, error := builtin.DefaultActors.GetActorCode(types.MinerActorCodeCid, 0)
 	if error != nil {
 		return nil, err
