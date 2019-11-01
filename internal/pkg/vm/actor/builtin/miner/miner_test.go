@@ -29,7 +29,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -171,7 +172,7 @@ func TestChangeWorker(t *testing.T) {
 
 		require.Error(t, result.ExecutionError)
 		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
-		assert.Equal(t, uint8(exec.ErrInsufficientGas), result.Receipt.ExitCode)
+		assert.Equal(t, uint8(kungfu.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
 }
 
@@ -1300,7 +1301,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 
 		require.Error(t, result.ExecutionError)
 		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
-		assert.Equal(t, uint8(exec.ErrInsufficientGas), result.Receipt.ExitCode)
+		assert.Equal(t, uint8(kungfu.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
 
 	t.Run("slashing a miner with no storage fails", func(t *testing.T) {
@@ -1707,7 +1708,7 @@ type minerEnvBuilder struct {
 	verifier         *verification.FakeVerifier
 }
 
-func (b *minerEnvBuilder) build() (exec.VMContext, *verification.FakeVerifier, *Impl) {
+func (b *minerEnvBuilder) build() (vladrok.Runtime, *verification.FakeVerifier, *Impl) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd

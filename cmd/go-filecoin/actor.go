@@ -13,11 +13,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-cmdkit"
-	"github.com/ipfs/go-ipfs-cmds"
+	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
+	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
 // ActorView represents a generic way to represent details about any actor to the user.
@@ -95,7 +94,7 @@ var actorLsCmd = &cmds.Command{
 	},
 }
 
-func makeActorView(act *actor.Actor, addr string, actType exec.ExecutableActor) *ActorView {
+func makeActorView(act *actor.Actor, addr string, actType interface{}) *ActorView {
 	var actorType string
 	if actType == nil {
 		actorType = "UnknownActor"
@@ -113,7 +112,7 @@ func makeActorView(act *actor.Actor, addr string, actType exec.ExecutableActor) 
 	}
 }
 
-func getActorType(actType exec.ExecutableActor) string {
+func getActorType(actType interface{}) string {
 	t := reflect.TypeOf(actType).Elem()
 	prefixes := strings.Split(t.PkgPath(), "/")
 	pkg := prefixes[len(prefixes)-1]

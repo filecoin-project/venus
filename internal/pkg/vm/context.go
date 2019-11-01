@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 
@@ -15,13 +16,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
 type ExecutableActorLookup interface {
-	GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error)
+	GetActorCode(code cid.Cid, version uint64) (kungfu.ExecutableActor, error)
 }
 
 // Context is the only thing exposed to an actor while executing.
@@ -40,7 +42,7 @@ type Context struct {
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
-var _ exec.VMContext = (*Context)(nil)
+var _ vladrok.Runtime = (*Context)(nil)
 
 // NewContextParams is passed to NewVMContext to construct a new context.
 type NewContextParams struct {
@@ -71,10 +73,10 @@ func NewVMContext(params NewContextParams) *Context {
 	}
 }
 
-var _ exec.VMContext = (*Context)(nil)
+var _ vladrok.Runtime = (*Context)(nil)
 
 // Storage returns an implementation of the storage module for this context.
-func (ctx *Context) Storage() exec.Storage {
+func (ctx *Context) Storage() vladrok.Storage {
 	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
 }
 
@@ -90,7 +92,7 @@ func (ctx *Context) Charge(cost types.GasUnits) error {
 
 // GasUnits retrieves the gas cost so far
 func (ctx *Context) GasUnits() types.GasUnits {
-	return ctx.gasTracker.gasConsumedByMessage
+	return ctx.gasTracker.GasConsumedByMessage()
 }
 
 // BlockHeight returns the block height of the block currently being processed

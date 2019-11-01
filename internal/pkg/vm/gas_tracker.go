@@ -50,3 +50,8 @@ func (gasTracker *GasTracker) GasAboveBlockLimit() bool {
 func (gasTracker *GasTracker) GasTooHighForCurrentBlock() bool {
 	return gasTracker.MsgGasLimit+gasTracker.gasConsumedByBlock > types.BlockGasLimit
 }
+
+// GasConsumedByMessage returns the gas consumed by the message.
+func (gasTracker *GasTracker) GasConsumedByMessage() types.GasUnits {
+	return gasTracker.gasConsumedByMessage
+}

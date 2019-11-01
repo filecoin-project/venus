@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -21,11 +21,11 @@ type codeVersion struct {
 }
 
 type Actors struct {
-	actors map[codeVersion]exec.ExecutableActor
+	actors map[codeVersion]kungfu.ExecutableActor
 }
 
 // GetActorCode returns executable code for an actor by code cid at a specific protocol version
-func (ba Actors) GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActor, error) {
+func (ba Actors) GetActorCode(code cid.Cid, version uint64) (kungfu.ExecutableActor, error) {
 	if !code.Defined() {
 		return nil, fmt.Errorf("undefined code cid")
 	}
@@ -37,12 +37,12 @@ func (ba Actors) GetActorCode(code cid.Cid, version uint64) (exec.ExecutableActo
 }
 
 type BuiltinActorsBuilder struct {
-	actors map[codeVersion]exec.ExecutableActor
+	actors map[codeVersion]kungfu.ExecutableActor
 }
 
 // NewBuilder creates a builder to generate a builtin.Actor data structure
 func NewBuilder() *BuiltinActorsBuilder {
-	return &BuiltinActorsBuilder{actors: map[codeVersion]exec.ExecutableActor{}}
+	return &BuiltinActorsBuilder{actors: map[codeVersion]kungfu.ExecutableActor{}}
 }
 
 func (bab *BuiltinActorsBuilder) AddAll(actors Actors) *BuiltinActorsBuilder {
@@ -52,7 +52,7 @@ func (bab *BuiltinActorsBuilder) AddAll(actors Actors) *BuiltinActorsBuilder {
 	return bab
 }
 
-func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor exec.ExecutableActor) *BuiltinActorsBuilder {
+func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor kungfu.ExecutableActor) *BuiltinActorsBuilder {
 	bab.actors[codeVersion{code: c, protocolVersion: version}] = actor
 	return bab
 }

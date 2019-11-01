@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
@@ -18,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.
@@ -257,7 +257,7 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 type minerQueryAndDeserialize interface {
 	ChainHeadKey() block.TipSetKey
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*exec.FunctionSignature, error)
+	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner

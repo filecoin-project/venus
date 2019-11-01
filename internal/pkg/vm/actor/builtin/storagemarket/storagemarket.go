@@ -12,12 +12,14 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 func init() {
@@ -60,33 +62,33 @@ func NewActor() *actor.Actor {
 // ExecutableActor impl for Actor
 //
 
-var _ exec.ExecutableActor = (*Actor)(nil)
+var _ kungfu.ExecutableActor = (*Actor)(nil)
 
-var signatures = exec.Exports{
-	CreateStorageMiner: &exec.FunctionSignature{
+var signatures = kungfu.Exports{
+	CreateStorageMiner: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
-	UpdateStorage: &exec.FunctionSignature{
+	UpdateStorage: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
 	},
-	GetTotalStorage: &exec.FunctionSignature{
+	GetTotalStorage: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	GetProofsMode: &exec.FunctionSignature{
+	GetProofsMode: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.ProofsMode},
 	},
-	GetLateMiners: &exec.FunctionSignature{
+	GetLateMiners: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.MinerPoStStates},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
 	switch id {
 	case CreateStorageMiner:
 		return reflect.ValueOf((*impl)(a).createStorageMiner), signatures[CreateStorageMiner], true
@@ -104,7 +106,7 @@ func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature,
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage exec.Storage, proofsModeInterface interface{}) error {
+func (*Actor) InitializeState(storage vladrok.Storage, proofsModeInterface interface{}) error {
 	proofsMode := proofsModeInterface.(types.ProofsMode)
 
 	initStorage := &State{
@@ -145,9 +147,9 @@ var Errors = map[uint8]error{
 
 // CreateStorageMiner creates a new miner which will commit sectors of the
 // given size. The miners collateral is set by the value in the message.
-func (*impl) createStorageMiner(vmctx exec.VMContext, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
+func (*impl) createStorageMiner(vmctx vladrok.Runtime, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -196,9 +198,9 @@ func (*impl) createStorageMiner(vmctx exec.VMContext, sectorSize *types.BytesAmo
 // UpdateStorage is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing, faults or willful removal). The delta is in number of bytes.
-func (*impl) updateStorage(vmctx exec.VMContext, delta *types.BytesAmount) (uint8, error) {
+func (*impl) updateStorage(vmctx vladrok.Runtime, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -230,9 +232,9 @@ func (*impl) updateStorage(vmctx exec.VMContext, delta *types.BytesAmount) (uint
 	return 0, nil
 }
 
-func (a *impl) getLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8, error) {
+func (a *impl) getLateMiners(vmctx vladrok.Runtime) (*map[string]uint64, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	ctx := context.Background()
@@ -277,9 +279,9 @@ func (a *impl) getLateMiners(vmctx exec.VMContext) (*map[string]uint64, uint8, e
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (*impl) getTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+func (*impl) getTotalStorage(vmctx vladrok.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -299,9 +301,9 @@ func (*impl) getTotalStorage(vmctx exec.VMContext) (*types.BytesAmount, uint8, e
 }
 
 // GetSectorSize returns the sector size of the block chain
-func (*impl) getProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, error) {
+func (*impl) getProofsMode(vmctx vladrok.Runtime) (types.ProofsMode, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return 0, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return 0, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -320,7 +322,7 @@ func (*impl) getProofsMode(vmctx exec.VMContext) (types.ProofsMode, uint8, error
 	return size, 0, nil
 }
 
-func (*impl) getMinerPoStState(vmctx exec.VMContext, minerAddr address.Address) (uint64, error) {
+func (*impl) getMinerPoStState(vmctx vladrok.Runtime, minerAddr address.Address) (uint64, error) {
 	msgResult, _, err := vmctx.Send(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return 0, err

@@ -4,8 +4,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
 
 // Actor is the builtin actor responsible for individual accounts.
@@ -40,17 +42,17 @@ func UpgradeActor(a *actor.Actor) error {
 //
 
 // Ensure AccountActor is an ExecutableActor at compile time.
-var _ exec.ExecutableActor = (*Actor)(nil)
+var _ kungfu.ExecutableActor = (*Actor)(nil)
 
 // signatures are the publicly (externally callable) methods of the AccountActor.
-var signatures = exec.Exports{}
+var signatures = kungfu.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
 	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(_ exec.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ vladrok.Storage, _ interface{}) error {
 	return nil
 }

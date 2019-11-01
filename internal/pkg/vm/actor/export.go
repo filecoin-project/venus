@@ -11,7 +11,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 )
 
 // MakeTypedExport finds the correct method on the given actor and returns it.
@@ -20,7 +21,7 @@ import (
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 // TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func MakeTypedExport(actor exec.ExecutableActor, method types.MethodID) (exec.ExportedFunc, bool) {
+func MakeTypedExport(actor kungfu.ExecutableActor, method types.MethodID) (kungfu.ExportedFunc, bool) {
 	fn, signature, ok := actor.Method(method)
 	if !ok {
 		return nil, false
@@ -29,7 +30,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method types.MethodID) (exec.Ex
 	t := fn.Type()
 
 	badImpl := func() {
-		params := []string{"exec.VMContext"}
+		params := []string{"vladrok.Runtime"}
 		for _, p := range signature.Params {
 			params = append(params, p.String())
 		}
@@ -72,7 +73,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method types.MethodID) (exec.Ex
 		badImpl()
 	}
 
-	return func(ctx exec.VMContext) ([]byte, uint8, error) {
+	return func(ctx vladrok.Runtime) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")

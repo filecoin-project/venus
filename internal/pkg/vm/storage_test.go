@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -175,7 +175,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		require.NoError(t, err)
 
 		ec := stage.Commit(newMemory.Cid(), stage.Head())
-		assert.Equal(t, exec.Errors[exec.ErrDanglingPointer], ec)
+		assert.Equal(t, kungfu.Errors[kungfu.ErrDanglingPointer], ec)
 	})
 
 	t.Run("Committing out of sequence is an error", func(t *testing.T) {
@@ -196,7 +196,7 @@ func TestStorageHeadAndCommit(t *testing.T) {
 		require.NoError(t, err)
 
 		err = stage.Commit(newMemory2.Cid(), newMemory1.Cid())
-		assert.Equal(t, exec.Errors[exec.ErrStaleHead], err)
+		assert.Equal(t, kungfu.Errors[kungfu.ErrStaleHead], err)
 	})
 }
 
@@ -332,7 +332,7 @@ func TestValidationAndPruning(t *testing.T) {
 
 		// Attempt to commit before adding linked memory
 		err = stage.Commit(cid, stage.Head())
-		assert.Equal(t, exec.Errors[exec.ErrDanglingPointer], err)
+		assert.Equal(t, kungfu.Errors[kungfu.ErrDanglingPointer], err)
 	})
 
 	t.Run("Prune removes unlinked chunks from stage", func(t *testing.T) {

@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
 )
 
 func TestVMContextStorage(t *testing.T) {
@@ -87,7 +87,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	newAddress := address.NewForTestGetter()
 
 	mockStateTree := state.MockStateTree{
-		BuiltinActors: map[cid.Cid]exec.ExecutableActor{},
+		BuiltinActors: map[cid.Cid]kungfu.ExecutableActor{},
 	}
 	fakeActorCid := types.NewCidForTestGetter()()
 	mockStateTree.BuiltinActors[fakeActorCid] = &actor.FakeActor{}

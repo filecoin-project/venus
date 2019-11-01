@@ -18,8 +18,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
 )
 
 func init() {
@@ -180,60 +182,60 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 // ExecutableActor impl for Actor
 //
 
-var _ exec.ExecutableActor = (*Actor)(nil)
+var _ kungfu.ExecutableActor = (*Actor)(nil)
 
-var signatures = exec.Exports{
+var signatures = kungfu.Exports{
 	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
-	AddAsk: &exec.FunctionSignature{
+	AddAsk: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
-	GetOwner: &exec.FunctionSignature{
+	GetOwner: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
-	CommitSector: &exec.FunctionSignature{
+	CommitSector: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
 		Return: []abi.Type{},
 	},
-	GetWorker: &exec.FunctionSignature{
+	GetWorker: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.Address},
 	},
-	GetPeerID: &exec.FunctionSignature{
+	GetPeerID: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.PeerID},
 	},
-	UpdatePeerID: &exec.FunctionSignature{
+	UpdatePeerID: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
 	},
-	GetPower: &exec.FunctionSignature{
+	GetPower: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	AddFaults: &exec.FunctionSignature{
+	AddFaults: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.FaultSet},
 		Return: []abi.Type{},
 	},
-	SubmitPoSt: &exec.FunctionSignature{
+	SubmitPoSt: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.PoStProof, abi.FaultSet, abi.IntSet},
 		Return: []abi.Type{},
 	},
-	SlashStorageFault: &exec.FunctionSignature{
+	SlashStorageFault: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{},
 	},
-	ChangeWorker: &exec.FunctionSignature{
+	ChangeWorker: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{},
 	},
 	// verifyPieceInclusion is not in spec, but should be.
-	VerifyPieceInclusion: &exec.FunctionSignature{
+	VerifyPieceInclusion: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
-	GetSectorSize: &exec.FunctionSignature{
+	GetSectorSize: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
 	},
@@ -243,46 +245,46 @@ var signatures = exec.Exports{
 	// but are because we lack a mechanism to invoke actor methods without going through the
 	// queryMessage infrastructure. These should be removed when we have another way of invoking
 	// them from worker code. https://github.com/filecoin-project/go-filecoin/issues/2973
-	GetAsks: &exec.FunctionSignature{
+	GetAsks: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.UintArray},
 	},
-	GetAsk: &exec.FunctionSignature{
+	GetAsk: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.Integer},
 		Return: []abi.Type{abi.Bytes},
 	},
-	GetLastUsedSectorID: &exec.FunctionSignature{
+	GetLastUsedSectorID: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},
 	},
-	GetProvingSetCommitments: &exec.FunctionSignature{
+	GetProvingSetCommitments: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
-	IsBootstrapMiner: &exec.FunctionSignature{
+	IsBootstrapMiner: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Boolean},
 	},
-	GetPoStState: &exec.FunctionSignature{
+	GetPoStState: &pandas.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Integer},
 	},
-	GetProvingWindow: &exec.FunctionSignature{
+	GetProvingWindow: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
-	CalculateLateFee: &exec.FunctionSignature{
+	CalculateLateFee: &pandas.FunctionSignature{
 		Params: []abi.Type{abi.BlockHeight},
 		Return: []abi.Type{abi.AttoFIL},
 	},
-	GetActiveCollateral: &exec.FunctionSignature{
+	GetActiveCollateral: &pandas.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.AttoFIL},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
 	switch id {
 	case AddAsk:
 		return reflect.ValueOf((*Impl)(a).AddAsk), signatures[AddAsk], true
@@ -334,7 +336,7 @@ func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature,
 }
 
 // InitializeState stores this miner's initial data structure.
-func (*Actor) InitializeState(storage exec.Storage, initializerData interface{}) error {
+func (*Actor) InitializeState(storage vladrok.Storage, initializerData interface{}) error {
 	minerState, ok := initializerData.(*State)
 	if !ok {
 		return errors.NewFaultError("Initial state to miner actor is not a miner.State struct")
@@ -437,10 +439,10 @@ const (
 )
 
 // AddAsk adds an ask to this miners ask list
-func (*Impl) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
+func (*Impl) AddAsk(ctx vladrok.Runtime, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -487,9 +489,9 @@ func (*Impl) AddAsk(ctx exec.VMContext, price types.AttoFIL, expiry *big.Int) (*
 }
 
 // GetAsks returns all the asks for this miner.
-func (*Impl) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
+func (*Impl) GetAsks(ctx vladrok.Runtime) ([]uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -516,9 +518,9 @@ func (*Impl) GetAsks(ctx exec.VMContext) ([]uint64, uint8, error) {
 }
 
 // GetAsk returns an ask by ID
-func (*Impl) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, error) {
+func (*Impl) GetAsk(ctx vladrok.Runtime, askid *big.Int) ([]byte, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -555,9 +557,9 @@ func (*Impl) GetAsk(ctx exec.VMContext, askid *big.Int) ([]byte, uint8, error) {
 }
 
 // GetOwner returns the miners owner.
-func (*Impl) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
+func (*Impl) GetOwner(ctx vladrok.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -577,9 +579,9 @@ func (*Impl) GetOwner(ctx exec.VMContext) (address.Address, uint8, error) {
 }
 
 // GetLastUsedSectorID returns the last used sector id.
-func (*Impl) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) {
+func (*Impl) GetLastUsedSectorID(ctx vladrok.Runtime) (uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return 0, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return 0, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -599,13 +601,13 @@ func (*Impl) GetLastUsedSectorID(ctx exec.VMContext) (uint64, uint8, error) {
 
 // IsBootstrapMiner indicates whether the receiving miner was created in the
 // genesis block, i.e. used to bootstrap the network
-func (a *Impl) IsBootstrapMiner(ctx exec.VMContext) (bool, uint8, error) {
+func (a *Impl) IsBootstrapMiner(ctx vladrok.Runtime) (bool, uint8, error) {
 	return a.Bootstrap, 0, nil
 }
 
 // GetPoStState returns whether the miner's last submitPoSt is within the proving period,
 // late or after the generation attack threshold.
-func (*Impl) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
+func (*Impl) GetPoStState(ctx vladrok.Runtime) (*big.Int, uint8, error) {
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// Don't check lateness unless there is storage to prove
@@ -629,9 +631,9 @@ func (*Impl) GetPoStState(ctx exec.VMContext) (*big.Int, uint8, error) {
 }
 
 // GetProvingSetCommitments returns all sector commitments posted by this miner.
-func (*Impl) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.Commitments, uint8, error) {
+func (*Impl) GetProvingSetCommitments(ctx vladrok.Runtime) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -653,9 +655,9 @@ func (*Impl) GetProvingSetCommitments(ctx exec.VMContext) (map[string]types.Comm
 
 // GetSectorSize returns the size of the sectors committed to the network by
 // this miner.
-func (*Impl) GetSectorSize(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+func (*Impl) GetSectorSize(ctx vladrok.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -676,9 +678,9 @@ func (*Impl) GetSectorSize(ctx exec.VMContext) (*types.BytesAmount, uint8, error
 
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
-func (a *Impl) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
+func (a *Impl) CommitSector(ctx vladrok.Runtime, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	if len(commD) != int(types.CommitmentBytesLen) {
 		return 1, errors.NewRevertError("invalid sized commD")
@@ -767,9 +769,9 @@ func (a *Impl) CommitSector(ctx exec.VMContext, sectorID uint64, commD, commR, c
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
 // verifies that this miner is not slashable
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
-func (*Impl) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
+func (*Impl) VerifyPieceInclusion(ctx vladrok.Runtime, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()
@@ -818,9 +820,9 @@ func (*Impl) VerifyPieceInclusion(ctx exec.VMContext, commP []byte, pieceSize *t
 }
 
 // ChangeWorker alters the worker address in state
-func (*Impl) ChangeWorker(ctx exec.VMContext, worker address.Address) (uint8, error) {
+func (*Impl) ChangeWorker(ctx vladrok.Runtime, worker address.Address) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -841,9 +843,9 @@ func (*Impl) ChangeWorker(ctx exec.VMContext, worker address.Address) (uint8, er
 }
 
 // GetWorker returns the worker address for this miner.
-func (*Impl) GetWorker(ctx exec.VMContext) (address.Address, uint8, error) {
+func (*Impl) GetWorker(ctx vladrok.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Address{}, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Address{}, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -863,9 +865,9 @@ func (*Impl) GetWorker(ctx exec.VMContext) (address.Address, uint8, error) {
 }
 
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
-func (*Impl) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
+func (*Impl) GetPeerID(ctx vladrok.Runtime) (peer.ID, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return peer.ID(""), exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return peer.ID(""), kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -879,9 +881,9 @@ func (*Impl) GetPeerID(ctx exec.VMContext) (peer.ID, uint8, error) {
 }
 
 // UpdatePeerID is used to update the peerID this miner is operating under.
-func (*Impl) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
+func (*Impl) UpdatePeerID(ctx vladrok.Runtime, pid peer.ID) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var storage State
@@ -903,9 +905,9 @@ func (*Impl) UpdatePeerID(ctx exec.VMContext, pid peer.ID) (uint8, error) {
 }
 
 // GetPower returns the amount of proven sectors for this miner.
-func (*Impl) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
+func (*Impl) GetPower(ctx vladrok.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -926,9 +928,9 @@ func (*Impl) GetPower(ctx exec.VMContext) (*types.BytesAmount, uint8, error) {
 
 // GetActiveCollateral returns the active collateral a miner is holding to
 // protect storage.
-func (*Impl) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, error) {
+func (*Impl) GetActiveCollateral(ctx vladrok.Runtime) (types.AttoFIL, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return types.ZeroAttoFIL, exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return types.ZeroAttoFIL, kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -946,9 +948,9 @@ func (*Impl) GetActiveCollateral(ctx exec.VMContext) (types.AttoFIL, uint8, erro
 	return collateral, 0, nil
 }
 
-func (*Impl) AddFaults(ctx exec.VMContext, faults types.FaultSet) (uint8, error) {
+func (*Impl) AddFaults(ctx vladrok.Runtime, faults types.FaultSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -975,9 +977,9 @@ func (*Impl) AddFaults(ctx exec.VMContext, faults types.FaultSet) (uint8, error)
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (a *Impl) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
+func (a *Impl) SubmitPoSt(ctx vladrok.Runtime, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()
@@ -1142,9 +1144,9 @@ func (a *Impl) SubmitPoSt(ctx exec.VMContext, poStProof types.PoStProof, faults 
 // SlashStorageFault is called by an independent actor to remove power and
 // take collateral from this miner when the miner has failed to submit a
 // PoSt on time.
-func (*Impl) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
+func (*Impl) SlashStorageFault(ctx vladrok.Runtime) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()
@@ -1204,7 +1206,7 @@ func (*Impl) SlashStorageFault(ctx exec.VMContext) (uint8, error) {
 }
 
 // GetProvingWindow returns the proving period start and proving period end
-func (*Impl) GetProvingWindow(ctx exec.VMContext) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+func (*Impl) GetProvingWindow(ctx vladrok.Runtime) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
@@ -1216,7 +1218,7 @@ func (*Impl) GetProvingWindow(ctx exec.VMContext) (*types.BlockHeight, *types.Bl
 
 // CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current
 // power and proving period.
-func (a *Impl) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
+func (a *Impl) CalculateLateFee(ctx vladrok.Runtime, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
@@ -1235,7 +1237,7 @@ func (a *Impl) CalculateLateFee(ctx exec.VMContext, height *types.BlockHeight) (
 // expectation of this being important for future protocol upgrade mechanisms.
 //
 
-func (*Impl) burnFunds(ctx exec.VMContext, amount types.AttoFIL) error {
+func (*Impl) burnFunds(ctx vladrok.Runtime, amount types.AttoFIL) error {
 	_, _, err := ctx.Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
@@ -1247,7 +1249,7 @@ func (*Impl) getPledgeCollateralRequirement(state State, height *types.BlockHeig
 }
 
 // getPoStChallengeSeed returns some chain randomness
-func getPoStChallengeSeed(ctx exec.VMContext, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
+func getPoStChallengeSeed(ctx vladrok.Runtime, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
 	randomness, err := ctx.SampleChainRandomness(sampleAt)
 	if err != nil {
 		return types.PoStChallengeSeed{}, err
@@ -1264,7 +1266,7 @@ func getPoStChallengeSeed(ctx exec.VMContext, state State, sampleAt *types.Block
 //
 
 // GetProofsMode returns the genesis block-configured proofs mode.
-func GetProofsMode(ctx exec.VMContext) (types.ProofsMode, error) {
+func GetProofsMode(ctx vladrok.Runtime) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
 	msgResult, _, err := ctx.Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
