@@ -94,7 +94,11 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
-	assert.Len(t, res.Results, 2)
+	assert.Len(t, res, 2)
+	for _, r := range res {
+		assert.NoError(t, r.Failure)
+		assert.Equal(t, uint8(0), r.Receipt.ExitCode)
+	}
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(t, err)
@@ -160,7 +164,12 @@ func TestProcessTipsConflicts(t *testing.T) {
 	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
-	assert.Len(t, res.Results, 1)
+	assert.Len(t, res, 2)
+	assert.NoError(t, res[0].Failure)
+	assert.Equal(t, uint8(0), res[0].Receipt.ExitCode)
+	assert.Error(t, res[1].Failure)
+	// Insufficient balance to cover gas is marked as a permanent error, but probably shouldn't be.
+	assert.True(t, res[1].FailureIsPermanent)
 
 	gotStCid, err := st.Flush(ctx)
 	assert.NoError(t, err)
@@ -209,9 +218,9 @@ func TestProcessTipsetReward(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 	}
-	ret, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), [][]*types.UnsignedMessage{{}}, nil)
+	results, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), [][]*types.UnsignedMessage{{}}, nil)
 	require.NoError(t, err)
-	assert.Nil(t, ret.Results)
+	assert.Len(t, results, 0)
 
 	minerOwnerActor, err := st.GetActor(ctx, minerOwnerAddr)
 	require.NoError(t, err)
@@ -262,15 +271,15 @@ func TestProcessTipsetVMErrors(t *testing.T) {
 	// The "foo" message will cause a vm error and
 	// we're going to check four things...
 	processor := NewConfiguredProcessor(NewDefaultMessageValidator(), NewDefaultBlockRewarder(), actors)
-	res, err := processor.ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), msgs, nil)
+	results, err := processor.ProcessTipSet(ctx, st, vms, RequireNewTipSet(require.New(t), blk), msgs, nil)
 
 	// 1. That a VM error is not a message failure (err).
 	assert.NoError(t, err)
 
 	// 2. That the VM error is faithfully recorded.
-	assert.Len(t, res.Results, 1)
-	assert.Len(t, res.Results[0].Receipt.Return, 0)
-	assert.Contains(t, res.Results[0].ExecutionError.Error(), "boom")
+	assert.Len(t, results, 1)
+	assert.Len(t, results[0].Receipt.Return, 0)
+	assert.Contains(t, results[0].ExecutionError.Error(), "boom")
 
 	// 3 & 4. That on VM error the state is rolled back and nonce is inc'd.
 	expectedAct1, expectedAct2 := th.RequireNewEmptyActor(types.NewAttoFILFromFIL(0)), th.RequireNewFakeActor(t, vms, toAddr, fakeActorCodeCid)
