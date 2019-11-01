@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -12,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -67,10 +67,8 @@ func TestProcessBlockSuccess(t *testing.T) {
 	})
 
 	msg := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
-	require.NoError(t, err)
 
-	msgs := []*types.SignedMessage{smsg}
+	msgs := []*types.UnsignedMessage{msg}
 	blk := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -127,9 +125,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
 	msg1 := types.NewMeteredMessage(fromAddr1, toAddr, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
-	require.NoError(t, err)
-	msgs1 := []*types.SignedMessage{smsg1}
+	msgs1 := []*types.UnsignedMessage{msg1}
 	cidGetter := types.NewCidForTestGetter()
 	blk1 := &block.Block{
 		Height:    20,
@@ -139,10 +135,8 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Ticket:    block.Ticket{VRFProof: []byte{0x1}},
 	}
 
-	msg2 := types.NewMeteredMessage(fromAddr2, toAddr, 0, types.NewAttoFILFromFIL(50), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
-	require.NoError(t, err)
-	msgs2 := []*types.SignedMessage{smsg2}
+	msgs2 := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr2, toAddr, 0,
+		types.NewAttoFILFromFIL(50), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
 	blk2 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -151,7 +145,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 		Ticket:    block.Ticket{VRFProof: []byte{0x2}},
 	}
 
-	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
+	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
 	assert.Len(t, res.Results, 2)
@@ -199,10 +193,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 	require.NoError(t, err)
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
-	msg1 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(501), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg1, err := types.NewSignedMessage(*msg1, &mockSigner)
-	require.NoError(t, err)
-	msgs1 := []*types.SignedMessage{smsg1}
+	msgs1 := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr, toAddr, 0,
+		types.NewAttoFILFromFIL(501), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
 	blk1 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -210,10 +202,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 		Miner:     minerAddr,
 	}
 
-	msg2 := types.NewMeteredMessage(fromAddr, toAddr, 0, types.NewAttoFILFromFIL(502), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg2, err := types.NewSignedMessage(*msg2, &mockSigner)
-	require.NoError(t, err)
-	msgs2 := []*types.SignedMessage{smsg2}
+	msgs2 := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr, toAddr, 0,
+		types.NewAttoFILFromFIL(502), types.SendMethodID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
 	blk2 := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -221,7 +211,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		Miner:     minerAddr,
 	}
 
-	tsMsgs := [][]*types.SignedMessage{msgs1, msgs2}
+	tsMsgs := [][]*types.UnsignedMessage{msgs1, msgs2}
 	res, err := NewDefaultProcessor().ProcessTipSet(ctx, st, vms, th.RequireNewTipSet(t, blk1, blk2), tsMsgs, nil)
 	assert.NoError(t, err)
 	assert.Len(t, res.Results, 1)
@@ -273,7 +263,7 @@ func TestProcessBlockReward(t *testing.T) {
 		Height:    20,
 		StateRoot: stCid,
 	}
-	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, []*types.SignedMessage{}, nil)
+	ret, err := NewDefaultProcessor().ProcessBlock(ctx, st, vms, blk, []*types.UnsignedMessage{}, nil)
 	require.NoError(t, err)
 	assert.Nil(t, ret)
 
@@ -315,10 +305,8 @@ func TestProcessBlockVMErrors(t *testing.T) {
 
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwnerAddr)
 
-	msg := types.NewMeteredMessage(fromAddr, toAddr, 0, types.ZeroAttoFIL, actor.ReturnRevertErrorID, nil, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, &mockSigner)
-	require.NoError(t, err)
-	msgs := []*types.SignedMessage{smsg}
+	msgs := []*types.UnsignedMessage{types.NewMeteredMessage(fromAddr, toAddr, 0, types.ZeroAttoFIL,
+		actor.ReturnRevertErrorID, nil, types.NewGasPrice(1), types.NewGasUnits(0))}
 	blk := &block.Block{
 		Height:    20,
 		StateRoot: stCid,
@@ -425,10 +413,8 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr2: act2,
 		})
 		msg := types.NewMeteredMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
-		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Equal(t, "nonce too high", err.(*errors.ApplyErrorTemporary).Cause().Error())
 	})
@@ -450,22 +436,18 @@ func TestApplyMessagesValidation(t *testing.T) {
 			addr2: act2,
 		})
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
-		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Equal(t, "nonce too low", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
 
 	t.Run("errors when specifying a gas limit in excess of balance", func(t *testing.T) {
-		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		addr1, _, addr2, _, st, _ := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -480,10 +462,8 @@ func TestApplyMessagesValidation(t *testing.T) {
 		require.NoError(t, err)
 
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "message from non-account actor", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -499,10 +479,8 @@ func TestApplyMessagesValidation(t *testing.T) {
 		_, st := requireMakeStateTree(t, cst, map[address.Address]*actor.Actor{addr2: act2})
 
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, addr2,
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2,
 			types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "from (sender) account not found", err.(*errors.ApplyErrorTemporary).Cause().Error())
@@ -528,34 +506,28 @@ func TestApplyMessagesValidation(t *testing.T) {
 		require.True(t, ok)
 
 		msg := types.NewMeteredMessage(addr1, addr2, 0, someval, types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
-		_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Contains(t, "negative value", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
 
 	t.Run("errors when attempting to send to self", func(t *testing.T) {
-		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		addr1, _, addr2, _, st, _ := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
 		msg := types.NewMeteredMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(0))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "cannot send to self", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
 
 	t.Run("errors when specifying a gas limit in excess of balance", func(t *testing.T) {
-		addr1, _, addr2, _, st, mockSigner := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
+		addr1, _, addr2, _, st, _ := mustSetup2Actors(t, types.NewAttoFILFromFIL(1000), types.NewAttoFILFromFIL(10000))
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
-		smsg, err := types.NewSignedMessage(*msg, mockSigner)
-		require.NoError(t, err)
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), smsg, address.Undef, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, address.Undef, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -677,16 +649,12 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 
 	// send 500 from addr1 to addr2
 	msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg, err := types.NewSignedMessage(*msg, mockSigner)
-	require.NoError(t, err)
-	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 	require.NoError(t, err)
 
 	// send 250 along from addr2 to addr3
 	msg = types.NewMeteredMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-	smsg, err = types.NewSignedMessage(*msg, mockSigner)
-	require.NoError(t, err)
-	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), smsg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
+	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 	require.NoError(t, err)
 
 	// get all 3 actors
@@ -762,7 +730,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		Build()
 
 	t.Run("ApplyMessage charges gas on success", func(t *testing.T) {
-		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
+		addresses, st := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
 		addr0 := addresses[0]
 		addr1 := addresses[1]
 		minerAddr := addresses[2]
@@ -771,7 +739,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasLimit := types.NewGasUnits(200)
 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.HasReturnValueID, nil, gasPrice, gasLimit)
 
-		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner, minerAddr)
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), minerAddr)
 		assert.NoError(t, err)
 		assert.NoError(t, appResult.ExecutionError)
 
@@ -786,7 +754,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 	})
 
 	t.Run("ApplyMessage charges gas on message execution failure", func(t *testing.T) {
-		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
+		addresses, st := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
 		addr0 := addresses[0]
 		addr1 := addresses[1]
 		minerAddr := addresses[2]
@@ -795,7 +763,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasLimit := types.NewGasUnits(200)
 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.ChargeGasAndRevertErrorID, nil, gasPrice, gasLimit)
 
-		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner, minerAddr)
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "boom")
 
@@ -812,7 +780,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 	t.Run("ApplyMessage charges the gas limit when limit is exceeded", func(t *testing.T) {
 		// provide a gas limit less than the method charges.
 		// call the method, expect an error and that gasLimit*gasPrice has been transferred to the miner.
-		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
+		addresses, st := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
 		addr0 := addresses[0]
 		addr1 := addresses[1]
 		minerAddr := addresses[2]
@@ -821,7 +789,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasLimit := types.NewGasUnits(50)
 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.HasReturnValueID, nil, gasPrice, gasLimit)
 
-		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner, minerAddr)
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
 
@@ -838,7 +806,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 	})
 
 	t.Run("ApplyMessage when sending another message, with sufficient gas gets charged all the gas", func(t *testing.T) {
-		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 2000)
+		addresses, st := setupActorsForGasTest(t, vms, fakeActorCodeCid, 2000)
 		addr0 := addresses[0]
 		addr1 := addresses[1]
 		addr2 := addresses[2]
@@ -851,7 +819,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasLimit := types.NewGasUnits(600)
 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.RunsAnotherMessageID, params, gasPrice, gasLimit)
 
-		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner, minerAddr)
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), minerAddr)
 		assert.NoError(t, err)
 		assert.NoError(t, appResult.ExecutionError)
 		minerActor, err := st.GetActor(ctx, minerAddr)
@@ -869,7 +837,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 	t.Run("ApplyMessage when it sends another message with insufficient gas fails with correct message", func(t *testing.T) {
 		// provide a gas limit that is sufficient for the outer method's call, but insufficient for the inner
 		// assert that it behaves as if the limit was exceeded after a single call.
-		addresses, st, mockSigner := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
+		addresses, st := setupActorsForGasTest(t, vms, fakeActorCodeCid, 1000)
 		addr0 := addresses[0]
 		addr1 := addresses[1]
 		addr2 := addresses[2]
@@ -882,7 +850,7 @@ func TestApplyMessageChargesGas(t *testing.T) {
 		gasLimit := types.NewGasUnits(50)
 		msg := types.NewMeteredMessage(addr0, addr1, 0, types.ZeroAttoFIL, actor.RunsAnotherMessageID, params, gasPrice, gasLimit)
 
-		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), mockSigner, minerAddr)
+		appResult, err := th.ApplyTestMessageWithGas(actors, st, th.VMStorage(), msg, types.NewBlockHeight(0), minerAddr)
 		assert.NoError(t, err)
 		assert.EqualError(t, appResult.ExecutionError, "Insufficient gas: gas cost exceeds gas limit")
 
@@ -908,7 +876,7 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 		Add(fakeActorCodeCid, 0, &actor.FakeActor{}).
 		Build()
 
-	actors, stateTree, signer := setupActorsForGasTest(t, th.VMStorage(), fakeActorCodeCid, 0)
+	actors, stateTree := setupActorsForGasTest(t, th.VMStorage(), fakeActorCodeCid, 0)
 	sender := actors[1]
 	receiver := actors[2]
 	processor := NewFakeProcessor(builtinActors)
@@ -916,69 +884,53 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 
 	t.Run("A single message whose gas limit is greater than the block gas limit fails permanently", func(t *testing.T) {
 		msg := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*2)
-		sgnedMsg, err := types.NewSignedMessage(*msg, signer)
+
+		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg}, sender, types.NewBlockHeight(0), nil)
 		require.NoError(t, err)
 
-		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg}, sender, types.NewBlockHeight(0), nil)
-		require.NoError(t, err)
-
-		assert.Contains(t, result.PermanentFailures, sgnedMsg)
+		assert.Error(t, result[0].Failure)
+		assert.True(t, result[0].FailureIsPermanent)
 	})
 
 	t.Run("2 msgs both succeed when sum of limits > block limit, but 1st usage + 2nd limit < block limit", func(t *testing.T) {
 		msg1 := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer)
-		require.NoError(t, err)
-
 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*5/8)
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer)
+
+		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, types.NewBlockHeight(0), nil)
 		require.NoError(t, err)
 
-		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2}, sender, types.NewBlockHeight(0), nil)
-		require.NoError(t, err)
-
-		assert.Contains(t, result.SuccessfulMessages, sgnedMsg1)
-		assert.Contains(t, result.SuccessfulMessages, sgnedMsg2)
+		assert.Nil(t, result[0].Failure)
+		assert.Nil(t, result[1].Failure)
 	})
 
 	t.Run("2nd message delayed when 1st usage + 2nd limit > block limit", func(t *testing.T) {
 		msg1 := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer)
-		require.NoError(t, err)
-
 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer)
+
+		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2}, sender, types.NewBlockHeight(0), nil)
 		require.NoError(t, err)
 
-		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2}, sender, types.NewBlockHeight(0), nil)
-		require.NoError(t, err)
-
-		assert.Contains(t, result.SuccessfulMessages, sgnedMsg1)
-		assert.Contains(t, result.TemporaryFailures, sgnedMsg2)
+		assert.Nil(t, result[0].Failure)
+		assert.Error(t, result[1].Failure)
+		assert.False(t, result[0].FailureIsPermanent)
 	})
 
 	t.Run("message with high gas limit does not block messages with lower limits from being included in block", func(t *testing.T) {
 		msg1 := types.NewMeteredMessage(sender, receiver, 0, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
-		sgnedMsg1, err := types.NewSignedMessage(*msg1, signer)
-		require.NoError(t, err)
-
 		msg2 := types.NewMeteredMessage(sender, receiver, 1, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*7/8)
-		sgnedMsg2, err := types.NewSignedMessage(*msg2, signer)
-		require.NoError(t, err)
-
 		msg3 := types.NewMeteredMessage(sender, receiver, 2, types.ZeroAttoFIL, actor.BlockLimitTestMethodID, []byte{}, types.ZeroAttoFIL, types.BlockGasLimit*3/8)
-		sgnedMsg3, err := types.NewSignedMessage(*msg3, signer)
+
+		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.UnsignedMessage{msg1, msg2, msg3}, sender, types.NewBlockHeight(0), nil)
 		require.NoError(t, err)
 
-		result, err := processor.ApplyMessagesAndPayRewards(ctx, stateTree, th.VMStorage(), []*types.SignedMessage{sgnedMsg1, sgnedMsg2, sgnedMsg3}, sender, types.NewBlockHeight(0), nil)
-		require.NoError(t, err)
-
-		assert.Contains(t, result.SuccessfulMessages, sgnedMsg1, sgnedMsg3)
-		assert.Contains(t, result.TemporaryFailures, sgnedMsg2)
+		assert.Nil(t, result[0].Failure)
+		assert.Error(t, result[1].Failure)
+		assert.False(t, result[0].FailureIsPermanent)
+		assert.Nil(t, result[2].Failure)
 	})
 }
 
-func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid.Cid, senderBalance uint64) ([]address.Address, state.Tree, *types.MockSigner) {
+func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid.Cid, senderBalance uint64) ([]address.Address, state.Tree) {
 	addressGenerator := address.NewForTestGetter()
 
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(3)
@@ -987,7 +939,8 @@ func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid
 		mockSigner.Addresses[0], // addr0
 		mockSigner.Addresses[1], // addr1
 		mockSigner.Addresses[2], // addr2
-		addressGenerator()}      // minerAddr
+		addressGenerator(),      // minerAddr
+	}
 
 	var actors []*actor.Actor
 	// act0 sender account actor
@@ -1015,7 +968,7 @@ func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid
 	})
 	require.NotNil(t, cid)
 
-	return addresses, st, &mockSigner
+	return addresses, st
 }
 
 func mustSetup2Actors(t *testing.T, balance1 types.AttoFIL, balance2 types.AttoFIL) (address.Address, *actor.Actor, address.Address, *actor.Actor, state.Tree, types.MockSigner) {

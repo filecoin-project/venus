@@ -47,6 +47,15 @@ func NewSignedMessage(msg UnsignedMessage, s Signer) (*SignedMessage, error) {
 	}, nil
 }
 
+// UnwrapSigned returns the unsigned messages from a slice of signed messages.
+func UnwrapSigned(smsgs []*SignedMessage) []*UnsignedMessage {
+	unsigned := make([]*UnsignedMessage, len(smsgs))
+	for i, sm := range smsgs {
+		unsigned[i] = &sm.Message
+	}
+	return unsigned
+}
+
 // Unmarshal a SignedMessage from the given bytes.
 func (smsg *SignedMessage) Unmarshal(b []byte) error {
 	return encoding.Decode(b, smsg)

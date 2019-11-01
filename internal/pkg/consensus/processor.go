@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -32,13 +32,19 @@ var (
 	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
 )
 
+// MessageValidator validates the syntax and semantics of a message before it is applied.
+type MessageValidator interface {
+	// Validate checks a message for validity.
+	Validate(ctx context.Context, msg *types.UnsignedMessage, fromActor *actor.Actor) error
+}
+
 // BlockRewarder applies all rewards due to the miner's owner for processing a block including block reward and gas
 type BlockRewarder interface {
 	// BlockReward pays out the mining reward
 	BlockReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address) error
 
 	// GasReward pays gas from the sender to the miner
-	GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, cost types.AttoFIL) error
+	GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error
 }
 
 // ApplicationResult contains the result of successfully applying one message.
@@ -61,9 +67,9 @@ type ProcessTipSetResponse struct {
 
 // DefaultProcessor handles all block processing.
 type DefaultProcessor struct {
-	signedMessageValidator SignedMessageValidator
-	blockRewarder          BlockRewarder
-	actors                 builtin.Actors
+	validator     MessageValidator
+	blockRewarder BlockRewarder
+	actors        builtin.Actors
 }
 
 var _ Processor = (*DefaultProcessor)(nil)
@@ -71,18 +77,18 @@ var _ Processor = (*DefaultProcessor)(nil)
 // NewDefaultProcessor creates a default processor from the given state tree and vms.
 func NewDefaultProcessor() *DefaultProcessor {
 	return &DefaultProcessor{
-		signedMessageValidator: NewDefaultMessageValidator(),
-		blockRewarder:          NewDefaultBlockRewarder(),
-		actors:                 builtin.DefaultActors,
+		validator:     NewDefaultMessageValidator(),
+		blockRewarder: NewDefaultBlockRewarder(),
+		actors:        builtin.DefaultActors,
 	}
 }
 
 // NewConfiguredProcessor creates a default processor with custom validation and rewards.
-func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewarder, actors builtin.Actors) *DefaultProcessor {
+func NewConfiguredProcessor(validator MessageValidator, rewarder BlockRewarder, actors builtin.Actors) *DefaultProcessor {
 	return &DefaultProcessor{
-		signedMessageValidator: validator,
-		blockRewarder:          rewarder,
-		actors:                 actors,
+		validator:     validator,
+		blockRewarder: rewarder,
+		actors:        actors,
 	}
 }
 
@@ -113,15 +119,13 @@ func NewConfiguredProcessor(validator SignedMessageValidator, rewarder BlockRewa
 // will in many cases be successfully applied even though an
 // error was thrown causing any state changes to be rolled back.
 // See comments on ApplyMessage for specific intent.
-func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *block.Block, blkMessages []*types.SignedMessage, ancestors []block.TipSet) (results []*ApplicationResult, err error) {
+func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms vm.StorageMap, blk *block.Block, blkMessages []*types.UnsignedMessage, ancestors []block.TipSet) (results []*ApplicationResult, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessBlock")
 	span.AddAttributes(trace.StringAttribute("block", blk.Cid().String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
 	pbsw := pbTimer.Start(ctx)
 	defer pbsw.Stop(ctx)
-
-	var emptyResults []*ApplicationResult
 
 	// find miner's owner address
 	minerOwnerAddr, err := p.minerOwnerAddress(ctx, st, vms, blk.Miner)
@@ -130,17 +134,18 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 	}
 
 	bh := types.NewBlockHeight(uint64(blk.Height))
-	res, faultErr := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
-	if faultErr != nil {
-		return emptyResults, faultErr
+	res, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
+	if err != nil {
+		return nil, err
 	}
-	if len(res.PermanentErrors) > 0 {
-		return emptyResults, res.PermanentErrors[0]
+
+	for _, r := range res {
+		if r.Failure != nil {
+			return nil, r.Failure
+		}
+		results = append(results, &r.ApplicationResult)
 	}
-	if len(res.TemporaryErrors) > 0 {
-		return emptyResults, res.TemporaryErrors[0]
-	}
-	return res.Results, nil
+	return results, nil
 }
 
 // ProcessTipSet computes the state transition specified by the messages in all
@@ -152,86 +157,81 @@ func (p *DefaultProcessor) ProcessBlock(ctx context.Context, st state.Tree, vms 
 // coming from calls to ApplyMessage can be traced to different blocks in the
 // TipSet containing conflicting messages and are ignored.  Blocks are applied
 // in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, tsMessages [][]*types.SignedMessage, ancestors []block.TipSet) (response *ProcessTipSetResponse, err error) {
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, tsMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (tsResult *ProcessTipSetResponse, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
 
+	tsResult = &ProcessTipSetResponse{
+		Failures:  make(map[cid.Cid]struct{}),
+		Successes: make(map[cid.Cid]struct{}),
+	}
+
 	h, err := ts.Height()
 	if err != nil {
-		return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "processing empty tipset")
+		return nil, errors.FaultErrorWrap(err, "processing empty tipset")
 	}
 	bh := types.NewBlockHeight(h)
 
-	var res ProcessTipSetResponse
-	res.Failures = make(map[cid.Cid]struct{})
-	res.Successes = make(map[cid.Cid]struct{})
-
-	// TODO: this can be made slightly more efficient by reusing the validation
-	// transition of the first validated block (change would reach here and
-	// consensus functions).
 	dedupedMessages, err := DeduppedMessages(tsMessages)
 
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-		// find miner's owner address
+	for blkIdx := 0; blkIdx < ts.Len(); blkIdx++ {
+		blk := ts.At(blkIdx)
 		minerOwnerAddr, err := p.minerOwnerAddress(ctx, st, vms, blk.Miner)
 		if err != nil {
-			return &ProcessTipSetResponse{}, err
+			return nil, err
 		}
 
-		amRes, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, dedupedMessages[i], minerOwnerAddr, bh, ancestors)
+		blkMessages := dedupedMessages[blkIdx]
+		results, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
 		if err != nil {
-			return &ProcessTipSetResponse{}, err
+			return nil, err
 		}
-		res.Results = append(res.Results, amRes.Results...)
-		for _, msg := range amRes.SuccessfulMessages {
-			mCid, err := msg.Cid()
+
+		for i, result := range results {
+			mCid, err := blkMessages[i].Cid()
 			if err != nil {
-				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
+				return nil, errors.FaultErrorWrap(err, "error getting message cid")
 			}
-			res.Successes[mCid] = struct{}{}
-		}
-		for _, msg := range amRes.PermanentFailures {
-			mCid, err := msg.Cid()
-			if err != nil {
-				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
+			if result.Failure == nil {
+				tsResult.Results = append(tsResult.Results, &result.ApplicationResult)
+				tsResult.Successes[mCid] = struct{}{}
+			} else {
+				tsResult.Failures[mCid] = struct{}{}
+
 			}
-			res.Failures[mCid] = struct{}{}
-		}
-		for _, msg := range amRes.TemporaryFailures {
-			mCid, err := msg.Cid()
-			if err != nil {
-				return &ProcessTipSetResponse{}, errors.FaultErrorWrap(err, "error getting message cid")
-			}
-			res.Failures[mCid] = struct{}{}
 		}
 	}
 
-	return &res, nil
+	return
 }
 
 // DeduppedMessages removes all messages that have the same cid
-func DeduppedMessages(tsMessages [][]*types.SignedMessage) ([][]*types.SignedMessage, error) {
-	allMessages := make([][]*types.SignedMessage, len(tsMessages))
+func DeduppedMessages(tsMessages [][]*types.UnsignedMessage) ([][]*types.UnsignedMessage, error) {
+	allMessages := make([][]*types.UnsignedMessage, len(tsMessages))
 	msgFilter := make(map[cid.Cid]struct{})
 
 	for i, blkMessages := range tsMessages {
-		allMessages[i] = []*types.SignedMessage{}
 		for _, msg := range blkMessages {
 			mCid, err := msg.Cid()
 			if err != nil {
 				return nil, err
 			}
 
-			_, ok := msgFilter[mCid]
-			if !ok {
+			_, found := msgFilter[mCid]
+			if !found {
 				allMessages[i] = append(allMessages[i], msg)
 				msgFilter[mCid] = struct{}{}
 			}
 		}
 	}
 	return allMessages, nil
+}
+
+// DeduppedUnwrappedMessages unwraps and removes all messages that have the same cid
+func DeduppedUnwrappedMessages(msgs [][]*types.SignedMessage) ([][]*types.UnsignedMessage, error) {
+	unwrapped := unwrap(msgs)
+	return DeduppedMessages(unwrapped)
 }
 
 // ApplyMessage attempts to apply a message to a state tree. It is the
@@ -295,13 +295,13 @@ func DeduppedMessages(tsMessages [][]*types.SignedMessage) ([][]*types.SignedMes
 //       revert errors.
 //   - everything else: successfully applied (include, keep changes)
 //
-func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (result *ApplicationResult, err error) {
+func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms vm.StorageMap, msg *types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (result *ApplicationResult, err error) {
 	msgCid, err := msg.Cid()
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not get message cid")
 	}
 
-	tagMethod := fmt.Sprintf("%s", msg.Message.Method)
+	tagMethod := fmt.Sprintf("%s", msg.Method)
 	ctx, err = tag.New(ctx, tag.Insert(msgMethodKey, tagMethod))
 	if err != nil {
 		log.Debugf("failed to insert tag for message method: %s", err.Error())
@@ -354,12 +354,12 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 
 	// At this point we consider the message successfully applied so inc
 	// the nonce.
-	fromActor, err := st.GetActor(ctx, msg.Message.From)
+	fromActor, err := st.GetActor(ctx, msg.From)
 	if err != nil {
 		return nil, errors.FaultErrorWrap(err, "couldn't load from actor")
 	}
 	fromActor.IncNonce()
-	if err := st.SetActor(ctx, msg.Message.From, fromActor); err != nil {
+	if err := st.SetActor(ctx, msg.From, fromActor); err != nil {
 		return nil, errors.FaultErrorWrap(err, "could not set from actor after inc nonce")
 	}
 
@@ -467,8 +467,8 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 // should deal with trying to apply the message to the state tree whereas
 // ApplyMessage should deal with any side effects and how it should be presented
 // to the caller. attemptApplyMessage should only be called from ApplyMessage.
-func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.SignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (*types.MessageReceipt, error) {
-	gasTracker.ResetForNewMessage(msg.Message)
+func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.CachedTree, store vm.StorageMap, msg *types.UnsignedMessage, bh *types.BlockHeight, gasTracker *vm.GasTracker, ancestors []block.TipSet) (*types.MessageReceipt, error) {
+	gasTracker.ResetForNewMessage(msg)
 	if err := blockGasLimitError(gasTracker); err != nil {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -476,17 +476,17 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}, err
 	}
 
-	fromActor, err := st.GetActor(ctx, msg.Message.From)
+	fromActor, err := st.GetActor(ctx, msg.From)
 	if state.IsActorNotFoundError(err) {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
 			GasAttoFIL: types.ZeroAttoFIL,
 		}, errFromAccountNotFound
 	} else if err != nil {
-		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.Message.From)
+		return nil, errors.FaultErrorWrapf(err, "failed to get From actor %s", msg.From)
 	}
 
-	err = p.signedMessageValidator.Validate(ctx, msg, fromActor)
+	err = p.validator.Validate(ctx, msg, fromActor)
 	if err != nil {
 		return &types.MessageReceipt{
 			ExitCode:   errors.CodeError(err),
@@ -502,7 +502,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 		}
 	}
 
-	toActor, err := st.GetOrCreateActor(ctx, msg.Message.To, func() (*actor.Actor, error) {
+	toActor, err := st.GetOrCreateActor(ctx, msg.To, func() (*actor.Actor, error) {
 		// Addresses are deterministic so sending a message to a non-existent address must not install an actor,
 		// else actors could be installed ahead of address activation. So here we create the empty, upgradable
 		// actor to collect any balance that may be transferred.
@@ -515,7 +515,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	vmCtxParams := vm.NewContextParams{
 		From:        fromActor,
 		To:          toActor,
-		Message:     &msg.Message,
+		Message:     msg,
 		State:       st,
 		StorageMap:  store,
 		GasTracker:  gasTracker,
@@ -531,7 +531,7 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	}
 
 	// compute gas charge
-	gasCharge := msg.Message.GasPrice.MulBigInt(big.NewInt(int64(vmCtx.GasUnits())))
+	gasCharge := msg.GasPrice.MulBigInt(big.NewInt(int64(vmCtx.GasUnits())))
 
 	receipt := &types.MessageReceipt{
 		ExitCode:   exitCode,
@@ -543,57 +543,44 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	return receipt, vmErr
 }
 
-// ApplyMessagesResponse is the output struct of ApplyMessages.  It exists to
-// prevent callers from mistakenly mixing up outputs of the same type.
-type ApplyMessagesResponse struct {
-	Results            []*ApplicationResult
-	PermanentFailures  []*types.SignedMessage
-	TemporaryFailures  []*types.SignedMessage
-	SuccessfulMessages []*types.SignedMessage
-
-	// Application Errors
-	PermanentErrors []error
-	TemporaryErrors []error
+// ApplyMessageResult is the result of applying a single message.
+type ApplyMessageResult struct {
+	ApplicationResult        // Application-level result, if error is nil.
+	Failure            error // Failure to apply the message
+	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
 }
 
-// ApplyMessagesAndPayRewards begins by paying the block mining reward to the miner's owner. It then applies messages to a state tree.
-// It returns an ApplyMessagesResponse which wraps the results of message application,
-// groupings of messages with permanent failures, temporary failures, and
-// successes, and the permanent and temporary errors raised during application.
-// ApplyMessages will return an error iff a fault message occurs.
-// Precondition: signatures of messages are checked by the caller.
-func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.SignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) (ApplyMessagesResponse, error) {
-	var emptyRet ApplyMessagesResponse
-	var ret ApplyMessagesResponse
+// ApplyMessagesAndPayRewards pays the block mining reward to the miner's owner and then applies
+// messages, in order, to a state tree.
+// Returns a message application result for each message.
+func (p *DefaultProcessor) ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap,
+	messages []*types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight,
+	ancestors []block.TipSet) ([]*ApplyMessageResult, error) {
+	var results []*ApplyMessageResult
 
-	// transfer block reward to miner's owner from network address.
+	// Pay block reward.
 	if err := p.blockRewarder.BlockReward(ctx, st, minerOwnerAddr); err != nil {
-		return ApplyMessagesResponse{}, err
+		return nil, err
 	}
 
+	// Process all messages.
 	gasTracker := vm.NewGasTracker()
-
-	// process all messages
-	for _, smsg := range messages {
-		r, err := p.ApplyMessage(ctx, st, vms, smsg, minerOwnerAddr, bh, gasTracker, ancestors)
-		// If the message should not have been in the block, bail somehow.
+	for _, msg := range messages {
+		r, err := p.ApplyMessage(ctx, st, vms, msg, minerOwnerAddr, bh, gasTracker, ancestors)
 		switch {
 		case errors.IsFault(err):
-			return emptyRet, err
+			return nil, err
 		case errors.IsApplyErrorPermanent(err):
-			ret.PermanentFailures = append(ret.PermanentFailures, smsg)
-			ret.PermanentErrors = append(ret.PermanentErrors, err)
+			results = append(results, &ApplyMessageResult{ApplicationResult{}, err, true})
 		case errors.IsApplyErrorTemporary(err):
-			ret.TemporaryFailures = append(ret.TemporaryFailures, smsg)
-			ret.TemporaryErrors = append(ret.TemporaryErrors, err)
+			results = append(results, &ApplyMessageResult{ApplicationResult{}, err, false})
 		case err != nil:
 			panic("someone is a bad programmer: error is neither fault, perm or temp")
 		default:
-			ret.SuccessfulMessages = append(ret.SuccessfulMessages, smsg)
-			ret.Results = append(ret.Results, r)
+			results = append(results, &ApplyMessageResult{*r, nil, false})
 		}
 	}
-	return ret, nil
+	return results, nil
 }
 
 // DefaultBlockRewarder pays the block reward from the network actor to the miner's owner.
@@ -616,9 +603,9 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 }
 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
-func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.SignedMessage, gas types.AttoFIL) error {
+func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
 	cachedTree := state.NewCachedStateTree(st)
-	if err := rewardTransfer(ctx, msg.Message.From, minerOwnerAddr, gas, cachedTree); err != nil {
+	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, cost, cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}
 	return cachedTree.Commit(ctx)

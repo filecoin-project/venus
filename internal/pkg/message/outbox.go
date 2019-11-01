@@ -27,7 +27,7 @@ type Outbox struct {
 	// Signs messages
 	signer types.Signer
 	// Validates messages before sending them.
-	validator consensus.SignedMessageValidator
+	validator consensus.MessageValidator
 	// Holds messages sent from this node but not yet mined.
 	queue *Queue
 	// Publishes a signed message to the network.
@@ -56,7 +56,7 @@ type publisher interface {
 var msgSendErrCt = metrics.NewInt64Counter("message_sender_error", "Number of errors encountered while sending a message")
 
 // NewOutbox creates a new outbox
-func NewOutbox(signer types.Signer, validator consensus.SignedMessageValidator, queue *Queue,
+func NewOutbox(signer types.Signer, validator consensus.MessageValidator, queue *Queue,
 	publisher publisher, policy QueuePolicy, chains chainProvider, actors actorProvider, jw journal.Writer) *Outbox {
 	return &Outbox{
 		signer:    signer,
@@ -117,7 +117,9 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 		return cid.Undef, errors.Wrap(err, "failed to sign message")
 	}
 
-	err = ob.validator.Validate(ctx, signed, fromActor)
+	// Slightly awkward: it would be better validate before signing but the MeteredMessage construction
+	// is hidden inside NewSignedMessage.
+	err = ob.validator.Validate(ctx, &signed.Message, fromActor)
 	if err != nil {
 		return cid.Undef, errors.Wrap(err, "invalid message")
 	}
