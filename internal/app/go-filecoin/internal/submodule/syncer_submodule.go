@@ -59,7 +59,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 	nodeChainSelector := consensus.NewChainSelector(blockstore.CborStore, chn.ActorState, config.GenesisCid())
 
 	// setup fecher
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.host)
+	graphsyncNetwork := gsnet.NewFromLibp2pHost(network.Host)
 	bridge := ipldbridge.NewIPLDBridge()
 	loader := gsstoreutil.LoaderForBlockstore(blockstore.Blockstore)
 	storer := gsstoreutil.StorerForBlockstore(blockstore.Blockstore)
