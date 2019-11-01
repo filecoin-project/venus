@@ -117,6 +117,11 @@ func (z *BlockHeight) Sub(y *BlockHeight) *BlockHeight {
 	return &BlockHeight{val: a}
 }
 
+// IsZero returns true if z equals zero.
+func (z *BlockHeight) IsZero() bool {
+	return z.val.Cmp(big.NewInt(0)) == 0
+}
+
 // AsBigInt returns the blockheight as a big.Int
 func (z *BlockHeight) AsBigInt() (out *big.Int) {
 	out = &big.Int{}
