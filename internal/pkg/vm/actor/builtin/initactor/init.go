@@ -5,9 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -39,17 +39,17 @@ func NewActor() *actor.Actor {
 //
 
 // Ensure InitActor is an ExecutableActor at compile time.
-var _ kungfu.ExecutableActor = (*Actor)(nil)
+var _ vminternal.ExecutableActor = (*Actor)(nil)
 
-var signatures = kungfu.Exports{
-	GetNetwork: &pandas.FunctionSignature{
+var signatures = vminternal.Exports{
+	GetNetwork: &external.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.String},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case GetNetwork:
 		return reflect.ValueOf((*Impl)(a).GetNetwork), signatures[GetNetwork], true
@@ -59,7 +59,7 @@ func (a *Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignat
 }
 
 // InitializeState for init actor.
-func (*Actor) InitializeState(storage vladrok.Storage, networkInterface interface{}) error {
+func (*Actor) InitializeState(storage vm2.Storage, networkInterface interface{}) error {
 	network := networkInterface.(string)
 
 	initStorage := &State{
@@ -86,9 +86,9 @@ func (*Actor) InitializeState(storage vladrok.Storage, networkInterface interfac
 type Impl Actor
 
 // GetNetwork returns the network name for this network
-func (*Impl) GetNetwork(ctx vladrok.Runtime) (string, uint8, error) {
+func (*Impl) GetNetwork(ctx vm2.Runtime) (string, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return "", kungfu.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return "", vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/ipfs/go-cid"
 	cmdkit "github.com/ipfs/go-ipfs-cmdkit"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -190,7 +190,7 @@ var signedMsgSendCmd = &cmds.Command{
 type WaitResult struct {
 	Message   *types.SignedMessage
 	Receipt   *types.MessageReceipt
-	Signature *pandas.FunctionSignature
+	Signature *external.FunctionSignature
 }
 
 var msgWaitCmd = &cmds.Command{

@@ -1,14 +1,15 @@
-// Package kungfu is like panda
-// Dragons: this should by all means be internal, nothing otside of vladrok or vm depend on it
-package kungfu
+// Package vminternal has all the things vm and only vm need.
+//
+// This contents can be slowly placed on the vm2 internal.
+package vminternal
 
 import (
 	"context"
 	"reflect"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/ipfs/go-cid"
 )
@@ -21,12 +22,12 @@ type Method interface {
 
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
-	Method(id types.MethodID) (Method, *pandas.FunctionSignature, bool)
-	InitializeState(storage vladrok.Storage, initializerData interface{}) error
+	Method(id types.MethodID) (Method, *external.FunctionSignature, bool)
+	InitializeState(storage vm2.Storage, initializerData interface{}) error
 }
 
 // Exports describe the public methods of an actor.
-type Exports map[types.MethodID]*pandas.FunctionSignature
+type Exports map[types.MethodID]*external.FunctionSignature
 
 // Has checks if the given method is an exported method.
 func (e Exports) has(method types.MethodID) bool {
@@ -35,7 +36,7 @@ func (e Exports) has(method types.MethodID) bool {
 }
 
 // ExportedFunc is the signature an exported method of an actor is expected to have.
-type ExportedFunc func(ctx vladrok.Runtime) ([]byte, uint8, error)
+type ExportedFunc func(ctx vm2.Runtime) ([]byte, uint8, error)
 
 // TODO fritz require actors to define their exit codes and associate
 // an error string with them.

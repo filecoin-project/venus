@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
@@ -113,7 +113,7 @@ func (api *API) ActorGet(ctx context.Context, addr address.Address) (*actor.Acto
 // ActorGetSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *pandas.FunctionSignature, err error) {
+func (api *API) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *external.FunctionSignature, err error) {
 	return api.chain.GetActorSignature(ctx, actorAddr, method)
 }
 

@@ -26,9 +26,9 @@ import (
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -1290,13 +1290,13 @@ func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, 
 // PBTestActor is a fake actor for use in tests.
 type PBTestActor struct{}
 
-var _ kungfu.ExecutableActor = (*PBTestActor)(nil)
+var _ vminternal.ExecutableActor = (*PBTestActor)(nil)
 
 // Method returns method definition for a given method id.
-func (ma *PBTestActor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
+func (ma *PBTestActor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
 	switch id {
 	case ParamsNotZeroID:
-		return reflect.ValueOf(ma.ParamsNotZero), &pandas.FunctionSignature{
+		return reflect.ValueOf(ma.ParamsNotZero), &external.FunctionSignature{
 			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
 			Return: nil,
 		}, true
@@ -1306,11 +1306,11 @@ func (ma *PBTestActor) Method(id types.MethodID) (kungfu.Method, *pandas.Functio
 }
 
 // InitializeState stores this actors
-func (ma *PBTestActor) InitializeState(storage vladrok.Storage, initializerData interface{}) error {
+func (ma *PBTestActor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
 	return nil
 }
 
-func (ma *PBTestActor) ParamsNotZero(ctx vladrok.Runtime, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) ParamsNotZero(ctx vm2.Runtime, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}

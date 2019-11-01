@@ -10,7 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -21,11 +21,11 @@ type codeVersion struct {
 }
 
 type Actors struct {
-	actors map[codeVersion]kungfu.ExecutableActor
+	actors map[codeVersion]vminternal.ExecutableActor
 }
 
 // GetActorCode returns executable code for an actor by code cid at a specific protocol version
-func (ba Actors) GetActorCode(code cid.Cid, version uint64) (kungfu.ExecutableActor, error) {
+func (ba Actors) GetActorCode(code cid.Cid, version uint64) (vminternal.ExecutableActor, error) {
 	if !code.Defined() {
 		return nil, fmt.Errorf("undefined code cid")
 	}
@@ -37,12 +37,12 @@ func (ba Actors) GetActorCode(code cid.Cid, version uint64) (kungfu.ExecutableAc
 }
 
 type BuiltinActorsBuilder struct {
-	actors map[codeVersion]kungfu.ExecutableActor
+	actors map[codeVersion]vminternal.ExecutableActor
 }
 
 // NewBuilder creates a builder to generate a builtin.Actor data structure
 func NewBuilder() *BuiltinActorsBuilder {
-	return &BuiltinActorsBuilder{actors: map[codeVersion]kungfu.ExecutableActor{}}
+	return &BuiltinActorsBuilder{actors: map[codeVersion]vminternal.ExecutableActor{}}
 }
 
 func (bab *BuiltinActorsBuilder) AddAll(actors Actors) *BuiltinActorsBuilder {
@@ -52,7 +52,7 @@ func (bab *BuiltinActorsBuilder) AddAll(actors Actors) *BuiltinActorsBuilder {
 	return bab
 }
 
-func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor kungfu.ExecutableActor) *BuiltinActorsBuilder {
+func (bab *BuiltinActorsBuilder) Add(c cid.Cid, version uint64, actor vminternal.ExecutableActor) *BuiltinActorsBuilder {
 	bab.actors[codeVersion{code: c, protocolVersion: version}] = actor
 	return bab
 }

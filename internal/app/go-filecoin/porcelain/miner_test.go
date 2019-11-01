@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-leb128"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -437,9 +437,9 @@ func (mgop *minerQueryAndDeserializePlumbing) MessageQuery(ctx context.Context, 
 	}
 }
 
-func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error) {
+func (mgop *minerQueryAndDeserializePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*external.FunctionSignature, error) {
 	if method == miner.GetSectorSize {
-		return &pandas.FunctionSignature{
+		return &external.FunctionSignature{
 			Params: nil,
 			Return: []abi.Type{abi.BytesAmount},
 		}, nil
@@ -496,9 +496,9 @@ func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optF
 	return nil, fmt.Errorf("unsupported method: %s", method)
 }
 
-func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error) {
+func (mpp *minerGetProvingPeriodPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*external.FunctionSignature, error) {
 	if method == miner.GetProvingSetCommitments {
-		return &pandas.FunctionSignature{
+		return &external.FunctionSignature{
 			Params: nil,
 			Return: []abi.Type{abi.CommitmentsMap},
 		}, nil
@@ -586,8 +586,8 @@ func (minerGetSectorSizePlumbing) ChainHeadKey() block.TipSetKey {
 func (minerGetSectorSizePlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{types.NewBytesAmount(1234).Bytes()}, nil
 }
-func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error) {
-	return &pandas.FunctionSignature{
+func (minerGetSectorSizePlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*external.FunctionSignature, error) {
+	return &external.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
 	}, nil
@@ -611,8 +611,8 @@ func (minerGetLastCommittedSectorIDPlumbing) ChainHeadKey() block.TipSetKey {
 func (minerGetLastCommittedSectorIDPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	return [][]byte{leb128.FromUInt64(5432)}, nil
 }
-func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error) {
-	return &pandas.FunctionSignature{
+func (minerGetLastCommittedSectorIDPlumbing) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*external.FunctionSignature, error) {
+	return &external.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},
 	}, nil

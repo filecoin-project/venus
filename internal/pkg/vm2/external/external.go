@@ -1,6 +1,7 @@
-// Package pandas is not for you
-// Dragons: all this people need a new home, or the callers need to go do something else
-package pandas
+// Package external is a temporary package that will only live while we are cleaning up vm into vm2
+//
+// All the calls into this should either not depend on this, or we should find a propper package for each.
+package external
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"

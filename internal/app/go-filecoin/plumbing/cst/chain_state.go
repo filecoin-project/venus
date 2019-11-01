@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -165,7 +165,7 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 // GetActorSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*pandas.FunctionSignature, error) {
+func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*external.FunctionSignature, error) {
 	if method == types.SendMethodID {
 		return nil, ErrNoMethod
 	}

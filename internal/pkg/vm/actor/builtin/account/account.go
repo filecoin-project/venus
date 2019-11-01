@@ -4,9 +4,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 )
 
@@ -42,17 +42,17 @@ func UpgradeActor(a *actor.Actor) error {
 //
 
 // Ensure AccountActor is an ExecutableActor at compile time.
-var _ kungfu.ExecutableActor = (*Actor)(nil)
+var _ vminternal.ExecutableActor = (*Actor)(nil)
 
 // signatures are the publicly (externally callable) methods of the AccountActor.
-var signatures = kungfu.Exports{}
+var signatures = vminternal.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
 	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(_ vladrok.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ vm2.Storage, _ interface{}) error {
 	return nil
 }

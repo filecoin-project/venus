@@ -16,14 +16,14 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
 type ExecutableActorLookup interface {
-	GetActorCode(code cid.Cid, version uint64) (kungfu.ExecutableActor, error)
+	GetActorCode(code cid.Cid, version uint64) (vminternal.ExecutableActor, error)
 }
 
 // Context is the only thing exposed to an actor while executing.
@@ -42,7 +42,7 @@ type Context struct {
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
 
-var _ vladrok.Runtime = (*Context)(nil)
+var _ vm2.Runtime = (*Context)(nil)
 
 // NewContextParams is passed to NewVMContext to construct a new context.
 type NewContextParams struct {
@@ -73,10 +73,10 @@ func NewVMContext(params NewContextParams) *Context {
 	}
 }
 
-var _ vladrok.Runtime = (*Context)(nil)
+var _ vm2.Runtime = (*Context)(nil)
 
 // Storage returns an implementation of the storage module for this context.
-func (ctx *Context) Storage() vladrok.Storage {
+func (ctx *Context) Storage() vm2.Storage {
 	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
 }
 

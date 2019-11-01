@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/kungfu"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/pandas"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -70,7 +70,7 @@ func requireCid(t *testing.T, data string) cid.Cid {
 }
 
 type MockActor struct {
-	signatures kungfu.Exports
+	signatures vminternal.Exports
 }
 
 const (
@@ -82,16 +82,16 @@ const (
 	Six
 )
 
-func NewMockActor(list kungfu.Exports) *MockActor {
+func NewMockActor(list vminternal.Exports) *MockActor {
 	return &MockActor{
 		signatures: list,
 	}
 }
 
-var _ kungfu.ExecutableActor = (*MockActor)(nil)
+var _ vminternal.ExecutableActor = (*MockActor)(nil)
 
 // Method returns method definition for a given method id.
-func (a *MockActor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSignature, bool) {
+func (a *MockActor) Method(id types.MethodID) (vminternal.Method, *external.FunctionSignature, bool) {
 	signature, ok := a.signatures[id]
 	if !ok {
 		return nil, nil, false
@@ -114,7 +114,7 @@ func (a *MockActor) Method(id types.MethodID) (kungfu.Method, *pandas.FunctionSi
 	}
 }
 
-func (a *MockActor) InitializeState(storage vladrok.Storage, initializerData interface{}) error {
+func (a *MockActor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
 	return nil
 }
 
@@ -124,27 +124,27 @@ func (*impl) one() (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) two(ctx vladrok.Runtime) (uint8, error) {
+func (*impl) two(ctx vm2.Runtime) (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) three(ctx vladrok.Runtime) error {
+func (*impl) three(ctx vm2.Runtime) error {
 	return nil
 }
 
-func (*impl) four(ctx vladrok.Runtime) ([]byte, uint8, error) {
+func (*impl) four(ctx vm2.Runtime) ([]byte, uint8, error) {
 	return []byte("hello"), 0, nil
 }
 
-func (*impl) five(ctx vladrok.Runtime) ([]byte, uint8, error) {
+func (*impl) five(ctx vm2.Runtime) ([]byte, uint8, error) {
 	return nil, 2, errors.NewRevertError("fail5")
 }
 
-func (*impl) six(ctx vladrok.Runtime) (uint8, error) {
+func (*impl) six(ctx vm2.Runtime) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func makeCtx(method types.MethodID) vladrok.Runtime {
+func makeCtx(method types.MethodID) vm2.Runtime {
 	addrGetter := address.NewForTestGetter()
 
 	vmCtxParams := vm.NewContextParams{
@@ -161,7 +161,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("no return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
 			Two: {
 				Params: nil,
 				Return: nil,
@@ -178,7 +178,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
 			Four: {
 				Params: nil,
 				Return: []abi.Type{abi.Bytes},
@@ -199,7 +199,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with error return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
 			Five: {
 				Params: []abi.Type{},
 				Return: []abi.Type{abi.Bytes},
@@ -216,7 +216,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with error that is not revert or fault", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
 			Six: {
 				Params: nil,
 				Return: nil,
@@ -245,7 +245,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 	}{
 		{
 			Name: "missing method on actor",
-			Actor: NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
 				One: {
 					Params: nil,
 					Return: nil,
@@ -261,46 +261,46 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "too little params",
-			Actor: NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
 				One: {
 					Params: nil,
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vladrok.Runtime) (uint8, error), but got: func() (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) (uint8, error), but got: func() (uint8, error)",
 			Method: One,
 		},
 		{
 			Name: "too little return parameters",
-			Actor: NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
 				Three: {
 					Params: nil,
 					Return: nil,
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vladrok.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
+			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) (uint8, error), but got: func(runtime.Runtime) error",
 			Method: Three,
 		},
 		{
 			Name: "wrong return parameters",
-			Actor: NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
 				Two: {
 					Params: nil,
 					Return: []abi.Type{abi.Bytes},
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vladrok.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) ([]byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
 			Method: Two,
 		},
 		{
 			Name: "multiple return parameters",
-			Actor: NewMockActor(map[types.MethodID]*pandas.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
 				Two: {
 					Params: nil,
 					Return: []abi.Type{abi.Bytes, abi.Bytes},
 				},
 			}),
-			Error:  "MakeTypedExport must receive a function with signature: func (vladrok.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
+			Error:  "MakeTypedExport must receive a function with signature: func (vm2.Runtime) ([]byte, []byte, uint8, error), but got: func(runtime.Runtime) (uint8, error)",
 			Method: Two,
 		},
 	}
