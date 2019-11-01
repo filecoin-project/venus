@@ -27,10 +27,8 @@ const Protocol1 = 1
 // network upgrades need to be represented here. See #3491.
 func ConfigureProtocolVersions(network string) (*ProtocolVersionTable, error) {
 	return NewProtocolVersionTableBuilder(network).
-		Add(USER, Protocol0, types.NewBlockHeight(0)).
-		Add(USER, Protocol1, types.NewBlockHeight(43000)).
-		Add(DEVNET4, Protocol0, types.NewBlockHeight(0)).
-		Add(DEVNET4, Protocol1, types.NewBlockHeight(300)).
+		Add(USER, Protocol1, types.NewBlockHeight(0)).
+		Add(DEVNET4, Protocol1, types.NewBlockHeight(0)).
 		Add(LOCALNET, Protocol1, types.NewBlockHeight(0)).
 		Add(TEST, Protocol1, types.NewBlockHeight(0)).
 		Build()
