@@ -234,7 +234,35 @@ func (sb *RustSectorBuilder) SealAllStagedSectors(ctx context.Context) error {
 
 // GetAllStagedSectors returns a slice of all staged sector metadata for the sector builder, or an error.
 func (sb *RustSectorBuilder) GetAllStagedSectors() ([]go_sectorbuilder.StagedSectorMetadata, error) {
-	return go_sectorbuilder.GetAllStagedSectors(sb.ptr)
+	original, err := go_sectorbuilder.GetAllStagedSectors(sb.ptr)
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE: Omitting staged sector metadata from the output slice is a hacky
+	// workaround for the rust-fil-sector-builder/75 bug. This bug is now
+	// patched in rust-fil-sector-builder, but go-filecoin is using a very old
+	// version of go-sectorbuilder (and thus rust-fil-sector-builder).
+	//
+	// For more details, see:
+	// * https://github.com/filecoin-project/rust-fil-sector-builder/issues/75
+	// * https://github.com/filecoin-project/go-filecoin/issues/3479
+	//
+	var scrubbed []go_sectorbuilder.StagedSectorMetadata
+	for _, meta := range original {
+		status, err := go_sectorbuilder.GetSectorSealingStatusByID(sb.ptr, meta.SectorID)
+		if err != nil {
+			return nil, err
+		}
+
+		// if the sector has been sealed, don't add it to the staged sectors
+		// output-slice
+		if status.SealStatusCode != 0 {
+			scrubbed = append(scrubbed, meta)
+		}
+	}
+
+	return scrubbed, nil
 }
 
 // SectorSealResults returns an unbuffered channel that is sent a value whenever
