@@ -229,11 +229,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 		return nil, errors.Wrap(err, "failed to build node.RetrievalProtocol")
 	}
 
-	nd.FaultSlasher, err = submodule.NewFaultSlasherSubmodule(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build node.FaultSlasher")
-	}
-
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
 		Bitswap:       nd.network.Bitswap,
 		Chain:         nd.chain.State,

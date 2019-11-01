@@ -38,11 +38,6 @@ func TestActorDaemon(t *testing.T) {
 		// We just want to make sure the views have something valid in them.
 		for _, av := range avs {
 			assert.Contains(t, []string{"StoragemarketActor", "AccountActor", "PaymentbrokerActor", "MinerActor", "BootstrapMinerActor", "InitActor"}, av.ActorType)
-			if av.ActorType == "AccountActor" {
-				assert.Zero(t, len(av.Exports))
-			} else {
-				assert.NotZero(t, len(av.Exports))
-			}
 		}
 	})
 }

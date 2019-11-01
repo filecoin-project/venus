@@ -59,12 +59,12 @@ func (cla *claPlumbing) ChainHeadKey() block.TipSetKey {
 	return block.NewTipSetKey()
 }
 
-func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	if cla.messageFail {
 		return nil, errors.New("MESSAGE FAILURE")
 	}
 
-	if method == "getAsks" {
+	if method == miner.GetAsks {
 		askIDs, _ := encoding.Encode([]uint64{0})
 		return [][]byte{askIDs}, nil
 	}

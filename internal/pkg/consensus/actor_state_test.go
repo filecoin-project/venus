@@ -59,7 +59,7 @@ func TestQuery(t *testing.T) {
 		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
-		returnValue, err := snapshot.Query(ctx, fromAddr, fakeActorAddr, "hasReturnValue")
+		returnValue, err := snapshot.Query(ctx, fromAddr, fakeActorAddr, actor.HasReturnValueID)
 		require.NoError(t, err)
 		require.NotNil(t, returnValue)
 		v, err := abi.Deserialize(returnValue[0], abi.Address)
@@ -102,7 +102,7 @@ func TestQuery(t *testing.T) {
 		snapshot, err := chainState.Snapshot(ctx, chainStore.GetHead())
 		require.NoError(t, err)
 
-		_, err = snapshot.Query(ctx, fromAddr, fakeActorAddr, "nonZeroExitCode")
+		_, err = snapshot.Query(ctx, fromAddr, fakeActorAddr, actor.NonZeroExitCodeID)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "42")
 	})

@@ -22,25 +22,13 @@ import (
 
 // ActorView represents a generic way to represent details about any actor to the user.
 type ActorView struct {
-	ActorType string          `json:"actorType"`
-	Address   string          `json:"address"`
-	Code      cid.Cid         `json:"code,omitempty"`
-	Nonce     uint64          `json:"nonce"`
-	Balance   types.AttoFIL   `json:"balance"`
-	Exports   readableExports `json:"exports"`
-	Head      cid.Cid         `json:"head,omitempty"`
+	ActorType string        `json:"actorType"`
+	Address   string        `json:"address"`
+	Code      cid.Cid       `json:"code,omitempty"`
+	Nonce     uint64        `json:"nonce"`
+	Balance   types.AttoFIL `json:"balance"`
+	Head      cid.Cid       `json:"head,omitempty"`
 }
-
-// readableFunctionSignature is a representation of an actors function signature,
-// such that it can be shown to the user.
-type readableFunctionSignature struct {
-	Params []string
-	Return []string
-}
-
-// readableExports is a representation of exports (map of method names to signatures),
-// such that it can be shown to the user.
-type readableExports map[string]*readableFunctionSignature
 
 var actorCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -109,12 +97,10 @@ var actorLsCmd = &cmds.Command{
 
 func makeActorView(act *actor.Actor, addr string, actType exec.ExecutableActor) *ActorView {
 	var actorType string
-	var exports readableExports
 	if actType == nil {
 		actorType = "UnknownActor"
 	} else {
 		actorType = getActorType(actType)
-		exports = presentExports(actType.Exports())
 	}
 
 	return &ActorView{
@@ -123,31 +109,8 @@ func makeActorView(act *actor.Actor, addr string, actType exec.ExecutableActor) 
 		Code:      act.Code,
 		Nonce:     uint64(act.Nonce),
 		Balance:   act.Balance,
-		Exports:   exports,
 		Head:      act.Head,
 	}
-}
-
-func makeReadable(f *exec.FunctionSignature) *readableFunctionSignature {
-	rfs := &readableFunctionSignature{
-		Params: make([]string, len(f.Params)),
-		Return: make([]string, len(f.Return)),
-	}
-	for i, p := range f.Params {
-		rfs.Params[i] = p.String()
-	}
-	for i, r := range f.Return {
-		rfs.Return[i] = r.String()
-	}
-	return rfs
-}
-
-func presentExports(e exec.Exports) readableExports {
-	rdx := make(readableExports)
-	for k, v := range e {
-		rdx[k] = makeReadable(v)
-	}
-	return rdx
 }
 
 func getActorType(actType exec.ExecutableActor) string {

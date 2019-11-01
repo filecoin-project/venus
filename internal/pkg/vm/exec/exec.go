@@ -2,6 +2,7 @@ package exec
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/ipfs/go-cid"
 
@@ -36,12 +37,18 @@ var Errors = map[uint8]error{
 }
 
 // Exports describe the public methods of an actor.
-type Exports map[string]*FunctionSignature
+type Exports map[types.MethodID]*FunctionSignature
 
 // Has checks if the given method is an exported method.
-func (e Exports) Has(method string) bool {
+func (e Exports) Has(method types.MethodID) bool {
 	_, ok := e[method]
 	return ok
+}
+
+// Method is a callable pointer to an executable method in an actor implementation.
+type Method interface {
+	Call(in []reflect.Value) []reflect.Value
+	Type() reflect.Type
 }
 
 // TODO fritz require actors to define their exit codes and associate
@@ -49,7 +56,7 @@ func (e Exports) Has(method string) bool {
 
 // ExecutableActor is the interface all builtin actors have to implement.
 type ExecutableActor interface {
-	Exports() Exports
+	Method(id types.MethodID) (Method, *FunctionSignature, bool)
 	InitializeState(storage Storage, initializerData interface{}) error
 }
 
@@ -69,7 +76,7 @@ type FunctionSignature struct {
 type VMContext interface {
 	Message() *types.UnsignedMessage
 	Storage() Storage
-	Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	AddressForNewActor() (address.Address, error)
 	BlockHeight() *types.BlockHeight
 	MyBalance() types.AttoFIL

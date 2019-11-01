@@ -13,7 +13,7 @@ import (
 
 type pclPlumbing interface {
 	ChainHeadKey() block.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	WalletDefaultAddress() (address.Address, error)
 }
 
@@ -39,7 +39,7 @@ func PaymentChannelLs(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
-		"ls",
+		paymentbroker.Ls,
 		plumbing.ChainHeadKey(),
 		payerAddr,
 	)
@@ -56,7 +56,7 @@ func PaymentChannelLs(
 
 type pcvPlumbing interface {
 	ChainHeadKey() block.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -82,7 +82,7 @@ func PaymentChannelVoucher(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
-		"voucher",
+		paymentbroker.Voucher,
 		plumbing.ChainHeadKey(),
 		channel, amount, validAt, condition,
 	)

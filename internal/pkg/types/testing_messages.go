@@ -42,21 +42,26 @@ func (mm *MessageMaker) Signer() *MockSigner {
 	return mm.signer
 }
 
-// NewSignedMessage creates a new message.
-func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *SignedMessage {
+// NewUnsignedMessage creates a new message.
+func (mm *MessageMaker) NewUnsignedMessage(from address.Address, nonce uint64) *UnsignedMessage {
 	seq := mm.seq
 	mm.seq++
 	to, err := address.NewActorAddress([]byte("destination"))
 	require.NoError(mm.t, err)
-	msg := NewMeteredMessage(
+	return NewMeteredMessage(
 		from,
 		to,
 		nonce,
 		ZeroAttoFIL,
-		"method"+fmt.Sprintf("%d", seq),
+		MethodID(9000+seq),
 		[]byte("params"),
 		mm.DefaultGasPrice,
 		mm.DefaultGasUnits)
+}
+
+// NewSignedMessage creates a new signed message.
+func (mm *MessageMaker) NewSignedMessage(from address.Address, nonce uint64) *SignedMessage {
+	msg := mm.NewUnsignedMessage(from, nonce)
 	signed, err := NewSignedMessage(*msg, mm.signer)
 	require.NoError(mm.t, err)
 	return signed

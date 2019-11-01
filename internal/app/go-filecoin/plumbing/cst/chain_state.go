@@ -165,8 +165,8 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 // GetActorSignature returns the signature of the given actor's given method.
 // The function signature is typically used to enable a caller to decode the
 // output of an actor method call (message).
-func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method string) (*exec.FunctionSignature, error) {
-	if method == "" {
+func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*exec.FunctionSignature, error) {
+	if method == types.SendMethodID {
 		return nil, ErrNoMethod
 	}
 
@@ -183,12 +183,12 @@ func (chn *ChainStateReadWriter) GetActorSignature(ctx context.Context, actorAdd
 		return nil, errors.Wrap(err, "failed to load actor code")
 	}
 
-	export, ok := executable.Exports()[method]
+	_, signature, ok := executable.Method(method)
 	if !ok {
 		return nil, fmt.Errorf("missing export: %s", method)
 	}
 
-	return export, nil
+	return signature, nil
 }
 
 // SetHead sets `key` as the new head of this chain iff it exists in the nodes chain store.

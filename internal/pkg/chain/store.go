@@ -19,6 +19,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
+func init() {
+	encoding.RegisterIpldCborType(tsState{})
+}
+
 // NewHeadTopic is the topic used to publish new heads.
 const NewHeadTopic = "new-head"
 
@@ -33,6 +37,11 @@ type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
 	cborStore state.IpldStore
+}
+
+type tsState struct {
+	StateRoot cid.Cid
+	Reciepts  cid.Cid
 }
 
 func newSource(cst state.IpldStore) *ipldSource {
@@ -155,13 +164,14 @@ func (store *Store) Load(ctx context.Context) (err error) {
 		if logStatusEvery != 0 && (height%logStatusEvery) == 0 {
 			logStore.Infof("load tipset: %s, height: %v", iterator.Value().String(), height)
 		}
-		stateRoot, err := store.loadStateRoot(iterator.Value())
+		stateRoot, receipts, err := store.loadStateRootAndReceipts(iterator.Value())
 		if err != nil {
 			return err
 		}
-		err = store.PutTipSetAndState(ctx, &TipSetAndState{
+		err = store.PutTipSetMetadata(ctx, &TipSetMetadata{
 			TipSet:          iterator.Value(),
 			TipSetStateRoot: stateRoot,
+			TipSetReceipts:  receipts,
 		})
 		if err != nil {
 			return err
@@ -201,34 +211,35 @@ func (store *Store) loadHead() (block.TipSetKey, error) {
 	return cids, nil
 }
 
-func (store *Store) loadStateRoot(ts block.TipSet) (cid.Cid, error) {
+func (store *Store) loadStateRootAndReceipts(ts block.TipSet) (cid.Cid, cid.Cid, error) {
 	h, err := ts.Height()
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, cid.Undef, err
 	}
 	key := datastore.NewKey(makeKey(ts.String(), h))
 	bb, err := store.ds.Get(key)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
+		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to read tipset key %s", ts.String())
 	}
 
-	var stateRoot cid.Cid
-	err = encoding.Decode(bb, &stateRoot)
+	var metadata tsState
+	err = encoding.Decode(bb, &metadata)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed to cast state root of tipset %s", ts.String())
+		return cid.Undef, cid.Undef, errors.Wrapf(err, "failed to decode tip set metadata %s", ts.String())
 	}
-	return stateRoot, nil
+
+	return metadata.StateRoot, metadata.Reciepts, nil
 }
 
-// PutTipSetAndState persists the blocks of a tipset and the tipset index.
-func (store *Store) PutTipSetAndState(ctx context.Context, tsas *TipSetAndState) error {
+// PutTipSetMetadata persists the blocks of a tipset and the tipset index.
+func (store *Store) PutTipSetMetadata(ctx context.Context, tsm *TipSetMetadata) error {
 	// Update tipindex.
-	err := store.tipIndex.Put(tsas)
+	err := store.tipIndex.Put(tsm)
 	if err != nil {
 		return err
 	}
 	// Persist the state mapping.
-	if err = store.writeTipSetAndState(tsas); err != nil {
+	if err = store.writeTipSetMetadata(tsm); err != nil {
 		return err
 	}
 
@@ -266,6 +277,11 @@ func (store *Store) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
 	return store.tipIndex.GetTipSetStateRoot(key)
 }
 
+// GetTipSetReceiptsRoot returns the root CID of the message receipts for the tipset identified by `key`.
+func (store *Store) GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error) {
+	return store.tipIndex.GetTipSetReceiptsRoot(key)
+}
+
 // HasTipSetAndState returns true iff the default store's tipindex is indexing
 // the tipset identified by `key`.
 func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) bool {
@@ -274,7 +290,7 @@ func (store *Store) HasTipSetAndState(ctx context.Context, key block.TipSetKey) 
 
 // GetTipSetAndStatesByParentsAndHeight returns the the tipsets and states tracked by
 // the default store's tipIndex that have parents identified by `parentKey`.
-func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h uint64) ([]*TipSetAndState, error) {
+func (store *Store) GetTipSetAndStatesByParentsAndHeight(parentKey block.TipSetKey, h uint64) ([]*TipSetMetadata, error) {
 	return store.tipIndex.GetByParentsAndHeight(parentKey, h)
 }
 
@@ -340,24 +356,32 @@ func (store *Store) writeHead(ctx context.Context, cids block.TipSetKey) error {
 	return store.ds.Put(headKey, val)
 }
 
-// writeTipSetAndState writes the tipset key and the state root id to the
+// writeTipSetMetadata writes the tipset key and the state root id to the
 // datastore.
-func (store *Store) writeTipSetAndState(tsas *TipSetAndState) error {
-	if tsas.TipSetStateRoot == cid.Undef {
+func (store *Store) writeTipSetMetadata(tsm *TipSetMetadata) error {
+	if tsm.TipSetStateRoot == cid.Undef {
 		return errors.New("attempting to write state root cid.Undef")
 	}
 
-	val, err := encoding.Encode(tsas.TipSetStateRoot)
+	if tsm.TipSetReceipts == cid.Undef {
+		return errors.New("attempting to write receipts cid.Undef")
+	}
+
+	metadata := tsState{
+		StateRoot: tsm.TipSetStateRoot,
+		Reciepts:  tsm.TipSetReceipts,
+	}
+	val, err := encoding.Encode(metadata)
 	if err != nil {
 		return err
 	}
 
 	// datastore keeps key:stateRoot (k,v) pairs.
-	h, err := tsas.TipSet.Height()
+	h, err := tsm.TipSet.Height()
 	if err != nil {
 		return err
 	}
-	key := datastore.NewKey(makeKey(tsas.TipSet.String(), h))
+	key := datastore.NewKey(makeKey(tsm.TipSet.String(), h))
 	return store.ds.Put(key, val)
 }
 

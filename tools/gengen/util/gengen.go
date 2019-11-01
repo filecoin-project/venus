@@ -17,17 +17,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-car"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
@@ -250,12 +252,12 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 		}
 
 		// give collateral to account actor
-		_, err = applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), "")
+		_, err = applyMessageDirect(ctx, st, sm, address.NetworkAddress, addr, types.NewAttoFILFromFIL(100000), types.SendMethodID)
 		if err != nil {
 			return nil, err
 		}
 
-		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), "createStorageMiner", types.NewBytesAmount(m.SectorSize), pid)
+		ret, err := applyMessageDirect(ctx, st, sm, addr, address.StorageMarketAddress, types.NewAttoFILFromFIL(100000), storagemarket.CreateStorageMiner, types.NewBytesAmount(m.SectorSize), pid)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +296,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			if _, err := pnrg.Read(sealProof[:]); err != nil {
 				return nil, err
 			}
-			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "commitSector", sectorID, commD, commR, commRStar, sealProof)
+			_, err := applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), miner.CommitSector, sectorID, commD, commR, commRStar, sealProof)
 			if err != nil {
 				return nil, err
 			}
@@ -307,7 +309,7 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 			if _, err := pnrg.Read(poStProof[:]); err != nil {
 				return nil, err
 			}
-			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), "submitPoSt", poStProof, types.EmptyFaultSet(), types.EmptyIntSet())
+			_, err = applyMessageDirect(ctx, st, sm, addr, maddr, types.NewAttoFILFromFIL(0), miner.SubmitPoSt, poStProof, types.EmptyFaultSet(), types.EmptyIntSet())
 			if err != nil {
 				return nil, err
 			}
@@ -340,7 +342,7 @@ func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo
 // applyMessageDirect applies a given message directly to the given state tree and storage map and returns the result of the message.
 // This is a shortcut to allow gengen to use built-in actor functionality to alter the genesis block's state.
 // Outside genesis, direct execution of actor code is a really bad idea.
-func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value types.AttoFIL, method string, params ...interface{}) ([][]byte, error) {
+func applyMessageDirect(ctx context.Context, st state.Tree, vms vm.StorageMap, from, to address.Address, value types.AttoFIL, method types.MethodID, params ...interface{}) ([][]byte, error) {
 	pdata := actor.MustConvertParams(params...)
 	// this should never fail due to lack of gas since gas doesn't have meaning here
 	gasLimit := types.BlockGasLimit

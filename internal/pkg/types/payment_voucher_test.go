@@ -17,7 +17,7 @@ func TestPaymentVoucherEncodingRoundTrip(t *testing.T) {
 
 	condition := &Predicate{
 		To:     addrGetter(),
-		Method: "someMethod",
+		Method: MethodID(8263621),
 		Params: []interface{}{"some encoded parameters"},
 	}
 
@@ -57,7 +57,7 @@ func TestSortVouchersByValidAt(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		condition := &Predicate{
 			To:     addrGetter(),
-			Method: "someMethod",
+			Method: MethodID(8263621),
 			Params: []interface{}{"some encoded parameters"},
 		}
 		pv := &PaymentVoucher{

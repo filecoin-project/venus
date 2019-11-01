@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -91,8 +92,8 @@ type dealRedeemPlumbing interface {
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
-	MessagePreview(context.Context, address.Address, address.Address, string, ...interface{}) (types.GasUnits, error)
-	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, string, ...interface{}) (cid.Cid, error)
+	MessagePreview(context.Context, address.Address, address.Address, types.MethodID, ...interface{}) (types.GasUnits, error)
+	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, types.MethodID, ...interface{}) (cid.Cid, error)
 }
 
 // DealRedeem redeems a voucher for the deal with the given cid and returns
@@ -110,7 +111,7 @@ func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr addre
 		types.NewAttoFILFromFIL(0),
 		gasPrice,
 		gasLimit,
-		"redeem",
+		paymentbroker.Redeem,
 		params...,
 	)
 }
@@ -127,7 +128,7 @@ func DealRedeemPreview(ctx context.Context, plumbing dealRedeemPlumbing, fromAdd
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
-		"redeem",
+		paymentbroker.Redeem,
 		params...,
 	)
 }

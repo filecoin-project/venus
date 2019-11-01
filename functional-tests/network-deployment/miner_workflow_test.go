@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -161,7 +162,7 @@ func TestMinerWorkflow(t *testing.T) {
 		//
 
 		minfo, err := series.WaitForChainMessage(ctx, miner, func(ctx context.Context, node *fast.Filecoin, msg *types.SignedMessage) (bool, error) {
-			if msg.Message.Method == "submitPoSt" && msg.Message.To == ask.Miner {
+			if msg.Message.Method == minerActor.SubmitPoSt && msg.Message.To == ask.Miner {
 				return true, nil
 			}
 

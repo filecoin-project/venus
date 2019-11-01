@@ -84,7 +84,7 @@ message to be mined to get the channelID.`,
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"createChannel",
+				paymentbroker.CreateChannel,
 				target, eol,
 			)
 			if err != nil {
@@ -104,7 +104,7 @@ message to be mined to get the channelID.`,
 			amount,
 			gasPrice,
 			gasLimit,
-			"createChannel",
+			paymentbroker.CreateChannel,
 			target,
 			eol,
 		)
@@ -285,7 +285,7 @@ var redeemCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"redeem",
+				paymentbroker.Redeem,
 				params...,
 			)
 		} else {
@@ -296,7 +296,7 @@ var redeemCmd = &cmds.Command{
 				types.NewAttoFILFromFIL(0),
 				gasPrice,
 				gasLimit,
-				"redeem",
+				paymentbroker.Redeem,
 				params...,
 			)
 		}
@@ -361,7 +361,7 @@ var reclaimCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"reclaim",
+				paymentbroker.Reclaim,
 				channel,
 			)
 			if err != nil {
@@ -381,7 +381,7 @@ var reclaimCmd = &cmds.Command{
 			types.NewAttoFILFromFIL(0),
 			gasPrice,
 			gasLimit,
-			"reclaim",
+			paymentbroker.Reclaim,
 			channel,
 		)
 		if err != nil {
@@ -460,7 +460,7 @@ var closeCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"close",
+				paymentbroker.Close,
 				params...,
 			)
 		} else {
@@ -471,7 +471,7 @@ var closeCmd = &cmds.Command{
 				types.NewAttoFILFromFIL(0),
 				gasPrice,
 				gasLimit,
-				"close",
+				paymentbroker.Close,
 				params...,
 			)
 		}
@@ -548,7 +548,7 @@ var extendCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"extend",
+				paymentbroker.Extend,
 				channel, eol,
 			)
 			if err != nil {
@@ -568,7 +568,7 @@ var extendCmd = &cmds.Command{
 			amount,
 			gasPrice,
 			gasLimit,
-			"extend",
+			paymentbroker.Extend,
 			channel, eol,
 		)
 		if err != nil {
@@ -635,7 +635,7 @@ var cancelCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
-				"cancel",
+				paymentbroker.Cancel,
 				channel,
 			)
 			if err != nil {
@@ -655,7 +655,7 @@ var cancelCmd = &cmds.Command{
 			types.NewAttoFILFromFIL(0),
 			gasPrice,
 			gasLimit,
-			"cancel",
+			paymentbroker.Cancel,
 			channel,
 		)
 		if err != nil {

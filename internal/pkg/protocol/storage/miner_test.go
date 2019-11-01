@@ -23,7 +23,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 )
@@ -353,7 +355,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		// return true, indicating this miner is a bootstrap miner
-		api.messageHandlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		api.messageHandlers[minerActor.IsBootstrapMiner] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return [][]byte{}, errors.New("test error")
 		}
 
@@ -368,7 +370,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		// return true, indicating this miner is a bootstrap miner
-		api.messageHandlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		api.messageHandlers[minerActor.IsBootstrapMiner] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return mustEncodeResults(t, true), nil
 		}
 
@@ -382,7 +384,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingSetCommitments] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return nil, errors.New("test error")
 		}
 		api.messageHandlers = handlers
@@ -398,7 +400,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingSetCommitments] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			commitments := map[string]types.Commitments{}
 			commitments["notanumber"] = types.Commitments{}
 			return mustEncodeResults(t, commitments), nil
@@ -416,7 +418,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return nil, errors.New("test error")
 		}
 		api.messageHandlers = handlers
@@ -446,10 +448,10 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		postParams := []interface{}{}
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
 		}
-		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			postParams = p
 			return [][]byte{}, nil
 		}
@@ -488,10 +490,10 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
 		}
-		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
 			return [][]byte{}, nil
 		}
@@ -517,10 +519,10 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 		api, miner, _ := minerWithAcceptedDealTestSetup(t, proposalCid, sector.SectorID)
 
 		handlers := successMessageHandlers(t)
-		handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
 		}
-		handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
 			return [][]byte{}, nil
 		}
@@ -543,19 +545,19 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 func successMessageHandlers(t *testing.T) messageHandlerMap {
 	handlers := messageHandlerMap{}
-	handlers["isBootstrapMiner"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers[minerActor.IsBootstrapMiner] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return mustEncodeResults(t, false), nil
 	}
 
-	handlers["getProvingSetCommitments"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers[minerActor.GetProvingSetCommitments] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		commitments := map[string]types.Commitments{}
 		commitments["42"] = types.Commitments{}
 		return mustEncodeResults(t, commitments), nil
 	}
-	handlers["getProvingWindow"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return mustEncodeResults(t, types.NewBlockHeight(20003), types.NewBlockHeight(40003)), nil
 	}
-	handlers["submitPoSt"] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
+	handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return [][]byte{}, nil
 	}
 	return handlers
@@ -588,14 +590,14 @@ type minerTestPorcelain struct {
 	paymentStart    *types.BlockHeight
 	deals           map[cid.Cid]*storagedeal.Deal
 	walletBalance   types.AttoFIL
-	messageHandlers map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
+	messageHandlers map[types.MethodID]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 	testing *testing.T
 }
 
 var _ minerPorcelain = (*minerTestPorcelain)(nil)
 
-type messageHandlerMap map[string]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
+type messageHandlerMap map[types.MethodID]func(address.Address, types.AttoFIL, ...interface{}) ([][]byte, error)
 
 func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorcelain {
 	mockSigner, ki := types.NewMockSignersAndKeyInfo(2)
@@ -633,15 +635,16 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 	}
 }
 
-func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method string) (_ *exec.FunctionSignature, err error) {
+func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *exec.FunctionSignature, err error) {
 	ea, error := builtin.DefaultActors.GetActorCode(types.MinerActorCodeCid, 0)
 	if error != nil {
 		return nil, err
 	}
-	return ea.Exports()[method], nil
+	_, signature, _ := ea.Method(method)
+	return signature, nil
 }
 
-func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
 	handler, ok := mtp.messageHandlers[method]
 	if ok {
 		_, err := handler(to, val, params...)
@@ -650,12 +653,12 @@ func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address
 	return cid.Cid{}, nil
 }
 
-func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method string, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
+func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	handler, ok := mtp.messageHandlers[method]
 	if ok {
 		return handler(to, types.ZeroAttoFIL, params...)
 	}
-	if method == "getProofsMode" {
+	if method == storagemarket.GetProofsMode {
 		return messageQueryGetProofsMode()
 	}
 	return mtp.messageQueryPaymentBrokerLs()

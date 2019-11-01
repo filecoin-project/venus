@@ -406,7 +406,7 @@ func msgAsString(msg *types.SignedMessage) string {
 	// to "msgN" so we print that (it will correspond
 	// to a variable of the same name in the tests
 	// below).
-	return msg.Message.Method
+	return msg.Message.Method.String()
 }
 
 func msgsAsString(msgs []*types.SignedMessage) string {
@@ -468,6 +468,6 @@ func requireChainWithMessages(t *testing.T, builder *chain.Builder, root block.T
 func msgBuild(t *testing.T, msgSet [][]*types.SignedMessage) func(*chain.BlockBuilder, int) {
 	return func(bb *chain.BlockBuilder, i int) {
 		require.True(t, i <= len(msgSet))
-		bb.AddMessages(msgSet[i], []*types.UnsignedMessage{}, types.EmptyReceipts(len(msgSet[i])))
+		bb.AddMessages(msgSet[i], []*types.UnsignedMessage{})
 	}
 }

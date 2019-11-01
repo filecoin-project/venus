@@ -50,16 +50,16 @@ func NewDiscoverySubmodule(ctx context.Context, config discoveryConfig, bsConfig
 	minPeerThreshold := bsConfig.MinPeerThreshold
 
 	// create a bootstrapper
-	bootstrapper := discovery.NewBootstrapper(bpi, network.PeerHost, network.PeerHost.Network(), network.Router, minPeerThreshold, period)
+	bootstrapper := discovery.NewBootstrapper(bpi, network.Host, network.Host.Network(), network.Router, minPeerThreshold, period)
 
 	// set up peer tracking
-	peerTracker := discovery.NewPeerTracker(network.PeerHost.ID())
+	peerTracker := discovery.NewPeerTracker(network.Host.ID())
 
 	return DiscoverySubmodule{
 		Bootstrapper:   bootstrapper,
 		BootstrapReady: moresync.NewLatch(uint(minPeerThreshold)),
 		PeerTracker:    peerTracker,
-		HelloHandler:   discovery.NewHelloProtocolHandler(network.PeerHost, config.GenesisCid(), network.NetworkName),
+		HelloHandler:   discovery.NewHelloProtocolHandler(network.Host, config.GenesisCid(), network.NetworkName),
 	}, nil
 }
 
@@ -76,7 +76,7 @@ func (m *DiscoverySubmodule) Start(node discoveryNode) error {
 	m.Bootstrapper.Start(context.Background())
 
 	// Register peer tracker disconnect function with network.
-	m.PeerTracker.RegisterDisconnect(node.Network().PeerHost.Network())
+	m.PeerTracker.RegisterDisconnect(node.Network().Host.Network())
 
 	// Start up 'hello' handshake service
 	peerDiscoveredCallback := func(ci *block.ChainInfo) {

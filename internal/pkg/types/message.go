@@ -10,14 +10,25 @@ import (
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
+)
+
+// MethodID is an identifier of a method (in an actor).
+type MethodID Uint64
+
+const (
+	// InvalidMethodID is the value of an invalid method id.
+	// Note: this is not in the spec
+	InvalidMethodID = MethodID(0xFFFFFFFFFFFFFFFF)
+	// SendMethodID is the method ID for sending money to an actor.
+	SendMethodID = MethodID(0)
 )
 
 // GasUnits represents number of units of gas consumed
@@ -59,8 +70,8 @@ type UnsignedMessage struct {
 
 	Value AttoFIL `json:"value"`
 
-	Method string `json:"method"`
-	Params []byte `json:"params"`
+	Method MethodID `json:"method"`
+	Params []byte   `json:"params"`
 
 	GasPrice AttoFIL  `json:"gasPrice"`
 	GasLimit GasUnits `json:"gasLimit"`
@@ -68,7 +79,7 @@ type UnsignedMessage struct {
 }
 
 // NewUnsignedMessage creates a new message.
-func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte) *UnsignedMessage {
+func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -80,7 +91,7 @@ func NewUnsignedMessage(from, to address.Address, nonce uint64, value AttoFIL, m
 }
 
 // NewMeteredMessage adds gas price and gas limit to the message
-func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method string, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
+func NewMeteredMessage(from, to address.Address, nonce uint64, value AttoFIL, method MethodID, params []byte, price AttoFIL, limit GasUnits) *UnsignedMessage {
 	return &UnsignedMessage{
 		From:       from,
 		To:         to,
@@ -150,95 +161,6 @@ func (msg *UnsignedMessage) Equals(other *UnsignedMessage) bool {
 		bytes.Equal(msg.Params, other.Params)
 }
 
-// SignedMessageCollection tracks a group of messages and assigns it a cid.
-type SignedMessageCollection []*SignedMessage
-
-// DecodeSignedMessages decodes raw bytes into an array of signed messages
-func DecodeSignedMessages(b []byte) ([]*SignedMessage, error) {
-	var out SignedMessageCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*SignedMessage(out), nil
-}
-
-// TODO #3078 the panics here and in types.Block should go away.  We need to
-// keep them in order to use the ipld cborstore with the default hash function
-// because we need to implement hamt.cidProvider which doesn't handle errors.
-// We can clean all this up when we can use our own CborIpldStore with the hamt.
-
-// Cid returns the cid of the message collection.
-func (mC SignedMessageCollection) Cid() cid.Cid {
-	return mC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (mC SignedMessageCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
-// MessageCollection tracks a group of messages and assigns it a cid.
-type MessageCollection []*UnsignedMessage
-
-// DecodeMessages decodes raw bytes into an array of metered messages
-func DecodeMessages(b []byte) ([]*UnsignedMessage, error) {
-	var out MessageCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*UnsignedMessage(out), nil
-}
-
-// Cid returns the cid of the message collection.
-func (mC MessageCollection) Cid() cid.Cid {
-	return mC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (mC MessageCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(mC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
-// ReceiptCollection tracks a group of receipts and assigns it a cid.
-type ReceiptCollection []*MessageReceipt
-
-// DecodeReceipts decodes raw bytes into an array of message receipts
-func DecodeReceipts(b []byte) ([]*MessageReceipt, error) {
-	var out ReceiptCollection
-	if err := encoding.Decode(b, &out); err != nil {
-		return nil, err
-	}
-
-	return []*MessageReceipt(out), nil
-}
-
-// Cid returns the cid of the receipt collection.
-func (rC ReceiptCollection) Cid() cid.Cid {
-	return rC.ToNode().Cid()
-}
-
-// ToNode converts the collection to an IPLD node.
-func (rC ReceiptCollection) ToNode() ipld.Node {
-	obj, err := cbor.WrapObject(rC, DefaultHashFunction, -1)
-	if err != nil {
-		panic(err)
-	}
-
-	return obj
-}
-
 // NewGasPrice constructs a gas price (in AttoFIL) from the given number.
 func NewGasPrice(price int64) AttoFIL {
 	return NewAttoFIL(big.NewInt(price))
@@ -258,4 +180,9 @@ type TxMeta struct {
 // String returns a readable printing string of TxMeta
 func (m TxMeta) String() string {
 	return fmt.Sprintf("secp: %s, bls: %s", m.SecpRoot.String(), m.BLSRoot.String())
+}
+
+// String returns a readable string.
+func (id MethodID) String() string {
+	return fmt.Sprintf("%v", (uint64)(id))
 }

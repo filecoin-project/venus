@@ -62,6 +62,8 @@ func TestMessagePropagation(t *testing.T) {
 	require.Equal(t, 0, len(nodes[2].Messaging.Inbox.Pool().Pending()))
 	require.Equal(t, 0, len(nodes[0].Messaging.Inbox.Pool().Pending()))
 
+	fooMethod := types.MethodID(7232)
+
 	t.Run("message propagates", func(t *testing.T) {
 		_, err := sender.PorcelainAPI.MessageSend(
 			ctx,
@@ -70,7 +72,7 @@ func TestMessagePropagation(t *testing.T) {
 			types.NewAttoFILFromFIL(1),
 			types.NewGasPrice(1),
 			types.NewGasUnits(0),
-			"foo",
+			fooMethod,
 		)
 		require.NoError(t, err)
 
@@ -80,8 +82,8 @@ func TestMessagePropagation(t *testing.T) {
 				len(nodes[2].Messaging.Inbox.Pool().Pending()) == 1, nil
 		}), "failed to propagate messages")
 
-		assert.True(t, nodes[0].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[1].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
-		assert.True(t, nodes[2].Messaging.Inbox.Pool().Pending()[0].Message.Method == "foo")
+		assert.True(t, nodes[0].Messaging.Inbox.Pool().Pending()[0].Message.Method == fooMethod)
+		assert.True(t, nodes[1].Messaging.Inbox.Pool().Pending()[0].Message.Method == fooMethod)
+		assert.True(t, nodes[2].Messaging.Inbox.Pool().Pending()[0].Message.Method == fooMethod)
 	})
 }

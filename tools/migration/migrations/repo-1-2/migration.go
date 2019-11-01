@@ -140,7 +140,7 @@ func (m *MetadataFormatJSONtoCBOR) Validate(oldRepoPath, newRepoPath string) err
 
 // convertJSONtoCBOR is adapted from chain Store.Load:
 //     1. stripped out logging
-//     2. instead of calling Store.PutTipSetAndState it just calls
+//     2. instead of calling Store.PutTipSetMetadata it just calls
 //        writeTipSetAndStateAsCBOR, because block format is unchanged.
 //     3. then calls writeHeadAsCBOR, instead of store.SetHead which also publishes an event
 //        and does some logging
@@ -178,7 +178,7 @@ func (m *MetadataFormatJSONtoCBOR) convertJSONtoCBOR(ctx context.Context) error 
 		if err != nil {
 			return err
 		}
-		tipSetAndState := &chain.TipSetAndState{
+		tipSetAndState := &chain.TipSetMetadata{
 			TipSet:          iter.Value(),
 			TipSetStateRoot: stateRoot,
 		}
@@ -210,7 +210,7 @@ func (m *MetadataFormatJSONtoCBOR) writeHeadAsCBOR(ctx context.Context, cids blo
 
 // writeTipSetAndStateAsCBOR writes the tipset key and the state root id to the
 // datastore. (taken from Store.writeTipSetAndState)
-func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetAndState) error {
+func (m *MetadataFormatJSONtoCBOR) writeTipSetAndStateAsCBOR(tsas *chain.TipSetMetadata) error {
 	if tsas.TipSetStateRoot == cid.Undef {
 		return errors.New("attempting to write state root cid.Undef")
 	}

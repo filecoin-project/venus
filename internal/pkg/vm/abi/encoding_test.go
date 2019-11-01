@@ -33,7 +33,7 @@ func TestBasicEncodingRoundTrip(t *testing.T) {
 		"predicate": {
 			&types.Predicate{
 				To:     addrGetter(),
-				Method: "someMethod",
+				Method: types.MethodID(82),
 				Params: []interface{}{uint64(3), []byte("proof")},
 			},
 		},

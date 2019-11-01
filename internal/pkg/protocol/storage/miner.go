@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/convert"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/util/moresync"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
@@ -81,7 +82,7 @@ type Miner struct {
 
 // minerPorcelain is the subset of the porcelain API that storage.Miner needs.
 type minerPorcelain interface {
-	ActorGetSignature(context.Context, address.Address, string) (*exec.FunctionSignature, error)
+	ActorGetSignature(context.Context, address.Address, types.MethodID) (*exec.FunctionSignature, error)
 
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(block.TipSetKey) (block.TipSet, error)
@@ -92,8 +93,8 @@ type minerPorcelain interface {
 
 	ValidatePaymentVoucherCondition(ctx context.Context, condition *types.Predicate, minerAddr address.Address, commP types.CommP, pieceSize *types.BytesAmount) error
 
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method string, params ...interface{}) (cid.Cid, error)
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	MinerGetWorkerAddress(ctx context.Context, minerAddr address.Address, baseKey block.TipSetKey) (address.Address, error)
 	SectorBuilder() sectorbuilder.SectorBuilder
@@ -315,7 +316,7 @@ func (sm *Miner) getPaymentChannel(ctx context.Context, p *storagedeal.SignedPro
 
 	payer := p.Payment.Payer
 
-	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, "ls", sm.porcelainAPI.ChainHeadKey(), payer)
+	ret, err := sm.porcelainAPI.MessageQuery(ctx, address.Undef, address.PaymentBrokerAddress, paymentbroker.Ls, sm.porcelainAPI.ChainHeadKey(), payer)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error getting payment channel for payer")
 	}
@@ -649,13 +650,13 @@ func (sm *Miner) isBootstrapMinerActor(ctx context.Context) (bool, error) {
 		ctx,
 		address.Address{},
 		sm.minerAddr,
-		"isBootstrapMiner",
+		miner.IsBootstrapMiner,
 		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "isBootstrapMiner")
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, miner.IsBootstrapMiner)
 	if err != nil {
 		return false, errors.Wrap(err, "query method failed")
 	}
@@ -680,13 +681,13 @@ func (sm *Miner) getActorSectorCommitments(ctx context.Context) (map[string]type
 		ctx,
 		address.Undef,
 		sm.minerAddr,
-		"getProvingSetCommitments",
+		miner.GetProvingSetCommitments,
 		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
-	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, "getProvingSetCommitments")
+	sig, err := sm.porcelainAPI.ActorGetSignature(ctx, sm.minerAddr, miner.GetProvingSetCommitments)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method failed")
 	}
@@ -830,7 +831,7 @@ func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, err
 		context.Background(),
 		address.Undef,
 		sm.minerAddr,
-		"getProvingWindow",
+		miner.GetProvingWindow,
 		sm.porcelainAPI.ChainHeadKey(),
 	)
 	if err != nil {
@@ -856,7 +857,7 @@ func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, 
 		log.Errorf("failed to get worker address: %s", err)
 		return
 	}
-	_, err = sm.porcelainAPI.MessageSend(ctx, workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, "submitPoSt", submission.Proof, submission.Faults, done)
+	_, err = sm.porcelainAPI.MessageSend(ctx, workerAddr, sm.minerAddr, submission.Fee, gasPrice, submission.GasLimit, miner.SubmitPoSt, submission.Proof, submission.Faults, done)
 	if err != nil {
 		log.Errorf("failed to submit PoSt: %s", err)
 		return

@@ -20,20 +20,13 @@ import (
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 // TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFunc {
-	f, ok := reflect.TypeOf(actor).MethodByName(strings.Title(method))
+func MakeTypedExport(actor exec.ExecutableActor, method types.MethodID) (exec.ExportedFunc, bool) {
+	fn, signature, ok := actor.Method(method)
 	if !ok {
-		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in actor: %s", method))
+		return nil, false
 	}
 
-	exports := actor.Exports()
-	signature, ok := exports[method]
-	if !ok {
-		panic(fmt.Sprintf("MakeTypedExport could not find passed in method in exports: %s", method))
-	}
-
-	val := f.Func
-	t := f.Type
+	t := fn.Type()
 
 	badImpl := func() {
 		params := []string{"exec.VMContext"}
@@ -45,16 +38,19 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 			ret = append(ret, r.String())
 		}
 		ret = append(ret, "uint8", "error")
-		sig := fmt.Sprintf("func (Actor, %s) (%s)", strings.Join(params, ", "), strings.Join(ret, ", "))
+		sig := fmt.Sprintf("func (%s) (%s)", strings.Join(params, ", "), strings.Join(ret, ", "))
 		panic(fmt.Sprintf("MakeTypedExport must receive a function with signature: %s, but got: %s", sig, t))
 	}
 
-	if t.Kind() != reflect.Func || t.NumIn() != 2+len(signature.Params) || t.NumOut() != 2+len(signature.Return) {
+	// The implementation funtction does not have the same signature as the one described by the actor:
+	// - signature input vs. impl input: K.. vs. context, K.. = (k..).len() + 1
+	// - signature output vs. impl output: T vs. (T, exit code, error) = out.len() + 2
+	if t.Kind() != reflect.Func || t.NumIn() != len(signature.Params)+1 || t.NumOut() != len(signature.Return)+2 {
 		badImpl()
 	}
 
 	for i, p := range signature.Params {
-		if !abi.TypeMatches(p, t.In(i+2)) {
+		if !abi.TypeMatches(p, t.In(i+1)) {
 			badImpl()
 		}
 	}
@@ -83,7 +79,6 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 		}
 
 		args := []reflect.Value{
-			reflect.ValueOf(actor),
 			reflect.ValueOf(ctx),
 		}
 
@@ -91,7 +86,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 			args = append(args, reflect.ValueOf(param.Val))
 		}
 
-		out := val.Call(args)
+		out := fn.Call(args)
 		exitCode := uint8(out[len(out)-2].Uint())
 
 		outErr, ok := out[len(out)-1].Interface().(error)
@@ -101,7 +96,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 				for _, param := range params {
 					paramStr = append(paramStr, param.String())
 				}
-				msg := fmt.Sprintf("actor: %#+v, method: %s, args: %v, error: %s", actor, method, paramStr, outErr.Error())
+				msg := fmt.Sprintf("actor: %#+v, method: %v, args: %v, error: %s", actor, method, paramStr, outErr.Error())
 				panic(fmt.Sprintf("you are a bad person: error must be either a reverterror or a fault: %v", msg))
 			}
 
@@ -118,7 +113,7 @@ func MakeTypedExport(actor exec.ExecutableActor, method string) exec.ExportedFun
 		}
 
 		return retVal, exitCode, nil
-	}
+	}, true
 }
 
 // MarshalValue serializes a given go type into a byte slice.

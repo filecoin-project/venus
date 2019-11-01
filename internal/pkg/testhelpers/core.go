@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/exec"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -137,7 +138,7 @@ func CreateTestMinerWith(
 ) address.Address {
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
 	nonce := RequireGetNonce(t, stateTree, address.TestAddress)
-	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, "createStorageMiner", pdata)
+	msg := types.NewUnsignedMessage(minerOwnerAddr, address.StorageMarketAddress, nonce, collateral, storagemarket.CreateStorageMiner, pdata)
 
 	result, err := ApplyTestMessage(stateTree, vms, msg, types.NewBlockHeight(height))
 	require.NoError(t, err)
@@ -150,7 +151,7 @@ func CreateTestMinerWith(
 
 // GetTotalPower get total miner power from storage market
 func GetTotalPower(t *testing.T, st state.Tree, vms vm.StorageMap) *types.BytesAmount {
-	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, "getTotalStorage", nil)
+	res, err := CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, 0, storagemarket.GetTotalStorage, nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -232,7 +233,7 @@ type FakeVMContext struct {
 	VerifierValue           verification.Verifier
 	RandomnessValue         []byte
 	IsFromAccountActorValue bool
-	Sender                  func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
+	Sender                  func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 	Addresser               func() (address.Address, error)
 	Charger                 func(cost types.GasUnits) error
 	Sampler                 func(sampleHeight *types.BlockHeight) ([]byte, error)
@@ -260,7 +261,7 @@ func NewFakeVMContext(message *types.UnsignedMessage, state interface{}) *FakeVM
 		Sampler: func(sampleHeight *types.BlockHeight) ([]byte, error) {
 			return randomness, nil
 		},
-		Sender: func(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+		Sender: func(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 			return [][]byte{}, 0, nil
 		},
 		Addresser: func() (address.Address, error) {
@@ -290,7 +291,7 @@ func (tc *FakeVMContext) Storage() exec.Storage {
 }
 
 // Send sends a message to another actor
-func (tc *FakeVMContext) Send(to address.Address, method string, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
+func (tc *FakeVMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	return tc.Sender(to, method, value, params)
 }
 

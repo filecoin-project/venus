@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -31,7 +33,7 @@ type ProtocolParams struct {
 type protocolParamsPlumbing interface {
 	ConfigGet(string) (interface{}, error)
 	ChainHeadKey() block.TipSetKey
-	MessageQuery(ctx context.Context, optFrom, to address.Address, method string, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
+	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
 	BlockTime() time.Duration
 }
 
@@ -91,9 +93,9 @@ func (pp *ProtocolParams) IsSupportedSectorSize(sectorSize *types.BytesAmount) b
 
 func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	values, err := plumbing.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, "getProofsMode", plumbing.ChainHeadKey())
+	values, err := plumbing.MessageQuery(ctx, address.Address{}, address.StorageMarketAddress, storagemarket.GetProofsMode, plumbing.ChainHeadKey())
 	if err != nil {
-		return 0, errors.Wrap(err, "'getProofsMode' query message failed")
+		return 0, errors.Wrap(err, "'GetProofsMode' query message failed")
 	}
 
 	if err := encoding.Decode(values[0], &proofsMode); err != nil {
@@ -104,7 +106,7 @@ func getProofsMode(ctx context.Context, plumbing protocolParamsPlumbing) (types.
 }
 
 func getNetworkName(ctx context.Context, plumbing protocolParamsPlumbing) (string, error) {
-	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, "getNetwork", plumbing.ChainHeadKey())
+	nameBytes, err := plumbing.MessageQuery(ctx, address.Address{}, address.InitAddress, initactor.GetNetwork, plumbing.ChainHeadKey())
 	if err != nil {
 		return "", errors.Wrap(err, "'getNetwork' query message failed")
 	}

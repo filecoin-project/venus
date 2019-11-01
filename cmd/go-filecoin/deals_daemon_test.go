@@ -23,6 +23,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
@@ -317,7 +318,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 				Index:  0,
 				Amount: &firstAmount,
 				Condition: &types.Predicate{
-					Method: "verifyPieceInclusion",
+					Method: miner.VerifyPieceInclusion,
 					To:     ask.Miner,
 				},
 				Payer:   &clientAddr,

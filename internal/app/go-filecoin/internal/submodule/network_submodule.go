@@ -41,10 +41,7 @@ import (
 type NetworkSubmodule struct {
 	NetworkName string
 
-	host host.Host
-
-	// TODO: do we need a second host? (see: https://github.com/filecoin-project/go-filecoin/issues/3477)
-	PeerHost host.Host
+	Host host.Host
 
 	// Router is a router from IPFS
 	Router routing.Routing
@@ -136,8 +133,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName: networkName,
-		host:        peerHost,
-		PeerHost:    peerHost,
+		Host:        peerHost,
 		Router:      router,
 		fsub:        fsub,
 		Bitswap:     bswap,

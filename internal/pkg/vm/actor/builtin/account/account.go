@@ -16,37 +16,41 @@ import (
 // TODO make singleton vs not more clear
 type Actor struct{}
 
-// Ensure AccountActor is an ExecutableActor at compile time.
-var _ exec.ExecutableActor = (*Actor)(nil)
-
 // NewActor creates a new account actor.
 func NewActor(balance types.AttoFIL) (*actor.Actor, error) {
 	return actor.NewActor(types.AccountActorCodeCid, balance), nil
 }
 
 // IsAccount tests whether an actor is an account actor.
-func IsAccount(act *actor.Actor) bool {
-	return types.AccountActorCodeCid.Equals(act.Code)
+func IsAccount(a *actor.Actor) bool {
+	return types.AccountActorCodeCid.Equals(a.Code)
 }
 
 // UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
-func UpgradeActor(act *actor.Actor) error {
-	if !act.Empty() {
-		return errors.Errorf("Can't upgrade non-empty actor with code %s", act.Code)
+func UpgradeActor(a *actor.Actor) error {
+	if !a.Empty() {
+		return errors.Errorf("Can't upgrade non-empty actor with code %s", a.Code)
 	}
-	act.Code = types.AccountActorCodeCid
+	a.Code = types.AccountActorCodeCid
 	return nil
 }
 
-// accountExports are the publicly (externally callable) methods of the AccountActor.
-var accountExports = exec.Exports{}
+//
+// ExecutableActor impl for Actor
+//
 
-// Exports makes the available methods for this contract available.
-func (a *Actor) Exports() exec.Exports {
-	return accountExports
+// Ensure AccountActor is an ExecutableActor at compile time.
+var _ exec.ExecutableActor = (*Actor)(nil)
+
+// signatures are the publicly (externally callable) methods of the AccountActor.
+var signatures = exec.Exports{}
+
+// Method returns method definition for a given method id.
+func (*Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
-func (a *Actor) InitializeState(_ exec.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ exec.Storage, _ interface{}) error {
 	return nil
 }

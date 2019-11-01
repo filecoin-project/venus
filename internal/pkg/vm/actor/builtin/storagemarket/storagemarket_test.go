@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 
@@ -33,7 +34,7 @@ func TestStorageMarketCreateStorageMiner(t *testing.T) {
 
 	pid := th.RequireRandomPeerID(t)
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, pid)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), "createStorageMiner", pdata)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(100), storagemarket.CreateStorageMiner, pdata)
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Nil(t, result.ExecutionError)
@@ -69,13 +70,13 @@ func TestStorageMarketCreateStorageMinerDoesNotOverwriteActorBalance(t *testing.
 	minerAddr, err := deriveMinerAddress(address.TestAddress, 0)
 	require.NoError(t, err)
 
-	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), "", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress2, minerAddr, 0, types.NewAttoFILFromFIL(100), types.SendMethodID, []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
 
 	pdata := actor.MustConvertParams(types.OneKiBSectorSize, th.RequireRandomPeerID(t))
-	msg = types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), "createStorageMiner", pdata)
+	msg = types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(200), storagemarket.CreateStorageMiner, pdata)
 	result, err = th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 	require.NoError(t, err)
 	require.Equal(t, uint8(0), result.Receipt.ExitCode)
@@ -97,7 +98,7 @@ func TestProofsMode(t *testing.T) {
 	defer cancel()
 
 	st, vms := th.RequireCreateStorages(ctx, t)
-	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), "getProofsMode", []byte{})
+	msg := types.NewUnsignedMessage(address.TestAddress, address.StorageMarketAddress, 0, types.NewAttoFILFromFIL(14), storagemarket.GetProofsMode, []byte{})
 	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 
 	require.NoError(t, err)
@@ -211,7 +212,7 @@ func requireMakeCommitment(t *testing.T, st state.Tree, vms vm.StorageMap, miner
 	builder := chain.NewBuilder(t, address.Undef)
 	head := builder.AppendManyOn(blockHeight, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), blockHeight)
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, "commitSector", ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 3, miner.CommitSector, ancestors, sectorID, th.MakeCommitment(), th.MakeCommitment(), th.MakeCommitment(), th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	require.Equal(t, uint8(0), res.Receipt.ExitCode)
@@ -237,7 +238,7 @@ func TestUpdateStorage(t *testing.T) {
 			address.StorageMarketAddress,
 			0,
 			0,
-			"updateStorage",
+			storagemarket.UpdateStorage,
 			nil,
 			update,
 		)
@@ -253,7 +254,7 @@ func TestUpdateStorage(t *testing.T) {
 			address.StorageMarketAddress,
 			0,
 			0,
-			"getTotalStorage",
+			storagemarket.GetTotalStorage,
 			nil,
 		)
 		require.NoError(t, err)
@@ -282,7 +283,7 @@ func TestUpdateStorage(t *testing.T) {
 			address.StorageMarketAddress,
 			0,
 			0,
-			"updateStorage",
+			storagemarket.UpdateStorage,
 			nil,
 			plus,
 		)
@@ -298,7 +299,7 @@ func TestUpdateStorage(t *testing.T) {
 			address.StorageMarketAddress,
 			0,
 			0,
-			"updateStorage",
+			storagemarket.UpdateStorage,
 			nil,
 			minus,
 		)
@@ -314,7 +315,7 @@ func TestUpdateStorage(t *testing.T) {
 			address.StorageMarketAddress,
 			0,
 			0,
-			"getTotalStorage",
+			storagemarket.GetTotalStorage,
 			nil,
 		)
 		require.NoError(t, err)
@@ -349,10 +350,10 @@ func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address,
 	return address.NewActorAddress(buf.Bytes())
 }
 
-// assertGetLateMiners calls "getLateMiners" message / method, deserializes the result and returns
+// assertGetLateMiners calls GetLateMiners message / method, deserializes the result and returns
 // a map of the late miners with their late states
 func assertGetLateMiners(t *testing.T, st state.Tree, vms vm.StorageMap, height uint64) *map[string]uint64 {
-	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, height, "getLateMiners", nil)
+	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, height, storagemarket.GetLateMiners, nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)
 	assert.Equal(t, uint8(0), res.Receipt.ExitCode)

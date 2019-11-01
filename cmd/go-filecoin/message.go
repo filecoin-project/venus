@@ -83,9 +83,10 @@ var msgSendCmd = &cmds.Command{
 			return err
 		}
 
-		method, ok := req.Options["method"].(string)
-		if !ok {
-			method = ""
+		methodID := types.SendMethodID
+		methodInput, ok := req.Options["method"].(uint)
+		if ok {
+			methodID = types.MethodID(methodInput)
 		}
 
 		if preview {
@@ -93,7 +94,7 @@ var msgSendCmd = &cmds.Command{
 				req.Context,
 				fromAddr,
 				target,
-				method,
+				methodID,
 			)
 			if err != nil {
 				return err
@@ -112,7 +113,7 @@ var msgSendCmd = &cmds.Command{
 			val,
 			gasPrice,
 			gasLimit,
-			method,
+			methodID,
 		)
 		if err != nil {
 			return err

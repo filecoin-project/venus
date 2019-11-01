@@ -1,6 +1,8 @@
 package initactor
 
 import (
+	"reflect"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/ipfs/go-cid"
@@ -20,29 +22,42 @@ type State struct {
 	Network string
 }
 
-// Ensure InitActor is an ExecutableActor at compile time.
-var _ exec.ExecutableActor = (*Actor)(nil)
-
-// initExports are the publicly (externally callable) methods of the AccountActor.
-var initExports = exec.Exports{
-	"getNetwork": &exec.FunctionSignature{
-		Params: []abi.Type{},
-		Return: []abi.Type{abi.String},
-	},
-}
-
-// Exports makes the available methods for this contract available.
-func (a *Actor) Exports() exec.Exports {
-	return initExports
-}
+// Actor methods
+const (
+	GetNetwork types.MethodID = iota + 32
+)
 
 // NewActor returns a init actor.
 func NewActor() *actor.Actor {
 	return actor.NewActor(types.InitActorCodeCid, types.ZeroAttoFIL)
 }
 
+//
+// ExecutableActor impl for Actor
+//
+
+// Ensure InitActor is an ExecutableActor at compile time.
+var _ exec.ExecutableActor = (*Actor)(nil)
+
+var signatures = exec.Exports{
+	GetNetwork: &exec.FunctionSignature{
+		Params: []abi.Type{},
+		Return: []abi.Type{abi.String},
+	},
+}
+
+// Method returns method definition for a given method id.
+func (a *Actor) Method(id types.MethodID) (exec.Method, *exec.FunctionSignature, bool) {
+	switch id {
+	case GetNetwork:
+		return reflect.ValueOf((*Impl)(a).GetNetwork), signatures[GetNetwork], true
+	default:
+		return nil, nil, false
+	}
+}
+
 // InitializeState for init actor.
-func (ia *Actor) InitializeState(storage exec.Storage, networkInterface interface{}) error {
+func (*Actor) InitializeState(storage exec.Storage, networkInterface interface{}) error {
 	network := networkInterface.(string)
 
 	initStorage := &State{
@@ -61,14 +76,21 @@ func (ia *Actor) InitializeState(storage exec.Storage, networkInterface interfac
 	return storage.Commit(id, cid.Undef)
 }
 
+//
+// vm methods for actor
+//
+
+// Impl is the VM implementation of the actor.
+type Impl Actor
+
 // GetNetwork returns the network name for this network
-func (sma *Actor) GetNetwork(vmctx exec.VMContext) (string, uint8, error) {
-	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+func (*Impl) GetNetwork(ctx exec.VMContext) (string, uint8, error) {
+	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return "", exec.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
-	err := actor.ReadState(vmctx, &state)
+	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return "", errors.CodeError(err), err
 	}

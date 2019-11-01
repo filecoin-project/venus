@@ -111,9 +111,7 @@ func TestSendErrorHandling(t *testing.T) {
 	t.Run("returns exit code 1 and a revert error if code doesn't export a matching method", func(t *testing.T) {
 		msg := newMsg()
 		msg.Value = types.ZeroAttoFIL // such that we don't transfer
-		msg.Method = "bar"
-
-		assert.False(t, actor.FakeActorExports.Has(msg.Method))
+		msg.Method = types.MethodID(125124)
 
 		deps := sendDeps{}
 

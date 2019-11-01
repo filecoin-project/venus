@@ -22,6 +22,8 @@ var keys = types.MustGenerateKeyInfo(2, 42)
 var signer = types.NewMockSigner(keys)
 var addresses = make([]address.Address, len(keys))
 
+var methodID = types.MethodID(21231)
+
 func init() {
 	for i, k := range keys {
 		addr, _ := k.Address()
@@ -93,7 +95,7 @@ func TestBLSSignatureValidationConfiguration(t *testing.T) {
 	from, err := address.NewBLSAddress(pubKey[:])
 	require.NoError(t, err)
 
-	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, "method", []byte("params"), types.NewGasPrice(1), types.NewGasUnits(300))
+	msg := types.NewMeteredMessage(from, addresses[1], 0, types.ZeroAttoFIL, methodID, []byte("params"), types.NewGasPrice(1), types.NewGasUnits(300))
 	unsigned := &types.SignedMessage{Message: *msg}
 	actor := newActor(t, 1000, 0)
 
@@ -184,7 +186,7 @@ func newMessage(t *testing.T, from, to address.Address, nonce uint64, valueAF in
 		to,
 		nonce,
 		val,
-		"method",
+		methodID,
 		[]byte("params"),
 		types.NewGasPrice(gasPrice),
 		types.NewGasUnits(gasLimit),

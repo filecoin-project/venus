@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 	"github.com/filecoin-project/go-filecoin/tools/fast/fastesting"
+	"github.com/filecoin-project/go-filecoin/tools/fast/series"
 	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
@@ -233,15 +234,12 @@ func TestMinerCreateSuccess(t *testing.T) {
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
-	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
-	}()
-	env.RunAsyncMiner()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
+	series.CtxMiningNext(ctx, 1)
 	minerAddress := requireMinerCreate(ctx, t, env, minerNode)
+
 	assert.NotEqual(t, address.Undef, minerAddress)
 }
 
@@ -454,11 +452,6 @@ func TestMinerWorker(t *testing.T) {
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
-	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
-	}()
-	env.RunAsyncMiner()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 
@@ -473,6 +466,7 @@ func TestMinerWorker(t *testing.T) {
 	})
 
 	t.Run("if there is a miner, shows the correct worker address", func(t *testing.T) {
+		series.CtxMiningNext(ctx, 1)
 		minerAddr := requireMinerCreate(ctx, t, env, minerNode)
 
 		workerAddr, err := minerNode.MinerOwner(ctx, minerAddr)
@@ -491,11 +485,6 @@ func TestMinerSetWorker(t *testing.T) {
 	defer func() {
 		require.NoError(t, env.Teardown(ctx))
 	}()
-	require.NoError(t, env.GenesisMiner.MiningStart(ctx))
-	defer func() {
-		require.NoError(t, env.GenesisMiner.MiningStop(ctx))
-	}()
-	env.RunAsyncMiner()
 
 	minerNode := env.RequireNewNodeWithFunds(1000)
 	newAddr := address.NewForTestGetter()()
@@ -503,16 +492,22 @@ func TestMinerSetWorker(t *testing.T) {
 	t.Run("fails if there is no miner worker", func(t *testing.T) {
 		_, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 		require.NotNil(t, err)
+
+		series.CtxMiningOnce(ctx)
+
 		lastErr, err := minerNode.LastCmdStdErrStr()
 		require.NoError(t, err)
 		assert.Contains(t, lastErr, "actor not found")
 	})
 
 	t.Run("succceeds if there is a miner", func(t *testing.T) {
+		series.CtxMiningNext(ctx, 1)
 		_ = requireMinerCreate(ctx, t, env, minerNode)
 
 		msgCid, err := minerNode.MinerSetWorker(ctx, newAddr, fast.AOPrice(big.NewFloat(1.0)), fast.AOLimit(300))
 		require.NoError(t, err)
+
+		series.CtxMiningOnce(ctx)
 
 		resp, err := minerNode.MessageWait(ctx, msgCid)
 		require.NoError(t, err)
