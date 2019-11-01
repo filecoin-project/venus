@@ -1,7 +1,7 @@
 package vladrok
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vladrok/internal/runtime"
 )
 
 // Re-exports
