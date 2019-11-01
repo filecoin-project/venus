@@ -607,12 +607,10 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	// get all 3 actors
 	act1 = state.MustGetActor(st, addr1)
 	assert.Equal(t, types.NewAttoFILFromFIL(500), act1.Balance)
-	// Dragons: leave as is or get a global method on actor.Actor to check if its some Cid?
 	assert.True(t, types.AccountActorCodeCid.Equals(act1.Code))
 
 	act2 := state.MustGetActor(st, addr2)
 	assert.Equal(t, types.NewAttoFILFromFIL(200), act2.Balance)
-	// Dragons: leave as is or get a global method on actor.Actor to check if its some Cid?
 	assert.True(t, types.AccountActorCodeCid.Equals(act2.Code))
 
 	act3 := state.MustGetActor(st, addr3)

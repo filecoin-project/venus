@@ -107,7 +107,6 @@ func (ctx *VMContext) MyBalance() types.AttoFIL {
 
 // IsFromAccountActor returns true if the message is being sent by an account actor.
 func (ctx *VMContext) IsFromAccountActor() bool {
-	// Dragons: leave as is or get a global method on actor.Actor to check if its some Cid?
 	return types.AccountActorCodeCid.Equals(ctx.from.Code)
 }
 

@@ -59,7 +59,6 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 
 	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
 	// when the message is processed.
-	// Dragons: leave as is or get a global method on actor.Actor to check if its some Cid?
 	if !(fromActor.Empty() || types.AccountActorCodeCid.Equals(fromActor.Code)) {
 		return errNonAccountActor
 	}
