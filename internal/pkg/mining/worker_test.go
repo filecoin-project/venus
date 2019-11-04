@@ -72,11 +72,12 @@ func TestLookbackElection(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     mem,
-			TicketGen:    &consensus.FakeTicketMachine{},
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       mem,
+			TicketGen:      &consensus.FakeTicketMachine{},
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -107,11 +108,12 @@ func TestLookbackElection(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     &consensus.FakeElectionMachine{},
-			TicketGen:    mtm,
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       &consensus.FakeElectionMachine{},
+			TicketGen:      mtm,
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -220,7 +222,8 @@ func Test_Mine(t *testing.T) {
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
-		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
+		require.Error(t, r.Err)
+		assert.Contains(t, r.Err.Error(), "test error retrieving state root")
 		assert.True(t, ticketGen)
 	})
 
