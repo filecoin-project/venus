@@ -87,6 +87,11 @@ type ticketGenerator interface {
 	NextTicket(block.Ticket, address.Address, types.Signer) (block.Ticket, error)
 }
 
+type tipSetMetadata interface {
+	GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error)
+	GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error)
+}
+
 // DefaultWorker runs a mining job.
 type DefaultWorker struct {
 	api workerPorcelainAPI
@@ -96,6 +101,7 @@ type DefaultWorker struct {
 	workerSigner   types.Signer
 
 	// consensus things
+	tsMetadata   tipSetMetadata
 	getStateTree GetStateTree
 	getWeight    GetWeight
 	getAncestors GetAncestors
@@ -119,11 +125,12 @@ type WorkerParameters struct {
 	WorkerSigner   types.Signer
 
 	// consensus things
-	GetStateTree GetStateTree
-	GetWeight    GetWeight
-	GetAncestors GetAncestors
-	Election     electionUtil
-	TicketGen    ticketGenerator
+	TipSetMetadata tipSetMetadata
+	GetStateTree   GetStateTree
+	GetWeight      GetWeight
+	GetAncestors   GetAncestors
+	Election       electionUtil
+	TicketGen      ticketGenerator
 
 	// core filecoin things
 	MessageSource MessageSource
@@ -149,6 +156,7 @@ func NewDefaultWorker(parameters WorkerParameters) *DefaultWorker {
 		workerSigner:   parameters.WorkerSigner,
 		election:       parameters.Election,
 		ticketGen:      parameters.TicketGen,
+		tsMetadata:     parameters.TipSetMetadata,
 		clock:          parameters.Clock,
 	}
 }

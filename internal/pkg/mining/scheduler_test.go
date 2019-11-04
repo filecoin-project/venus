@@ -81,11 +81,12 @@ func TestMineOnce10Null(t *testing.T) {
 		MinerOwnerAddr: addr,
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.ElectionMachine{},
-		TicketGen:    &consensus.TicketMachine{},
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.ElectionMachine{},
+		TicketGen:      &consensus.TicketMachine{},
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),

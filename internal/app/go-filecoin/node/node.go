@@ -704,11 +704,12 @@ func (node *Node) CreateMiningWorker(ctx context.Context) (mining.Worker, error)
 		MinerOwnerAddr: minerOwnerAddr,
 		WorkerSigner:   node.Wallet.Wallet,
 
-		GetStateTree: node.getStateTree,
-		GetWeight:    node.getWeight,
-		GetAncestors: node.getAncestors,
-		Election:     consensus.ElectionMachine{},
-		TicketGen:    consensus.TicketMachine{},
+		GetStateTree:   node.getStateTree,
+		GetWeight:      node.getWeight,
+		GetAncestors:   node.getAncestors,
+		Election:       consensus.ElectionMachine{},
+		TicketGen:      consensus.TicketMachine{},
+		TipSetMetadata: node.chain.ChainReader,
 
 		MessageSource: node.Messaging.Inbox.Pool(),
 		MessageStore:  node.chain.MessageStore,

@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	dag "github.com/ipfs/go-merkledag"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,11 +72,12 @@ func TestLookbackElection(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     mem,
-			TicketGen:    &consensus.FakeTicketMachine{},
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       mem,
+			TicketGen:      &consensus.FakeTicketMachine{},
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -106,11 +108,12 @@ func TestLookbackElection(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     &consensus.FakeElectionMachine{},
-			TicketGen:    mtm,
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       &consensus.FakeElectionMachine{},
+			TicketGen:      mtm,
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -167,11 +170,12 @@ func Test_Mine(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     &consensus.FakeElectionMachine{},
-			TicketGen:    testTicketGen,
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       &consensus.FakeElectionMachine{},
+			TicketGen:      testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -201,11 +205,12 @@ func Test_Mine(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: makeExplodingGetStateTree(st),
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     &consensus.FakeElectionMachine{},
-			TicketGen:    testTicketGen,
+			TipSetMetadata: fakeTSMetadata{shouldError: true},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       &consensus.FakeElectionMachine{},
+			TicketGen:      testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -217,7 +222,8 @@ func Test_Mine(t *testing.T) {
 
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
-		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
+		require.Error(t, r.Err)
+		assert.Contains(t, r.Err.Error(), "test error retrieving state root")
 		assert.True(t, ticketGen)
 	})
 
@@ -236,11 +242,12 @@ func Test_Mine(t *testing.T) {
 			MinerOwnerAddr: minerOwnerAddr,
 			WorkerSigner:   mockSigner,
 
-			GetStateTree: getStateTree,
-			GetWeight:    getWeightTest,
-			GetAncestors: getAncestors,
-			Election:     &consensus.FakeElectionMachine{},
-			TicketGen:    testTicketGen,
+			TipSetMetadata: fakeTSMetadata{},
+			GetStateTree:   getStateTree,
+			GetWeight:      getWeightTest,
+			GetAncestors:   getAncestors,
+			Election:       &consensus.FakeElectionMachine{},
+			TicketGen:      testTicketGen,
 
 			MessageSource: pool,
 			Processor:     th.NewFakeProcessor(),
@@ -395,11 +402,12 @@ func TestApplyBLSMessages(t *testing.T) {
 		MinerOwnerAddr: addrs[4],
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),
@@ -430,11 +438,12 @@ func TestApplyBLSMessages(t *testing.T) {
 		}
 	})
 
-	t.Run("all 10 messages are executed", func(t *testing.T) {
-		receipts, err := msgStore.LoadReceipts(ctx, block.MessageReceipts)
+	t.Run("all 10 messages are stored", func(t *testing.T) {
+		secpMessages, blsMessages, err := msgStore.LoadMessages(ctx, block.Messages)
 		require.NoError(t, err)
 
-		assert.Len(t, receipts, 10)
+		assert.Len(t, secpMessages, 5)
+		assert.Len(t, blsMessages, 5)
 	})
 
 	t.Run("block bls signature can be used to validate messages", func(t *testing.T) {
@@ -487,6 +496,7 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 
 	messages := chain.NewMessageStore(bs)
 
+	meta := fakeTSMetadata{}
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
@@ -494,11 +504,12 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 		MinerOwnerAddr: minerOwnerAddr,
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: meta,
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),
@@ -519,7 +530,15 @@ func TestGenerateMultiBlockTipSet(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
-	assert.Equal(t, types.EmptyReceiptsCID, blk.MessageReceipts)
+
+	expectedStateRoot, err := meta.GetTipSetStateRoot(parentTipset.Key())
+	require.NoError(t, err)
+	assert.Equal(t, expectedStateRoot, blk.StateRoot)
+
+	expectedReceipts, err := meta.GetTipSetReceiptsRoot(parentTipset.Key())
+	require.NoError(t, err)
+	assert.Equal(t, expectedReceipts, blk.MessageReceipts)
+
 	assert.Equal(t, types.Uint64(101), blk.Height)
 	assert.Equal(t, types.Uint64(120), blk.ParentWeight)
 	assert.Equal(t, block.Ticket{VRFProof: []byte{2}}, blk.Ticket)
@@ -550,11 +569,12 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 		MinerOwnerAddr: addrs[3],
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
@@ -625,9 +645,6 @@ func TestGeneratePoolBlockResults(t *testing.T) {
 	msgs, _, err := messages.LoadMessages(ctx, blk.Messages)
 	require.NoError(t, err)
 	assert.Len(t, msgs, 1) // This is the good message
-	rcpts, err := messages.LoadReceipts(ctx, blk.MessageReceipts)
-	require.NoError(t, err)
-	assert.Len(t, rcpts, 1)
 }
 
 func TestGenerateSetsBasicFields(t *testing.T) {
@@ -657,11 +674,12 @@ func TestGenerateSetsBasicFields(t *testing.T) {
 		MinerOwnerAddr: minerOwnerAddr,
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
@@ -719,11 +737,12 @@ func TestGenerateWithoutMessages(t *testing.T) {
 		MinerOwnerAddr: addrs[3],
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: getStateTree,
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: fakeTSMetadata{},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
@@ -745,7 +764,7 @@ func TestGenerateWithoutMessages(t *testing.T) {
 	assert.Len(t, pool.Pending(), 0) // This is the temporary failure.
 
 	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.SecpRoot)
-	assert.Equal(t, types.EmptyMessagesCID, blk.MessageReceipts)
+	assert.Equal(t, types.EmptyMessagesCID, blk.Messages.BLSRoot)
 }
 
 // If something goes wrong while generating a new block, even as late as when flushing it,
@@ -759,6 +778,9 @@ func TestGenerateError(t *testing.T) {
 
 	st, pool, addrs, bs := sharedSetup(t, mockSigner)
 
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+		return st, nil
+	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
 		return nil, nil
 	}
@@ -771,11 +793,12 @@ func TestGenerateError(t *testing.T) {
 		MinerOwnerAddr: addrs[3],
 		WorkerSigner:   mockSigner,
 
-		GetStateTree: makeExplodingGetStateTree(st),
-		GetWeight:    getWeightTest,
-		GetAncestors: getAncestors,
-		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    &consensus.FakeTicketMachine{},
+		TipSetMetadata: fakeTSMetadata{shouldError: true},
+		GetStateTree:   getStateTree,
+		GetWeight:      getWeightTest,
+		GetAncestors:   getAncestors,
+		Election:       &consensus.FakeElectionMachine{},
+		TicketGen:      &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     consensus.NewDefaultProcessor(),
@@ -806,23 +829,6 @@ func TestGenerateError(t *testing.T) {
 	assert.Len(t, pool.Pending(), 1) // No messages are removed from the pool.
 }
 
-type stateTreeForTest struct {
-	state.Tree
-	TestFlush func(ctx context.Context) (cid.Cid, error)
-}
-
-func wrapStateTreeForTest(st state.Tree) *stateTreeForTest {
-	stt := stateTreeForTest{
-		st,
-		st.Flush,
-	}
-	return &stt
-}
-
-func (st *stateTreeForTest) Flush(ctx context.Context) (cid.Cid, error) {
-	return st.TestFlush(ctx)
-}
-
 func getWeightTest(_ context.Context, ts block.TipSet) (uint64, error) {
 	w, err := ts.ParentWeight()
 	if err != nil {
@@ -832,20 +838,24 @@ func getWeightTest(_ context.Context, ts block.TipSet) (uint64, error) {
 	return w + uint64(ts.Len())*10, nil
 }
 
-func makeExplodingGetStateTree(st state.Tree) func(context.Context, block.TipSet) (state.Tree, error) {
-	return func(c context.Context, ts block.TipSet) (state.Tree, error) {
-		stt := wrapStateTreeForTest(st)
-		stt.TestFlush = func(ctx context.Context) (cid.Cid, error) {
-			return cid.Undef, errors.New("boom no flush")
-		}
-
-		return stt, nil
-	}
-}
-
 func setupSigner() (types.MockSigner, address.Address) {
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(10)
 
 	signerAddr := mockSigner.Addresses[len(mockSigner.Addresses)-1]
 	return mockSigner, signerAddr
+}
+
+type fakeTSMetadata struct {
+	shouldError bool
+}
+
+func (tm fakeTSMetadata) GetTipSetStateRoot(key block.TipSetKey) (cid.Cid, error) {
+	if tm.shouldError {
+		return cid.Undef, errors.New("test error retrieving state root")
+	}
+	return dag.NewRawNode([]byte("state root")).Cid(), nil
+}
+
+func (tm fakeTSMetadata) GetTipSetReceiptsRoot(key block.TipSetKey) (cid.Cid, error) {
+	return dag.NewRawNode([]byte("receipt root")).Cid(), nil
 }

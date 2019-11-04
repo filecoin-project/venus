@@ -65,6 +65,8 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	pending := w.messageSource.Pending()
 	mq := NewMessageQueue(pending)
 	candidateMsgs := orderMessageCandidates(mq.Drain())
+
+	// run state transition to learn which messages are valid
 	vms := vm.NewStorageMap(w.blockstore)
 	results, err := w.processor.ApplyMessagesAndPayRewards(ctx, stateTree, vms, types.UnwrapSigned(candidateMsgs),
 		w.minerOwnerAddr, types.NewBlockHeight(blockHeight), ancestors)
@@ -72,16 +74,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "generate apply messages")
 	}
 
-	newStateTreeCid, err := stateTree.Flush(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "generate flush state tree")
-	}
-
-	if err = vms.Flush(); err != nil {
-		return nil, errors.Wrap(err, "generate flush vm storage map")
-	}
-
-	var receipts []*types.MessageReceipt
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage
 
@@ -90,7 +82,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	for i, r := range results {
 		msg := candidateMsgs[i]
 		if r.Failure == nil {
-			receipts = append(receipts, r.Receipt)
 			if msg.Message.From.Protocol() == address.BLS {
 				blsAccepted = append(blsAccepted, msg)
 			} else {
@@ -124,20 +115,27 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	if err != nil {
 		return nil, errors.Wrap(err, "error persisting messages")
 	}
-	rcptsCid, err := w.messageStore.StoreReceipts(ctx, receipts)
+
+	// get tipset state root and receipt root
+	baseStateRoot, err := w.tsMetadata.GetTipSetStateRoot(baseTipSet.Key())
 	if err != nil {
-		return nil, errors.Wrap(err, "error persisting receipts")
+		return nil, errors.Wrapf(err, "error retrieving state root for tipset %s", baseTipSet.Key().String())
+	}
+
+	baseReceiptRoot, err := w.tsMetadata.GetTipSetReceiptsRoot(baseTipSet.Key())
+	if err != nil {
+		return nil, errors.Wrapf(err, "error retrieving receipt root for tipset %s", baseTipSet.Key().String())
 	}
 
 	next := &block.Block{
 		Miner:           w.minerAddr,
 		Height:          types.Uint64(blockHeight),
 		Messages:        txMeta,
-		MessageReceipts: rcptsCid,
+		MessageReceipts: baseReceiptRoot,
 		Parents:         baseTipSet.Key(),
 		ParentWeight:    types.Uint64(weight),
 		ElectionProof:   electionProof,
-		StateRoot:       newStateTreeCid,
+		StateRoot:       baseStateRoot,
 		Ticket:          ticket,
 		Timestamp:       types.Uint64(w.clock.Now().Unix()),
 		BLSAggregateSig: blsAggregateSig,
