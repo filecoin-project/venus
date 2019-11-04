@@ -233,6 +233,23 @@ func (ctx *VMContext) Verifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 
+var _ Panda = (*VMContext)(nil)
+
+// Actors returns the executable actors lookup table.
+func (ctx *VMContext) Actors() ExecutableActorLookup {
+	return ctx.actors
+}
+
+// From returns the actor the message originated from.
+func (ctx *VMContext) From() *actor.Actor {
+	return ctx.from
+}
+
+// To returns the actor the message is intended for.
+func (ctx *VMContext) To() *actor.Actor {
+	return ctx.to
+}
+
 // Dependency injection setup.
 
 // makeDeps returns a VMContext's external dependencies with their standard values set.
@@ -251,24 +268,33 @@ func makeDeps(st *state.CachedTree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
-	Send             func(context.Context, *VMContext) ([][]byte, uint8, error)
+	Send             func(context.Context, Panda) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-// Dragons: shouldn't this be taking the runtime?
-func Send(ctx context.Context, vmCtx *VMContext) ([][]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx Panda) ([][]byte, uint8, error) {
 	return send(ctx, Transfer, vmCtx)
 }
 
 // TransferFn is the money transfer function.
 type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
+// Review: not sure if this should be separete or part of runtime.Runtime
+// Panda is the internal runtime requirements
+type Panda interface {
+	runtime.Runtime
+	From() *actor.Actor
+	To() *actor.Actor
+	Actors() ExecutableActorLookup
+}
+
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, transfer TransferFn, vmCtx *VMContext) ([][]byte, uint8, error) {
-	if !vmCtx.message.Value.Equal(types.ZeroAttoFIL) {
-		if err := transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
+func send(ctx context.Context, transfer TransferFn, vmCtx Panda) ([][]byte, uint8, error) {
+	msg := vmCtx.Message()
+	if !msg.Value.Equal(types.ZeroAttoFIL) {
+		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {
 			if errors.ShouldRevert(err) {
 				return nil, err.(*errors.RevertError).Code(), err
 			}
@@ -276,25 +302,25 @@ func send(ctx context.Context, transfer TransferFn, vmCtx *VMContext) ([][]byte,
 		}
 	}
 
-	if vmCtx.message.Method == types.SendMethodID {
+	if msg.Method == types.SendMethodID {
 		// if only tokens are transferred there is no need for a method
 		// this means we can shortcircuit execution
 		return nil, 0, nil
 	}
 
-	if vmCtx.message.Method == types.InvalidMethodID {
+	if msg.Method == types.InvalidMethodID {
 		// your test should not be getting here..
 		// Note: this method is not materialized in production but could occur on tests
 		panic("trying to execute fake method on the actual VM, fix test")
 	}
 
 	// TODO: use chain height based protocol version here (#3360)
-	toExecutable, err := vmCtx.actors.GetActorCode(vmCtx.to.Code, 0)
+	toExecutable, err := vmCtx.Actors().GetActorCode(vmCtx.To().Code, 0)
 	if err != nil {
 		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
 	}
 
-	exportedFn, ok := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)
+	exportedFn, ok := actor.MakeTypedExport(toExecutable, msg.Method)
 	if !ok {
 		return nil, 1, errors.Errors[errors.ErrMissingExport]
 	}
