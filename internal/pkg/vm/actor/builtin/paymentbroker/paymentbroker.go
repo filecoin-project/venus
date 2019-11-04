@@ -13,11 +13,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )
 
 // Actor provides a mechanism for off chain payments.
@@ -138,7 +138,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
+func (*Actor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
 	// pb's default state is an empty lookup, so this method is a no-op
 	return nil
 }
@@ -202,7 +202,7 @@ var Errors = map[uint8]error{
 // CreateChannel creates a new payment channel from the caller to the target.
 // The value attached to the invocation is used as the deposit, and the channel
 // will expire and return all of its money to the owner after the given block height.
-func (*impl) createChannel(vmctx vm2.Runtime, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
+func (*impl) createChannel(vmctx runtime.Runtime, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -269,7 +269,7 @@ func (*impl) createChannel(vmctx vm2.Runtime, target address.Address, eol *types
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (*impl) redeem(vmctx vm2.Runtime, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
+func (*impl) redeem(vmctx runtime.Runtime, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -327,7 +327,7 @@ func (*impl) redeem(vmctx vm2.Runtime, payer address.Address, chid *types.Channe
 // - The parameters provided in the condition will be combined with redeemerConditionParams
 // - A message will be sent to the the condition.To address using the condition.Method with the combined params
 // - If the message returns an error the condition is considered to be false and the redeem will fail
-func (*impl) close(vmctx vm2.Runtime, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
+func (*impl) close(vmctx runtime.Runtime, payer address.Address, chid *types.ChannelID, amt types.AttoFIL,
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
@@ -379,7 +379,7 @@ func (*impl) close(vmctx vm2.Runtime, payer address.Address, chid *types.Channel
 
 // Extend can be used by the owner of a channel to add more funds to it and
 // extend the Channel's lifespan.
-func (*impl) extend(vmctx vm2.Runtime, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
+func (*impl) extend(vmctx runtime.Runtime, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -431,7 +431,7 @@ func (*impl) extend(vmctx vm2.Runtime, chid *types.ChannelID, eol *types.BlockHe
 // successfully redeemed a voucher or if the target has successfully redeemed
 // the channel with a conditional voucher and the condition is no longer valid
 // due to changes in chain state.
-func (*impl) cancel(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
+func (*impl) cancel(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -492,7 +492,7 @@ func (*impl) cancel(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
 
 // Reclaim is used by the owner of a channel to reclaim unspent funds in timed
 // out payment Channels they own.
-func (*impl) reclaim(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
+func (*impl) reclaim(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -539,7 +539,7 @@ func (*impl) reclaim(vmctx vm2.Runtime, chid *types.ChannelID) (uint8, error) {
 // If a condition is provided, attempts to redeem or close with the voucher will
 // first send a message based on the condition and require a successful response
 // for funds to be transferred.
-func (*impl) voucher(vmctx vm2.Runtime, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
+func (*impl) voucher(vmctx runtime.Runtime, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -595,7 +595,7 @@ func (*impl) voucher(vmctx vm2.Runtime, chid *types.ChannelID, amount types.Atto
 
 // Ls returns all payment channels for a given payer address.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
-func (*impl) ls(vmctx vm2.Runtime, payer address.Address) ([]byte, uint8, error) {
+func (*impl) ls(vmctx runtime.Runtime, payer address.Address) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return []byte{}, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -631,7 +631,7 @@ func (*impl) ls(vmctx vm2.Runtime, payer address.Address) ([]byte, uint8, error)
 	return channelsBytes, 0, nil
 }
 
-func validateAndUpdateChannel(ctx vm2.Runtime, target address.Address, channel *PaymentChannel, amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
+func validateAndUpdateChannel(ctx runtime.Runtime, target address.Address, channel *PaymentChannel, amt types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate, redeemerSuppliedParams []interface{}) error {
 	cacheCondition(channel, condition, redeemerSuppliedParams)
 
 	if err := checkCondition(ctx, channel); err != nil {
@@ -671,7 +671,7 @@ func validateAndUpdateChannel(ctx vm2.Runtime, target address.Address, channel *
 	return nil
 }
 
-func reclaim(ctx context.Context, vmctx vm2.Runtime, byChannelID storage.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
+func reclaim(ctx context.Context, vmctx runtime.Runtime, byChannelID storage.Lookup, payer address.Address, chid *types.ChannelID, channel *PaymentChannel) error {
 	amt := channel.Amount.Sub(channel.AmountRedeemed)
 	if amt.LessEqual(types.ZeroAttoFIL) {
 		return nil
@@ -740,7 +740,7 @@ func createVoucherSignatureData(channelID *types.ChannelID, amount types.AttoFIL
 	return append(data, validAt.Bytes()...), nil
 }
 
-func withPayerChannels(ctx context.Context, st vm2.Storage, payer address.Address, f func(storage.Lookup) error) error {
+func withPayerChannels(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
 	stateCid, err := actor.WithLookup(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
@@ -774,7 +774,7 @@ func withPayerChannels(ctx context.Context, st vm2.Storage, payer address.Addres
 	return st.Commit(stateCid, st.Head())
 }
 
-func withPayerChannelsForReading(ctx context.Context, st vm2.Storage, payer address.Address, f func(storage.Lookup) error) error {
+func withPayerChannelsForReading(ctx context.Context, st runtime.Storage, payer address.Address, f func(storage.Lookup) error) error {
 	return actor.WithLookupForReading(ctx, st, st.Head(), func(byPayer storage.Lookup) error {
 		byChannelLookup, err := findByChannelLookup(ctx, st, byPayer, payer)
 		if err != nil {
@@ -786,7 +786,7 @@ func withPayerChannelsForReading(ctx context.Context, st vm2.Storage, payer addr
 	})
 }
 
-func findByChannelLookup(ctx context.Context, storage vm2.Storage, byPayer storage.Lookup, payer address.Address) (storage.Lookup, error) {
+func findByChannelLookup(ctx context.Context, storage runtime.Storage, byPayer storage.Lookup, payer address.Address) (storage.Lookup, error) {
 	var byChannelCID cid.Cid
 	err := byPayer.Find(ctx, payer.String(), &byChannelCID)
 	if err != nil {
@@ -801,7 +801,7 @@ func findByChannelLookup(ctx context.Context, storage vm2.Storage, byPayer stora
 
 // checkCondition combines params in the condition with the redeemerSuppliedParams, sends a message
 // to the actor and method specified in the condition, and returns an error if one exists.
-func checkCondition(vmctx vm2.Runtime, channel *PaymentChannel) error {
+func checkCondition(vmctx runtime.Runtime, channel *PaymentChannel) error {
 	if channel.Condition == nil {
 		return nil
 	}

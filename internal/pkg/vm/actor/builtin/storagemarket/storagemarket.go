@@ -17,10 +17,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )
 
 func init() {
@@ -107,7 +107,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSi
 }
 
 // InitializeState stores the actor's initial data structure.
-func (*Actor) InitializeState(storage vm2.Storage, proofsModeInterface interface{}) error {
+func (*Actor) InitializeState(storage runtime.Storage, proofsModeInterface interface{}) error {
 	proofsMode := proofsModeInterface.(types.ProofsMode)
 
 	initStorage := &State{
@@ -148,7 +148,7 @@ var Errors = map[uint8]error{
 
 // CreateStorageMiner creates a new miner which will commit sectors of the
 // given size. The miners collateral is set by the value in the message.
-func (*impl) createStorageMiner(vmctx vm2.Runtime, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
+func (*impl) createStorageMiner(vmctx runtime.Runtime, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -199,7 +199,7 @@ func (*impl) createStorageMiner(vmctx vm2.Runtime, sectorSize *types.BytesAmount
 // UpdateStorage is called to reflect a change in the overall power of the network.
 // This occurs either when a miner adds a new commitment, or when one is removed
 // (via slashing, faults or willful removal). The delta is in number of bytes.
-func (*impl) updateStorage(vmctx vm2.Runtime, delta *types.BytesAmount) (uint8, error) {
+func (*impl) updateStorage(vmctx runtime.Runtime, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -233,7 +233,7 @@ func (*impl) updateStorage(vmctx vm2.Runtime, delta *types.BytesAmount) (uint8, 
 	return 0, nil
 }
 
-func (a *impl) getLateMiners(vmctx vm2.Runtime) (*map[string]uint64, uint8, error) {
+func (a *impl) getLateMiners(vmctx runtime.Runtime) (*map[string]uint64, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -280,7 +280,7 @@ func (a *impl) getLateMiners(vmctx vm2.Runtime) (*map[string]uint64, uint8, erro
 }
 
 // GetTotalStorage returns the total amount of proven storage in the system.
-func (*impl) getTotalStorage(vmctx vm2.Runtime) (*types.BytesAmount, uint8, error) {
+func (*impl) getTotalStorage(vmctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -302,7 +302,7 @@ func (*impl) getTotalStorage(vmctx vm2.Runtime) (*types.BytesAmount, uint8, erro
 }
 
 // GetSectorSize returns the sector size of the block chain
-func (*impl) getProofsMode(vmctx vm2.Runtime) (types.ProofsMode, uint8, error) {
+func (*impl) getProofsMode(vmctx runtime.Runtime) (types.ProofsMode, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return 0, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -323,7 +323,7 @@ func (*impl) getProofsMode(vmctx vm2.Runtime) (types.ProofsMode, uint8, error) {
 	return size, 0, nil
 }
 
-func (*impl) getMinerPoStState(vmctx vm2.Runtime, minerAddr address.Address) (uint64, error) {
+func (*impl) getMinerPoStState(vmctx runtime.Runtime, minerAddr address.Address) (uint64, error) {
 	msgResult, _, err := vmctx.Send(minerAddr, miner.GetPoStState, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return 0, err

@@ -5,9 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )
 
 // Actor is the builtin actor responsible for individual accounts.
@@ -48,6 +48,6 @@ func (*Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSign
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(_ vm2.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ runtime.Storage, _ interface{}) error {
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func TestInitActorGetNetwork(t *testing.T) {
 	}
 
 	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, GetNetwork, []byte{})
-	vmctx := th.NewFakeVMContext(msg, state)
+	vmctx := vm2.NewFakeVMContext(msg, state)
 
 	actor := &Impl{}
 	network, code, err := actor.GetNetwork(vmctx)

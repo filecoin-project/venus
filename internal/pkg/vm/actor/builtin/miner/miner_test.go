@@ -30,8 +30,9 @@ import (
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/vmcontext"
 )
@@ -767,7 +768,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		verifier := &verification.FakeVerifier{
 			VerifyPoStValid: true,
 		}
-		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx := vm2.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Impl(Actor{Bootstrap: false})
@@ -801,7 +802,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 		minerState.SectorCommitments = NewSectorSet()
 
 		minerState.ProvingSet = types.NewIntSet(4)
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Impl(Actor{Bootstrap: false})
@@ -825,7 +826,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 			VerifyPoStError: errors.New("verifier error"),
 		}
 
-		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx := vm2.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Impl(Actor{Bootstrap: false})
@@ -849,7 +850,7 @@ func TestMinerSubmitPoStVerification(t *testing.T) {
 			VerifyPoStValid: false,
 		}
 
-		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx := vm2.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = types.NewBlockHeight(530)
 
 		miner := Impl(Actor{Bootstrap: false})
@@ -1118,7 +1119,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
 
 		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
@@ -1147,7 +1148,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
 
 		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
@@ -1174,7 +1175,7 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.ProvingPeriodEnd = types.NewBlockHeight(secondProvingPeriodEnd)
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		vmctx.VerifierValue = &verification.FakeVerifier{VerifyPoStValid: true}
 
 		vmctx.Sampler = func(sampleHeight *types.BlockHeight) ([]byte, error) {
@@ -1228,7 +1229,7 @@ func TestAddFaults(t *testing.T) {
 		minerState.CurrentFaultSet = types.NewIntSet(tc.initialCurrent...)
 		minerState.NextFaultSet = types.NewIntSet(tc.initialNext...)
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		vmctx.BlockHeightValue = types.NewBlockHeight(tc.bh)
 
 		miner := Impl(Actor{})
@@ -1425,7 +1426,7 @@ func TestVerifyPIP(t *testing.T) {
 		minerState := *NewState(address.TestAddress, address.TestAddress, peer.ID(""), types.OneKiBSectorSize)
 		minerState.SectorCommitments = commitments
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		miner := Impl(Actor{})
 
 		code, err := miner.VerifyPieceInclusion(vmctx, commP, pieceSize, firstSectorID, pip)
@@ -1454,7 +1455,7 @@ func TestVerifyPIP(t *testing.T) {
 			VerifyPieceInclusionProofValid: true,
 		}
 
-		vmctx := th.NewFakeVMContextWithVerifier(message, minerState, verifier)
+		vmctx := vm2.NewFakeVMContextWithVerifier(message, minerState, verifier)
 		vmctx.BlockHeightValue = minerState.ProvingPeriodEnd.Add(LatePoStGracePeriod(minerState.SectorSize)).Add(types.NewBlockHeight(1))
 		miner := Impl(Actor{})
 
@@ -1644,7 +1645,7 @@ func TestGetProvingSetCommitments(t *testing.T) {
 		// The 3 sector is not in the proving set, so its CommR should not appear in the VerifyPoSt request
 		minerState.ProvingSet = types.NewIntSet(1, 2)
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		miner := Impl(Actor{})
 
 		commitments, code, err := miner.GetProvingSetCommitments(vmctx)
@@ -1662,7 +1663,7 @@ func TestGetProvingSetCommitments(t *testing.T) {
 
 		minerState.ProvingSet = types.NewIntSet(4) // sector commitments has no sector 4
 
-		vmctx := th.NewFakeVMContext(message, minerState)
+		vmctx := vm2.NewFakeVMContext(message, minerState)
 		miner := Impl(Actor{})
 
 		_, code, err := miner.GetProvingSetCommitments(vmctx)
@@ -1710,7 +1711,7 @@ type minerEnvBuilder struct {
 	verifier         *verification.FakeVerifier
 }
 
-func (b *minerEnvBuilder) build() (vm2.Runtime, *verification.FakeVerifier, *Impl) {
+func (b *minerEnvBuilder) build() (runtime.Runtime, *verification.FakeVerifier, *Impl) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd
@@ -1727,7 +1728,7 @@ func (b *minerEnvBuilder) build() (vm2.Runtime, *verification.FakeVerifier, *Imp
 		b.verifier = &verification.FakeVerifier{}
 	}
 
-	vmctx := th.NewFakeVMContextWithVerifier(types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
+	vmctx := vm2.NewFakeVMContextWithVerifier(types.NewUnsignedMessage(address.TestAddress, address.TestAddress2, 0, types.ZeroAttoFIL, b.message, nil), minerState, b.verifier)
 
 	actor := Impl(Actor{})
 	return vmctx, b.verifier, &actor

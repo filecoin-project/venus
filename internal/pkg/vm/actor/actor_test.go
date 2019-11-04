@@ -15,10 +15,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/vmcontext"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -115,7 +115,7 @@ func (a *MockActor) Method(id types.MethodID) (dispatch.Method, *external.Functi
 	}
 }
 
-func (a *MockActor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
+func (a *MockActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
 	return nil
 }
 
@@ -125,27 +125,27 @@ func (*impl) one() (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) two(ctx vm2.Runtime) (uint8, error) {
+func (*impl) two(ctx runtime.Runtime) (uint8, error) {
 	return 0, nil
 }
 
-func (*impl) three(ctx vm2.Runtime) error {
+func (*impl) three(ctx runtime.Runtime) error {
 	return nil
 }
 
-func (*impl) four(ctx vm2.Runtime) ([]byte, uint8, error) {
+func (*impl) four(ctx runtime.Runtime) ([]byte, uint8, error) {
 	return []byte("hello"), 0, nil
 }
 
-func (*impl) five(ctx vm2.Runtime) ([]byte, uint8, error) {
+func (*impl) five(ctx runtime.Runtime) ([]byte, uint8, error) {
 	return nil, 2, errors.NewRevertError("fail5")
 }
 
-func (*impl) six(ctx vm2.Runtime) (uint8, error) {
+func (*impl) six(ctx runtime.Runtime) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func makeCtx(method types.MethodID) vm2.Runtime {
+func makeCtx(method types.MethodID) runtime.Runtime {
 	addrGetter := address.NewForTestGetter()
 
 	vmCtxParams := vmcontext.NewContextParams{
