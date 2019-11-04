@@ -181,8 +181,8 @@ func TestProcessTipsConflicts(t *testing.T) {
 	assert.True(t, expStCid.Equals(gotStCid))
 }
 
-// ProcessBlock should not fail with an unsigned block reward message.
-func TestProcessBlockReward(t *testing.T) {
+// ProcessTipset should not fail with an unsigned block reward message.
+func TestProcessTipsetReward(t *testing.T) {
 	tf.UnitTest(t)
 
 	newAddress := address.NewForTestGetter()
@@ -221,7 +221,7 @@ func TestProcessBlockReward(t *testing.T) {
 	assert.Equal(t, minerBalance.Add(blockRewardAmount), minerOwnerActor.Balance)
 }
 
-func TestProcessBlockVMErrors(t *testing.T) {
+func TestProcessTipsetVMErrors(t *testing.T) {
 	tf.BadUnitTestWithSideEffects(t)
 
 	ctx := context.Background()
@@ -290,7 +290,7 @@ func TestProcessBlockVMErrors(t *testing.T) {
 	assert.True(t, expectedStCid.Equals(gotStCid))
 }
 
-func TestProcessBlockParamsLengthError(t *testing.T) {
+func TestProcessTipsetParamsLengthError(t *testing.T) {
 	tf.UnitTest(t)
 
 	newAddress := address.NewForTestGetter()
@@ -317,7 +317,7 @@ func TestProcessBlockParamsLengthError(t *testing.T) {
 	assert.Contains(t, rct.ExecutionError.Error(), "invalid params: expected 0 parameters, but got 1")
 }
 
-func TestProcessBlockParamsError(t *testing.T) {
+func TestProcessTipsetParamsError(t *testing.T) {
 	tf.UnitTest(t)
 
 	newAddress := address.NewForTestGetter()
