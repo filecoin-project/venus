@@ -242,13 +242,14 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 }
 
 // runMessages applies the messages of all blocks within the input
-// tipset to the input base state.  Messages are applied block by
-// block with blocks sorted by their ticket bytes.  The output state must be
-// flushed after calling to guarantee that the state transitions propagate.
+// tipset to the input base state.  Messages are extracted from tipset
+// blocks sorted by their ticket bytes and run as a single state transition
+// for the entire tipset. The output state must be flushed after calling to
+// guarantee that the state transitions propagate.
 //
-// An error is returned if individual blocks contain messages that do not
-// lead to successful state transitions.  An error is also returned if the node
-// faults while running aggregate state computation.
+// An error is returned if the state root or receipt root of any block
+// does not match that of the parent tipset.  An error is also returned if
+// the node faults while running aggregate state computation.
 func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, parentReceipts cid.Cid, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
 	parentStateRoot, err := st.Flush(ctx)
 	if err != nil {
@@ -269,11 +270,8 @@ func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.Storag
 		}
 	}
 
-	// multiblock tipsets require reapplying messages to get aggregate state
-	// NOTE: It is possible to optimize further by applying block validation
-	// in sorted order to reuse first block transitions as the starting state
-	// for the tipSetProcessor.
-	allMessages := append(blsMessages, secpMessages...)
+	allMessages := combineMessages(blsMessages, secpMessages)
+
 	resp, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
@@ -312,6 +310,16 @@ func verifyBLSMessageAggregate(sig types.Signature, msgs []*types.UnsignedMessag
 		return errors.New("block BLS signature does not validate against BLS messages")
 	}
 	return nil
+}
+
+// combineMessages takes lists of bls and secp messages grouped by block and combines them so
+// that they are still grouped by block and the bls messages come before secp messages in the same block.
+func combineMessages(blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.UnsignedMessage) [][]*types.UnsignedMessage {
+	combined := make([][]*types.UnsignedMessage, len(blsMsgs))
+	for blkIndex := 0; blkIndex < len(blsMsgs); blkIndex++ {
+		combined[blkIndex] = append(blsMsgs[blkIndex], secpMsgs[blkIndex]...)
+	}
+	return combined
 }
 
 // Unwraps nested slices of signed messages.
