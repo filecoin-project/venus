@@ -29,7 +29,6 @@ var (
 
 	// Timers
 	amTimer = metrics.NewTimerMs("consensus/apply_message", "Duration of message application in milliseconds", msgMethodKey)
-	pbTimer = metrics.NewTimerMs("consensus/process_block", "Duration of block processing in milliseconds")
 )
 
 // MessageValidator validates the syntax and semantics of a message before it is applied.

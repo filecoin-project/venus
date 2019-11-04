@@ -74,7 +74,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 		return nil, errors.Wrap(err, "generate apply messages")
 	}
 
-	var receipts []*types.MessageReceipt
 	var blsAccepted []*types.SignedMessage
 	var secpAccepted []*types.SignedMessage
 
@@ -83,7 +82,6 @@ func (w *DefaultWorker) Generate(ctx context.Context,
 	for i, r := range results {
 		msg := candidateMsgs[i]
 		if r.Failure == nil {
-			receipts = append(receipts, r.Receipt)
 			if msg.Message.From.Protocol() == address.BLS {
 				blsAccepted = append(blsAccepted, msg)
 			} else {
