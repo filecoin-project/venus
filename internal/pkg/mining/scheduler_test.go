@@ -68,7 +68,7 @@ func TestMineOnce10Null(t *testing.T) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
-		return nil, nil
+		return []block.TipSet{baseTs}, nil
 	}
 	messages := chain.NewMessageStore(bs)
 

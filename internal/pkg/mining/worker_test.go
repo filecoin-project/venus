@@ -30,13 +30,100 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-type mockTicketGen struct {
-	ticketGen bool
-}
+func TestLookbackElection(t *testing.T) {
+	tf.UnitTest(t)
 
-func (mtg *mockTicketGen) NextTicket(ticket block.Ticket, genAddr address.Address, signer types.Signer) (block.Ticket, error) {
-	mtg.ticketGen = true
-	return consensus.MakeFakeTicketForTest(), nil
+	mockSignerVal, blockSignerAddr := setupSigner()
+	mockSigner := &mockSignerVal
+
+	builder := chain.NewBuilder(t, address.Undef)
+	lookback := consensus.ElectionLookback
+	head := builder.AppendManyOn(lookback-1, builder.NewGenesis())
+	ancestors := builder.RequireTipSets(head.Key(), lookback)
+
+	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
+	getStateTree := func(c context.Context, ts block.TipSet) (state.Tree, error) {
+		return st, nil
+	}
+	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
+		return ancestors, nil
+	}
+
+	minerAddr := addrs[3]      // addr4 in sharedSetup
+	minerOwnerAddr := addrs[4] // addr5 in sharedSetup
+
+	messages := chain.NewMessageStore(bs)
+
+	t.Run("Election sees ticket lookback ancestors back", func(t *testing.T) {
+		electionTicket, err := ancestors[lookback-1].MinTicket()
+		require.NoError(t, err)
+		mem := consensus.NewMockElectionMachine(func(ticket block.Ticket) {
+			assert.Equal(t, electionTicket, ticket)
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		outCh := make(chan mining.Output)
+		worker := mining.NewDefaultWorker(mining.WorkerParameters{
+			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
+
+			MinerAddr:      minerAddr,
+			MinerOwnerAddr: minerOwnerAddr,
+			WorkerSigner:   mockSigner,
+
+			GetStateTree: getStateTree,
+			GetWeight:    getWeightTest,
+			GetAncestors: getAncestors,
+			Election:     mem,
+			TicketGen:    &consensus.FakeTicketMachine{},
+
+			MessageSource: pool,
+			Processor:     th.NewFakeProcessor(),
+			Blockstore:    bs,
+			MessageStore:  messages,
+			Clock:         clock.NewSystemClock(),
+		})
+
+		go worker.Mine(ctx, head, 0, outCh)
+		r := <-outCh
+		assert.NoError(t, r.Err)
+	})
+
+	t.Run("Ticket gensees ticket 1 ancestor back", func(t *testing.T) {
+		genTicket, err := ancestors[0].MinTicket()
+		require.NoError(t, err)
+		mtm := consensus.NewMockTicketMachine(func(ticket block.Ticket) {
+			assert.Equal(t, genTicket, ticket)
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		outCh := make(chan mining.Output)
+		worker := mining.NewDefaultWorker(mining.WorkerParameters{
+			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
+
+			MinerAddr:      minerAddr,
+			MinerOwnerAddr: minerOwnerAddr,
+			WorkerSigner:   mockSigner,
+
+			GetStateTree: getStateTree,
+			GetWeight:    getWeightTest,
+			GetAncestors: getAncestors,
+			Election:     &consensus.FakeElectionMachine{},
+			TicketGen:    mtm,
+
+			MessageSource: pool,
+			Processor:     th.NewFakeProcessor(),
+			Blockstore:    bs,
+			MessageStore:  messages,
+			Clock:         clock.NewSystemClock(),
+		})
+
+		go worker.Mine(ctx, head, 0, outCh)
+		r := <-outCh
+		assert.NoError(t, r.Err)
+	})
+
 }
 
 func Test_Mine(t *testing.T) {
@@ -47,7 +134,7 @@ func Test_Mine(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -55,7 +142,7 @@ func Test_Mine(t *testing.T) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
-		return nil, nil
+		return []block.TipSet{tipSet}, nil
 	}
 
 	minerAddr := addrs[3]      // addr4 in sharedSetup
@@ -65,8 +152,13 @@ func Test_Mine(t *testing.T) {
 
 	// TODO #3311: this case isn't testing much.  Testing w.Mine further needs a lot more attention.
 	t.Run("Trivial success case", func(t *testing.T) {
-		testTicketGen := &mockTicketGen{}
+		ticketGen := false
+		sawTicket := func(_ block.Ticket) {
+			ticketGen = true
+		}
+		testTicketGen := consensus.NewMockTicketMachine(sawTicket)
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		outCh := make(chan mining.Output)
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
@@ -91,13 +183,17 @@ func Test_Mine(t *testing.T) {
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.NoError(t, r.Err)
-		assert.True(t, testTicketGen.ticketGen)
-		cancel()
+		assert.True(t, ticketGen)
 	})
 
 	t.Run("Block generation fails", func(t *testing.T) {
-		testTicketGen := &mockTicketGen{}
+		ticketGen := false
+		sawTicket := func(_ block.Ticket) {
+			ticketGen = true
+		}
+		testTicketGen := consensus.NewMockTicketMachine(sawTicket)
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
@@ -122,14 +218,17 @@ func Test_Mine(t *testing.T) {
 		go worker.Mine(ctx, tipSet, 0, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "generate flush state tree: boom no flush")
-		assert.True(t, testTicketGen.ticketGen)
-		cancel()
-
+		assert.True(t, ticketGen)
 	})
 
 	t.Run("Sent empty tipset", func(t *testing.T) {
-		testTicketGen := &mockTicketGen{}
 		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		ticketGen := false
+		sawTicket := func(_ block.Ticket) {
+			ticketGen = true
+		}
+		testTicketGen := consensus.NewMockTicketMachine(sawTicket)
 		worker := mining.NewDefaultWorker(mining.WorkerParameters{
 			API: th.NewDefaultFakeWorkerPorcelainAPI(blockSignerAddr),
 
@@ -154,8 +253,7 @@ func Test_Mine(t *testing.T) {
 		go worker.Mine(ctx, input, 0, outCh)
 		r := <-outCh
 		assert.EqualError(t, r.Err, "bad input tipset with no blocks sent to Mine()")
-		assert.False(t, testTicketGen.ticketGen)
-		cancel()
+		assert.False(t, ticketGen)
 	})
 }
 
@@ -258,7 +356,7 @@ func TestApplyBLSMessages(t *testing.T) {
 
 	newCid := types.NewCidForTestGetter()
 	stateRoot := newCid()
-	baseBlock := &block.Block{Height: 2, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
+	baseBlock := &block.Block{Height: 0, StateRoot: stateRoot, Ticket: block.Ticket{VRFProof: []byte{0}}}
 	tipSet := th.RequireNewTipSet(t, baseBlock)
 
 	st, pool, addrs, bs := sharedSetup(t, mockSignerVal)
@@ -266,7 +364,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		return st, nil
 	}
 	getAncestors := func(ctx context.Context, ts block.TipSet, newBlockHeight *types.BlockHeight) ([]block.TipSet, error) {
-		return nil, nil
+		return []block.TipSet{tipSet}, nil
 	}
 
 	msgStore := chain.NewMessageStore(bs)
@@ -290,8 +388,6 @@ func TestApplyBLSMessages(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	testTicketGen := &mockTicketGen{}
-
 	worker := mining.NewDefaultWorker(mining.WorkerParameters{
 		API: th.NewDefaultFakeWorkerPorcelainAPI(mockSigner.Addresses[5]),
 
@@ -303,7 +399,7 @@ func TestApplyBLSMessages(t *testing.T) {
 		GetWeight:    getWeightTest,
 		GetAncestors: getAncestors,
 		Election:     &consensus.FakeElectionMachine{},
-		TicketGen:    testTicketGen,
+		TicketGen:    &consensus.FakeTicketMachine{},
 
 		MessageSource: pool,
 		Processor:     th.NewFakeProcessor(),
