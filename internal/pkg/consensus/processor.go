@@ -116,10 +116,6 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 	}
 	bh := types.NewBlockHeight(h)
 
-	var res ProcessTipSetResponse
-	res.Failures = make(map[cid.Cid]struct{})
-	res.Successes = make(map[cid.Cid]struct{})
-
 	dedupedMessages, err := DeduppedMessages(tsMessages)
 
 	for blkIdx := 0; blkIdx < ts.Len(); blkIdx++ {
