@@ -3,8 +3,7 @@
 ​:+1::tada: First off, thanks for taking the time to contribute! :tada::+1:
 
 The following is a set of guidelines for contributing to the Filecoin
-Project. Feel free to propose changes, as this is a living
-document.
+Project. Feel free to propose changes, as this is a living document.
 
 Filecoin, including go-filecoin and all related modules, follows the
 [Filecoin Code of Conduct](CODE_OF_CONDUCT.md).
@@ -67,13 +66,17 @@ Check out the [Go-Filecoin code overview](CODEWALK.md) for a brief tour of the c
 
 ### Design Before Code
 - Write down design intent before writing code, and subject it to constructive feedback.
-- Major changes should have a [Design Doc](https://github.com/filecoin-project/designdocs).
-- For minor changes, file an issue for your change if it doesn't yet have one, and outline your implementation plan on the issue.
+- For a major change, draft a [Design Doc](https://github.com/filecoin-project/designdocs) outlining the context, goals, and your proposed solution.
+- For less a significant change, outline the proposed change in a GitHub issue. If there's already an issue requesting the change, a comment there suffices.
+- Smaller changes, like simple, uncontroversial improvements, don't require an issue. A PR description outlining the motivation and approach is enough. Incremental steps towards a larger outcome don't require individual issues; reference the motivating issue and note each PR achieves.
 
 ### Pull Requests and Reviews
 
-We review every change before merging to master, using GitHub pull requests.
-**Try to keep PRs small**, no more than 400 lines or 8 files. Code reviews are easier, faster, and more effective when the diff is small.
+We review every change before merging to master, using GitHub pull requests. **Try to keep PRs small**, no more than 400 new/changed lines. Code reviews are easier, faster, and more effective when the diff is small.
+ 
+Strive to separate refactors, renames, and significant clean-ups from changes in functionality. 
+Break a large effort into multiple smaller PRs. Each such PR should be self-consistent, well-tested, and a clear step forward, but need not be a complete implementation of a large feature. 
+Sometimes other strategies (like an integration branch) make more sense; propose this to your reviewers beforehand.
 
 Merging a PR to `master` requires maintainer approval. The following process aims to merge code quickly and efficiently while avoiding both accidental and malicious introduction of bugs, unintended consequences, or vulnerabilities.
 
@@ -243,7 +246,7 @@ Responsibilities:
 * Review: Timely, friendly review of PRs and design docs to ensure high-quality code and grow knowledge of committers and frequent contributors
 * Planning and Improvements: Participate meaningfully in technical and process-related improvements at the project level
 * Make significant, direct technical contributions
-* Backstop for hard problems and general project stewardship (TODO: improve wording)
+* Backstop for hard problems and general project stewardship
 
 Abilities:
 
@@ -255,13 +258,13 @@ Abilities:
 
 ## Additional Developer Notes
 
-#### Testing
+### Testing
 
 - All new code should be accompanied by unit tests. Prefer focussed unit tests to integration tests for thorough validation of behaviour. Existing code is not necessarily a good model, here.
 - Integration tests (in-process, daemon, or FAST) should test integration, not comprehensive functionality
 - Tests should be placed in a separate package, and follow the naming pattern `$PACKAGE_test`. For example, a test of the chain package should live in a package named `chain_test`. In limited situations, exceptions may be made for some "white box" tests placed in the same package as the code it tests.
 
-#### Profiling
+### Profiling
 
 We use [pprof](https://golang.org/pkg/runtime/pprof/) to capture and visualize
 performance metrics.
@@ -279,8 +282,9 @@ Then, use pprof to view the dump:
 go tool pprof /tmp/profile.dump
 ```
 
-#### Conventions and Style
+### Conventions and Style
 
+#### Imports 
 We use the following import ordering.
 ```
 import (
@@ -310,3 +314,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 )
 ```
+
+#### Comments
+Comments are a communication to other developers (including your future self) to help them understand and maintain code. Good comments describe the _intent_ of the code, without repeating the procedures directly.
+
+- A `TODO:` comment describes a change that is desired but could not be immediately implemented. It should to include a reference to a GitHub issue outlining whatever prevents the thing being done now (which could just be a matter of priority).
+- A `Note:` comment indicates an aside, some background info, or ideas for future improvement, rather than the intent of the current code. It's often fine to document such ideas alongside the code rather than an issue (at the loss of a space for discussion).
+- A `Dragons:` comment marks a piece of code under active development or refactor that is not well structured, expressed, or documented and thus may be difficult to work with. Such comments are intended to live for only a week or two; long-lived technical debt is better documented in an issue.
+- `FIXME`, `HACK`, `XXX` and similar tags indicating that some code is less than perfect should be avoided in favour of `TODO`, `NOTE` or some straight prose.
