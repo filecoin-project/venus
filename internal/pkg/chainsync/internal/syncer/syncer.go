@@ -263,9 +263,6 @@ func (syncer *Syncer) syncOne(ctx context.Context, grandParent, parent, next blo
 		return err
 	}
 
-	for _, r := range receipts {
-		logSyncer.Infof("Storing receipt %v", r)
-	}
 	receiptCid, err := syncer.messageProvider.StoreReceipts(ctx, receipts)
 	if err != nil {
 		return errors.Wrapf(err, "could not store message rerceipts for tip set %s", next.String())
