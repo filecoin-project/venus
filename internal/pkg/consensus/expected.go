@@ -148,13 +148,13 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
 
-	if err := c.validateMining(ctx, priorState, ts, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight); err != nil {
+	if err := c.validateMining(ctx, priorState, ts, ancestors[0], ancestors, blsMessages, secpMessages, parentWeight, parentStateRoot, parentReceiptRoot); err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
 
 	vms := vm.NewStorageMap(c.bstore)
 	var st state.Tree
-	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), parentReceiptRoot, ancestors)
+	st, receipts, err = c.runMessages(ctx, priorState, vms, ts, blsMessages, unwrap(secpMessages), ancestors)
 	if err != nil {
 		return cid.Undef, []*types.MessageReceipt{}, err
 	}
@@ -180,7 +180,18 @@ func (c *Expected) RunStateTransition(ctx context.Context, ts block.TipSet, blsM
 //      * has a losing election proof
 //    Returns nil if all the above checks pass.
 // See https://github.com/filecoin-project/specs/blob/master/mining.md#chain-validation
-func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.TipSet, parentTs block.TipSet, ancestors []block.TipSet, blsMsgs [][]*types.UnsignedMessage, secpMsgs [][]*types.SignedMessage, parentWeight uint64) error {
+func (c *Expected) validateMining(
+	ctx context.Context,
+	st state.Tree,
+	ts block.TipSet,
+	parentTs block.TipSet,
+	ancestors []block.TipSet,
+	blsMsgs [][]*types.UnsignedMessage,
+	secpMsgs [][]*types.SignedMessage,
+	parentWeight uint64,
+	parentStateRoot cid.Cid,
+	parentReceiptRoot cid.Cid) error {
+
 	electionTicket, err := sampling.SampleNthTicket(ElectionLookback-1, ancestors)
 	if err != nil {
 		return errors.Wrap(err, "failed to sample election ticket from ancestors")
@@ -198,6 +209,16 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 
 	for i := 0; i < ts.Len(); i++ {
 		blk := ts.At(i)
+
+		// confirm block state root matches parent state root
+		if !parentStateRoot.Equals(blk.StateRoot) {
+			return ErrStateRootMismatch
+		}
+
+		// confirm block receipts match parent receipts
+		if !parentReceiptRoot.Equals(blk.MessageReceipts) {
+			return ErrReceiptRootMismatch
+		}
 
 		if uint64(blk.ParentWeight) != parentWeight {
 			return errors.Errorf("block %s has invalid parent weight %d", blk.Cid().String(), parentWeight)
@@ -246,30 +267,7 @@ func (c *Expected) validateMining(ctx context.Context, st state.Tree, ts block.T
 // blocks sorted by their ticket bytes and run as a single state transition
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
-//
-// An error is returned if the state root or receipt root of any block
-// does not match that of the parent tipset.  An error is also returned if
-// the node faults while running aggregate state computation.
-func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, parentReceipts cid.Cid, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
-	parentStateRoot, err := st.Flush(ctx)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error getting parent state root")
-	}
-
-	for i := 0; i < ts.Len(); i++ {
-		blk := ts.At(i)
-
-		// confirm block state root matches parent state root
-		if !parentStateRoot.Equals(blk.StateRoot) {
-			return nil, nil, ErrStateRootMismatch
-		}
-
-		// confirm block receipts match parent receipts
-		if !parentReceipts.Equals(blk.MessageReceipts) {
-			return nil, nil, ErrReceiptRootMismatch
-		}
-	}
-
+func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
 	allMessages := combineMessages(blsMessages, secpMessages)
 
 	resp, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)

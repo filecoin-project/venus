@@ -58,7 +58,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		nextRoot := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
@@ -72,7 +72,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), as, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
 
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
@@ -88,7 +88,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		nextRoot := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot)
 		ancestors := make([]block.TipSet, 5)
 		for i := 0; i < consensus.ElectionLookback; i++ {
-			ancestorBlk := requireMakeNBlocks(t, 1, pTipSet, nextRoot, kis, mockSigner)
+			ancestorBlk := requireMakeNBlocks(t, 1, pTipSet, nextRoot, types.EmptyReceiptsCID, kis, mockSigner)
 			ancestors[i] = th.RequireNewTipSet(t, ancestorBlk...)
 			pTipSet = ancestors[i]
 		}
@@ -109,7 +109,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, mockElection, mockTicketGen)
 
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, nextRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
@@ -122,7 +122,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		_, emptyMessages := emptyMessages(len(nextBlocks))
@@ -146,7 +146,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, _ := emptyMessages(len(nextBlocks))
@@ -174,7 +174,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
@@ -189,7 +189,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 
 		// Give block 0 an invalid signature
 		nextBlocks[0].BlockSig = nextBlocks[1].BlockSig
@@ -206,7 +206,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, kis, mockSigner)
+		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
 		invalidParentWeight := uint64(6)
@@ -240,13 +240,13 @@ func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
 
 // requireMakeNBlocks sets up 3 blocks with 3 owner actors and 3 miner actors and puts them in the state tree.
 // the owner actors have associated mockSigners for signing blocks and tickets.
-func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, kis []types.KeyInfo, signer types.Signer) []*block.Block {
+func requireMakeNBlocks(t *testing.T, n int, pTipSet block.TipSet, root cid.Cid, receiptRoot cid.Cid, kis []types.KeyInfo, signer types.Signer) []*block.Block {
 	require.True(t, n <= len(kis))
 	minerAddrs := minerAddrsFromKis(t, kis)
 	m2w := minerToWorkerFromKis(t, kis)
 	blocks := make([]*block.Block, n)
 	for i := 0; i < n; i++ {
-		blocks[i] = th.RequireSignedTestBlockFromTipSet(t, pTipSet, root, 1, minerAddrs[i], m2w[minerAddrs[i]], signer)
+		blocks[i] = th.RequireSignedTestBlockFromTipSet(t, pTipSet, root, receiptRoot, 1, minerAddrs[i], m2w[minerAddrs[i]], signer)
 	}
 	return blocks
 }
