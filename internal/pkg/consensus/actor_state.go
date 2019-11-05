@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Abstracts over a store of blockchain state.
@@ -25,7 +25,7 @@ type chainStateChainReader interface {
 // QueryProcessor querys actor state of a particular tipset
 type QueryProcessor interface {
 	// CallQueryMethod calls a method on an actor in the given state tree.
-	CallQueryMethod(ctx context.Context, st state.Tree, vms vm2.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
+	CallQueryMethod(ctx context.Context, st state.Tree, vms vm.StorageMap, to address.Address, method types.MethodID, params []byte, from address.Address, optBh *types.BlockHeight) ([][]byte, uint8, error)
 }
 
 // ActorStateStore knows how to send read-only messages for querying actor state.
@@ -70,19 +70,19 @@ func (cs ActorStateStore) Snapshot(ctx context.Context, baseKey block.TipSetKey)
 
 // StateTreeSnapshot returns a snapshot representation of a state tree at an optional block height
 func (cs ActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHeight) ActorStateSnapshot {
-	return newProcessorQueryer(st, vm2.NewStorageMap(cs.bs), bh, cs.processor)
+	return newProcessorQueryer(st, vm.NewStorageMap(cs.bs), bh, cs.processor)
 }
 
 // processorSnapshot queries the chain at a particular tipset
 type processorSnapshot struct {
 	st        state.Tree
-	vms       vm2.StorageMap
+	vms       vm.StorageMap
 	height    *types.BlockHeight
 	processor QueryProcessor
 }
 
 // newProcessorQueryer creates an ActorStateSnapshot
-func newProcessorQueryer(st state.Tree, vms vm2.StorageMap, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
+func newProcessorQueryer(st state.Tree, vms vm.StorageMap, height *types.BlockHeight, processor QueryProcessor) ActorStateSnapshot {
 	return &processorSnapshot{
 		st:        st,
 		vms:       vms,

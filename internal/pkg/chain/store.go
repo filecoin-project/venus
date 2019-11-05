@@ -16,7 +16,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func init() {

@@ -3,7 +3,7 @@ package sectorbuilder
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // AddressToProverID creates a prover id by padding an address hash to 31 bytes

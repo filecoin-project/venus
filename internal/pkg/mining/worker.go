@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 var log = logging.Logger("mining")
@@ -68,7 +68,7 @@ type MessageSource interface {
 // A MessageApplier processes all the messages in a message pool.
 type MessageApplier interface {
 	// ApplyMessagesAndPayRewards applies all state transitions related to a set of messages.
-	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm2.StorageMap, messages []*types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) ([]*consensus.ApplyMessageResult, error)
+	ApplyMessagesAndPayRewards(ctx context.Context, st state.Tree, vms vm.StorageMap, messages []*types.UnsignedMessage, minerOwnerAddr address.Address, bh *types.BlockHeight, ancestors []block.TipSet) ([]*consensus.ApplyMessageResult, error)
 }
 
 type workerPorcelainAPI interface {

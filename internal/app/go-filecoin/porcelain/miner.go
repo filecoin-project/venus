@@ -8,17 +8,17 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/storagemarket"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // mcAPI is the subset of the plumbing.API that MinerCreate uses.

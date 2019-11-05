@@ -20,9 +20,9 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func TestNewExpected(t *testing.T) {
@@ -51,17 +51,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("passes the validateMining section when given valid mining blocks", func(t *testing.T) {
-<<<<<<< HEAD
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-=======
-		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-		vms := vm2.NewStorageMap(bstore)
-
-		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
->>>>>>> xxx move state to vm2
 
 		// Set miner actor
 
@@ -78,20 +69,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + mining error when election proof validation fails", func(t *testing.T) {
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 
-<<<<<<< HEAD
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), as, th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
-=======
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-
-		vms := vm2.NewStorageMap(bstore)
-
-		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
-
-		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FailingElectionValidator{}, &consensus.FakeTicketMachine{})
->>>>>>> xxx move state to vm2
 
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
@@ -104,7 +83,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 	t.Run("correct tickets processed in election and next ticket", func(t *testing.T) {
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-<<<<<<< HEAD
 		as := testActorState(t, kis)
 
 		nextRoot := setTree(ctx, t, kis, cistore, bstore, genesisBlock.StateRoot)
@@ -114,11 +92,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			ancestors[i] = th.RequireNewTipSet(t, ancestorBlk...)
 			pTipSet = ancestors[i]
 		}
-=======
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-		vms := vm2.NewStorageMap(bstore)
->>>>>>> xxx move state to vm2
+		vms := vm.NewStorageMap(bstore)
 
 		isLookingBack := func(ticket block.Ticket) {
 			expTicket, err := ancestors[consensus.ElectionLookback-1].MinTicket()
@@ -169,21 +143,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	})
 
 	t.Run("fails when secp message has invalid signature", func(t *testing.T) {
-<<<<<<< HEAD
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-=======
-		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-		vms := vm2.NewStorageMap(bstore)
-
-		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
-
-		tipSet := th.RequireNewTipSet(t, blocks...)
-		// Add the miner worker mapping into the actor state
-		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
->>>>>>> xxx move state to vm2
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
@@ -217,21 +178,7 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
 		tipSet := th.RequireNewTipSet(t, nextBlocks...)
 
-<<<<<<< HEAD
 		emptyBLSMessages, emptyMessages := emptyMessages(len(nextBlocks))
-=======
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
-
-		vms := vm2.NewStorageMap(bstore)
-
-		blocks, minerToWorker := requireMakeBlocks(ctx, t, pTipSet, stateTree, vms)
-
-		as := consensus.NewFakeActorStateStore(minerPower, totalPower, minerToWorker)
-		exp := consensus.NewExpected(cistore, bstore, consensus.NewDefaultProcessor(), th.NewFakeBlockValidator(), as, types.CidFromString(t, "somecid"), th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FailingTicketValidator{})
-
-		tipSet := th.RequireNewTipSet(t, blocks...)
->>>>>>> xxx move state to vm2
 
 		_, _, err = exp.RunStateTransition(ctx, tipSet, emptyBLSMessages, emptyMessages, []block.TipSet{pTipSet}, uint64(nextBlocks[0].ParentWeight), genesisBlock.StateRoot, genesisBlock.MessageReceipts)
 		require.NotNil(t, err)
@@ -243,13 +190,8 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-<<<<<<< HEAD
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
-=======
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
 		vms := vm2.NewStorageMap(bstore)
->>>>>>> xxx move state to vm2
 
 		// Give block 0 an invalid signature
 		nextBlocks[0].BlockSig = nextBlocks[1].BlockSig
@@ -262,15 +204,9 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	})
 
 	t.Run("returns nil + error when parent weight invalid", func(t *testing.T) {
-<<<<<<< HEAD
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-=======
-		pTipSet := th.RequireNewTipSet(t, genesisBlock)
-		stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cistore, genesisBlock.StateRoot)
-		require.NoError(t, err)
 		vms := vm2.NewStorageMap(bstore)
->>>>>>> xxx move state to vm2
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)

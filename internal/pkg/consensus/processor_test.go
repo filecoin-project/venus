@@ -16,15 +16,15 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/procneeds"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/procneeds"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 func requireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
@@ -490,7 +490,7 @@ func TestNestedSendBalance(t *testing.T) {
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	vms := vm2.NewStorageMap(bs)
+	vms := vm.NewStorageMap(bs)
 
 	// Install the fake actor so we can execute it.
 	fakeActorCodeCid := types.NewCidForTestGetter()()
@@ -877,7 +877,7 @@ func TestBlockGasLimitBehavior(t *testing.T) {
 	})
 }
 
-func setupActorsForGasTest(t *testing.T, vms vm2.StorageMap, fakeActorCodeCid cid.Cid, senderBalance uint64) ([]address.Address, state.Tree) {
+func setupActorsForGasTest(t *testing.T, vms vm.StorageMap, fakeActorCodeCid cid.Cid, senderBalance uint64) ([]address.Address, state.Tree) {
 	addressGenerator := address.NewForTestGetter()
 
 	mockSigner, _ := types.NewMockSignersAndKeyInfo(3)
@@ -934,7 +934,7 @@ func mustSetup2Actors(t *testing.T, balance1 types.AttoFIL, balance2 types.AttoF
 	return addr1, act1, addr2, act2, st, mockSigner
 }
 
-func mustCreateStorageMiner(ctx context.Context, t *testing.T, st state.Tree, vms vm2.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
+func mustCreateStorageMiner(ctx context.Context, t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr, minerOwner address.Address) (cid.Cid, *actor.Actor) {
 	miner := th.RequireNewMinerActor(t, vms, minerAddr, minerOwner, 1000, th.RequireRandomPeerID(t), types.ZeroAttoFIL)
 	require.NoError(t, st.SetActor(ctx, minerAddr, miner))
 	stCid, err := st.Flush(ctx)

@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
 // fakeRequest captures the parameters necessary to uniquely

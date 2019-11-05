@@ -11,10 +11,10 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +31,7 @@ func TestPreview(t *testing.T) {
 		fakeActorCodeCid := types.NewCidForTestGetter()()
 		fakeActorAddr := newAddr()
 		fromAddr := newAddr()
-		vms := vm2.NewStorageMap(bs)
+		vms := vm.NewStorageMap(bs)
 		fakeActor := th.RequireNewFakeActor(t, vms, fakeActorAddr, fakeActorCodeCid)
 		// The genesis init function we give below will install the fake actor at
 		// the given address but doesn't set up the mapping from its code cid to

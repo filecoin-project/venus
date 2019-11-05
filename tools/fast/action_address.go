@@ -3,7 +3,7 @@ package fast
 import (
 	"context"
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
