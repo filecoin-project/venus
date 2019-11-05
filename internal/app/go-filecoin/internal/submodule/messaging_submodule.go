@@ -39,7 +39,7 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 	msgPool := message.NewPool(repo.Config().Mpool, consensus.NewIngestionValidator(chain.State, repo.Config().Mpool))
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chain.ChainReader, chain.MessageStore)
 
-	// setup messaging topic
+	// setup messaging topic. TODO #3631 fix this to avoid construction side effects
 	topic, err := network.Fsub.Join(net.MessageTopic(network.NetworkName))
 	if err != nil {
 		return MessagingSubmodule{}, err

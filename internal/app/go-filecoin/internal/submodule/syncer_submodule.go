@@ -55,7 +55,7 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 		return SyncerSubmodule{}, errors.Wrap(err, "failed to register block validator")
 	}
 
-	// setup topic
+	// setup topic.  TODO #3631 fix this to avoid side effects during construction.
 	topic, err := network.Fsub.Join(net.BlockTopic(network.NetworkName))
 	if err != nil {
 		return SyncerSubmodule{}, err
