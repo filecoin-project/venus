@@ -35,7 +35,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/version"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
-	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	vmerr "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )

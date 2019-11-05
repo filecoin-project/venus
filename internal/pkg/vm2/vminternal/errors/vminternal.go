@@ -4,7 +4,7 @@
 package vminternal
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
 )
 
 // TODO fritz require actors to define their exit codes and associate

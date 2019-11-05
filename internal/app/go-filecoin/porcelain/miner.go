@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/storagemarket"
-	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	vmErrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )

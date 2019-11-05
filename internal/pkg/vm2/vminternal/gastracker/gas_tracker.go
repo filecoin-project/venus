@@ -2,7 +2,7 @@ package gastracker
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/errors"
 )
 
 // GasTracker maintains the state of gas usage throughout the execution of a block and a message
