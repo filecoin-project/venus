@@ -25,6 +25,10 @@ func NewVMContext(params NewContextParams) *vmcontext.VMContext {
 	return vmcontext.NewVMContext(params)
 }
 
+//
+// Free functions
+//
+
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
 func Send(ctx context.Context, vmCtx vmcontext.Panda) ([][]byte, uint8, error) {

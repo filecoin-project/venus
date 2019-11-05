@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cst"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ChainSubmodule enhances the `Node` with chain capabilities.
@@ -54,7 +54,7 @@ type chainConfig interface {
 func NewChainSubmodule(ctx context.Context, config chainConfig, repo chainRepo, blockstore *BlockstoreSubmodule) (ChainSubmodule, error) {
 	// initialize chain store
 	chainStatusReporter := chain.NewStatusReporter()
-	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, &state.TreeStateLoader{}, chainStatusReporter, config.GenesisCid())
+	chainStore := chain.NewStore(repo.ChainDatastore(), blockstore.CborStore, state.NewTreeLoader(), chainStatusReporter, config.GenesisCid())
 
 	// set up processor
 	var processor *consensus.DefaultProcessor

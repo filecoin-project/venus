@@ -23,7 +23,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 var logStore = logging.Logger("plumbing/chain_store")
@@ -159,7 +159,7 @@ func (chn *ChainStateReadWriter) LsActors(ctx context.Context) (<-chan state.Get
 	if err != nil {
 		return nil, err
 	}
-	return state.GetAllActors(ctx, st), nil
+	return st.GetAllActors(ctx), nil
 }
 
 // GetActorSignature returns the signature of the given actor's given method.

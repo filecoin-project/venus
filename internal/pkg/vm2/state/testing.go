@@ -24,15 +24,6 @@ func MustFlush(st Tree) cid.Cid {
 	return cid
 }
 
-// MustGetActor gets the actor or panics if it can't.
-func MustGetActor(st Tree, a address.Address) *actor.Actor {
-	actor, err := st.GetActor(context.Background(), a)
-	if err != nil {
-		panic(err)
-	}
-	return actor
-}
-
 // MustSetActor sets the actor or panics if it can't.
 func MustSetActor(st Tree, address address.Address, actor *actor.Actor) cid.Cid {
 	err := st.SetActor(context.Background(), address, actor)
@@ -104,8 +95,8 @@ func (m *MockStateTree) ForEachActor(ctx context.Context, walkFn ActorWalkFn) er
 	panic("Do not call me")
 }
 
-// Debug implements StateTree.Debug
-func (m *MockStateTree) Debug() {
+// GetAllActors implements StateTree.GetAllActors
+func (m *MockStateTree) GetAllActors(ctx context.Context) <-chan GetAllActorsResult {
 	panic("do not call me")
 }
 
@@ -124,10 +115,19 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Execu
 // making a test implementation of the cbor store that can map test cids to test
 // states.
 func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
-	tree := NewEmptyStateTree(cst)
+	tree := NewTree(cst)
 	strAddr, err := address.NewActorAddress([]byte(s))
 	require.NoError(t, err)
 	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
 	require.NoError(t, err)
 	return tree
+}
+
+// MustGetActor gets the actor or panics if it can't.
+func MustGetActor(st Tree, a address.Address) *actor.Actor {
+	actor, err := st.GetActor(context.Background(), a)
+	if err != nil {
+		panic(err)
+	}
+	return actor
 }

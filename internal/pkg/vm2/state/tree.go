@@ -13,24 +13,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 
-const (
-	// TreeBitWidth is the bit width of the HAMT used to store a state tree
-	TreeBitWidth = 5
-)
-
-// tree is a state tree that maps addresses to actors.
-type tree struct {
-	// root is the root of the state merklehamt
-	root  *hamt.Node
-	store *hamt.CborIpldStore
-}
-
-// RevID identifies a snapshot of the StateTree.
-type RevID int
-
-// ActorWalkFn is a visitor function for actors
-type ActorWalkFn func(address.Address, *actor.Actor) error
-
 // Tree is the interface that stateTree implements. It provides accessors
 // to Get and Set actors in a backing store by address.
 type Tree interface {
@@ -41,45 +23,34 @@ type Tree interface {
 	SetActor(ctx context.Context, a address.Address, act *actor.Actor) error
 
 	ForEachActor(ctx context.Context, walkFn ActorWalkFn) error
+	GetAllActors(ctx context.Context) <-chan GetAllActorsResult
 }
 
-var _ Tree = &tree{}
+// ActorWalkFn is a visitor function for actors
+type ActorWalkFn func(address.Address, *actor.Actor) error
 
-// IpldStore defines an interface for interacting with a hamt.CborIpldStore.
-// TODO #3078 use go-ipld-cbor export
-type IpldStore interface {
-	Put(ctx context.Context, v interface{}) (cid.Cid, error)
-	Get(ctx context.Context, c cid.Cid, out interface{}) error
+// GetAllActorsResult is the struct returned via a channel by the GetAllActors
+// method. This struct contains only an address string and the actor itself.
+type GetAllActorsResult struct {
+	Address string
+	Actor   *actor.Actor
+	Error   error
 }
 
-// TreeLoader defines an interfaces for loading a state tree from an IpldStore.
-type TreeLoader interface {
-	LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error)
+// tree is a state tree that maps addresses to actors.
+type tree struct {
+	// root is the root of the state merklehamt
+	root  *hamt.Node
+	store *hamt.CborIpldStore
 }
 
-// TreeStateLoader implements the state.StateLoader interface.
-type TreeStateLoader struct{}
+const (
+	// TreeBitWidth is the bit width of the HAMT used to store a state tree
+	TreeBitWidth = 5
+)
 
-// LoadStateTree is a wrapper around state.LoadStateTree.
-func (stl *TreeStateLoader) LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error) {
-	return LoadStateTree(ctx, store, c)
-}
-
-// LoadStateTree loads the state tree referenced by the given cid.
-func LoadStateTree(ctx context.Context, store IpldStore, c cid.Cid) (Tree, error) {
-	// TODO ideally this assertion can go away when #3078 lands in go-ipld-cbor
-	root, err := hamt.LoadNode(ctx, store.(*hamt.CborIpldStore), c, hamt.UseTreeBitWidth(TreeBitWidth))
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load node for %s", c)
-	}
-	stateTree := newEmptyStateTree(store.(*hamt.CborIpldStore))
-	stateTree.root = root
-
-	return stateTree, nil
-}
-
-// NewEmptyStateTree instantiates a new state tree with no data in it.
-func NewEmptyStateTree(store *hamt.CborIpldStore) Tree {
+// NewTree instantiates a new state tree.
+func NewTree(store *hamt.CborIpldStore) Tree {
 	return newEmptyStateTree(store)
 }
 
@@ -90,6 +61,8 @@ func newEmptyStateTree(store *hamt.CborIpldStore) *tree {
 	}
 }
 
+var _ Tree = &tree{}
+
 // Flush serialized the state tree and flushes unflushed changes to the backing
 // datastore. The cid of the state tree is returned.
 func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
@@ -98,28 +71,6 @@ func (t *tree) Flush(ctx context.Context) (cid.Cid, error) {
 	}
 
 	return t.store.Put(ctx, t.root)
-}
-
-// IsActorNotFoundError is true of the error returned by
-// GetActorCode when no actor was found at the given address.
-func IsActorNotFoundError(err error) bool {
-	cause := errors.Cause(err)
-	e, ok := cause.(actornotfound)
-	return ok && e.ActorNotFound()
-}
-
-type actornotfound interface {
-	ActorNotFound() bool
-}
-
-type actorNotFoundError struct{}
-
-func (e actorNotFoundError) Error() string {
-	return "actor not found"
-}
-
-func (e actorNotFoundError) ActorNotFound() bool {
-	return true
 }
 
 // GetActorCode retrieves an actor by their address. If no actor
@@ -159,6 +110,38 @@ func (t *tree) SetActor(ctx context.Context, a address.Address, act *actor.Actor
 // ForEachActor calls walkFn for each actor in the state tree
 func (t *tree) ForEachActor(ctx context.Context, walkFn ActorWalkFn) error {
 	return forEachActor(ctx, t.store, t.root, walkFn)
+}
+
+// GetAllActors returns a channel which provides all actors in the StateTree, t.
+func (t *tree) GetAllActors(ctx context.Context) <-chan GetAllActorsResult {
+	out := make(chan GetAllActorsResult)
+	go func() {
+		defer close(out)
+		t.getActorsFromPointers(ctx, out, t.root.Pointers)
+	}()
+	return out
+}
+
+// IsActorNotFoundError is true of the error returned by
+// GetActorCode when no actor was found at the given address.
+func IsActorNotFoundError(err error) bool {
+	cause := errors.Cause(err)
+	e, ok := cause.(actornotfound)
+	return ok && e.ActorNotFound()
+}
+
+type actornotfound interface {
+	ActorNotFound() bool
+}
+
+type actorNotFoundError struct{}
+
+func (e actorNotFoundError) Error() string {
+	return "actor not found"
+}
+
+func (e actorNotFoundError) ActorNotFound() bool {
+	return true
 }
 
 func forEachActor(ctx context.Context, cst *hamt.CborIpldStore, nd *hamt.Node, walkFn ActorWalkFn) error {
@@ -217,25 +200,6 @@ func (t *tree) debugPointer(ps []*hamt.Pointer) {
 			t.debugPointer(n.Pointers)
 		}
 	}
-}
-
-// GetAllActorsResult is the struct returned via a channel by the GetAllActors
-// method. This struct contains only an address string and the actor itself.
-type GetAllActorsResult struct {
-	Address string
-	Actor   *actor.Actor
-	Error   error
-}
-
-// GetAllActors returns a channel which provides all actors in the StateTree, t.
-func GetAllActors(ctx context.Context, t Tree) <-chan GetAllActorsResult {
-	st := t.(*tree)
-	out := make(chan GetAllActorsResult)
-	go func() {
-		defer close(out)
-		st.getActorsFromPointers(ctx, out, st.root.Pointers)
-	}()
-	return out
 }
 
 // NOTE: This extracts actors from pointers recursively. Maybe we shouldn't recurse here.

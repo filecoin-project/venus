@@ -22,8 +22,8 @@ func TestCachedStateGetCommit(t *testing.T) {
 	ctx := context.Background()
 
 	// set up state tree and cache wrapper
-	underlying := NewEmptyStateTree(cst)
-	tree := NewCachedStateTree(underlying)
+	underlying := NewTree(cst)
+	tree := NewCachedTree(underlying)
 
 	// create some actors
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
@@ -89,8 +89,8 @@ func TestCachedStateGetOrCreate(t *testing.T) {
 	ctx := context.Background()
 
 	// set up state tree and cache wrapper
-	underlying := NewEmptyStateTree(cst)
-	tree := NewCachedStateTree(underlying)
+	underlying := NewTree(cst)
+	tree := NewCachedTree(underlying)
 
 	actorToCreate := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 

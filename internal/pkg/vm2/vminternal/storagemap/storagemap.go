@@ -21,8 +21,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 )

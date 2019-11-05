@@ -21,15 +21,15 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
@@ -1545,7 +1545,7 @@ func TestGetProofsMode(t *testing.T) {
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
 			Message:     &types.UnsignedMessage{},
-			State:       state.NewCachedStateTree(st),
+			State:       state.NewCachedTree(st),
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),
@@ -1565,7 +1565,7 @@ func TestGetProofsMode(t *testing.T) {
 			From:        &actor.Actor{},
 			To:          &actor.Actor{},
 			Message:     &types.UnsignedMessage{},
-			State:       state.NewCachedStateTree(st),
+			State:       state.NewCachedTree(st),
 			StorageMap:  vms,
 			GasTracker:  gasTracker,
 			BlockHeight: types.NewBlockHeight(0),

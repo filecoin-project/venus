@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 )
 
 // Actor is the builtin actor responsible for network initialization.

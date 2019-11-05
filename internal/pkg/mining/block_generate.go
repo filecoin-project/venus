@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 
 // Generate returns a new block created from the messages in the pool.

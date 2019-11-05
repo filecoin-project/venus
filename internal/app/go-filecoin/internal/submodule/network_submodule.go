@@ -32,12 +32,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-<<<<<<< HEAD
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-=======
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
->>>>>>> xxx move address to vm2
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -154,7 +150,7 @@ func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blocksto
 		return "", errors.Wrapf(err, "failed to get block %s", genCid.String())
 	}
 
-	tree, err := state.LoadStateTree(ctx, cborStore, genesis.StateRoot)
+	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cborStore, genesis.StateRoot)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to load node for %s", genesis.StateRoot)
 	}

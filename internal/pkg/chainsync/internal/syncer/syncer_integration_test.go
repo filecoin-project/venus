@@ -21,7 +21,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ func TestLoadFork(t *testing.T) {
 	repo := repo.NewInMemoryRepo()
 	bs := bstore.NewBlockstore(repo.Datastore())
 	cborStore := hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
-	store := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(repo.ChainDatastore(), &cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))
 
@@ -77,7 +77,7 @@ func TestLoadFork(t *testing.T) {
 
 	// Load a new chain store on the underlying data. It will only compute state for the
 	// left (heavy) branch. It has a fetcher that can't provide blocks.
-	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
+	newStore := chain.NewStore(repo.ChainDatastore(), &cborStore, state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	require.NoError(t, newStore.Load(ctx))
 	fakeFetcher := th.NewTestFetcher()
 	offlineSyncer := syncer.NewSyncer(eval, eval, sel, newStore, builder, fakeFetcher, status.NewReporter(), th.NewFakeClock(time.Unix(1234567890, 0)))
@@ -153,7 +153,7 @@ func TestSyncerWeighsPower(t *testing.T) {
 	// Verify that the syncer selects fork 2 (15 > 12)
 	as := newForkSnapshotGen(t, types.NewBytesAmount(1), types.NewBytesAmount(512), isb.c512)
 	dumpBlocksToCborStore(t, builder, cst, head1, head2)
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
+	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: gen.At(0).StateRoot, TipSet: gen, TipSetReceipts: gen.At(0).MessageReceipts}))
 	require.NoError(t, store.SetHead(ctx, gen))
 	eval := &integrationStateEvaluator{c512: isb.c512}

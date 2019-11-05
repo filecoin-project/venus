@@ -7,9 +7,9 @@ import (
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -18,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 // GenesisInitFunc is the signature for function that is used to create a genesis block.
@@ -134,7 +134,7 @@ func NewEmptyConfig() *Config {
 func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 	return func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
 		ctx := context.Background()
-		st := state.NewEmptyStateTree(cst)
+		st := state.NewTree(cst)
 		storageMap := vm2.NewStorageMap(bs)
 
 		genCfg := NewEmptyConfig()

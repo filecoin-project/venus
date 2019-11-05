@@ -10,7 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -21,9 +21,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 var (
@@ -289,7 +289,7 @@ func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.LoadStateTree(ctx, c.cstore, id)
+	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
 }
 
 // verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures

@@ -16,20 +16,20 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/procneeds"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 func requireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	tree := state.NewEmptyStateTree(cst)
+	tree := state.NewTree(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)

@@ -22,7 +22,7 @@ func TestStatePutGet(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	tree := NewEmptyStateTree(cst)
+	tree := NewTree(cst)
 
 	act1 := actor.NewActor(types.AccountActorCodeCid, types.ZeroAttoFIL)
 	act1.IncNonce()
@@ -48,7 +48,7 @@ func TestStatePutGet(t *testing.T) {
 	tcid, err := tree.Flush(ctx)
 	assert.NoError(t, err)
 
-	tree2, err := LoadStateTree(ctx, cst, tcid)
+	tree2, err := NewTreeLoader().LoadStateTree(ctx, cst, tcid)
 	assert.NoError(t, err)
 
 	act1out2, err := tree2.GetActor(ctx, addr1)
@@ -64,7 +64,7 @@ func TestStateErrors(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	tree := NewEmptyStateTree(cst)
+	tree := NewTree(cst)
 
 	a, err := tree.GetActor(ctx, address.NewForTestGetter()())
 	assert.Nil(t, a)
@@ -74,7 +74,7 @@ func TestStateErrors(t *testing.T) {
 	c, err := cid.V1Builder{Codec: cid.DagCBOR, MhType: mh.BLAKE2B_MIN + 31}.Sum([]byte("cats"))
 	assert.NoError(t, err)
 
-	tr2, err := LoadStateTree(ctx, cst, c)
+	tr2, err := NewTreeLoader().LoadStateTree(ctx, cst, c)
 	assert.Error(t, err)
 	assert.Nil(t, tr2)
 }
@@ -84,7 +84,7 @@ func TestStateGetOrCreate(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	tree := NewEmptyStateTree(cst)
+	tree := NewTree(cst)
 
 	addr := address.NewForTestGetter()()
 
@@ -122,7 +122,7 @@ func TestGetAllActors(t *testing.T) {
 
 	ctx := context.Background()
 	cst := hamt.NewCborStore()
-	tree := NewEmptyStateTree(cst)
+	tree := NewTree(cst)
 	addr := address.NewForTestGetter()()
 
 	actor := actor.Actor{Code: types.AccountActorCodeCid, Nonce: 1234, Balance: types.NewAttoFILFromFIL(123)}
@@ -131,7 +131,7 @@ func TestGetAllActors(t *testing.T) {
 	_, err = tree.Flush(ctx)
 	require.NoError(t, err)
 
-	results := GetAllActors(ctx, tree)
+	results := tree.GetAllActors(ctx)
 
 	for result := range results {
 		assert.Equal(t, addr.String(), result.Address)

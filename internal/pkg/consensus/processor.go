@@ -17,11 +17,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/procneeds"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 var (
@@ -253,7 +253,7 @@ func (p *DefaultProcessor) ApplyMessage(ctx context.Context, st state.Tree, vms 
 	amsw := amTimer.Start(ctx)
 	defer amsw.Stop(ctx)
 
-	cachedStateTree := state.NewCachedStateTree(st)
+	cachedStateTree := state.NewCachedTree(st)
 
 	r, err := p.attemptApplyMessage(ctx, cachedStateTree, vms, msg, bh, gasTracker, ancestors)
 	if err == nil {
@@ -331,7 +331,7 @@ func (p *DefaultProcessor) CallQueryMethod(ctx context.Context, st state.Tree, v
 	}
 
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
-	cachedSt := state.NewCachedStateTree(st)
+	cachedSt := state.NewCachedTree(st)
 
 	msg := &types.UnsignedMessage{
 		From:       from,
@@ -370,7 +370,7 @@ func (p *DefaultProcessor) PreviewQueryMethod(ctx context.Context, st state.Tree
 	}
 
 	// not committing or flushing storage structures guarantees changes won't make it to stored state tree or datastore
-	cachedSt := state.NewCachedStateTree(st)
+	cachedSt := state.NewCachedTree(st)
 
 	msg := &types.UnsignedMessage{
 		From:       from,
@@ -533,7 +533,7 @@ var _ BlockRewarder = (*DefaultBlockRewarder)(nil)
 
 // BlockReward transfers the block reward from the network actor to the miner's owner.
 func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address) error {
-	cachedTree := state.NewCachedStateTree(st)
+	cachedTree := state.NewCachedTree(st)
 	if err := rewardTransfer(ctx, address.NetworkAddress, minerOwnerAddr, br.BlockRewardAmount(), cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay block reward")
 	}
@@ -542,7 +542,7 @@ func (br *DefaultBlockRewarder) BlockReward(ctx context.Context, st state.Tree, 
 
 // GasReward transfers the gas cost reward from the sender actor to the minerOwnerAddr
 func (br *DefaultBlockRewarder) GasReward(ctx context.Context, st state.Tree, minerOwnerAddr address.Address, msg *types.UnsignedMessage, cost types.AttoFIL) error {
-	cachedTree := state.NewCachedStateTree(st)
+	cachedTree := state.NewCachedTree(st)
 	if err := rewardTransfer(ctx, msg.From, minerOwnerAddr, cost, cachedTree); err != nil {
 		return errors.FaultErrorWrap(err, "Error attempting to pay gas reward")
 	}

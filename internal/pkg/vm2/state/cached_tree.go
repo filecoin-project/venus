@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 
 // CachedTree is a read-through cache on top of a state tree.
@@ -14,8 +14,10 @@ type CachedTree struct {
 	cache map[address.Address]*actor.Actor
 }
 
-// NewCachedStateTree returns a initialized empty CachedTree
-func NewCachedStateTree(st Tree) *CachedTree {
+// NewCachedTree returns a `CachedTree` based on an existiing `Tree`.
+//
+// The cache will be empty on construction.
+func NewCachedTree(st Tree) *CachedTree {
 	return &CachedTree{
 		st:    st,
 		cache: make(map[address.Address]*actor.Actor),

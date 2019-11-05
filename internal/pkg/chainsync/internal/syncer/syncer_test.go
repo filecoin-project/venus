@@ -21,7 +21,7 @@ import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 func heightFromTip(t *testing.T, tip block.TipSet) uint64 {
@@ -518,7 +518,7 @@ func setupWithValidator(ctx context.Context, t *testing.T, fullVal syncer.FullBl
 	genStateRoot, err := builder.GetTipSetStateRoot(genesis.Key())
 	require.NoError(t, err)
 
-	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genesis.At(0).Cid())
+	store := chain.NewStore(repo.NewInMemoryRepo().ChainDatastore(), hamt.NewCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genesis.At(0).Cid())
 	// Initialize chainStore store genesis state and tipset as head.
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{TipSetStateRoot: genStateRoot, TipSet: genesis, TipSetReceipts: types.EmptyReceiptsCID}))
 	require.NoError(t, store.SetHead(ctx, genesis))

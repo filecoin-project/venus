@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -20,8 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ import (
 // the state tree, requiring that all its steps succeed.
 func RequireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	tree := state.NewEmptyStateTree(cst)
+	tree := state.NewTree(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
@@ -176,7 +176,7 @@ func RequireCreateStorages(ctx context.Context, t *testing.T) (state.Tree, vm2.S
 	blk, err := DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
 	vms := vm2.NewStorageMap(bs)

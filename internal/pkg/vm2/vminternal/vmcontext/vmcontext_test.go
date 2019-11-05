@@ -16,12 +16,12 @@ import (
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/storagemap"
@@ -34,8 +34,8 @@ func TestVMContextStorage(t *testing.T) {
 	ctx := context.Background()
 
 	cst := hamt.NewCborStore()
-	st := state.NewEmptyStateTree(cst)
-	cstate := state.NewCachedStateTree(st)
+	st := state.NewTree(cst)
+	cstate := state.NewCachedTree(st)
 
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
@@ -93,7 +93,7 @@ func TestVMContextSendFailures(t *testing.T) {
 	}
 	fakeActorCid := types.NewCidForTestGetter()()
 	mockStateTree.BuiltinActors[fakeActorCid] = &actor.FakeActor{}
-	tree := state.NewCachedStateTree(&mockStateTree)
+	tree := state.NewCachedTree(&mockStateTree)
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	vms := storagemap.NewStorageMap(bs)
 
@@ -313,7 +313,7 @@ func TestSendErrorHandling(t *testing.T) {
 			return transferErr
 		}
 
-		tree := state.NewCachedStateTree(&state.MockStateTree{NoMocks: true})
+		tree := state.NewCachedTree(&state.MockStateTree{NoMocks: true})
 		vmCtxParams := NewContextParams{
 			From:        actor1,
 			To:          actor2,
@@ -336,7 +336,7 @@ func TestSendErrorHandling(t *testing.T) {
 		msg.Value = types.ZeroAttoFIL // such that we don't transfer
 
 		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]dispatch.ExecutableActor{}}
-		tree := state.NewCachedStateTree(stateTree)
+		tree := state.NewCachedTree(stateTree)
 		vmCtxParams := NewContextParams{
 			From:        actor1,
 			To:          actor2,
@@ -363,7 +363,7 @@ func TestSendErrorHandling(t *testing.T) {
 		stateTree := &state.MockStateTree{NoMocks: true, BuiltinActors: map[cid.Cid]dispatch.ExecutableActor{
 			actor2.Code: &actor.FakeActor{},
 		}}
-		tree := state.NewCachedStateTree(stateTree)
+		tree := state.NewCachedTree(stateTree)
 
 		vmCtxParams := NewContextParams{
 			From:        actor1,

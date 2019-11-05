@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 // Init initializes a DefaultSycner in the given repo.
@@ -27,7 +27,7 @@ func Init(ctx context.Context, r repo.Repo, bs bstore.Blockstore, cst *hamt.Cbor
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate genesis block")
 	}
-	chainStore := NewStore(r.ChainDatastore(), cst, &state.TreeStateLoader{}, NewStatusReporter(), genesis.Cid())
+	chainStore := NewStore(r.ChainDatastore(), cst, state.NewTreeLoader(), NewStatusReporter(), genesis.Cid())
 
 	// Persist the genesis tipset to the repo.
 	genTsas := &TipSetMetadata{

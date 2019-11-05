@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )
 
 // Default Chain diagram below.  Note that blocks in the same tipset are in parentheses.
@@ -26,7 +26,7 @@ import (
 
 // newChainStore creates a new chain store for tests.
 func newChainStore(r repo.Repo, genCid cid.Cid) *chain.Store {
-	return chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, chain.NewStatusReporter(), genCid)
+	return chain.NewStore(r.Datastore(), hamt.NewCborStore(), state.NewTreeLoader(), chain.NewStatusReporter(), genCid)
 }
 
 // requirePutTestChain puts the count tipsets preceding head in the source to
@@ -139,7 +139,7 @@ func TestGetTipSetState(t *testing.T) {
 	balance := types.NewAttoFILFromFIL(1000000)
 	testActor := actor.NewActor(fakeCode, balance)
 	addr := address.NewForTestGetter()()
-	st1 := state.NewEmptyStateTree(cst)
+	st1 := state.NewTree(cst)
 	require.NoError(t, st1.SetActor(ctx, addr, testActor))
 	root, err := st1.Flush(ctx)
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestGetTipSetState(t *testing.T) {
 	// setup chain store
 	r := repo.NewInMemoryRepo()
 	ds := r.Datastore()
-	store := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), gen.At(0).Cid())
+	store := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), gen.At(0).Cid())
 
 	// add tipset and state to chain store
 	require.NoError(t, store.PutTipSetMetadata(ctx, &chain.TipSetMetadata{
@@ -166,7 +166,7 @@ func TestGetTipSetState(t *testing.T) {
 	// verify output of GetTipSetState
 	st2, err := store.GetTipSetState(ctx, testTs.Key())
 	assert.NoError(t, err)
-	for actRes := range state.GetAllActors(ctx, st2) {
+	for actRes := range st2.GetAllActors(ctx) {
 		assert.NoError(t, actRes.Error)
 		assert.Equal(t, addr.String(), actRes.Address)
 		assert.Equal(t, fakeCode, actRes.Actor.Code)
@@ -280,7 +280,7 @@ func TestHead(t *testing.T) {
 	genTS := builder.NewGenesis()
 	r := repo.NewInMemoryRepo()
 	sr := chain.NewStatusReporter()
-	cs := chain.NewStore(r.Datastore(), hamt.NewCborStore(), &state.TreeStateLoader{}, sr, genTS.At(0).Cid())
+	cs := chain.NewStore(r.Datastore(), hamt.NewCborStore(), state.NewTreeLoader(), sr, genTS.At(0).Cid())
 
 	// Construct test chain data
 	link1 := builder.AppendOn(genTS, 2)
@@ -383,7 +383,7 @@ func TestLoadAndReboot(t *testing.T) {
 	requirePutBlocksToCborStore(t, cst, link3.ToSlice()...)
 	requirePutBlocksToCborStore(t, cst, link4.ToSlice()...)
 
-	chainStore := chain.NewStore(ds, cst, &state.TreeStateLoader{}, chain.NewStatusReporter(), genTS.At(0).Cid())
+	chainStore := chain.NewStore(ds, cst, state.NewTreeLoader(), chain.NewStatusReporter(), genTS.At(0).Cid())
 	requirePutTestChain(ctx, t, chainStore, link4.Key(), builder, 5)
 	assertSetHead(t, chainStore, genTS) // set the genesis block
 
@@ -392,7 +392,7 @@ func TestLoadAndReboot(t *testing.T) {
 
 	// rebuild chain with same datastore and cborstore
 	sr := chain.NewStatusReporter()
-	rebootChain := chain.NewStore(ds, cst, &state.TreeStateLoader{}, sr, genTS.At(0).Cid())
+	rebootChain := chain.NewStore(ds, cst, state.NewTreeLoader(), sr, genTS.At(0).Cid())
 	err := rebootChain.Load(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, link4.Key(), sr.Status().ValidatedHead)
