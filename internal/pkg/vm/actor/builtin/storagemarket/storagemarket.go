@@ -18,9 +18,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 func init() {
@@ -150,7 +150,7 @@ var Errors = map[uint8]error{
 // given size. The miners collateral is set by the value in the message.
 func (*impl) createStorageMiner(vmctx runtime.Runtime, sectorSize *types.BytesAmount, pid peer.ID) (address.Address, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -201,7 +201,7 @@ func (*impl) createStorageMiner(vmctx runtime.Runtime, sectorSize *types.BytesAm
 // (via slashing, faults or willful removal). The delta is in number of bytes.
 func (*impl) updateStorage(vmctx runtime.Runtime, delta *types.BytesAmount) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -235,7 +235,7 @@ func (*impl) updateStorage(vmctx runtime.Runtime, delta *types.BytesAmount) (uin
 
 func (a *impl) getLateMiners(vmctx runtime.Runtime) (*map[string]uint64, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	ctx := context.Background()
@@ -282,7 +282,7 @@ func (a *impl) getLateMiners(vmctx runtime.Runtime) (*map[string]uint64, uint8, 
 // GetTotalStorage returns the total amount of proven storage in the system.
 func (*impl) getTotalStorage(vmctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -304,7 +304,7 @@ func (*impl) getTotalStorage(vmctx runtime.Runtime) (*types.BytesAmount, uint8, 
 // GetSectorSize returns the sector size of the block chain
 func (*impl) getProofsMode(vmctx runtime.Runtime) (types.ProofsMode, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return 0, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return 0, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State

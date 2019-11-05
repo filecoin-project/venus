@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // FakeActorStorage is storage for our fake actor. It contains a single
@@ -149,7 +149,7 @@ type impl FakeActor
 // HasReturnValue is a dummy method that does nothing.
 func (*impl) HasReturnValue(ctx runtime.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return address.Undef, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	return address.Undef, 0, nil
@@ -247,7 +247,7 @@ func (a *impl) AttemptMultiSpend2(ctx runtime.Runtime, self, target address.Addr
 // RunsAnotherMessage sends a message
 func (*impl) RunsAnotherMessage(ctx runtime.Runtime, target address.Address) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	_, code, err := ctx.Send(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
 	return code, err

@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/stretchr/testify/require"
 )
 

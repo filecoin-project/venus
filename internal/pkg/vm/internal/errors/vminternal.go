@@ -1,7 +1,7 @@
-// Package vminternal has all the things vm and only vm need.
+// Package internal has all the things vm and only vm need.
 //
 // This contents can be slowly placed on the vm internal.
-package vminternal
+package internal
 
 import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"

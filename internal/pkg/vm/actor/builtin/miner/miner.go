@@ -19,9 +19,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
 
@@ -443,7 +443,7 @@ const (
 func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -492,7 +492,7 @@ func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (
 // GetAsks returns all the asks for this miner.
 func (*Impl) GetAsks(ctx runtime.Runtime) ([]uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -521,7 +521,7 @@ func (*Impl) GetAsks(ctx runtime.Runtime) ([]uint64, uint8, error) {
 // GetAsk returns an ask by ID
 func (*Impl) GetAsk(ctx runtime.Runtime, askid *big.Int) ([]byte, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -560,7 +560,7 @@ func (*Impl) GetAsk(ctx runtime.Runtime, askid *big.Int) ([]byte, uint8, error) 
 // GetOwner returns the miners owner.
 func (*Impl) GetOwner(ctx runtime.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Undef, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -582,7 +582,7 @@ func (*Impl) GetOwner(ctx runtime.Runtime) (address.Address, uint8, error) {
 // GetLastUsedSectorID returns the last used sector id.
 func (*Impl) GetLastUsedSectorID(ctx runtime.Runtime) (uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return 0, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return 0, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -634,7 +634,7 @@ func (*Impl) GetPoStState(ctx runtime.Runtime) (*big.Int, uint8, error) {
 // GetProvingSetCommitments returns all sector commitments posted by this miner.
 func (*Impl) GetProvingSetCommitments(ctx runtime.Runtime) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -658,7 +658,7 @@ func (*Impl) GetProvingSetCommitments(ctx runtime.Runtime) (map[string]types.Com
 // this miner.
 func (*Impl) GetSectorSize(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -681,7 +681,7 @@ func (*Impl) GetSectorSize(ctx runtime.Runtime) (*types.BytesAmount, uint8, erro
 // already be committed.
 func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	if len(commD) != int(types.CommitmentBytesLen) {
 		return 1, errors.NewRevertError("invalid sized commD")
@@ -772,7 +772,7 @@ func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, 
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
 func (*Impl) VerifyPieceInclusion(ctx runtime.Runtime, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()
@@ -823,7 +823,7 @@ func (*Impl) VerifyPieceInclusion(ctx runtime.Runtime, commP []byte, pieceSize *
 // ChangeWorker alters the worker address in state
 func (*Impl) ChangeWorker(ctx runtime.Runtime, worker address.Address) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -846,7 +846,7 @@ func (*Impl) ChangeWorker(ctx runtime.Runtime, worker address.Address) (uint8, e
 // GetWorker returns the worker address for this miner.
 func (*Impl) GetWorker(ctx runtime.Runtime) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return address.Address{}, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return address.Address{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -868,7 +868,7 @@ func (*Impl) GetWorker(ctx runtime.Runtime) (address.Address, uint8, error) {
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
 func (*Impl) GetPeerID(ctx runtime.Runtime) (peer.ID, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return peer.ID(""), vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return peer.ID(""), internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -884,7 +884,7 @@ func (*Impl) GetPeerID(ctx runtime.Runtime) (peer.ID, uint8, error) {
 // UpdatePeerID is used to update the peerID this miner is operating under.
 func (*Impl) UpdatePeerID(ctx runtime.Runtime, pid peer.ID) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var storage State
@@ -908,7 +908,7 @@ func (*Impl) UpdatePeerID(ctx runtime.Runtime, pid peer.ID) (uint8, error) {
 // GetPower returns the amount of proven sectors for this miner.
 func (*Impl) GetPower(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -931,7 +931,7 @@ func (*Impl) GetPower(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 // protect storage.
 func (*Impl) GetActiveCollateral(ctx runtime.Runtime) (types.AttoFIL, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return types.ZeroAttoFIL, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return types.ZeroAttoFIL, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	ret, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -951,7 +951,7 @@ func (*Impl) GetActiveCollateral(ctx runtime.Runtime) (types.AttoFIL, uint8, err
 
 func (*Impl) AddFaults(ctx runtime.Runtime, faults types.FaultSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
@@ -980,7 +980,7 @@ func (*Impl) AddFaults(ctx runtime.Runtime, faults types.FaultSet) (uint8, error
 // that you have been actually storing the files you claim to be.
 func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()
@@ -1147,7 +1147,7 @@ func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults
 // PoSt on time.
 func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	chainHeight := ctx.BlockHeight()

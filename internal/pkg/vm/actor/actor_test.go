@@ -16,10 +16,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/gastracker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/vmcontext"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )

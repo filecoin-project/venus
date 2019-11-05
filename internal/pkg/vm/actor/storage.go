@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
 
 const (

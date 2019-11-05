@@ -30,11 +30,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/gastracker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/storagemap"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/vmcontext"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 )
 
 func TestAskFunctions(t *testing.T) {
@@ -175,7 +175,7 @@ func TestChangeWorker(t *testing.T) {
 
 		require.Error(t, result.ExecutionError)
 		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
-		assert.Equal(t, uint8(vminternal.ErrInsufficientGas), result.Receipt.ExitCode)
+		assert.Equal(t, uint8(internal.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
 }
 
@@ -1304,7 +1304,7 @@ func TestActorSlashStorageFault(t *testing.T) {
 
 		require.Error(t, result.ExecutionError)
 		assert.Contains(t, result.ExecutionError.Error(), "Insufficient gas")
-		assert.Equal(t, uint8(vminternal.ErrInsufficientGas), result.Receipt.ExitCode)
+		assert.Equal(t, uint8(internal.ErrInsufficientGas), result.Receipt.ExitCode)
 	})
 
 	t.Run("slashing a miner with no storage fails", func(t *testing.T) {

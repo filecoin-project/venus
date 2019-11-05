@@ -6,9 +6,9 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	vminternal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
@@ -89,7 +89,7 @@ type Impl Actor
 // GetNetwork returns the network name for this network
 func (*Impl) GetNetwork(ctx runtime.Runtime) (string, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return "", vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return "", internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State

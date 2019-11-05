@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"

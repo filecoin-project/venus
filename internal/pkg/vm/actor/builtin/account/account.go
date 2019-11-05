@@ -6,8 +6,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // Actor is the builtin actor responsible for individual accounts.

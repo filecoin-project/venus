@@ -23,8 +23,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // StorageMap manages Storages.
@@ -124,7 +124,7 @@ func (s storage) Put(v interface{}) (cid.Cid, error) {
 		nd, err = cbor.WrapObject(v, types.DefaultHashFunction, -1)
 	}
 	if err != nil {
-		return cid.Undef, vminternal.Errors[vminternal.ErrDecode]
+		return cid.Undef, internal.Errors[internal.ErrDecode]
 	}
 
 	c := nd.Cid()
@@ -158,14 +158,14 @@ func (s storage) Get(cid cid.Cid) ([]byte, error) {
 func (s storage) Commit(newCid cid.Cid, oldCid cid.Cid) error {
 	// commit to initialize actor only permitted if Head and expected id are nil
 	if oldCid.Defined() && s.actor.Head.Defined() && !oldCid.Equals(s.actor.Head) {
-		return vminternal.Errors[vminternal.ErrStaleHead]
+		return internal.Errors[internal.ErrStaleHead]
 	} else if oldCid != s.actor.Head { // covers case where only one cid is nil
-		return vminternal.Errors[vminternal.ErrStaleHead]
+		return internal.Errors[internal.ErrStaleHead]
 	}
 
 	// validate completeness by traversing graph to find ids
 	if _, err := s.liveDescendantIds(newCid); err != nil {
-		return vminternal.Errors[vminternal.ErrDanglingPointer]
+		return internal.Errors[internal.ErrDanglingPointer]
 	}
 
 	s.actor.Head = newCid

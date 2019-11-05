@@ -14,10 +14,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/runtime"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/storage"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
 
 // Actor provides a mechanism for off chain payments.
@@ -204,7 +204,7 @@ var Errors = map[uint8]error{
 // will expire and return all of its money to the owner after the given block height.
 func (*impl) createChannel(vmctx runtime.Runtime, target address.Address, eol *types.BlockHeight) (*types.ChannelID, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return nil, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	// require that from account be an account actor to ensure nonce is a valid id
@@ -273,7 +273,7 @@ func (*impl) redeem(vmctx runtime.Runtime, payer address.Address, chid *types.Ch
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
@@ -331,7 +331,7 @@ func (*impl) close(vmctx runtime.Runtime, payer address.Address, chid *types.Cha
 	validAt *types.BlockHeight, condition *types.Predicate, sig []byte, redeemerConditionParams []interface{}) (uint8, error) {
 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	if !VerifyVoucherSignature(payer, chid, amt, validAt, condition, sig) {
@@ -381,7 +381,7 @@ func (*impl) close(vmctx runtime.Runtime, payer address.Address, chid *types.Cha
 // extend the Channel's lifespan.
 func (*impl) extend(vmctx runtime.Runtime, chid *types.ChannelID, eol *types.BlockHeight) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	ctx := context.Background()
@@ -433,7 +433,7 @@ func (*impl) extend(vmctx runtime.Runtime, chid *types.ChannelID, eol *types.Blo
 // due to changes in chain state.
 func (*impl) cancel(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	ctx := context.Background()
@@ -494,7 +494,7 @@ func (*impl) cancel(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error)
 // out payment Channels they own.
 func (*impl) reclaim(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	ctx := context.Background()
@@ -541,7 +541,7 @@ func (*impl) reclaim(vmctx runtime.Runtime, chid *types.ChannelID) (uint8, error
 // for funds to be transferred.
 func (*impl) voucher(vmctx runtime.Runtime, chid *types.ChannelID, amount types.AttoFIL, validAt *types.BlockHeight, condition *types.Predicate) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return []byte{}, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return []byte{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	ctx := context.Background()
@@ -597,7 +597,7 @@ func (*impl) voucher(vmctx runtime.Runtime, chid *types.ChannelID, amount types.
 // The slice of channels will be returned as cbor encoded map from string channelId to PaymentChannel.
 func (*impl) ls(vmctx runtime.Runtime, payer address.Address) ([]byte, uint8, error) {
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
-		return []byte{}, vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return []byte{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	ctx := context.Background()

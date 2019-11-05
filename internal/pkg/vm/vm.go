@@ -3,7 +3,7 @@ package vm
 import (
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 )
 
 // Re-exports

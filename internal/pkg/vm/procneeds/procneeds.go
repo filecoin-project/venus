@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/gastracker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/vminternal/vmcontext"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 )
 
 // GasTracker maintains the state of gas usage throughout the execution of a block and a message
