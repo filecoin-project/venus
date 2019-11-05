@@ -16,7 +16,7 @@ import (
 	errPkg "github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	typegen "github.com/whyrusleeping/cbor-gen"
 )
 

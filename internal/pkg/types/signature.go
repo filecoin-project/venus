@@ -5,7 +5,7 @@ import (
 	logging "github.com/ipfs/go-log"
 	"github.com/minio/blake2b-simd"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 
 var log = logging.Logger("types")

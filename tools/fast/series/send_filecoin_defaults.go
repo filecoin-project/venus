@@ -3,7 +3,7 @@ package series
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 

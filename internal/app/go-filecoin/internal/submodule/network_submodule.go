@@ -32,7 +32,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+<<<<<<< HEAD
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+=======
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
+>>>>>>> xxx move address to vm2
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 

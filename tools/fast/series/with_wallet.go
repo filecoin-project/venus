@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/tools/fast"
 )
 
