@@ -233,7 +233,15 @@ func (ctx *VMContext) Verifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 
-var _ Panda = (*VMContext)(nil)
+// ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
+type ExtendedRuntime interface {
+	runtime.Runtime
+	From() *actor.Actor
+	To() *actor.Actor
+	Actors() ExecutableActorLookup
+}
+
+var _ ExtendedRuntime = (*VMContext)(nil)
 
 // Actors returns the executable actors lookup table.
 func (ctx *VMContext) Actors() ExecutableActorLookup {
@@ -268,30 +276,21 @@ func makeDeps(st *state.CachedTree) *deps {
 type deps struct {
 	EncodeValues     func([]*abi.Value) ([]byte, error)
 	GetOrCreateActor func(context.Context, address.Address, func() (*actor.Actor, error)) (*actor.Actor, error)
-	Send             func(context.Context, Panda) ([][]byte, uint8, error)
+	Send             func(context.Context, ExtendedRuntime) ([][]byte, uint8, error)
 	ToValues         func([]interface{}) ([]*abi.Value, error)
 }
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx Panda) ([][]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
 	return send(ctx, Transfer, vmCtx)
 }
 
 // TransferFn is the money transfer function.
 type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
-// Panda is the internal runtime requirements
-// Review: not sure if this should be separate or part of runtime.Runtime
-type Panda interface {
-	runtime.Runtime
-	From() *actor.Actor
-	To() *actor.Actor
-	Actors() ExecutableActorLookup
-}
-
 // send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, transfer TransferFn, vmCtx Panda) ([][]byte, uint8, error) {
+func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
 	msg := vmCtx.Message()
 	if !msg.Value.Equal(types.ZeroAttoFIL) {
 		if err := transfer(vmCtx.From(), vmCtx.To(), msg.Value); err != nil {

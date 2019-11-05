@@ -226,7 +226,7 @@ func TestVMContextSendFailures(t *testing.T) {
 				calls = append(calls, "GetOrCreateActor")
 				return f()
 			},
-			Send: func(ctx context.Context, vmCtx Panda) ([][]byte, uint8, error) {
+			Send: func(ctx context.Context, vmCtx ExtendedRuntime) ([][]byte, uint8, error) {
 				calls = append(calls, "Send")
 				return nil, 123, expectedVMSendErr
 			},

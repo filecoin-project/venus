@@ -45,7 +45,7 @@ func NewVMContext(params NewContextParams) *vmcontext.VMContext {
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx vmcontext.Panda) ([][]byte, uint8, error) {
+func Send(ctx context.Context, vmCtx vmcontext.ExtendedRuntime) ([][]byte, uint8, error) {
 	return vmcontext.Send(ctx, vmCtx)
 }
 
