@@ -12,15 +12,15 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // ExecutableActorLookup provides a method to get an executable actor by code and protocol version
@@ -320,7 +320,7 @@ func send(ctx context.Context, transfer TransferFn, vmCtx Panda) ([][]byte, uint
 		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
 	}
 
-	exportedFn, ok := actor.MakeTypedExport(toExecutable, msg.Method)
+	exportedFn, ok := makeTypedExport(toExecutable, msg.Method)
 	if !ok {
 		return nil, 1, errors.Errors[errors.ErrMissingExport]
 	}

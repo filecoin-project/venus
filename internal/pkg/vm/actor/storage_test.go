@@ -2,13 +2,12 @@ package actor_test
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -43,33 +42,6 @@ func TestActorMarshal(t *testing.T) {
 	c2, err := actorBack.Cid()
 	assert.NoError(t, err)
 	assert.Equal(t, c1, c2)
-}
-
-func TestMarshalValue(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("success", func(t *testing.T) {
-		testCases := []struct {
-			In  interface{}
-			Out []byte
-		}{
-			{In: []byte("hello"), Out: []byte("hello")},
-			{In: big.NewInt(100), Out: big.NewInt(100).Bytes()},
-			{In: "hello", Out: []byte("hello")},
-		}
-
-		for _, tc := range testCases {
-			out, err := MarshalValue(tc.In)
-			assert.NoError(t, err)
-			assert.Equal(t, out, tc.Out)
-		}
-	})
-
-	t.Run("failure", func(t *testing.T) {
-		out, err := MarshalValue(big.NewRat(1, 2))
-		assert.Equal(t, err.Error(), "unknown type: *big.Rat")
-		assert.Nil(t, out)
-	})
 }
 
 func TestLoadLookup(t *testing.T) {
