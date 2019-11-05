@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 

@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/runtime"

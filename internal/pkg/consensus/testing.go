@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/storagemarket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 )

@@ -14,8 +14,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
+	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/miner"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 

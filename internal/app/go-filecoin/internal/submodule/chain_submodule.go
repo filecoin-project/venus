@@ -3,7 +3,7 @@ package submodule
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/state"
 	"github.com/ipfs/go-cid"
 

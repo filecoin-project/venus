@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 

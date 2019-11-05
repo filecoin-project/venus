@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/address"
 )
 
