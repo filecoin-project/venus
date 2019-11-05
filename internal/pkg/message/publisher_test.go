@@ -36,16 +36,14 @@ func TestDefaultMessagePublisher_Publish(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			mnp := message.MockNetworkPublisher{}
-			pub := message.NewDefaultPublisher(&mnp, "Topic", pool)
+			pub := message.NewDefaultPublisher(&mnp, pool)
 			assert.NoError(t, pub.Publish(context.Background(), signed, 0, test.bcast))
 			smsg, ok := pool.Get(msgCid)
 			assert.True(t, ok)
 			assert.NotNil(t, smsg)
 			if test.bcast {
-				assert.Equal(t, "Topic", mnp.Topic)
 				assert.Equal(t, encoded, mnp.Data)
 			} else {
-				assert.Equal(t, "", mnp.Topic)
 				assert.Nil(t, mnp.Data)
 			}
 		})

@@ -12,8 +12,6 @@ import (
 	"github.com/libp2p/go-libp2p-swarm"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
-
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
 
 // SwarmConnInfo represents details about a single swarm connection.
@@ -62,8 +60,6 @@ func (ci SwarmConnInfos) Swap(i, j int) {
 // Network is a unified interface for dealing with libp2p
 type Network struct {
 	host host.Host
-	*pubsub.Subscriber
-	*pubsub.Publisher
 	metrics.Reporter
 	*Router
 	*Pinger
@@ -72,19 +68,15 @@ type Network struct {
 // New returns a new Network
 func New(
 	host host.Host,
-	publisher *pubsub.Publisher,
-	subscriber *pubsub.Subscriber,
 	router *Router,
 	reporter metrics.Reporter,
 	pinger *Pinger,
 ) *Network {
 	return &Network{
-		host:       host,
-		Pinger:     pinger,
-		Publisher:  publisher,
-		Reporter:   reporter,
-		Router:     router,
-		Subscriber: subscriber,
+		host:     host,
+		Pinger:   pinger,
+		Reporter: reporter,
+		Router:   router,
 	}
 }
 

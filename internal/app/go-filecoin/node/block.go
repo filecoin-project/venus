@@ -8,7 +8,6 @@ import (
 	"go.opencensus.io/trace"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics/tracing"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 )
 
@@ -32,7 +31,7 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 		return err
 	}
 
-	return node.PorcelainAPI.PubSubPublish(net.BlockTopic(node.network.NetworkName), b.ToNode().RawData())
+	return node.syncer.BlockTopic.Publish(ctx, b.ToNode().RawData())
 }
 
 func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {

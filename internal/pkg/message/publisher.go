@@ -12,17 +12,16 @@ import (
 // This is wiring for message publication from the outbox.
 type DefaultPublisher struct {
 	network networkPublisher
-	topic   string
 	pool    *Pool
 }
 
 type networkPublisher interface {
-	Publish(topic string, data []byte) error
+	Publish(ctx context.Context, data []byte) error
 }
 
 // NewDefaultPublisher creates a new publisher.
-func NewDefaultPublisher(pubsub networkPublisher, topic string, pool *Pool) *DefaultPublisher {
-	return &DefaultPublisher{pubsub, topic, pool}
+func NewDefaultPublisher(pubsub networkPublisher, pool *Pool) *DefaultPublisher {
+	return &DefaultPublisher{pubsub, pool}
 }
 
 // Publish marshals and publishes a message to the core message pool, and if bcast is true,
@@ -38,7 +37,7 @@ func (p *DefaultPublisher) Publish(ctx context.Context, message *types.SignedMes
 	}
 
 	if bcast {
-		if err = p.network.Publish(p.topic, encoded); err != nil {
+		if err = p.network.Publish(ctx, encoded); err != nil {
 			return errors.Wrap(err, "failed to publish message to network")
 		}
 	}

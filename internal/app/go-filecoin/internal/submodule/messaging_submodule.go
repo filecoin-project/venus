@@ -20,7 +20,8 @@ type MessagingSubmodule struct {
 	Outbox *message.Outbox
 
 	// Network Fields
-	MessageSub pubsub.Subscription
+	MessageTopic *pubsub.Topic
+	MessageSub   pubsub.Subscription
 
 	MsgPool *message.Pool
 }
@@ -38,14 +39,22 @@ func NewMessagingSubmodule(ctx context.Context, config messagingConfig, repo mes
 	msgPool := message.NewPool(repo.Config().Mpool, consensus.NewIngestionValidator(chain.State, repo.Config().Mpool))
 	inbox := message.NewInbox(msgPool, message.InboxMaxAgeTipsets, chain.ChainReader, chain.MessageStore)
 
+	// setup messaging topic
+	topic, err := network.Fsub.Join(net.MessageTopic(network.NetworkName))
+	if err != nil {
+		return MessagingSubmodule{}, err
+	}
+
 	msgQueue := message.NewQueue()
 	outboxPolicy := message.NewMessageQueuePolicy(chain.MessageStore, message.OutboxMaxAgeRounds)
-	msgPublisher := message.NewDefaultPublisher(pubsub.NewPublisher(network.fsub), net.MessageTopic(network.NetworkName), msgPool)
+	msgPublisher := message.NewDefaultPublisher(pubsub.NewTopic(topic), msgPool)
 	outbox := message.NewOutbox(wallet.Wallet, consensus.NewOutboundMessageValidator(), msgQueue, msgPublisher, outboxPolicy, chain.ChainReader, chain.State, config.Journal().Topic("outbox"))
 
 	return MessagingSubmodule{
-		Inbox:   inbox,
-		Outbox:  outbox,
+		Inbox:        inbox,
+		Outbox:       outbox,
+		MessageTopic: pubsub.NewTopic(topic),
+		// MessageSub: nil,
 		MsgPool: msgPool,
 	}, nil
 }

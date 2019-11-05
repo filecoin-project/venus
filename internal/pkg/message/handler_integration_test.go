@@ -39,7 +39,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		mpool := message.NewPool(config.NewDefaultConfig().Mpool, th.NewMockMessagePoolValidator())
 		inbox := message.NewInbox(mpool, maxAge, provider, provider)
 		queue := message.NewQueue()
-		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, "Topic", mpool)
+		publisher := message.NewDefaultPublisher(&message.MockNetworkPublisher{}, mpool)
 		policy := message.NewMessageQueuePolicy(provider, maxAge)
 		outbox := message.NewOutbox(signer, &message.FakeValidator{}, queue, publisher, policy,
 			provider, provider, objournal)
