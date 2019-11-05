@@ -281,8 +281,8 @@ func Send(ctx context.Context, vmCtx Panda) ([][]byte, uint8, error) {
 // TransferFn is the money transfer function.
 type TransferFn = func(*actor.Actor, *actor.Actor, types.AttoFIL) error
 
-// Review: not sure if this should be separete or part of runtime.Runtime
 // Panda is the internal runtime requirements
+// Review: not sure if this should be separate or part of runtime.Runtime
 type Panda interface {
 	runtime.Runtime
 	From() *actor.Actor

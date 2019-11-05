@@ -92,7 +92,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 			ancestors[i] = th.RequireNewTipSet(t, ancestorBlk...)
 			pTipSet = ancestors[i]
 		}
-		vms := vm.NewStorageMap(bstore)
 
 		isLookingBack := func(ticket block.Ticket) {
 			expTicket, err := ancestors[consensus.ElectionLookback-1].MinTicket()
@@ -191,7 +190,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
-		vms := vm2.NewStorageMap(bstore)
 
 		// Give block 0 an invalid signature
 		nextBlocks[0].BlockSig = nextBlocks[1].BlockSig
@@ -206,7 +204,6 @@ func TestExpected_RunStateTransition_validateMining(t *testing.T) {
 	t.Run("returns nil + error when parent weight invalid", func(t *testing.T) {
 		as := testActorState(t, kis)
 		exp := consensus.NewExpected(cistore, bstore, th.NewFakeProcessor(), as, th.BlockTimeTest, &consensus.FakeElectionMachine{}, &consensus.FakeTicketMachine{})
-		vms := vm2.NewStorageMap(bstore)
 
 		pTipSet := th.RequireNewTipSet(t, genesisBlock)
 		nextBlocks := requireMakeNBlocks(t, 3, pTipSet, genesisBlock.StateRoot, types.EmptyReceiptsCID, kis, mockSigner)
@@ -285,7 +282,7 @@ func testActorState(t *testing.T, kis []types.KeyInfo) consensus.SnapshotGenerat
 }
 
 func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) cid.Cid {
-	tree, err := state.LoadStateTree(ctx, cstore, inRoot)
+	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	m2w := minerToWorkerFromKis(t, kis)
 	vms := vm.NewStorageMap(bstore)
