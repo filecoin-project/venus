@@ -103,7 +103,7 @@ func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldCha
 
 // MockNetworkPublisher records the last message published.
 type MockNetworkPublisher struct {
-	Data  []byte
+	Data []byte
 }
 
 // Publish records the topic and message.
