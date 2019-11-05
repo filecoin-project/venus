@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 )
 
 // CachedTree is a read-through cache on top of a state tree.
