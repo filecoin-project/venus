@@ -12,12 +12,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -66,30 +65,30 @@ func NewActor() *actor.Actor {
 var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
-	CreateStorageMiner: &external.FunctionSignature{
+	CreateStorageMiner: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount, abi.PeerID},
 		Return: []abi.Type{abi.Address},
 	},
-	UpdateStorage: &external.FunctionSignature{
+	UpdateStorage: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.BytesAmount},
 		Return: nil,
 	},
-	GetTotalStorage: &external.FunctionSignature{
+	GetTotalStorage: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	GetProofsMode: &external.FunctionSignature{
+	GetProofsMode: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.ProofsMode},
 	},
-	GetLateMiners: &external.FunctionSignature{
+	GetLateMiners: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.MinerPoStStates},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case CreateStorageMiner:
 		return reflect.ValueOf((*impl)(a).createStorageMiner), signatures[CreateStorageMiner], true

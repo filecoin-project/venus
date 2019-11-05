@@ -5,15 +5,14 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 )
 
 // Actor is the builtin actor responsible for network initialization.
@@ -43,14 +42,14 @@ func NewActor() *actor.Actor {
 var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
-	GetNetwork: &external.FunctionSignature{
+	GetNetwork: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.String},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case GetNetwork:
 		return reflect.ValueOf((*Impl)(a).GetNetwork), signatures[GetNetwork], true

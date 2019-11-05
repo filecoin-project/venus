@@ -14,13 +14,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	go_sectorbuilder "github.com/filecoin-project/go-sectorbuilder"
 )
@@ -187,56 +186,56 @@ var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
 	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
-	AddAsk: &external.FunctionSignature{
+	AddAsk: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
 		Return: []abi.Type{abi.Integer},
 	},
-	GetOwner: &external.FunctionSignature{
+	GetOwner: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
-	CommitSector: &external.FunctionSignature{
+	CommitSector: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.SectorID, abi.Bytes, abi.Bytes, abi.Bytes, abi.PoRepProof},
 		Return: []abi.Type{},
 	},
-	GetWorker: &external.FunctionSignature{
+	GetWorker: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.Address},
 	},
-	GetPeerID: &external.FunctionSignature{
+	GetPeerID: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.PeerID},
 	},
-	UpdatePeerID: &external.FunctionSignature{
+	UpdatePeerID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.PeerID},
 		Return: []abi.Type{},
 	},
-	GetPower: &external.FunctionSignature{
+	GetPower: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BytesAmount},
 	},
-	AddFaults: &external.FunctionSignature{
+	AddFaults: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.FaultSet},
 		Return: []abi.Type{},
 	},
-	SubmitPoSt: &external.FunctionSignature{
+	SubmitPoSt: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.PoStProof, abi.FaultSet, abi.IntSet},
 		Return: []abi.Type{},
 	},
-	SlashStorageFault: &external.FunctionSignature{
+	SlashStorageFault: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{},
 	},
-	ChangeWorker: &external.FunctionSignature{
+	ChangeWorker: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{},
 	},
 	// verifyPieceInclusion is not in spec, but should be.
-	VerifyPieceInclusion: &external.FunctionSignature{
+	VerifyPieceInclusion: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Bytes, abi.BytesAmount, abi.SectorID, abi.Bytes},
 		Return: []abi.Type{},
 	},
-	GetSectorSize: &external.FunctionSignature{
+	GetSectorSize: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.BytesAmount},
 	},
@@ -246,46 +245,46 @@ var signatures = dispatch.Exports{
 	// but are because we lack a mechanism to invoke actor methods without going through the
 	// queryMessage infrastructure. These should be removed when we have another way of invoking
 	// them from worker code. https://github.com/filecoin-project/go-filecoin/issues/2973
-	GetAsks: &external.FunctionSignature{
+	GetAsks: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.UintArray},
 	},
-	GetAsk: &external.FunctionSignature{
+	GetAsk: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Integer},
 		Return: []abi.Type{abi.Bytes},
 	},
-	GetLastUsedSectorID: &external.FunctionSignature{
+	GetLastUsedSectorID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.SectorID},
 	},
-	GetProvingSetCommitments: &external.FunctionSignature{
+	GetProvingSetCommitments: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.CommitmentsMap},
 	},
-	IsBootstrapMiner: &external.FunctionSignature{
+	IsBootstrapMiner: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Boolean},
 	},
-	GetPoStState: &external.FunctionSignature{
+	GetPoStState: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Integer},
 	},
-	GetProvingWindow: &external.FunctionSignature{
+	GetProvingWindow: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
 	},
-	CalculateLateFee: &external.FunctionSignature{
+	CalculateLateFee: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.BlockHeight},
 		Return: []abi.Type{abi.AttoFIL},
 	},
-	GetActiveCollateral: &external.FunctionSignature{
+	GetActiveCollateral: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.AttoFIL},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case AddAsk:
 		return reflect.ValueOf((*Impl)(a).AddAsk), signatures[AddAsk], true

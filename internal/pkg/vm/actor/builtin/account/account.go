@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
@@ -43,7 +42,7 @@ var _ dispatch.ExecutableActor = (*Actor)(nil)
 var signatures = dispatch.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	return nil, nil, false
 }
 

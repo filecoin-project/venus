@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
@@ -52,3 +53,8 @@ func Send(ctx context.Context, vmCtx vmcontext.Panda) ([][]byte, uint8, error) {
 func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 	return vmcontext.Transfer(fromActor, toActor, value)
 }
+
+// FunctionSignature describes the signature of a single function.
+//
+// Dragons: this signature should not be neede on the outside
+type FunctionSignature = dispatch.FunctionSignature

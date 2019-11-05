@@ -9,13 +9,12 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
@@ -79,42 +78,42 @@ func NewActor() *actor.Actor {
 var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
-	Cancel: &external.FunctionSignature{
+	Cancel: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
 	},
-	Close: &external.FunctionSignature{
+	Close: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
 		Return: nil,
 	},
-	CreateChannel: &external.FunctionSignature{
+	CreateChannel: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.BlockHeight},
 		Return: []abi.Type{abi.ChannelID},
 	},
-	Extend: &external.FunctionSignature{
+	Extend: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID, abi.BlockHeight},
 		Return: nil,
 	},
-	Ls: &external.FunctionSignature{
+	Ls: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: []abi.Type{abi.Bytes},
 	},
-	Reclaim: &external.FunctionSignature{
+	Reclaim: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID},
 		Return: nil,
 	},
-	Redeem: &external.FunctionSignature{
+	Redeem: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate, abi.Bytes, abi.Parameters},
 		Return: nil,
 	},
-	Voucher: &external.FunctionSignature{
+	Voucher: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.ChannelID, abi.AttoFIL, abi.BlockHeight, abi.Predicate},
 		Return: []abi.Type{abi.Bytes},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case Cancel:
 		return reflect.ValueOf((*impl)(a).cancel), signatures[Cancel], true

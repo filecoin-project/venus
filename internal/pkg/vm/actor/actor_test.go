@@ -10,12 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
@@ -92,7 +91,7 @@ func NewMockActor(list dispatch.Exports) *MockActor {
 var _ dispatch.ExecutableActor = (*MockActor)(nil)
 
 // Method returns method definition for a given method id.
-func (a *MockActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *MockActor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	signature, ok := a.signatures[id]
 	if !ok {
 		return nil, nil, false
@@ -162,7 +161,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	tf.UnitTest(t)
 
 	t.Run("no return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 			Two: {
 				Params: nil,
 				Return: nil,
@@ -179,7 +178,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 			Four: {
 				Params: nil,
 				Return: []abi.Type{abi.Bytes},
@@ -200,7 +199,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with error return", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 			Five: {
 				Params: []abi.Type{},
 				Return: []abi.Type{abi.Bytes},
@@ -217,7 +216,7 @@ func TestMakeTypedExportSuccess(t *testing.T) {
 	})
 
 	t.Run("with error that is not revert or fault", func(t *testing.T) {
-		a := NewMockActor(map[types.MethodID]*external.FunctionSignature{
+		a := NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 			Six: {
 				Params: nil,
 				Return: nil,
@@ -246,7 +245,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 	}{
 		{
 			Name: "missing method on actor",
-			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 				One: {
 					Params: nil,
 					Return: nil,
@@ -262,7 +261,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "too little params",
-			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 				One: {
 					Params: nil,
 					Return: nil,
@@ -273,7 +272,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "too little return parameters",
-			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 				Three: {
 					Params: nil,
 					Return: nil,
@@ -284,7 +283,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "wrong return parameters",
-			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 				Two: {
 					Params: nil,
 					Return: []abi.Type{abi.Bytes},
@@ -295,7 +294,7 @@ func TestMakeTypedExportFail(t *testing.T) {
 		},
 		{
 			Name: "multiple return parameters",
-			Actor: NewMockActor(map[types.MethodID]*external.FunctionSignature{
+			Actor: NewMockActor(map[types.MethodID]*dispatch.FunctionSignature{
 				Two: {
 					Params: nil,
 					Return: []abi.Type{abi.Bytes, abi.Bytes},

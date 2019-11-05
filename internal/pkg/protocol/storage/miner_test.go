@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,12 +21,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	minerActor "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
@@ -635,7 +635,7 @@ func newMinerTestPorcelain(t *testing.T, minerPriceString string) *minerTestPorc
 	}
 }
 
-func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *external.FunctionSignature, err error) {
+func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (_ *vm.FunctionSignature, err error) {
 	ea, error := builtin.DefaultActors.GetActorCode(types.MinerActorCodeCid, 0)
 	if error != nil {
 		return nil, err

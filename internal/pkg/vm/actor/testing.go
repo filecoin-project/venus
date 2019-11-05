@@ -7,12 +7,11 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/external"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -42,51 +41,51 @@ const (
 )
 
 var signatures = dispatch.Exports{
-	HasReturnValueID: &external.FunctionSignature{
+	HasReturnValueID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: []abi.Type{abi.Address},
 	},
-	ChargeGasAndRevertErrorID: &external.FunctionSignature{
+	ChargeGasAndRevertErrorID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	ReturnRevertErrorID: &external.FunctionSignature{
+	ReturnRevertErrorID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	goodCallID: &external.FunctionSignature{
+	goodCallID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	NonZeroExitCodeID: &external.FunctionSignature{
+	NonZeroExitCodeID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
-	NestedBalanceID: &external.FunctionSignature{
+	NestedBalanceID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
-	sendTokensID: &external.FunctionSignature{
+	sendTokensID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
-	callSendTokensID: &external.FunctionSignature{
+	callSendTokensID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.Address},
 		Return: nil,
 	},
-	AttemptMultiSpend1ID: &external.FunctionSignature{
+	AttemptMultiSpend1ID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.Address},
 		Return: nil,
 	},
-	AttemptMultiSpend2ID: &external.FunctionSignature{
+	AttemptMultiSpend2ID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address, abi.Address},
 		Return: nil,
 	},
-	RunsAnotherMessageID: &external.FunctionSignature{
+	RunsAnotherMessageID: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.Address},
 		Return: nil,
 	},
-	BlockLimitTestMethodID: &external.FunctionSignature{
+	BlockLimitTestMethodID: &dispatch.FunctionSignature{
 		Params: nil,
 		Return: nil,
 	},
@@ -113,7 +112,7 @@ func (a *FakeActor) InitializeState(storage runtime.Storage, initializerData int
 }
 
 // Method returns method definition for a given method id.
-func (a *FakeActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *FakeActor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case HasReturnValueID:
 		return reflect.ValueOf((*impl)(a).HasReturnValue), signatures[HasReturnValueID], true
