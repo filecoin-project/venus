@@ -4,7 +4,7 @@
 package external
 
 import (
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/abi"
 )
 
 // FunctionSignature describes the signature of a single function.
