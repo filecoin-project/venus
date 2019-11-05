@@ -16,14 +16,13 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/procneeds"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
@@ -361,7 +360,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		})
 		msg := types.NewMeteredMessage(addr1, addr2, 5, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 
-		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Equal(t, "nonce too high", err.(*errors.ApplyErrorTemporary).Cause().Error())
 	})
@@ -384,7 +383,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		})
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 
-		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Equal(t, "nonce too low", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -394,7 +393,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -410,7 +409,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 
-		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err = NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "message from non-account actor", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -428,7 +427,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.ZeroAttoFIL, types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 
 		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2,
-			types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+			types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "from (sender) account not found", err.(*errors.ApplyErrorTemporary).Cause().Error())
 	})
@@ -454,7 +453,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 
 		msg := types.NewMeteredMessage(addr1, addr2, 0, someval, types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
 
-		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		assert.Error(t, err)
 		assert.Contains(t, "negative value", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -464,7 +463,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		msg := types.NewMeteredMessage(addr1, addr1, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(0))
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, addr2, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "cannot send to self", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -474,7 +473,7 @@ func TestApplyMessagesValidation(t *testing.T) {
 		msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(550), types.SendMethodID, []byte{}, types.NewAttoFILFromFIL(10), types.NewGasUnits(50))
 
 		// the maximum gas charge (10*50 = 500) is greater than the sender balance minus the message value (1000-550 = 450)
-		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, address.Undef, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+		_, err := NewDefaultProcessor().ApplyMessage(context.Background(), st, th.VMStorage(), msg, address.Undef, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 		require.Error(t, err)
 		assert.Equal(t, "balance insufficient to cover transfer+gas", err.(*errors.ApplyErrorPermanent).Cause().Error())
 	})
@@ -596,12 +595,12 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 
 	// send 500 from addr1 to addr2
 	msg := types.NewMeteredMessage(addr1, addr2, 0, types.NewAttoFILFromFIL(500), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+	_, err := NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 	require.NoError(t, err)
 
 	// send 250 along from addr2 to addr3
 	msg = types.NewMeteredMessage(addr2, addr3, 0, types.NewAttoFILFromFIL(300), types.SendMethodID, []byte{}, types.NewGasPrice(1), types.NewGasUnits(0))
-	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), procneeds.NewGasTracker(), nil)
+	_, err = NewDefaultProcessor().ApplyMessage(ctx, st, th.VMStorage(), msg, addr4, types.NewBlockHeight(0), vm.NewGasTracker(), nil)
 	require.NoError(t, err)
 
 	// get all 3 actors
