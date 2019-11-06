@@ -45,7 +45,7 @@ type NetworkSubmodule struct {
 	// Router is a router from IPFS
 	Router routing.Routing
 
-	Fsub *libp2pps.PubSub
+	gsub *libp2pps.PubSub
 
 	// TODO: split chain bitswap from storage bitswap (issue: ???)
 	Bitswap exchange.Interface
@@ -113,7 +113,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	// Set up libp2p network
 	// TODO: PubSub requires strict message signing, disabled for now
 	// reference issue: #3124
-	fsub, err := libp2pps.NewFloodSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}
@@ -134,7 +134,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		NetworkName: networkName,
 		Host:        peerHost,
 		Router:      router,
-		Fsub:        fsub,
+		gsub:        gsub,
 		Bitswap:     bswap,
 		Network:     network,
 	}, nil
