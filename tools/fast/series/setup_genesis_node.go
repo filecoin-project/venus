@@ -27,7 +27,6 @@ func SetupGenesisNode(ctx context.Context, node *fast.Filecoin, minerAddress add
 		return err
 	}
 
-
 	wallet, err := node.WalletImport(ctx, minerOwner)
 	if err != nil {
 		return err

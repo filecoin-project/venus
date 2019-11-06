@@ -527,7 +527,7 @@ func MinerSetWorkerAddress(
 		return cid.Undef, errors.Wrap(err, "could not get miner owner address")
 	}
 
-	c, _, err :=  plumbing.MessageSend(
+	c, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		minerAddr,

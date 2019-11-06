@@ -61,9 +61,9 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		// First, send a message and expect to find it in the message queue and pool.
 		mid1, donePub1, err := outbox.Send(ctx, sender, dest, types.ZeroAttoFIL, gasPrice, gasUnits, true, types.MethodID(9000001))
 		require.NoError(t, err)
-		require.NotNil(t, donePub1)		
+		require.NotNil(t, donePub1)
 		require.Equal(t, 1, len(outbox.Queue().List(sender))) // Message is in the queue.
-		pub1Err := <- donePub1
+		pub1Err := <-donePub1
 		assert.NoError(t, pub1Err)
 		msg1, found := inbox.Pool().Get(mid1)
 		require.True(t, found) // Message is in the pool.
@@ -97,7 +97,7 @@ func TestNewHeadHandlerIntegration(t *testing.T) {
 		require.NotNil(t, donePub2)
 
 		// Both messages are in the pool.
-		pub2Err := <- donePub2
+		pub2Err := <-donePub2
 		assert.NoError(t, pub2Err)
 		_, found = inbox.Pool().Get(mid1)
 		require.True(t, found)

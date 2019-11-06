@@ -325,7 +325,7 @@ func (node *Node) Stop(ctx context.Context) {
 		fmt.Printf("error closing host: %s\n", err)
 	}
 
- 	if err := node.Repo.Close(); err != nil {
+	if err := node.Repo.Close(); err != nil {
 		fmt.Printf("error closing repo: %s\n", err)
 	}
 

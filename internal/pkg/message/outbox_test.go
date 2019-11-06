@@ -74,7 +74,7 @@ func TestOutbox(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, uint64(test.height), queue.List(sender)[0].Stamp)
 			require.NotNil(t, pubDone)
-			pubErr := <- pubDone
+			pubErr := <-pubDone
 			assert.NoError(t, pubErr)
 			require.NotNil(t, publisher.Message)
 			assert.Equal(t, test.nonce, publisher.Message.Message.CallSeqNum)

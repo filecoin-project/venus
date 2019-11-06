@@ -2,8 +2,8 @@ package mining
 
 import (
 	"context"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
@@ -90,7 +90,7 @@ func (a *API) MiningOnce(ctx context.Context) (*block.Block, error) {
 		return nil, res.Err
 	}
 
-	fmt.Printf("adding block\n")	
+	fmt.Printf("adding block\n")
 	if err := a.addNewBlockFunc(ctx, res.NewBlock); err != nil {
 		return nil, err
 	}

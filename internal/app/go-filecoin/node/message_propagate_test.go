@@ -65,7 +65,7 @@ func TestMessagePropagation(t *testing.T) {
 	fooMethod := types.MethodID(7232)
 
 	t.Run("message propagates", func(t *testing.T) {
-		_, err := sender.PorcelainAPI.MessageSend(
+		_, _, err := sender.PorcelainAPI.MessageSend(
 			ctx,
 			senderAddress,
 			address.NetworkAddress,
