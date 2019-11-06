@@ -3,18 +3,21 @@ package validation
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/pkg/errors"
 	"math/rand"
 
+	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
 
-	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/crypto"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -94,7 +97,82 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 }
 
 func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
-	panic("nyi")
+	ctx := context.Background()
+	vaddr := fromSingletonAddress(addr)
+	fcAddr, err := address.NewFromBytes([]byte(vaddr))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	switch fcAddr {
+	case address.InitAddress:
+		intAct := initactor.NewActor()
+		err = (&initactor.Actor{}).InitializeState(s.StorageMap.NewStorage(address.InitAddress, intAct), "localnet")
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := s.Tree.SetActor(ctx, fcAddr, intAct); err != nil {
+			return nil, nil, err
+		}
+		_, err = s.Tree.Flush(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		storage := s.NewStorage(fcAddr, intAct)
+		return &actorWrapper{*intAct}, storage, nil
+	case address.StorageMarketAddress:
+		stAct := storagemarket.NewActor()
+		err := (&storagemarket.Actor{}).InitializeState(s.StorageMap.NewStorage(address.StorageMarketAddress, stAct), types.TestProofsMode)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := s.Tree.SetActor(ctx, fcAddr, stAct); err != nil {
+			return nil, nil, err
+		}
+		_, err = s.Tree.Flush(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		storage := s.NewStorage(fcAddr, stAct)
+		return &actorWrapper{*stAct}, storage, nil
+	case address.BurntFundsAddress:
+		bal := types.NewAttoFIL(balance)
+		fcActor := &actor.Actor{
+			Code:    types.AccountActorCodeCid,
+			Balance: bal,
+			Head:    cid.Undef,
+		}
+		if err := s.Tree.SetActor(ctx,address.BurntFundsAddress, fcActor); err != nil {
+			return nil, nil, errors.Wrapf(err, "set burntfunds actor")
+		}
+		_, err = s.Tree.Flush(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		storage := s.NewStorage(fcAddr, fcActor)
+		return &actorWrapper{*fcActor}, storage, nil
+	case address.NetworkAddress:
+		bal := types.NewAttoFIL(balance)
+		fcActor := &actor.Actor{
+			Code:    types.AccountActorCodeCid,
+			Balance: bal,
+			Head:    cid.Undef,
+		}
+		if err := s.Tree.SetActor(ctx,address.NetworkAddress, fcActor); err != nil {
+			return nil, nil, errors.Wrapf(err, "set network actor")
+		}
+		_, err = s.Tree.Flush(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		storage := s.NewStorage(fcAddr, fcActor)
+		return &actorWrapper{*fcActor}, storage, nil
+		// TODO need to add StoragePowerActor when go-filecoin supports it
+	default:
+		return nil, nil, errors.Errorf("%v is not a singleton actor address", addr)
+	}
+
 }
 
 func (s *StateWrapper) Signer() *keyStore {

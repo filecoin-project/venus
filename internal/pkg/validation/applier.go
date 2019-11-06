@@ -28,7 +28,7 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 	ctx := context.TODO()
 	stateTree := state.(*StateWrapper).Tree
 	vms := state.(*StateWrapper).StorageMap
-	msg := message.(*types.SignedMessage)
+	msg := message.(*types.UnsignedMessage)
 	minerOwner, err := address.NewFromBytes([]byte(eCtx.MinerOwner))
 	if err != nil {
 		return vchain.MessageReceipt{}, err

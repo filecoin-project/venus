@@ -29,9 +29,9 @@ func TestMessageFactory(t *testing.T) {
 
 	messages := p.Messages()
 	assert.Equal(t, 1, len(messages))
-	msg := m.(*types.SignedMessage)
+	msg := m.(*types.UnsignedMessage)
 	assert.Equal(t, m, msg)
-	assert.Equal(t, sender, msg.Message.From)
-	assert.Equal(t, address.BurntFundsAddress, msg.Message.To)
-	assert.Equal(t, types.NewAttoFIL(big.NewInt(1)), msg.Message.Value)
+	assert.Equal(t, sender, msg.From)
+	assert.Equal(t, address.BurntFundsAddress, msg.To)
+	assert.Equal(t, types.NewAttoFIL(big.NewInt(1)), msg.Value)
 }

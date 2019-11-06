@@ -24,24 +24,25 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	value, gasPrice state.AttoFIL, gasUnit state.GasUnit, params ...interface{}) (interface{}, error) {
 	fromDec, err := address.NewFromBytes([]byte(from))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create address from: %s", from)
 	}
 	toDec, err := address.NewFromBytes([]byte(to))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create address from: %s", toDec)
 	}
 	valueDec := types.NewAttoFIL(value)
 	paramsDec, err := abi.ToEncodedValues(params)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to encode abi param values: %v", params)
 	}
 	if int(method) >= len(methods) {
 		return nil, errors.Errorf("No method name for method %v", method)
 	}
 	methodName := methods[method]
-	msg := types.NewUnsignedMessage(fromDec, toDec, nonce, valueDec, methodName, paramsDec)
+	msg := types.NewMeteredMessage(fromDec, toDec, nonce, valueDec, methodName, paramsDec, types.NewAttoFIL(gasPrice), types.NewGasUnits(uint64(gasUnit)))
 
-	return types.NewSignedMessage(*msg, mf.signer)
+	return msg, nil
+	//return types.NewSignedMessage(*msg, mf.signer)
 }
 
 func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) state.Address {
@@ -50,6 +51,6 @@ func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) stat
 
 // Maps method enumeration values to method names.
 // This will change to a mapping to method ids when method dispatch is updated to use integers.
-var methods = []string{
-	chain.NoMethod: "",
+var methods = []types.MethodID{
+	chain.NoMethod: 0,
 }
