@@ -7,6 +7,7 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -25,7 +26,7 @@ func TestInitActorCreateInitActor(t *testing.T) {
 
 	// create state with a network name
 	initExecActor.InitializeState(storage, "foo")
-	storage.Flush()
+	storageMap.Flush()
 
 	// retrieve state directly and assert it's constructed correctly
 	state, err := storage.Get(initActor.Head)
@@ -46,7 +47,7 @@ func TestInitActorGetNetwork(t *testing.T) {
 	}
 
 	msg := types.NewUnsignedMessage(address.TestAddress, address.InitAddress, 0, types.ZeroAttoFIL, GetNetwork, []byte{})
-	vmctx := th.NewFakeVMContext(msg, state)
+	vmctx := vm.NewFakeVMContext(msg, state)
 
 	actor := &Impl{}
 	network, code, err := actor.GetNetwork(vmctx)

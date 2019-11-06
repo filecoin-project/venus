@@ -5,9 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
 // Actor is the builtin actor responsible for individual accounts.
@@ -21,11 +20,6 @@ type Actor struct{}
 // NewActor creates a new account actor.
 func NewActor(balance types.AttoFIL) (*actor.Actor, error) {
 	return actor.NewActor(types.AccountActorCodeCid, balance), nil
-}
-
-// IsAccount tests whether an actor is an account actor.
-func IsAccount(a *actor.Actor) bool {
-	return types.AccountActorCodeCid.Equals(a.Code)
 }
 
 // UpgradeActor converts the given actor to an account actor, leaving its balance and nonce in place.
@@ -48,11 +42,11 @@ var _ dispatch.ExecutableActor = (*Actor)(nil)
 var signatures = dispatch.Exports{}
 
 // Method returns method definition for a given method id.
-func (*Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (*Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	return nil, nil, false
 }
 
 // InitializeState for account actors does nothing.
-func (*Actor) InitializeState(_ vm2.Storage, _ interface{}) error {
+func (*Actor) InitializeState(_ runtime.Storage, _ interface{}) error {
 	return nil
 }

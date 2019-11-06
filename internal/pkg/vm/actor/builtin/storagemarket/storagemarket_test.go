@@ -11,13 +11,13 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 
 	"github.com/stretchr/testify/assert"
@@ -208,7 +208,7 @@ func TestStorageMarketGetLateMiners(t *testing.T) {
 	})
 }
 
-func requireMakeCommitment(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address, blockHeight int, sectorID uint64) {
+func requireMakeCommitment(t *testing.T, st state.Tree, vms storagemap.StorageMap, minerAddr address.Address, blockHeight int, sectorID uint64) {
 	builder := chain.NewBuilder(t, address.Undef)
 	head := builder.AppendManyOn(blockHeight, block.UndefTipSet)
 	ancestors := builder.RequireTipSets(head.Key(), blockHeight)
@@ -352,7 +352,7 @@ func deriveMinerAddress(creator address.Address, nonce uint64) (address.Address,
 
 // assertGetLateMiners calls GetLateMiners message / method, deserializes the result and returns
 // a map of the late miners with their late states
-func assertGetLateMiners(t *testing.T, st state.Tree, vms vm.StorageMap, height uint64) *map[string]uint64 {
+func assertGetLateMiners(t *testing.T, st state.Tree, vms storagemap.StorageMap, height uint64) *map[string]uint64 {
 	res, err := th.CreateAndApplyTestMessage(t, st, vms, address.StorageMarketAddress, 0, height, storagemarket.GetLateMiners, nil)
 	require.NoError(t, err)
 	require.NoError(t, res.ExecutionError)

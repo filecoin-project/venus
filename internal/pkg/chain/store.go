@@ -33,10 +33,17 @@ var logStore = logging.Logger("chain.store")
 
 var headKey = datastore.NewKey("/chain/heaviestTipSet")
 
+// ipldStore defines an interface for interacting with a hamt.CborIpldStore.
+// TODO #3078 use go-ipld-cbor export
+type ipldStore interface {
+	Put(ctx context.Context, v interface{}) (cid.Cid, error)
+	Get(ctx context.Context, c cid.Cid, out interface{}) error
+}
+
 type ipldSource struct {
 	// cst is a store allowing access
 	// (un)marshalling and interop with go-ipld-hamt.
-	cborStore state.IpldStore
+	cborStore ipldStore
 }
 
 type tsState struct {
@@ -44,7 +51,7 @@ type tsState struct {
 	Reciepts  cid.Cid
 }
 
-func newSource(cst state.IpldStore) *ipldSource {
+func newSource(cst ipldStore) *ipldSource {
 	return &ipldSource{
 		cborStore: cst,
 	}
@@ -100,7 +107,7 @@ type Store struct {
 }
 
 // NewStore constructs a new default store.
-func NewStore(ds repo.Datastore, cst state.IpldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
+func NewStore(ds repo.Datastore, cst ipldStore, stl state.TreeLoader, sr Reporter, genesisCid cid.Cid) *Store {
 	return &Store{
 		stateAndBlockSource: newSource(cst),
 		stateTreeLoader:     stl,

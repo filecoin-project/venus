@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Parameters used by the weighting funcion
@@ -141,5 +141,5 @@ func (c *ChainSelector) createPowerTableView(st state.Tree) PowerTableView {
 }
 
 func (c *ChainSelector) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.LoadStateTree(ctx, c.cstore, id)
+	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
 }

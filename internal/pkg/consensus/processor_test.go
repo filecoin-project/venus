@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
@@ -29,7 +28,7 @@ import (
 
 func requireMakeStateTree(t *testing.T, cst *hamt.CborIpldStore, acts map[address.Address]*actor.Actor) (cid.Cid, state.Tree) {
 	ctx := context.Background()
-	tree := state.NewEmptyStateTree(cst)
+	tree := state.NewTree(cst)
 
 	for addr, act := range acts {
 		err := tree.SetActor(ctx, addr, act)
@@ -607,11 +606,11 @@ func TestSendToNonexistentAddressThenSpendFromIt(t *testing.T) {
 	// get all 3 actors
 	act1 = state.MustGetActor(st, addr1)
 	assert.Equal(t, types.NewAttoFILFromFIL(500), act1.Balance)
-	assert.True(t, account.IsAccount(act1))
+	assert.True(t, types.AccountActorCodeCid.Equals(act1.Code))
 
 	act2 := state.MustGetActor(st, addr2)
 	assert.Equal(t, types.NewAttoFILFromFIL(200), act2.Balance)
-	assert.True(t, account.IsAccount(act2))
+	assert.True(t, types.AccountActorCodeCid.Equals(act2.Code))
 
 	act3 := state.MustGetActor(st, addr3)
 	assert.Equal(t, types.NewAttoFILFromFIL(300), act3.Balance)

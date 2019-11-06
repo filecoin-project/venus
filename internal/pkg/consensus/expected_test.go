@@ -11,8 +11,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -282,7 +282,7 @@ func testActorState(t *testing.T, kis []types.KeyInfo) consensus.SnapshotGenerat
 }
 
 func setTree(ctx context.Context, t *testing.T, kis []types.KeyInfo, cstore *hamt.CborIpldStore, bstore blockstore.Blockstore, inRoot cid.Cid) cid.Cid {
-	tree, err := state.LoadStateTree(ctx, cstore, inRoot)
+	tree, err := state.NewTreeLoader().LoadStateTree(ctx, cstore, inRoot)
 	require.NoError(t, err)
 	m2w := minerToWorkerFromKis(t, kis)
 	vms := vm.NewStorageMap(bstore)

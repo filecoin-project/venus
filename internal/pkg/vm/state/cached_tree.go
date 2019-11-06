@@ -14,8 +14,10 @@ type CachedTree struct {
 	cache map[address.Address]*actor.Actor
 }
 
-// NewCachedStateTree returns a initialized empty CachedTree
-func NewCachedStateTree(st Tree) *CachedTree {
+// NewCachedTree returns a `CachedTree` based on an existiing `Tree`.
+//
+// The cache will be empty on construction.
+func NewCachedTree(st Tree) *CachedTree {
 	return &CachedTree{
 		st:    st,
 		cache: make(map[address.Address]*actor.Actor),

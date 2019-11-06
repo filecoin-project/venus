@@ -8,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/account"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -60,7 +59,7 @@ func (v *DefaultMessageValidator) Validate(ctx context.Context, msg *types.Unsig
 
 	// Sender must be an account actor, or an empty actor which will be upgraded to an account actor
 	// when the message is processed.
-	if !(fromActor.Empty() || account.IsAccount(fromActor)) {
+	if !(fromActor.Empty() || types.AccountActorCodeCid.Equals(fromActor.Code)) {
 		return errNonAccountActor
 	}
 

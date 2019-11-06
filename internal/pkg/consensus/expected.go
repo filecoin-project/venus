@@ -10,7 +10,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
 	"go.opencensus.io/trace"
@@ -289,7 +289,7 @@ func (c *Expected) createPowerTableView(st state.Tree) PowerTableView {
 }
 
 func (c *Expected) loadStateTree(ctx context.Context, id cid.Cid) (state.Tree, error) {
-	return state.LoadStateTree(ctx, c.cstore, id)
+	return state.NewTreeLoader().LoadStateTree(ctx, c.cstore, id)
 }
 
 // verifyBLSMessageAggregate errors if the bls signature is not a valid aggregate of message signatures

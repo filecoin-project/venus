@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
+	gengen "github.com/filecoin-project/go-filecoin/tools/gengen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,7 +81,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 	var calcGenBlk block.Block
 	require.NoError(t, cst.Get(ctx, info.GenesisCid, &calcGenBlk))
 
-	stateTree, err := state.LoadStateTree(ctx, cst, calcGenBlk.StateRoot)
+	stateTree, err := state.NewTreeLoader().LoadStateTree(ctx, cst, calcGenBlk.StateRoot)
 	require.NoError(t, err)
 
 	return cst, bs, info.Miners[0].Address, stateTree

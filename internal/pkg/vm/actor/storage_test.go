@@ -2,20 +2,19 @@ package actor_test
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
@@ -45,39 +44,12 @@ func TestActorMarshal(t *testing.T) {
 	assert.Equal(t, c1, c2)
 }
 
-func TestMarshalValue(t *testing.T) {
-	tf.UnitTest(t)
-
-	t.Run("success", func(t *testing.T) {
-		testCases := []struct {
-			In  interface{}
-			Out []byte
-		}{
-			{In: []byte("hello"), Out: []byte("hello")},
-			{In: big.NewInt(100), Out: big.NewInt(100).Bytes()},
-			{In: "hello", Out: []byte("hello")},
-		}
-
-		for _, tc := range testCases {
-			out, err := MarshalValue(tc.In)
-			assert.NoError(t, err)
-			assert.Equal(t, out, tc.Out)
-		}
-	})
-
-	t.Run("failure", func(t *testing.T) {
-		out, err := MarshalValue(big.NewRat(1, 2))
-		assert.Equal(t, err.Error(), "unknown type: *big.Rat")
-		assert.Nil(t, out)
-	})
-}
-
 func TestLoadLookup(t *testing.T) {
 	tf.UnitTest(t)
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
@@ -100,7 +72,7 @@ func TestLoadLookup(t *testing.T) {
 
 	t.Run("Fetch chunk by cid", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
-		vms = vm.NewStorageMap(bs)
+		vms = storagemap.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
@@ -115,7 +87,7 @@ func TestLoadLookup(t *testing.T) {
 
 	t.Run("Get errs for missing key", func(t *testing.T) {
 		bs = blockstore.NewBlockstore(ds)
-		vms = vm.NewStorageMap(bs)
+		vms = storagemap.NewStorageMap(bs)
 		storage = vms.NewStorage(address.TestAddress, &Actor{})
 
 		lookup, err = LoadLookup(ctx, storage, c)
@@ -132,7 +104,7 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 
@@ -140,7 +112,7 @@ func TestLoadLookupWithInvalidCid(t *testing.T) {
 
 	_, err := LoadLookup(ctx, storage, c)
 	require.Error(t, err)
-	assert.Equal(t, vm.ErrNotFound, err)
+	assert.Equal(t, storagemap.ErrNotFound, err)
 }
 
 func TestSetKeyValue(t *testing.T) {
@@ -148,7 +120,7 @@ func TestSetKeyValue(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 	bs := blockstore.NewBlockstore(ds)
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 	storage := vms.NewStorage(address.TestAddress, &Actor{})
 	ctx := context.TODO()
 

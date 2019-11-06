@@ -32,7 +32,7 @@ import (
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/whyrusleeping/cbor-gen"
+	typegen "github.com/whyrusleeping/cbor-gen"
 )
 
 // CreateStorageMinerConfig holds configuration options used to create a storage
@@ -112,7 +112,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		return nil, err
 	}
 
-	st := state.NewEmptyStateTree(cst)
+	st := state.NewTree(cst)
 	storageMap := vm.NewStorageMap(bs)
 
 	if err := consensus.SetupDefaultActors(ctx, st, storageMap, cfg.ProofsMode, cfg.Network); err != nil {

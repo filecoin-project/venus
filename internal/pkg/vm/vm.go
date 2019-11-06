@@ -1,88 +1,60 @@
-// Package vm implements the Filecoin VM
-// This means this is the _only_ part of the code base that should concern itself
-// with passing data between VM boundaries.
 package vm
 
 import (
 	"context"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 )
+
+// Re-exports
+
+// StorageMap manages Storages.
+type StorageMap = storagemap.StorageMap
+
+// NewStorageMap returns a storage object for the given datastore.
+func NewStorageMap(bs blockstore.Blockstore) StorageMap {
+	return storagemap.NewStorageMap(bs)
+}
+
+// GasTracker maintains the state of gas usage throughout the execution of a block and a message
+type GasTracker = gastracker.GasTracker
+
+// NewGasTracker initializes a new empty gas tracker
+func NewGasTracker() *gastracker.GasTracker {
+	return gastracker.NewGasTracker()
+}
+
+// NewContextParams is passed to NewVMContext to construct a new context.
+type NewContextParams = vmcontext.NewContextParams
+
+// NewVMContext returns an initialized context.
+func NewVMContext(params NewContextParams) *vmcontext.VMContext {
+	return vmcontext.NewVMContext(params)
+}
+
+//
+// Free functions
+//
 
 // Send executes a message pass inside the VM. If error is set it
 // will always satisfy either ShouldRevert() or IsFault().
-func Send(ctx context.Context, vmCtx *Context) ([][]byte, uint8, error) {
-	deps := sendDeps{
-		transfer: Transfer,
-	}
-	return send(ctx, deps, vmCtx)
-}
-
-type sendDeps struct {
-	transfer func(*actor.Actor, *actor.Actor, types.AttoFIL) error
-}
-
-// send executes a message pass inside the VM. It exists alongside Send so that we can inject its dependencies during test.
-func send(ctx context.Context, deps sendDeps, vmCtx *Context) ([][]byte, uint8, error) {
-	if !vmCtx.message.Value.Equal(types.ZeroAttoFIL) {
-		if err := deps.transfer(vmCtx.from, vmCtx.to, vmCtx.message.Value); err != nil {
-			if errors.ShouldRevert(err) {
-				return nil, err.(*errors.RevertError).Code(), err
-			}
-			return nil, 1, err
-		}
-	}
-
-	if vmCtx.message.Method == types.SendMethodID {
-		// if only tokens are transferred there is no need for a method
-		// this means we can shortcircuit execution
-		return nil, 0, nil
-	}
-
-	if vmCtx.message.Method == types.InvalidMethodID {
-		// your test should not be getting here..
-		// Note: this method is not materialized in production but could occur on tests
-		panic("trying to execute fake method on the actual VM, fix test")
-	}
-
-	// TODO: use chain height based protocol version here (#3360)
-	toExecutable, err := vmCtx.actors.GetActorCode(vmCtx.to.Code, 0)
-	if err != nil {
-		return nil, errors.ErrNoActorCode, errors.Errors[errors.ErrNoActorCode]
-	}
-
-	exportedFn, ok := actor.MakeTypedExport(toExecutable, vmCtx.message.Method)
-	if !ok {
-		return nil, 1, errors.Errors[errors.ErrMissingExport]
-	}
-
-	r, code, err := exportedFn(vmCtx)
-	if r != nil {
-		var rv [][]byte
-		err = encoding.Decode(r, &rv)
-		if err != nil {
-			return nil, 1, errors.NewRevertErrorf("method return doesn't decode as array: %s", err)
-		}
-		return rv, code, err
-	}
-	return nil, code, err
+func Send(ctx context.Context, vmCtx vmcontext.ExtendedRuntime) ([][]byte, uint8, error) {
+	return vmcontext.Send(ctx, vmCtx)
 }
 
 // Transfer transfers the given value between two actors.
 func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
-	if value.IsNegative() {
-		return errors.Errors[errors.ErrCannotTransferNegativeValue]
-	}
-
-	if fromActor.Balance.LessThan(value) {
-		return errors.Errors[errors.ErrInsufficientBalance]
-	}
-
-	fromActor.Balance = fromActor.Balance.Sub(value)
-	toActor.Balance = toActor.Balance.Add(value)
-
-	return nil
+	return vmcontext.Transfer(fromActor, toActor, value)
 }
+
+// FunctionSignature describes the signature of a single function.
+//
+// Dragons: this signature should not be neede on the outside
+type FunctionSignature = dispatch.FunctionSignature

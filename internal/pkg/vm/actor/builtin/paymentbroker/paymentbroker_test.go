@@ -19,17 +19,16 @@ import (
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
 )
 
 var mockSigner, _ = types.NewMockSignersAndKeyInfo(10)
@@ -1106,7 +1105,7 @@ func TestSignVoucher(t *testing.T) {
 	})
 }
 
-func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
+func establishChannel(ctx context.Context, st state.Tree, vms storagemap.StorageMap, from address.Address, target address.Address, nonce uint64, amt types.AttoFIL, eol *types.BlockHeight) *types.ChannelID {
 	pdata := abi.MustConvertParams(target, eol)
 	msg := types.NewUnsignedMessage(from, address.PaymentBrokerAddress, nonce, amt, CreateChannel, pdata)
 	result, err := th.ApplyTestMessageWithActors(builtinsWithTestActor(), st, vms, msg, types.NewBlockHeight(0))
@@ -1122,15 +1121,15 @@ func establishChannel(ctx context.Context, st state.Tree, vms vm.StorageMap, fro
 	return channelID
 }
 
-func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, vm.StorageMap) {
+func requireGenesis(ctx context.Context, t *testing.T, targetAddresses ...address.Address) (*hamt.CborIpldStore, state.Tree, storagemap.StorageMap) {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	vms := vm.NewStorageMap(bs)
+	vms := storagemap.NewStorageMap(bs)
 
 	cst := hamt.NewCborStore()
 	blk, err := th.DefaultGenesis(cst, bs)
 	require.NoError(t, err)
 
-	st, err := state.LoadStateTree(ctx, cst, blk.StateRoot)
+	st, err := state.NewTreeLoader().LoadStateTree(ctx, cst, blk.StateRoot)
 	require.NoError(t, err)
 
 	for _, addr := range targetAddresses {
@@ -1158,7 +1157,7 @@ type system struct {
 	defaultValidAt *types.BlockHeight
 	channelID      *types.ChannelID
 	st             state.Tree
-	vms            vm.StorageMap
+	vms            storagemap.StorageMap
 	addressGetter  func() address.Address
 }
 
@@ -1271,7 +1270,7 @@ func (sys *system) ApplyMessage(msg *types.UnsignedMessage, height uint64) (*con
 	return th.ApplyTestMessageWithActors(builtinsWithTestActor(), sys.st, sys.vms, msg, types.NewBlockHeight(height))
 }
 
-func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms vm.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
+func requireGetPaymentChannel(t *testing.T, ctx context.Context, st state.Tree, vms storagemap.StorageMap, payer address.Address, channelId *types.ChannelID) *PaymentChannel {
 	var paymentMap map[string]*PaymentChannel
 
 	pdata := abi.MustConvertParams(payer)
@@ -1293,10 +1292,10 @@ type PBTestActor struct{}
 var _ dispatch.ExecutableActor = (*PBTestActor)(nil)
 
 // Method returns method definition for a given method id.
-func (ma *PBTestActor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (ma *PBTestActor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case ParamsNotZeroID:
-		return reflect.ValueOf(ma.ParamsNotZero), &external.FunctionSignature{
+		return reflect.ValueOf(ma.ParamsNotZero), &dispatch.FunctionSignature{
 			Params: []abi.Type{abi.Address, abi.SectorID, abi.BlockHeight},
 			Return: nil,
 		}, true
@@ -1306,11 +1305,11 @@ func (ma *PBTestActor) Method(id types.MethodID) (dispatch.Method, *external.Fun
 }
 
 // InitializeState stores this actors
-func (ma *PBTestActor) InitializeState(storage vm2.Storage, initializerData interface{}) error {
+func (ma *PBTestActor) InitializeState(storage runtime.Storage, initializerData interface{}) error {
 	return nil
 }
 
-func (ma *PBTestActor) ParamsNotZero(ctx vm2.Runtime, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) ParamsNotZero(ctx runtime.Runtime, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}

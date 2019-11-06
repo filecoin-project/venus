@@ -1,27 +1,24 @@
-// Package actor implements tooling to write and manipulate actors in go.
-package actor
+package vmcontext
 
 import (
 	"fmt"
-	"math/big"
 	"reflect"
 	"strings"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
-// MakeTypedExport finds the correct method on the given actor and returns it.
+// makeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
 //
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 // TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dispatch.ExportedFunc, bool) {
+func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dispatch.ExportedFunc, bool) {
 	fn, signature, ok := actor.Method(method)
 	if !ok {
 		return nil, false
@@ -30,7 +27,7 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 	t := fn.Type()
 
 	badImpl := func() {
-		params := []string{"vm2.Runtime"}
+		params := []string{"runtime.Runtime"}
 		for _, p := range signature.Params {
 			params = append(params, p.String())
 		}
@@ -40,7 +37,7 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 		}
 		ret = append(ret, "uint8", "error")
 		sig := fmt.Sprintf("func (%s) (%s)", strings.Join(params, ", "), strings.Join(ret, ", "))
-		panic(fmt.Sprintf("MakeTypedExport must receive a function with signature: %s, but got: %s", sig, t))
+		panic(fmt.Sprintf("makeTypedExport must receive a function with signature: %s, but got: %s", sig, t))
 	}
 
 	// The implementation funtction does not have the same signature as the one described by the actor:
@@ -73,7 +70,7 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 		badImpl()
 	}
 
-	return func(ctx vm2.Runtime) ([]byte, uint8, error) {
+	return func(ctx runtime.Runtime) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")
@@ -115,38 +112,4 @@ func MakeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 
 		return retVal, exitCode, nil
 	}, true
-}
-
-// MarshalValue serializes a given go type into a byte slice.
-// The returned format matches the format that is expected to be interoperapble between VM and
-// the rest of the system.
-func MarshalValue(val interface{}) ([]byte, error) {
-	switch t := val.(type) {
-	case *big.Int:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case *types.ChannelID:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case *types.BlockHeight:
-		if t == nil {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	case []byte:
-		return t, nil
-	case string:
-		return []byte(t), nil
-	case address.Address:
-		if t.Empty() {
-			return []byte{}, nil
-		}
-		return t.Bytes(), nil
-	default:
-		return nil, fmt.Errorf("unknown type: %s", reflect.TypeOf(t))
-	}
 }

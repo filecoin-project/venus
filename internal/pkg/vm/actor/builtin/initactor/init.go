@@ -5,10 +5,9 @@ import (
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/external"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm2/vminternal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
+	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
@@ -43,14 +42,14 @@ func NewActor() *actor.Actor {
 var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
-	GetNetwork: &external.FunctionSignature{
+	GetNetwork: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
 		Return: []abi.Type{abi.String},
 	},
 }
 
 // Method returns method definition for a given method id.
-func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSignature, bool) {
+func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
 	case GetNetwork:
 		return reflect.ValueOf((*Impl)(a).GetNetwork), signatures[GetNetwork], true
@@ -60,7 +59,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *external.FunctionSi
 }
 
 // InitializeState for init actor.
-func (*Actor) InitializeState(storage vm2.Storage, networkInterface interface{}) error {
+func (*Actor) InitializeState(storage runtime.Storage, networkInterface interface{}) error {
 	network := networkInterface.(string)
 
 	initStorage := &State{
@@ -87,9 +86,9 @@ func (*Actor) InitializeState(storage vm2.Storage, networkInterface interface{})
 type Impl Actor
 
 // GetNetwork returns the network name for this network
-func (*Impl) GetNetwork(ctx vm2.Runtime) (string, uint8, error) {
+func (*Impl) GetNetwork(ctx runtime.Runtime) (string, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
-		return "", vminternal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+		return "", internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
 	var state State
