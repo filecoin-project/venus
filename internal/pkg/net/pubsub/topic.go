@@ -46,9 +46,11 @@ func (t *Topic) Subscribe() (Subscription, error) {
 	return &subscriptionWrapper{sub}, err
 }
 
-// Publish publishes to a pubsub topic
+// Publish publishes to a pubsub topic. It blocks until there is at least one 
+// peer on the mesh that can receive the publish.
 func (t *Topic) Publish(ctx context.Context, data []byte) error {
-	return t.pubsubTopic.Publish(ctx, data)
+//	return t.pubsubTopic.Publish(ctx, data)
+	return t.pubsubTopic.Publish(ctx, data, libp2p.WithReadiness(libp2p.MinTopicSize(1)))
 }
 
 // subscriptionWrapper extends a pubsub.Subscription in order to wrap the Message type.

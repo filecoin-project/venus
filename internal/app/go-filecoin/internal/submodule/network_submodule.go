@@ -2,6 +2,7 @@ package submodule
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
@@ -31,7 +32,8 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/net"	
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -111,9 +113,13 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	}
 
 	// Set up libp2p network
+	// The gossipsub heartbeat timeout needs to be set sufficiently low
+	// to enable publishing on first connection.  The default of one
+	// second is not acceptable for tests.
+	libp2pps.GossipSubHeartbeatInterval = 100 * time.Millisecond
 	// TODO: PubSub requires strict message signing, disabled for now
 	// reference issue: #3124
-	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false))
+	gsub, err := libp2pps.NewGossipSub(ctx, peerHost, libp2pps.WithMessageSigning(false), libp2pps.WithDiscovery(&discovery.NoopDiscovery{}))
 	if err != nil {
 		return NetworkSubmodule{}, errors.Wrap(err, "failed to set up network")
 	}
