@@ -24,6 +24,15 @@ func MustFlush(st Tree) cid.Cid {
 	return cid
 }
 
+// MustGetActor gets the actor or panics if it can't.
+func MustGetActor(st Tree, a address.Address) *actor.Actor {
+	actor, err := st.GetActor(context.Background(), a)
+	if err != nil {
+		panic(err)
+	}
+	return actor
+}
+
 // MustSetActor sets the actor or panics if it can't.
 func MustSetActor(st Tree, address address.Address, actor *actor.Actor) cid.Cid {
 	err := st.SetActor(context.Background(), address, actor)
@@ -121,13 +130,4 @@ func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
 	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
 	require.NoError(t, err)
 	return tree
-}
-
-// MustGetActor gets the actor or panics if it can't.
-func MustGetActor(st Tree, a address.Address) *actor.Actor {
-	actor, err := st.GetActor(context.Background(), a)
-	if err != nil {
-		panic(err)
-	}
-	return actor
 }

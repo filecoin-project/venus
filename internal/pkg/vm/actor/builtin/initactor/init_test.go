@@ -20,13 +20,13 @@ func TestInitActorCreateInitActor(t *testing.T) {
 
 	initExecActor := &Actor{}
 
-	stmap := th.VMStorage()
+	storageMap := th.VMStorage()
 	initActor := &actor.Actor{}
-	storage := stmap.NewStorage(address.InitAddress, initActor)
+	storage := storageMap.NewStorage(address.InitAddress, initActor)
 
 	// create state with a network name
 	initExecActor.InitializeState(storage, "foo")
-	stmap.Flush()
+	storageMap.Flush()
 
 	// retrieve state directly and assert it's constructed correctly
 	state, err := storage.Get(initActor.Head)
