@@ -11,6 +11,7 @@ import (
 
 
 // Runtime2 is the VM.
+// Review: the object that implements this outlives actor calls.
 type Runtime2 struct {
 	CurerntEpoch() Epoch
 	// Review: why is this taking an offset? verify size of offset
@@ -26,6 +27,7 @@ type Runtime2 struct {
 }
 
 // InvocationContext is passed to the actors on each method call.
+// Review: this type + Runtime2 is mostly what the spec defines as Runtime.
 type InvocationContext interface {
 	// Review: grouped the VM level things out of the invocation itself
 	Runtime() Runtime2
@@ -69,6 +71,7 @@ type InvocationContext interface {
 	Storage() Storage
 }
 
+// Review: more powerfull contract for the initactor.
 type innitInvocationContext interface {
 	InvocationContext
 	// Review: the spec has no error on this? what if the addr is already taken?
@@ -88,6 +91,7 @@ type Storage2 interface {
 type Epoch types.BlockHeight
 
 // Randomness is a string of random bytes
+// Review: placeholder for matching newtypes with the spec.
 type Randomness []byte
 
 // InvocInput are the params to invoke a method in an Actor.
@@ -105,6 +109,7 @@ type InvocInput struct {
 type ExitCode types.Int64
 
 // InvocOutput is waht os returned by an actor executing a method.
+// Review: multiple returns vs a return struct. There are some minor implications with swapping vm implementations written in another language.
 type InvocOutput struct {
 	ExitCode     ExitCode
     ReturnValue  []byte
