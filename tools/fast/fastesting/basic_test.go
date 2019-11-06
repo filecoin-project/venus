@@ -22,7 +22,6 @@ func TestSetFilecoinOpts(t *testing.T) {
 	}
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fastOpts)
-
 	clientNode := env.GenesisMiner
 	require.NoError(t, clientNode.MiningStart(ctx))
 	defer func() {

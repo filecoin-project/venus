@@ -59,13 +59,13 @@ func (mpc *minerCreate) ConfigSet(dottedPath string, paramJSON string) error {
 	return mpc.config.Set(dottedPath, paramJSON)
 }
 
-func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+func (mpc *minerCreate) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 	if mpc.msgFail {
-		return cid.Cid{}, errors.New("test Error")
+		return cid.Cid{}, nil, errors.New("test Error")
 	}
 	mpc.msgCid = types.CidFromString(mpc.testing, "somecid")
 
-	return mpc.msgCid, nil
+	return mpc.msgCid, nil, nil
 }
 
 func (mpc *minerCreate) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
@@ -178,7 +178,7 @@ type minerSetPricePlumbing struct {
 	failSend bool
 	failWait bool
 
-	messageSend func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	messageSend func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
 }
 
 func newMinerSetPricePlumbing(t *testing.T) *minerSetPricePlumbing {
@@ -188,19 +188,19 @@ func newMinerSetPricePlumbing(t *testing.T) *minerSetPricePlumbing {
 	}
 }
 
-func (mtp *minerSetPricePlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerSetPricePlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 	if mtp.failSend {
-		return cid.Cid{}, errors.New("test error in MessageSend")
+		return cid.Cid{}, nil, errors.New("test error in MessageSend")
 	}
 
 	if mtp.messageSend != nil {
-		msgCid, err := mtp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
+		msgCid, _, err := mtp.messageSend(ctx, from, to, value, gasPrice, gasLimit, method, params...)
 		mtp.msgCid = msgCid
-		return msgCid, err
+		return msgCid, nil, err
 	}
 
 	mtp.msgCid = types.NewCidForTestGetter()()
-	return mtp.msgCid, nil
+	return mtp.msgCid, nil, nil
 }
 
 // calls back immediately
@@ -296,9 +296,9 @@ func TestMinerSetPrice(t *testing.T) {
 		price := types.NewAttoFILFromFIL(50)
 		minerAddr := address.NewForTestGetter()()
 
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 			assert.Equal(t, minerAddr, to)
-			return types.NewCidForTestGetter()(), nil
+			return types.NewCidForTestGetter()(), nil, nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
@@ -314,9 +314,9 @@ func TestMinerSetPrice(t *testing.T) {
 		ctx := context.Background()
 		price := types.NewAttoFILFromFIL(50)
 
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 			assert.Equal(t, minerAddr, to)
-			return types.NewCidForTestGetter()(), nil
+			return types.NewCidForTestGetter()(), nil, nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, big.NewInt(0))
@@ -330,11 +330,11 @@ func TestMinerSetPrice(t *testing.T) {
 		price := types.NewAttoFILFromFIL(50)
 		expiry := big.NewInt(24)
 
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 			assert.Equal(t, miner.AddAsk, method)
 			assert.Equal(t, price, params[0])
 			assert.Equal(t, expiry, params[1])
-			return types.NewCidForTestGetter()(), nil
+			return types.NewCidForTestGetter()(), nil, nil
 		}
 
 		_, err := MinerSetPrice(ctx, plumbing, address.Undef, address.Undef, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
@@ -363,8 +363,8 @@ func TestMinerSetPrice(t *testing.T) {
 
 		messageCid := types.NewCidForTestGetter()()
 
-		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
-			return messageCid, nil
+		plumbing.messageSend = func(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
+			return messageCid, nil, nil
 		}
 
 		res, err := MinerSetPrice(ctx, plumbing, address.Undef, minerAddr, types.NewGasPrice(0), types.NewGasUnits(0), price, expiry)
@@ -632,12 +632,12 @@ type minerSetWorkerAddressPlumbing struct {
 	minerAddr, ownerAddr, workerAddr                           address.Address
 }
 
-func (mswap *minerSetWorkerAddressPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+func (mswap *minerSetWorkerAddressPlumbing) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 
 	if mswap.msgFail {
-		return cid.Cid{}, errors.New("MsgFail")
+		return cid.Cid{}, nil, errors.New("MsgFail")
 	}
-	return types.EmptyMessagesCID, nil
+	return types.EmptyMessagesCID, nil, nil
 }
 
 func (mswap *minerSetWorkerAddressPlumbing) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {

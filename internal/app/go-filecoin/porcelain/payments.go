@@ -23,7 +23,7 @@ type cpPlumbing interface {
 	ChainHeadKey() block.TipSetKey
 	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	SignBytes(data []byte, addr address.Address) (types.Signature, error)
 }
@@ -128,7 +128,7 @@ func CreatePayments(ctx context.Context, plumbing cpPlumbing, config CreatePayme
 	}
 
 	// Create channel
-	response.ChannelMsgCid, err = plumbing.MessageSend(ctx,
+	response.ChannelMsgCid, _, err = plumbing.MessageSend(ctx,
 		config.From,
 		address.PaymentBrokerAddress,
 		config.Value,

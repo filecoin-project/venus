@@ -26,12 +26,14 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 	}
 
 	log.Debugf("syncing new block: %s", b.Cid().String())
+	go func() {
+		err = node.syncer.BlockTopic.Publish(ctx, b.ToNode().RawData())
+		if err != nil {
+			log.Errorf("error publishing new block on block topic %s", err)
+		}
+	}()
 
-	if err := node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))); err != nil {
-		return err
-	}
-
-	return node.syncer.BlockTopic.Publish(ctx, b.ToNode().RawData())
+	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height)))
 }
 
 func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {

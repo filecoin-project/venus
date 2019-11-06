@@ -138,7 +138,7 @@ func (trp *testRedeemPlumbing) MessagePreview(_ context.Context, fromAddr addres
 	return trp.gasPrice, nil
 }
 
-func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.Address, actorAddr address.Address, _ types.AttoFIL, _ types.AttoFIL, _ types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 	trp.ResultingFromAddr = fromAddr
 	trp.ResultingActorAddr = actorAddr
 	trp.ResultingMethod = method
@@ -146,7 +146,7 @@ func (trp *testRedeemPlumbing) MessageSend(_ context.Context, fromAddr address.A
 	trp.ResultingVoucherChannel = params[1].(*types.ChannelID)
 	trp.ResultingVoucherAmount = params[2].(types.AttoFIL)
 	trp.ResultingVoucherValidAt = params[3].(*types.BlockHeight)
-	return trp.messageCid, nil
+	return trp.messageCid, nil, nil
 }
 
 func TestDealRedeem(t *testing.T) {

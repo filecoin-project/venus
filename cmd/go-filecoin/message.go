@@ -106,7 +106,7 @@ var msgSendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			target,
@@ -159,7 +159,7 @@ var signedMsgSendCmd = &cmds.Command{
 		}
 		signed := &m
 
-		c, err := GetPorcelainAPI(env).SignedMessageSend(
+		c, _, err := GetPorcelainAPI(env).SignedMessageSend(
 			req.Context,
 			signed,
 		)

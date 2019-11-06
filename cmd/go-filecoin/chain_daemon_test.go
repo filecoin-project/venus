@@ -42,7 +42,6 @@ func TestChainLs(t *testing.T) {
 	t.Run("chain ls with json encoding returns the whole chain as json", func(t *testing.T) {
 		d := makeTestDaemonWithMinerAndStart(t)
 		defer d.ShutdownSuccess()
-
 		op1 := d.RunSuccess("mining", "once", "--enc", "text")
 		result1 := op1.ReadStdoutTrimNewlines()
 		c, err := cid.Parse(result1)
