@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -292,16 +291,6 @@ func (api *API) MessageFind(ctx context.Context, msgCid cid.Cid) (*msg.ChainMess
 // to appear on chain.
 func (api *API) MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error {
 	return api.msgWaiter.Wait(ctx, msgCid, cb)
-}
-
-// PubSubSubscribe subscribes to a topic for notifications from the filecoin network
-func (api *API) PubSubSubscribe(topic string) (pubsub.Subscription, error) {
-	return api.network.Subscribe(topic)
-}
-
-// PubSubPublish publishes a message to a topic on the filecoin network
-func (api *API) PubSubPublish(topic string, data []byte) error {
-	return api.network.Publish(topic, data)
 }
 
 // NetworkGetBandwidthStats gets stats on the current bandwidth usage of the network

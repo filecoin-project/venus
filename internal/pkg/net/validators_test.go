@@ -74,7 +74,9 @@ func TestBlockPubSubValidation(t *testing.T) {
 	require.NoError(t, err)
 
 	// subscribe to the block validator topic
-	sub1, err := fsub1.Subscribe(btv.Topic(network))
+	top1, err := fsub1.Join(btv.Topic(network))
+	require.NoError(t, err)
+	sub1, err := top1.Subscribe()
 	require.NoError(t, err)
 
 	// generate a miner address for blocks
@@ -89,7 +91,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}
 	// publish the invalid block
-	err = fsub1.Publish(btv.Topic(network), invalidBlk.ToNode().RawData())
+	err = top1.Publish(ctx, invalidBlk.ToNode().RawData())
 	assert.NoError(t, err)
 
 	// see FIXME below (#3285)
@@ -104,7 +106,7 @@ func TestBlockPubSubValidation(t *testing.T) {
 		Ticket:    block.Ticket{VRFProof: []byte{0}},
 	}
 	// publish the invalid block
-	err = fsub1.Publish(btv.Topic(network), validBlk.ToNode().RawData())
+	err = top1.Publish(ctx, validBlk.ToNode().RawData())
 	assert.NoError(t, err)
 
 	// FIXME: #3285

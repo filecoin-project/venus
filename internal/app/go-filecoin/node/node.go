@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/message"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/metrics"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/mining"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	mining_protocol "github.com/filecoin-project/go-filecoin/internal/pkg/protocol/mining"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/retrieval"
@@ -142,7 +141,7 @@ func (node *Node) Start(ctx context.Context) error {
 	if !node.OfflineMode {
 
 		// Subscribe to block pubsub topic to learn about new chain heads.
-		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, net.BlockTopic(node.network.NetworkName), node.processBlock)
+		node.syncer.BlockSub, err = node.pubsubscribe(syncCtx, node.syncer.BlockTopic, node.processBlock)
 		if err != nil {
 			log.Error(err)
 		}
@@ -152,7 +151,7 @@ func (node *Node) Start(ctx context.Context) error {
 		// https://github.com/filecoin-project/go-filecoin/issues/2145.
 		// This is blocked by https://github.com/filecoin-project/go-filecoin/issues/2959, which
 		// is necessary for message_propagate_test to start mining before testing this behaviour.
-		node.Messaging.MessageSub, err = node.pubsubscribe(syncCtx, net.MessageTopic(node.network.NetworkName), node.processMessage)
+		node.Messaging.MessageSub, err = node.pubsubscribe(syncCtx, node.Messaging.MessageTopic, node.processMessage)
 		if err != nil {
 			return err
 		}
@@ -173,10 +172,10 @@ func (node *Node) Start(ctx context.Context) error {
 }
 
 // Subscribes a handler function to a pubsub topic.
-func (node *Node) pubsubscribe(ctx context.Context, topic string, handler pubSubHandler) (pubsub.Subscription, error) {
-	sub, err := node.PorcelainAPI.PubSubSubscribe(topic)
+func (node *Node) pubsubscribe(ctx context.Context, topic *pubsub.Topic, handler pubSubHandler) (pubsub.Subscription, error) {
+	sub, err := topic.Subscribe()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to subscribe to %s", topic)
+		return nil, errors.Wrapf(err, "failed to subscribe")
 	}
 	go node.handleSubscription(ctx, sub, handler)
 	return sub, nil

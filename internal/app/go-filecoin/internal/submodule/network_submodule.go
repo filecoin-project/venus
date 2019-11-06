@@ -32,7 +32,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/net/pubsub"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -46,7 +45,7 @@ type NetworkSubmodule struct {
 	// Router is a router from IPFS
 	Router routing.Routing
 
-	fsub *libp2pps.PubSub
+	Fsub *libp2pps.PubSub
 
 	// TODO: split chain bitswap from storage bitswap (issue: ???)
 	Bitswap exchange.Interface
@@ -128,14 +127,14 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 	pingService := ping.NewPingService(peerHost)
 
 	// build network
-	network := net.New(peerHost, pubsub.NewPublisher(fsub), pubsub.NewSubscriber(fsub), net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
+	network := net.New(peerHost, net.NewRouter(router), bandwidthTracker, net.NewPinger(peerHost, pingService))
 
 	// build the network submdule
 	return NetworkSubmodule{
 		NetworkName: networkName,
 		Host:        peerHost,
 		Router:      router,
-		fsub:        fsub,
+		Fsub:        fsub,
 		Bitswap:     bswap,
 		Network:     network,
 	}, nil

@@ -101,15 +101,13 @@ func (NullPolicy) HandleNewHead(ctx context.Context, target PolicyTarget, oldCha
 	return nil
 }
 
-// MockNetworkPublisher records the last topic and message published.
+// MockNetworkPublisher records the last message published.
 type MockNetworkPublisher struct {
-	Topic string
-	Data  []byte
+	Data []byte
 }
 
 // Publish records the topic and message.
-func (p *MockNetworkPublisher) Publish(topic string, data []byte) error {
-	p.Topic = topic
+func (p *MockNetworkPublisher) Publish(ctx context.Context, data []byte) error {
 	p.Data = data
 	return nil
 }
