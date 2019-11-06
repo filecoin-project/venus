@@ -126,5 +126,3 @@ require (
 replace github.com/filecoin-project/go-bls-sigs => ./vendors/go-bls-sigs
 
 replace github.com/filecoin-project/go-sectorbuilder => ./vendors/go-sectorbuilder
-
-replace github.com/filecoin-project/chain-validation => ../chain-validation
