@@ -72,7 +72,7 @@ type initInvocationContext interface {
 }
 
 // Storage2 defines the storage module exposed to actors.
-// Review: check the old `Storage` for some more comments on why this looks like it does
+// Review: simpler API (check type Storage for comments on the things that got removed)
 type Storage2 interface {
 	Put(interface{}) (cid.Cid, error)
 	Get(cid.Cid, interface{}) error
@@ -84,7 +84,7 @@ type Storage2 interface {
 type Epoch types.BlockHeight
 
 // Randomness is a string of random bytes
-// Review: placeholder for matching newtypes with the spec.
+// Note: placeholder for matching newtypes with the spec.
 type Randomness []byte
 
 // InvocInput are the params to invoke a method in an Actor.
@@ -118,11 +118,11 @@ type Runtime interface {
 	// Note: @jzimmerman: still a WIP, things like the miner actor might need it
 	Message() *types.UnsignedMessage
 
-	// Review: the spec splits this up and brings the get/put to be first class,
+	// The spec splits this up and brings the get/put to be first class,
 	// Review: go-filecoin should keep it as a composition
 	Storage() Storage
 
-	// Review: changed from arguments to a struct
+	// Changed from arguments to a struct
 	// Note: we will likely go with the struct, check comments on `type InvocInput`
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 
