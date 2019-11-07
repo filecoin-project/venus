@@ -14,9 +14,8 @@ import (
 // Review: the object that implements this outlives actor calls.
 type Runtime2 struct {
 	CurerntEpoch() Epoch
-	// Review: why is this taking an offset? verify size of offset
+	// Review: should we turn the offset into a RandomnessEvent?
 	Randomness(epoch Epoch, offset uint64) Randomness
-	// Review: the spec still has a TODO on this
 	// Review: not sure why the original has a messagereceipt instead of an InvocOutput
 	Send(input InvocInput) InvocOutput
 	// Review: how does this work? What qualifies as an "error"?
@@ -56,26 +55,20 @@ type InvocationContext interface {
 	// Review: we didnt have this before, why does the actor need to know the value supplied?
 	ValueSupplied() types.AttoFIL
 
-	// Review: if this is just for the `init` actor then it should not be here.
-	// Review: the init actor is a special system actor, its ok for it to have a different interface with a bit more power.
-    // CreateActor(
-    //     cid                actor.StateCID
-    //     a                  addr.Address
-    //     constructorParams  actor.MethodParams
-    // )
-
-	// Review: we provide this through the Storage()
-    // IpldGet(c ipld.CID) union {Bytes, error}
-	// IpldPut(x ipld.Object) ipld.CID
 	// Review: is the expectation fo storage to be global or actor specific? this has security implications down the line
 	Storage() Storage
+
+	// Dragons: this was not in the spce, but it was likely a bug
+	// Note: @jzimmerman I think that's an error in the spec -- balance should be accessible via the runtime.
+	Balance() types.AttoFIL
 }
 
-// Review: more powerfull contract for the initactor.
-type innitInvocationContext interface {
+// initInvocationContext is a more powerfull context for the "init" actor.
+type initInvocationContext interface {
 	InvocationContext
-	// Review: the spec has no error on this? what if the addr is already taken?
-	CreateActor(cid cid.Cid, addr address.Address, constructorParams MethodParams)
+	// Review: added an error that is not yet on the spec but should be
+	// Note: @jzimmerman: "Agreed, this should support an error return."
+	CreateActor(cid cid.Cid, addr address.Address, constructorParams MethodParams) error
 }
 
 // Storage2 defines the storage module exposed to actors.
@@ -95,7 +88,8 @@ type Epoch types.BlockHeight
 type Randomness []byte
 
 // InvocInput are the params to invoke a method in an Actor.
-// Review: why is this a struct instead of arguments?
+// Review: unless anyone in @go-filecoin has a strong preference for arguments, we are chaging to the struct the spec suggests.
+// Note: @jzimmerman mentioned we might want to reffer to the inputs by Cid in the future
 type InvocInput struct {
     To      address.Address
     Method  types.MethodID
@@ -104,8 +98,6 @@ type InvocInput struct {
 }
 
 // ExitCode is the exit code of a method executing inside the VM.
-// Review: do we have reserved codes?
-// TODO: this has type UVarint in the spec
 type ExitCode types.Int64
 
 // InvocOutput is waht os returned by an actor executing a method.
@@ -122,37 +114,45 @@ type MethodParams []MethodParam
 
 // Runtime defines the ABI interface exposed to actors.
 type Runtime interface {
-	// Review: this is not in the spec anymore
+	// Review: this is not in the spec ~anymore~ yet..
+	// Note: @jzimmerman: still a WIP, things like the miner actor might need it
 	Message() *types.UnsignedMessage
 
-	// Review: the spec splits this up and brings the get/put to be first class
+	// Review: the spec splits this up and brings the get/put to be first class,
+	// Review: go-filecoin should keep it as a composition
 	Storage() Storage
 
 	// Review: changed from arguments to a struct
+	// Note: we will likely go with the struct, check comments on `type InvocInput`
 	Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error)
 
-	// Review: this is not in the spec anymore
+	// This is not in the spec anymore
+	// Note: @jzimmerman: this functionality is delicate enough security-wise (especially with respect to different addresses on different forks) that I think it makes sense not to expose it directly.
 	AddressForNewActor() (address.Address, error)
 
- 	// Review: renamed
+ 	// Review: renamed and has a new type
 	BlockHeight() *types.BlockHeight
 
-	// Review: this is not in the spec anymore
+	// This is not in the spec anymore, but it should be
+	// Note: @jzimmerman I think that's an error in the spec -- balance should be accessible via the runtime.
 	MyBalance() types.AttoFIL
 
-	// Review: this changed a bit, not sure why it cant be determined off the result of `Caller()`
+	// got replaceed by ValidateCallerIs and ValidateCallerMAtches
 	IsFromAccountActor() bool
 
-	// Review: this is not in the spec anymore
+	// This is not in the spec anymore.
+	// Note: @jzimmerman: "Gas accounting is still WIP"
+	// TODO: come back to this when Gas accounting lands on spec
 	Charge(cost types.GasUnits) error
 
-	// Review: this got renamed and gained an offset arg
+	// Note: this got renamed and gained an offset arg
 	SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error)
 
 	// unchanged
 	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 
 	// Review: this is not in the spec anymore
+	// Note: the spec seems to do a direct call, that has some implications (see github comments).
 	Verifier() verification.Verifier
 }
 
