@@ -51,12 +51,12 @@ func NewSyncerSubmodule(ctx context.Context, config syncerConfig, repo chainRepo
 
 	// register block validation on floodsub
 	btv := net.NewBlockTopicValidator(blkValid)
-	if err := network.gsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
+	if err := network.pubsub.RegisterTopicValidator(btv.Topic(network.NetworkName), btv.Validator(), btv.Opts()...); err != nil {
 		return SyncerSubmodule{}, errors.Wrap(err, "failed to register block validator")
 	}
 
 	// setup topic.
-	topic, err := network.gsub.Join(net.BlockTopic(network.NetworkName))
+	topic, err := network.pubsub.Join(net.BlockTopic(network.NetworkName))
 	if err != nil {
 		return SyncerSubmodule{}, err
 	}

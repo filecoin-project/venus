@@ -32,8 +32,8 @@ func (node *Node) AddNewBlock(ctx context.Context, b *block.Block) (err error) {
 			log.Errorf("error publishing new block on block topic %s", err)
 		}
 	}()
-
-	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height)))
+	ci := block.NewChainInfo(node.Host().ID(), node.Host().ID(), block.NewTipSetKey(blkCid), uint64(b.Height))
+	return node.syncer.ChainSyncManager.BlockProposer().SendOwnBlock(ci)
 }
 
 func (node *Node) processBlock(ctx context.Context, msg pubsub.Message) (err error) {

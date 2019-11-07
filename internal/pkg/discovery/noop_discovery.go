@@ -13,14 +13,14 @@ type NoopDiscovery struct{}
 
 // FindPeers returns a dead channel that is always closed
 func (sd *NoopDiscovery) FindPeers(ctx context.Context, ns string, opts ...libp2pdisc.Option) (<-chan pstore.PeerInfo, error) { // nolint: staticcheck
-	stupidCh := make(chan pstore.PeerInfo) // nolint: staticcheck
+	closedCh := make(chan pstore.PeerInfo) // nolint: staticcheck
 	// the output is immediately closed, discovery requests end immediately
 	// Callstack:
 	// https://github.com/libp2p/go-libp2p-pubsub/blob/55f4ad6eb98b9e617e46641e7078944781abb54c/discovery.go#L157
 	// https://github.com/libp2p/go-libp2p-pubsub/blob/55f4ad6eb98b9e617e46641e7078944781abb54c/discovery.go#L287
 	// https://github.com/libp2p/go-libp2p-discovery/blob/master/backoffconnector.go#L52
-	close(stupidCh)
-	return stupidCh, nil
+	close(closedCh)
+	return closedCh, nil
 }
 
 // Advertise does nothing and returns 1 hour.

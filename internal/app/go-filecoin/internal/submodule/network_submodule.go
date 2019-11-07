@@ -47,7 +47,7 @@ type NetworkSubmodule struct {
 	// Router is a router from IPFS
 	Router routing.Routing
 
-	gsub *libp2pps.PubSub
+	pubsub *libp2pps.PubSub
 
 	// TODO: split chain bitswap from storage bitswap (issue: ???)
 	Bitswap exchange.Interface
@@ -140,7 +140,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 		NetworkName: networkName,
 		Host:        peerHost,
 		Router:      router,
-		gsub:        gsub,
+		pubsub:      gsub,
 		Bitswap:     bswap,
 		Network:     network,
 	}, nil
