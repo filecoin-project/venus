@@ -35,7 +35,7 @@ var _ vstate.Wrapper = &StateWrapper{}
 func NewState() *StateWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := hamt.CSTFromBstore(bs)
-	treeImpl := state.NewEmptyStateTree(cst)
+	treeImpl := state.NewTree(cst)
 	storageImpl := vm.NewStorageMap(bs)
 	return &StateWrapper{treeImpl, storageImpl, newKeyStore()}
 }
