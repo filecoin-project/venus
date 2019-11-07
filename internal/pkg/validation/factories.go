@@ -12,14 +12,17 @@ type factories struct {
 
 var _ suites.Factories = &factories{}
 
-func NewFactories() *factories {
+// NewFactories returns a factory.
+func NewFactories() suites.Factories {
 	return &factories{NewApplier()}
 }
 
+// NewState returns a state wrapper.
 func (f *factories) NewState() vstate.Wrapper {
 	return NewState()
 }
 
+// NewMessageFactory returns a message factory.
 func (f *factories) NewMessageFactory(wrapper vstate.Wrapper) vchain.MessageFactory {
 	signer := wrapper.(*StateWrapper).Signer()
 	return NewMessageFactory(signer)

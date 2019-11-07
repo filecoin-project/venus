@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
+// StateWrapper provides a wrapper for a state tree, storage map and keystore.
 type StateWrapper struct {
 	state.Tree
 	vm.StorageMap
@@ -30,6 +31,7 @@ type StateWrapper struct {
 
 var _ vstate.Wrapper = &StateWrapper{}
 
+// NewState returns a StateWrapper.
 func NewState() *StateWrapper {
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
 	cst := hamt.CSTFromBstore(bs)
@@ -38,10 +40,12 @@ func NewState() *StateWrapper {
 	return &StateWrapper{treeImpl, storageImpl, newKeyStore()}
 }
 
+// Cid returns the cid of the state wrappers current state
 func (s *StateWrapper) Cid() cid.Cid {
 	panic("implement me")
 }
 
+// Actor returns the actor whos address is `addr`.
 func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	vaddr, err := address.NewFromBytes([]byte(addr))
 	if err != nil {
@@ -54,6 +58,7 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	return &actorWrapper{*fcActor}, nil
 }
 
+// Storage returns the storage for actor at address `addr`.
 func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
 	addrInt, err := address.NewFromBytes([]byte(addr))
 	if err != nil {
@@ -70,10 +75,12 @@ func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
 	return storageInt, nil
 }
 
+// NewAccountAddress returns an account actor address.
 func (s *StateWrapper) NewAccountAddress() (vstate.Address, error) {
 	return s.keys.newAddress()
 }
 
+// SetActor sets an actor in the state tree.
 func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
 	ctx := context.TODO()
 	addrInt, err := address.NewFromBytes([]byte(addr))
@@ -96,6 +103,7 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 	return actr, storage, nil
 }
 
+// SetSingletonActor sets a singleton actor in the state tree.
 func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance vstate.AttoFIL) (vstate.Actor, vstate.Storage, error) {
 	ctx := context.Background()
 	vaddr := fromSingletonAddress(addr)
@@ -143,7 +151,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Balance: bal,
 			Head:    cid.Undef,
 		}
-		if err := s.Tree.SetActor(ctx,address.BurntFundsAddress, fcActor); err != nil {
+		if err := s.Tree.SetActor(ctx, address.BurntFundsAddress, fcActor); err != nil {
 			return nil, nil, errors.Wrapf(err, "set burntfunds actor")
 		}
 		_, err = s.Tree.Flush(ctx)
@@ -159,7 +167,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Balance: bal,
 			Head:    cid.Undef,
 		}
-		if err := s.Tree.SetActor(ctx,address.NetworkAddress, fcActor); err != nil {
+		if err := s.Tree.SetActor(ctx, address.NetworkAddress, fcActor); err != nil {
 			return nil, nil, errors.Wrapf(err, "set network actor")
 		}
 		_, err = s.Tree.Flush(ctx)
@@ -175,7 +183,8 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 
 }
 
-func (s *StateWrapper) Signer() *keyStore {
+// Signer returns a signer
+func (s *StateWrapper) Signer() types.Signer {
 	return s.keys
 }
 
@@ -217,9 +226,10 @@ func (s *keyStore) newAddress() (vstate.Address, error) {
 	return vstate.Address(addr.Bytes()), nil
 }
 
+// SignBytes signes data with the public key in addr.
 // FIXME this only signes secp, need to suuport bls too.
-func (as *keyStore) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
-	ki, ok := as.keys[addr]
+func (s *keyStore) SignBytes(data []byte, addr address.Address) (types.Signature, error) {
+	ki, ok := s.keys[addr]
 	if !ok {
 		return types.Signature{}, fmt.Errorf("unknown address %v", addr)
 	}
@@ -234,18 +244,22 @@ type actorWrapper struct {
 	actor.Actor
 }
 
+// Code returns the actor code CID.
 func (a *actorWrapper) Code() cid.Cid {
 	return a.Actor.Code
 }
 
+// Head returns the actor Head CID.
 func (a *actorWrapper) Head() cid.Cid {
 	return a.Actor.Head
 }
 
+// Nonce returns the actor nonce.
 func (a *actorWrapper) Nonce() uint64 {
 	return uint64(a.Actor.Nonce)
 }
 
+// Balance returns the actor balance.
 func (a *actorWrapper) Balance() vstate.AttoFIL {
 	return a.Actor.Balance.AsBigInt()
 }

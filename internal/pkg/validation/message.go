@@ -10,16 +10,19 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
 
+// MessageFactory implements the MessageFactory interface.
 type MessageFactory struct {
 	signer types.Signer
 }
 
 var _ chain.MessageFactory = &MessageFactory{}
 
+// NewMessageFactory returns a new MessageFactory.
 func NewMessageFactory(signer types.Signer) *MessageFactory {
 	return &MessageFactory{signer}
 }
 
+// MakeMessage creates and returns a message.
 func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.MethodID, nonce uint64,
 	value, gasPrice state.AttoFIL, gasUnit state.GasUnit, params ...interface{}) (interface{}, error) {
 	fromDec, err := address.NewFromBytes([]byte(from))
@@ -45,6 +48,7 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	//return types.NewSignedMessage(*msg, mf.signer)
 }
 
+// FromSingletonAddress returns the address for a Singleton Actor.
 func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) state.Address {
 	return fromSingletonAddress(addr)
 }

@@ -20,10 +20,12 @@ type Applier struct {
 
 var _ vchain.Applier = &Applier{}
 
+// NewApplier returns an Applier.
 func NewApplier() *Applier {
 	return &Applier{consensus.NewDefaultProcessor()}
 }
 
+// ApplyMessage applies a message.
 func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapper, message interface{}) (vchain.MessageReceipt, error) {
 	ctx := context.TODO()
 	stateTree := state.(*StateWrapper).Tree
