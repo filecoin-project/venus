@@ -11,11 +11,12 @@ import (
 func TestCheck(t *testing.T) {
 	tf.UnitTest(t)
 
-	// Filecoin currently requires go >= 1.12.1
-	assert.True(t, version.Check("go1.12.1"))
-	assert.True(t, version.Check("go1.12.2"))
-	assert.True(t, version.Check("go1.13"))
+	// Filecoin currently requires go >= 1.13.1
 	assert.True(t, version.Check("go1.13.1"))
+	assert.True(t, version.Check("go1.13.2"))
+
+	assert.False(t, version.Check("go1.12.1"))
+	assert.False(t, version.Check("go1.12.2"))
 
 	assert.False(t, version.Check("go1.11"))
 	assert.False(t, version.Check("go1.11.1"))
