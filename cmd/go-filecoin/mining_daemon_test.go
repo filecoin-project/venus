@@ -47,6 +47,7 @@ func TestMiningGenBlock(t *testing.T) {
 }
 
 func TestMiningAddPieceAndSealNow(t *testing.T) {
+	t.Skip()
 	tf.FunctionalTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
