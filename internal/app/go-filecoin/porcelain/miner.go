@@ -25,7 +25,7 @@ import (
 type mcAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedPath string, paramJSON string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 	WalletDefaultAddress() (address.Address, error)
 }
@@ -59,7 +59,7 @@ func MinerCreate(
 		return nil, fmt.Errorf("can only have one miner per node")
 	}
 
-	smsgCid, err := plumbing.MessageSend(
+	smsgCid, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		address.StorageMarketAddress,
@@ -143,7 +143,7 @@ func MinerPreviewCreate(
 type mspAPI interface {
 	ConfigGet(dottedPath string) (interface{}, error)
 	ConfigSet(dottedKey string, jsonString string) error
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
 	MessageWait(ctx context.Context, msgCid cid.Cid, cb func(*block.Block, *types.SignedMessage, *types.MessageReceipt) error) error
 }
 
@@ -187,7 +187,7 @@ func MinerSetPrice(ctx context.Context, plumbing mspAPI, from address.Address, m
 	}
 
 	// create ask
-	res.AddAskCid, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, minerActor.AddAsk, price, expiry)
+	res.AddAskCid, _, err = plumbing.MessageSend(ctx, from, res.MinerAddr, types.ZeroAttoFIL, gasPrice, gasLimit, minerActor.AddAsk, price, expiry)
 	if err != nil {
 		return res, errors.Wrap(err, "couldn't send message")
 	}
@@ -499,7 +499,7 @@ func MinerGetCollateral(ctx context.Context, plumbing mgaAPI, minerAddr address.
 // mwapi is the subset of the plumbing.API that MinerSetWorkerAddress use.
 type mwapi interface {
 	ConfigGet(dottedPath string) (interface{}, error)
-	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error)
+	MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error)
 	MinerGetOwnerAddress(ctx context.Context, minerAddr address.Address) (address.Address, error)
 }
 
@@ -527,7 +527,7 @@ func MinerSetWorkerAddress(
 		return cid.Undef, errors.Wrap(err, "could not get miner owner address")
 	}
 
-	return plumbing.MessageSend(
+	c, _, err := plumbing.MessageSend(
 		ctx,
 		minerOwnerAddr,
 		minerAddr,
@@ -536,4 +536,5 @@ func MinerSetWorkerAddress(
 		gasLimit,
 		minerActor.ChangeWorker,
 		workerAddr)
+	return c, err
 }

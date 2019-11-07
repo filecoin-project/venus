@@ -467,7 +467,7 @@ func (node *Node) StartMining(ctx context.Context) error {
 
 					// This call can fail due to, e.g. nonce collisions. Our miners existence depends on this.
 					// We should deal with this, but MessageSendWithRetry is problematic.
-					msgCid, err := node.PorcelainAPI.MessageSend(
+					msgCid, _, err := node.PorcelainAPI.MessageSend(
 						miningCtx,
 						workerAddr,
 						minerAddr,

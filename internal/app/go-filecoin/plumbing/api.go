@@ -269,13 +269,15 @@ func (api *API) Snapshot(ctx context.Context, baseKey block.TipSetKey) (consensu
 // MessageSend sends a message. It uses the default from address if none is given and signs the
 // message using the wallet. This call "sends" in the sense that it enqueues the
 // message in the msg pool and broadcasts it to the network; it does not wait for the
-// message to go on chain. Note that no default from address is provided.
-func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+// message to go on chain. Note that no default from address is provided.  The error
+// channel returned receives either nil or an error and is immediately closed after
+// the message is published to the network to signal that the publish is complete.
+func (api *API) MessageSend(ctx context.Context, from, to address.Address, value types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 	return api.outbox.Send(ctx, from, to, value, gasPrice, gasLimit, true, method, params...)
 }
 
 //SignedMessageSend sends a siged message.
-func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, error) {
+func (api *API) SignedMessageSend(ctx context.Context, smsg *types.SignedMessage) (cid.Cid, chan error, error) {
 	return api.outbox.SignedSend(ctx, smsg, true)
 }
 

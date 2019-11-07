@@ -97,7 +97,7 @@ message to be mined to get the channelID.`,
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -289,7 +289,7 @@ var redeemCmd = &cmds.Command{
 				params...,
 			)
 		} else {
-			result.Cid, err = GetPorcelainAPI(env).MessageSend(
+			result.Cid, _, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -374,7 +374,7 @@ var reclaimCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -464,7 +464,7 @@ var closeCmd = &cmds.Command{
 				params...,
 			)
 		} else {
-			result.Cid, err = GetPorcelainAPI(env).MessageSend(
+			result.Cid, _, err = GetPorcelainAPI(env).MessageSend(
 				req.Context,
 				fromAddr,
 				address.PaymentBrokerAddress,
@@ -561,7 +561,7 @@ var extendCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,
@@ -648,7 +648,7 @@ var cancelCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			address.PaymentBrokerAddress,

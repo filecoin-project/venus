@@ -644,13 +644,13 @@ func (mtp *minerTestPorcelain) ActorGetSignature(ctx context.Context, actorAddr 
 	return signature, nil
 }
 
-func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, error) {
+func (mtp *minerTestPorcelain) MessageSend(ctx context.Context, from, to address.Address, val types.AttoFIL, gasPrice types.AttoFIL, gasLimit types.GasUnits, method types.MethodID, params ...interface{}) (cid.Cid, chan error, error) {
 	handler, ok := mtp.messageHandlers[method]
 	if ok {
 		_, err := handler(to, val, params...)
-		return cid.Cid{}, err
+		return cid.Cid{}, nil, err
 	}
-	return cid.Cid{}, nil
+	return cid.Cid{}, nil, nil
 }
 
 func (mtp *minerTestPorcelain) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {

@@ -78,7 +78,7 @@ func (ob *Outbox) Queue() *Queue {
 // Send marshals and sends a message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
 func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value types.AttoFIL,
-	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, err error) {
+	gasPrice types.AttoFIL, gasLimit types.GasUnits, bcast bool, method types.MethodID, params ...interface{}) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -91,7 +91,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 
 	encodedParams, err := abi.ToEncodedValues(params...)
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "invalid params")
+		return cid.Undef, nil, errors.Wrap(err, "invalid params")
 	}
 
 	// Lock to avoid a race inspecting the actor state and message queue to calculate next nonce.
@@ -102,26 +102,26 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 
 	fromActor, err := ob.actors.GetActorAt(ctx, head, from)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "no actor at address %s", from)
+		return cid.Undef, nil, errors.Wrapf(err, "no actor at address %s", from)
 	}
 
 	nonce, err := nextNonce(fromActor, ob.queue, from)
 	if err != nil {
-		return cid.Undef, errors.Wrapf(err, "failed calculating nonce for actor at %s", from)
+		return cid.Undef, nil, errors.Wrapf(err, "failed calculating nonce for actor at %s", from)
 	}
 
 	rawMsg := types.NewMeteredMessage(from, to, nonce, value, method, encodedParams, gasPrice, gasLimit)
 	signed, err := types.NewSignedMessage(*rawMsg, ob.signer)
 
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to sign message")
+		return cid.Undef, nil, errors.Wrap(err, "failed to sign message")
 	}
 
 	// Slightly awkward: it would be better validate before signing but the MeteredMessage construction
 	// is hidden inside NewSignedMessage.
 	err = ob.validator.Validate(ctx, &signed.Message, fromActor)
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "invalid message")
+		return cid.Undef, nil, errors.Wrap(err, "invalid message")
 	}
 
 	return sendSignedMsg(ctx, ob, signed, bcast)
@@ -129,7 +129,7 @@ func (ob *Outbox) Send(ctx context.Context, from, to address.Address, value type
 
 // SignedSend send a signed message, retaining it in the outbound message queue.
 // If bcast is true, the publisher broadcasts the message to the network at the current block height.
-func (ob *Outbox) SignedSend(ctx context.Context, signed *types.SignedMessage, bcast bool) (out cid.Cid, err error) {
+func (ob *Outbox) SignedSend(ctx context.Context, signed *types.SignedMessage, bcast bool) (out cid.Cid, pubErrCh chan error, err error) {
 	defer func() {
 		if err != nil {
 			msgSendErrCt.Inc(ctx, 1)
@@ -140,25 +140,35 @@ func (ob *Outbox) SignedSend(ctx context.Context, signed *types.SignedMessage, b
 }
 
 // sendSignedMsg add signed message in pool and return cid
-func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage, bcast bool) (out cid.Cid, err error) {
+func sendSignedMsg(ctx context.Context, ob *Outbox, signed *types.SignedMessage, bcast bool) (cid.Cid, chan error, error) {
 	head := ob.chains.GetHead()
 
 	height, err := tipsetHeight(ob.chains, head)
 	if err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to get block height")
+		return cid.Undef, nil, errors.Wrap(err, "failed to get block height")
 	}
 
 	// Add to the local message queue/pool at the last possible moment before broadcasting to network.
 	if err := ob.queue.Enqueue(ctx, signed, height); err != nil {
-		return cid.Undef, errors.Wrap(err, "failed to add message to outbound queue")
+		return cid.Undef, nil, errors.Wrap(err, "failed to add message to outbound queue")
 	}
 
-	err = ob.publisher.Publish(ctx, signed, height, bcast)
+	c, err := signed.Cid()
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, nil, err
 	}
+	pubErrCh := make(chan error)
 
-	return signed.Cid()
+	go func() {
+		err = ob.publisher.Publish(ctx, signed, height, bcast)
+		if err != nil {
+			log.Errorf("error: %s publishing message %s", err, c.String())
+		}
+		pubErrCh <- err
+		close(pubErrCh)
+	}()
+
+	return c, pubErrCh, nil
 }
 
 // HandleNewHead maintains the message queue in response to a new head tipset.

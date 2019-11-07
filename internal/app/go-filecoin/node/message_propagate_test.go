@@ -56,7 +56,7 @@ func TestMessagePropagation(t *testing.T) {
 	connect(t, nodes[0], nodes[1])
 	connect(t, nodes[1], nodes[2])
 	// Wait for network connection notifications to propagate
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 200)
 
 	require.Equal(t, 0, len(nodes[1].Messaging.Inbox.Pool().Pending()))
 	require.Equal(t, 0, len(nodes[2].Messaging.Inbox.Pool().Pending()))
@@ -65,7 +65,7 @@ func TestMessagePropagation(t *testing.T) {
 	fooMethod := types.MethodID(7232)
 
 	t.Run("message propagates", func(t *testing.T) {
-		_, err := sender.PorcelainAPI.MessageSend(
+		_, _, err := sender.PorcelainAPI.MessageSend(
 			ctx,
 			senderAddress,
 			address.NetworkAddress,

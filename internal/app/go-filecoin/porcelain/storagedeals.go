@@ -93,7 +93,7 @@ type dealRedeemPlumbing interface {
 	ChainTipSet(key block.TipSetKey) (block.TipSet, error)
 	DealGet(context.Context, cid.Cid) (*storagedeal.Deal, error)
 	MessagePreview(context.Context, address.Address, address.Address, types.MethodID, ...interface{}) (types.GasUnits, error)
-	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, types.MethodID, ...interface{}) (cid.Cid, error)
+	MessageSend(context.Context, address.Address, address.Address, types.AttoFIL, types.AttoFIL, types.GasUnits, types.MethodID, ...interface{}) (cid.Cid, chan error, error)
 }
 
 // DealRedeem redeems a voucher for the deal with the given cid and returns
@@ -104,7 +104,7 @@ func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr addre
 		return cid.Undef, err
 	}
 
-	return plumbing.MessageSend(
+	c, _, err := plumbing.MessageSend(
 		ctx,
 		fromAddr,
 		address.PaymentBrokerAddress,
@@ -114,6 +114,7 @@ func DealRedeem(ctx context.Context, plumbing dealRedeemPlumbing, fromAddr addre
 		paymentbroker.Redeem,
 		params...,
 	)
+	return c, err
 }
 
 // DealRedeemPreview previews the redeem method for a deal and returns the

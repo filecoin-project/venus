@@ -337,7 +337,7 @@ var minerUpdatePeerIDCmd = &cmds.Command{
 			})
 		}
 
-		c, err := GetPorcelainAPI(env).MessageSend(
+		c, _, err := GetPorcelainAPI(env).MessageSend(
 			req.Context,
 			fromAddr,
 			minerAddr,
