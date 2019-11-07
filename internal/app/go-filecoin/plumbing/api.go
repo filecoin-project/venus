@@ -80,7 +80,7 @@ type APIDeps struct {
 // New constructs a new instance of the API.
 func New(deps *APIDeps) *API {
 	return &API{
-		logger: logging.Logger("porcelain"),
+		logger:        logging.Logger("porcelain"),
 		chain:         deps.Chain,
 		actorState:    deps.ActState,
 		syncer:        deps.Sync,
