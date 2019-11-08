@@ -47,6 +47,7 @@ func TestMiningGenBlock(t *testing.T) {
 }
 
 func TestMiningAddPieceAndSealNow(t *testing.T) {
+	t.Skip("Long term solution: #3642")
 	tf.FunctionalTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{

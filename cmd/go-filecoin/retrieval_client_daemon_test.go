@@ -17,6 +17,7 @@ import (
 )
 
 func TestSelfDialRetrievalGoodError(t *testing.T) {
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{})

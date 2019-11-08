@@ -55,6 +55,7 @@ func TestWalletBalance(t *testing.T) {
 }
 
 func TestAddrLookupAndUpdate(t *testing.T) {
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	d := makeTestDaemonWithMinerAndStart(t)
