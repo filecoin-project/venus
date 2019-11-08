@@ -32,7 +32,7 @@ import (
 )
 
 func TestDealsRedeem(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -130,7 +130,7 @@ func TestDealsRedeem(t *testing.T) {
 }
 
 func TestDealsList(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	clientDaemon := th.NewDaemon(t,
@@ -208,7 +208,7 @@ func TestDealsList(t *testing.T) {
 }
 
 func TestDealsShow(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// increase block time to give it it a chance to seal
@@ -283,7 +283,7 @@ func TestDealsShow(t *testing.T) {
 }
 
 func TestDealsShowPaymentVouchers(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// increase block time to give it it a chance to seal
@@ -346,7 +346,7 @@ func TestDealsShowPaymentVouchers(t *testing.T) {
 }
 
 func TestFreeDealsShowPaymentVouchers(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// increase block time to give it it a chance to seal

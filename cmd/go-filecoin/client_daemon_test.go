@@ -23,7 +23,7 @@ import (
 )
 
 func TestListAsks(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	minerDaemon := makeTestDaemonWithMinerAndStart(t)
@@ -37,7 +37,7 @@ func TestListAsks(t *testing.T) {
 }
 
 func TestStorageDealsAfterRestart(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 	minerDaemon := th.NewDaemon(t,
 		th.WithMiner(fixtures.TestMiners[0]),
@@ -79,7 +79,7 @@ func TestStorageDealsAfterRestart(t *testing.T) {
 }
 
 func TestDuplicateDeals(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// Give the deal time to complete
@@ -149,7 +149,7 @@ func minerClientMakeDealWithAllowDupes(ctx context.Context, t *testing.T, allowD
 }
 
 func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	ctx, env := fastesting.NewTestEnvironment(context.Background(), t, fast.FilecoinOpts{
@@ -205,7 +205,7 @@ func TestDealWithSameDataAndDifferentMiners(t *testing.T) {
 }
 
 func TestVoucherPersistenceAndPayments(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// DefaultAddress required here
@@ -247,7 +247,7 @@ func TestVoucherPersistenceAndPayments(t *testing.T) {
 }
 
 func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	minerDaemon := th.NewDaemon(t,
@@ -280,7 +280,7 @@ func TestPieceRejectionInProposeStorageDeal(t *testing.T) {
 }
 
 func TestSelfDialStorageGoodError(t *testing.T) {
-	t.Skip()
+	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
 
 	// set block time sufficiently high that client can import its piece
