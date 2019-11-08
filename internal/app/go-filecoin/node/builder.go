@@ -230,7 +230,6 @@ func (b *Builder) build(ctx context.Context) (*Node, error) {
 	}
 
 	nd.PorcelainAPI = porcelain.New(plumbing.New(&plumbing.APIDeps{
-		Bitswap:       nd.network.Bitswap,
 		Chain:         nd.chain.State,
 		Sync:          cst.NewChainSyncProvider(nd.syncer.ChainSyncManager),
 		Config:        cfg.NewConfig(b.repo),

@@ -9,10 +9,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chainsync/status"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
-	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
-	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -45,7 +43,6 @@ import (
 type API struct {
 	logger logging.EventLogger
 
-	bitswap       exchange.Interface
 	chain         *cst.ChainStateReadWriter
 	syncer        *cst.ChainSyncProvider
 	config        *cfg.Config
@@ -64,7 +61,6 @@ type API struct {
 
 // APIDeps contains all the API's dependencies
 type APIDeps struct {
-	Bitswap       exchange.Interface
 	Chain         *cst.ChainStateReadWriter
 	ActState      *consensus.ActorStateStore
 	Sync          *cst.ChainSyncProvider
@@ -84,9 +80,7 @@ type APIDeps struct {
 // New constructs a new instance of the API.
 func New(deps *APIDeps) *API {
 	return &API{
-		logger: logging.Logger("porcelain"),
-
-		bitswap:       deps.Bitswap,
+		logger:        logging.Logger("porcelain"),
 		chain:         deps.Chain,
 		actorState:    deps.ActState,
 		syncer:        deps.Sync,
@@ -396,11 +390,6 @@ func (api *API) DAGCat(ctx context.Context, c cid.Cid) (io.Reader, error) {
 // node via Bitswap and a copy will be kept in the blockstore.
 func (api *API) DAGImportData(ctx context.Context, data io.Reader) (ipld.Node, error) {
 	return api.dag.ImportData(ctx, data)
-}
-
-// BitswapGetStats returns bitswaps stats.
-func (api *API) BitswapGetStats(ctx context.Context) (*bitswap.Stat, error) {
-	return api.bitswap.(*bitswap.Bitswap).Stat()
 }
 
 // SectorBuilder returns the sector builder
