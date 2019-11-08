@@ -56,8 +56,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.12.1.darwin-amd64.pkg && \
-            sudo installer -pkg go1.12.1.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.13.4.darwin-amd64.pkg && \
+            sudo installer -pkg go1.13.4.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -120,7 +120,7 @@ jobs:
 
   deps_linux:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     steps:
@@ -180,7 +180,7 @@ jobs:
 
   build_linux:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
     parameters:
@@ -236,7 +236,7 @@ jobs:
 
   unit_test_linux:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: large
@@ -268,7 +268,7 @@ jobs:
 
   integration_test_linux:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     parallelism: 2 # Check .codecov.yml "after_n_builds" if changing this
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
@@ -302,7 +302,7 @@ jobs:
 
   functional_test_linux:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     parallelism: 2
     working_directory: /go/src/github.com/filecoin-project/go-filecoin
     resource_class: xlarge
@@ -340,7 +340,7 @@ jobs:
 
   publish_release:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     resource_class: small
     parameters:
       <<: *nightly_param
@@ -366,7 +366,7 @@ jobs:
 
   build_docker_img:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     resource_class: xlarge
     parameters:
       <<: *nightly_param
@@ -464,7 +464,7 @@ jobs:
 
   trigger_nightly_devnet_deploy:
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     resource_class: small
     steps:
       - setup_remote_docker
@@ -500,7 +500,7 @@ jobs:
       <<: *user_devnet_param
       <<: *staging_devnet_param
     docker:
-      - image: circleci/golang:1.12.1-stretch
+      - image: circleci/golang:1.13.1-stretch
     resource_class: small
     steps:
       - checkout

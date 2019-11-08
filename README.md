@@ -83,7 +83,7 @@ Now install the tools and dependencies listed below. If you have **any problems 
 
 The build process for go-filecoin requires:
 
-- [Go](https://golang.org/doc/install) >= v1.12.1
+- [Go](https://golang.org/doc/install) >= v1.13
   - Installing Go for the first time? We recommend [this tutorial](https://www.ardanlabs.com/blog/2016/05/installing-go-and-your-workspace.html) which includes environment setup.
 - [Rust](https://www.rust-lang.org/) >= v1.36.0 and `cargo`
 - `pkg-config` - used by go-filecoin to handle generating linker flags
