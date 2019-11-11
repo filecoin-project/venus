@@ -54,14 +54,11 @@ type ApplicationResult struct {
 	ExecutionError error
 }
 
-// ProcessTipSetResponse records the results of successfully applied messages,
-// and the sets of successful and failed message cids.  Information of successes
-// and failures is key for helping match user messages with receipts in the case
-// of message conflicts.
-type ProcessTipSetResponse struct {
-	Results   []*ApplicationResult
-	Successes map[cid.Cid]struct{}
-	Failures  map[cid.Cid]struct{}
+// ApplyMessageResult is the result of applying a single message.
+type ApplyMessageResult struct {
+	ApplicationResult        // Application-level result, if error is nil.
+	Failure            error // Failure to apply the message
+	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
 }
 
 // DefaultProcessor handles all block processing.
@@ -98,17 +95,12 @@ func NewConfiguredProcessor(validator MessageValidator, rewarder BlockRewarder, 
 // errors when applied to each block individually over the given state.
 // ProcessTipSet only returns errors in the case of faults.  Other errors
 // coming from calls to ApplyMessage can be traced to different blocks in the
-// TipSet containing conflicting messages and are ignored.  Blocks are applied
-// in the sorted order of their tickets.
-func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, tsMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (tsResult *ProcessTipSetResponse, err error) {
+// TipSet containing conflicting messages and are returned in the result slice.
+// Blocks are applied in the sorted order of their tickets.
+func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, tsMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (results []*ApplyMessageResult, err error) {
 	ctx, span := trace.StartSpan(ctx, "DefaultProcessor.ProcessTipSet")
 	span.AddAttributes(trace.StringAttribute("tipset", ts.String()))
 	defer tracing.AddErrorEndSpan(ctx, span, &err)
-
-	tsResult = &ProcessTipSetResponse{
-		Failures:  make(map[cid.Cid]struct{}),
-		Successes: make(map[cid.Cid]struct{}),
-	}
 
 	h, err := ts.Height()
 	if err != nil {
@@ -126,26 +118,13 @@ func (p *DefaultProcessor) ProcessTipSet(ctx context.Context, st state.Tree, vms
 		}
 
 		blkMessages := dedupedMessages[blkIdx]
-		results, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
+		blkResults, err := p.ApplyMessagesAndPayRewards(ctx, st, vms, blkMessages, minerOwnerAddr, bh, ancestors)
 		if err != nil {
 			return nil, err
 		}
 
-		for i, result := range results {
-			mCid, err := blkMessages[i].Cid()
-			if err != nil {
-				return nil, errors.FaultErrorWrap(err, "error getting message cid")
-			}
-			if result.Failure == nil {
-				tsResult.Results = append(tsResult.Results, &result.ApplicationResult)
-				tsResult.Successes[mCid] = struct{}{}
-			} else {
-				tsResult.Failures[mCid] = struct{}{}
-
-			}
-		}
+		results = append(results, blkResults...)
 	}
-
 	return
 }
 
@@ -478,13 +457,6 @@ func (p *DefaultProcessor) attemptApplyMessage(ctx context.Context, st *state.Ca
 	receipt.Return = append(receipt.Return, ret...)
 
 	return receipt, vmErr
-}
-
-// ApplyMessageResult is the result of applying a single message.
-type ApplyMessageResult struct {
-	ApplicationResult        // Application-level result, if error is nil.
-	Failure            error // Failure to apply the message
-	FailureIsPermanent bool  // Whether failure is permanent, has no chance of succeeding later.
 }
 
 // ApplyMessagesAndPayRewards pays the block mining reward to the miner's owner and then applies
