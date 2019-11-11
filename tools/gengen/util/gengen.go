@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/go-amt-ipld"
+
 	"github.com/filecoin-project/go-bls-sigs"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
@@ -320,15 +321,11 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 
 // GenGenesisCar generates a car for the given genesis configuration
 func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo, error) {
-	// TODO: these six lines are ugly. We can do better...
-	mds := ds.NewMapDatastore()
-	bstore := blockstore.NewBlockstore(mds)
-	offl := offline.Exchange(bstore)
-	blkserv := bserv.New(bstore, offl)
-	cst := &hamt.CborIpldStore{Blocks: blkserv}
-	dserv := dag.NewDAGService(blkserv)
-
 	ctx := context.Background()
+
+	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
+	cst := hamt.CSTFromBstore(bstore)
+	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
 	info, err := GenGen(ctx, cfg, cst, bstore, seed)
 	if err != nil {
