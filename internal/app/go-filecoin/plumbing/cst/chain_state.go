@@ -3,23 +3,24 @@ package cst
 import (
 	"context"
 	"fmt"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"io"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	blocks "github.com/ipfs/go-block-format"
-	bserv "github.com/ipfs/go-blockservice"
+	blockservice "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
-	dag "github.com/ipfs/go-merkledag"
+	merkdag "github.com/ipfs/go-merkledag"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/dag"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -227,51 +228,8 @@ func (chn *ChainStateReadWriter) ChainImport(ctx context.Context, in io.Reader) 
 
 // ChainStateTree returns the state tree as a slice of IPLD nodes at the passed stateroot cid `c`.
 func (chn *ChainStateReadWriter) ChainStateTree(ctx context.Context, c cid.Cid) ([]format.Node, error) {
-	return newChainStateCollector(chn.bstore).collectState(ctx, c)
-}
-
-func newChainStateCollector(bs blockstore.Blockstore) *chainStateCollector {
-	offl := offline.Exchange(bs)
-	blkserv := bserv.New(bs, offl)
-	dserv := dag.NewDAGService(blkserv)
-	return &chainStateCollector{
-		dagserv: dserv,
-	}
-}
-
-type chainStateCollector struct {
-	dagserv format.DAGService // Provides access to state tree.
-	state   []format.Node
-}
-
-// collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
-// Calling this method does not have any side effects.
-func (csc *chainStateCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
-	dagNd, err := csc.dagserv.Get(ctx, stateRoot)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
-	}
-	csc.addState(dagNd)
-	seen := cid.NewSet()
-	for _, l := range dagNd.Links() {
-		if err := dag.Walk(ctx, csc.getLinks, l.Cid, seen.Visit); err != nil {
-			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
-		}
-	}
-	return csc.state, nil
-
-}
-
-func (csc *chainStateCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
-	nd, err := csc.dagserv.Get(ctx, c)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
-	}
-	csc.addState(nd)
-	return nd.Links(), nil
-
-}
-
-func (csc *chainStateCollector) addState(nd format.Node) {
-	csc.state = append(csc.state, nd)
+	offl := offline.Exchange(chn.bstore)
+	blkserv := blockservice.New(chn.bstore, offl)
+	dserv := merkdag.NewDAGService(blkserv)
+	return dag.NewDAG(dserv).RecursiveGet(ctx, c)
 }
