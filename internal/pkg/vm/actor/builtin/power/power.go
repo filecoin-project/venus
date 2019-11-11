@@ -2,9 +2,11 @@ package power
 
 import (
 	"context"
+	"math/big"
 	"reflect"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-hamt-ipld"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -12,11 +14,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
@@ -154,7 +155,6 @@ var Errors = map[uint8]error{
 type invocationContext interface {
 	runtime.InvocationContext
 	Message() *types.UnsignedMessage
-	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
 	AddressForNewActor() (address.Address, error)
 }
 
@@ -166,42 +166,52 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
-		addr, err := vmctx.AddressForNewActor()
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
+		actorCodeCid := types.MinerActorCodeCid
+		epoch := vmctx.Runtime().CurrentEpoch()
+		if epoch.Equal(types.NewBlockHeight(0)) {
+			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		minerInitializationParams := miner.NewState(ownerAddr, workerAddr, pid, sectorSize)
-		if err := vmctx.CreateNewActor(addr, types.MinerActorCodeCid, minerInitializationParams); err != nil {
+		initParams := []interface{}{vmctx.Message().From, vmctx.Message().From, pid, sectorSize}
+
+		// create miner actor by messaging the init actor and sending it collateral
+		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().Value, []interface{}{actorCodeCid, initParams})
+		if err != nil {
 			return nil, err
 		}
 
-		_, _, err = vmctx.Runtime().Send(addr, types.SendMethodID, vmctx.Message().Value, nil)
+		addr, err := address.NewFromBytes(ret[0])
 		if err != nil {
-			return nil, err
+			return nil, errors.FaultErrorWrap(err, "could not convert init.Exec return value to address")
+		}
+
+		// retrieve id to key miner
+		actorIDAddr, err := retreiveActorID(vmctx.Runtime(), addr)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not retrieve actor id addrs after initializing actor")
 		}
 
 		// Update power table.
 		ctx := context.Background()
 		newPowerTable, err := actor.WithLookup(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
-			err := lookup.Find(ctx, addr.String(), nil)
+			err := lookup.Find(ctx, actorIDAddr.String(), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
 				if err == nil {
 					return Errors[ErrDuplicateEntry]
 				}
-				return errors.FaultErrorWrapf(err, "Error looking for new entry in power table at addres %s", addr.String())
+				return errors.FaultErrorWrapf(err, "Error looking for new entry in power table at addres %s", actorIDAddr.String())
 			}
 
 			// Create fresh entry
-			err = lookup.Set(ctx, addr.String(), TableEntry{
+			err = lookup.Set(ctx, actorIDAddr.String(), TableEntry{
 				ActivePower:            types.NewBytesAmount(0),
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
 				LockedPledgeCollateral: types.ZeroAttoFIL,
 			})
 			if err != nil {
-				return errors.FaultErrorWrapf(err, "Could not set power table at address: %s", addr.String())
+				return errors.FaultErrorWrapf(err, "Could not set power table at address: %s", actorIDAddr.String())
 			}
 			return nil
 		})
@@ -216,6 +226,21 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 	}
 
 	return ret.(address.Address), 0, nil
+}
+
+// retriveActorId uses init actor to map an actorAddress to an id address
+func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.Address, error) {
+	ret, _, err := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
+	if err != nil {
+		return address.Undef, err
+	}
+
+	actorIdVal, err := abi.Deserialize(ret[0], abi.Integer)
+	if err != nil {
+		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
+	}
+
+	return address.NewIDAddress(actorIdVal.Val.(*big.Int).Uint64())
 }
 
 // RemoveStorageMiner removes the given miner address from the power table.  This call will fail if

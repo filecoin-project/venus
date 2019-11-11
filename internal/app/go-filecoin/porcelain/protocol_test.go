@@ -35,9 +35,9 @@ func (tppp *testProtocolParamsPlumbing) ChainHeadKey() block.TipSetKey {
 }
 
 func (tppp *testProtocolParamsPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
-	if method == storagemarket.GetProofsMode {
+	if to == address.StorageMarketAddress && method == storagemarket.GetProofsMode {
 		return [][]byte{{byte(types.TestProofsMode)}}, nil
-	} else if method == initactor.GetNetwork {
+	} else if to == address.InitAddress && method == initactor.GetNetwork {
 		return [][]byte{[]byte("protocolTest")}, nil
 	}
 	return [][]byte{}, errors.Errorf("call to unknown method %s", method)

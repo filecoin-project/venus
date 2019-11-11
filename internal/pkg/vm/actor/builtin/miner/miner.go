@@ -125,7 +125,8 @@ type Ask struct {
 
 // Actor methods
 const (
-	AddAsk types.MethodID = iota + 32
+	Constructor types.MethodID = 1
+	AddAsk      types.MethodID = iota + 2
 	GetOwner
 	CommitSector
 	GetWorker
@@ -185,6 +186,10 @@ func NewState(owner, worker address.Address, pid peer.ID, sectorSize *types.Byte
 var _ dispatch.ExecutableActor = (*Actor)(nil)
 
 var signatures = dispatch.Exports{
+	Constructor: &dispatch.FunctionSignature{
+		Params: []abi.Type{abi.Address, abi.Address, abi.PeerID, abi.BytesAmount},
+		Return: []abi.Type{},
+	},
 	// addAsk is not in the spec, but there's not yet another mechanism to discover asks.
 	AddAsk: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.AttoFIL, abi.Integer},
@@ -286,6 +291,8 @@ var signatures = dispatch.Exports{
 // Method returns method definition for a given method id.
 func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSignature, bool) {
 	switch id {
+	case Constructor:
+		return reflect.ValueOf((*Impl)(a).Constructor), signatures[Constructor], true
 	case AddAsk:
 		return reflect.ValueOf((*Impl)(a).AddAsk), signatures[AddAsk], true
 	case GetOwner:
@@ -443,6 +450,15 @@ type invocationContext interface {
 	runtime.InvocationContext
 	Verifier() verification.Verifier
 	Message() *types.UnsignedMessage
+}
+
+// Constructor initializes the actor's state
+func (impl *Impl) Constructor(ctx runtime.InvocationContext, owner, worker address.Address, pid peer.ID, sectorSize *types.BytesAmount) (uint8, error) {
+	err := (*Actor)(impl).InitializeState(ctx.Storage(), NewState(owner, worker, pid, sectorSize))
+	if err != nil {
+		return errors.CodeError(err), err
+	}
+	return 0, nil
 }
 
 // AddAsk adds an ask to this miners ask list

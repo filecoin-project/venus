@@ -66,7 +66,7 @@ func TestProcessTipSetSuccess(t *testing.T) {
 	})
 
 	vms := th.VMStorage()
-	minerOwner, err := address.NewActorAddress([]byte("mo"))
+	minerOwner, err := address.NewSecp256k1Address([]byte("mo"))
 	require.NoError(t, err)
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 
@@ -139,7 +139,7 @@ func TestProcessTipsConflicts(t *testing.T) {
 		fromAddr:               act1,
 	})
 
-	minerOwner, err := address.NewActorAddress([]byte("mo"))
+	minerOwner, err := address.NewSecp256k1Address([]byte("mo"))
 	require.NoError(t, err)
 	stCid, miner := mustCreateStorageMiner(ctx, t, st, vms, minerAddr, minerOwner)
 

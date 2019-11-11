@@ -60,7 +60,7 @@ func NewBuilder(t *testing.T, miner address.Address) *Builder {
 func NewBuilderWithState(t *testing.T, miner address.Address, sb StateBuilder) *Builder {
 	if miner.Empty() {
 		var err error
-		miner, err = address.NewActorAddress([]byte("miner"))
+		miner, err = address.NewSecp256k1Address([]byte("miner"))
 		require.NoError(t, err)
 	}
 

@@ -258,7 +258,7 @@ func MinerPreviewSetPrice(ctx context.Context, plumbing mpspAPI, from address.Ad
 type minerQueryAndDeserialize interface {
 	ChainHeadKey() block.TipSetKey
 	MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, baseKey block.TipSetKey, params ...interface{}) ([][]byte, error)
-	ActorGetSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error)
+	ActorGetStableSignature(ctx context.Context, actorAddr address.Address, method types.MethodID) (*vm.FunctionSignature, error)
 }
 
 // MinerGetOwnerAddress queries for the owner address of the given miner
@@ -290,7 +290,7 @@ func queryAndDeserialize(ctx context.Context, plumbing minerQueryAndDeserialize,
 		return nil, errors.Wrapf(err, "'%s' query message failed", method)
 	}
 
-	methodSignature, err := plumbing.ActorGetSignature(ctx, minerAddr, method)
+	methodSignature, err := plumbing.ActorGetStableSignature(ctx, minerAddr, method)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to acquire '%s' signature", method)
 	}
@@ -428,7 +428,7 @@ func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserializ
 		return MinerProvingWindow{}, errors.Wrap(err, "query SetCommitments method failed")
 	}
 
-	sig, err := plumbing.ActorGetSignature(ctx, minerAddr, minerActor.GetProvingSetCommitments)
+	sig, err := plumbing.ActorGetStableSignature(ctx, minerAddr, minerActor.GetProvingSetCommitments)
 	if err != nil {
 		return MinerProvingWindow{}, errors.Wrap(err, "query method failed")
 	}

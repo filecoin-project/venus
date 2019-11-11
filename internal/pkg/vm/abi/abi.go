@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
@@ -30,6 +31,8 @@ const (
 	BytesAmount
 	// ChannelID is a *types.ChannelID
 	ChannelID
+	// Cid is a cid.Cid
+	Cid
 	// BlockHeight is a *types.BlockHeight
 	BlockHeight
 	// Integer is a *big.Int
@@ -83,6 +86,8 @@ func (t Type) String() string {
 		return "*types.BytesAmount"
 	case ChannelID:
 		return "*types.ChannelID"
+	case Cid:
+		return "cid.Cid"
 	case BlockHeight:
 		return "*types.BlockHeight"
 	case Integer:
@@ -144,6 +149,8 @@ func (av *Value) String() string {
 		return av.Val.(*types.BytesAmount).String()
 	case ChannelID:
 		return av.Val.(*types.ChannelID).String()
+	case Cid:
+		return av.Val.(cid.Cid).String()
 	case BlockHeight:
 		return av.Val.(*types.BlockHeight).String()
 	case Integer:
@@ -225,6 +232,12 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.ChannelID{}, av.Val}
 		}
 		return ba.Bytes(), nil
+	case Cid:
+		c, ok := av.Val.(cid.Cid)
+		if !ok {
+			return nil, &typeError{cid.Cid{}, av.Val}
+		}
+		return c.Bytes(), nil
 	case BlockHeight:
 		ba, ok := av.Val.(*types.BlockHeight)
 		if !ok {
@@ -379,6 +392,8 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: BytesAmount, Val: v})
 		case *types.ChannelID:
 			out = append(out, &Value{Type: ChannelID, Val: v})
+		case cid.Cid:
+			out = append(out, &Value{Type: Cid, Val: v})
 		case *types.BlockHeight:
 			out = append(out, &Value{Type: BlockHeight, Val: v})
 		case *big.Int:
@@ -470,6 +485,15 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 		return &Value{
 			Type: t,
 			Val:  types.NewChannelIDFromBytes(data),
+		}, nil
+	case Cid:
+		c, err := cid.Cast(data)
+		if err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  c,
 		}, nil
 	case BlockHeight:
 		return &Value{
@@ -621,6 +645,7 @@ var typeTable = map[Type]reflect.Type{
 	Bytes:           reflect.TypeOf([]byte{}),
 	BytesAmount:     reflect.TypeOf(&types.BytesAmount{}),
 	ChannelID:       reflect.TypeOf(&types.ChannelID{}),
+	Cid:             reflect.TypeOf(cid.Cid{}),
 	BlockHeight:     reflect.TypeOf(&types.BlockHeight{}),
 	Integer:         reflect.TypeOf(&big.Int{}),
 	String:          reflect.TypeOf(string("")),

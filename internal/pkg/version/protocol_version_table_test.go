@@ -3,7 +3,7 @@ package version
 import (
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"testing"
@@ -54,7 +54,7 @@ func TestUpgradeTable(t *testing.T) {
 	t.Run("constructing a table with no versions is an error", func(t *testing.T) {
 		_, err := NewProtocolVersionTableBuilder(network).Build()
 		require.Error(t, err)
-		assert.Matches(t, err.Error(), "no protocol versions specified for network testnetwork")
+		assert.Contains(t, err.Error(), "no protocol versions specified for network testnetwork")
 	})
 
 	t.Run("constructing a table with no version at genesis is an error", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestUpgradeTable(t *testing.T) {
 			Add(network, 2, types.NewBlockHeight(20)).
 			Build()
 		require.Error(t, err)
-		assert.Matches(t, err.Error(), "no protocol version at genesis for network testnetwork")
+		assert.Contains(t, err.Error(), "no protocol version at genesis for network testnetwork")
 	})
 
 	t.Run("ignores versions from wrong network", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestUpgradeTable(t *testing.T) {
 			Add(network, 4, types.NewBlockHeight(40)).
 			Build()
 		require.Error(t, err)
-		assert.Matches(t, err.Error(), "protocol version 2 effective at 30 is not greater than previous version, 2")
+		assert.Contains(t, err.Error(), "protocol version 2 effective at 30 is not greater than previous version, 2")
 	})
 
 	t.Run("does not permit version numbers to decline", func(t *testing.T) {
@@ -110,6 +110,6 @@ func TestUpgradeTable(t *testing.T) {
 			Add(network, 0, types.NewBlockHeight(40)).
 			Build()
 		require.Error(t, err)
-		assert.Matches(t, err.Error(), "protocol version 3 effective at 10 is not greater than previous version, 4")
+		assert.Contains(t, err.Error(), "protocol version 3 effective at 10 is not greater than previous version, 4")
 	})
 }

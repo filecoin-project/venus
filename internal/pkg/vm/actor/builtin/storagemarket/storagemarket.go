@@ -14,11 +14,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
 
@@ -107,7 +108,10 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 
 // InitializeState stores the actor's initial data structure.
 func (*Actor) InitializeState(storage runtime.Storage, proofsModeInterface interface{}) error {
-	proofsMode := proofsModeInterface.(types.ProofsMode)
+	proofsMode, ok := proofsModeInterface.(types.ProofsMode)
+	if !ok {
+		return errors.NewRevertError("storage market actor init parameter is not a proofs mode")
+	}
 
 	initStorage := &State{
 		TotalCommittedStorage: types.NewBytesAmount(0),
@@ -148,7 +152,7 @@ var Errors = map[uint8]error{
 type invocationContext interface {
 	runtime.InvocationContext
 	Message() *types.UnsignedMessage
-	CreateNewActor(addr address.Address, code cid.Cid, initalizationParams interface{}) error
+	CreateNewActor(addr address.Address, code cid.Cid) error
 	AddressForNewActor() (address.Address, error)
 }
 
@@ -165,31 +169,34 @@ func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.Bytes
 			return nil, Errors[ErrUnsupportedSectorSize]
 		}
 
-		addr, err := vmctx.AddressForNewActor()
-		if err != nil {
-			return nil, errors.FaultErrorWrap(err, "could not get address for new actor")
-		}
-
-		minerInitializationParams := miner.NewState(vmctx.Message().From, vmctx.Message().From, pid, sectorSize)
-
 		actorCodeCid := types.MinerActorCodeCid
 		epoch := vmctx.Runtime().CurrentEpoch()
 		if epoch.Equal(types.NewBlockHeight(0)) {
 			actorCodeCid = types.BootstrapMinerActorCodeCid
 		}
 
-		if err := vmctx.CreateNewActor(addr, actorCodeCid, minerInitializationParams); err != nil {
-			return nil, err
-		}
+		initParams := []interface{}{vmctx.Message().From, vmctx.Message().From, pid, sectorSize}
 
-		_, _, err = vmctx.Runtime().Send(addr, types.SendMethodID, vmctx.Message().Value, nil)
+		// create miner actor by messaging the init actor and sending it collateral
+		ret, _, err := vmctx.Runtime().Send(address.InitAddress, initactor.Exec, vmctx.Message().Value, []interface{}{actorCodeCid, initParams})
 		if err != nil {
 			return nil, err
 		}
 
+		addr, err := address.NewFromBytes(ret[0])
+		if err != nil {
+			return nil, errors.FaultErrorWrap(err, "could not convert init.Exec return value to address")
+		}
+
+		// retrieve id to key miner
+		actorIDAddr, err := retreiveActorID(vmctx.Runtime(), addr)
+		if err != nil {
+			return nil, errors.FaultErrorWrapf(err, "could not retrieve actor id addrs after initializing actor")
+		}
+
 		ctx := context.Background()
 
-		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Miners, addr.String(), true)
+		state.Miners, err = actor.SetKeyValue(ctx, vmctx.Storage(), state.Miners, actorIDAddr.String(), true)
 		if err != nil {
 			return nil, errors.FaultErrorWrapf(err, "could not set miner key value for lookup with CID: %s", state.Miners)
 		}
@@ -201,6 +208,21 @@ func (*impl) createStorageMiner(vmctx invocationContext, sectorSize *types.Bytes
 	}
 
 	return ret.(address.Address), 0, nil
+}
+
+// retriveActorId uses init actor to map an actorAddress to an id address
+func retreiveActorID(vmctx runtime.Runtime, actorAddr address.Address) (address.Address, error) {
+	ret, _, err := vmctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{actorAddr})
+	if err != nil {
+		return address.Undef, err
+	}
+
+	actorIdVal, err := abi.Deserialize(ret[0], abi.Integer)
+	if err != nil {
+		return address.Undef, errors.FaultErrorWrap(err, "could not convert actor id to big.Int")
+	}
+
+	return address.NewIDAddress(actorIdVal.Val.(*big.Int).Uint64())
 }
 
 // UpdateStorage is called to reflect a change in the overall power of the network.

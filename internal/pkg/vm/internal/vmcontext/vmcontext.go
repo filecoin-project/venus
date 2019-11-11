@@ -7,16 +7,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"math/big"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sampling"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
@@ -36,7 +38,9 @@ type ExecutableActorLookup interface {
 type VMContext struct {
 	from              *actor.Actor
 	to                *actor.Actor
+	toAddr            address.Address
 	message           *types.UnsignedMessage
+	originMsg         *types.UnsignedMessage
 	state             *state.CachedTree
 	storageMap        storagemap.StorageMap
 	gasTracker        *gastracker.GasTracker
@@ -52,7 +56,9 @@ type VMContext struct {
 type NewContextParams struct {
 	From        *actor.Actor
 	To          *actor.Actor
+	ToAddr      address.Address
 	Message     *types.UnsignedMessage
+	OriginMsg   *types.UnsignedMessage
 	State       *state.CachedTree
 	StorageMap  storagemap.StorageMap
 	GasTracker  *gastracker.GasTracker
@@ -66,7 +72,9 @@ func NewVMContext(params NewContextParams) *VMContext {
 	return &VMContext{
 		from:              params.From,
 		to:                params.To,
+		toAddr:            params.ToAddr,
 		message:           params.Message,
+		originMsg:         params.OriginMsg,
 		state:             params.State,
 		storageMap:        params.StorageMap,
 		gasTracker:        params.GasTracker,
@@ -105,7 +113,7 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	deps := ctx.deps
 
 	// the message sender is the `to` actor, so this is what we set as `from` in the new message
-	from := ctx.Message().To
+	from := ctx.toAddr
 	fromActor := ctx.to
 
 	vals, err := deps.ToValues(params)
@@ -124,7 +132,13 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 
-	toActor, err := deps.GetOrCreateActor(context.TODO(), msg.To, func() (*actor.Actor, error) {
+	// fetch id address from init actor if necessary
+	toAddr, err := ctx.resolveActorAddress(msg.To)
+	if err != nil {
+		return nil, 1, errors.FaultErrorWrapf(err, "failed to get id address for actor address")
+	}
+
+	toActor, err := deps.GetOrCreateActor(context.TODO(), toAddr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
 	})
 	if err != nil {
@@ -134,7 +148,9 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	innerParams := NewContextParams{
 		From:        fromActor,
 		To:          toActor,
+		ToAddr:      toAddr,
 		Message:     msg,
+		OriginMsg:   ctx.originMsg,
 		State:       ctx.state,
 		StorageMap:  ctx.storageMap,
 		GasTracker:  ctx.gasTracker,
@@ -212,9 +228,9 @@ func (ctx *VMContext) Charge(cost types.GasUnits) error {
 // built-in actor needs
 //
 
-// CreateNewActor creates and initializes an actor at the given address.
+// CreateNewActor creates an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
-func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid, initializerData interface{}) error {
+func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid) error {
 	// Check existing address. If nothing there, create empty actor.
 	newActor, err := ctx.state.GetOrCreateActor(context.TODO(), addr, func() (*actor.Actor, error) {
 		return &actor.Actor{}, nil
@@ -230,21 +246,6 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid, initial
 
 	// make this the right 'type' of actor
 	newActor.Code = code
-
-	childStorage := ctx.storageMap.NewStorage(addr, newActor)
-	// TODO: need to use blockheight derived version (#3360)
-	execActor, err := ctx.actors.GetActorCode(code, 0)
-	if err != nil {
-		return errors.NewRevertErrorf("attempt to create executable actor from non-existent code %s", code.String())
-	}
-
-	err = execActor.InitializeState(childStorage, initializerData)
-	if err != nil {
-		if !errors.ShouldRevert(err) && !errors.IsFault(err) {
-			return errors.RevertErrorWrap(err, "Could not initialize actor state")
-		}
-		return err
-	}
 
 	return nil
 }
@@ -266,7 +267,7 @@ func (ctx *VMContext) Message() *types.UnsignedMessage {
 // creation of multiple contracts in a given invocation (nonce will remain the
 // same, resulting in the same address back)
 func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
-	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
+	return computeActorAddress(ctx.originMsg.From, uint64(ctx.originMsg.CallSeqNum))
 }
 
 func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
@@ -375,6 +376,10 @@ func send(ctx context.Context, transfer TransferFn, vmCtx ExtendedRuntime) ([][]
 		panic("trying to execute fake method on the actual VM, fix test")
 	}
 
+	if msg.Method == types.ConstructorMethodID && !vmCtx.From().Code.Equals(types.InitActorCodeCid) {
+		return nil, 1, errors.NewRevertError("can only construct actor from init actor")
+	}
+
 	// TODO: use chain height based protocol version here (#3360)
 	toExecutable, err := vmCtx.Actors().GetActorCode(vmCtx.To().Code, 0)
 	if err != nil {
@@ -412,4 +417,28 @@ func Transfer(fromActor, toActor *actor.Actor, value types.AttoFIL) error {
 	toActor.Balance = toActor.Balance.Add(value)
 
 	return nil
+}
+
+// resolveAddress looks up associated id address if actor address. Otherwise it returns the same address.
+func (ctx *VMContext) resolveActorAddress(addr address.Address) (address.Address, error) {
+	if addr.Protocol() != address.Actor {
+		return addr, nil
+	}
+
+	ret, _, err := ctx.Send(address.InitAddress, initactor.GetActorIDForAddress, types.ZeroAttoFIL, []interface{}{addr})
+	if err != nil {
+		return address.Undef, err
+	}
+
+	id, err := abi.Deserialize(ret[0], abi.Integer)
+	if err != nil {
+		return address.Undef, err
+	}
+
+	idAddr, err := address.NewIDAddress(id.Val.(*big.Int).Uint64())
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return idAddr, nil
 }

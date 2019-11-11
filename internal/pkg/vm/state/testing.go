@@ -125,7 +125,7 @@ func (m *MockStateTree) GetActorCode(c cid.Cid, protocol uint64) (dispatch.Execu
 // states.
 func TreeFromString(t *testing.T, s string, cst *hamt.CborIpldStore) Tree {
 	tree := NewTree(cst)
-	strAddr, err := address.NewActorAddress([]byte(s))
+	strAddr, err := address.NewSecp256k1Address([]byte(s))
 	require.NoError(t, err)
 	err = tree.SetActor(context.Background(), strAddr, &actor.Actor{})
 	require.NoError(t, err)

@@ -85,6 +85,23 @@ func ReadState(ctx runtime.InvocationContext, st interface{}) error {
 	return nil
 }
 
+// WriteState stores state and commits it as the actor's head
+func WriteState(ctx runtime.InvocationContext, state interface{}) error {
+	stage := ctx.Storage()
+
+	cid, err := stage.Put(state)
+	if err != nil {
+		return vmerrors.RevertErrorWrap(err, "Could not stage memory chunk")
+	}
+
+	err = stage.Commit(cid, stage.Head())
+	if err != nil {
+		return vmerrors.RevertErrorWrap(err, "Could not commit actor memory")
+	}
+
+	return nil
+}
+
 // SetKeyValue convenience method to load a lookup, set one key value pair and commit.
 // This function is inefficient when multiple values need to be set into the lookup.
 func SetKeyValue(ctx context.Context, storage runtime.Storage, id cid.Cid, key string, value interface{}) (cid.Cid, error) {

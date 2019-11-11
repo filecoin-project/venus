@@ -16,7 +16,7 @@ import (
 
 func TestIterAncestors(t *testing.T) {
 	tf.UnitTest(t)
-	miner, err := address.NewActorAddress([]byte(fmt.Sprintf("address")))
+	miner, err := address.NewSecp256k1Address([]byte(fmt.Sprintf("address")))
 	require.NoError(t, err)
 
 	t.Run("iterates", func(t *testing.T) {
