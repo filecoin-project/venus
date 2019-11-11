@@ -8,19 +8,19 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/plumbing/cfg"
 	"github.com/filecoin-project/go-filecoin/internal/app/go-filecoin/porcelain"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/protocol/storage/storagedeal"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/sectorbuilder"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
@@ -449,7 +449,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		handlers := successMessageHandlers(t)
 		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+			return mustEncodeResults(t, []types.Uint64{200, 400}), nil
 		}
 		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			postParams = p
@@ -491,7 +491,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		handlers := successMessageHandlers(t)
 		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+			return mustEncodeResults(t, []types.Uint64{200, 400}), nil
 		}
 		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
@@ -520,7 +520,7 @@ func TestOnNewHeaviestTipSet(t *testing.T) {
 
 		handlers := successMessageHandlers(t)
 		handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-			return mustEncodeResults(t, types.NewBlockHeight(200), types.NewBlockHeight(400)), nil
+			return mustEncodeResults(t, []types.Uint64{200, 400}), nil
 		}
 		handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 			t.Error("Should not have called submit post")
@@ -555,7 +555,7 @@ func successMessageHandlers(t *testing.T) messageHandlerMap {
 		return mustEncodeResults(t, commitments), nil
 	}
 	handlers[minerActor.GetProvingWindow] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
-		return mustEncodeResults(t, types.NewBlockHeight(20003), types.NewBlockHeight(40003)), nil
+		return mustEncodeResults(t, []types.Uint64{20003, 40003}), nil
 	}
 	handlers[minerActor.SubmitPoSt] = func(a address.Address, v types.AttoFIL, p ...interface{}) ([][]byte, error) {
 		return [][]byte{}, nil

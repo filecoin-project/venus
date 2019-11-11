@@ -838,7 +838,12 @@ func (sm *Miner) getProvingWindow() (*types.BlockHeight, *types.BlockHeight, err
 		return nil, nil, err
 	}
 
-	return types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1]), nil
+	window, err := abi.Deserialize(res[0], abi.UintArray)
+	if err != nil {
+		return nil, nil, err
+	}
+	windowVal := window.Val.([]types.Uint64)
+	return types.NewBlockHeight(uint64(windowVal[0])), types.NewBlockHeight(uint64(windowVal[1])), nil
 }
 
 func (sm *Miner) submitPoSt(ctx context.Context, start, end *types.BlockHeight, inputs []PoStInputs) {

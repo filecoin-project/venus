@@ -409,7 +409,12 @@ func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserializ
 	if err != nil {
 		return MinerProvingWindow{}, errors.Wrap(err, "query ProvingPeriod method failed")
 	}
-	start, end := types.NewBlockHeightFromBytes(res[0]), types.NewBlockHeightFromBytes(res[1])
+
+	window, err := abi.Deserialize(res[0], abi.UintArray)
+	if err != nil {
+		return MinerProvingWindow{}, err
+	}
+	windowVal := window.Val.([]types.Uint64)
 
 	res, err = plumbing.MessageQuery(
 		ctx,
@@ -437,8 +442,8 @@ func MinerGetProvingWindow(ctx context.Context, plumbing minerQueryAndDeserializ
 	}
 
 	return MinerProvingWindow{
-		Start:      *start,
-		End:        *end,
+		Start:      *types.NewBlockHeight(uint64(windowVal[0])),
+		End:        *types.NewBlockHeight(uint64(windowVal[1])),
 		ProvingSet: commitments,
 	}, nil
 }

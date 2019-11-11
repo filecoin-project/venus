@@ -271,7 +271,7 @@ var signatures = dispatch.Exports{
 	},
 	GetProvingWindow: &dispatch.FunctionSignature{
 		Params: []abi.Type{},
-		Return: []abi.Type{abi.BlockHeight, abi.BlockHeight},
+		Return: []abi.Type{abi.UintArray},
 	},
 	CalculateLateFee: &dispatch.FunctionSignature{
 		Params: []abi.Type{abi.BlockHeight},
@@ -489,18 +489,18 @@ func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (
 }
 
 // GetAsks returns all the asks for this miner.
-func (*Impl) GetAsks(ctx runtime.Runtime) ([]uint64, uint8, error) {
+func (*Impl) GetAsks(ctx runtime.Runtime) ([]types.Uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
-		var askids []uint64
+		var askids []types.Uint64
 		for _, ask := range state.Asks {
 			if !ask.ID.IsUint64() {
 				return nil, errors.NewFaultErrorf("miner ask has invalid ID (bad invariant)")
 			}
-			askids = append(askids, ask.ID.Uint64())
+			askids = append(askids, types.Uint64(ask.ID.Uint64()))
 		}
 
 		return askids, nil
@@ -509,9 +509,9 @@ func (*Impl) GetAsks(ctx runtime.Runtime) ([]uint64, uint8, error) {
 		return nil, errors.CodeError(err), err
 	}
 
-	askids, ok := out.([]uint64)
+	askids, ok := out.([]types.Uint64)
 	if !ok {
-		return nil, 1, errors.NewRevertErrorf("expected a []uint64 return value from call, but got %T instead", out)
+		return nil, 1, errors.NewRevertErrorf("expected a []types.Uint64 return value from call, but got %T instead", out)
 	}
 
 	return askids, 0, nil
@@ -1206,14 +1206,17 @@ func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
 }
 
 // GetProvingWindow returns the proving period start and proving period end
-func (*Impl) GetProvingWindow(ctx runtime.Runtime) (*types.BlockHeight, *types.BlockHeight, uint8, error) {
+func (*Impl) GetProvingWindow(ctx runtime.Runtime) ([]types.Uint64, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
-		return nil, nil, errors.CodeError(err), err
+		return nil, errors.CodeError(err), err
 	}
 
-	return provingWindowStart(state), state.ProvingPeriodEnd, 0, nil
+	return []types.Uint64{
+		types.Uint64(provingWindowStart(state).AsBigInt().Uint64()),
+		types.Uint64(state.ProvingPeriodEnd.AsBigInt().Uint64()),
+	}, 0, nil
 }
 
 // CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current

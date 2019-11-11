@@ -65,7 +65,7 @@ func (cla *claPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Ad
 	}
 
 	if method == miner.GetAsks {
-		askIDs, _ := encoding.Encode([]uint64{0})
+		askIDs, _ := encoding.Encode([]types.Uint64{0})
 		return [][]byte{askIDs}, nil
 	}
 

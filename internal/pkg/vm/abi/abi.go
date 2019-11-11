@@ -38,7 +38,7 @@ const (
 	Bytes
 	// String is a string
 	String
-	// UintArray is an array of uint64
+	// UintArray is an array of types.Uint64
 	UintArray
 	// PeerID is a libp2p peer ID
 	PeerID
@@ -88,7 +88,7 @@ func (t Type) String() string {
 	case String:
 		return "string"
 	case UintArray:
-		return "[]uint64"
+		return "[]types.Uint64"
 	case PeerID:
 		return "peer.ID"
 	case SectorID:
@@ -145,7 +145,7 @@ func (av *Value) String() string {
 	case String:
 		return av.Val.(string)
 	case UintArray:
-		return fmt.Sprint(av.Val.([]uint64))
+		return fmt.Sprint(av.Val.([]types.Uint64))
 	case PeerID:
 		return av.Val.(peer.ID).String()
 	case SectorID:
@@ -242,9 +242,9 @@ func (av *Value) Serialize() ([]byte, error) {
 
 		return []byte(s), nil
 	case UintArray:
-		arr, ok := av.Val.([]uint64)
+		arr, ok := av.Val.([]types.Uint64)
 		if !ok {
-			return nil, &typeError{[]uint64{}, av.Val}
+			return nil, &typeError{[]types.Uint64{}, av.Val}
 		}
 
 		return encoding.Encode(arr)
@@ -363,7 +363,7 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: Bytes, Val: v})
 		case string:
 			out = append(out, &Value{Type: String, Val: v})
-		case []uint64:
+		case []types.Uint64:
 			out = append(out, &Value{Type: UintArray, Val: v})
 		case peer.ID:
 			out = append(out, &Value{Type: PeerID, Val: v})
@@ -459,7 +459,7 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Val:  string(data),
 		}, nil
 	case UintArray:
-		var arr []uint64
+		var arr []types.Uint64
 		if err := encoding.Decode(data, &arr); err != nil {
 			return nil, err
 		}
@@ -576,7 +576,7 @@ var typeTable = map[Type]reflect.Type{
 	BlockHeight:     reflect.TypeOf(&types.BlockHeight{}),
 	Integer:         reflect.TypeOf(&big.Int{}),
 	String:          reflect.TypeOf(string("")),
-	UintArray:       reflect.TypeOf([]uint64{}),
+	UintArray:       reflect.TypeOf([]types.Uint64{}),
 	PeerID:          reflect.TypeOf(peer.ID("")),
 	SectorID:        reflect.TypeOf(uint64(0)),
 	CommitmentsMap:  reflect.TypeOf(map[string]types.Commitments{}),
