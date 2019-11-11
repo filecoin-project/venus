@@ -71,7 +71,7 @@ var AncestorRoundsNeeded = max(miner.LargestSectorSizeProvingPeriodBlocks+miner.
 // A Processor processes all the messages in a block or tip set.
 type Processor interface {
 	// ProcessTipSet processes all messages in a tip set.
-	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) (*ProcessTipSetResponse, error)
+	ProcessTipSet(context.Context, state.Tree, vm.StorageMap, block.TipSet, [][]*types.UnsignedMessage, []block.TipSet) ([]*ApplyMessageResult, error)
 }
 
 // TicketValidator validates that an input ticket is valid.
@@ -267,17 +267,21 @@ func (c *Expected) validateMining(
 // blocks sorted by their ticket bytes and run as a single state transition
 // for the entire tipset. The output state must be flushed after calling to
 // guarantee that the state transitions propagate.
+// Messages that fail to apply are dropped on the floor (and no receipt is emitted).
 func (c *Expected) runMessages(ctx context.Context, st state.Tree, vms vm.StorageMap, ts block.TipSet, blsMessages [][]*types.UnsignedMessage, secpMessages [][]*types.UnsignedMessage, ancestors []block.TipSet) (state.Tree, []*types.MessageReceipt, error) {
 	allMessages := combineMessages(blsMessages, secpMessages)
 
-	resp, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
+	results, err := c.processor.ProcessTipSet(ctx, st, vms, ts, allMessages, ancestors)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error validating tipset")
 	}
 
-	receipts := make([]*types.MessageReceipt, len(resp.Results))
-	for i, res := range resp.Results {
-		receipts[i] = res.Receipt
+	var receipts []*types.MessageReceipt
+	for _, res := range results {
+		if res.Failure == nil {
+			receipts = append(receipts, res.Receipt)
+		}
+		// Else drop the error on the floor.
 	}
 
 	return st, receipts, nil
