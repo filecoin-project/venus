@@ -3,13 +3,13 @@ package cst
 import (
 	"context"
 	"fmt"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"io"
 
 	blocks "github.com/ipfs/go-block-format"
 	blockservice "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log"
 	merkdag "github.com/ipfs/go-merkledag"

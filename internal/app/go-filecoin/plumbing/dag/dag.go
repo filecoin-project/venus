@@ -3,7 +3,6 @@ package dag
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -17,6 +16,7 @@ import (
 	"github.com/ipfs/go-unixfs"
 	imp "github.com/ipfs/go-unixfs/importer"
 	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/pkg/errors"
 )
 
 // DAG is a service for accessing the merkledag
