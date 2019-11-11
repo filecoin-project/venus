@@ -106,6 +106,7 @@ func (dag *DAG) ImportData(ctx context.Context, data io.Reader) (ipld.Node, erro
 	return nd, bufds.Commit()
 }
 
+// RecursiveGet will walk the dag in order (depth first) starting at the given root `c`.
 func (dag *DAG) RecursiveGet(ctx context.Context, c cid.Cid) ([]ipld.Node, error) {
 	collector := dagCollector{
 		dagserv: dag.dserv,
