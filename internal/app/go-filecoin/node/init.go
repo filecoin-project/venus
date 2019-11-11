@@ -3,10 +3,8 @@ package node
 import (
 	"context"
 
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/pkg/errors"
@@ -56,7 +54,7 @@ func Init(ctx context.Context, r repo.Repo, gen consensus.GenesisInitFunc, opts 
 	}
 
 	bs := bstore.NewBlockstore(r.Datastore())
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	cst := hamt.CSTFromBstore(bs)
 	if _, err := chain.Init(ctx, r, bs, cst, gen); err != nil {
 		return errors.Wrap(err, "Could not Init Node")
 	}

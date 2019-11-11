@@ -6,7 +6,6 @@ import (
 	"io"
 	"unsafe"
 
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log"
 	"github.com/pkg/errors"
@@ -25,8 +24,7 @@ const MaxNumStagedSectors = 1
 
 // RustSectorBuilder is a struct which serves as a proxy for a SectorBuilder in Rust.
 type RustSectorBuilder struct {
-	blockService bserv.BlockService
-	ptr          unsafe.Pointer
+	ptr unsafe.Pointer
 
 	// sectorSealResults is sent a value whenever seal completes for a sector,
 	// either successfully or with a failure.
@@ -46,7 +44,6 @@ var _ SectorBuilder = &RustSectorBuilder{}
 // RustSectorBuilderConfig is a configuration object used when instantiating a
 // Rust-backed SectorBuilder through the FFI. All fields are required.
 type RustSectorBuilderConfig struct {
-	BlockService     bserv.BlockService
 	LastUsedSectorID uint64
 	MetadataDir      string
 	MinerAddr        address.Address
@@ -63,7 +60,6 @@ func NewRustSectorBuilder(cfg RustSectorBuilderConfig) (*RustSectorBuilder, erro
 	}
 
 	sb := &RustSectorBuilder{
-		blockService:      cfg.BlockService,
 		ptr:               ptr,
 		sectorSealResults: make(chan SectorSealResult),
 		SectorClass:       cfg.SectorClass,

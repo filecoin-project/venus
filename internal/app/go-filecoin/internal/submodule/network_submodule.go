@@ -4,18 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/ipfs/go-bitswap"
-	ds "github.com/ipfs/go-datastore"
-
 	bsnet "github.com/ipfs/go-bitswap/network"
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	offroute "github.com/ipfs/go-ipfs-routing/offline"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p"
@@ -32,6 +27,8 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/config"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/discovery"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/net"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
@@ -147,7 +144,7 @@ func NewNetworkSubmodule(ctx context.Context, config networkConfig, repo network
 }
 
 func retrieveNetworkName(ctx context.Context, genCid cid.Cid, bs bstore.Blockstore) (string, error) {
-	cborStore := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	cborStore := hamt.CSTFromBstore(bs)
 	var genesis block.Block
 
 	err := cborStore.Get(ctx, genCid, &genesis)

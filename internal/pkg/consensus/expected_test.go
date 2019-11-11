@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/go-bls-sigs"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-bls-sigs"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
 	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
@@ -229,11 +227,8 @@ func emptyMessages(numBlocks int) ([][]*types.UnsignedMessage, [][]*types.Signed
 }
 
 func setupCborBlockstore() (*hamt.CborIpldStore, blockstore.Blockstore) {
-	mds := datastore.NewMapDatastore()
-	bs := blockstore.NewBlockstore(mds)
-	offl := offline.Exchange(bs)
-	blkserv := blockservice.New(bs, offl)
-	cis := &hamt.CborIpldStore{Blocks: blkserv}
+	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+	cis := hamt.CSTFromBstore(bs)
 
 	return cis, bs
 }

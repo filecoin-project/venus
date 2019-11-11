@@ -6,16 +6,14 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
-	bserv "github.com/ipfs/go-blockservice"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
@@ -49,9 +47,7 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
-	offl := offline.Exchange(bstore)
-	blkserv := bserv.New(bstore, offl)
-	cst := &hamt.CborIpldStore{Blocks: blkserv}
+	cst := hamt.CSTFromBstore(bstore)
 
 	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0)
 	require.NoError(t, err)

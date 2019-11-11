@@ -4,10 +4,8 @@ import (
 	"context"
 	"testing"
 
-	bserv "github.com/ipfs/go-blockservice"
-	hamt "github.com/ipfs/go-hamt-ipld"
+	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
@@ -35,7 +33,7 @@ func requiredCommonDeps(t *testing.T, gif consensus.GenesisInitFunc) *commonDeps
 // need to set some actor state up ahead of time (actor state is ultimately found in the
 // block store).
 func requireCommonDepsWithGifAndBlockstore(t *testing.T, gif consensus.GenesisInitFunc, r repo.Repo, bs bstore.Blockstore) *commonDeps {
-	cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+	cst := hamt.CSTFromBstore(bs)
 	chainStore, err := chain.Init(context.Background(), r, bs, cst, gif)
 	require.NoError(t, err)
 	messageStore := chain.NewMessageStore(bs)

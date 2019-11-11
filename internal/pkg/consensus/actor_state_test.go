@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
-	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
-	"github.com/ipfs/go-ipfs-exchange-offline"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/chain"
 	. "github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/repo"
 	th "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers"
@@ -20,8 +20,6 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestQuery(t *testing.T) {
@@ -51,7 +49,7 @@ func TestQuery(t *testing.T) {
 			// Actor we will send the query from. The method we will call returns an Address.
 			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
-		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+		cst := hamt.CSTFromBstore(bs)
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 
@@ -94,7 +92,7 @@ func TestQuery(t *testing.T) {
 			// Actor we will send the query from. The method we will call returns an Address.
 			ActorAccount(fromAddr, types.NewAttoFILFromFIL(0)),
 		)
-		cst := &hamt.CborIpldStore{Blocks: bserv.New(bs, offline.Exchange(bs))}
+		cst := hamt.CSTFromBstore(bs)
 		chainStore, err := chain.Init(context.Background(), r, bs, cst, testGen)
 		require.NoError(t, err)
 

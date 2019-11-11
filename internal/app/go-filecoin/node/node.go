@@ -558,7 +558,6 @@ func initSectorBuilderForNode(ctx context.Context, node *Node) (sectorbuilder.Se
 		return nil, err
 	}
 	cfg := sectorbuilder.RustSectorBuilderConfig{
-		BlockService:     node.Blockservice.Blockservice,
 		LastUsedSectorID: lastUsedSectorID,
 		MetadataDir:      stagingDir,
 		MinerAddr:        minerAddr,
