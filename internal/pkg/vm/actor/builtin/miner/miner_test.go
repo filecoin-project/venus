@@ -102,7 +102,7 @@ func TestAskFunctions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, result.ExecutionError)
 
-	var askids []uint64
+	var askids []types.Uint64
 	require.NoError(t, actor.UnmarshalStorage(result.Receipt.Return[0], &askids))
 	assert.Len(t, askids, 2)
 }
@@ -367,19 +367,13 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		// retrieve proving period
 		result := callQueryMethodSuccess(GetProvingWindow, ctx, t, st, vms, address.TestAddress, minerAddr)
-		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
+		window, err := abi.Deserialize(result[0], abi.UintArray)
 		require.NoError(t, err)
+		start := window.Val.([]types.Uint64)[0]
+		end := window.Val.([]types.Uint64)[1]
 
-		start, ok := startVal.Val.(*types.BlockHeight)
-		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(0), start)
-
-		endVal, err := abi.Deserialize(result[0], abi.BlockHeight)
-		require.NoError(t, err)
-
-		end, ok := endVal.Val.(*types.BlockHeight)
-		require.True(t, ok)
-		assert.Equal(t, types.NewBlockHeight(0), end)
+		assert.Equal(t, types.Uint64(0), start)
+		assert.Equal(t, types.Uint64(0), end)
 	})
 
 	t.Run("GetProvingWindow returns the start and end of the proving period", func(t *testing.T) {
@@ -403,24 +397,19 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 
 		// retrieve proving period
 		result := callQueryMethodSuccess(GetProvingWindow, ctx, t, st, vms, address.TestAddress, minerAddr)
-		startVal, err := abi.Deserialize(result[0], abi.BlockHeight)
+		window, err := abi.Deserialize(result[0], abi.UintArray)
 		require.NoError(t, err)
+		start := window.Val.([]types.Uint64)[0]
+		end := window.Val.([]types.Uint64)[1]
+
 
 		// end of proving period is now plus proving period size
-		expectedEnd := types.NewBlockHeight(blockHeight).Add(types.NewBlockHeight(uint64(LargestSectorSizeProvingPeriodBlocks)))
+		expectedEnd := blockHeight + uint64(LargestSectorSizeProvingPeriodBlocks)
 		// start of proving period is end minus the PoSt challenge time
-		expectedStart := expectedEnd.Sub(types.NewBlockHeight(PoStChallengeWindowBlocks))
+		expectedStart := expectedEnd - PoStChallengeWindowBlocks
 
-		start, ok := startVal.Val.(*types.BlockHeight)
-		require.True(t, ok)
-		assert.Equal(t, expectedStart, start)
-
-		endVal, err := abi.Deserialize(result[1], abi.BlockHeight)
-		require.NoError(t, err)
-
-		end, ok := endVal.Val.(*types.BlockHeight)
-		require.True(t, ok)
-		assert.Equal(t, expectedEnd, end)
+		assert.Equal(t, types.Uint64(expectedStart), start)
+		assert.Equal(t, types.Uint64(expectedEnd), end)
 	})
 }
 
@@ -512,7 +501,9 @@ func TestMinerCommitSector(t *testing.T) {
 		provingPeriod := ProvingPeriodDuration(types.OneKiBSectorSize)
 
 		// blockheight was 3
-		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeightFromBytes(res.Receipt.Return[1]))
+		window, err := abi.Deserialize(res.Receipt.Return[0], abi.UintArray)
+		require.NoError(t, err)
+		require.Equal(t, types.NewBlockHeight(3+provingPeriod), types.NewBlockHeight(uint64(window.Val.([]types.Uint64)[1])))
 
 		// fail because commR already exists
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, 4, CommitSector, nil, uint64(1), commD, commR, commRStar, th.MakeRandomBytes(types.TwoPoRepProofPartitions.ProofLen()))
@@ -1074,7 +1065,12 @@ func TestMinerSubmitPoSt(t *testing.T) {
 		res, err = th.CreateAndApplyTestMessage(t, st, vms, minerAddr, 0, firstCommitBlockHeight+6, GetProvingWindow, ancestors)
 		assert.NoError(t, err)
 		assert.NoError(t, res.ExecutionError)
-		assert.Equal(t, types.NewBlockHeightFromBytes(res.Receipt.Return[1]), types.NewBlockHeight(secondProvingPeriodEnd))
+
+		window, err := abi.Deserialize(res.Receipt.Return[0], abi.UintArray)
+		require.NoError(t, err)
+		end := window.Val.([]types.Uint64)[1]
+
+		assert.Equal(t, uint64(end), secondProvingPeriodEnd)
 	})
 
 	t.Run("after proving period grace period PoSt is rejected", func(t *testing.T) {

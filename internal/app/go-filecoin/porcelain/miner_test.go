@@ -481,7 +481,11 @@ func (mpp *minerGetProvingPeriodPlumbing) ChainHeadKey() block.TipSetKey {
 
 func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optFrom, to address.Address, method types.MethodID, _ block.TipSetKey, params ...interface{}) ([][]byte, error) {
 	if method == miner.GetProvingWindow {
-		return [][]byte{types.NewBlockHeight(10).Bytes(), types.NewBlockHeight(20).Bytes()}, nil
+		ret, err := (&abi.Value{Type: abi.UintArray, Val: []types.Uint64{10, 20}}).Serialize()
+		if err != nil {
+			return nil, err
+		}
+		return [][]byte{ret}, nil
 	}
 	if method == miner.GetProvingSetCommitments {
 		commitments := make(map[string]types.Commitments)
@@ -490,7 +494,10 @@ func (mpp *minerGetProvingPeriodPlumbing) MessageQuery(ctx context.Context, optF
 			CommR:     [32]byte{1},
 			CommRStar: [32]byte{1},
 		}
-		thing, _ := encoding.Encode(commitments)
+		thing, err := encoding.Encode(commitments)
+		if err != nil {
+			return nil, err
+		}
 		return [][]byte{thing}, nil
 	}
 	return nil, fmt.Errorf("unsupported method: %s", method)

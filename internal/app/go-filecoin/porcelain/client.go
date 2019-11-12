@@ -79,13 +79,13 @@ func listAsksFromActorResult(ctx context.Context, plumbing claPlubming, actorRes
 		return err
 	}
 
-	var asksIds []uint64
+	var asksIds []types.Uint64
 	if err := encoding.Decode(ret[0], &asksIds); err != nil {
 		return err
 	}
 
 	for _, id := range asksIds {
-		ask, err := getAskByID(ctx, plumbing, addr, id)
+		ask, err := getAskByID(ctx, plumbing, addr, uint64(id))
 		if err != nil {
 			return err
 		}
