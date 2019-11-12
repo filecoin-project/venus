@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/paymentbroker"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -256,6 +257,16 @@ func SetupDefaultActors(ctx context.Context, st state.Tree, storageMap vm.Storag
 		return err
 	}
 	if err = st.SetActor(ctx, address.PaymentBrokerAddress, pbAct); err != nil {
+		return err
+	}
+
+	powAct := power.NewActor()
+	err = (&power.Actor{}).InitializeState(storageMap.NewStorage(address.PowerAddress, powAct), nil)
+	if err != nil {
+		return err
+	}
+	err = st.SetActor(ctx, address.PowerAddress, powAct)
+	if err != nil {
 		return err
 	}
 

@@ -65,6 +65,10 @@ const (
 	MinerPoStStates
 	// FaultSet is the faults generated during PoSt generation
 	FaultSet
+	// PowerReport is a tuple of *types.ByteAmount
+	PowerReport
+	// FaultReport is a triple of integers
+	FaultReport
 )
 
 func (t Type) String() string {
@@ -113,6 +117,10 @@ func (t Type) String() string {
 		return "*map[string]uint64"
 	case FaultSet:
 		return "types.FaultSet"
+	case PowerReport:
+		return "types.PowerReport"
+	case FaultReport:
+		return "types.FaultReport"
 	default:
 		return "<unknown type>"
 	}
@@ -170,6 +178,10 @@ func (av *Value) String() string {
 		return fmt.Sprint(av.Val.(*map[address.Address]uint8))
 	case FaultSet:
 		return av.Val.(types.FaultSet).String()
+	case PowerReport:
+		return fmt.Sprint(av.Val.(types.PowerReport))
+	case FaultReport:
+		return fmt.Sprint(av.Val.(types.FaultReport))
 	default:
 		return "<unknown type>"
 	}
@@ -332,6 +344,18 @@ func (av *Value) Serialize() ([]byte, error) {
 			return nil, &typeError{types.FaultSet{}, av.Val}
 		}
 		return encoding.Encode(fs)
+	case PowerReport:
+		pr, ok := av.Val.(types.PowerReport)
+		if !ok {
+			return nil, &typeError{types.PowerReport{}, av.Val}
+		}
+		return encoding.Encode(pr)
+	case FaultReport:
+		fr, ok := av.Val.(types.FaultReport)
+		if !ok {
+			return nil, &typeError{types.FaultReport{}, av.Val}
+		}
+		return encoding.Encode(fr)
 	default:
 		return nil, fmt.Errorf("unrecognized Type: %d", av.Type)
 	}
@@ -389,6 +413,10 @@ func ToValues(i []interface{}) ([]*Value, error) {
 			out = append(out, &Value{Type: MinerPoStStates, Val: v})
 		case types.FaultSet:
 			out = append(out, &Value{Type: FaultSet, Val: v})
+		case types.PowerReport:
+			out = append(out, &Value{Type: PowerReport, Val: v})
+		case types.FaultReport:
+			out = append(out, &Value{Type: FaultReport, Val: v})
 		default:
 			return nil, fmt.Errorf("unsupported type: %T", v)
 		}
@@ -560,6 +588,26 @@ func Deserialize(data []byte, t Type) (*Value, error) {
 			Type: t,
 			Val:  fs,
 		}, nil
+	case PowerReport:
+		var pr types.PowerReport
+		err := encoding.Decode(data, &pr)
+		if err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  pr,
+		}, nil
+	case FaultReport:
+		var fr types.FaultReport
+		err := encoding.Decode(data, &fr)
+		if err != nil {
+			return nil, err
+		}
+		return &Value{
+			Type: t,
+			Val:  fr,
+		}, nil
 	case Invalid:
 		return nil, ErrInvalidType
 	default:
@@ -589,6 +637,8 @@ var typeTable = map[Type]reflect.Type{
 	IntSet:          reflect.TypeOf(types.IntSet{}),
 	MinerPoStStates: reflect.TypeOf(&map[string]uint64{}),
 	FaultSet:        reflect.TypeOf(types.FaultSet{}),
+	PowerReport:     reflect.TypeOf(types.PowerReport{}),
+	FaultReport:     reflect.TypeOf(types.FaultReport{}),
 }
 
 // TypeMatches returns whether or not 'val' is the go type expected for the given ABI type

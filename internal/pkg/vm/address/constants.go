@@ -41,6 +41,11 @@ func init() {
 		panic(err)
 	}
 
+	PowerAddress, err = NewIDAddress(4)
+	if err != nil {
+		panic(err)
+	}
+
 	BurntFundsAddress, err = NewIDAddress(99)
 	if err != nil {
 		panic(err)
@@ -61,6 +66,8 @@ var (
 	StorageMarketAddress Address
 	// PaymentBrokerAddress is the hard-coded address of the filecoin payment broker actor.
 	PaymentBrokerAddress Address
+	// PowerAddress is the hard-coded address of the filecoin power actor.
+	PowerAddress Address
 	// BurntFundsAddress is the hard-coded address of the burnt funds account actor.
 	BurntFundsAddress Address
 )

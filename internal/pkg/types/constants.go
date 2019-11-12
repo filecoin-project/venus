@@ -22,6 +22,12 @@ var StorageMarketActorCodeObj ipld.Node
 // StorageMarketActorCodeCid is the cid of the above object
 var StorageMarketActorCodeCid cid.Cid
 
+// PowerActorCodeObj is the code representation of the builtin power actor
+var PowerActorCodeObj ipld.Node
+
+// PowerActorCodeCid is the cid of the above object
+var PowerActorCodeCid cid.Cid
+
 // PaymentBrokerActorCodeObj is the code representation of the builtin payment broker actor.
 var PaymentBrokerActorCodeObj ipld.Node
 
@@ -54,6 +60,8 @@ func init() {
 	AccountActorCodeCid = AccountActorCodeObj.Cid()
 	StorageMarketActorCodeObj = dag.NewRawNode([]byte("storagemarket"))
 	StorageMarketActorCodeCid = StorageMarketActorCodeObj.Cid()
+	PowerActorCodeObj = dag.NewRawNode([]byte("power"))
+	PowerActorCodeCid = PowerActorCodeObj.Cid()
 	PaymentBrokerActorCodeObj = dag.NewRawNode([]byte("paymentbroker"))
 	PaymentBrokerActorCodeCid = PaymentBrokerActorCodeObj.Cid()
 	MinerActorCodeObj = dag.NewRawNode([]byte("mineractor"))
@@ -68,6 +76,7 @@ func init() {
 	// This is good enough for now.
 	ActorCodeCidTypeNames[AccountActorCodeCid] = "AccountActor"
 	ActorCodeCidTypeNames[StorageMarketActorCodeCid] = "StorageMarketActor"
+	ActorCodeCidTypeNames[PowerActorCodeCid] = "PowerActor"
 	ActorCodeCidTypeNames[PaymentBrokerActorCodeCid] = "PaymentBrokerActor"
 	ActorCodeCidTypeNames[MinerActorCodeCid] = "MinerActor"
 	ActorCodeCidTypeNames[BootstrapMinerActorCodeCid] = "MinerActor"
