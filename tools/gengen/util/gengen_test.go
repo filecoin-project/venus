@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"testing"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -42,7 +43,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig, fi, 0)
+	_, err = GenGenesisCar(testConfig, fi, 0, time.Unix(123456789, 0))
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -60,12 +61,14 @@ func TestGenGenLoading(t *testing.T) {
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	tf.UnitTest(t)
 
+	genesisTime := time.Unix(123456789, 0)
+
 	ctx := context.Background()
 	var info *RenderedGenInfo
 	for i := 0; i < 50; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 		cst := hamt.CSTFromBstore(bstore)
-		inf, err := GenGen(ctx, testConfig, cst, bstore, 0)
+		inf, err := GenGen(ctx, testConfig, cst, bstore, 0, genesisTime)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf

@@ -98,7 +98,8 @@ func main() {
 		outfile = f
 	}
 
-	info, err := gengen.GenGenesisCar(cfg, outfile, *seed)
+	genesisTime := time.Now()
+	info, err := gengen.GenGenesisCar(cfg, outfile, *seed, genesisTime)
 	if err != nil {
 		fmt.Println("ERROR", err)
 		panic(err)

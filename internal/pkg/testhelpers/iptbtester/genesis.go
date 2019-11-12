@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-filecoin/cmd/go-filecoin"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -27,7 +28,7 @@ type idResult struct {
 
 // MustGenerateGenesis constructs the requires information and files to build a single
 // filecoin node with the provided funds. The GenesisInfo can be used with MustImportGenesisMiner
-func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
+func MustGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
 	// Setup, generate a genesis and key file
 	cfg := &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,
@@ -55,7 +56,7 @@ func MustGenerateGenesis(t *testing.T, funds int64, dir string) *GenesisInfo {
 		t.Fatal(err)
 	}
 
-	info, err := gengen.GenGenesisCar(cfg, genfile, 0)
+	info, err := gengen.GenGenesisCar(cfg, genfile, 0, genesisTime)
 	if err != nil {
 		t.Fatal(err)
 	}
