@@ -131,7 +131,7 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 
 	msg := types.NewUnsignedMessage(from, to, 0, value, method, paramData)
 	if msg.From == msg.To {
-		// TODO: handle this
+		// TODO 3647: handle this
 		return nil, 1, errors.NewFaultErrorf("unhandled: sending to self (%s)", msg.From)
 	}
 

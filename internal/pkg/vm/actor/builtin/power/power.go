@@ -21,6 +21,11 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storage"
 )
 
+func init() {
+	encoding.RegisterIpldCborType(State{})
+	encoding.RegisterIpldCborType(TableEntry{})
+}
+
 // Actor provides bookkeeping for the storage power of registered mienrs.
 // It updates power based on faults and storage proofs.
 // It also tracks pledge collateral conditions.
@@ -174,7 +179,7 @@ func (*impl) createStorageMiner(vmctx runtime.Runtime, ownerAddr, workerAddr add
 			}
 
 			// Create fresh entry
-			err = lookup.Set(ctx, addr.String(), &TableEntry{
+			err = lookup.Set(ctx, addr.String(), TableEntry{
 				ActivePower:            types.NewBytesAmount(0),
 				InactivePower:          types.NewBytesAmount(0),
 				AvailableBalance:       types.ZeroAttoFIL,
@@ -251,7 +256,7 @@ func (*impl) getTotalPower(vmctx runtime.Runtime) (*types.BytesAmount, uint8, er
 		total := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
-				entry, ok := value.(*TableEntry)
+				entry, ok := value.(TableEntry)
 				if !ok {
 					return errors.NewFaultError("Expected TableEntry from power table lookup")
 				}
