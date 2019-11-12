@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
 	"github.com/filecoin-project/go-bls-sigs"
@@ -47,12 +48,13 @@ type minerActorConfig struct {
 
 // Config is used to configure values in the GenesisInitFunction.
 type Config struct {
-	accounts   map[address.Address]types.AttoFIL
-	nonces     map[address.Address]uint64
-	actors     map[address.Address]*actor.Actor
-	miners     map[address.Address]*minerActorConfig
-	network    string
-	proofsMode types.ProofsMode
+	accounts         map[address.Address]types.AttoFIL
+	nonces           map[address.Address]uint64
+	actors           map[address.Address]*actor.Actor
+	miners           map[address.Address]*minerActorConfig
+	network          string
+	proofsMode       types.ProofsMode
+	genesisTimestamp time.Time
 }
 
 // GenOption is a configuration option for the GenesisInitFunction.
@@ -119,15 +121,25 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	}
 }
 
+func GenesisTimeFunc(genesisTimestamp time.Time) GenOption {
+	return func(gc *Config) error {
+		gc.genesisTimestamp = genesisTimestamp
+		return nil
+	}
+}
+
+var defaultGenesisTimestamp = time.Unix(123456789, 0)
+
 // NewEmptyConfig inits and returns an empty config
 func NewEmptyConfig() *Config {
 	return &Config{
-		accounts:   make(map[address.Address]types.AttoFIL),
-		nonces:     make(map[address.Address]uint64),
-		actors:     make(map[address.Address]*actor.Actor),
-		miners:     make(map[address.Address]*minerActorConfig),
-		network:    "localnet",
-		proofsMode: types.TestProofsMode,
+		accounts:         make(map[address.Address]types.AttoFIL),
+		nonces:           make(map[address.Address]uint64),
+		actors:           make(map[address.Address]*actor.Actor),
+		miners:           make(map[address.Address]*minerActorConfig),
+		network:          "localnet",
+		proofsMode:       types.TestProofsMode,
+		genesisTimestamp: defaultGenesisTimestamp,
 	}
 }
 
