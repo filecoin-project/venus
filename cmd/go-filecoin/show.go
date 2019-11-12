@@ -165,7 +165,7 @@ the filecoin block header.`,
 			for _, msg := range messages {
 				outStr += msg.String() + "\n"
 			}
-			_, err := fmt.Fprintf(w, outStr)
+			_, err := fmt.Fprint(w, outStr)
 			return err
 		}),
 	},
@@ -201,7 +201,7 @@ field of the filecoin block header.`,
 			for _, r := range receipts {
 				outStr += r.String() + "\n"
 			}
-			_, err := fmt.Fprintf(w, outStr)
+			_, err := fmt.Fprint(w, outStr)
 			return err
 		}),
 	},
