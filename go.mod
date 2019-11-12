@@ -21,7 +21,6 @@ require (
 	github.com/filecoin-project/go-sectorbuilder v0.0.0-20190801004428-e75bc9b0aaea
 	github.com/go-check/check v0.0.0-20190902080502-41f04d3bba15 // indirect
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
-	github.com/golang/mock v1.3.1 // indirect
 	github.com/golangci/golangci-lint v1.21.0
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/go-github v17.0.0+incompatible
@@ -116,7 +115,6 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191028173616-919d9bdd9fe6 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 	gotest.tools v2.2.0+incompatible
