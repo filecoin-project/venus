@@ -52,6 +52,7 @@ const (
 	GetTotalPower
 	EnsurePledgeCollateralSatisfied
 	ProcessPowerReport
+	GetPowerReport
 	ProcessFaultReport
 	// ReportConsensusFault
 	// Surprise
@@ -87,6 +88,10 @@ var signatures = dispatch.Exports{
 		Params: []abi.Type{abi.PowerReport, abi.Address},
 		Return: nil,
 	},
+	GetPowerReport: &dispatch.FunctionSignature{
+		Params: []abi.Type{abi.Address},
+		Return: []abi.Type{abi.PowerReport},
+	},
 }
 
 // Method returns method definition for a given method id.
@@ -100,6 +105,8 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 		return reflect.ValueOf((*impl)(a).getTotalPower), signatures[GetTotalPower], true
 	case ProcessPowerReport:
 		return reflect.ValueOf((*impl)(a).processPowerReport), signatures[ProcessPowerReport], true
+	case GetPowerReport:
+		return reflect.ValueOf((*impl)(a).getPowerReport), signatures[GetPowerReport], true
 	default:
 		return nil, nil, false
 	}
@@ -209,6 +216,7 @@ func (*impl) removeStorageMiner(vmctx runtime.Runtime, delAddr address.Address) 
 	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
+	// TODO #3649 we need proper authentication.  Totally insecure as it is.
 
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
@@ -250,11 +258,14 @@ func (*impl) getTotalPower(vmctx runtime.Runtime) (*types.BytesAmount, uint8, er
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
+	// TODO #3649 we need proper authentication. Totally insecure without.
+
 	var state State
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
 		err := actor.WithLookupForReading(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+			// TODO https://github.com/filecoin-project/specs/issues/634 this is inefficient
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
 				if !ok {
@@ -271,6 +282,33 @@ func (*impl) getTotalPower(vmctx runtime.Runtime) (*types.BytesAmount, uint8, er
 		return nil, errors.CodeError(err), err
 	}
 	return ret.(*types.BytesAmount), 0, nil
+}
+
+func (*impl) getPowerReport(vmctx runtime.Runtime, addr address.Address) (types.PowerReport, uint8, error) {
+	if err := vmctx.Charge(actor.DefaultGasCost); err != nil {
+		return types.PowerReport{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
+	}
+
+	var state State
+	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
+		ctx := context.Background()
+		var report types.PowerReport
+		err := actor.WithLookupForReading(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+			err := lookup.Find(ctx, addr.String(), &report)
+			if err != nil {
+				if err == hamt.ErrNotFound {
+					return Errors[ErrUnknownEntry]
+				}
+				return errors.FaultErrorWrapf(err, "Could not retrieve power table entry with ID: %s", addr.String())
+			}
+			return nil
+		})
+		return report, err
+	})
+	if err != nil {
+		return types.PowerReport{}, errors.CodeError(err), err
+	}
+	return ret.(types.PowerReport), 0, nil
 }
 
 // ProcessPowerReport updates a registered miner's power table entry according to the power report.

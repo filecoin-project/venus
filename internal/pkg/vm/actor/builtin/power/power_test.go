@@ -68,6 +68,10 @@ func TestProcessPowerReport(t *testing.T) {
 		pid := th.RequireRandomPeerID(t)
 		minerAddr := requireCreateMiner(hundredAttoFIL, t, st, vms, address.TestAddress, pid, 0)
 
+		reportInit := requireGetPowerReport(t, st, vms, minerAddr)
+		assert.Equal(t, types.NewBytesAmount(0), reportInit.ActivePower)
+		assert.Equal(t, types.NewBytesAmount(0), reportInit.InactivePower)
+
 		// set power
 		report1 := types.NewPowerReport(600, 5555)
 		pdata1 := actor.MustConvertParams(report1, minerAddr)
@@ -76,6 +80,10 @@ func TestProcessPowerReport(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, result1.ExecutionError)
 
+		report1Out := requireGetPowerReport(t, st, vms, minerAddr)
+		assert.Equal(t, report1.ActivePower, report1Out.ActivePower)
+		assert.Equal(t, report1.InactivePower, report1Out.InactivePower)
+
 		// set power again
 		report2 := types.NewPowerReport(77, 990)
 		pdata2 := actor.MustConvertParams(report2, minerAddr)
@@ -83,6 +91,10 @@ func TestProcessPowerReport(t *testing.T) {
 		result2, err := th.ApplyTestMessage(st, vms, msg2, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		require.Nil(t, result2.ExecutionError)
+
+		report2Out := requireGetPowerReport(t, st, vms, minerAddr)
+		assert.Equal(t, report2.ActivePower, report2Out.ActivePower)
+		assert.Equal(t, report2.InactivePower, report2Out.InactivePower)
 
 	})
 
@@ -144,6 +156,9 @@ func TestRemoveStorageMiner(t *testing.T) {
 		result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
 		assert.NoError(t, err)
 		assert.Nil(t, result.ExecutionError)
+
+		// power actor no longer provides access to this entry
+		assertEntryNotFound(t, st, vms, minerAddr)
 	})
 
 	t.Run("remove nonempty fails", func(t *testing.T) {
@@ -164,6 +179,11 @@ func TestRemoveStorageMiner(t *testing.T) {
 		result2, err := th.ApplyTestMessage(st, vms, msg2, types.NewBlockHeight(0))
 		require.NoError(t, err)
 		assert.Equal(t, power.Errors[power.ErrDeleteMinerWithPower], result2.ExecutionError)
+
+		// power actor still provides access to this entry
+		finalReport := requireGetPowerReport(t, st, vms, minerAddr)
+		assert.Equal(t, report1.ActivePower, finalReport.ActivePower)
+		assert.Equal(t, report1.InactivePower, finalReport.InactivePower)
 	})
 
 	t.Run("remove nonexistent fails", func(t *testing.T) {
@@ -187,4 +207,28 @@ func requireCreateMiner(collateral types.AttoFIL, t *testing.T, st state.Tree, v
 	minerAddr, err := address.NewFromBytes(result.Receipt.Return[0])
 	require.NoError(t, err)
 	return minerAddr
+}
+
+func requireGetPowerReport(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address) types.PowerReport {
+	pdata := actor.MustConvertParams(minerAddr)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+	require.NoError(t, err)
+	require.Nil(t, result.ExecutionError)
+	require.Equal(t, 1, len(result.Receipt.Return))
+
+	var report types.PowerReport
+	require.NoError(t, actor.UnmarshalStorage(result.Receipt.Return[0], &report))
+	return report
+}
+
+func assertEntryNotFound(t *testing.T, st state.Tree, vms vm.StorageMap, minerAddr address.Address) {
+	// assertEntryNotFound attempts to get the power report at the provided
+	// and asserts that the getPowerReport message returns an execution error
+	// because the power table entry is not found
+	pdata := actor.MustConvertParams(minerAddr)
+	msg := types.NewUnsignedMessage(address.TestAddress, address.PowerAddress, 0, types.NewAttoFILFromFIL(100), power.GetPowerReport, pdata)
+	result, err := th.ApplyTestMessage(st, vms, msg, types.NewBlockHeight(0))
+	require.NoError(t, err)
+	assert.Equal(t, power.Errors[power.ErrUnknownEntry], result.ExecutionError)
 }
