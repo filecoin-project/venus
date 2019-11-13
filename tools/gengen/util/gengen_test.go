@@ -18,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var defaultGenesisTime = time.Unix(123456789, 0)
+
 var testConfig = &GenesisCfg{
 	ProofsMode: types.TestProofsMode,
 	Keys:       4,
@@ -43,7 +45,7 @@ func TestGenGenLoading(t *testing.T) {
 	fi, err := ioutil.TempFile("", "gengentest")
 	assert.NoError(t, err)
 
-	_, err = GenGenesisCar(testConfig, fi, 0, time.Unix(123456789, 0))
+	_, err = GenGenesisCar(testConfig, fi, 0, defaultGenesisTime)
 	assert.NoError(t, err)
 	assert.NoError(t, fi.Close())
 
@@ -61,14 +63,12 @@ func TestGenGenLoading(t *testing.T) {
 func TestGenGenDeterministicBetweenBuilds(t *testing.T) {
 	tf.UnitTest(t)
 
-	genesisTime := time.Unix(123456789, 0)
-
 	ctx := context.Background()
 	var info *RenderedGenInfo
 	for i := 0; i < 50; i++ {
 		bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 		cst := hamt.CSTFromBstore(bstore)
-		inf, err := GenGen(ctx, testConfig, cst, bstore, 0, genesisTime)
+		inf, err := GenGen(ctx, testConfig, cst, bstore, 0, defaultGenesisTime)
 		assert.NoError(t, err)
 		if info == nil {
 			info = inf
