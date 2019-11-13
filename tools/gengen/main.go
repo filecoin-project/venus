@@ -76,6 +76,7 @@ func main() {
 	outCar := flag.String("out-car", "", "writes the generated car file to the give path, instead of stdout")
 	configFilePath := flag.String("config", "", "reads configuration from this json file, instead of stdin")
 	seed := flag.Int64("seed", defaultSeed, "provides the seed for randomization, defaults to current unix epoch")
+	genesisTimeFlag := flag.Int64("genesisTimestamp", 123456789, "provide the timestamp value for the genesis block")
 
 	// ExitOnError is set
 	flag.Parse(os.Args[1:]) // nolint: errcheck
@@ -98,7 +99,7 @@ func main() {
 		outfile = f
 	}
 
-	genesisTime := time.Now()
+	genesisTime := time.Unix(*genesisTimeFlag, 0)
 	info, err := gengen.GenGenesisCar(cfg, outfile, *seed, genesisTime)
 	if err != nil {
 		fmt.Println("ERROR", err)
