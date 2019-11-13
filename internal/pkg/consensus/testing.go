@@ -54,7 +54,6 @@ func (t *FakeActorStateStore) StateTreeSnapshot(st state.Tree, bh *types.BlockHe
 
 // FakePowerTableViewSnapshot returns a snapshot that can be fed into a PowerTableView to produce specific values
 type FakePowerTableViewSnapshot struct {
-	fmt
 	MinerPower    *types.BytesAmount
 	TotalPower    *types.BytesAmount
 	MinerToWorker map[address.Address]address.Address

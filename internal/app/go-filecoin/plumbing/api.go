@@ -220,7 +220,7 @@ func (api *API) OutboxQueueLs(sender address.Address) []*message.Queued {
 
 // OutboxQueueClear clears messages in the queue for an address/
 func (api *API) OutboxQueueClear(ctx context.Context, sender address.Address) {
-	api.outbox.Queue().Clear(ctx, sender)fmt
+	api.outbox.Queue().Clear(ctx, sender)
 }
 
 // MessagePoolPending lists messages un-mined in the pool
