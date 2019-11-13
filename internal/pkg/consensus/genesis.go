@@ -227,6 +227,7 @@ func MakeGenesisFunc(opts ...GenOption) GenesisInitFunc {
 			MessageReceipts: emptyAMTCid,
 			BLSAggregateSig: emptyBLSSignature[:],
 			Ticket:          block.Ticket{VRFProof: []byte{0xec}},
+			Timestamp:       types.Uint64(genCfg.genesisTimestamp.Unix()),
 		}
 
 		if _, err := cst.Put(ctx, genesis); err != nil {
