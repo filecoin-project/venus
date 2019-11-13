@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/power"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
@@ -29,22 +29,34 @@ func NewPowerTableView(q ActorStateSnapshot) PowerTableView {
 
 // Total returns the total storage as a BytesAmount.
 func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.StorageMarketAddress, storagemarket.GetTotalStorage)
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetTotalPower)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	return types.NewBytesAmountFromBytes(rets[0]), nil
 }
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, mAddr, miner.GetPower)
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetPowerReport)
 	if err != nil {
 		return nil, err
 	}
+	if len(rets) == 0 {
+		return nil, errors.Errorf("invalid nil return value from GetPowerReport")
+	}
 
-	return types.NewBytesAmountFromBytes(rets[0]), nil
+	reportValue, err := abi.Deserialize(rets[0], abi.PowerReport)
+	if err != nil {
+		return nil, err
+	}
+	r, ok := reportValue.Val.(types.PowerReport)
+	if !ok {
+		return nil, errors.Errorf("invalid report bytes returned from GetPower")
+	}
+
+	return r.ActivePower, nil
 }
 
 // WorkerAddr returns the address of the miner worker given the miner address.
