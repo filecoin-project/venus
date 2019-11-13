@@ -121,7 +121,8 @@ func ProofsMode(proofsMode types.ProofsMode) GenOption {
 	}
 }
 
-func GenesisTimeFunc(genesisTimestamp time.Time) GenOption {
+// GenesisTime sets the timestamp in the genesis block.
+func GenesisTime(genesisTimestamp time.Time) GenOption {
 	return func(gc *Config) error {
 		gc.genesisTimestamp = genesisTimestamp
 		return nil
