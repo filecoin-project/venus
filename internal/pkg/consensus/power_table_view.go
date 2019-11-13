@@ -33,13 +33,13 @@ func (v PowerTableView) Total(ctx context.Context) (*types.BytesAmount, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return types.NewBytesAmountFromBytes(rets[0]), nil
 }
 
 // Miner returns the storage that this miner has committed to the network.
 func (v PowerTableView) Miner(ctx context.Context, mAddr address.Address) (*types.BytesAmount, error) {
-	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetPowerReport)
+	rets, err := v.snapshot.Query(ctx, address.Undef, address.PowerAddress, power.GetPowerReport, mAddr)
 	if err != nil {
 		return nil, err
 	}

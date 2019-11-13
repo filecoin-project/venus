@@ -26,10 +26,11 @@ func TestFilecoin_MinerPower(t *testing.T) {
 	expectedGenesisPower := uint64(131072)
 	assertPowerOutput(ctx, t, env.GenesisMiner, expectedGenesisPower, expectedGenesisPower)
 
-	minerDaemon := env.RequireNewNodeWithFunds(10000)
-	requireMiner(ctx, t, minerDaemon, env.GenesisMiner)
+	// TODO 3642 this test should check that miner's created with miner create have power
+	//	minerDaemon := env.RequireNewNodeWithFunds(10000)
+	//	requireMiner(ctx, t, minerDaemon, env.GenesisMiner)
 
-	assertPowerOutput(ctx, t, minerDaemon, 0, expectedGenesisPower)
+	//	assertPowerOutput(ctx, t, minerDaemon, 0, expectedGenesisPower)
 }
 
 func requireMiner(ctx context.Context, t *testing.T, minerDaemon, clientDaemon *fast.Filecoin) {

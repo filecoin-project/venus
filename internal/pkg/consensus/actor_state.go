@@ -97,7 +97,6 @@ func (q *processorSnapshot) Query(ctx context.Context, optFrom, to address.Addre
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to encode message params")
 	}
-
 	r, ec, err := q.processor.CallQueryMethod(ctx, q.st, q.vms, to, method, encodedParams, optFrom, q.height)
 	if err != nil {
 		return nil, errors.Wrap(err, "query method returned an error")
