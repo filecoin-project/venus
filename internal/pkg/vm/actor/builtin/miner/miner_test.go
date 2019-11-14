@@ -31,7 +31,6 @@ import (
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -401,7 +400,6 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		require.NoError(t, err)
 		start := window.Val.([]types.Uint64)[0]
 		end := window.Val.([]types.Uint64)[1]
-
 
 		// end of proving period is now plus proving period size
 		expectedEnd := blockHeight + uint64(LargestSectorSizeProvingPeriodBlocks)
@@ -1707,7 +1705,7 @@ type minerEnvBuilder struct {
 	verifier         *verification.FakeVerifier
 }
 
-func (b *minerEnvBuilder) build() (runtime.Runtime, *verification.FakeVerifier, *Impl) {
+func (b *minerEnvBuilder) build() (*vm.FakeVMContext, *verification.FakeVerifier, *Impl) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd

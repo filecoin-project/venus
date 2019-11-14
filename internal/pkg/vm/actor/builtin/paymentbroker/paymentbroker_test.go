@@ -1309,7 +1309,7 @@ func (ma *PBTestActor) InitializeState(storage runtime.Storage, initializerData 
 	return nil
 }
 
-func (ma *PBTestActor) ParamsNotZero(ctx runtime.Runtime, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
+func (ma *PBTestActor) ParamsNotZero(ctx runtime.InvocationContext, addr address.Address, sector uint64, bh *types.BlockHeight) (uint8, error) {
 	if addr == address.Undef {
 		return 1, errors.NewRevertError("got undefined address")
 	}

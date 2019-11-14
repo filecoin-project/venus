@@ -438,8 +438,15 @@ const (
 	PoStStateUnrecoverable
 )
 
+// minerInvocationContext has some special sauce for the miner.
+type invocationContext interface {
+	runtime.InvocationContext
+	Verifier() verification.Verifier
+	Message() *types.UnsignedMessage
+}
+
 // AddAsk adds an ask to this miners ask list
-func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
+func (*Impl) AddAsk(ctx invocationContext, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
@@ -454,11 +461,13 @@ func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (
 		id := big.NewInt(0).Set(state.NextAskID)
 		state.NextAskID = state.NextAskID.Add(state.NextAskID, big.NewInt(1))
 
+		epoch := ctx.Runtime().CurrentEpoch()
+
 		// filter out expired asks
 		asks := state.Asks
 		state.Asks = state.Asks[:0]
 		for _, a := range asks {
-			if ctx.BlockHeight().LessThan(a.Expiry) {
+			if epoch.LessThan(a.Expiry) {
 				state.Asks = append(state.Asks, a)
 			}
 		}
@@ -470,7 +479,7 @@ func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (
 
 		state.Asks = append(state.Asks, &Ask{
 			Price:  price,
-			Expiry: ctx.BlockHeight().Add(expiryBH),
+			Expiry: epoch.Add(expiryBH),
 			ID:     id,
 		})
 
@@ -489,7 +498,7 @@ func (*Impl) AddAsk(ctx runtime.Runtime, price types.AttoFIL, expiry *big.Int) (
 }
 
 // GetAsks returns all the asks for this miner.
-func (*Impl) GetAsks(ctx runtime.Runtime) ([]types.Uint64, uint8, error) {
+func (*Impl) GetAsks(ctx invocationContext) ([]types.Uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -518,7 +527,7 @@ func (*Impl) GetAsks(ctx runtime.Runtime) ([]types.Uint64, uint8, error) {
 }
 
 // GetAsk returns an ask by ID
-func (*Impl) GetAsk(ctx runtime.Runtime, askid *big.Int) ([]byte, uint8, error) {
+func (*Impl) GetAsk(ctx invocationContext, askid *big.Int) ([]byte, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -557,7 +566,7 @@ func (*Impl) GetAsk(ctx runtime.Runtime, askid *big.Int) ([]byte, uint8, error) 
 }
 
 // GetOwner returns the miners owner.
-func (*Impl) GetOwner(ctx runtime.Runtime) (address.Address, uint8, error) {
+func (*Impl) GetOwner(ctx invocationContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -579,7 +588,7 @@ func (*Impl) GetOwner(ctx runtime.Runtime) (address.Address, uint8, error) {
 }
 
 // GetLastUsedSectorID returns the last used sector id.
-func (*Impl) GetLastUsedSectorID(ctx runtime.Runtime) (uint64, uint8, error) {
+func (*Impl) GetLastUsedSectorID(ctx invocationContext) (uint64, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return 0, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -601,20 +610,21 @@ func (*Impl) GetLastUsedSectorID(ctx runtime.Runtime) (uint64, uint8, error) {
 
 // IsBootstrapMiner indicates whether the receiving miner was created in the
 // genesis block, i.e. used to bootstrap the network
-func (a *Impl) IsBootstrapMiner(ctx runtime.Runtime) (bool, uint8, error) {
+func (a *Impl) IsBootstrapMiner(ctx invocationContext) (bool, uint8, error) {
 	return a.Bootstrap, 0, nil
 }
 
 // GetPoStState returns whether the miner's last submitPoSt is within the proving period,
 // late or after the generation attack threshold.
-func (*Impl) GetPoStState(ctx runtime.Runtime) (*big.Int, uint8, error) {
+func (*Impl) GetPoStState(ctx invocationContext) (*big.Int, uint8, error) {
 	var state State
 	out, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// Don't check lateness unless there is storage to prove
 		if state.ProvingSet.Size() == 0 {
 			return int64(PoStStateNoStorage), nil
 		}
-		lateState, _ := lateState(state.ProvingPeriodEnd, ctx.BlockHeight(), LatePoStGracePeriod(state.SectorSize))
+		epoch := ctx.Runtime().CurrentEpoch()
+		lateState, _ := lateState(state.ProvingPeriodEnd, &epoch, LatePoStGracePeriod(state.SectorSize))
 		return lateState, nil
 	})
 
@@ -631,7 +641,7 @@ func (*Impl) GetPoStState(ctx runtime.Runtime) (*big.Int, uint8, error) {
 }
 
 // GetProvingSetCommitments returns all sector commitments posted by this miner.
-func (*Impl) GetProvingSetCommitments(ctx runtime.Runtime) (map[string]types.Commitments, uint8, error) {
+func (*Impl) GetProvingSetCommitments(ctx invocationContext) (map[string]types.Commitments, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -655,7 +665,7 @@ func (*Impl) GetProvingSetCommitments(ctx runtime.Runtime) (map[string]types.Com
 
 // GetSectorSize returns the size of the sectors committed to the network by
 // this miner.
-func (*Impl) GetSectorSize(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
+func (*Impl) GetSectorSize(ctx invocationContext) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -678,7 +688,7 @@ func (*Impl) GetSectorSize(ctx runtime.Runtime) (*types.BytesAmount, uint8, erro
 
 // CommitSector adds a commitment to the specified sector. The sector must not
 // already be committed.
-func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
+func (a *Impl) CommitSector(ctx invocationContext, sectorID uint64, commD, commR, commRStar []byte, proof types.PoRepProof) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -728,7 +738,7 @@ func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, 
 
 		// make sure the miner has enough collateral to add more storage
 		collateral := CollateralForSector(state.SectorSize)
-		if collateral.GreaterThan(ctx.MyBalance().Sub(state.ActiveCollateral)) {
+		if collateral.GreaterThan(ctx.Balance().Sub(state.ActiveCollateral)) {
 			return nil, Errors[ErrInsufficientCollateral]
 		}
 
@@ -742,9 +752,10 @@ func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, 
 		// proving set.  This  allows us to add power immediately in
 		// genesis with commitSector and submitPoSt calls without
 		// adding special casing for bootstrappers.
-		if state.ProvingSet.Size() == 0 || ctx.BlockHeight().Equal(types.NewBlockHeight(0)) {
+		epoch := ctx.Runtime().CurrentEpoch()
+		if state.ProvingSet.Size() == 0 || epoch.Equal(types.NewBlockHeight(0)) {
 			state.ProvingSet = state.ProvingSet.Add(sectorID)
-			state.ProvingPeriodEnd = ctx.BlockHeight().Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
+			state.ProvingPeriodEnd = epoch.Add(types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize)))
 		}
 		comms := types.Commitments{
 			CommD:     types.CommD{},
@@ -769,12 +780,12 @@ func (a *Impl) CommitSector(ctx runtime.Runtime, sectorID uint64, commD, commR, 
 // VerifyPieceInclusion verifies that proof proves that the data represented by commP is included in the sector, and
 // verifies that this miner is not slashable
 // This method returns nothing if the verification succeeds and returns a revert error if verification fails.
-func (*Impl) VerifyPieceInclusion(ctx runtime.Runtime, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
+func (*Impl) VerifyPieceInclusion(ctx invocationContext, commP []byte, pieceSize *types.BytesAmount, sectorID uint64, proof []byte) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	chainHeight := ctx.BlockHeight()
+	chainHeight := ctx.Runtime().CurrentEpoch()
 
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -820,7 +831,7 @@ func (*Impl) VerifyPieceInclusion(ctx runtime.Runtime, commP []byte, pieceSize *
 }
 
 // ChangeWorker alters the worker address in state
-func (*Impl) ChangeWorker(ctx runtime.Runtime, worker address.Address) (uint8, error) {
+func (*Impl) ChangeWorker(ctx invocationContext, worker address.Address) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -843,7 +854,7 @@ func (*Impl) ChangeWorker(ctx runtime.Runtime, worker address.Address) (uint8, e
 }
 
 // GetWorker returns the worker address for this miner.
-func (*Impl) GetWorker(ctx runtime.Runtime) (address.Address, uint8, error) {
+func (*Impl) GetWorker(ctx invocationContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return address.Address{}, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -865,7 +876,7 @@ func (*Impl) GetWorker(ctx runtime.Runtime) (address.Address, uint8, error) {
 }
 
 // GetPeerID returns the libp2p peer ID that this miner can be reached at.
-func (*Impl) GetPeerID(ctx runtime.Runtime) (peer.ID, uint8, error) {
+func (*Impl) GetPeerID(ctx invocationContext) (peer.ID, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return peer.ID(""), internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -881,7 +892,7 @@ func (*Impl) GetPeerID(ctx runtime.Runtime) (peer.ID, uint8, error) {
 }
 
 // UpdatePeerID is used to update the peerID this miner is operating under.
-func (*Impl) UpdatePeerID(ctx runtime.Runtime, pid peer.ID) (uint8, error) {
+func (*Impl) UpdatePeerID(ctx invocationContext, pid peer.ID) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -905,7 +916,7 @@ func (*Impl) UpdatePeerID(ctx runtime.Runtime, pid peer.ID) (uint8, error) {
 }
 
 // GetPower returns the amount of proven sectors for this miner.
-func (*Impl) GetPower(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
+func (*Impl) GetPower(ctx invocationContext) (*types.BytesAmount, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return nil, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -928,7 +939,7 @@ func (*Impl) GetPower(ctx runtime.Runtime) (*types.BytesAmount, uint8, error) {
 
 // GetActiveCollateral returns the active collateral a miner is holding to
 // protect storage.
-func (*Impl) GetActiveCollateral(ctx runtime.Runtime) (types.AttoFIL, uint8, error) {
+func (*Impl) GetActiveCollateral(ctx invocationContext) (types.AttoFIL, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return types.ZeroAttoFIL, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -948,7 +959,7 @@ func (*Impl) GetActiveCollateral(ctx runtime.Runtime) (types.AttoFIL, uint8, err
 	return collateral, 0, nil
 }
 
-func (*Impl) AddFaults(ctx runtime.Runtime, faults types.FaultSet) (uint8, error) {
+func (*Impl) AddFaults(ctx invocationContext, faults types.FaultSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -957,7 +968,8 @@ func (*Impl) AddFaults(ctx runtime.Runtime, faults types.FaultSet) (uint8, error
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		challengeBlockHeight := provingWindowStart(state)
 
-		if ctx.BlockHeight().LessThan(challengeBlockHeight) {
+		epoch := ctx.Runtime().CurrentEpoch()
+		if epoch.LessThan(challengeBlockHeight) {
 			// Up to the challenge time new faults can be added.
 			state.CurrentFaultSet = state.CurrentFaultSet.Union(faults.SectorIds)
 		} else {
@@ -977,12 +989,12 @@ func (*Impl) AddFaults(ctx runtime.Runtime, faults types.FaultSet) (uint8, error
 
 // SubmitPoSt is used to submit a coalesced PoST to the chain to convince the chain
 // that you have been actually storing the files you claim to be.
-func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
+func (a *Impl) SubmitPoSt(ctx invocationContext, poStProof types.PoStProof, faults types.FaultSet, done types.IntSet) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	chainHeight := ctx.BlockHeight()
+	chainHeight := ctx.Runtime().CurrentEpoch()
 	sender := ctx.Message().From
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
@@ -1004,7 +1016,7 @@ func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults
 				ProvingPeriodDuration(state.SectorSize))
 		}
 
-		feeRequired := latePoStFee(a.getPledgeCollateralRequirement(state, chainHeight), state.ProvingPeriodEnd, chainHeight, provingPeriodDuration)
+		feeRequired := latePoStFee(a.getPledgeCollateralRequirement(state, &chainHeight), state.ProvingPeriodEnd, &chainHeight, provingPeriodDuration)
 
 		// The message value has been added to the actor's balance.
 		// Ensure this value fully covers the fee which will be charged to this balance so that the resulting
@@ -1024,7 +1036,7 @@ func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults
 		// Refund any overpayment of fees to the owner.
 		if messageValue.GreaterThan(feeRequired) {
 			overpayment := messageValue.Sub(feeRequired)
-			_, _, err := ctx.Send(sender, types.SendMethodID, overpayment, []interface{}{})
+			_, _, err := ctx.Runtime().Send(sender, types.SendMethodID, overpayment, []interface{}{})
 			if err != nil {
 				return nil, errors.NewRevertErrorf("Failed to refund overpayment of %s to %s", overpayment, sender)
 			}
@@ -1107,7 +1119,7 @@ func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults
 		delta := newPower.Sub(oldPower)
 
 		if !delta.IsZero() {
-			_, ret, err := ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
+			_, ret, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{delta})
 			if err != nil {
 				return nil, err
 			}
@@ -1144,12 +1156,12 @@ func (a *Impl) SubmitPoSt(ctx runtime.Runtime, poStProof types.PoStProof, faults
 // SlashStorageFault is called by an independent actor to remove power and
 // take collateral from this miner when the miner has failed to submit a
 // PoSt on time.
-func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
+func (*Impl) SlashStorageFault(ctx invocationContext) (uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
 
-	chainHeight := ctx.BlockHeight()
+	chainHeight := ctx.Runtime().CurrentEpoch()
 	var state State
 	_, err := actor.WithState(ctx, &state, func() (interface{}, error) {
 		// You can only be slashed once for missing your PoSt.
@@ -1170,7 +1182,7 @@ func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
 
 		// Strip the miner of their power.
 		powerDelta := types.ZeroBytes.Sub(state.Power) // negate bytes amount
-		_, ret, err := ctx.Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
+		_, ret, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_UpdateStorage, types.ZeroAttoFIL, []interface{}{powerDelta})
 		if err != nil {
 			return nil, err
 		}
@@ -1193,7 +1205,7 @@ func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
 		state.ProvingSet = types.NewIntSet()
 
 		// save chain height, so we know when this miner was slashed
-		state.SlashedAt = chainHeight
+		state.SlashedAt = &chainHeight
 
 		return nil, nil
 	})
@@ -1206,7 +1218,7 @@ func (*Impl) SlashStorageFault(ctx runtime.Runtime) (uint8, error) {
 }
 
 // GetProvingWindow returns the proving period start and proving period end
-func (*Impl) GetProvingWindow(ctx runtime.Runtime) ([]types.Uint64, uint8, error) {
+func (*Impl) GetProvingWindow(ctx invocationContext) ([]types.Uint64, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
@@ -1221,14 +1233,15 @@ func (*Impl) GetProvingWindow(ctx runtime.Runtime) ([]types.Uint64, uint8, error
 
 // CalculateLateFee calculates the late fee due for a PoSt arriving at `height` for the actor's current
 // power and proving period.
-func (a *Impl) CalculateLateFee(ctx runtime.Runtime, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
+func (a *Impl) CalculateLateFee(ctx invocationContext, height *types.BlockHeight) (types.AttoFIL, uint8, error) {
 	var state State
 	err := actor.ReadState(ctx, &state)
 	if err != nil {
 		return types.ZeroAttoFIL, errors.CodeError(err), err
 	}
 
-	collateral := a.getPledgeCollateralRequirement(state, ctx.BlockHeight())
+	epoch := ctx.Runtime().CurrentEpoch()
+	collateral := a.getPledgeCollateralRequirement(state, &epoch)
 	gracePeriod := types.NewBlockHeight(ProvingPeriodDuration(state.SectorSize))
 	fee := latePoStFee(collateral, state.ProvingPeriodEnd, height, gracePeriod)
 	return fee, 0, nil
@@ -1240,8 +1253,8 @@ func (a *Impl) CalculateLateFee(ctx runtime.Runtime, height *types.BlockHeight) 
 // expectation of this being important for future protocol upgrade mechanisms.
 //
 
-func (*Impl) burnFunds(ctx runtime.Runtime, amount types.AttoFIL) error {
-	_, _, err := ctx.Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
+func (*Impl) burnFunds(ctx invocationContext, amount types.AttoFIL) error {
+	_, _, err := ctx.Runtime().Send(address.BurntFundsAddress, types.SendMethodID, amount, []interface{}{})
 	return err
 }
 
@@ -1252,11 +1265,8 @@ func (*Impl) getPledgeCollateralRequirement(state State, height *types.BlockHeig
 }
 
 // getPoStChallengeSeed returns some chain randomness
-func getPoStChallengeSeed(ctx runtime.Runtime, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
-	randomness, err := ctx.SampleChainRandomness(sampleAt)
-	if err != nil {
-		return types.PoStChallengeSeed{}, err
-	}
+func getPoStChallengeSeed(ctx invocationContext, state State, sampleAt *types.BlockHeight) (types.PoStChallengeSeed, error) {
+	randomness := ctx.Runtime().Randomness(*sampleAt, 0)
 
 	seed := types.PoStChallengeSeed{}
 	copy(seed[:], randomness)
@@ -1269,9 +1279,9 @@ func getPoStChallengeSeed(ctx runtime.Runtime, state State, sampleAt *types.Bloc
 //
 
 // GetProofsMode returns the genesis block-configured proofs mode.
-func GetProofsMode(ctx runtime.Runtime) (types.ProofsMode, error) {
+func GetProofsMode(ctx invocationContext) (types.ProofsMode, error) {
 	var proofsMode types.ProofsMode
-	msgResult, _, err := ctx.Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
+	msgResult, _, err := ctx.Runtime().Send(address.StorageMarketAddress, Storagemarket_GetProofsMode, types.ZeroAttoFIL, nil)
 	if err != nil {
 		return types.TestProofsMode, xerrors.Wrap(err, "'GetProofsMode' message failed")
 	}

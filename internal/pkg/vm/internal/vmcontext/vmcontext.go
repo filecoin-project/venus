@@ -1,3 +1,6 @@
+// Package vmcontext is the internal implementation of the runtime package.
+//
+// Actors see the interfaces defined in the `runtime` while the concrete implementation is defined here.
 package vmcontext
 
 import (
@@ -31,15 +34,16 @@ type ExecutableActorLookup interface {
 // VMContext is the only thing exposed to an actor while executing.
 // All methods on the VMContext are ABI methods exposed to actors.
 type VMContext struct {
-	from        *actor.Actor
-	to          *actor.Actor
-	message     *types.UnsignedMessage
-	state       *state.CachedTree
-	storageMap  storagemap.StorageMap
-	gasTracker  *gastracker.GasTracker
-	blockHeight *types.BlockHeight
-	ancestors   []block.TipSet
-	actors      ExecutableActorLookup
+	from              *actor.Actor
+	to                *actor.Actor
+	message           *types.UnsignedMessage
+	state             *state.CachedTree
+	storageMap        storagemap.StorageMap
+	gasTracker        *gastracker.GasTracker
+	blockHeight       *types.BlockHeight
+	ancestors         []block.TipSet
+	actors            ExecutableActorLookup
+	isCallerValidated bool
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -60,34 +64,18 @@ type NewContextParams struct {
 // NewVMContext returns an initialized context.
 func NewVMContext(params NewContextParams) *VMContext {
 	return &VMContext{
-		from:        params.From,
-		to:          params.To,
-		message:     params.Message,
-		state:       params.State,
-		storageMap:  params.StorageMap,
-		gasTracker:  params.GasTracker,
-		blockHeight: params.BlockHeight,
-		ancestors:   params.Ancestors,
-		actors:      params.Actors,
-		deps:        makeDeps(params.State),
+		from:              params.From,
+		to:                params.To,
+		message:           params.Message,
+		state:             params.State,
+		storageMap:        params.StorageMap,
+		gasTracker:        params.GasTracker,
+		blockHeight:       params.BlockHeight,
+		ancestors:         params.Ancestors,
+		actors:            params.Actors,
+		isCallerValidated: false,
+		deps:              makeDeps(params.State),
 	}
-}
-
-var _ runtime.Runtime = (*VMContext)(nil)
-
-// Storage returns an implementation of the storage module for this context.
-func (ctx *VMContext) Storage() runtime.Storage {
-	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
-}
-
-// Message retrieves the message associated with this context.
-func (ctx *VMContext) Message() *types.UnsignedMessage {
-	return ctx.message
-}
-
-// Charge attempts to add the given cost to the accrued gas cost of this transaction
-func (ctx *VMContext) Charge(cost types.GasUnits) error {
-	return ctx.gasTracker.Charge(cost)
 }
 
 // GasUnits retrieves the gas cost so far
@@ -95,23 +83,24 @@ func (ctx *VMContext) GasUnits() types.GasUnits {
 	return ctx.gasTracker.GasConsumedByMessage()
 }
 
-// BlockHeight returns the block height of the block currently being processed
-func (ctx *VMContext) BlockHeight() *types.BlockHeight {
-	return ctx.blockHeight
+var _ runtime.Runtime = (*VMContext)(nil)
+
+// CurrentEpoch is the current chain epoch.
+func (ctx *VMContext) CurrentEpoch() types.BlockHeight {
+	return *ctx.blockHeight
 }
 
-// MyBalance returns the balance of the associated actor.
-func (ctx *VMContext) MyBalance() types.AttoFIL {
-	return ctx.to.Balance
+// Randomness gives the actors access to sampling peudo-randomess from the chain.
+func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
+	// Dragons: the spec has a TODO on how this works
+	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
+	if err != nil {
+		runtime.Abort("failed to sample randomness")
+	}
+	return rnd
 }
 
-// IsFromAccountActor returns true if the message is being sent by an account actor.
-func (ctx *VMContext) IsFromAccountActor() bool {
-	return types.AccountActorCodeCid.Equals(ctx.from.Code)
-}
-
-// Send sends a message to another actor.
-// This method assumes to be called from inside the `to` actor.
+// Send allows actors to invoke methods on other actors
 func (ctx *VMContext) Send(to address.Address, method types.MethodID, value types.AttoFIL, params []interface{}) ([][]byte, uint8, error) {
 	deps := ctx.deps
 
@@ -163,27 +152,65 @@ func (ctx *VMContext) Send(to address.Address, method types.MethodID, value type
 	return out, ret, nil
 }
 
-// AddressForNewActor creates computes the address for a new actor in the same
-// way that ethereum does.  Note that this will not work if we allow the
-// creation of multiple contracts in a given invocation (nonce will remain the
-// same, resulting in the same address back)
-func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
-	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
+var _ runtime.InvocationContext = (*VMContext)(nil)
+
+// Runtime exposes some methods on the runtime to the actor.
+func (ctx *VMContext) Runtime() runtime.Runtime {
+	return ctx
 }
 
-func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
-	buf := new(bytes.Buffer)
-
-	if _, err := buf.Write(creator.Bytes()); err != nil {
-		return address.Undef, err
+// ValidateCaller validates the caller against a patter.
+//
+// All actor methods MUST call this method before returning.
+func (ctx *VMContext) ValidateCaller(pattern runtime.CallerPattern) {
+	if ctx.isCallerValidated {
+		runtime.Abort("Method must validate caller identity exactly once")
 	}
-
-	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
-		return address.Undef, err
+	if !pattern.IsMatch(patternContext{vm: ctx}) {
+		runtime.Abort("Method invoked by incorrect caller")
 	}
-
-	return address.NewActorAddress(buf.Bytes())
+	ctx.isCallerValidated = true
 }
+
+// Caller is the immediate caller to the current executing method.
+func (ctx *VMContext) Caller() address.Address {
+	return ctx.message.From
+}
+
+// StateHandle handles access to the actor state.
+func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
+	// Review: this is how the spec does it, although I think this handles need to be maintained in memory for the current high level dispatch
+	return NewActorStateHandle(ctx, ctx.to.Head)
+}
+
+// ValueReceived is the amount of FIL received by this actor during this method call.
+//
+// Note: the value is already been deposited on the actors account and is reflected on the balance.
+func (ctx *VMContext) ValueReceived() types.AttoFIL {
+	return ctx.message.Value
+}
+
+// Balance is the current balance on the current actors account.
+//
+// Note: the value received for this invocation is already reflected on the balance.
+func (ctx *VMContext) Balance() types.AttoFIL {
+	return ctx.to.Balance
+}
+
+// Storage returns an implementation of the storage module for this context.
+func (ctx *VMContext) Storage() runtime.Storage {
+	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
+}
+
+// Charge attempts to add the given cost to the accrued gas cost of this transaction
+// Dragons: here just to avoid deleting a lot of lines while we wait for the new Gas Accounting to land
+func (ctx *VMContext) Charge(cost types.GasUnits) error {
+	return ctx.gasTracker.Charge(cost)
+}
+
+//
+// built-in actor needs
+//
 
 // CreateNewActor creates and initializes an actor at the given address.
 // If the address is occupied by a non-empty actor, this method will fail.
@@ -222,20 +249,55 @@ func (ctx *VMContext) CreateNewActor(addr address.Address, code cid.Cid, initial
 	return nil
 }
 
-// SampleChainRandomness samples randomness from a block's ancestors at the
-// given height.
-func (ctx *VMContext) SampleChainRandomness(sampleHeight *types.BlockHeight) ([]byte, error) {
-	return sampling.SampleChainRandomness(sampleHeight, ctx.ancestors)
-}
-
 // Verifier returns an interface to the proof verification code
 func (ctx *VMContext) Verifier() verification.Verifier {
 	return &verification.RustVerifier{}
 }
 
+// Dragons: all extras on the meantime
+
+// Message retrieves the message associated with this context.
+func (ctx *VMContext) Message() *types.UnsignedMessage {
+	return ctx.message
+}
+
+// AddressForNewActor creates computes the address for a new actor in the same
+// way that ethereum does.  Note that this will not work if we allow the
+// creation of multiple contracts in a given invocation (nonce will remain the
+// same, resulting in the same address back)
+func (ctx *VMContext) AddressForNewActor() (address.Address, error) {
+	return computeActorAddress(ctx.message.From, uint64(ctx.from.Nonce))
+}
+
+func computeActorAddress(creator address.Address, nonce uint64) (address.Address, error) {
+	buf := new(bytes.Buffer)
+
+	if _, err := buf.Write(creator.Bytes()); err != nil {
+		return address.Undef, err
+	}
+
+	if err := binary.Write(buf, binary.BigEndian, nonce); err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewActorAddress(buf.Bytes())
+}
+
+// patternContext is a wrapper on a vmcontext to implement the PatternContext
+type patternContext struct {
+	vm *VMContext
+}
+
+var _ runtime.PatternContext = patternContext{}
+
+func (ctx patternContext) Code() cid.Cid {
+	return ctx.vm.from.Code
+}
+
 // ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
 type ExtendedRuntime interface {
 	runtime.Runtime
+	Message() *types.UnsignedMessage
 	From() *actor.Actor
 	To() *actor.Actor
 	Actors() ExecutableActorLookup
