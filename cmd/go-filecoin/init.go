@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipfs/go-ipfs-cmdkit"
 	"github.com/ipfs/go-ipfs-cmds"
+	logging "github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/crypto"
 
 	"github.com/filecoin-project/go-filecoin/fixtures"
@@ -26,6 +27,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 )
+
+var logInit = logging.Logger("commands/init")
 
 var initCmd = &cmds.Command{
 	Helptext: cmdkit.HelpText{
@@ -157,11 +160,47 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		return consensus.MakeGenesisFunc(consensus.ProofsMode(types.LiveProofsMode)), nil
 	}
 
+	source, err := openGenesisSource(sourceName)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = source.Close() }()
+
+	genesisBlk, err := extractGenesisBlock(source, rep)
+	if err != nil {
+		return nil, err
+	}
+
+	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
+		return genesisBlk, err
+	}
+
+	return gif, nil
+
+}
+
+func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
+	var initOpts []node.InitOpt
+	if peerKeyFile != "" {
+		data, err := ioutil.ReadFile(peerKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		peerKey, err := crypto.UnmarshalPrivateKey(data)
+		if err != nil {
+			return nil, err
+		}
+		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
+	}
+
+	return initOpts, nil
+}
+
+func openGenesisSource(sourceName string) (io.ReadCloser, error) {
 	sourceURL, err := url.Parse(sourceName)
 	if err != nil {
 		return nil, fmt.Errorf("invalid filepath or URL for genesis file: %s", sourceURL)
 	}
-
 	var source io.ReadCloser
 	if sourceURL.Scheme == "http" || sourceURL.Scheme == "https" {
 		// NOTE: This code is temporary. It allows downloading a genesis block via HTTP(S) to be able to join a
@@ -180,44 +219,46 @@ func loadGenesis(ctx context.Context, rep repo.Repo, sourceName string) (consens
 		}
 		source = file
 	}
-	defer func() { _ = source.Close() }()
+	return source, nil
+}
 
+func extractGenesisBlock(source io.ReadCloser, rep repo.Repo) (*block.Block, error) {
 	bs := blockstore.NewBlockstore(rep.Datastore())
 	ch, err := car.LoadCar(bs, source)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(ch.Roots) != 1 {
-		return nil, fmt.Errorf("expected car with only a single root")
+	// need to check if we are being handed a car file with a single genesis block or an entire chain.
+	bsBlk, err := bs.Get(ch.Roots[0])
+	if err != nil {
+		return nil, err
+	}
+	cur, err := block.DecodeBlock(bsBlk.RawData())
+	if err != nil {
+		return nil, err
 	}
 
-	gif := func(cst *hamt.CborIpldStore, bs blockstore.Blockstore) (*block.Block, error) {
-		var blk block.Block
-
-		if err := cst.Get(ctx, ch.Roots[0], &blk); err != nil {
-			return nil, err
+	// the root block of the car file has parents, this file must contain a chain.
+	var gensisBlk *block.Block
+	if !cur.Parents.Equals(block.UndefTipSet.Key()) {
+		// walk back up the chain until we hit a block with no parents, the genesis block.
+		for !cur.Parents.Equals(block.UndefTipSet.Key()) {
+			bsBlk, err := bs.Get(cur.Parents.ToSlice()[0])
+			if err != nil {
+				return nil, err
+			}
+			cur, err = block.DecodeBlock(bsBlk.RawData())
+			if err != nil {
+				return nil, err
+			}
 		}
 
-		return &blk, nil
+		gensisBlk = cur
+
+		logInit.Infow("initialized go-filecoin with genesis file containing partial chain", "genesisCID", gensisBlk.Cid().String(), "headCIDs", ch.Roots)
+	} else {
+		gensisBlk = cur
 	}
-
-	return gif, nil
-}
-
-func getNodeInitOpts(peerKeyFile string) ([]node.InitOpt, error) {
-	var initOpts []node.InitOpt
-	if peerKeyFile != "" {
-		data, err := ioutil.ReadFile(peerKeyFile)
-		if err != nil {
-			return nil, err
-		}
-		peerKey, err := crypto.UnmarshalPrivateKey(data)
-		if err != nil {
-			return nil, err
-		}
-		initOpts = append(initOpts, node.PeerKeyOpt(peerKey))
-	}
-
-	return initOpts, nil
+	return gensisBlk, nil
 }
