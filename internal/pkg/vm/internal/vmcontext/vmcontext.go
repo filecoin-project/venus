@@ -34,15 +34,16 @@ type ExecutableActorLookup interface {
 // VMContext is the only thing exposed to an actor while executing.
 // All methods on the VMContext are ABI methods exposed to actors.
 type VMContext struct {
-	from        *actor.Actor
-	to          *actor.Actor
-	message     *types.UnsignedMessage
-	state       *state.CachedTree
-	storageMap  storagemap.StorageMap
-	gasTracker  *gastracker.GasTracker
-	blockHeight *types.BlockHeight
-	ancestors   []block.TipSet
-	actors      ExecutableActorLookup
+	from              *actor.Actor
+	to                *actor.Actor
+	message           *types.UnsignedMessage
+	state             *state.CachedTree
+	storageMap        storagemap.StorageMap
+	gasTracker        *gastracker.GasTracker
+	blockHeight       *types.BlockHeight
+	ancestors         []block.TipSet
+	actors            ExecutableActorLookup
+	isCallerValidated bool
 
 	deps *deps // Inject external dependencies so we can unit test robustly.
 }
@@ -63,16 +64,17 @@ type NewContextParams struct {
 // NewVMContext returns an initialized context.
 func NewVMContext(params NewContextParams) *VMContext {
 	return &VMContext{
-		from:        params.From,
-		to:          params.To,
-		message:     params.Message,
-		state:       params.State,
-		storageMap:  params.StorageMap,
-		gasTracker:  params.GasTracker,
-		blockHeight: params.BlockHeight,
-		ancestors:   params.Ancestors,
-		actors:      params.Actors,
-		deps:        makeDeps(params.State),
+		from:              params.From,
+		to:                params.To,
+		message:           params.Message,
+		state:             params.State,
+		storageMap:        params.StorageMap,
+		gasTracker:        params.GasTracker,
+		blockHeight:       params.BlockHeight,
+		ancestors:         params.Ancestors,
+		actors:            params.Actors,
+		isCallerValidated: false,
+		deps:              makeDeps(params.State),
 	}
 }
 
@@ -93,7 +95,7 @@ func (ctx *VMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime
 	// Dragons: the spec has a TODO on how this works
 	rnd, err := sampling.SampleChainRandomness(&epoch, ctx.ancestors)
 	if err != nil {
-		panic("byteme")
+		runtime.Abort("failed to sample randomness")
 	}
 	return rnd
 }
@@ -161,7 +163,13 @@ func (ctx *VMContext) Runtime() runtime.Runtime {
 //
 // All actor methods MUST call this method before returning.
 func (ctx *VMContext) ValidateCaller(pattern runtime.CallerPattern) {
-	// Dragons: this needs to be coded
+	if ctx.isCallerValidated {
+		runtime.Abort("Method must validate caller identity exactly once")
+	}
+	if !pattern.IsMatch(patternContext{vm: ctx}) {
+		runtime.Abort("Method invoked by incorrect caller")
+	}
+	ctx.isCallerValidated = true
 }
 
 // Caller is the immediate caller to the current executing method.
@@ -171,8 +179,8 @@ func (ctx *VMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
-	// Dragons: this needs to be coded and used
-	return nil
+	// Review: this is how the spec does it, although I think this handles need to be mantained in memory for the current high level dispatch
+	return NewActorStateHandle(ctx, ctx.to.Head)
 }
 
 // ValueReceived is the amount of FIL received by this actor during this method call.
@@ -275,6 +283,16 @@ func computeActorAddress(creator address.Address, nonce uint64) (address.Address
 	return address.NewActorAddress(buf.Bytes())
 }
 
+// patternContext is a wrapper on a vmcontext to implement the PatternContext
+type patternContext struct {
+	vm *VMContext
+}
+
+var _ runtime.PatternContext = patternContext{}
+
+func (ctx patternContext) Code() cid.Cid {
+	return ctx.vm.from.Code
+}
 
 // ExtendedRuntime has a few extra methods on top of what is exposed to the actors.
 type ExtendedRuntime interface {

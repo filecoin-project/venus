@@ -3,10 +3,12 @@ package vm
 import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/encoding"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/proofs/verification"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/ipfs/go-cid"
 )
 
@@ -71,7 +73,6 @@ func (tc *FakeVMContext) CurrentEpoch() types.BlockHeight {
 	return *tc.BlockHeightValue
 }
 
-
 // SampleChainRandomness provides random bytes used in verification challenges
 func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
 	rnd, _ := tc.Sampler(&epoch)
@@ -93,8 +94,11 @@ func (tc *FakeVMContext) Runtime() runtime.Runtime {
 // ValidateCaller validates the caller against a patter.
 //
 // All actor methods MUST call this method before returning.
-func (tc *FakeVMContext) ValidateCaller(runtime.CallerPattern) {
-	panic("byteme")
+func (tc *FakeVMContext) ValidateCaller(pattern runtime.CallerPattern) {
+	// Note: the FakeVMContext is currently harcoded to a single pattern
+	if !tc.IsFromAccountActorValue {
+		runtime.Abort("Method invoked by incorrect caller")
+	}
 }
 
 // Caller is the immediate caller to the current executing method.
@@ -104,7 +108,7 @@ func (tc *FakeVMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (tc *FakeVMContext) StateHandle() runtime.ActorStateHandle {
-	panic("byteme")
+	return vmcontext.NewActorStateHandle(tc, tc.StorageValue.Head())
 }
 
 // ValueReceived is the amount of FIL received by this actor during this method call.
@@ -159,12 +163,23 @@ type testStorage struct {
 	state interface{}
 }
 
+// NewTestStorage returns a new "testStorage"
+func NewTestStorage(state interface{}) runtime.Storage {
+	return &testStorage{
+		state: state,
+	}
+}
+
 var _ runtime.Storage = &testStorage{}
 
 // Put satisfies the Storage interface
 func (ts *testStorage) Put(v interface{}) (cid.Cid, error) {
 	ts.state = v
-	return cid.Cid{}, nil
+	raw, err := encoding.Encode(v)
+	if err != nil {
+		panic("failed to encode")
+	}
+	return cid.NewCidV1(cid.Raw, raw), nil
 }
 
 // Get returns the internal state variable encoded into bytes
@@ -184,5 +199,9 @@ func (ts testStorage) Commit(cid.Cid, cid.Cid) error {
 
 // Head returns an empty Cid to satisfy the Storage interface
 func (ts testStorage) Head() cid.Cid {
-	return cid.Cid{}
+	raw, err := encoding.Encode(ts.state)
+	if err != nil {
+		panic("failed to encode")
+	}
+	return cid.NewCidV1(cid.Raw, raw)
 }

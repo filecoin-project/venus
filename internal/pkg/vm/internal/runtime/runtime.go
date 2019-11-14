@@ -92,10 +92,15 @@ type MethodParam []byte
 // MethodParams is a list of `MethodParam` to be passed into an Actor method.
 type MethodParams []MethodParam
 
+// PatternContext is the context a pattern gets access to in order to determine if the caller matches.
+type PatternContext interface {
+	Code() cid.Cid
+}
+
 // CallerPattern checks if the caller matches the pattern.
 type CallerPattern interface {
 	// IsMatch returns "True" if the patterns matches
-	IsMatch() bool
+	IsMatch(ctx PatternContext) bool
 }
 
 // AbortPanicError is used on panic when `Abort` is called by actors.
