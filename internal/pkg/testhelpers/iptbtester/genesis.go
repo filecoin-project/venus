@@ -26,9 +26,9 @@ type idResult struct {
 	ID string
 }
 
-// MustGenerateGenesis constructs the requires information and files to build a single
+// RequireGenerateGenesis constructs the required information and files to build a single
 // filecoin node with the provided funds. The GenesisInfo can be used with MustImportGenesisMiner
-func MustGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
+func RequireGenerateGenesis(t *testing.T, funds int64, dir string, genesisTime time.Time) *GenesisInfo {
 	// Setup, generate a genesis and key file
 	cfg := &gengen.GenesisCfg{
 		ProofsMode: types.TestProofsMode,

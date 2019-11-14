@@ -42,7 +42,7 @@ func TestFaucetSendFunds(t *testing.T) {
 
 	// Setup first node, note: Testbed.Name() is the directory
 	genesisTime := time.Unix(123456789, 0)
-	genesis := iptbtester.MustGenerateGenesis(t, 10000, node0.Testbed.Name(), genesisTime)
+	genesis := iptbtester.RequireGenerateGenesis(t, 10000, node0.Testbed.Name(), genesisTime)
 
 	node0.MustInitWithGenesis(ctx, genesis)
 	node0.MustStart(ctx, "--block-time="+blockTime.String())
