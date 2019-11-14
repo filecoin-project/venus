@@ -3,6 +3,7 @@ package consensus_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-hamt-ipld"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -75,7 +76,7 @@ func requireMinerWithNumCommittedSectors(ctx context.Context, t *testing.T, numC
 		Network: "ptvtest",
 	}
 
-	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0)
+	info, err := gengen.GenGen(ctx, genCfg, cst, bs, 0, time.Unix(123456789, 0))
 	require.NoError(t, err)
 
 	var calcGenBlk block.Block

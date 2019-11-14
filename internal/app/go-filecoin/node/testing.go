@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"testing"
+	"time"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-hamt-ipld"
@@ -48,8 +49,9 @@ func MakeChainSeed(t *testing.T, cfg *gengen.GenesisCfg) *ChainSeed {
 	mds := ds.NewMapDatastore()
 	bstore := blockstore.NewBlockstore(mds)
 	cst := hamt.CSTFromBstore(bstore)
+	genesisTime := time.Unix(123456789, 0)
 
-	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0)
+	info, err := gengen.GenGen(context.TODO(), cfg, cst, bstore, 0, genesisTime)
 	require.NoError(t, err)
 
 	return &ChainSeed{
