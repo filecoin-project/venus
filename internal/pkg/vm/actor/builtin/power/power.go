@@ -183,7 +183,7 @@ func (*impl) createStorageMiner(vmctx invocationContext, ownerAddr, workerAddr a
 
 		// Update power table.
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx,  vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Do not overwrite table entry if it already exists
 			err := lookup.Find(ctx, addr.String(), nil)
 			if err != hamt.ErrNotFound { // we expect to not find the power table entry
@@ -229,7 +229,7 @@ func (*impl) removeStorageMiner(vmctx invocationContext, delAddr address.Address
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx,  vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to delete.
 			var delEntry TableEntry
 			err := lookup.Find(ctx, delAddr.String(), &delEntry)
@@ -272,7 +272,7 @@ func (*impl) getTotalPower(vmctx invocationContext) (*types.BytesAmount, uint8, 
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 		total := types.NewBytesAmount(0)
-		err := actor.WithLookupForReading(ctx,  vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// TODO https://github.com/filecoin-project/specs/issues/634 this is inefficient
 			return lookup.ForEachValue(ctx, TableEntry{}, func(k string, value interface{}) error {
 				entry, ok := value.(TableEntry)
@@ -301,7 +301,7 @@ func (*impl) getPowerReport(vmctx invocationContext, addr address.Address) (type
 	ret, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
 		var report types.PowerReport
-		err := actor.WithLookupForReading(ctx,  vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		err := actor.WithLookupForReading(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			err := lookup.Find(ctx, addr.String(), &report)
 			if err != nil {
 				if err == hamt.ErrNotFound {
@@ -328,7 +328,7 @@ func (*impl) processPowerReport(vmctx invocationContext, report types.PowerRepor
 	var state State
 	_, err := actor.WithState(vmctx, &state, func() (interface{}, error) {
 		ctx := context.Background()
-		newPowerTable, err := actor.WithLookup(ctx,  vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
+		newPowerTable, err := actor.WithLookup(ctx, vmctx.Storage(), state.PowerTable, func(lookup storage.Lookup) error {
 			// Find entry to update.
 			var updateEntry TableEntry
 			err := lookup.Find(ctx, updateAddr.String(), &updateEntry)

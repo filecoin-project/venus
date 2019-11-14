@@ -46,15 +46,12 @@ type InvocationContext interface {
 	Charge(cost types.GasUnits) error
 }
 
-
 // initInvocationContext is a more powerfull context for the "init" actor.
 type initInvocationContext interface {
 	InvocationContext
 	// CreateActor allows the creation of a new actor.
 	CreateActor(state interface{}, addr address.Address, constructorParams MethodParams) error
 }
-
-
 
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
@@ -81,14 +78,15 @@ type Randomness []byte
 
 // InvocInput are the params to invoke a method in an Actor.
 type InvocInput struct {
-    To      address.Address
-    Method  types.MethodID
-    Params  MethodParams
-    Value   types.AttoFIL
+	To     address.Address
+	Method types.MethodID
+	Params MethodParams
+	Value  types.AttoFIL
 }
 
 // MethodParam is the parameter to an actor method.
 type MethodParam []byte
+
 // MethodParams is a list of `MethodParam` to be passed into an Actor method.
 type MethodParams []MethodParam
 
@@ -104,7 +102,7 @@ type CallerPattern interface {
 }
 
 // AbortPanicError is used on panic when `Abort` is called by actors.
-type AbortPanicError struct{
+type AbortPanicError struct {
 	msg string
 }
 

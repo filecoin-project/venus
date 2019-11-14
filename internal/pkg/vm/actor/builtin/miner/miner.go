@@ -445,7 +445,6 @@ type invocationContext interface {
 	Message() *types.UnsignedMessage
 }
 
-
 // AddAsk adds an ask to this miners ask list
 func (*Impl) AddAsk(ctx invocationContext, price types.AttoFIL, expiry *big.Int) (*big.Int, uint8,
 	error) {

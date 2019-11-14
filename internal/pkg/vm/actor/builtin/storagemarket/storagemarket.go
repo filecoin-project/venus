@@ -102,7 +102,7 @@ func (a *Actor) Method(id types.MethodID) (dispatch.Method, *dispatch.FunctionSi
 		return reflect.ValueOf((*impl)(a).getLateMiners), signatures[GetLateMiners], true
 	default:
 		return nil, nil, false
-}
+	}
 }
 
 // InitializeState stores the actor's initial data structure.

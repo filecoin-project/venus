@@ -401,7 +401,6 @@ func TestMinerGetProvingPeriod(t *testing.T) {
 		start := window.Val.([]types.Uint64)[0]
 		end := window.Val.([]types.Uint64)[1]
 
-
 		// end of proving period is now plus proving period size
 		expectedEnd := blockHeight + uint64(LargestSectorSizeProvingPeriodBlocks)
 		// start of proving period is end minus the PoSt challenge time
