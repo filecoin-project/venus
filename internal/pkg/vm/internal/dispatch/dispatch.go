@@ -23,9 +23,6 @@ type ExecutableActor interface {
 // Exports describe the public methods of an actor.
 type Exports map[types.MethodID]*FunctionSignature
 
-// ExportedFunc is the signature an exported method of an actor is expected to have.
-type ExportedFunc func(ctx runtime.Runtime) ([]byte, uint8, error)
-
 // FunctionSignature describes the signature of a single function.
 type FunctionSignature struct {
 	// Params is a list of the types of the parameters the function expects.

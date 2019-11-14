@@ -9,8 +9,10 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/abi"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/dispatch"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 )
+
+// ExportedFunc is the signature an exported method of an actor is expected to have.
+type ExportedFunc func(ctx ExtendedRuntime) ([]byte, uint8, error)
 
 // makeTypedExport finds the correct method on the given actor and returns it.
 // The returned function is wrapped such that it takes care of serialization and type checks.
@@ -18,7 +20,7 @@ import (
 // TODO: the work of creating the wrapper should be ideally done at compile time, otherwise at least only once + cached
 // TODO: find a better name, naming is hard..
 // TODO: Ensure the method is not empty. We need to be paranoid we're not calling methods on transfer messages.
-func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dispatch.ExportedFunc, bool) {
+func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (ExportedFunc, bool) {
 	fn, signature, ok := actor.Method(method)
 	if !ok {
 		return nil, false
@@ -70,7 +72,7 @@ func makeTypedExport(actor dispatch.ExecutableActor, method types.MethodID) (dis
 		badImpl()
 	}
 
-	return func(ctx runtime.Runtime) ([]byte, uint8, error) {
+	return func(ctx ExtendedRuntime) ([]byte, uint8, error) {
 		params, err := abi.DecodeValues(ctx.Message().Params, signature.Params)
 		if err != nil {
 			return nil, 1, errors.RevertErrorWrap(err, "invalid params")

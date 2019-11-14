@@ -271,29 +271,6 @@ func TestVMContextSendFailures(t *testing.T) {
 
 }
 
-func TestVMContextIsAccountActor(t *testing.T) {
-	tf.UnitTest(t)
-
-	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	vms := storagemap.NewStorageMap(bs)
-
-	accountActor, err := account.NewActor(types.NewAttoFILFromFIL(1000))
-	require.NoError(t, err)
-	vmCtxParams := NewContextParams{
-		From:       accountActor,
-		StorageMap: vms,
-		GasTracker: gastracker.NewGasTracker(),
-	}
-
-	ctx := NewVMContext(vmCtxParams)
-	assert.True(t, ctx.IsFromAccountActor())
-
-	nonAccountActor := actor.NewActor(types.NewCidForTestGetter()(), types.NewAttoFILFromFIL(1000))
-	vmCtxParams.From = nonAccountActor
-	ctx = NewVMContext(vmCtxParams)
-	assert.False(t, ctx.IsFromAccountActor())
-}
-
 func TestSendErrorHandling(t *testing.T) {
 	tf.UnitTest(t)
 	actor1 := actor.NewActor(types.CidFromString(t, "somecid"), types.NewAttoFILFromFIL(100))

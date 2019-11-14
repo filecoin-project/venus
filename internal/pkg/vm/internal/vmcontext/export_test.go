@@ -253,7 +253,7 @@ func (*impl) six(ctx runtime.Runtime) (uint8, error) {
 	return 0, fmt.Errorf("NOT A REVERT OR FAULT -- PROGRAMMER ERROR")
 }
 
-func makeCtx(method types.MethodID) runtime.Runtime {
+func makeCtx(method types.MethodID) *VMContext {
 	addrGetter := address.NewForTestGetter()
 
 	vmCtxParams := NewContextParams{
