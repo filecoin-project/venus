@@ -7,18 +7,21 @@ import (
 
 	"github.com/ipfs/go-cid"
 	chunk "github.com/ipfs/go-ipfs-chunker"
+	format "github.com/ipfs/go-ipld-format"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
+	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
 	"github.com/ipfs/go-unixfs"
 	imp "github.com/ipfs/go-unixfs/importer"
 	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/pkg/errors"
 )
 
 // DAG is a service for accessing the merkledag
 type DAG struct {
-	dserv ipld.DAGService
+	dserv format.DAGService // Provides access to state tree.
 }
 
 // NewDAG creates a DAG with a given DAGService
@@ -101,4 +104,53 @@ func (dag *DAG) ImportData(ctx context.Context, data io.Reader) (ipld.Node, erro
 		return nil, err
 	}
 	return nd, bufds.Commit()
+}
+
+// RecursiveGet will walk the dag in order (depth first) starting at the given root `c`.
+func (dag *DAG) RecursiveGet(ctx context.Context, c cid.Cid) ([]ipld.Node, error) {
+	collector := dagCollector{
+		dagserv: dag.dserv,
+	}
+	return collector.collectState(ctx, c)
+}
+
+//
+// Helpers for recursive dag get.
+//
+
+type dagCollector struct {
+	dagserv format.DAGService
+	state   []format.Node
+}
+
+// collectState recursively walks the state tree starting with `stateRoot` and returns it as a slice of IPLD nodes.
+// Calling this method does not have any side effects.
+func (dc *dagCollector) collectState(ctx context.Context, stateRoot cid.Cid) ([]format.Node, error) {
+	dagNd, err := dc.dagserv.Get(ctx, stateRoot)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load stateroot from dagservice %s", stateRoot)
+	}
+	dc.addState(dagNd)
+	seen := cid.NewSet()
+	for _, l := range dagNd.Links() {
+		if err := dag.Walk(ctx, dc.getLinks, l.Cid, seen.Visit); err != nil {
+			return nil, errors.Wrapf(err, "dag service failed walking stateroot %s", stateRoot)
+		}
+	}
+	return dc.state, nil
+
+}
+
+func (dc *dagCollector) getLinks(ctx context.Context, c cid.Cid) ([]*format.Link, error) {
+	nd, err := dc.dagserv.Get(ctx, c)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load link from dagservice %s", c)
+	}
+	dc.addState(nd)
+	return nd.Links(), nil
+
+}
+
+func (dc *dagCollector) addState(nd format.Node) {
+	dc.state = append(dc.state, nd)
 }

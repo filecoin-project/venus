@@ -117,6 +117,7 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191028173616-919d9bdd9fe6 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
+	gopkg.in/urfave/cli.v2 v2.0.0-20180128182452-d3ae77c26ac8
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 	gotest.tools v2.2.0+incompatible
 )
