@@ -35,7 +35,7 @@ func init() {
 // temporary network.
 func TestRetrievalLocalNetwork(t *testing.T) {
 	tf.FunctionalTest(t)
-	t.Skip("Long term solution: #3642") 
+	t.Skip("Long term solution: #3642")
 
 	blocktime := time.Second * 5
 
