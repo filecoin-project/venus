@@ -46,13 +46,6 @@ type InvocationContext interface {
 	Charge(cost types.GasUnits) error
 }
 
-// initInvocationContext is a more powerfull context for the "init" actor.
-type initInvocationContext interface {
-	InvocationContext
-	// CreateActor allows the creation of a new actor.
-	CreateActor(state interface{}, addr address.Address, constructorParams MethodParams) error
-}
-
 // ActorStateHandle handles the actor state, allowing actors to lock on the state.
 type ActorStateHandle interface {
 	// Take loads the state and locks it.
@@ -131,6 +124,6 @@ type Storage interface {
 	Get(cid.Cid) ([]byte, error)
 	// Review: why is this needed on the actor API? Actor commit is implicit upon a succesfull termination.
 	// Review: an explicit Commit() on actor code leads to bugs
-	// Review: what situation requires state to change, succesfully execute the method, but not to be commited?
+	// Review: what situation requires state to change, successfully execute the method, but not to be commited?
 	Commit(cid.Cid, cid.Cid) error
 }

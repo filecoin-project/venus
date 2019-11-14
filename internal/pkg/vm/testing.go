@@ -68,12 +68,12 @@ func NewFakeVMContextWithVerifier(message *types.UnsignedMessage, state interfac
 
 var _ runtime.Runtime = &FakeVMContext{}
 
-// BlockHeight is the current chain height
+// CurrentEpoch is the current chain height
 func (tc *FakeVMContext) CurrentEpoch() types.BlockHeight {
 	return *tc.BlockHeightValue
 }
 
-// SampleChainRandomness provides random bytes used in verification challenges
+// Randomness provides random bytes used in verification challenges
 func (tc *FakeVMContext) Randomness(epoch types.BlockHeight, offset uint64) runtime.Randomness {
 	rnd, _ := tc.Sampler(&epoch)
 	return rnd

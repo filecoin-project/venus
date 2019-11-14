@@ -179,7 +179,7 @@ func (ctx *VMContext) Caller() address.Address {
 
 // StateHandle handles access to the actor state.
 func (ctx *VMContext) StateHandle() runtime.ActorStateHandle {
-	// Review: this is how the spec does it, although I think this handles need to be mantained in memory for the current high level dispatch
+	// Review: this is how the spec does it, although I think this handles need to be maintained in memory for the current high level dispatch
 	return NewActorStateHandle(ctx, ctx.to.Head)
 }
 
@@ -202,8 +202,8 @@ func (ctx *VMContext) Storage() runtime.Storage {
 	return ctx.storageMap.NewStorage(ctx.message.To, ctx.to)
 }
 
-// Dragons: here just to avoid deleting a lot of lines while we wait for the new Gas Accounting to land
 // Charge attempts to add the given cost to the accrued gas cost of this transaction
+// Dragons: here just to avoid deleting a lot of lines while we wait for the new Gas Accounting to land
 func (ctx *VMContext) Charge(cost types.GasUnits) error {
 	return ctx.gasTracker.Charge(cost)
 }
