@@ -6,6 +6,7 @@ import (
 	"io"
 	mrand "math/rand"
 	"strconv"
+	"time"
 
 	"github.com/filecoin-project/go-amt-ipld"
 
@@ -106,7 +107,7 @@ type RenderedMinerInfo struct {
 // the final genesis block.
 //
 // WARNING: Do not use maps in this code, they will make this code non deterministic.
-func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed int64) (*RenderedGenInfo, error) {
+func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs blockstore.Blockstore, seed int64, genesisTime time.Time) (*RenderedGenInfo, error) {
 	pnrg := mrand.New(mrand.NewSource(seed))
 	keys, err := genKeys(cfg.Keys, pnrg)
 	if err != nil {
@@ -157,6 +158,7 @@ func GenGen(ctx context.Context, cfg *GenesisCfg, cst *hamt.CborIpldStore, bs bl
 		MessageReceipts: emptyAMTCid,
 		BLSAggregateSig: emptyBLSSignature[:],
 		Ticket:          block.Ticket{VRFProof: []byte{0xec}},
+		Timestamp:       types.Uint64(genesisTime.Unix()),
 	}
 
 	c, err := cst.Put(ctx, geneblk)
@@ -320,14 +322,14 @@ func setupMiners(st state.Tree, sm vm.StorageMap, keys []*types.KeyInfo, miners 
 }
 
 // GenGenesisCar generates a car for the given genesis configuration
-func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64) (*RenderedGenInfo, error) {
+func GenGenesisCar(cfg *GenesisCfg, out io.Writer, seed int64, genesisTime time.Time) (*RenderedGenInfo, error) {
 	ctx := context.Background()
 
 	bstore := blockstore.NewBlockstore(ds.NewMapDatastore())
 	cst := hamt.CSTFromBstore(bstore)
 	dserv := dag.NewDAGService(bserv.New(bstore, offline.Exchange(bstore)))
 
-	info, err := GenGen(ctx, cfg, cst, bstore, seed)
+	info, err := GenGen(ctx, cfg, cst, bstore, seed, genesisTime)
 	if err != nil {
 		return nil, err
 	}
