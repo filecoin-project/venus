@@ -31,6 +31,8 @@ import (
 	"github.com/filecoin-project/go-filecoin/tools/gengen/util"
 )
 
+var genesisTime = time.Unix(123456789, 0)
+
 func TestMinerHelp(t *testing.T) {
 	t.Skip("Long term solution: #3642")
 	tf.IntegrationTest(t)
@@ -104,7 +106,7 @@ func runHelpSuccess(t *testing.T, args ...string) string {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0, genesisTime); err != nil {
 		t.Fatal(err)
 	}
 
@@ -321,7 +323,7 @@ func TestMinerOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0, genesisTime); err != nil {
 		t.Fatal(err)
 	}
 
@@ -360,7 +362,7 @@ func TestMinerPower(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0, genesisTime); err != nil {
 		t.Fatal(err)
 	}
 
@@ -400,7 +402,7 @@ func TestMinerActiveCollateral(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = gengen.GenGenesisCar(testConfig, fi, 0); err != nil {
+	if _, err = gengen.GenGenesisCar(testConfig, fi, 0, genesisTime); err != nil {
 		t.Fatal(err)
 	}
 
