@@ -2,11 +2,11 @@ package validation
 
 import (
 	"context"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 
 	vchain "github.com/filecoin-project/chain-validation/pkg/chain"
 	vstate "github.com/filecoin-project/chain-validation/pkg/state"
 
+	"github.com/filecoin-project/go-filecoin/internal/pkg/block"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/consensus"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
@@ -25,7 +25,7 @@ func NewApplier() *Applier {
 	return &Applier{consensus.NewDefaultProcessor()}
 }
 
-// ApplyMessage applies a message.
+// ApplyMessage applies a message to the state tree and returns the receipt of its application or an error.
 func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapper, message interface{}) (vchain.MessageReceipt, error) {
 	ctx := context.TODO()
 	stateTree := state.(*StateWrapper).Tree

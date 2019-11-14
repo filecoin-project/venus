@@ -3,7 +3,6 @@ package validation
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/pkg/errors"
 	"math/rand"
 
@@ -18,11 +17,12 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/initactor"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/storagemarket"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
-// StateWrapper provides a wrapper for a state tree, storage map and keystore.
+// StateWrapper provides a wrapper for a state tree, storage, map and keystore.
 type StateWrapper struct {
 	state.Tree
 	vm.StorageMap
