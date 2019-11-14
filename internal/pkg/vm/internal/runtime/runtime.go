@@ -124,6 +124,6 @@ type Storage interface {
 	Get(cid.Cid) ([]byte, error)
 	// Review: why is this needed on the actor API? Actor commit is implicit upon a succesfull termination.
 	// Review: an explicit Commit() on actor code leads to bugs
-	// Review: what situation requires state to change, successfully execute the method, but not to be commited?
+	// Review: what situation requires state to change, successfully execute the method, but not to be committed?
 	Commit(cid.Cid, cid.Cid) error
 }
