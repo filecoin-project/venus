@@ -128,8 +128,8 @@ github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fd/go-nat v1.0.0 h1:DPyQ97sxA9ThrWYRPcWUz/z9TnpTIGRYODIQc/dy64M=
 github.com/fd/go-nat v1.0.0/go.mod h1:BTBu/CKvMmOMUPkKVef1pngt2WFH/lg7E6yQnulfp6E=
-github.com/filecoin-project/chain-validation v0.0.0-20191024154304-9e534157c681 h1:RX/9vUH4pAvgyTupeBnnZyfsODfno/1Lth262M0KeQU=
-github.com/filecoin-project/chain-validation v0.0.0-20191024154304-9e534157c681/go.mod h1:cLvX3Mf8xBRtq1esN9iSDMdbYc1AB5rEXPKiIWli0ns=
+github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7 h1:Ags/z6ZubzKonQ9PsY9fO439yGdVg07qpdxfv/AEUno=
+github.com/filecoin-project/chain-validation v0.0.0-20191106200742-11986803c0f7/go.mod h1:0/0/QUNqpF/jVzLHFncGeT3NvGPODBhGzQlNgzmoZew=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616 h1:e0P1b9Lam9oA7TC/YBoR23uMsDuMLQU3iTvUJXmDaqM=
 github.com/filecoin-project/go-amt-ipld v0.0.0-20190920035751-ae3c37184616/go.mod h1:lKjJYPg2kwbav5f78i5YA8kGccnZn18IySbpneXvaQs=
 github.com/filecoin-project/go-leb128 v0.0.0-20190212224330-8d79a5489543 h1:aMJGfgqe1QDhAVwxRg5fjCRF533xHidiKsugk7Vvzug=
@@ -314,7 +314,6 @@ github.com/ipfs/go-block-format v0.0.2 h1:qPDvcP19izTjU8rgo6p7gTXZlkMkF5bz5G3fqI
 github.com/ipfs/go-block-format v0.0.2/go.mod h1:AWR46JfpcObNfg3ok2JHDUfdiHRgWhJgCQF+KIgOPJY=
 github.com/ipfs/go-blockservice v0.0.1 h1:l6g1hwYDV6vb4bAvTqia6Cvo+zLMOPKel/n0zUX48bc=
 github.com/ipfs/go-blockservice v0.0.1/go.mod h1:2Ao89U7jV1KIqqNk5EdhSTBG/Pgc1vMFr0bhkx376j4=
-github.com/ipfs/go-blockservice v0.0.2/go.mod h1:2Ao89U7jV1KIqqNk5EdhSTBG/Pgc1vMFr0bhkx376j4=
 github.com/ipfs/go-blockservice v0.1.0/go.mod h1:hzmMScl1kXHg3M2BjTymbVPjv627N7sYcvYaKbop39M=
 github.com/ipfs/go-blockservice v0.1.2 h1:fqFeeu1EG0lGVrqUo+BVJv7LZV31I4ZsyNthCOMAJRc=
 github.com/ipfs/go-blockservice v0.1.2/go.mod h1:t+411r7psEUhLueM8C7aPA7cxCclv4O3VsUVxt9kz2I=
@@ -403,7 +402,6 @@ github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144 h1:5WM8S1nwquWQ3zEuN
 github.com/ipfs/go-log v0.0.2-0.20190920042044-a609c1ae5144/go.mod h1:azGN5dH7ailfREknDDNYB0Eq4qZ/4I4Y3gO0ivjJNyM=
 github.com/ipfs/go-merkledag v0.0.1 h1:HqvQsqqLvNOgItOy80Sd4T4rHvq6cXtAtrbEoWAON+I=
 github.com/ipfs/go-merkledag v0.0.1/go.mod h1:CRdtHMROECqaehAGeJ0Wd9TtlmWv/ta5cUnvbTnniEI=
-github.com/ipfs/go-merkledag v0.0.2/go.mod h1:CRdtHMROECqaehAGeJ0Wd9TtlmWv/ta5cUnvbTnniEI=
 github.com/ipfs/go-merkledag v0.2.3 h1:aMdkK9G1hEeNvn3VXfiEMLY0iJnbiQQUHnM0HFJREsE=
 github.com/ipfs/go-merkledag v0.2.3/go.mod h1:SQiXrtSts3KGNmgOzMICy5c0POOpUNQLvB3ClKnBAlk=
 github.com/ipfs/go-merkledag v0.2.4 h1:ZSHQSe9BENfixUjT+MaLeHEeZGxrZQfgo3KT3SLosF8=
