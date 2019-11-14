@@ -86,7 +86,7 @@ func (*Actor) InitializeState(storage runtime.Storage, networkInterface interfac
 type Impl Actor
 
 // GetNetwork returns the network name for this network
-func (*Impl) GetNetwork(ctx runtime.Runtime) (string, uint8, error) {
+func (*Impl) GetNetwork(ctx runtime.InvocationContext) (string, uint8, error) {
 	if err := ctx.Charge(actor.DefaultGasCost); err != nil {
 		return "", internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}

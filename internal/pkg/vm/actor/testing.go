@@ -146,7 +146,7 @@ func (a *FakeActor) Method(id types.MethodID) (dispatch.Method, *dispatch.Functi
 type impl FakeActor
 
 // HasReturnValue is a dummy method that does nothing.
-func (*impl) HasReturnValue(ctx runtime.Runtime) (address.Address, uint8, error) {
+func (*impl) HasReturnValue(ctx runtime.InvocationContext) (address.Address, uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return address.Undef, internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
@@ -155,7 +155,7 @@ func (*impl) HasReturnValue(ctx runtime.Runtime) (address.Address, uint8, error)
 }
 
 // ChargeGasAndRevertError simply charges gas and returns a revert error
-func (*impl) ChargeGasAndRevertError(ctx runtime.Runtime) (uint8, error) {
+func (*impl) ChargeGasAndRevertError(ctx runtime.InvocationContext) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		panic("Unexpected error charging gas")
 	}
@@ -164,7 +164,7 @@ func (*impl) ChargeGasAndRevertError(ctx runtime.Runtime) (uint8, error) {
 
 // ReturnRevertError sets a bit inside fakeActor's storage and returns a
 // revert error.
-func (*impl) ReturnRevertError(ctx runtime.Runtime) (uint8, error) {
+func (*impl) ReturnRevertError(ctx runtime.InvocationContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
 	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
@@ -177,7 +177,7 @@ func (*impl) ReturnRevertError(ctx runtime.Runtime) (uint8, error) {
 }
 
 // GoodCall sets a bit inside fakeActor's storage.
-func (*impl) GoodCall(ctx runtime.Runtime) (uint8, error) {
+func (*impl) GoodCall(ctx runtime.InvocationContext) (uint8, error) {
 	fastore := &FakeActorStorage{}
 	_, err := WithState(ctx, fastore, func() (interface{}, error) {
 		fastore.Changed = true
@@ -190,38 +190,38 @@ func (*impl) GoodCall(ctx runtime.Runtime) (uint8, error) {
 }
 
 // NonZeroExitCode returns a nonzero exit code but no error.
-func (*impl) NonZeroExitCode(ctx runtime.Runtime) (uint8, error) {
+func (*impl) NonZeroExitCode(ctx runtime.InvocationContext) (uint8, error) {
 	return 42, nil
 }
 
 // NestedBalance sends 100 to the given address.
-func (*impl) NestedBalance(ctx runtime.Runtime, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+func (*impl) NestedBalance(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
+	_, code, err := ctx.Runtime().Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // SendTokens sends 100 to the given address.
-func (*impl) SendTokens(ctx runtime.Runtime, target address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
+func (*impl) SendTokens(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
+	_, code, err := ctx.Runtime().Send(target, types.SendMethodID, types.NewAttoFILFromFIL(100), nil)
 	return code, err
 }
 
 // CallSendTokens tells the target to invoke SendTokens to send tokens to the
 // to address (that is, it calls target.SendTokens(to)).
-func (*impl) CallSendTokens(ctx runtime.Runtime, target address.Address, to address.Address) (uint8, error) {
-	_, code, err := ctx.Send(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
+func (*impl) CallSendTokens(ctx runtime.InvocationContext, target address.Address, to address.Address) (uint8, error) {
+	_, code, err := ctx.Runtime().Send(target, sendTokensID, types.ZeroAttoFIL, []interface{}{to})
 	return code, err
 }
 
 // AttemptMultiSpend1 attempts to re-spend already spent tokens using a double reentrant call.
-func (*impl) AttemptMultiSpend1(ctx runtime.Runtime, self, target address.Address) (uint8, error) {
+func (*impl) AttemptMultiSpend1(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err := ctx.Runtime().Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
 	}
 	// Try to double spend
-	_, code, err = ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err = ctx.Runtime().Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed second callSendTokens")
 	}
@@ -229,9 +229,9 @@ func (*impl) AttemptMultiSpend1(ctx runtime.Runtime, self, target address.Addres
 }
 
 // AttemptMultiSpend2 attempts to re-spend already spent tokens using a reentrant call followed by a direct spend call.
-func (a *impl) AttemptMultiSpend2(ctx runtime.Runtime, self, target address.Address) (uint8, error) {
+func (a *impl) AttemptMultiSpend2(ctx runtime.InvocationContext, self, target address.Address) (uint8, error) {
 	// This will transfer 100 tokens legitimately.
-	_, code, err := ctx.Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
+	_, code, err := ctx.Runtime().Send(target, callSendTokensID, types.ZeroAttoFIL, []interface{}{self, target})
 	if code != 0 || err != nil {
 		return code, errors.FaultErrorWrap(err, "failed first callSendTokens")
 	}
@@ -244,17 +244,17 @@ func (a *impl) AttemptMultiSpend2(ctx runtime.Runtime, self, target address.Addr
 }
 
 // RunsAnotherMessage sends a message
-func (*impl) RunsAnotherMessage(ctx runtime.Runtime, target address.Address) (uint8, error) {
+func (*impl) RunsAnotherMessage(ctx runtime.InvocationContext, target address.Address) (uint8, error) {
 	if err := ctx.Charge(100); err != nil {
 		return internal.ErrInsufficientGas, errors.RevertErrorWrap(err, "Insufficient gas")
 	}
-	_, code, err := ctx.Send(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
+	_, code, err := ctx.Runtime().Send(target, HasReturnValueID, types.ZeroAttoFIL, []interface{}{})
 	return code, err
 }
 
 // BlockLimitTestMethod is designed to be used with block gas limit tests. It consumes 1/4 of the
 // block gas limit per run. Please ensure message.gasLimit >= 1/4 of block limit or it will panic.
-func (*impl) BlockLimitTestMethod(ctx runtime.Runtime) (uint8, error) {
+func (*impl) BlockLimitTestMethod(ctx runtime.InvocationContext) (uint8, error) {
 	if err := ctx.Charge(types.BlockGasLimit / 4); err != nil {
 		panic("designed for block limit testing, ensure msg limit is adequate")
 	}

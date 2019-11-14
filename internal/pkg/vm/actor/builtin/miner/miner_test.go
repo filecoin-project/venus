@@ -31,7 +31,6 @@ import (
 	vmerrors "github.com/filecoin-project/go-filecoin/internal/pkg/vm/errors"
 	internal "github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/errors"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/gastracker"
-	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/runtime"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/storagemap"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/internal/vmcontext"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
@@ -1707,7 +1706,7 @@ type minerEnvBuilder struct {
 	verifier         *verification.FakeVerifier
 }
 
-func (b *minerEnvBuilder) build() (runtime.Runtime, *verification.FakeVerifier, *Impl) {
+func (b *minerEnvBuilder) build() (*vm.FakeVMContext, *verification.FakeVerifier, *Impl) {
 	minerState := NewState(address.TestAddress, address.TestAddress, peer.ID(""), b.sectorSize)
 	minerState.SectorCommitments = b.sectorSet
 	minerState.ProvingPeriodEnd = b.provingPeriodEnd
