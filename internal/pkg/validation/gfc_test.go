@@ -4,19 +4,17 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/chain-validation/pkg/suites"
-	tf "github.com/filecoin-project/go-filecoin/internal/pkg/testhelpers/testflags"
 )
 
 func TestValueTransfer(t *testing.T) {
-	tf.UnitTest(t)
-
 	factory := NewFactories()
-	suites.AccountValueTransferSuccess(t, factory, 0)
-	suites.AccountValueTransferZeroFunds(t, factory, 0)
-	suites.AccountValueTransferOverBalanceNonZero(t, factory, 0)
-	suites.AccountValueTransferOverBalanceZero(t, factory, 0)
-	suites.AccountValueTransferToSelf(t, factory, 0)
-	suites.AccountValueTransferFromKnownToUnknownAccount(t, factory, 0)
-	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, 0)
-	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, 0)
+	expectedGasUsed := uint64(0)
+	suites.AccountValueTransferSuccess(t, factory, expectedGasUsed)
+	suites.AccountValueTransferZeroFunds(t, factory, expectedGasUsed)
+	suites.AccountValueTransferOverBalanceNonZero(t, factory, expectedGasUsed)
+	suites.AccountValueTransferOverBalanceZero(t, factory, expectedGasUsed)
+	suites.AccountValueTransferToSelf(t, factory, expectedGasUsed)
+	suites.AccountValueTransferFromKnownToUnknownAccount(t, factory, expectedGasUsed)
+	suites.AccountValueTransferFromUnknownToKnownAccount(t, factory, expectedGasUsed)
+	suites.AccountValueTransferFromUnknownToUnknownAccount(t, factory, expectedGasUsed)
 }
