@@ -3,6 +3,7 @@ package validation
 import (
 	"github.com/filecoin-project/chain-validation/pkg/chain"
 	"github.com/filecoin-project/chain-validation/pkg/state"
+	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/actor/builtin/miner"
 	"github.com/pkg/errors"
 
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
@@ -45,7 +46,6 @@ func (mf *MessageFactory) MakeMessage(from, to state.Address, method chain.Metho
 	msg := types.NewMeteredMessage(fromDec, toDec, nonce, valueDec, methodName, paramsDec, types.NewAttoFIL(gasPrice), types.NewGasUnits(uint64(gasUnit)))
 
 	return msg, nil
-	//return types.NewSignedMessage(*msg, mf.signer)
 }
 
 // FromSingletonAddress returns the address for a Singleton Actor.
@@ -56,5 +56,12 @@ func (mf *MessageFactory) FromSingletonAddress(addr state.SingletonActorID) stat
 // Maps method enumeration values to method names.
 // This will change to a mapping to method ids when method dispatch is updated to use integers.
 var methods = []types.MethodID{
-	chain.NoMethod: 0,
+	chain.NoMethod:                  0,
+	chain.StorageMinerGetOwner:      miner.GetOwner,
+	chain.StorageMinerGetWorkerAddr: miner.GetWorker,
+	chain.StorageMinerGetPeerID:     miner.GetPeerID,
+	chain.StorageMinerGetPower:      miner.GetPower,
+	chain.StorageMinerGetSectorSize: miner.GetSectorSize,
+	chain.StorageMinerUpdatePeerID:  miner.UpdatePeerID,
+	// more to come...
 }

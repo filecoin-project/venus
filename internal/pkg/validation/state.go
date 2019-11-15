@@ -24,9 +24,11 @@ import (
 
 // StateWrapper provides a wrapper for a state tree, storage, map and keystore.
 type StateWrapper struct {
-	state.Tree
 	vm.StorageMap
 	keys *keyStore
+
+	stateRoot cid.Cid
+	cst       *hamt.CborIpldStore
 }
 
 var _ vstate.Wrapper = &StateWrapper{}
@@ -37,12 +39,16 @@ func NewState() *StateWrapper {
 	cst := hamt.CSTFromBstore(bs)
 	treeImpl := state.NewTree(cst)
 	storageImpl := vm.NewStorageMap(bs)
-	return &StateWrapper{treeImpl, storageImpl, newKeyStore()}
+	stateRoot, err := treeImpl.Flush(context.TODO())
+	if err != nil {
+		panic(err)
+	}
+	return &StateWrapper{storageImpl, newKeyStore(), stateRoot, cst}
 }
 
 // Cid returns the cid of the state wrappers current state
 func (s *StateWrapper) Cid() cid.Cid {
-	panic("implement me")
+	return s.stateRoot
 }
 
 // Actor returns the actor whos address is `addr`.
@@ -51,7 +57,13 @@ func (s *StateWrapper) Actor(addr vstate.Address) (vstate.Actor, error) {
 	if err != nil {
 		return nil, err
 	}
-	fcActor, err := s.Tree.GetActor(context.TODO(), vaddr)
+
+	tree, err := state.NewTreeLoader().LoadStateTree(context.TODO(), s.cst, s.stateRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	fcActor, err := tree.GetActor(context.TODO(), vaddr)
 	if err != nil {
 		return nil, err
 	}
@@ -65,12 +77,17 @@ func (s *StateWrapper) Storage(addr vstate.Address) (vstate.Storage, error) {
 		return nil, err
 	}
 
-	actor, err := s.Tree.GetActor(context.TODO(), addrInt)
+	tree, err := state.NewTreeLoader().LoadStateTree(context.TODO(), s.cst, s.stateRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	storageInt := s.StorageMap.NewStorage(addrInt, actor)
+	fcActor, err := tree.GetActor(context.TODO(), addrInt)
+	if err != nil {
+		return nil, err
+	}
+
+	storageInt := s.StorageMap.NewStorage(addrInt, fcActor)
 	// The internal storage implements vstate.Storage directly for now.
 	return storageInt, nil
 }
@@ -91,10 +108,17 @@ func (s *StateWrapper) SetActor(addr vstate.Address, code vstate.ActorCodeID, ba
 		Code:    fromActorCode(code),
 		Balance: types.NewAttoFIL(balance),
 	}}
-	if err := s.Tree.SetActor(ctx, addrInt, &actr.Actor); err != nil {
+
+	tree, err := state.NewTreeLoader().LoadStateTree(context.TODO(), s.cst, s.stateRoot)
+	if err != nil {
 		return nil, nil, err
 	}
-	_, err = s.Tree.Flush(ctx)
+
+	if err := tree.SetActor(ctx, addrInt, &actr.Actor); err != nil {
+		return nil, nil, err
+	}
+
+	s.stateRoot, err = tree.Flush(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -114,36 +138,27 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 
 	switch fcAddr {
 	case address.InitAddress:
-		intAct := initactor.NewActor()
-		err = (&initactor.Actor{}).InitializeState(s.StorageMap.NewStorage(address.InitAddress, intAct), "localnet")
+		fcActor := initactor.NewActor()
+		err = (&initactor.Actor{}).InitializeState(s.StorageMap.NewStorage(address.InitAddress, fcActor), "localnet")
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := s.Tree.SetActor(ctx, fcAddr, intAct); err != nil {
+		if err := s.setActorAndStateRoot(ctx, fcAddr, fcActor); err != nil {
 			return nil, nil, err
 		}
-		_, err = s.Tree.Flush(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		storage := s.NewStorage(fcAddr, intAct)
-		return &actorWrapper{*intAct}, storage, nil
+		storage := s.NewStorage(fcAddr, fcActor)
+		return &actorWrapper{*fcActor}, storage, nil
 	case address.StorageMarketAddress:
-		stAct := storagemarket.NewActor()
-		err := (&storagemarket.Actor{}).InitializeState(s.StorageMap.NewStorage(address.StorageMarketAddress, stAct), types.TestProofsMode)
+		fcActor := storagemarket.NewActor()
+		err := (&storagemarket.Actor{}).InitializeState(s.StorageMap.NewStorage(address.StorageMarketAddress, fcActor), types.TestProofsMode)
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := s.Tree.SetActor(ctx, fcAddr, stAct); err != nil {
+		if err := s.setActorAndStateRoot(ctx, fcAddr, fcActor); err != nil {
 			return nil, nil, err
 		}
-		_, err = s.Tree.Flush(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-		storage := s.NewStorage(fcAddr, stAct)
-		return &actorWrapper{*stAct}, storage, nil
+		storage := s.NewStorage(fcAddr, fcActor)
+		return &actorWrapper{*fcActor}, storage, nil
 	case address.BurntFundsAddress:
 		bal := types.NewAttoFIL(balance)
 		fcActor := &actor.Actor{
@@ -151,11 +166,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Balance: bal,
 			Head:    cid.Undef,
 		}
-		if err := s.Tree.SetActor(ctx, address.BurntFundsAddress, fcActor); err != nil {
-			return nil, nil, errors.Wrapf(err, "set burntfunds actor")
-		}
-		_, err = s.Tree.Flush(ctx)
-		if err != nil {
+		if err := s.setActorAndStateRoot(ctx, address.BurntFundsAddress, fcActor); err != nil {
 			return nil, nil, err
 		}
 		storage := s.NewStorage(fcAddr, fcActor)
@@ -167,11 +178,7 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 			Balance: bal,
 			Head:    cid.Undef,
 		}
-		if err := s.Tree.SetActor(ctx, address.NetworkAddress, fcActor); err != nil {
-			return nil, nil, errors.Wrapf(err, "set network actor")
-		}
-		_, err = s.Tree.Flush(ctx)
-		if err != nil {
+		if err := s.setActorAndStateRoot(ctx, address.NetworkAddress, fcActor); err != nil {
 			return nil, nil, err
 		}
 		storage := s.NewStorage(fcAddr, fcActor)
@@ -181,6 +188,22 @@ func (s *StateWrapper) SetSingletonActor(addr vstate.SingletonActorID, balance v
 		return nil, nil, errors.Errorf("%v is not a singleton actor address", addr)
 	}
 
+}
+
+func (s *StateWrapper) setActorAndStateRoot(ctx context.Context, addr address.Address, act *actor.Actor) error {
+	tree, err := state.NewTreeLoader().LoadStateTree(context.TODO(), s.cst, s.stateRoot)
+	if err != nil {
+		return err
+	}
+
+	if err := tree.SetActor(ctx, addr, act); err != nil {
+		return errors.Wrapf(err, "set network actor")
+	}
+	s.stateRoot, err = tree.Flush(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Signer returns a signer

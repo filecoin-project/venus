@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-filecoin/internal/pkg/types"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm"
 	"github.com/filecoin-project/go-filecoin/internal/pkg/vm/address"
+	fcstate "github.com/filecoin-project/go-filecoin/internal/pkg/vm/state"
 )
 
 // Applier applies messages to state trees and storage.
@@ -28,19 +29,28 @@ func NewApplier() *Applier {
 // ApplyMessage applies a message to the state tree and returns the receipt of its application or an error.
 func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapper, message interface{}) (vchain.MessageReceipt, error) {
 	ctx := context.TODO()
-	stateTree := state.(*StateWrapper).Tree
+
+	wrapper := state.(*StateWrapper)
 	vms := state.(*StateWrapper).StorageMap
 	msg := message.(*types.UnsignedMessage)
+
+	blockHeight := types.NewBlockHeight(eCtx.Epoch)
+	gasTracker := vm.NewGasTracker()
+	base := state.Cid()
+
 	minerOwner, err := address.NewFromBytes([]byte(eCtx.MinerOwner))
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
-	blockHeight := types.NewBlockHeight(eCtx.Epoch)
-	gasTracker := vm.NewGasTracker()
+
+	tree, err := fcstate.NewTreeLoader().LoadStateTree(ctx, wrapper.cst, base)
+	if err != nil {
+		return vchain.MessageReceipt{}, err
+	}
+
 	// Providing direct access to blockchain structures is very difficult and expected to go away.
 	var ancestors []block.TipSet
-
-	amr, err := a.processor.ApplyMessage(ctx, stateTree, vms, msg, minerOwner, blockHeight, gasTracker, ancestors)
+	amr, err := a.processor.ApplyMessage(ctx, tree, vms, msg, minerOwner, blockHeight, gasTracker, ancestors)
 	if err != nil {
 		return vchain.MessageReceipt{}, err
 	}
@@ -54,6 +64,11 @@ func (a *Applier) ApplyMessage(eCtx *vchain.ExecutionContext, state vstate.Wrapp
 		ReturnValue: retVal,
 		// Go-filecoin returns the gas cost rather than gas unit consumption :-(
 		GasUsed: vstate.GasUnit(amr.Receipt.GasAttoFIL.AsBigInt().Uint64()),
+	}
+
+	wrapper.stateRoot, err = tree.Flush(ctx)
+	if err != nil {
+		return vchain.MessageReceipt{}, err
 	}
 
 	return mr, nil
